@@ -1,0 +1,31 @@
+<svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Aetherfin">
+  <title>Aetherfin</title>
+  <defs>
+    <linearGradient id="wm-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A89DEC"/>
+      <stop offset="55%" stop-color="#5644C9"/>
+      <stop offset="100%" stop-color="#251F58"/>
+    </linearGradient>
+    <linearGradient id="wm-text" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F2F1F8"/>
+      <stop offset="100%" stop-color="#A89DEC"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Mark: rounded-square indigo container, scaled to 160 -->
+  <g transform="translate(20, 20)">
+    <clipPath id="wm-clip"><rect width="160" height="160" rx="36" ry="36"/></clipPath>
+    <g clip-path="url(#wm-clip)">
+      <rect width="160" height="160" fill="url(#wm-bg)"/>
+      <path d="M 61 90 Q 80 70 99 90"
+            stroke="#CDC6F4" stroke-width="6" stroke-linecap="round" fill="none"/>
+      <path d="M 51 110 L 80 39 L 109 110"
+            stroke="#ffffff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+  </g>
+
+  <!-- Wordmark text -->
+  <text x="210" y="132" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="104" font-weight="700" letter-spacing="-3"
+        fill="url(#wm-text)">Aetherfin</text>
+</svg>

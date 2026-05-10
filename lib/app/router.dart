@@ -1,0 +1,187 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../core/jellyfin/models/server.dart';
+import '../design_tokens/tokens.dart';
+import '../features/album/album_screen.dart';
+import '../features/artist/artist_screen.dart';
+import '../features/cast_picker/cast_picker_screen.dart';
+import '../features/home/home_screen.dart';
+import '../features/library/library_screen.dart';
+import '../features/lyrics/lyrics_screen.dart';
+import '../features/now_playing/now_playing_screen.dart';
+import '../features/onboarding/all_set_screen.dart';
+import '../features/onboarding/library_scope_screen.dart';
+import '../features/onboarding/server_discovery_screen.dart';
+import '../features/onboarding/sign_in_screen.dart';
+import '../features/onboarding/welcome_screen.dart';
+import '../features/profile/profile_screen.dart';
+import '../features/queue/queue_screen.dart';
+import '../features/search/search_screen.dart';
+import '../features/settings/settings_screen.dart';
+import '../features/sleep_timer/sleep_timer_screen.dart';
+import '../widgets/app_shell.dart';
+
+/// Single source of truth for all in-app navigation.
+///
+/// Onboarding lives outside the shell so the bottom nav doesn't appear
+/// before the user has chosen a library. All four tabs sit inside a
+/// [StatefulShellRoute], which preserves each tab's stack across switches
+/// (per design spec §11.6).
+final routerProvider = Provider<GoRouter>((ref) {
+  final rootKey = GlobalKey<NavigatorState>();
+  final shellKey = GlobalKey<NavigatorState>();
+
+  return GoRouter(
+    navigatorKey: rootKey,
+    initialLocation: '/',
+    routes: [
+      // Onboarding
+      GoRoute(
+        path: '/',
+        builder: (_, __) => const WelcomeScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/discover',
+        builder: (_, __) => const ServerDiscoveryScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/sign-in',
+        builder: (_, state) =>
+            SignInScreen(server: state.extra! as JellyfinServer),
+      ),
+      GoRoute(
+        path: '/onboarding/scope',
+        builder: (_, __) => const LibraryScopeScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/done',
+        builder: (_, __) => const AllSetScreen(),
+      ),
+
+      // Shell — 4 tabs.
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => AppShell(shell: shell),
+        branches: [
+          StatefulShellBranch(
+            navigatorKey: shellKey,
+            routes: [
+              GoRoute(
+                path: '/home',
+                pageBuilder: (_, __) =>
+                    const NoTransitionPage(child: HomeScreen()),
+                routes: _commonChildren(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/search',
+                pageBuilder: (_, __) =>
+                    const NoTransitionPage(child: SearchScreen()),
+                routes: _commonChildren(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/library',
+                pageBuilder: (_, __) =>
+                    const NoTransitionPage(child: LibraryScreen()),
+                routes: _commonChildren(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                pageBuilder: (_, __) =>
+                    const NoTransitionPage(child: ProfileScreen()),
+                routes: _commonChildren(),
+              ),
+            ],
+          ),
+        ],
+      ),
+
+      // Top-level sheets / overlays (live above the shell).
+      GoRoute(
+        path: '/now-playing',
+        parentNavigatorKey: rootKey,
+        pageBuilder: (_, __) => _NowPlayingPage(),
+      ),
+      GoRoute(
+        path: '/lyrics',
+        parentNavigatorKey: rootKey,
+        builder: (_, __) => const LyricsScreen(),
+      ),
+      GoRoute(
+        path: '/queue',
+        parentNavigatorKey: rootKey,
+        builder: (_, __) => const QueueScreen(),
+      ),
+      GoRoute(
+        path: '/sleep',
+        parentNavigatorKey: rootKey,
+        builder: (_, __) => const SleepTimerScreen(),
+      ),
+      GoRoute(
+        path: '/cast',
+        parentNavigatorKey: rootKey,
+        builder: (_, __) => const CastPickerScreen(),
+      ),
+      GoRoute(
+        path: '/settings',
+        parentNavigatorKey: rootKey,
+        builder: (_, __) => const SettingsScreen(),
+      ),
+    ],
+  );
+});
+
+List<GoRoute> _commonChildren() => [
+      GoRoute(
+        path: 'album/:id',
+        builder: (_, state) =>
+            AlbumScreen(albumId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: 'artist/:id',
+        builder: (_, state) =>
+            ArtistScreen(artistId: state.pathParameters['id']!),
+      ),
+    ];
+
+class _NowPlayingPage extends Page<void> {
+  @override
+  Route<void> createRoute(BuildContext context) {
+    return PageRouteBuilder<void>(
+      settings: this,
+      transitionDuration: AfDurations.expressive,
+      reverseTransitionDuration: AfDurations.expressive,
+      pageBuilder: (_, __, ___) => const NowPlayingScreen(),
+      transitionsBuilder: (context, animation, _, child) {
+        final reduced = MediaQuery.of(context).disableAnimations;
+        if (reduced) {
+          return FadeTransition(opacity: animation, child: child);
+        }
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: AfCurves.easeEmphasized,
+          reverseCurve: AfCurves.easeEmphasized,
+        );
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 1),
+            end: Offset.zero,
+          ).animate(curved),
+          child: child,
+        );
+      },
+    );
+  }
+}

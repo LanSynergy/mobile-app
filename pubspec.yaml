@@ -1,0 +1,83 @@
+name: aetherfin
+description: "Aetherfin — a Jellyfin-backed music player for Android."
+publish_to: 'none'
+
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Audio
+  just_audio: ^0.10.0
+  audio_service: ^0.18.18
+  audio_session: ^0.2.2
+
+  # State management
+  flutter_riverpod: ^2.6.1
+
+  # Routing
+  go_router: ^14.7.0
+
+  # Networking
+  dio: ^5.7.0
+  dio_cache_interceptor: ^3.5.0
+
+  # Imagery
+  cached_network_image: ^3.4.1
+  flutter_svg: ^2.0.16
+  palette_generator: ^0.3.3+5
+
+  # Discovery
+  multicast_dns: ^0.3.2+8
+
+  # Local persistence
+  flutter_secure_storage: ^9.2.4
+  shared_preferences: ^2.3.4
+  path_provider: ^2.1.5
+
+  # Fonts
+  google_fonts: ^6.2.1
+
+  # Misc
+  collection: ^1.18.0
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.2
+  flutter_native_splash: ^2.4.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/brand/logo.svg
+    - assets/brand/logo-mark.svg
+    - assets/brand/wordmark.svg
+
+# `google_fonts` ships Inter (variable) and JetBrains Mono via runtime fetch.
+# We configure `flutter_launcher_icons` and `flutter_native_splash` here so
+# the foundation phase produces a fully branded launcher + splash.
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/brand/launcher_icon.png"
+  adaptive_icon_background: "#251F58"
+  adaptive_icon_foreground: "assets/brand/launcher_foreground.png"
+  min_sdk_android: 21
+
+flutter_native_splash:
+  color: "#0B0B14"
+  image: "assets/brand/splash.png"
+  android_12:
+    color: "#0B0B14"
+    image: "assets/brand/splash.png"
+  android: true
+  ios: false
+  fullscreen: true

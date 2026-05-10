@@ -1,0 +1,125 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../core/jellyfin/models/library.dart';
+import '../../design_tokens/tokens.dart';
+import '../../state/providers.dart';
+
+class LibraryScopeScreen extends ConsumerStatefulWidget {
+  const LibraryScopeScreen({super.key});
+
+  @override
+  ConsumerState<LibraryScopeScreen> createState() =>
+      _LibraryScopeScreenState();
+}
+
+class _LibraryScopeScreenState extends ConsumerState<LibraryScopeScreen> {
+  List<LibraryView> _views = const [];
+  final _selected = <String>{};
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final client = ref.read(jellyfinClientProvider);
+    List<LibraryView> views = const [];
+    if (client != null) {
+      try {
+        views = await client.userViews();
+      } catch (_) {}
+    }
+    if (views.where((v) => v.hasAudio).length <= 1) {
+      // Auto-skip when there's nothing to choose.
+      if (!mounted) return;
+      _selected.addAll(views.map((v) => v.id));
+      context.go('/onboarding/done');
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _views = views.where((v) => v.hasAudio).toList();
+      _selected.addAll(_views.map((v) => v.id));
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => context.pop(),
+        ),
+        title: Text('Choose libraries', style: AfTypography.titleMedium),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.gutterGenerous,
+          ),
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Pick which libraries Aetherfin should index.',
+                      style: AfTypography.bodyMedium.copyWith(
+                        color: AfColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: AfSpacing.s24),
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: _views.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: AfSpacing.s8),
+                        itemBuilder: (context, i) {
+                          final v = _views[i];
+                          final selected = _selected.contains(v.id);
+                          return CheckboxListTile(
+                            value: selected,
+                            onChanged: (val) {
+                              setState(() {
+                                if (val == true) {
+                                  _selected.add(v.id);
+                                } else {
+                                  _selected.remove(v.id);
+                                }
+                              });
+                            },
+                            controlAffinity: ListTileControlAffinity.leading,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: AfRadii.borderMd,
+                            ),
+                            tileColor: AfColors.surfaceBase,
+                            activeColor: AfColors.indigo500,
+                            title: Text(v.name, style: AfTypography.titleSmall),
+                            subtitle: Text(
+                              v.collectionType,
+                              style: AfTypography.bodySmall.copyWith(
+                                color: AfColors.textTertiary,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => context.go('/onboarding/done'),
+                      child: const Text('Continue'),
+                    ),
+                    const SizedBox(height: AfSpacing.s24),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
