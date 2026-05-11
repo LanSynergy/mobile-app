@@ -76,11 +76,18 @@ class NowPlayingScreen extends ConsumerWidget {
                             decoration: BoxDecoration(
                               borderRadius: AfRadii.borderLg,
                               boxShadow: [
+                                // Tight inner shadow — depth.
                                 BoxShadow(
-                                  // ignore: deprecated_member_use
                                   color: spectral.shadow.withValues(alpha: 0.6),
                                   blurRadius: 48,
                                   offset: const Offset(0, 24),
+                                ),
+                                // Wide ambient glow — spectral color halo.
+                                BoxShadow(
+                                  color: spectral.energy.withValues(alpha: 0.35),
+                                  blurRadius: 72,
+                                  spreadRadius: 8,
+                                  offset: Offset.zero,
                                 ),
                               ],
                             ),

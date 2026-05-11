@@ -124,7 +124,7 @@ class HomeScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: artistsAsync.maybeWhen(
               data: (artists) => SizedBox(
-                height: 168,
+                height: 172,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding:
@@ -139,7 +139,7 @@ class HomeScreen extends ConsumerWidget {
                       subtitle: '${a.albumCount} albums',
                       variant: TileVariant.artist,
                       imageUrl: a.imageUrl,
-                      size: 120,
+                      size: 100,
                       onTap: () => context.push('/artist/${a.id}'),
                     );
                   },
