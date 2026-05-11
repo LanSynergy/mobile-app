@@ -107,12 +107,11 @@ class AfPlayerService extends BaseAudioHandler
       'startIndex=$safeIndex first="${startTrack.title}"',
     );
 
-    // Build Media list. The on_load hook injects auth headers per-track.
+    // Build Media list. Auth is embedded in the URL via api_key= so
+    // libmpv/FFmpeg can authenticate without needing the Authorization
+    // header (which FFmpeg rejects due to its comma separators).
     final medias = tracks
-        .map((t) => Media(
-              resolveStreamUrl(t),
-              httpHeaders: streamHeaders.isEmpty ? null : streamHeaders,
-            ))
+        .map((t) => Media(resolveStreamUrl(t)))
         .toList();
 
     try {

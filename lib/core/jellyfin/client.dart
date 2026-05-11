@@ -357,19 +357,15 @@ class JellyfinClient {
   /// which serves the original file byte-for-byte (mp3 / flac / m4a /
   /// ogg / wav / opus). just_audio's ExoPlayer plays these natively.
   ///
-  /// We previously tried `/Audio/{id}/universal` (transcoding-aware) with
-  /// only `api_key` + `maxStreamingBitrate` hints. Without the full
-  /// Finamp-style `Container=…&TranscodingProtocol=hls&AudioCodec=aac`
-  /// negotiation, Jellyfin defaults to serving an HLS manifest that
-  /// just_audio could not decode — audio appeared "playing" (state=ready,
-  /// IsPaused=false) but `position` never advanced past 0 because the
-  /// decoder rejected the stream.
+  /// Build a streaming URL for a given track ID.
   ///
-  /// Direct-stream is simpler, more reliable, and the quality chip can
-  /// still be computed from the source-file metadata we already have on
-  /// [AfTrack]. If users hit a track with an exotic codec ExoPlayer can't
-  /// decode, we'll re-introduce transcoding negotiation as a follow-up
-  /// with the full param set.
+  /// Uses `/Audio/{id}/stream?Static=true` — the direct-stream endpoint.
+  ///
+  /// The access token is embedded as `api_key=<token>` in the URL because
+  /// libmpv/FFmpeg's HTTP client (lavf) rejects the `Authorization: MediaBrowser …`
+  /// header — it contains commas which FFmpeg treats as header-list separators
+  /// and refuses with "must not contain comma". Jellyfin accepts `api_key` as
+  /// an equivalent authentication mechanism for media streams.
   String trackStreamUrl(
     String trackId, {
     int? maxBitrateKbps,
@@ -380,6 +376,12 @@ class JellyfinClient {
       'Static': 'true',
       'UserId': userId!,
       'DeviceId': deviceId,
+      // Embed the token in the URL so libmpv/FFmpeg can authenticate.
+      // This is safe for LAN/VPN use and is the standard approach for
+      // mpv-based Jellyfin clients (e.g. Finamp uses the same pattern
+      // for its mpv integration).
+      if (accessToken != null && accessToken!.isNotEmpty)
+        'api_key': accessToken!,
       if (maxBitrateKbps != null)
         'MaxStreamingBitrate': '${maxBitrateKbps * 1000}',
       // ignore: use_null_aware_elements — map is Map<String,String>, value is String?
@@ -388,11 +390,6 @@ class JellyfinClient {
     final base = server.baseUrl.endsWith('/')
         ? server.baseUrl.substring(0, server.baseUrl.length - 1)
         : server.baseUrl;
-    // Build via `Uri` so every value is URL-encoded — historically we hand
-    // -joined `$k=$v` pairs which silently mis-encoded tokens / IDs that
-    // contained `+`, `=`, `&`, or `/`. The token used to ride in this URL
-    // as `api_key=…`; it now travels in the Authorization header (see
-    // `authHeaders`) which a logcat-grepping attacker cannot recover.
     return Uri.parse(base)
         .replace(
           path: '${Uri.parse(base).path}/Audio/$trackId/stream',

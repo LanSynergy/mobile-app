@@ -45,11 +45,6 @@ class PlayActions {
           streamHeaders: client.authHeaders,
         );
       } catch (e, stack) {
-        // Leave the queue staged so the mini-player keeps the track
-        // visible, but log loudly so a logcat capture shows the cause
-        // (`aetherfin:audio` lines from player_service already cover
-        // setAudioSource/play failures; this catches anything thrown
-        // before/around them).
         afLog(
           'audio',
           'playQueue failed',
