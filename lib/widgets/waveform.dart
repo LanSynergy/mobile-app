@@ -281,17 +281,36 @@ class _FftWaveformPainter extends CustomPainter {
 
       double amp;
       if (!useFallback && bands != null && bands.isNotEmpty) {
-        final fftIdx = (i / barCount * bands.length)
-            .clamp(0, bands.length - 1)
+        // Log-scale band mapping: most musical energy lives in low-to-mid
+        // frequencies. A linear mapping sends bars 0..N all to the same
+        // low-energy high-frequency bins. Log mapping spreads bass/mid
+        // energy across the full bar range so every bar reacts.
+        //
+        // Map bar i → FFT band using: idx = (e^(i/N * ln(bandCount)) - 1)
+        // This gives index 0 → band 0, index N-1 → band bandCount-1,
+        // with denser sampling at low frequencies.
+        final n = bands.length.toDouble();
+        final t = i / (barCount - 1).toDouble(); // 0..1
+        final fftIdx = (math.pow(n, t) - 1)
+            .clamp(0, n - 1)
             .toInt();
-        final rawFft = bands[fftIdx].clamp(0.0, 1.0);
-        // Drive height purely from FFT so the full canvas height is used
-        // as the dynamic range. The static peak acts as a ceiling so the
-        // waveform shape is preserved — a quiet bar can't spike above its
-        // recorded peak even on a loud beat.
-        // A small floor (_minBarHeightFraction) keeps bars visible at rest.
-        amp = (rawFft * staticPeak)
-            .clamp(_minBarHeightFraction, staticPeak);
+
+        // Average a small window around the mapped index to smooth
+        // single-bin spikes that would make bars flicker randomly.
+        final lo = (fftIdx - 1).clamp(0, bands.length - 1);
+        final hi = (fftIdx + 1).clamp(0, bands.length - 1);
+        var sum = 0.0;
+        for (var k = lo; k <= hi; k++) {
+          sum += bands[k];
+        }
+        final rawFft = (sum / (hi - lo + 1)).clamp(0.0, 1.0);
+
+        // Boost the signal so quiet passages still show visible movement.
+        // Without this, bars sit near the floor even during normal playback.
+        final boosted = math.pow(rawFft, 0.5).toDouble(); // sqrt boost
+
+        // Use boosted FFT as the height fraction of the static peak ceiling.
+        amp = (boosted * staticPeak).clamp(_minBarHeightFraction, staticPeak);
       } else {
         // Fallback: sine-wave jitter proportional to peak amplitude.
         final jitterScale = staticPeak * _maxJitter;
