@@ -62,7 +62,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       }
       await ref.read(authProvider.notifier).save(auth);
       if (!mounted) return;
-      context.go('/onboarding/scope');
+      // Auth flipping non-null triggers the router's redirect to /home;
+      // calling context.go ourselves also covers the rare case where the
+      // refreshListenable hasn't fired yet.
+      context.go('/home');
     } catch (e, stack) {
       // ignore: avoid_print
       print('aetherfin:error sign-in failed: $e');
