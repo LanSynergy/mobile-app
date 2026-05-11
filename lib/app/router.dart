@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/jellyfin/models/server.dart';
+import '../state/providers.dart';
 import '../design_tokens/tokens.dart';
 import '../features/album/album_screen.dart';
 import '../features/artist/artist_screen.dart';
@@ -33,9 +35,32 @@ final routerProvider = Provider<GoRouter>((ref) {
   final rootKey = GlobalKey<NavigatorState>();
   final shellKey = GlobalKey<NavigatorState>();
 
+  // Re-evaluate redirects whenever auth changes so signing in lands you on
+  // /home and signing out drops you back at /.
+  final refresh = _AuthRefreshListenable();
+  ref.listen<JellyfinAuth?>(authProvider, (_, __) => refresh._notify(),
+      fireImmediately: false);
+  ref.onDispose(refresh.dispose);
+
   return GoRouter(
     navigatorKey: rootKey,
     initialLocation: '/',
+    refreshListenable: refresh,
+    redirect: (context, state) {
+      final auth = ref.read(authProvider);
+      final loc = state.matchedLocation;
+      final inOnboarding = loc == '/' || loc.startsWith('/onboarding');
+      if (auth != null && inOnboarding) {
+        // Already signed in — fast-forward past welcome / discovery.
+        return '/home';
+      }
+      if (auth == null && !inOnboarding) {
+        // No credentials — send the user through onboarding before we
+        // try to render any post-auth screen (which would 401 anyway).
+        return '/';
+      }
+      return null;
+    },
     routes: [
       // Onboarding
       GoRoute(
@@ -142,6 +167,13 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+/// Thin ChangeNotifier we hand to GoRouter so it re-runs `redirect` when
+/// auth state flips. We can't pass `authProvider` directly because
+/// GoRouter expects a Listenable and Riverpod providers are not Listenables.
+class _AuthRefreshListenable extends ChangeNotifier {
+  void _notify() => notifyListeners();
+}
 
 List<GoRoute> _commonChildren() => [
       GoRoute(

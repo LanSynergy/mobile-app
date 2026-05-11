@@ -28,17 +28,28 @@ final deviceIdProvider = Provider<String>((ref) {
   );
 });
 
+/// Auth blob loaded synchronously from secure storage at app startup.
+/// Overridden in `main.dart` so that [authProvider]'s initial state is
+/// the persisted auth (if any) — never `null` followed by an async
+/// hydrate() that would race with a sign-in `save()` and clobber it.
+final initialAuthProvider = Provider<JellyfinAuth?>((ref) {
+  throw StateError(
+    'initialAuthProvider was read before being overridden in main(). '
+    'This is a bug — ProviderScope must override it with the value '
+    'returned by AuthStorage.load() (or null when no auth is stored).',
+  );
+});
+
 final authProvider = StateNotifierProvider<AuthNotifier, JellyfinAuth?>((ref) {
-  return AuthNotifier(ref.watch(authStorageProvider))..hydrate();
+  return AuthNotifier(
+    ref.watch(authStorageProvider),
+    initial: ref.watch(initialAuthProvider),
+  );
 });
 
 class AuthNotifier extends StateNotifier<JellyfinAuth?> {
   final AuthStorage _storage;
-  AuthNotifier(this._storage) : super(null);
-
-  Future<void> hydrate() async {
-    state = await _storage.load();
-  }
+  AuthNotifier(this._storage, {JellyfinAuth? initial}) : super(initial);
 
   Future<void> save(JellyfinAuth auth) async {
     state = auth;

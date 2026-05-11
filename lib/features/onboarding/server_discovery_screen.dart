@@ -113,7 +113,16 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            // We arrive here via `context.go()` from WelcomeScreen, which
+            // replaces the stack — so `pop()` raises GoError("nothing to
+            // pop"). Route home explicitly when the stack is empty.
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
         ),
         title: Text(
           'Find your server',
