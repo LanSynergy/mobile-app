@@ -4,4 +4,5 @@
          Android window background and the Flutter Scaffold canvas are the
          same color. No flash, no white edges, no jarring jump. -->
     <color name="aetherfin_canvas">#FF0B0B14</color>
+	<color name="ic_launcher_background">#251F58</color>
 </resources>

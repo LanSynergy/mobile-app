@@ -3,6 +3,7 @@ import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 
 import 'models/items.dart';
 import 'models/library.dart';
+import 'models/quality.dart';
 import 'models/server.dart';
 
 /// Thin Dio-backed Jellyfin REST client.
@@ -290,33 +291,460 @@ class JellyfinClient {
   }
 
   // ---------------------------------------------------------------------------
-  // Below: stub endpoints we'll fill in as Phase 4–7 lands.
+  // Library endpoints
   // ---------------------------------------------------------------------------
 
-  /// `/Users/{userId}/Items/Resume` — the "Resume what I was listening to" data.
-  Future<List<AfTrack>> resumeItems() async => const [];
+  /// `GET /Users/{userId}/Items/Resume` — items the user paused mid-listen.
+  Future<List<AfTrack>> resumeItems({int limit = 20}) async {
+    _assertUser();
+    final res = await _dio.get<Map<String, dynamic>>(
+      'Users/$userId/Items/Resume',
+      queryParameters: <String, dynamic>{
+        'Limit': limit,
+        'MediaTypes': 'Audio',
+        'Fields': _trackFields,
+      },
+    );
+    return _parseItemList(res.data).map(_parseTrack).toList(growable: false);
+  }
 
-  /// `/Items?IncludeItemTypes=MusicAlbum&Recursive=true&SortBy=DateCreated&SortOrder=Descending`.
-  Future<List<AfAlbum>> recentlyAddedAlbums({int limit = 20}) async => const [];
+  /// `GET /Users/{userId}/Items/Latest?IncludeItemTypes=MusicAlbum` — albums
+  /// recently added to the user's library, newest first.
+  Future<List<AfAlbum>> recentlyAddedAlbums({int limit = 20}) async {
+    _assertUser();
+    final res = await _dio.get<List<dynamic>>(
+      'Users/$userId/Items/Latest',
+      queryParameters: <String, dynamic>{
+        'IncludeItemTypes': 'MusicAlbum',
+        'Limit': limit,
+        'Fields': _albumFields,
+        'EnableImages': true,
+      },
+    );
+    final items = (res.data ?? const <dynamic>[]).cast<Map<dynamic, dynamic>>();
+    return items.map((m) => _parseAlbum(m.cast<String, dynamic>())).toList(growable: false);
+  }
 
-  /// `/Items?IncludeItemTypes=Audio&SortBy=DatePlayed&SortOrder=Descending`.
-  Future<List<AfTrack>> recentlyPlayed({int limit = 20}) async => const [];
+  /// `GET /Users/{userId}/Items` — recently played audio tracks. Uses
+  /// `Filters=IsPlayed` so the list is restricted to tracks the user has
+  /// actually played at least once.
+  Future<List<AfTrack>> recentlyPlayed({int limit = 20}) async {
+    _assertUser();
+    final res = await _dio.get<Map<String, dynamic>>(
+      'Users/$userId/Items',
+      queryParameters: <String, dynamic>{
+        'IncludeItemTypes': 'Audio',
+        'Recursive': true,
+        'SortBy': 'DatePlayed',
+        'SortOrder': 'Descending',
+        'Filters': 'IsPlayed',
+        'Limit': limit,
+        'Fields': _trackFields,
+        'EnableImages': true,
+      },
+    );
+    return _parseItemList(res.data).map(_parseTrack).toList(growable: false);
+  }
 
-  /// `/Items/{albumId}` + `/Items?ParentId=…` for the track list.
-  Future<({AfAlbum album, List<AfTrack> tracks})?> album(String id) async => null;
+  /// `GET /Artists` — all artists the user has access to.
+  Future<List<AfArtist>> artists({int limit = 200}) async {
+    _assertUser();
+    final res = await _dio.get<Map<String, dynamic>>(
+      'Artists',
+      queryParameters: <String, dynamic>{
+        'UserId': userId,
+        'Recursive': true,
+        'SortBy': 'SortName',
+        'SortOrder': 'Ascending',
+        'Limit': limit,
+        'Fields': 'Overview',
+        'EnableImages': true,
+      },
+    );
+    return _parseItemList(res.data).map(_parseArtist).toList(growable: false);
+  }
 
-  /// `/Items/{artistId}` + albums + top tracks + similar.
-  Future<AfArtist?> artist(String id) async => null;
+  /// `GET /Users/{userId}/Items?IncludeItemTypes=Playlist` — user's playlists.
+  Future<List<AfPlaylist>> playlists({int limit = 200}) async {
+    _assertUser();
+    final res = await _dio.get<Map<String, dynamic>>(
+      'Users/$userId/Items',
+      queryParameters: <String, dynamic>{
+        'IncludeItemTypes': 'Playlist',
+        'Recursive': true,
+        'SortBy': 'SortName',
+        'SortOrder': 'Ascending',
+        'Limit': limit,
+        'Fields': 'ChildCount,CumulativeRunTimeTicks',
+        'EnableImages': true,
+      },
+    );
+    return _parseItemList(res.data).map(_parsePlaylist).toList(growable: false);
+  }
 
-  /// Full-text search.
+  /// `GET /MusicGenres` — distinct music genres in the user's library.
+  Future<List<AfGenre>> genres({int limit = 60}) async {
+    _assertUser();
+    final res = await _dio.get<Map<String, dynamic>>(
+      'MusicGenres',
+      queryParameters: <String, dynamic>{
+        'UserId': userId,
+        'SortBy': 'SortName',
+        'SortOrder': 'Ascending',
+        'Limit': limit,
+      },
+    );
+    final items = _parseItemList(res.data);
+    // Cycle through a small palette so the row reads as colourful without
+    // requiring a custom server-side colour assignment.
+    const palette = <String>[
+      '#5644C9', '#A89DEC', '#3FD18C', '#FF7A59',
+      '#F8C42D', '#FF6FB5', '#3DB6FF', '#FF4D6D',
+    ];
+    final result = <AfGenre>[];
+    for (var i = 0; i < items.length; i++) {
+      final name = (items[i]['Name'] as String?) ?? '';
+      if (name.isEmpty) continue;
+      result.add(AfGenre(name, palette[i % palette.length]));
+    }
+    return result;
+  }
+
+  /// `GET /Users/{userId}/Items/{albumId}` + `GET /Items?ParentId=…` — full
+  /// album detail plus its ordered track list.
+  Future<({AfAlbum album, List<AfTrack> tracks})?> album(String id) async {
+    _assertUser();
+    final albumRes = await _dio.get<Map<String, dynamic>>(
+      'Users/$userId/Items/$id',
+      queryParameters: <String, dynamic>{
+        'Fields': _albumFields,
+      },
+    );
+    final albumData = albumRes.data;
+    if (albumData == null || albumData.isEmpty) return null;
+    final album = _parseAlbum(albumData);
+
+    final tracksRes = await _dio.get<Map<String, dynamic>>(
+      'Users/$userId/Items',
+      queryParameters: <String, dynamic>{
+        'ParentId': id,
+        'IncludeItemTypes': 'Audio',
+        'SortBy': 'ParentIndexNumber,IndexNumber,SortName',
+        'SortOrder': 'Ascending',
+        'Fields': _trackFields,
+      },
+    );
+    final tracks = _parseItemList(tracksRes.data)
+        .map(_parseTrack)
+        .toList(growable: false);
+    return (album: album, tracks: tracks);
+  }
+
+  /// `GET /Users/{userId}/Items/{artistId}` — full artist detail. Album
+  /// + top-track lookups can be layered on top via [artistAlbums] etc.
+  Future<AfArtist?> artist(String id) async {
+    _assertUser();
+    final res = await _dio.get<Map<String, dynamic>>(
+      'Users/$userId/Items/$id',
+      queryParameters: <String, dynamic>{
+        'Fields': 'Overview,ChildCount',
+      },
+    );
+    final data = res.data;
+    if (data == null || data.isEmpty) return null;
+    return _parseArtist(data);
+  }
+
+  /// `GET /Items?AlbumArtistIds=…` — albums credited to this artist.
+  Future<List<AfAlbum>> artistAlbums(String artistId, {int limit = 100}) async {
+    _assertUser();
+    final res = await _dio.get<Map<String, dynamic>>(
+      'Users/$userId/Items',
+      queryParameters: <String, dynamic>{
+        'AlbumArtistIds': artistId,
+        'IncludeItemTypes': 'MusicAlbum',
+        'Recursive': true,
+        'SortBy': 'PremiereDate,ProductionYear,SortName',
+        'SortOrder': 'Descending',
+        'Limit': limit,
+        'Fields': _albumFields,
+      },
+    );
+    return _parseItemList(res.data).map(_parseAlbum).toList(growable: false);
+  }
+
+  /// `GET /Users/{userId}/Items?searchTerm=…` — full-text search across the
+  /// audio item types.
   Future<({List<AfTrack> tracks, List<AfAlbum> albums, List<AfArtist> artists, List<AfPlaylist> playlists})>
-      search(String query) async => (
-            tracks: const <AfTrack>[],
-            albums: const <AfAlbum>[],
-            artists: const <AfArtist>[],
-            playlists: const <AfPlaylist>[],
-          );
+      search(String query) async {
+    _assertUser();
+    final q = query.trim();
+    if (q.isEmpty) {
+      return (
+        tracks: const <AfTrack>[],
+        albums: const <AfAlbum>[],
+        artists: const <AfArtist>[],
+        playlists: const <AfPlaylist>[],
+      );
+    }
+    final res = await _dio.get<Map<String, dynamic>>(
+      'Users/$userId/Items',
+      queryParameters: <String, dynamic>{
+        'searchTerm': q,
+        'IncludeItemTypes': 'Audio,MusicAlbum,MusicArtist,Playlist',
+        'Recursive': true,
+        'Limit': 50,
+        'Fields': _trackFields,
+        'EnableImages': true,
+      },
+    );
+    final items = _parseItemList(res.data);
+    final tracks = <AfTrack>[];
+    final albums = <AfAlbum>[];
+    final artists = <AfArtist>[];
+    final playlists = <AfPlaylist>[];
+    for (final m in items) {
+      switch (m['Type']) {
+        case 'Audio':
+          tracks.add(_parseTrack(m));
+        case 'MusicAlbum':
+          albums.add(_parseAlbum(m));
+        case 'MusicArtist':
+          artists.add(_parseArtist(m));
+        case 'Playlist':
+          playlists.add(_parsePlaylist(m));
+      }
+    }
+    return (tracks: tracks, albums: albums, artists: artists, playlists: playlists);
+  }
 
-  /// `/Audio/{id}/Lyrics` — returns LRC blob if available.
-  Future<String?> lyrics(String trackId) async => null;
+  /// `GET /Audio/{trackId}/Lyrics` — returns the LRC text blob if the
+  /// server has lyrics for this track, otherwise `null`.
+  Future<String?> lyrics(String trackId) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        'Audio/$trackId/Lyrics',
+      );
+      final lyricsList = (res.data?['Lyrics'] as List? ?? const []).cast<Map>();
+      if (lyricsList.isEmpty) return null;
+      // Reconstruct an LRC blob from the structured lyrics Jellyfin returns.
+      // Each entry has `Text` and optionally `Start` (in ticks). For unsynced
+      // lyrics the timestamp is null — emit plain lines.
+      final buf = StringBuffer();
+      for (final raw in lyricsList) {
+        final m = raw.cast<String, dynamic>();
+        final text = (m['Text'] as String?) ?? '';
+        final startTicks = m['Start'];
+        if (startTicks is num) {
+          final totalMs = startTicks ~/ 10000;
+          final mm = (totalMs ~/ 60000).toString().padLeft(2, '0');
+          final ss = ((totalMs ~/ 1000) % 60).toString().padLeft(2, '0');
+          final cs = ((totalMs % 1000) ~/ 10).toString().padLeft(2, '0');
+          buf.writeln('[$mm:$ss.$cs]$text');
+        } else {
+          buf.writeln(text);
+        }
+      }
+      return buf.toString();
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Internal parsing helpers
+  // ---------------------------------------------------------------------------
+
+  /// Standard `Fields` projection for track listings — keeps payloads
+  /// small while including everything the UI renders.
+  static const _trackFields =
+      'PrimaryImageAspectRatio,MediaSources,RunTimeTicks,IndexNumber,ParentIndexNumber,ProductionYear,DateCreated,UserData';
+
+  /// Standard `Fields` projection for album listings.
+  static const _albumFields =
+      'PrimaryImageAspectRatio,RunTimeTicks,ChildCount,ProductionYear,DateCreated,AlbumArtist,AlbumArtists';
+
+  void _assertUser() {
+    if (userId == null || userId!.isEmpty) {
+      throw StateError(
+        'JellyfinClient.userId is null — endpoint requires authentication.',
+      );
+    }
+  }
+
+  /// Extract `Items` list from a paged Jellyfin response.
+  List<Map<String, dynamic>> _parseItemList(Map<String, dynamic>? data) {
+    if (data == null) return const [];
+    final items = data['Items'] as List? ?? const [];
+    return items
+        .whereType<Map>()
+        .map((m) => m.cast<String, dynamic>())
+        .toList(growable: false);
+  }
+
+  AfAlbum _parseAlbum(Map<String, dynamic> m) {
+    final id = m['Id'] as String;
+    final ticks = m['RunTimeTicks'];
+    final duration = ticks is num
+        ? Duration(microseconds: ticks ~/ 10)
+        : Duration.zero;
+    final dateCreated = m['DateCreated'] as String?;
+    return AfAlbum(
+      id: id,
+      name: (m['Name'] as String?) ?? 'Unknown',
+      artistName: _albumArtistName(m),
+      artistId: _albumArtistId(m),
+      trackCount: (m['ChildCount'] as int?) ?? 0,
+      year: m['ProductionYear'] as int?,
+      totalDuration: duration,
+      imageUrl: _imageUrlFor(m, 'Primary', maxWidth: 480),
+      dateAdded: dateCreated != null ? DateTime.tryParse(dateCreated) : null,
+    );
+  }
+
+  AfArtist _parseArtist(Map<String, dynamic> m) {
+    return AfArtist(
+      id: m['Id'] as String,
+      name: (m['Name'] as String?) ?? 'Unknown',
+      albumCount: (m['AlbumCount'] as int?) ?? 0,
+      trackCount: (m['SongCount'] as int?) ?? (m['ChildCount'] as int?) ?? 0,
+      imageUrl: _imageUrlFor(m, 'Primary', maxWidth: 480),
+      bio: m['Overview'] as String?,
+    );
+  }
+
+  AfTrack _parseTrack(Map<String, dynamic> m) {
+    final ticks = m['RunTimeTicks'];
+    final duration = ticks is num
+        ? Duration(microseconds: ticks ~/ 10)
+        : Duration.zero;
+    final userData = (m['UserData'] as Map?)?.cast<String, dynamic>();
+    final dateCreated = m['DateCreated'] as String?;
+    final artistIds = (m['ArtistItems'] as List?)
+        ?.whereType<Map>()
+        .map((i) => i['Id'])
+        .whereType<String>()
+        .toList();
+    return AfTrack(
+      id: m['Id'] as String,
+      title: (m['Name'] as String?) ?? 'Unknown',
+      artistName: _trackArtistName(m),
+      albumName: (m['Album'] as String?) ?? '',
+      albumId: m['AlbumId'] as String?,
+      artistId: (artistIds != null && artistIds.isNotEmpty) ? artistIds.first : null,
+      trackNumber: m['IndexNumber'] as int?,
+      duration: duration,
+      quality: _parseQuality(m),
+      imageUrl: _imageUrlFor(m, 'Primary', maxWidth: 480) ??
+          _albumImageUrl(m, maxWidth: 480),
+      isFavorite: (userData?['IsFavorite'] as bool?) ?? false,
+      dateAdded: dateCreated != null ? DateTime.tryParse(dateCreated) : null,
+    );
+  }
+
+  AfPlaylist _parsePlaylist(Map<String, dynamic> m) {
+    final ticks = m['CumulativeRunTimeTicks'] ?? m['RunTimeTicks'];
+    final duration = ticks is num
+        ? Duration(microseconds: ticks ~/ 10)
+        : Duration.zero;
+    return AfPlaylist(
+      id: m['Id'] as String,
+      name: (m['Name'] as String?) ?? 'Unknown',
+      trackCount: (m['ChildCount'] as int?) ?? 0,
+      duration: duration,
+      imageUrl: _imageUrlFor(m, 'Primary', maxWidth: 480),
+      isPublic: (m['IsPublic'] as bool?) ?? false,
+    );
+  }
+
+  TrackQuality? _parseQuality(Map<String, dynamic> m) {
+    final sources = m['MediaSources'] as List?;
+    if (sources == null || sources.isEmpty) return null;
+    final src = (sources.first as Map).cast<String, dynamic>();
+    final streams = (src['MediaStreams'] as List? ?? const [])
+        .whereType<Map>()
+        .map((s) => s.cast<String, dynamic>())
+        .where((s) => (s['Type'] as String?) == 'Audio')
+        .toList();
+    if (streams.isEmpty) return null;
+    final audio = streams.first;
+    final codec = ((audio['Codec'] as String?) ?? (src['Container'] as String?) ?? '')
+        .toLowerCase();
+    final bitrate = audio['BitRate'] as int? ?? src['Bitrate'] as int?;
+    final sampleRate = audio['SampleRate'] as int?;
+    final bitDepth = audio['BitDepth'] as int?;
+    final isLossless = codec == 'flac' || codec == 'alac' || codec == 'wav';
+    return TrackQuality(
+      sourceCodec: codec,
+      bitrateKbps: !isLossless && bitrate != null ? bitrate ~/ 1000 : null,
+      bitDepth: isLossless ? bitDepth : null,
+      sampleRateKhz: isLossless && sampleRate != null ? sampleRate ~/ 1000 : null,
+    );
+  }
+
+  String _albumArtistName(Map<String, dynamic> m) {
+    final artists = m['AlbumArtists'] as List?;
+    if (artists != null && artists.isNotEmpty) {
+      final first = (artists.first as Map).cast<String, dynamic>();
+      final name = first['Name'] as String?;
+      if (name != null && name.isNotEmpty) return name;
+    }
+    return (m['AlbumArtist'] as String?) ?? (m['Artists'] as List?)?.cast<String>().join(', ') ?? '';
+  }
+
+  String? _albumArtistId(Map<String, dynamic> m) {
+    final artists = m['AlbumArtists'] as List?;
+    if (artists != null && artists.isNotEmpty) {
+      final first = (artists.first as Map).cast<String, dynamic>();
+      return first['Id'] as String?;
+    }
+    return null;
+  }
+
+  String _trackArtistName(Map<String, dynamic> m) {
+    final artists = m['ArtistItems'] as List?;
+    if (artists != null && artists.isNotEmpty) {
+      final names = artists
+          .whereType<Map>()
+          .map((a) => a['Name'] as String?)
+          .whereType<String>()
+          .where((s) => s.isNotEmpty);
+      if (names.isNotEmpty) return names.join(', ');
+    }
+    final flat = (m['Artists'] as List?)?.cast<String>();
+    if (flat != null && flat.isNotEmpty) return flat.join(', ');
+    return (m['AlbumArtist'] as String?) ?? '';
+  }
+
+  /// Build a Primary image URL for an item, using its image tag if available
+  /// so the URL is cacheable. Returns null when the item has no image.
+  String? _imageUrlFor(Map<String, dynamic> m, String imageType,
+      {int maxWidth = 480, int quality = 90}) {
+    final tags = m['ImageTags'] as Map?;
+    final tag = (tags?[imageType] as String?) ?? '';
+    if (tag.isEmpty) return null;
+    return _buildImageUrl(m['Id'] as String, imageType,
+        tag: tag, maxWidth: maxWidth, quality: quality);
+  }
+
+  /// For tracks without their own primary image, fall back to the parent
+  /// album's image tag.
+  String? _albumImageUrl(Map<String, dynamic> m, {int maxWidth = 480}) {
+    final id = m['AlbumId'] as String?;
+    final tag = m['AlbumPrimaryImageTag'] as String?;
+    if (id == null || tag == null || tag.isEmpty) return null;
+    return _buildImageUrl(id, 'Primary', tag: tag, maxWidth: maxWidth);
+  }
+
+  String _buildImageUrl(String itemId, String imageType,
+      {required String tag, int maxWidth = 480, int quality = 90}) {
+    final qp = <String, String>{
+      'maxWidth': '$maxWidth',
+      'quality': '$quality',
+      'tag': tag,
+    };
+    final query = qp.entries.map((e) => '${e.key}=${e.value}').join('&');
+    return '${server.baseUrl}/Items/$itemId/Images/$imageType?$query';
+  }
 }
