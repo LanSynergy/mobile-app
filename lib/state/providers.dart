@@ -129,52 +129,65 @@ final currentSpectralProvider = Provider<Spectral>((ref) {
 /// Library (demo backed for v1; swaps to live Jellyfin when authed)
 /// ─────────────────────────────────────────────────────────────────────────
 
+/// Recently added albums. When authenticated, hits Jellyfin's `Latest`
+/// endpoint; when not, falls back to the bundled demo library so the
+/// onboarding "All set" preview still has something to render.
 final recentlyAddedAlbumsProvider =
     FutureProvider.autoDispose<List<AfAlbum>>((ref) async {
   final client = ref.watch(jellyfinClientProvider);
-  if (client != null) {
-    final remote = await client.recentlyAddedAlbums();
-    if (remote.isNotEmpty) return remote;
-  }
-  return DemoLibrary.albums;
+  if (client == null) return DemoLibrary.albums;
+  return client.recentlyAddedAlbums();
 });
 
 final recentlyPlayedTracksProvider =
     FutureProvider.autoDispose<List<AfTrack>>((ref) async {
   final client = ref.watch(jellyfinClientProvider);
-  if (client != null) {
-    final remote = await client.recentlyPlayed();
-    if (remote.isNotEmpty) return remote;
-  }
-  return DemoLibrary.tracks.take(10).toList();
+  if (client == null) return DemoLibrary.tracks.take(10).toList();
+  return client.recentlyPlayed();
 });
 
 final allArtistsProvider =
     FutureProvider.autoDispose<List<AfArtist>>((ref) async {
-  return DemoLibrary.artists;
+  final client = ref.watch(jellyfinClientProvider);
+  if (client == null) return DemoLibrary.artists;
+  return client.artists();
 });
 
 final allPlaylistsProvider =
     FutureProvider.autoDispose<List<AfPlaylist>>((ref) async {
-  return DemoLibrary.playlists;
+  final client = ref.watch(jellyfinClientProvider);
+  if (client == null) return DemoLibrary.playlists;
+  return client.playlists();
 });
 
-final allGenresProvider = Provider<List<AfGenre>>((ref) => DemoLibrary.genres);
+/// Music genres. Jellyfin returns these without colors so we cycle through
+/// a small palette to keep the chip row colourful.
+final allGenresProvider =
+    FutureProvider.autoDispose<List<AfGenre>>((ref) async {
+  final client = ref.watch(jellyfinClientProvider);
+  if (client == null) return DemoLibrary.genres;
+  return client.genres();
+});
 
-final albumDetailProvider =
-    FutureProvider.autoDispose.family<({AfAlbum album, List<AfTrack> tracks})?, String>(
-  (ref, id) async {
-    final album = DemoLibrary.albumById(id);
-    if (album == null) return null;
-    final tracks = DemoLibrary.tracksByAlbum(id);
-    return (album: album, tracks: tracks);
-  },
-);
+final albumDetailProvider = FutureProvider.autoDispose
+    .family<({AfAlbum album, List<AfTrack> tracks})?, String>((ref, id) async {
+  final client = ref.watch(jellyfinClientProvider);
+  if (client != null) {
+    return client.album(id);
+  }
+  final album = DemoLibrary.albumById(id);
+  if (album == null) return null;
+  return (album: album, tracks: DemoLibrary.tracksByAlbum(id));
+});
 
 final artistDetailProvider =
-    FutureProvider.autoDispose.family<AfArtist?, String>(
-  (ref, id) async => DemoLibrary.artistById(id),
-);
+    FutureProvider.autoDispose.family<AfArtist?, String>((ref, id) async {
+  final client = ref.watch(jellyfinClientProvider);
+  if (client != null) {
+    return client.artist(id);
+  }
+  return DemoLibrary.artistById(id);
+});
 
 /// ─────────────────────────────────────────────────────────────────────────
 /// Settings

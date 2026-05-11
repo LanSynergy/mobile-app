@@ -237,29 +237,32 @@ class _SectionBody extends ConsumerWidget {
           orElse: () => const Center(child: CircularProgressIndicator()),
         );
       case LibrarySection.genres:
-        final genres = ref.watch(allGenresProvider);
-        return GridView.builder(
-          padding: padding.add(const EdgeInsets.only(
-              bottom: AfSpacing.bottomInsetWithMiniAndNav)),
-          itemCount: genres.length,
-          gridDelegate:
-              const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisExtent: 96,
-            crossAxisSpacing: AfSpacing.s12,
-            mainAxisSpacing: AfSpacing.s12,
+        final genresAsync = ref.watch(allGenresProvider);
+        return genresAsync.maybeWhen(
+          data: (genres) => GridView.builder(
+            padding: padding.add(const EdgeInsets.only(
+                bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+            itemCount: genres.length,
+            gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisExtent: 96,
+              crossAxisSpacing: AfSpacing.s12,
+              mainAxisSpacing: AfSpacing.s12,
+            ),
+            itemBuilder: (context, i) {
+              final g = genres[i];
+              final tint = Color(int.parse(
+                  g.tint.replaceFirst('#', '0xFF')));
+              return GenreTile(
+                name: g.name,
+                tint: tint,
+                width: double.infinity,
+                height: double.infinity,
+              );
+            },
           ),
-          itemBuilder: (context, i) {
-            final g = genres[i];
-            final tint = Color(int.parse(
-                g.tint.replaceFirst('#', '0xFF')));
-            return GenreTile(
-              name: g.name,
-              tint: tint,
-              width: double.infinity,
-              height: double.infinity,
-            );
-          },
+          orElse: () => const Center(child: CircularProgressIndicator()),
         );
     }
   }

@@ -19,7 +19,7 @@ class HomeScreen extends ConsumerWidget {
     final albumsAsync = ref.watch(recentlyAddedAlbumsProvider);
     final recentTracksAsync = ref.watch(recentlyPlayedTracksProvider);
     final artistsAsync = ref.watch(allArtistsProvider);
-    final genres = ref.watch(allGenresProvider);
+    final genresAsync = ref.watch(allGenresProvider);
 
     return SafeArea(
       child: CustomScrollView(
@@ -157,20 +157,23 @@ class HomeScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: SizedBox(
               height: 96,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-                itemCount: genres.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(width: AfSpacing.s12),
-                itemBuilder: (context, i) {
-                  final g = genres[i];
-                  return GenreTile(
-                    name: g.name,
-                    tint: _hex(g.tint),
-                  );
-                },
+              child: genresAsync.maybeWhen(
+                data: (genres) => ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+                  itemCount: genres.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(width: AfSpacing.s12),
+                  itemBuilder: (context, i) {
+                    final g = genres[i];
+                    return GenreTile(
+                      name: g.name,
+                      tint: _hex(g.tint),
+                    );
+                  },
+                ),
+                orElse: () => const SizedBox.shrink(),
               ),
             ),
           ),
