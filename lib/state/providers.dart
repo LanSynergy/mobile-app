@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/audio/jellyfin_playback_reporter.dart';
 import '../core/audio/player_service.dart';
 import '../core/audio/spectral_extractor.dart';
 import '../core/demo/demo_library.dart';
@@ -7,7 +8,25 @@ import '../core/jellyfin/auth_storage.dart';
 import '../core/jellyfin/client.dart';
 import '../core/jellyfin/models/items.dart';
 import '../core/jellyfin/models/server.dart';
+import '../core/lyrics/lrc_parser.dart';
 import '../design_tokens/colors.dart';
+
+/// Compact one-liner for the `aetherfin:data` trace category.
+///
+/// Every place that resolves data the UI will render goes through this
+/// helper so an `adb logcat -s flutter | grep aetherfin:data` output
+/// shows exactly which feature served live Jellyfin data vs. demo data
+/// vs. still-mocked data. Used by reviewers to spot regressions where a
+/// screen silently slips back onto `DemoLibrary` after sign-in.
+void _logData(
+  String feature, {
+  required String source,
+  String? extra,
+}) {
+  final detail = extra == null || extra.isEmpty ? '' : ' $extra';
+  // ignore: avoid_print
+  print('aetherfin:data $feature source=$source$detail');
+}
 
 /// ─────────────────────────────────────────────────────────────────────────
 /// Auth
@@ -68,7 +87,13 @@ class AuthNotifier extends StateNotifier<JellyfinAuth?> {
 
 final jellyfinClientProvider = Provider<JellyfinClient?>((ref) {
   final auth = ref.watch(authProvider);
-  if (auth == null) return null;
+  if (auth == null) {
+    _logData('jellyfinClient', source: 'demo', extra: '(signed out)');
+    return null;
+  }
+  _logData('jellyfinClient',
+      source: 'live',
+      extra: 'server=${auth.server.baseUrl} user=${auth.userName}');
   return JellyfinClient(
     server: auth.server,
     deviceId: ref.watch(deviceIdProvider),
@@ -81,10 +106,51 @@ final jellyfinClientProvider = Provider<JellyfinClient?>((ref) {
 /// Audio player (singleton handler)
 /// ─────────────────────────────────────────────────────────────────────────
 
+/// Wires Riverpod-side side-effects onto an [AfPlayerService] instance:
+///   1. Forwards `onTrackChanged` to `currentTrackProvider` so the UI
+///      re-renders on queue advance / manual skip / lock-screen action.
+///   2. Instantiates the [JellyfinPlaybackReporter] (Sessions/Playing*
+///      lifecycle) bound to the same service.
+///   3. Registers disposal so both the reporter and the service shut
+///      down when the ProviderScope is torn down.
+///
+/// Pulled out as a free function so `main.dart` can hand the *same*
+/// service instance to `AudioService.init` (for lock-screen controls)
+/// and to the provider tree — without duplicating the wiring logic
+/// across the default factory and the override.
+void wirePlayerService(Ref ref, AfPlayerService svc) {
+  svc.onTrackChanged = (track) {
+    ref.read(currentTrackProvider.notifier).state = track;
+  };
+  final reporter = JellyfinPlaybackReporter(
+    svc,
+    () => ref.read(jellyfinClientProvider),
+  );
+  ref.onDispose(() async {
+    await reporter.dispose();
+    await svc.dispose();
+  });
+}
+
 final playerServiceProvider = Provider<AfPlayerService>((ref) {
   final svc = AfPlayerService();
-  ref.onDispose(svc.dispose);
+  wirePlayerService(ref, svc);
   return svc;
+});
+
+/// Live queue exposed by the player. The Queue screen watches this so
+/// reorder / skip / play-new-album immediately re-render — no more
+/// snapshotting `DemoLibrary.tracks` into local state.
+final playerQueueProvider = StreamProvider.autoDispose<List<AfTrack>>((ref) {
+  final svc = ref.watch(playerServiceProvider);
+  // ignore: avoid_print
+  // Emit the current snapshot first so a freshly mounted Queue screen
+  // doesn't render an empty list while waiting for the next stream tick.
+  return Stream<List<AfTrack>>.multi((controller) {
+    controller.add(svc.currentQueue);
+    final sub = svc.queueStream.listen(controller.add);
+    controller.onCancel = sub.cancel;
+  });
 });
 
 /// Stream of position from the single player. Per non-negotiable §4.3,
@@ -146,29 +212,52 @@ final currentSpectralProvider = Provider<Spectral>((ref) {
 final recentlyAddedAlbumsProvider =
     FutureProvider.autoDispose<List<AfAlbum>>((ref) async {
   final client = ref.watch(jellyfinClientProvider);
-  if (client == null) return DemoLibrary.albums;
-  return client.recentlyAddedAlbums();
+  if (client == null) {
+    _logData('recentlyAddedAlbums',
+        source: 'demo', extra: '(signed out)');
+    return DemoLibrary.albums;
+  }
+  final res = await client.recentlyAddedAlbums();
+  _logData('recentlyAddedAlbums', source: 'live', extra: 'count=${res.length}');
+  return res;
 });
 
 final recentlyPlayedTracksProvider =
     FutureProvider.autoDispose<List<AfTrack>>((ref) async {
   final client = ref.watch(jellyfinClientProvider);
-  if (client == null) return DemoLibrary.tracks.take(10).toList();
-  return client.recentlyPlayed();
+  if (client == null) {
+    _logData('recentlyPlayedTracks',
+        source: 'demo', extra: '(signed out)');
+    return DemoLibrary.tracks.take(10).toList();
+  }
+  final res = await client.recentlyPlayed();
+  _logData('recentlyPlayedTracks',
+      source: 'live', extra: 'count=${res.length}');
+  return res;
 });
 
 final allArtistsProvider =
     FutureProvider.autoDispose<List<AfArtist>>((ref) async {
   final client = ref.watch(jellyfinClientProvider);
-  if (client == null) return DemoLibrary.artists;
-  return client.artists();
+  if (client == null) {
+    _logData('allArtists', source: 'demo', extra: '(signed out)');
+    return DemoLibrary.artists;
+  }
+  final res = await client.artists();
+  _logData('allArtists', source: 'live', extra: 'count=${res.length}');
+  return res;
 });
 
 final allPlaylistsProvider =
     FutureProvider.autoDispose<List<AfPlaylist>>((ref) async {
   final client = ref.watch(jellyfinClientProvider);
-  if (client == null) return DemoLibrary.playlists;
-  return client.playlists();
+  if (client == null) {
+    _logData('allPlaylists', source: 'demo', extra: '(signed out)');
+    return DemoLibrary.playlists;
+  }
+  final res = await client.playlists();
+  _logData('allPlaylists', source: 'live', extra: 'count=${res.length}');
+  return res;
 });
 
 /// Music genres. Jellyfin returns these without colors so we cycle through
@@ -176,18 +265,34 @@ final allPlaylistsProvider =
 final allGenresProvider =
     FutureProvider.autoDispose<List<AfGenre>>((ref) async {
   final client = ref.watch(jellyfinClientProvider);
-  if (client == null) return DemoLibrary.genres;
-  return client.genres();
+  if (client == null) {
+    _logData('allGenres', source: 'demo', extra: '(signed out)');
+    return DemoLibrary.genres;
+  }
+  final res = await client.genres();
+  _logData('allGenres', source: 'live', extra: 'count=${res.length}');
+  return res;
 });
 
 final albumDetailProvider = FutureProvider.autoDispose
     .family<({AfAlbum album, List<AfTrack> tracks})?, String>((ref, id) async {
   final client = ref.watch(jellyfinClientProvider);
   if (client != null) {
-    return client.album(id);
+    final res = await client.album(id);
+    _logData('albumDetail',
+        source: 'live',
+        extra: 'id=$id tracks=${res?.tracks.length ?? 0}');
+    return res;
   }
   final album = DemoLibrary.albumById(id);
-  if (album == null) return null;
+  if (album == null) {
+    _logData('albumDetail',
+        source: 'demo', extra: 'id=$id (not found)');
+    return null;
+  }
+  _logData('albumDetail',
+      source: 'demo',
+      extra: 'id=$id tracks=${DemoLibrary.tracksByAlbum(id).length}');
   return (album: album, tracks: DemoLibrary.tracksByAlbum(id));
 });
 
@@ -195,9 +300,143 @@ final artistDetailProvider =
     FutureProvider.autoDispose.family<AfArtist?, String>((ref, id) async {
   final client = ref.watch(jellyfinClientProvider);
   if (client != null) {
-    return client.artist(id);
+    final res = await client.artist(id);
+    _logData('artistDetail',
+        source: 'live', extra: 'id=$id found=${res != null}');
+    return res;
   }
-  return DemoLibrary.artistById(id);
+  final res = DemoLibrary.artistById(id);
+  _logData('artistDetail',
+      source: 'demo', extra: 'id=$id found=${res != null}');
+  return res;
+});
+
+/// Albums credited to a given artist. Used by the Artist screen's albums
+/// rail — replaces the previous DemoLibrary `.where(byName)` filter
+/// (which only ever showed demo albums even when signed in).
+final artistAlbumsProvider = FutureProvider.autoDispose
+    .family<List<AfAlbum>, String>((ref, artistId) async {
+  final client = ref.watch(jellyfinClientProvider);
+  if (client == null) {
+    final artist = DemoLibrary.artistById(artistId);
+    final res = artist == null
+        ? const <AfAlbum>[]
+        : DemoLibrary.albums.where((a) => a.artistName == artist.name).toList();
+    _logData('artistAlbums',
+        source: 'demo', extra: 'artistId=$artistId count=${res.length}');
+    return res;
+  }
+  final res = await client.artistAlbums(artistId);
+  _logData('artistAlbums',
+      source: 'live', extra: 'artistId=$artistId count=${res.length}');
+  return res;
+});
+
+/// Top tracks for an artist (highest play count, falling back to
+/// alphabetical on fresh libraries). Replaces the previous DemoLibrary
+/// `.where(byName).take(5)` filter on the Artist screen.
+final artistTopTracksProvider = FutureProvider.autoDispose
+    .family<List<AfTrack>, String>((ref, artistId) async {
+  final client = ref.watch(jellyfinClientProvider);
+  if (client == null) {
+    final artist = DemoLibrary.artistById(artistId);
+    final res = artist == null
+        ? const <AfTrack>[]
+        : DemoLibrary.tracks
+            .where((t) => t.artistName == artist.name)
+            .take(5)
+            .toList();
+    _logData('artistTopTracks',
+        source: 'demo', extra: 'artistId=$artistId count=${res.length}');
+    return res;
+  }
+  final res = await client.artistTopTracks(artistId, limit: 5);
+  _logData('artistTopTracks',
+      source: 'live', extra: 'artistId=$artistId count=${res.length}');
+  return res;
+});
+
+/// ─────────────────────────────────────────────────────────────────────────
+/// Search & lyrics (live)
+/// ─────────────────────────────────────────────────────────────────────────
+
+/// Server-side search results. Hits `/Users/{id}/Items?searchTerm=`
+/// (NOT `/Search/Hints` — see CLAUDE.md §10 footgun #3) and bucketises
+/// the BaseItemDto stream into tracks/albums/artists for the screen.
+typedef SearchResults = ({
+  List<AfTrack> tracks,
+  List<AfAlbum> albums,
+  List<AfArtist> artists,
+});
+
+final searchProvider = FutureProvider.autoDispose
+    .family<SearchResults, String>((ref, raw) async {
+  final query = raw.trim();
+  if (query.isEmpty) {
+    _logData('search', source: 'live', extra: 'query="" (empty)');
+    return (
+      tracks: const <AfTrack>[],
+      albums: const <AfAlbum>[],
+      artists: const <AfArtist>[],
+    );
+  }
+  final client = ref.watch(jellyfinClientProvider);
+  if (client == null) {
+    final tracks = DemoLibrary.tracks
+        .where((t) =>
+            t.title.toLowerCase().contains(query.toLowerCase()) ||
+            t.artistName.toLowerCase().contains(query.toLowerCase()) ||
+            t.albumName.toLowerCase().contains(query.toLowerCase()))
+        .toList(growable: false);
+    final albums = DemoLibrary.albums
+        .where((a) =>
+            a.name.toLowerCase().contains(query.toLowerCase()) ||
+            a.artistName.toLowerCase().contains(query.toLowerCase()))
+        .toList(growable: false);
+    final artists = DemoLibrary.artists
+        .where((a) => a.name.toLowerCase().contains(query.toLowerCase()))
+        .toList(growable: false);
+    _logData('search',
+        source: 'demo',
+        extra: 'query="$query" tracks=${tracks.length} '
+            'albums=${albums.length} artists=${artists.length}');
+    return (tracks: tracks, albums: albums, artists: artists);
+  }
+  final res = await client.search(query);
+  _logData('search',
+      source: 'live',
+      extra: 'query="$query" tracks=${res.tracks.length} '
+          'albums=${res.albums.length} artists=${res.artists.length}');
+  return (
+    tracks: res.tracks,
+    albums: res.albums,
+    artists: res.artists,
+  );
+});
+
+/// Time-synced lyrics for a track. Returns `null` when the server has
+/// none and the UI should render the "no lyrics" empty state. Parses
+/// the raw LRC payload from `/Audio/{id}/Lyrics` into our [Lrc] type so
+/// the screen doesn't have to know about LRC syntax.
+final lyricsProvider =
+    FutureProvider.autoDispose.family<Lrc?, String>((ref, trackId) async {
+  final client = ref.watch(jellyfinClientProvider);
+  if (client == null) {
+    _logData('lyrics',
+        source: 'demo', extra: 'trackId=$trackId (signed out)');
+    return null;
+  }
+  final raw = await client.lyrics(trackId);
+  if (raw == null || raw.isEmpty) {
+    _logData('lyrics',
+        source: 'live', extra: 'trackId=$trackId result=none');
+    return null;
+  }
+  final parsed = parseLrc(raw);
+  _logData('lyrics',
+      source: 'live',
+      extra: 'trackId=$trackId lines=${parsed.lines.length}');
+  return parsed;
 });
 
 /// ─────────────────────────────────────────────────────────────────────────

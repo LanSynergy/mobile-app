@@ -274,18 +274,61 @@ class JellyfinClient {
     return '${server.baseUrl}/Audio/$trackId/universal?$query';
   }
 
+  /// `POST /Sessions/Playing` — tell the server a track just started.
+  ///
+  /// Without this Jellyfin's "Now Playing" / activity widgets stay blank
+  /// even though `/Audio/{id}/universal` is streaming. Mirrors Finamp's
+  /// reportPlaybackStart() — ItemId + PositionTicks (always 0 at start) +
+  /// PlayMethod=DirectStream so the dashboard doesn't render "Transcoding"
+  /// while we're actually direct-playing the cached AAC the server picked.
+  Future<void> reportPlaybackStart(String trackId) async {
+    _assertUser();
+    await _dio.post(
+      'Sessions/Playing',
+      data: {
+        'ItemId': trackId,
+        'PositionTicks': 0,
+        'PlayMethod': 'DirectStream',
+        'CanSeek': true,
+      },
+    );
+  }
+
   /// `POST /Sessions/Playing/Progress` — playback progress reporting.
+  ///
+  /// Called on a ~10s cadence while playing, and once on every pause/seek.
+  /// Sending more often than 10s is wasted bandwidth — Jellyfin's web
+  /// client and Finamp both use that interval.
   Future<void> reportProgress(
     String trackId,
     Duration position, {
     bool isPaused = false,
   }) async {
+    _assertUser();
     await _dio.post(
       'Sessions/Playing/Progress',
       data: {
         'ItemId': trackId,
         'PositionTicks': position.inMicroseconds * 10,
         'IsPaused': isPaused,
+        'PlayMethod': 'DirectStream',
+      },
+    );
+  }
+
+  /// `POST /Sessions/Playing/Stopped` — tell the server playback stopped
+  /// (queue ended, user stopped, app backgrounded long enough to dispose).
+  ///
+  /// We send POST .../Stopped rather than DELETE /Sessions/Playing because
+  /// that's the path Finamp and the Jellyfin web client use and it works
+  /// reliably on plugin-heavy installs where DELETE bodies get stripped.
+  Future<void> reportPlaybackStop(String trackId, Duration position) async {
+    _assertUser();
+    await _dio.post(
+      'Sessions/Playing/Stopped',
+      data: {
+        'ItemId': trackId,
+        'PositionTicks': position.inMicroseconds * 10,
       },
     );
   }
@@ -471,6 +514,31 @@ class JellyfinClient {
       },
     );
     return _parseItemList(res.data).map(_parseAlbum).toList(growable: false);
+  }
+
+  /// `GET /Users/{userId}/Items?ArtistIds=…&SortBy=PlayCount` — the artist's
+  /// most-played tracks, used to populate the "Top songs" rail on the
+  /// artist screen. Falls back to alphabetical when the server has no play
+  /// counts (fresh library / first sign-in).
+  Future<List<AfTrack>> artistTopTracks(
+    String artistId, {
+    int limit = 5,
+  }) async {
+    _assertUser();
+    final res = await _dio.get<Map<String, dynamic>>(
+      'Users/$userId/Items',
+      queryParameters: <String, dynamic>{
+        'ArtistIds': artistId,
+        'IncludeItemTypes': 'Audio',
+        'Recursive': true,
+        'SortBy': 'PlayCount,SortName',
+        'SortOrder': 'Descending,Ascending',
+        'Limit': limit,
+        'Fields': _trackFields,
+        'EnableImages': true,
+      },
+    );
+    return _parseItemList(res.data).map(_parseTrack).toList(growable: false);
   }
 
   /// `GET /Users/{userId}/Items?searchTerm=…` — full-text search across the

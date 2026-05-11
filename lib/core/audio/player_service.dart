@@ -15,20 +15,47 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
   final _player = AudioPlayer();
   final _trackQueue = <AfTrack>[];
   int _currentIndex = -1;
+  final _trackController = StreamController<AfTrack?>.broadcast();
+  final _queueController = StreamController<List<AfTrack>>.broadcast();
+
+  /// Called whenever the active track changes (queue advance, manual
+  /// skip, queue replaced). Wired by `playerServiceProvider` so the
+  /// Riverpod layer can keep `currentTrackProvider` in sync and report
+  /// session start/stop to Jellyfin.
+  ///
+  /// Player itself is Riverpod-free so it stays testable without a
+  /// ProviderContainer.
+  void Function(AfTrack track)? onTrackChanged;
 
   AfPlayerService() {
     _player.playbackEventStream.listen(_broadcastPlaybackEvent);
     _player.currentIndexStream.listen((idx) {
       if (idx == null) return;
+      if (idx < 0 || idx >= _trackQueue.length) return;
       _currentIndex = idx;
-      mediaItem.add(_mediaItemFor(_trackQueue[idx]));
+      final track = _trackQueue[idx];
+      mediaItem.add(_mediaItemFor(track));
+      _trackController.add(track);
+      // ignore: avoid_print
+      print(
+        'aetherfin:data currentTrack source=live id=${track.id} '
+        'title="${track.title}" index=$idx',
+      );
+      onTrackChanged?.call(track);
     });
   }
 
   Stream<Duration> get positionStream => _player.positionStream;
   Stream<bool> get playingStream => _player.playingStream;
   Stream<ProcessingState> get stateStream => _player.processingStateStream;
+  /// Broadcast stream of the currently-playing [AfTrack]. Emits whenever
+  /// the queue index advances; emits `null` when the queue is cleared.
+  Stream<AfTrack?> get currentTrackStream => _trackController.stream;
+  /// Broadcast stream of the active queue — emits the same list shape the
+  /// Queue screen renders so it reflects skips / replacements immediately.
+  Stream<List<AfTrack>> get queueStream => _queueController.stream;
   Duration get position => _player.position;
+  List<AfTrack> get currentQueue => List.unmodifiable(_trackQueue);
   AfTrack? get currentTrack =>
       (_currentIndex >= 0 && _currentIndex < _trackQueue.length)
           ? _trackQueue[_currentIndex]
@@ -44,6 +71,7 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
       ..clear()
       ..addAll(tracks);
     queue.add(tracks.map(_mediaItemFor).toList());
+    _queueController.add(List.unmodifiable(_trackQueue));
     final sources = tracks
         .map((t) => AudioSource.uri(
               Uri.parse(resolveStreamUrl(t)),
@@ -55,7 +83,15 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
       initialIndex: startIndex,
     );
     _currentIndex = startIndex;
-    mediaItem.add(_mediaItemFor(tracks[startIndex]));
+    final startTrack = tracks[startIndex];
+    mediaItem.add(_mediaItemFor(startTrack));
+    _trackController.add(startTrack);
+    // ignore: avoid_print
+    print(
+      'aetherfin:data playQueue source=live size=${tracks.length} '
+      'startIndex=$startIndex first="${startTrack.title}"',
+    );
+    onTrackChanged?.call(startTrack);
     await _player.play();
   }
 
@@ -84,6 +120,8 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   Future<void> dispose() async {
     await _player.dispose();
+    await _trackController.close();
+    await _queueController.close();
   }
 
   // ---------------------------------------------------------------------------

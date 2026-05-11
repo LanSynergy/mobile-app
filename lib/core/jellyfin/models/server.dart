@@ -53,6 +53,13 @@ class JellyfinServer {
 }
 
 /// Jellyfin user credentials returned from `/Users/AuthenticateByName`.
+///
+/// Note: the Authorization header is built freshly per-client in
+/// `JellyfinClient._buildAuthHeader()` so it can pick up the
+/// per-install random `DeviceId` from secure storage. There is
+/// intentionally no `authHeader` getter here — hard-coding
+/// `DeviceId="aetherfin-android"` was the source of CLAUDE.md §10
+/// footgun #2 and we never want it brought back.
 class JellyfinAuth {
   final JellyfinServer server;
   final String userId;
@@ -65,10 +72,4 @@ class JellyfinAuth {
     required this.userName,
     required this.accessToken,
   });
-
-  /// Bearer-style header value for the X-Emby-Authorization scheme used
-  /// by Jellyfin (the access token goes in the same header rather than
-  /// in `Authorization: Bearer …`).
-  String get authHeader =>
-      'MediaBrowser Client="Aetherfin", Device="Android", DeviceId="aetherfin-android", Version="0.1.0", Token="$accessToken"';
 }
