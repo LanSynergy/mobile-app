@@ -26,6 +26,14 @@ import '../features/settings/settings_screen.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
 import '../widgets/app_shell.dart';
 
+/// Stable navigator keys — declared at module level so they are never
+/// recreated when [routerProvider] rebuilds on auth state changes.
+/// Recreating these keys causes `Duplicate GlobalKey` errors because the
+/// old [GoRouter] still holds a reference to the previous key while the
+/// new one is being inserted into the tree.
+final _rootKey = GlobalKey<NavigatorState>();
+final _shellKey = GlobalKey<NavigatorState>();
+
 /// Single source of truth for all in-app navigation.
 ///
 /// Onboarding lives outside the shell so the bottom nav doesn't appear
@@ -33,9 +41,6 @@ import '../widgets/app_shell.dart';
 /// [StatefulShellRoute], which preserves each tab's stack across switches
 /// (per design spec §11.6).
 final routerProvider = Provider<GoRouter>((ref) {
-  final rootKey = GlobalKey<NavigatorState>();
-  final shellKey = GlobalKey<NavigatorState>();
-
   // Re-evaluate redirects whenever auth changes so signing in lands you on
   // /home and signing out drops you back at /.
   final refresh = _AuthRefreshListenable();
@@ -44,7 +49,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(refresh.dispose);
 
   return GoRouter(
-    navigatorKey: rootKey,
+    navigatorKey: _rootKey,
     initialLocation: '/',
     refreshListenable: refresh,
     redirect: (context, state) {
@@ -91,7 +96,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, shell) => AppShell(shell: shell),
         branches: [
           StatefulShellBranch(
-            navigatorKey: shellKey,
+            navigatorKey: _shellKey,
             routes: [
               GoRoute(
                 path: '/home',
@@ -140,32 +145,32 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Top-level sheets / overlays (live above the shell).
       GoRoute(
         path: '/now-playing',
-        parentNavigatorKey: rootKey,
+        parentNavigatorKey: _rootKey,
         pageBuilder: (context, state) => _NowPlayingPage(),
       ),
       GoRoute(
         path: '/lyrics',
-        parentNavigatorKey: rootKey,
+        parentNavigatorKey: _rootKey,
         builder: (context, state) => const LyricsScreen(),
       ),
       GoRoute(
         path: '/queue',
-        parentNavigatorKey: rootKey,
+        parentNavigatorKey: _rootKey,
         builder: (context, state) => const QueueScreen(),
       ),
       GoRoute(
         path: '/sleep',
-        parentNavigatorKey: rootKey,
+        parentNavigatorKey: _rootKey,
         builder: (context, state) => const SleepTimerScreen(),
       ),
       GoRoute(
         path: '/cast',
-        parentNavigatorKey: rootKey,
+        parentNavigatorKey: _rootKey,
         builder: (context, state) => const CastPickerScreen(),
       ),
       GoRoute(
         path: '/settings',
-        parentNavigatorKey: rootKey,
+        parentNavigatorKey: _rootKey,
         builder: (context, state) => const SettingsScreen(),
       ),
 
@@ -180,25 +185,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       // hides the bottom nav while the user is browsing detail screens.
       GoRoute(
         path: '/album/:id',
-        parentNavigatorKey: rootKey,
+        parentNavigatorKey: _rootKey,
         builder: (_, state) =>
             AlbumScreen(albumId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/artist/:id',
-        parentNavigatorKey: rootKey,
+        parentNavigatorKey: _rootKey,
         builder: (_, state) =>
             ArtistScreen(artistId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/playlist/:id',
-        parentNavigatorKey: rootKey,
+        parentNavigatorKey: _rootKey,
         builder: (_, state) =>
             PlaylistScreen(playlistId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/genre/:name',
-        parentNavigatorKey: rootKey,
+        parentNavigatorKey: _rootKey,
         builder: (_, state) =>
             GenreScreen(genreName: Uri.decodeComponent(state.pathParameters['name']!)),
       ),
