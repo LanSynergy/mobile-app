@@ -15,6 +15,19 @@ import '../design_tokens/colors.dart';
 
 final authStorageProvider = Provider<AuthStorage>((ref) => AuthStorage());
 
+/// Stable per-install device ID used in the Jellyfin Authorization header.
+/// Overridden at app startup in `main.dart` with the value loaded from
+/// `AuthStorage.loadOrCreateDeviceId()`. Throws if accessed before that
+/// override is applied — a loud failure is preferable to silently sending
+/// the literal string "uninitialized" to Jellyfin.
+final deviceIdProvider = Provider<String>((ref) {
+  throw StateError(
+    'deviceIdProvider was read before being overridden in main(). '
+    'This is a bug — ProviderScope must override it with the value '
+    'returned by AuthStorage.loadOrCreateDeviceId().',
+  );
+});
+
 final authProvider = StateNotifierProvider<AuthNotifier, JellyfinAuth?>((ref) {
   return AuthNotifier(ref.watch(authStorageProvider))..hydrate();
 });
@@ -47,6 +60,7 @@ final jellyfinClientProvider = Provider<JellyfinClient?>((ref) {
   if (auth == null) return null;
   return JellyfinClient(
     server: auth.server,
+    deviceId: ref.watch(deviceIdProvider),
     accessToken: auth.accessToken,
     userId: auth.userId,
   );

@@ -77,7 +77,10 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
       isLocal: false,
     );
 
-    final client = JellyfinClient(server: server);
+    final client = JellyfinClient(
+      server: server,
+      deviceId: ref.read(deviceIdProvider),
+    );
     try {
       final resolved = await client.publicInfo();
       _continueWith(resolved);

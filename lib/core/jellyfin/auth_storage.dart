@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -8,11 +9,33 @@ import 'models/server.dart';
 /// access token survives app restarts and never lives in plain shared prefs.
 class AuthStorage {
   static const _key = 'aetherfin.auth.v1';
+  static const _deviceIdKey = 'aetherfin.deviceId.v1';
   static const _options = AndroidOptions(encryptedSharedPreferences: true);
 
   final FlutterSecureStorage _storage;
   AuthStorage([FlutterSecureStorage? storage])
       : _storage = storage ?? const FlutterSecureStorage(aOptions: _options);
+
+  /// Returns the stable per-install device ID. Generated on first call and
+  /// persisted to encrypted shared prefs so Jellyfin sees the same device
+  /// across app launches (avoiding duplicate-session noise) but a different
+  /// device across re-installs (so a stale device record cannot collide
+  /// with a fresh install).
+  ///
+  /// Jellyfin's `SessionManager` keys devices by this string. Reusing a
+  /// hardcoded value across different installs is a known cause of the
+  /// 500 "Error processing request" we hit on /Users/AuthenticateByName.
+  Future<String> loadOrCreateDeviceId() async {
+    final existing = await _storage.read(key: _deviceIdKey);
+    if (existing != null && existing.isNotEmpty) return existing;
+    final rng = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rng.nextInt(256));
+    // base64url, strip padding so the result fits comfortably inside the
+    // Authorization header without quoting concerns.
+    final id = base64UrlEncode(bytes).replaceAll('=', '');
+    await _storage.write(key: _deviceIdKey, value: id);
+    return id;
+  }
 
   Future<void> save(JellyfinAuth auth) async {
     final json = {

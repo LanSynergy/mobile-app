@@ -37,7 +37,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       _error = null;
     });
     try {
-      final client = JellyfinClient(server: widget.server);
+      final client = JellyfinClient(
+        server: widget.server,
+        deviceId: ref.read(deviceIdProvider),
+      );
       final JellyfinAuth auth;
       if (_useToken) {
         // For "API token" path the user pastes a long-lived token. We

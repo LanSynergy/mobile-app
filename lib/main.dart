@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app.dart';
 import 'core/audio/player_service.dart';
+import 'core/jellyfin/auth_storage.dart';
 import 'design_tokens/tokens.dart';
 import 'state/providers.dart';
 
@@ -52,12 +53,34 @@ Future<void> main() async {
     ErrorWidget.builder = (details) => _RootErrorWidget(details: details);
     _boot('error handlers installed');
 
+    // Load the stable per-install device ID before mounting the app so
+    // every Jellyfin request uses the same identifier from the very first
+    // frame. A single keystore-backed read is sub-100 ms and avoids the
+    // race where the UI tries to construct a JellyfinClient before the
+    // device ID is available. If the read fails (corrupt keystore, etc.)
+    // we fall back to an in-memory ID rather than blocking the user.
+    String deviceId;
+    try {
+      deviceId = await AuthStorage().loadOrCreateDeviceId();
+      _boot('device id loaded (len=${deviceId.length})');
+    } catch (e, stack) {
+      // ignore: avoid_print
+      print('aetherfin:error device id load failed: $e');
+      // ignore: avoid_print
+      print('aetherfin:error stack: $stack');
+      // Last-ditch fallback so onboarding can still proceed. The cost is
+      // that this install will look like a new device to Jellyfin on
+      // every launch until secure storage starts working again.
+      deviceId = 'aetherfin-fallback-${DateTime.now().microsecondsSinceEpoch}';
+    }
+
     // Launch the UI immediately — audio init runs in the background AFTER
     // the first frame.
     _boot('calling runApp');
     runApp(
       ProviderScope(
         overrides: [
+          deviceIdProvider.overrideWithValue(deviceId),
           playerServiceProvider.overrideWith((ref) {
             // Until AudioService.init resolves, hand out a bare service so
             // the UI doesn't crash if it reads playerServiceProvider before

@@ -13,10 +13,12 @@ class JellyfinClient {
   final JellyfinServer server;
   final String? accessToken;
   final String? userId;
+  final String deviceId;
   final Dio _dio;
 
   JellyfinClient({
     required this.server,
+    required this.deviceId,
     this.accessToken,
     this.userId,
   }) : _dio = Dio(BaseOptions(
@@ -39,8 +41,8 @@ class JellyfinClient {
           // 'Value cannot be null. (Parameter \'appName\')' server crash
           // some Jellyfin builds hit when those headers are missing.
           headers: {
-            'Authorization': _buildAuthHeader(accessToken),
-            'X-Emby-Authorization': _buildAuthHeader(accessToken),
+            'Authorization': _buildAuthHeader(deviceId, accessToken),
+            'X-Emby-Authorization': _buildAuthHeader(deviceId, accessToken),
             'User-Agent': 'Aetherfin/0.1.0 (Android)',
             'Accept': 'application/json',
           },
@@ -53,6 +55,40 @@ class JellyfinClient {
           maxStale: const Duration(minutes: 5),
           priority: CachePriority.normal,
         ),
+      ),
+    );
+    // Log every request + response to logcat so we can see exactly what
+    // bytes go on the wire when debugging Jellyfin's 500 / 403 / etc.
+    // The Authorization header value is redacted to avoid leaking tokens.
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          final redactedHeaders = Map<String, dynamic>.from(options.headers)
+            ..updateAll((k, v) =>
+                k.toLowerCase().contains('auth') ? '<redacted>' : v);
+          // ignore: avoid_print
+          print('aetherfin:http → ${options.method} ${options.uri}');
+          // ignore: avoid_print
+          print('aetherfin:http headers: $redactedHeaders');
+          // For auth-sensitive endpoints, redact the body too.
+          final isAuth = options.uri.path.toLowerCase().contains('authenticate');
+          // ignore: avoid_print
+          print('aetherfin:http body: '
+              '${isAuth ? '<redacted ${options.data is Map ? (options.data as Map).keys.toList() : options.data.runtimeType}>' : options.data}');
+          handler.next(options);
+        },
+        onResponse: (response, handler) {
+          // ignore: avoid_print
+          print('aetherfin:http ← ${response.statusCode} '
+              '${response.requestOptions.method} ${response.requestOptions.uri}');
+          handler.next(response);
+        },
+        onError: (err, handler) {
+          // ignore: avoid_print
+          print('aetherfin:http ✕ ${err.response?.statusCode ?? '?'} '
+              '${err.requestOptions.method} ${err.requestOptions.uri}');
+          handler.next(err);
+        },
       ),
     );
   }
@@ -68,11 +104,11 @@ class JellyfinClient {
   /// known-good shape. The known 500 "appName is null" error happens when
   /// Jellyfin sees a header it can't parse, so we match the canonical
   /// format exactly.
-  static String _buildAuthHeader(String? token) {
+  static String _buildAuthHeader(String deviceId, String? token) {
     return 'MediaBrowser '
         'Client="Aetherfin", '
         'Device="Android", '
-        'DeviceId="aetherfin-android", '
+        'DeviceId="$deviceId", '
         'Version="0.1.0", '
         'Token="${token ?? ''}"';
   }
