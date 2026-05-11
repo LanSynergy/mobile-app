@@ -9,6 +9,7 @@ import '../design_tokens/tokens.dart';
 import '../features/album/album_screen.dart';
 import '../features/artist/artist_screen.dart';
 import '../features/cast_picker/cast_picker_screen.dart';
+import '../features/genre/genre_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/library/library_screen.dart';
 import '../features/lyrics/lyrics_screen.dart';
@@ -195,6 +196,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: rootKey,
         builder: (_, state) =>
             PlaylistScreen(playlistId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/genre/:name',
+        parentNavigatorKey: rootKey,
+        builder: (_, state) =>
+            GenreScreen(genreName: Uri.decodeComponent(state.pathParameters['name']!)),
       ),
     ],
   );

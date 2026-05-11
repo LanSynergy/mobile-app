@@ -179,7 +179,7 @@ class HomeScreen extends ConsumerWidget {
                     return GenreTile(
                       name: g.name,
                       tint: _hex(g.tint),
-                      onTap: () => context.go('/library?section=genres'),
+                      onTap: () => context.push('/genre/${Uri.encodeComponent(g.name)}'),
                     );
                   },
                 ),

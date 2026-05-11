@@ -530,25 +530,25 @@ class JellyfinClient {
     return _parseItemList(res.data).map(_parseTrack).toList(growable: false);
   }
 
-  /// `GET /Artists` — all artists the user has access to.
+  /// `GET /Users/{userId}/Items?IncludeItemTypes=MusicArtist` — all artists
+  /// the user has access to.
   ///
-  /// `Fields` must include `AlbumCount` and `SongCount` — without them
-  /// Jellyfin omits those keys entirely and `_parseArtist` falls back to
-  /// 0 for both, making every artist show "0 albums" in the UI.
-  /// `EnableImageTypes=Primary` is required for artist photo URLs to be
-  /// included in the response; without it the `ImageTags` map is empty
-  /// and every tile shows the placeholder music-note icon.
+  /// We use the `/Users/{userId}/Items` endpoint instead of `/Artists`
+  /// because the latter does not return `AlbumCount` / `SongCount` as
+  /// part of the standard `Fields` projection — those fields are only
+  /// populated on `BaseItemDto` responses from the Items endpoint.
+  /// `EnableImageTypes=Primary` is required for artist photo URLs.
   Future<List<AfArtist>> artists({int limit = 200}) async {
     _assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
-      'Artists',
+      'Users/$userId/Items',
       queryParameters: <String, dynamic>{
-        'UserId': userId,
+        'IncludeItemTypes': 'MusicArtist',
         'Recursive': true,
         'SortBy': 'SortName',
         'SortOrder': 'Ascending',
         'Limit': limit,
-        'Fields': 'Overview,AlbumCount,SongCount',
+        'Fields': 'Overview,AlbumCount,SongCount,ChildCount',
         'EnableImages': true,
         'EnableImageTypes': 'Primary',
       },
@@ -812,6 +812,26 @@ class JellyfinClient {
         'SortOrder': 'Descending',
         'Limit': limit,
         'Fields': _albumFields,
+      },
+    );
+    return _parseItemList(res.data).map(_parseAlbum).toList(growable: false);
+  }
+
+  /// `GET /Users/{userId}/Items?Genres=…&IncludeItemTypes=MusicAlbum` —
+  /// albums tagged with the given genre name. Used by the Genre detail screen.
+  Future<List<AfAlbum>> albumsByGenre(String genre, {int limit = 200}) async {
+    _assertUser();
+    final res = await _dio.get<Map<String, dynamic>>(
+      'Users/$userId/Items',
+      queryParameters: <String, dynamic>{
+        'IncludeItemTypes': 'MusicAlbum',
+        'Recursive': true,
+        'Genres': genre,
+        'SortBy': 'SortName',
+        'SortOrder': 'Ascending',
+        'Limit': limit,
+        'Fields': _albumFields,
+        'EnableImages': true,
       },
     );
     return _parseItemList(res.data).map(_parseAlbum).toList(growable: false);

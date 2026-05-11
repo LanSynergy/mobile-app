@@ -489,6 +489,18 @@ final instantMixProvider = FutureProvider.autoDispose
   return res;
 });
 
+/// Albums tagged with a given genre name. Powers the Genre detail screen.
+final genreAlbumsProvider = FutureProvider.autoDispose
+    .family<List<AfAlbum>, String>((ref, genre) async {
+  final client = ref.watch(jellyfinClientProvider);
+  if (client == null) {
+    _logData('genreAlbums', source: 'demo', extra: 'genre=$genre (signed out)');
+    return DemoLibrary.albums;
+  }
+  final res = await client.albumsByGenre(genre);
+  _logData('genreAlbums', source: 'live', extra: 'genre=$genre count=${res.length}');
+  return res;
+});
 /// Music genres. Jellyfin returns these without colors so we cycle through
 /// a small palette to keep the chip row colourful.
 final allGenresProvider =

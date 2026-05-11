@@ -291,6 +291,7 @@ class _SectionBody extends ConsumerWidget {
                 tint: tint,
                 width: double.infinity,
                 height: double.infinity,
+                onTap: () => context.push('/genre/${Uri.encodeComponent(g.name)}'),
               );
             },
           ),

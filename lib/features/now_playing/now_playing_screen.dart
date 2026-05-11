@@ -504,14 +504,7 @@ class _UtilityRow extends ConsumerWidget {
         _UtilityIcon(
           icon: Icons.playlist_add_rounded,
           label: 'Save',
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Playlists coming soon'),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          },
+          onTap: () => context.push('/library?section=playlists'),
         ),
         _UtilityIcon(
           icon: Icons.queue_music_rounded,
