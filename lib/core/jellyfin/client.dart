@@ -20,7 +20,13 @@ class JellyfinClient {
     this.accessToken,
     this.userId,
   }) : _dio = Dio(BaseOptions(
-          baseUrl: server.baseUrl,
+          // Trailing slash is REQUIRED so Dio's Uri.resolve preserves the
+          // server's base path (e.g. https://example.com/jellyfin/). All
+          // paths below are written WITHOUT a leading slash for the same
+          // reason.
+          baseUrl: server.baseUrl.endsWith('/')
+              ? server.baseUrl
+              : '${server.baseUrl}/',
           connectTimeout: const Duration(seconds: 5),
           sendTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 15),
@@ -55,9 +61,7 @@ class JellyfinClient {
   /// `GET /System/Info/Public` — used by mDNS resolution to confirm a
   /// reachable server and pick up its name + version.
   Future<JellyfinServer> publicInfo() async {
-    final res = await _dio.getUri<Map<String, dynamic>>(
-      Uri.parse('/System/Info/Public'),
-    );
+    final res = await _dio.get<Map<String, dynamic>>('System/Info/Public');
     final data = res.data ?? const <String, dynamic>{};
     return server.copyWith(
       name: (data['ServerName'] as String?) ?? server.name,
@@ -74,7 +78,7 @@ class JellyfinClient {
     required String password,
   }) async {
     final res = await _dio.post<Map<String, dynamic>>(
-      '/Users/AuthenticateByName',
+      'Users/AuthenticateByName',
       data: {'Username': username, 'Pw': password},
     );
     final data = res.data!;
@@ -89,7 +93,7 @@ class JellyfinClient {
 
   /// `GET /Users/{userId}/Views` — the list of libraries the user can see.
   Future<List<LibraryView>> userViews() async {
-    final res = await _dio.get<Map<String, dynamic>>('/Users/$userId/Views');
+    final res = await _dio.get<Map<String, dynamic>>('Users/$userId/Views');
     final items = (res.data?['Items'] as List? ?? const []).cast<Map>();
     return items
         .map((m) => LibraryView(
@@ -142,7 +146,7 @@ class JellyfinClient {
     bool isPaused = false,
   }) async {
     await _dio.post(
-      '/Sessions/Playing/Progress',
+      'Sessions/Playing/Progress',
       data: {
         'ItemId': trackId,
         'PositionTicks': position.inMicroseconds * 10,

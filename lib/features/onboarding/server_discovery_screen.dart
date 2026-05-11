@@ -65,8 +65,14 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
     }
     setState(() => _manualError = null);
 
+    // Preserve any base path the user pasted (e.g. https://media.example.com/jellyfin),
+    // and strip a trailing slash so we don't construct doubled slashes
+    // when Dio joins relative paths.
+    final basePath = uri.path.replaceAll(RegExp(r'/+$'), '');
     final server = JellyfinServer(
-      baseUrl: '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}',
+      baseUrl: '${uri.scheme}://${uri.host}'
+          '${uri.hasPort ? ':${uri.port}' : ''}'
+          '$basePath',
       name: uri.host,
       isLocal: false,
     );
@@ -75,9 +81,13 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
     try {
       final resolved = await client.publicInfo();
       _continueWith(resolved);
-    } catch (_) {
+    } catch (e, stack) {
+      // ignore: avoid_print
+      print('aetherfin:error server discovery failed: $e');
+      // ignore: avoid_print
+      print('aetherfin:error stack: $stack');
       setState(() =>
-          _manualError = 'Couldn’t reach $raw. Check that it’s running.');
+          _manualError = 'Couldn’t reach ${server.baseUrl}. $e');
     }
   }
 

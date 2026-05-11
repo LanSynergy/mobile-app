@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -57,13 +58,47 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       await ref.read(authProvider.notifier).save(auth);
       if (!mounted) return;
       context.go('/onboarding/scope');
-    } catch (_) {
+    } catch (e, stack) {
+      // ignore: avoid_print
+      print('aetherfin:error sign-in failed: $e');
+      // ignore: avoid_print
+      print('aetherfin:error stack: $stack');
       setState(() {
-        _error = 'Couldn’t sign in. Check your username and password.';
+        _error = _humanizeError(e);
       });
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Translate raw exception text into something the user can act on.
+  /// Falls back to the full exception string so we never hide what's wrong
+  /// behind a generic 'check your username' message.
+  String _humanizeError(Object e) {
+    if (e is DioException) {
+      final status = e.response?.statusCode;
+      final url = e.requestOptions.uri.toString();
+      if (status == 401 || status == 403) {
+        return 'Wrong username or password (HTTP $status from $url).';
+      }
+      if (status != null) {
+        final body = e.response?.data?.toString() ?? '';
+        return 'Server replied $status. ${body.isNotEmpty ? body : "(no body)"}';
+      }
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          return 'Connection timed out reaching ${widget.server.baseUrl}.';
+        case DioExceptionType.connectionError:
+          return 'Could not reach ${widget.server.baseUrl}. ${e.message ?? ""}';
+        case DioExceptionType.badCertificate:
+          return 'TLS certificate rejected for ${widget.server.baseUrl}.';
+        default:
+          return '${e.type.name}: ${e.message ?? e.error ?? "unknown"}';
+      }
+    }
+    return e.toString();
   }
 
   @override
@@ -72,7 +107,16 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            // Onboarding navigates with context.go() (which replaces the
+            // stack), so pop is a no-op. Route home to the discovery step
+            // explicitly instead.
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/onboarding/discover');
+            }
+          },
         ),
         title: Text('Sign in', style: AfTypography.titleMedium),
         actions: [
