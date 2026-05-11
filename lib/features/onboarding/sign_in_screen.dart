@@ -61,6 +61,16 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     } catch (e, stack) {
       // ignore: avoid_print
       print('aetherfin:error sign-in failed: $e');
+      if (e is DioException) {
+        // ignore: avoid_print
+        print('aetherfin:error url: ${e.requestOptions.uri}');
+        // ignore: avoid_print
+        print('aetherfin:error status: ${e.response?.statusCode}');
+        // ignore: avoid_print
+        print('aetherfin:error body: ${e.response?.data}');
+        // ignore: avoid_print
+        print('aetherfin:error headers: ${e.response?.headers.map}');
+      }
       // ignore: avoid_print
       print('aetherfin:error stack: $stack');
       setState(() {
@@ -82,8 +92,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         return 'Wrong username or password (HTTP $status from $url).';
       }
       if (status != null) {
-        final body = e.response?.data?.toString() ?? '';
-        return 'Server replied $status. ${body.isNotEmpty ? body : "(no body)"}';
+        // Trim body to first 240 chars so a giant HTML 500 page doesn't
+        // swamp the input field's helper text. Full body is in logcat.
+        final raw = e.response?.data?.toString() ?? '';
+        final body =
+            raw.length > 240 ? '${raw.substring(0, 240)}…' : raw;
+        return 'HTTP $status from $url\n'
+            '${body.isNotEmpty ? body : "(no body)"}';
       }
       switch (e.type) {
         case DioExceptionType.connectionTimeout:

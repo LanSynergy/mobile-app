@@ -30,11 +30,13 @@ class JellyfinClient {
           connectTimeout: const Duration(seconds: 5),
           sendTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 15),
+          // Send BOTH header forms on every request. Some reverse proxies
+          // (Cloudflare, strict nginx) strip Authorization; older Jellyfin
+          // / Emby fork versions only read X-Emby-Authorization. Sending
+          // both is the most compatible option per the API docs.
           headers: {
-            if (accessToken != null)
-              'Authorization': _buildAuthHeader(accessToken),
-            if (accessToken == null)
-              'X-Emby-Authorization': _buildAuthHeader(null),
+            'Authorization': _buildAuthHeader(accessToken),
+            'X-Emby-Authorization': _buildAuthHeader(accessToken),
           },
         )) {
     _dio.interceptors.add(
