@@ -32,17 +32,30 @@ class JellyfinClient {
           connectTimeout: const Duration(seconds: 5),
           sendTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 15),
-          // Modern Jellyfin (10.11+) reads `Authorization` only.
-          // `X-Emby-Authorization` is deprecated and only consulted when
-          // EnableLegacyAuthorization is true (off by default in 10.11+).
-          // We send both for back-compat with older Jellyfin / Emby forks.
-          //
-          // Always sending User-Agent + Content-Type explicitly avoids the
-          // 'Value cannot be null. (Parameter \'appName\')' server crash
-          // some Jellyfin builds hit when those headers are missing.
+          // Header shape mirrors UnicornsOnLSD/finamp's getAuthHeader()
+          // (lib/services/jellyfin_api.dart line 408) which is the most
+          // battle-tested Flutter client. Key differences from our old
+          // implementation:
+          //   • Token field is OMITTED entirely when not authenticated
+          //     (vs sending `Token=""`). Some Jellyfin plugins read the
+          //     header into a struct that treats empty-string and missing
+          //     differently, and the official Jellyfin docs example also
+          //     omits the field during initial auth.
+          //   • Only `Authorization` is sent — Finamp does not send
+          //     `X-Emby-Authorization` and Jellyfin's parser consumes only
+          //     one of them. Sending both is redundant and a known cause
+          //     of confused middleware in plugin-heavy installs.
+          //   • `Content-Type: application/json` is set explicitly here
+          //     so it doesn't depend on Dio's auto-content-type logic
+          //     (which only fires when there's a body — meaning GETs go
+          //     out without Content-Type, and some plugins choke on that).
           headers: {
-            'Authorization': _buildAuthHeader(deviceId, accessToken),
-            'X-Emby-Authorization': _buildAuthHeader(deviceId, accessToken),
+            'Authorization': _buildAuthHeader(
+              deviceId: deviceId,
+              token: accessToken,
+              userId: userId,
+            ),
+            'Content-Type': 'application/json',
             'User-Agent': 'Aetherfin/0.1.0 (Android)',
             'Accept': 'application/json',
           },
@@ -95,22 +108,35 @@ class JellyfinClient {
 
   /// Build a Jellyfin Authorization header.
   ///
-  /// We ALWAYS include `Token="..."` — empty when not yet authenticated.
-  /// Jellyfin's parser at
-  /// `Jellyfin.Server.Implementations/Security/AuthorizationContext.cs`
-  /// is tolerant of an empty token, but the reference React Native client
-  /// `leinelissen/jellyfin-audio-player` always includes all five fields
-  /// (Client, Device, DeviceId, Version, Token) and that pattern is the
-  /// known-good shape. The known 500 "appName is null" error happens when
-  /// Jellyfin sees a header it can't parse, so we match the canonical
-  /// format exactly.
-  static String _buildAuthHeader(String deviceId, String? token) {
-    return 'MediaBrowser '
-        'Client="Aetherfin", '
-        'Device="Android", '
-        'DeviceId="$deviceId", '
-        'Version="0.1.0", '
-        'Token="${token ?? ''}"';
+  /// Field order and conditional-omission semantics match
+  /// UnicornsOnLSD/finamp `getAuthHeader()`. Specifically:
+  ///   • `UserId` is omitted when null/empty (initial auth has no user yet).
+  ///   • `Token` is omitted when null/empty (initial auth has no token yet).
+  ///   • Field order is UserId, Token, Client, Device, DeviceId, Version
+  ///     so anything that does substring-matching on the start of the
+  ///     header sees the same byte sequence as Finamp / Jellyfin web.
+  ///   • Non-ASCII bytes are stripped — iOS device names and some Android
+  ///     ROMs can contain emoji that break Jellyfin's header parser.
+  static String _buildAuthHeader({
+    required String deviceId,
+    String? token,
+    String? userId,
+  }) {
+    final parts = <String>[];
+    if (userId != null && userId.isNotEmpty) {
+      parts.add('UserId="$userId"');
+    }
+    if (token != null && token.isNotEmpty) {
+      parts.add('Token="$token"');
+    }
+    parts.add('Client="Aetherfin"');
+    parts.add('Device="Android"');
+    parts.add('DeviceId="$deviceId"');
+    parts.add('Version="0.1.0"');
+    final raw = 'MediaBrowser ${parts.join(", ")}';
+    // Belt-and-braces: strip anything outside the 7-bit ASCII range so
+    // unusual device names / pasted tokens can never break the parser.
+    return raw.replaceAll(RegExp(r'[^\x00-\x7F]+'), '_');
   }
 
   /// `GET /System/Info/Public` — used by mDNS resolution to confirm a
@@ -169,8 +195,11 @@ class JellyfinClient {
       sendTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 15),
       headers: {
-        'Authorization': _buildAuthHeader(deviceId, apiKey),
-        'X-Emby-Authorization': _buildAuthHeader(deviceId, apiKey),
+        'Authorization': _buildAuthHeader(
+          deviceId: deviceId,
+          token: apiKey,
+        ),
+        'Content-Type': 'application/json',
         'User-Agent': 'Aetherfin/0.1.0 (Android)',
         'Accept': 'application/json',
       },
