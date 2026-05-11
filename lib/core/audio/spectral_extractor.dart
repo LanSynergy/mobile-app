@@ -2,7 +2,7 @@ import 'dart:ui' show Color;
 
 import 'package:cached_network_image/cached_network_image.dart'
     show CachedNetworkImageProvider;
-import 'package:palette_generator/palette_generator.dart';
+import 'package:palette_generator_master/palette_generator.dart';
 
 import '../../design_tokens/colors.dart';
 import '../../utils/oklch.dart';
