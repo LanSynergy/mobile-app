@@ -30,13 +30,19 @@ class JellyfinClient {
           connectTimeout: const Duration(seconds: 5),
           sendTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 15),
-          // Send BOTH header forms on every request. Some reverse proxies
-          // (Cloudflare, strict nginx) strip Authorization; older Jellyfin
-          // / Emby fork versions only read X-Emby-Authorization. Sending
-          // both is the most compatible option per the API docs.
+          // Modern Jellyfin (10.11+) reads `Authorization` only.
+          // `X-Emby-Authorization` is deprecated and only consulted when
+          // EnableLegacyAuthorization is true (off by default in 10.11+).
+          // We send both for back-compat with older Jellyfin / Emby forks.
+          //
+          // Always sending User-Agent + Content-Type explicitly avoids the
+          // 'Value cannot be null. (Parameter \'appName\')' server crash
+          // some Jellyfin builds hit when those headers are missing.
           headers: {
             'Authorization': _buildAuthHeader(accessToken),
             'X-Emby-Authorization': _buildAuthHeader(accessToken),
+            'User-Agent': 'Aetherfin/0.1.0 (Android)',
+            'Accept': 'application/json',
           },
         )) {
     _dio.interceptors.add(
@@ -51,13 +57,24 @@ class JellyfinClient {
     );
   }
 
+  /// Build a Jellyfin Authorization header.
+  ///
+  /// We ALWAYS include `Token="..."` — empty when not yet authenticated.
+  /// Jellyfin's parser at
+  /// `Jellyfin.Server.Implementations/Security/AuthorizationContext.cs`
+  /// is tolerant of an empty token, but the reference React Native client
+  /// `leinelissen/jellyfin-audio-player` always includes all five fields
+  /// (Client, Device, DeviceId, Version, Token) and that pattern is the
+  /// known-good shape. The known 500 "appName is null" error happens when
+  /// Jellyfin sees a header it can't parse, so we match the canonical
+  /// format exactly.
   static String _buildAuthHeader(String? token) {
     return 'MediaBrowser '
         'Client="Aetherfin", '
         'Device="Android", '
         'DeviceId="aetherfin-android", '
-        'Version="0.1.0"'
-        '${token != null ? ', Token="$token"' : ''}';
+        'Version="0.1.0", '
+        'Token="${token ?? ''}"';
   }
 
   /// `GET /System/Info/Public` — used by mDNS resolution to confirm a
