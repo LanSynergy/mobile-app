@@ -94,21 +94,24 @@ class NowPlayingScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: AfSpacing.s24),
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
                                     track.title,
-                                    maxLines: 2,
+                                    maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: AfTypography.titleLarge,
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     track.artistName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: AfTypography.bodyMedium.copyWith(
                                       color: AfColors.textSecondary,
                                     ),
