@@ -531,6 +531,13 @@ class JellyfinClient {
   }
 
   /// `GET /Artists` — all artists the user has access to.
+  ///
+  /// `Fields` must include `AlbumCount` and `SongCount` — without them
+  /// Jellyfin omits those keys entirely and `_parseArtist` falls back to
+  /// 0 for both, making every artist show "0 albums" in the UI.
+  /// `EnableImageTypes=Primary` is required for artist photo URLs to be
+  /// included in the response; without it the `ImageTags` map is empty
+  /// and every tile shows the placeholder music-note icon.
   Future<List<AfArtist>> artists({int limit = 200}) async {
     _assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
@@ -541,8 +548,9 @@ class JellyfinClient {
         'SortBy': 'SortName',
         'SortOrder': 'Ascending',
         'Limit': limit,
-        'Fields': 'Overview',
+        'Fields': 'Overview,AlbumCount,SongCount',
         'EnableImages': true,
+        'EnableImageTypes': 'Primary',
       },
     );
     return _parseItemList(res.data).map(_parseArtist).toList(growable: false);

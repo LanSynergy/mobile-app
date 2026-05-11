@@ -113,8 +113,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/library',
-                pageBuilder: (_, __) =>
-                    const NoTransitionPage(child: LibraryScreen()),
+                pageBuilder: (_, state) {
+                  final raw = state.uri.queryParameters['section'];
+                  final section = raw == null
+                      ? null
+                      : LibrarySection.values.where((s) => s.name == raw).firstOrNull;
+                  return NoTransitionPage(
+                    child: LibraryScreen(initialSection: section),
+                  );
+                },
               ),
             ],
           ),

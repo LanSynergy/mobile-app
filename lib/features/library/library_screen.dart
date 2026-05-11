@@ -11,14 +11,24 @@ import '../../widgets/track_row.dart';
 enum LibrarySection { albums, artists, songs, playlists, genres }
 
 class LibraryScreen extends ConsumerStatefulWidget {
-  const LibraryScreen({super.key});
+  /// When set, the screen opens directly on this tab instead of Albums.
+  /// Used by deep-links from Home (genre tiles → Genres, artists → Artists).
+  final LibrarySection? initialSection;
+
+  const LibraryScreen({super.key, this.initialSection});
 
   @override
   ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
 }
 
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
-  LibrarySection _section = LibrarySection.albums;
+  late LibrarySection _section;
+
+  @override
+  void initState() {
+    super.initState();
+    _section = widget.initialSection ?? LibrarySection.albums;
+  }
 
   @override
   Widget build(BuildContext context) {

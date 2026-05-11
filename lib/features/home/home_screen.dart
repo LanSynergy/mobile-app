@@ -113,7 +113,11 @@ class HomeScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-              child: SectionHeader(title: 'Artists', actionLabel: 'See more'),
+              child: SectionHeader(
+                title: 'Artists',
+                actionLabel: 'See more',
+                onActionTap: () => context.go('/library?section=artists'),
+              ),
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
@@ -134,6 +138,7 @@ class HomeScreen extends ConsumerWidget {
                       title: a.name,
                       subtitle: '${a.albumCount} albums',
                       variant: TileVariant.artist,
+                      imageUrl: a.imageUrl,
                       size: 120,
                       onTap: () => context.push('/artist/${a.id}'),
                     );
@@ -150,7 +155,11 @@ class HomeScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-              child: SectionHeader(title: 'Genres'),
+              child: SectionHeader(
+                title: 'Genres',
+                actionLabel: 'See more',
+                onActionTap: () => context.go('/library?section=genres'),
+              ),
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
@@ -170,6 +179,7 @@ class HomeScreen extends ConsumerWidget {
                     return GenreTile(
                       name: g.name,
                       tint: _hex(g.tint),
+                      onTap: () => context.go('/library?section=genres'),
                     );
                   },
                 ),
