@@ -242,9 +242,12 @@ class _FftWaveformPainter extends CustomPainter {
   static const double _playheadGlowRadius = 8.0;
 
   /// How much the live FFT dominates over the static peak envelope.
-  /// 0.45 = 45% FFT, 55% static peak. Lower values keep the waveform
-  /// shape more visible; higher values make bars react more to the music.
-  static const double _fftBlend = 0.45;
+  static const double _fftBlend = 0.65;
+
+  /// FFT magnitude is scaled by this before blending. Values < 1.0 compress
+  /// the input so bars don't sit near full height constantly — they spend
+  /// most of their time in the lower half and only spike on loud beats.
+  static const double _fftScale = 0.55;
 
   _FftWaveformPainter({
     required this.peaks,
@@ -287,12 +290,10 @@ class _FftWaveformPainter extends CustomPainter {
 
       double amp;
       if (!useFallback && bands != null && bands.isNotEmpty) {
-        // Map bar index to FFT band index (linear resample).
         final fftIdx = (i / barCount * bands.length).clamp(0, bands.length - 1).toInt();
-        // Apply sqrt curve to compress loud transients — raw FFT magnitudes
-        // spike to 1.0 on beats which pushes every bar to full height.
-        final fftMag = math.sqrt(bands[fftIdx].clamp(0.0, 1.0));
-        // Blend: static peak gives the waveform shape, FFT gives the energy.
+        // Scale down the raw FFT magnitude so bars have room to move.
+        // Without this, bands are near 1.0 constantly and bars look frozen.
+        final fftMag = (bands[fftIdx] * _fftScale).clamp(0.0, 1.0);
         amp = (staticPeak * (1 - _fftBlend) + fftMag * _fftBlend)
             .clamp(_minBarHeightFraction, 1.0);
       } else {

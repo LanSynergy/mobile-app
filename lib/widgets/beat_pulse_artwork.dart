@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -37,8 +36,8 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
   late final AnimationController _ctl;
   late final Animation<double> _scaleAnim;
 
-  /// Maximum scale at full energy. 1.10 = artwork grows to 110% on loud beats.
-  static const double _maxScale = 1.10;
+  /// Maximum scale at full energy. 1.08 = artwork grows to 108% on loud beats.
+  static const double _maxScale = 1.08;
 
   @override
   void initState() {
@@ -77,15 +76,15 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
     ref.listen(fftSpectrumProvider, (prev, next) {
       next.whenData((frame) {
         final energy = _rmsEnergy(frame.bands);
-        if (energy > 0.08) {
-          // Beat detected — animate to scaled-up position.
-          // Use sqrt to give a more perceptual response curve.
-          final target = math.sqrt(((energy - 0.08) / 0.92).clamp(0.0, 1.0));
-          _ctl.animateTo(target, duration: const Duration(milliseconds: 80));
+        // Scale down so the artwork spends most of its time near rest
+        // and only visibly pulses on actual loud beats.
+        final scaled = (energy * 0.5).clamp(0.0, 1.0);
+        if (scaled > 0.05) {
+          final target = ((scaled - 0.05) / 0.95).clamp(0.0, 1.0);
+          _ctl.animateTo(target, duration: const Duration(milliseconds: 60));
         } else {
-          // Silence / low energy — decay back to rest.
           if (_ctl.value > 0.01) {
-            _ctl.animateTo(0.0, duration: const Duration(milliseconds: 350));
+            _ctl.animateTo(0.0, duration: const Duration(milliseconds: 300));
           }
         }
       });
