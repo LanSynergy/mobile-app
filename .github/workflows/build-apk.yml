@@ -109,3 +109,46 @@ jobs:
           path: build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Send APK to Telegram
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BUILD_MODE: ${{ inputs.build_mode }}
+          SPLIT: ${{ inputs.split_per_abi }}
+        run: |
+          if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
+            echo "::warning::TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set; skipping Telegram delivery."
+            exit 0
+          fi
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          cd build/app/outputs/flutter-apk
+          shopt -s nullglob
+          APKS=(*.apk)
+          if [ ${#APKS[@]} -eq 0 ]; then
+            echo "::error::No APKs found to send."
+            exit 1
+          fi
+          for apk in "${APKS[@]}"; do
+            SIZE_BYTES=$(stat -c%s "$apk")
+            SIZE_HUMAN=$(numfmt --to=iec --suffix=B "$SIZE_BYTES")
+            if [ "$SIZE_BYTES" -gt 52428800 ]; then
+              echo "::error::$apk is $SIZE_HUMAN — over Telegram Bot API's 50 MB sendDocument limit. Re-run with split_per_abi=true."
+              exit 1
+            fi
+            CAPTION=$(printf 'Aetherfin · %s · %s\nCommit: %s on %s\nSize: %s\nRun: %s' \
+              "$BUILD_MODE" "$apk" "$SHORT_SHA" "$GITHUB_REF_NAME" "$SIZE_HUMAN" "$RUN_URL")
+            echo "Uploading $apk ($SIZE_HUMAN)..."
+            HTTP_CODE=$(curl -sS -o /tmp/tg-resp.json -w "%{http_code}" \
+              -F document=@"$apk" \
+              -F chat_id="$CHAT_ID" \
+              -F caption="$CAPTION" \
+              "https://api.telegram.org/bot$BOT_TOKEN/sendDocument")
+            if [ "$HTTP_CODE" != "200" ]; then
+              echo "::error::sendDocument failed for $apk: HTTP $HTTP_CODE"
+              cat /tmp/tg-resp.json
+              exit 1
+            fi
+            echo "Sent $apk."
+          done
