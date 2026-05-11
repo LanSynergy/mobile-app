@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/audio/play_actions.dart';
+import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/log.dart';
@@ -139,7 +140,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                           ),
                           const SizedBox(height: AfSpacing.s16),
                           _ActionRow(
-                            albumId: widget.albumId,
+                            album: album,
                             onPlay: () => ref
                                 .read(playActionsProvider)
                                 .playAlbum(tracks),
@@ -241,16 +242,36 @@ class _OpacityAppBar extends StatelessWidget {
 
 class _ActionRow extends ConsumerStatefulWidget {
   final VoidCallback onPlay;
-  final String albumId;
-  const _ActionRow({required this.onPlay, required this.albumId});
+  final AfAlbum album;
+  const _ActionRow({required this.onPlay, required this.album});
 
   @override
   ConsumerState<_ActionRow> createState() => _ActionRowState();
 }
 
 class _ActionRowState extends ConsumerState<_ActionRow> {
-  bool _isFavorite = false;
+  late bool _isFavorite;
   bool _favoriteBusy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Seed from the album's server-provided favorite state so the heart
+    // reflects reality on first render instead of always showing empty.
+    _isFavorite = widget.album.isFavorite;
+  }
+
+  @override
+  void didUpdateWidget(covariant _ActionRow old) {
+    super.didUpdateWidget(old);
+    // If the parent re-fetches the album (e.g. after a favorite toggle
+    // invalidates the provider), keep the local state in sync — but only
+    // when we're not mid-toggle to avoid clobbering an in-flight optimistic
+    // update.
+    if (!_favoriteBusy && old.album.isFavorite != widget.album.isFavorite) {
+      _isFavorite = widget.album.isFavorite;
+    }
+  }
 
   Future<void> _toggleFavorite() async {
     if (_favoriteBusy) return;
@@ -261,17 +282,21 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
       _isFavorite = !_isFavorite;
     });
     try {
-      await client.setFavorite(widget.albumId, _isFavorite);
+      await client.setFavorite(widget.album.id, _isFavorite);
       afLog(
         'data',
         'albumFavorite source=live '
-        'id=${widget.albumId} isFavorite=$_isFavorite',
+        'id=${widget.album.id} isFavorite=$_isFavorite',
       );
       // Force the Home screen's "Favorite albums" row to re-fetch so it
       // reflects the toggle on the next frame instead of waiting for the
       // user to pull-to-refresh.
       ref.invalidate(favoriteAlbumsProvider);
+      // Also invalidate the album detail so didUpdateWidget gets the
+      // fresh isFavorite value if the user navigates away and back.
+      ref.invalidate(albumDetailProvider(widget.album.id));
     } catch (e) {
+      // Revert the optimistic flip on failure.
       setState(() => _isFavorite = !_isFavorite);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

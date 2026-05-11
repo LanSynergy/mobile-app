@@ -939,7 +939,7 @@ class JellyfinClient {
 
   /// Standard `Fields` projection for album listings.
   static const _albumFields =
-      'PrimaryImageAspectRatio,RunTimeTicks,ChildCount,ProductionYear,DateCreated,AlbumArtist,AlbumArtists';
+      'PrimaryImageAspectRatio,RunTimeTicks,ChildCount,ProductionYear,DateCreated,AlbumArtist,AlbumArtists,UserData';
 
   void _assertUser() {
     if (userId == null || userId!.isEmpty) {
@@ -976,6 +976,7 @@ class JellyfinClient {
         ? Duration(microseconds: ticks ~/ 10)
         : Duration.zero;
     final dateCreated = m['DateCreated'] as String?;
+    final userData = (m['UserData'] as Map?)?.cast<String, dynamic>();
     return AfAlbum(
       id: id,
       name: (m['Name'] as String?) ?? 'Unknown',
@@ -986,6 +987,7 @@ class JellyfinClient {
       totalDuration: duration,
       imageUrl: _imageUrlFor(m, 'Primary', maxWidth: 480),
       dateAdded: dateCreated != null ? DateTime.tryParse(dateCreated) : null,
+      isFavorite: (userData?['IsFavorite'] as bool?) ?? false,
     );
   }
 

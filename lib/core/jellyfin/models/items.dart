@@ -12,6 +12,7 @@ class AfAlbum {
   final String? imageUrl;
   final TrackQuality? quality;
   final DateTime? dateAdded;
+  final bool isFavorite;
 
   const AfAlbum({
     required this.id,
@@ -24,7 +25,35 @@ class AfAlbum {
     this.imageUrl,
     this.quality,
     this.dateAdded,
+    this.isFavorite = false,
   });
+
+  AfAlbum copyWith({
+    String? id,
+    String? name,
+    String? artistName,
+    String? artistId,
+    int? trackCount,
+    int? year,
+    Duration? totalDuration,
+    String? imageUrl,
+    TrackQuality? quality,
+    DateTime? dateAdded,
+    bool? isFavorite,
+  }) =>
+      AfAlbum(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        artistName: artistName ?? this.artistName,
+        artistId: artistId ?? this.artistId,
+        trackCount: trackCount ?? this.trackCount,
+        year: year ?? this.year,
+        totalDuration: totalDuration ?? this.totalDuration,
+        imageUrl: imageUrl ?? this.imageUrl,
+        quality: quality ?? this.quality,
+        dateAdded: dateAdded ?? this.dateAdded,
+        isFavorite: isFavorite ?? this.isFavorite,
+      );
 
   String get metadataLine {
     final parts = <String>[];
