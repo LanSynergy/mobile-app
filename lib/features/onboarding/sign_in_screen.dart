@@ -216,7 +216,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   Switch.adaptive(
                     value: _useToken,
                     onChanged: (v) => setState(() => _useToken = v),
-                    activeColor: AfColors.indigo500,
+                    activeThumbColor: AfColors.indigo500,
                   ),
                   const SizedBox(width: AfSpacing.s8),
                   Expanded(

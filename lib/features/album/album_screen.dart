@@ -47,7 +47,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
       backgroundColor: AfColors.surfaceCanvas,
       body: detailAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => const Center(child: Icon(Icons.error_outline)),
+        error: (e, stack) => const Center(child: Icon(Icons.error_outline)),
         data: (detail) {
           if (detail == null) {
             return const Center(child: Text('Album not found'));
@@ -153,7 +153,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                       child: SizedBox(height: AfSpacing.s24)),
                   SliverList.separated(
                     itemCount: tracks.length,
-                    separatorBuilder: (_, __) =>
+                    separatorBuilder: (context, index) =>
                         const SizedBox(height: AfSpacing.s4),
                     itemBuilder: (context, i) => Padding(
                       padding: const EdgeInsets.symmetric(

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -40,7 +39,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   // Re-evaluate redirects whenever auth changes so signing in lands you on
   // /home and signing out drops you back at /.
   final refresh = _AuthRefreshListenable();
-  ref.listen<JellyfinAuth?>(authProvider, (_, __) => refresh._notify(),
+  ref.listen<JellyfinAuth?>(authProvider, (prev, next) => refresh._notify(),
       fireImmediately: false);
   ref.onDispose(refresh.dispose);
 
@@ -67,11 +66,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Onboarding
       GoRoute(
         path: '/',
-        builder: (_, __) => const WelcomeScreen(),
+        builder: (context, state) => const WelcomeScreen(),
       ),
       GoRoute(
         path: '/onboarding/discover',
-        builder: (_, __) => const ServerDiscoveryScreen(),
+        builder: (context, state) => const ServerDiscoveryScreen(),
       ),
       GoRoute(
         path: '/onboarding/sign-in',
@@ -80,11 +79,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/onboarding/scope',
-        builder: (_, __) => const LibraryScopeScreen(),
+        builder: (context, state) => const LibraryScopeScreen(),
       ),
       GoRoute(
         path: '/onboarding/done',
-        builder: (_, __) => const AllSetScreen(),
+        builder: (context, state) => const AllSetScreen(),
       ),
 
       // Shell — 4 tabs.
@@ -96,7 +95,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/home',
-                pageBuilder: (_, __) =>
+                pageBuilder: (context, state) =>
                     const NoTransitionPage(child: HomeScreen()),
               ),
             ],
@@ -105,7 +104,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/search',
-                pageBuilder: (_, __) =>
+                pageBuilder: (context, state) =>
                     const NoTransitionPage(child: SearchScreen()),
               ),
             ],
@@ -130,7 +129,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/profile',
-                pageBuilder: (_, __) =>
+                pageBuilder: (context, state) =>
                     const NoTransitionPage(child: ProfileScreen()),
               ),
             ],
@@ -142,32 +141,32 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/now-playing',
         parentNavigatorKey: rootKey,
-        pageBuilder: (_, __) => _NowPlayingPage(),
+        pageBuilder: (context, state) => _NowPlayingPage(),
       ),
       GoRoute(
         path: '/lyrics',
         parentNavigatorKey: rootKey,
-        builder: (_, __) => const LyricsScreen(),
+        builder: (context, state) => const LyricsScreen(),
       ),
       GoRoute(
         path: '/queue',
         parentNavigatorKey: rootKey,
-        builder: (_, __) => const QueueScreen(),
+        builder: (context, state) => const QueueScreen(),
       ),
       GoRoute(
         path: '/sleep',
         parentNavigatorKey: rootKey,
-        builder: (_, __) => const SleepTimerScreen(),
+        builder: (context, state) => const SleepTimerScreen(),
       ),
       GoRoute(
         path: '/cast',
         parentNavigatorKey: rootKey,
-        builder: (_, __) => const CastPickerScreen(),
+        builder: (context, state) => const CastPickerScreen(),
       ),
       GoRoute(
         path: '/settings',
         parentNavigatorKey: rootKey,
-        builder: (_, __) => const SettingsScreen(),
+        builder: (context, state) => const SettingsScreen(),
       ),
 
       // Top-level album / artist routes. We register these above the shell
@@ -221,8 +220,8 @@ class _NowPlayingPage extends Page<void> {
       settings: this,
       transitionDuration: AfDurations.expressive,
       reverseTransitionDuration: AfDurations.expressive,
-      pageBuilder: (_, __, ___) => const NowPlayingScreen(),
-      transitionsBuilder: (context, animation, _, child) {
+      pageBuilder: (context, animation, secondaryAnimation) => const NowPlayingScreen(),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final reduced = MediaQuery.of(context).disableAnimations;
         if (reduced) {
           return FadeTransition(opacity: animation, child: child);

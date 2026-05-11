@@ -36,9 +36,9 @@ class OklchColor {
 
 /// Convert sRGB ([Color]) to OKLab → OKLCH.
 OklchColor srgbToOklch(Color color) {
-  final r = _gammaDecode(color.red / 255);
-  final g = _gammaDecode(color.green / 255);
-  final b = _gammaDecode(color.blue / 255);
+  final r = _gammaDecode((color.r * 255.0).round().clamp(0, 255) / 255);
+  final g = _gammaDecode((color.g * 255.0).round().clamp(0, 255) / 255);
+  final b = _gammaDecode((color.b * 255.0).round().clamp(0, 255) / 255);
 
   // Linear sRGB → LMS
   final l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;

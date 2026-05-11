@@ -195,7 +195,7 @@ class PlaylistScreen extends ConsumerWidget {
                     child: SizedBox(height: AfSpacing.s16)),
                 SliverList.separated(
                   itemCount: tracks.length,
-                  separatorBuilder: (_, __) =>
+                  separatorBuilder: (context, index) =>
                       const SizedBox(height: AfSpacing.s4),
                   itemBuilder: (context, i) {
                     final t = tracks[i];

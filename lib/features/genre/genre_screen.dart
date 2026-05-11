@@ -27,7 +27,7 @@ class GenreScreen extends ConsumerWidget {
       ),
       body: albumsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => const Center(child: Icon(Icons.error_outline)),
+        error: (e, stack) => const Center(child: Icon(Icons.error_outline)),
         data: (albums) {
           if (albums.isEmpty) {
             return Center(

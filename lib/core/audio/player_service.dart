@@ -178,7 +178,9 @@ class AfPlayerService extends BaseAudioHandler
         oldIndex >= _trackQueue.length ||
         newIndex < 0 ||
         newIndex >= _trackQueue.length ||
-        oldIndex == newIndex) return;
+        oldIndex == newIndex) {
+      return;
+    }
 
     final track = _trackQueue.removeAt(oldIndex);
     _trackQueue.insert(newIndex, track);

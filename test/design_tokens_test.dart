@@ -42,11 +42,11 @@ void main() {
   group('Color tokens — non-negotiable §4.1', () {
     test('indigo scale uses exact spec hex values', () {
       // Spot-check the anchors documented in aetherfin-design.md §2.
-      expect(AfColors.indigo50.value, 0xFFF5F4FE);
-      expect(AfColors.indigo600.value, 0xFF5644C9);
-      expect(AfColors.indigo900.value, 0xFF251F58);
-      expect(AfColors.surfaceCanvas.value, 0xFF0B0B14);
-      expect(AfColors.surfaceRaised.value, 0xFF1B1B36);
+      expect(AfColors.indigo50.toARGB32(), 0xFFF5F4FE);
+      expect(AfColors.indigo600.toARGB32(), 0xFF5644C9);
+      expect(AfColors.indigo900.toARGB32(), 0xFF251F58);
+      expect(AfColors.surfaceCanvas.toARGB32(), 0xFF0B0B14);
+      expect(AfColors.surfaceRaised.toARGB32(), 0xFF1B1B36);
     });
   });
 

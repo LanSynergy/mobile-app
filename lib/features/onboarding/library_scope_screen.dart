@@ -78,7 +78,7 @@ class _LibraryScopeScreenState extends ConsumerState<LibraryScopeScreen> {
                     Expanded(
                       child: ListView.separated(
                         itemCount: _views.length,
-                        separatorBuilder: (_, __) =>
+                        separatorBuilder: (context, index) =>
                             const SizedBox(height: AfSpacing.s8),
                         itemBuilder: (context, i) {
                           final v = _views[i];

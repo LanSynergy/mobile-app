@@ -87,7 +87,7 @@ class _SegmentedPill extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         itemCount: LibrarySection.values.length,
-        separatorBuilder: (_, __) =>
+        separatorBuilder: (context, index) =>
             const SizedBox(width: AfSpacing.s8),
         itemBuilder: (context, i) {
           final s = LibrarySection.values[i];
@@ -209,7 +209,7 @@ class _SectionBody extends ConsumerWidget {
               padding: padding.add(const EdgeInsets.only(
                   bottom: AfSpacing.bottomInsetWithMiniAndNav)),
               itemCount: list.length,
-              separatorBuilder: (_, __) =>
+              separatorBuilder: (context, index) =>
                   const SizedBox(height: AfSpacing.s4),
               itemBuilder: (context, i) {
                 final t = list[i];
@@ -233,7 +233,7 @@ class _SectionBody extends ConsumerWidget {
             padding: padding.add(const EdgeInsets.only(
                 bottom: AfSpacing.bottomInsetWithMiniAndNav)),
             itemCount: list.length,
-            separatorBuilder: (_, __) =>
+            separatorBuilder: (context, index) =>
                 const SizedBox(height: AfSpacing.s8),
             itemBuilder: (context, i) {
               final p = list[i];

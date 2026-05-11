@@ -22,7 +22,7 @@ class ArtistScreen extends ConsumerWidget {
     return Scaffold(
       body: artistAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => const Center(child: Icon(Icons.error_outline)),
+        error: (e, stack) => const Center(child: Icon(Icons.error_outline)),
         data: (artist) {
           if (artist == null) return const Center(child: Text('Not found'));
           final albumsAsync = ref.watch(artistAlbumsProvider(artistId));
@@ -149,7 +149,7 @@ class ArtistScreen extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: AfSpacing.gutterGenerous),
                     itemCount: albums.length,
-                    separatorBuilder: (_, __) =>
+                    separatorBuilder: (context, index) =>
                         const SizedBox(width: AfSpacing.s12),
                     itemBuilder: (context, i) {
                       final a = albums[i];

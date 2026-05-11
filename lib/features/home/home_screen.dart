@@ -91,7 +91,7 @@ class HomeScreen extends ConsumerWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
                 itemCount: tracks.take(5).length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (context, index) =>
                     const SizedBox(height: AfSpacing.s4),
                 itemBuilder: (context, i) {
                   final t = tracks[i];
@@ -130,7 +130,7 @@ class HomeScreen extends ConsumerWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
                   itemCount: artists.length,
-                  separatorBuilder: (_, __) =>
+                  separatorBuilder: (context, index) =>
                       const SizedBox(width: AfSpacing.s12),
                   itemBuilder: (context, i) {
                     final a = artists[i];
@@ -172,7 +172,7 @@ class HomeScreen extends ConsumerWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
                   itemCount: genres.length,
-                  separatorBuilder: (_, __) =>
+                  separatorBuilder: (context, index) =>
                       const SizedBox(width: AfSpacing.s12),
                   itemBuilder: (context, i) {
                     final g = genres[i];

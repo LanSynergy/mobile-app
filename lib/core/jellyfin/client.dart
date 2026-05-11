@@ -382,6 +382,7 @@ class JellyfinClient {
       'DeviceId': deviceId,
       if (maxBitrateKbps != null)
         'MaxStreamingBitrate': '${maxBitrateKbps * 1000}',
+      // ignore: use_null_aware_elements — map is Map<String,String>, value is String?
       if (deviceProfileId != null) 'DeviceProfileId': deviceProfileId,
     };
     final base = server.baseUrl.endsWith('/')

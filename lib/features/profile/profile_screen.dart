@@ -232,7 +232,7 @@ class _PinnedRow extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: albums.length,
-        separatorBuilder: (_, __) => const SizedBox(width: AfSpacing.s12),
+        separatorBuilder: (context, index) => const SizedBox(width: AfSpacing.s12),
         itemBuilder: (context, i) {
           final a = albums[i];
           return GestureDetector(

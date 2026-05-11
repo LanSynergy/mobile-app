@@ -56,7 +56,7 @@ class SettingsScreen extends ConsumerWidget {
                   color: AfColors.textTertiary,
                 ),
               ),
-              activeColor: AfColors.indigo500,
+              activeThumbColor: AfColors.indigo500,
               tileColor: AfColors.surfaceBase,
               shape: const RoundedRectangleBorder(
                   borderRadius: AfRadii.borderMd),

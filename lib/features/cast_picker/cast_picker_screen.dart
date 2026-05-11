@@ -27,7 +27,7 @@ class CastPickerScreen extends StatelessWidget {
           padding:
               const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
           itemCount: outputs.length,
-          separatorBuilder: (_, __) =>
+          separatorBuilder: (context, index) =>
               const SizedBox(height: AfSpacing.s8),
           itemBuilder: (context, i) {
             final (name, status, icon, active) = outputs[i];
