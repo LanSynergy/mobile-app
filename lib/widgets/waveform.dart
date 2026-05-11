@@ -241,16 +241,7 @@ class _FftWaveformPainter extends CustomPainter {
   static const double _playheadWidth = 2.0;
   static const double _playheadGlowRadius = 8.0;
 
-  /// How much the live FFT dominates over the static peak envelope.
-  static const double _fftBlend = 0.65;
-
-  /// FFT magnitude is scaled by this before blending. Values < 1.0 compress
-  /// the input so bars don't sit near full height constantly — they spend
-  /// most of their time in the lower half and only spike on loud beats.
-  static const double _fftScale = 0.55;
-
-  _FftWaveformPainter({
-    required this.peaks,
+  _FftWaveformPainter({    required this.peaks,
     required this.fftBands,
     required this.progress,
     required this.playedColor,
@@ -290,12 +281,17 @@ class _FftWaveformPainter extends CustomPainter {
 
       double amp;
       if (!useFallback && bands != null && bands.isNotEmpty) {
-        final fftIdx = (i / barCount * bands.length).clamp(0, bands.length - 1).toInt();
-        // Scale down the raw FFT magnitude so bars have room to move.
-        // Without this, bands are near 1.0 constantly and bars look frozen.
-        final fftMag = (bands[fftIdx] * _fftScale).clamp(0.0, 1.0);
-        amp = (staticPeak * (1 - _fftBlend) + fftMag * _fftBlend)
-            .clamp(_minBarHeightFraction, 1.0);
+        final fftIdx = (i / barCount * bands.length)
+            .clamp(0, bands.length - 1)
+            .toInt();
+        final rawFft = bands[fftIdx].clamp(0.0, 1.0);
+        // Drive height purely from FFT so the full canvas height is used
+        // as the dynamic range. The static peak acts as a ceiling so the
+        // waveform shape is preserved — a quiet bar can't spike above its
+        // recorded peak even on a loud beat.
+        // A small floor (_minBarHeightFraction) keeps bars visible at rest.
+        amp = (rawFft * staticPeak)
+            .clamp(_minBarHeightFraction, staticPeak);
       } else {
         // Fallback: sine-wave jitter proportional to peak amplitude.
         final jitterScale = staticPeak * _maxJitter;

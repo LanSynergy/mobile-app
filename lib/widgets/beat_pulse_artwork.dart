@@ -76,15 +76,15 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
     ref.listen(fftSpectrumProvider, (prev, next) {
       next.whenData((frame) {
         final energy = _rmsEnergy(frame.bands);
-        // Scale down so the artwork spends most of its time near rest
-        // and only visibly pulses on actual loud beats.
-        final scaled = (energy * 0.5).clamp(0.0, 1.0);
-        if (scaled > 0.05) {
-          final target = ((scaled - 0.05) / 0.95).clamp(0.0, 1.0);
+        // Use energy directly — full dynamic range from 0 to _maxScale.
+        // The threshold filters out noise floor; above it the full range
+        // maps to the animation so even moderate beats are clearly visible.
+        if (energy > 0.05) {
+          final target = ((energy - 0.05) / 0.95).clamp(0.0, 1.0);
           _ctl.animateTo(target, duration: const Duration(milliseconds: 60));
         } else {
           if (_ctl.value > 0.01) {
-            _ctl.animateTo(0.0, duration: const Duration(milliseconds: 300));
+            _ctl.animateTo(0.0, duration: const Duration(milliseconds: 280));
           }
         }
       });
