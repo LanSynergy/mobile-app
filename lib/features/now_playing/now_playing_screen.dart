@@ -141,7 +141,15 @@ class NowPlayingScreen extends ConsumerWidget {
                           progress: progress,
                           isPlaying: isPlaying,
                           playedColor: spectral.energy,
+                          height: 80,
                           onScrub: (p) {
+                            final newPos = Duration(
+                              milliseconds:
+                                  (p * duration.inMilliseconds).round(),
+                            );
+                            ref.read(playerServiceProvider).seek(newPos);
+                          },
+                          onScrubEnd: (p) {
                             final newPos = Duration(
                               milliseconds:
                                   (p * duration.inMilliseconds).round(),
