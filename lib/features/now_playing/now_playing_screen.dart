@@ -79,7 +79,7 @@ class NowPlayingScreen extends ConsumerWidget {
                               boxShadow: [
                                 BoxShadow(
                                   // ignore: deprecated_member_use
-                                  color: spectral.shadow.withOpacity(0.6),
+                                  color: spectral.shadow.withValues(alpha: 0.6),
                                   blurRadius: 48,
                                   offset: const Offset(0, 24),
                                 ),
@@ -446,7 +446,7 @@ class _PlayButton extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               // ignore: deprecated_member_use
-              color: color.withOpacity(0.4),
+              color: color.withValues(alpha: 0.4),
               blurRadius: 32,
               spreadRadius: 4,
             ),

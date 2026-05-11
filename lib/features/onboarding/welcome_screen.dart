@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../design_tokens/tokens.dart';
+import '../../utils/log.dart';
 
 /// Mockup 01 — Welcome.
 ///
@@ -16,8 +17,7 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ignore: avoid_print
-    print('aetherfin:boot WelcomeScreen.build');
+    afLog('boot', 'WelcomeScreen.build');
     return Scaffold(
       body: DecoratedBox(
         decoration: const BoxDecoration(

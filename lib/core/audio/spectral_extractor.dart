@@ -23,24 +23,52 @@ import '../../utils/oklch.dart';
 /// widgets. Without this, every track change triggered a second HTTP
 /// fetch of artwork that was already on disk.
 class SpectralExtractor {
+  /// In-memory cache of previously-extracted spectral palettes, keyed by
+  /// `imageUrl`. Palette extraction decodes the artwork bitmap and runs
+  /// the k-means-ish algorithm in `palette_generator` — ~30 ms per call
+  /// on a mid-range Android. Track skip → spectral re-run → 30 ms hitch
+  /// per skip without this cache. Headers don't go into the key because
+  /// the same image bytes give the same palette regardless of which
+  /// `Authorization` header fetched them.
+  ///
+  /// Bounded to 64 entries (~64 album covers' worth of palette data is
+  /// a few KB total). Once full we evict the oldest entry — LinkedHashMap
+  /// preserves insertion order, so the head is the least-recently-added.
+  static const int _cacheLimit = 64;
+  final Map<String, Spectral> _cache = <String, Spectral>{};
+
   Future<Spectral> fromImageUrl(
     String imageUrl, {
     Map<String, String>? headers,
   }) async {
+    final cached = _cache[imageUrl];
+    if (cached != null) return cached;
     final palette = await PaletteGenerator.fromImageProvider(
       CachedNetworkImageProvider(imageUrl, headers: headers),
       maximumColorCount: 16,
     );
     final samples = palette.colors.toList(growable: false);
-    if (samples.isEmpty) return Spectral.fallback;
-    final hue = pickSpectralHue(samples);
-    if (hue == null) return Spectral.fallback;
-    final triple = buildSpectralTriple(hue.h);
-    return Spectral(
-      energy: triple.energy,
-      shadow: triple.shadow,
-      glow: triple.glow,
-    );
+    Spectral result;
+    if (samples.isEmpty) {
+      result = Spectral.fallback;
+    } else {
+      final hue = pickSpectralHue(samples);
+      if (hue == null) {
+        result = Spectral.fallback;
+      } else {
+        final triple = buildSpectralTriple(hue.h);
+        result = Spectral(
+          energy: triple.energy,
+          shadow: triple.shadow,
+          glow: triple.glow,
+        );
+      }
+    }
+    _cache[imageUrl] = result;
+    if (_cache.length > _cacheLimit) {
+      _cache.remove(_cache.keys.first);
+    }
+    return result;
   }
 
   /// Synchronous fallback used in widget tests / preview mode.

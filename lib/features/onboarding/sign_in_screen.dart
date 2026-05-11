@@ -8,6 +8,7 @@ import '../../core/jellyfin/client.dart';
 import '../../core/jellyfin/models/server.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../utils/log.dart';
 import '../../widgets/server_pill.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
@@ -68,25 +69,18 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       // refreshListenable hasn't fired yet.
       context.go('/home');
     } catch (e, stack) {
-      // ignore: avoid_print
-      print('aetherfin:error sign-in failed: $e');
+      afLog('error', 'sign-in failed', error: e, stackTrace: stack);
       if (e is DioException) {
-        // ignore: avoid_print
-        print('aetherfin:error url: ${e.requestOptions.uri}');
-        // ignore: avoid_print
-        print('aetherfin:error status: ${e.response?.statusCode}');
+        afLog('error', 'url: ${e.requestOptions.uri}');
+        afLog('error', 'status: ${e.response?.statusCode}');
         // Body + response headers can include cookies, server-side error
         // messages, and full HTML 500 pages — only emit them in debug
         // builds so a release-build logcat capture stays sanitized.
         if (kDebugMode) {
-          // ignore: avoid_print
-          print('aetherfin:error body: ${e.response?.data}');
-          // ignore: avoid_print
-          print('aetherfin:error headers: ${e.response?.headers.map}');
+          afLog('error', 'body: ${e.response?.data}');
+          afLog('error', 'headers: ${e.response?.headers.map}');
         }
       }
-      // ignore: avoid_print
-      print('aetherfin:error stack: $stack');
       setState(() {
         _error = _humanizeError(e);
       });
@@ -107,12 +101,20 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       }
       if (status != null) {
         // Trim body to first 240 chars so a giant HTML 500 page doesn't
-        // swamp the input field's helper text. Full body is in logcat.
-        final raw = e.response?.data?.toString() ?? '';
-        final body =
-            raw.length > 240 ? '${raw.substring(0, 240)}…' : raw;
-        return 'HTTP $status from $url\n'
-            '${body.isNotEmpty ? body : "(no body)"}';
+        // swamp the input field's helper text. We ONLY show the body in
+        // debug builds because a misconfigured Jellyfin's 5xx page can
+        // contain stack traces, DB connection strings, and internal
+        // file paths that we don't want pasted into the user-facing
+        // password field error in release. Full body is always in logcat
+        // (gated below) for debugging.
+        if (kDebugMode) {
+          final raw = e.response?.data?.toString() ?? '';
+          final body =
+              raw.length > 240 ? '${raw.substring(0, 240)}…' : raw;
+          return 'HTTP $status from $url\n'
+              '${body.isNotEmpty ? body : "(no body)"}';
+        }
+        return 'HTTP $status from $url. Check Jellyfin server logs.';
       }
       switch (e.type) {
         case DioExceptionType.connectionTimeout:
@@ -129,6 +131,14 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     }
     return e.toString();
   }
+
+  /// Aetherfin sends every byte (including the access token) over plain HTTP
+  /// when the user picked an `http://` server. We surface a warning banner so
+  /// the user understands the risk before pasting credentials — the Jellyfin
+  /// design assumption is "trusted LAN" but users routinely try this on cafe
+  /// Wi-Fi and over WAN with no TLS terminator in front.
+  bool get _isCleartext =>
+      widget.server.baseUrl.toLowerCase().startsWith('http://');
 
   @override
   Widget build(BuildContext context) {
@@ -168,6 +178,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: AfSpacing.s16),
+              if (_isCleartext) _CleartextWarning(baseUrl: widget.server.baseUrl),
+              if (_isCleartext) const SizedBox(height: AfSpacing.s16),
               Text(
                 _useToken
                     ? 'Paste a Jellyfin API token. Find these under '
@@ -230,6 +242,47 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Inline banner shown when the chosen server URL uses `http://`. Cleartext
+/// is on by default in the network security config (some self-hosters can't
+/// terminate TLS), but the user should know what they're agreeing to before
+/// the access token rides over the wire in plain.
+class _CleartextWarning extends StatelessWidget {
+  final String baseUrl;
+  const _CleartextWarning({required this.baseUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AfSpacing.s12,
+        vertical: AfSpacing.s8,
+      ),
+      decoration: BoxDecoration(
+        color: AfColors.semanticError.withValues(alpha: 0.12),
+        borderRadius: AfRadii.borderMd,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.lock_open_rounded,
+              size: 18, color: AfColors.semanticError),
+          const SizedBox(width: AfSpacing.s8),
+          Expanded(
+            child: Text(
+              'This server uses plain HTTP. Your username, password, '
+              'and access token will be sent unencrypted to $baseUrl. '
+              'Only sign in on a trusted network.',
+              style: AfTypography.caption.copyWith(
+                color: AfColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

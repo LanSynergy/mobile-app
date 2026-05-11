@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../utils/log.dart';
 import '../jellyfin/client.dart';
 import '../jellyfin/models/items.dart';
 import 'player_service.dart';
@@ -57,14 +58,18 @@ class JellyfinPlaybackReporter {
       if (client != null) {
         try {
           await client.reportPlaybackStop(previousId, position);
-          // ignore: avoid_print
-          print('aetherfin:data playbackStop source=live track=$previousId '
-              'positionMs=${position.inMilliseconds}');
+          afLog(
+            'data',
+            'playbackStop source=live track=$previousId '
+            'positionMs=${position.inMilliseconds}',
+          );
         } catch (e, stack) {
-          // ignore: avoid_print
-          print('aetherfin:error reportPlaybackStop failed: $e');
-          // ignore: avoid_print
-          print('aetherfin:error stack: $stack');
+          afLog(
+            'error',
+            'reportPlaybackStop failed',
+            error: e,
+            stackTrace: stack,
+          );
         }
       }
     }
@@ -78,23 +83,29 @@ class JellyfinPlaybackReporter {
 
     _lastReportedTrackId = track.id;
     if (client == null) {
-      // ignore: avoid_print
-      print('aetherfin:data playbackStart source=demo track=${track.id} '
-          '(no JellyfinClient; signed out)');
+      afLog(
+        'data',
+        'playbackStart source=demo track=${track.id} '
+        '(no JellyfinClient; signed out)',
+      );
       _stopProgressTimer();
       return;
     }
     try {
       await client.reportPlaybackStart(track.id);
-      // ignore: avoid_print
-      print('aetherfin:data playbackStart source=live track=${track.id} '
-          'title="${track.title}"');
+      afLog(
+        'data',
+        'playbackStart source=live track=${track.id} '
+        'title="${track.title}"',
+      );
       _startProgressTimer();
     } catch (e, stack) {
-      // ignore: avoid_print
-      print('aetherfin:error reportPlaybackStart failed: $e');
-      // ignore: avoid_print
-      print('aetherfin:error stack: $stack');
+      afLog(
+        'error',
+        'reportPlaybackStart failed',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -110,14 +121,18 @@ class JellyfinPlaybackReporter {
         position,
         isPaused: !isPlaying,
       );
-      // ignore: avoid_print
-      print('aetherfin:data playbackProgress source=live track=$trackId '
-          'positionMs=${position.inMilliseconds} paused=${!isPlaying}');
+      afLog(
+        'data',
+        'playbackProgress source=live track=$trackId '
+        'positionMs=${position.inMilliseconds} paused=${!isPlaying}',
+      );
     } catch (e, stack) {
-      // ignore: avoid_print
-      print('aetherfin:error reportProgress (transition) failed: $e');
-      // ignore: avoid_print
-      print('aetherfin:error stack: $stack');
+      afLog(
+        'error',
+        'reportProgress (transition) failed',
+        error: e,
+        stackTrace: stack,
+      );
     }
     if (isPlaying) {
       _startProgressTimer();
@@ -136,14 +151,18 @@ class JellyfinPlaybackReporter {
       final position = _player.position;
       try {
         await client.reportProgress(trackId, position);
-        // ignore: avoid_print
-        print('aetherfin:data playbackProgress source=live track=$trackId '
-            'positionMs=${position.inMilliseconds} (tick)');
+        afLog(
+          'data',
+          'playbackProgress source=live track=$trackId '
+          'positionMs=${position.inMilliseconds} (tick)',
+        );
       } catch (e, stack) {
-        // ignore: avoid_print
-        print('aetherfin:error reportProgress (tick) failed: $e');
-        // ignore: avoid_print
-        print('aetherfin:error stack: $stack');
+        afLog(
+          'error',
+          'reportProgress (tick) failed',
+          error: e,
+          stackTrace: stack,
+        );
       }
     });
   }
@@ -168,14 +187,18 @@ class JellyfinPlaybackReporter {
     final position = _player.position;
     try {
       await client.reportPlaybackStop(trackId, position);
-      // ignore: avoid_print
-      print('aetherfin:data playbackStop source=live track=$trackId '
-          'positionMs=${position.inMilliseconds} (reporter disposed)');
+      afLog(
+        'data',
+        'playbackStop source=live track=$trackId '
+        'positionMs=${position.inMilliseconds} (reporter disposed)',
+      );
     } catch (e, stack) {
-      // ignore: avoid_print
-      print('aetherfin:error reportPlaybackStop (dispose) failed: $e');
-      // ignore: avoid_print
-      print('aetherfin:error stack: $stack');
+      afLog(
+        'error',
+        'reportPlaybackStop (dispose) failed',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 

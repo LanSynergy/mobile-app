@@ -14,6 +14,7 @@ import '../core/jellyfin/models/items.dart';
 import '../core/jellyfin/models/server.dart';
 import '../core/lyrics/lrc_parser.dart';
 import '../design_tokens/colors.dart';
+import '../utils/log.dart';
 
 /// Compact one-liner for the `aetherfin:data` trace category.
 ///
@@ -28,8 +29,7 @@ void _logData(
   String? extra,
 }) {
   final detail = extra == null || extra.isEmpty ? '' : ' $extra';
-  // ignore: avoid_print
-  print('aetherfin:data $feature source=$source$detail');
+  afLog('data', '$feature source=$source$detail');
 }
 
 /// ─────────────────────────────────────────────────────────────────────────
@@ -168,7 +168,6 @@ final playerServiceProvider = Provider<AfPlayerService>((ref) {
 /// snapshotting `DemoLibrary.tracks` into local state.
 final playerQueueProvider = StreamProvider.autoDispose<List<AfTrack>>((ref) {
   final svc = ref.watch(playerServiceProvider);
-  // ignore: avoid_print
   // Emit the current snapshot first so a freshly mounted Queue screen
   // doesn't render an empty list while waiting for the next stream tick.
   return Stream<List<AfTrack>>.multi((controller) {
@@ -260,9 +259,22 @@ final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
       _logData('favoriteToggle',
           source: 'live',
           extra: 'id=${track.id} isFavorite=$next');
-    } catch (e) {
-      // ignore: avoid_print
-      print('aetherfin:error favoriteToggle failed: $e');
+      // Force every cached favorites surface to re-fetch from the server
+      // so they reflect the new state on the next frame. Without this,
+      // the heart on the album/now-playing screen filled but the
+      // "Favorite albums" row on Home still showed the stale list until
+      // the user manually pulled to refresh. The .autoDispose providers
+      // below all live for the duration of the screen they're watched
+      // on; invalidation is a no-op when nothing is listening.
+      ref.invalidate(favoriteAlbumsProvider);
+      ref.invalidate(recentlyPlayedTracksProvider);
+    } catch (e, stack) {
+      afLog(
+        'error',
+        'favoriteToggle failed',
+        error: e,
+        stackTrace: stack,
+      );
       // Revert optimistic flip on server error.
       if (current?.id == track.id) {
         ref.read(currentTrackProvider.notifier).state = track;

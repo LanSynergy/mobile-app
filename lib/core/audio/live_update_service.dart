@@ -4,6 +4,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/services.dart';
 
+import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
 import 'player_service.dart';
 
@@ -159,7 +160,14 @@ class LiveUpdateService {
     } on PlatformException catch (e) {
       _log('$_live ? update : start failed: $e');
     } on MissingPluginException {
+      // The native plugin is missing entirely (e.g. running on a custom
+      // build that compiled out the live_update bridge). Mark unsupported
+      // AND tear down the live-status flag so the next track change
+      // doesn't try `update` (which always returns MissingPluginException
+      // and would leave `_live=true` forever, breaking the start/update
+      // gating logic in the catch block above).
       _supported = false;
+      _live = false;
     }
   }
 
@@ -178,7 +186,6 @@ class LiveUpdateService {
 
   void _log(String msg) {
     if (!kDebugMode) return;
-    // ignore: avoid_print
-    print('aetherfin:live_update $msg');
+    afLog('live_update', msg);
   }
 }

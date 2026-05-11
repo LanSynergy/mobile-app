@@ -14,6 +14,7 @@ import 'core/jellyfin/auth_storage.dart';
 import 'core/jellyfin/models/server.dart';
 import 'design_tokens/tokens.dart';
 import 'state/providers.dart';
+import 'utils/log.dart';
 
 /// Plain-prefs key for the fallback device ID used when the encrypted
 /// secure-storage keystore can't be reached. Persisting the fallback
@@ -25,10 +26,7 @@ const _fallbackDeviceIdKey = 'aetherfin.deviceId.fallback.v1';
 
 /// Boot breadcrumb — every checkpoint prefixes with this so a single
 /// `adb logcat | grep aetherfin:boot` shows the full startup trace.
-void _boot(String message) {
-  // ignore: avoid_print
-  print('aetherfin:boot $message');
-}
+void _boot(String message) => afLog('boot', message);
 
 
 
@@ -43,18 +41,20 @@ Future<void> main() async {
     // thrown exception can leave the user staring at an empty surface.
     FlutterError.onError = (details) {
       FlutterError.presentError(details);
-      // ignore: avoid_print
-      print('aetherfin:error FlutterError: ${details.exceptionAsString()}');
-      if (details.stack != null) {
-        // ignore: avoid_print
-        print('aetherfin:error stack: ${details.stack}');
-      }
+      afLog(
+        'error',
+        'FlutterError: ${details.exceptionAsString()}',
+        error: details.exception,
+        stackTrace: details.stack,
+      );
     };
     PlatformDispatcher.instance.onError = (error, stack) {
-      // ignore: avoid_print
-      print('aetherfin:error PlatformDispatcher: $error');
-      // ignore: avoid_print
-      print('aetherfin:error stack: $stack');
+      afLog(
+        'error',
+        'PlatformDispatcher uncaught: $error',
+        error: error,
+        stackTrace: stack,
+      );
       return true;
     };
     ErrorWidget.builder = (details) => _RootErrorWidget(details: details);
@@ -80,10 +80,12 @@ Future<void> main() async {
       _boot('device id loaded (len=${deviceId.length}); '
           'auth ${initialAuth != null ? "restored for ${initialAuth.userName}" : "absent"}');
     } catch (e, stack) {
-      // ignore: avoid_print
-      print('aetherfin:error device id / auth load failed: $e');
-      // ignore: avoid_print
-      print('aetherfin:error stack: $stack');
+      afLog(
+        'error',
+        'device id / auth load failed',
+        error: e,
+        stackTrace: stack,
+      );
       // Last-ditch fallback so onboarding can still proceed. Persist
       // the fallback ID to plain shared_preferences so it survives the
       // next launch even when secure_storage stays broken — otherwise
@@ -132,10 +134,7 @@ Future<void> main() async {
       unawaited(_warmUpAudio(handler));
     });
   }, (error, stack) {
-    // ignore: avoid_print
-    print('aetherfin:error zoned uncaught: $error');
-    // ignore: avoid_print
-    print('aetherfin:error stack: $stack');
+    afLog('error', 'zoned uncaught', error: error, stackTrace: stack);
   });
 }
 
@@ -160,10 +159,12 @@ Future<String> _loadOrCreateFallbackDeviceId() async {
     _boot('fallback device id generated (len=${fresh.length})');
     return fresh;
   } catch (e, stack) {
-    // ignore: avoid_print
-    print('aetherfin:error fallback device id load failed: $e');
-    // ignore: avoid_print
-    print('aetherfin:error stack: $stack');
+    afLog(
+      'error',
+      'fallback device id load failed',
+      error: e,
+      stackTrace: stack,
+    );
     // shared_preferences itself is unavailable — pick a per-launch ID
     // so the rest of the app still functions, even if Jellyfin sees a
     // new device every time. This branch is essentially unreachable on
@@ -187,10 +188,12 @@ Future<void> _warmUpAudio(AfPlayerService handler) async {
     );
     _boot('AudioService.init OK');
   } catch (e, stack) {
-    // ignore: avoid_print
-    print('aetherfin:error AudioService.init failed: $e');
-    // ignore: avoid_print
-    print('aetherfin:error stack: $stack');
+    afLog(
+      'error',
+      'AudioService.init failed',
+      error: e,
+      stackTrace: stack,
+    );
     // Don't rethrow — the UI must keep working even without OS audio
     // integration. The mini-player + Now Playing will still drive playback
     // via the in-app handler that was already wired through ProviderScope.

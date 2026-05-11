@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/audio/play_actions.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../utils/log.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/track_row.dart';
@@ -261,11 +262,15 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
     });
     try {
       await client.setFavorite(widget.albumId, _isFavorite);
-      // ignore: avoid_print
-      print(
-        'aetherfin:data albumFavorite source=live '
+      afLog(
+        'data',
+        'albumFavorite source=live '
         'id=${widget.albumId} isFavorite=$_isFavorite',
       );
+      // Force the Home screen's "Favorite albums" row to re-fetch so it
+      // reflects the toggle on the next frame instead of waiting for the
+      // user to pull-to-refresh.
+      ref.invalidate(favoriteAlbumsProvider);
     } catch (e) {
       setState(() => _isFavorite = !_isFavorite);
       if (mounted) {

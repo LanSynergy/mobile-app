@@ -48,15 +48,22 @@ void main() {
       expect(formatCompactCount(999), '999');
     });
 
-    test('1000–9999: one decimal K', () {
+    test('1000–9999: one decimal K, truncated (never crosses tier)', () {
       expect(formatCompactCount(1000), '1.0K');
       expect(formatCompactCount(2247), '2.2K');
-      expect(formatCompactCount(9999), '10.0K');
+      // 9999 must NOT render as "10.0K" — the old toStringAsFixed-based
+      // implementation rounded UP across the tier boundary which made
+      // the column re-flow two characters wider one step before the
+      // tier actually changed.
+      expect(formatCompactCount(9999), '9.9K');
     });
 
-    test('10K–999K: whole K', () {
+    test('10K–999K: whole K, floored', () {
       expect(formatCompactCount(10_000), '10K');
       expect(formatCompactCount(12_400), '12K');
+      // Truncation also kills the legacy "999K → 999K, 999_500 → 1000K"
+      // round-up bug at the 1M boundary. 999_499 still fits in the K
+      // tier; the very next value (1_000_000) crosses into M.
       expect(formatCompactCount(999_499), '999K');
     });
 

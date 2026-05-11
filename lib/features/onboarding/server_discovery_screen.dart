@@ -9,6 +9,7 @@ import '../../core/jellyfin/discovery.dart';
 import '../../core/jellyfin/models/server.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../utils/log.dart';
 import '../../widgets/press_scale.dart';
 
 /// Mockup 02 — Server discovery.
@@ -85,10 +86,12 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
       final resolved = await client.publicInfo();
       _continueWith(resolved);
     } catch (e, stack) {
-      // ignore: avoid_print
-      print('aetherfin:error server discovery failed: $e');
-      // ignore: avoid_print
-      print('aetherfin:error stack: $stack');
+      afLog(
+        'error',
+        'server discovery failed',
+        error: e,
+        stackTrace: stack,
+      );
       setState(() =>
           _manualError = 'Couldn’t reach ${server.baseUrl}. $e');
     }

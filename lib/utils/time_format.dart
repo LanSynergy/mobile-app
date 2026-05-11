@@ -29,10 +29,25 @@ String formatHourCount(Duration d) {
 }
 
 /// "2,247" → "2.2K", "12,400" → "12K", small numbers untouched.
+///
+/// Each decimal-place tier truncates rather than rounds at the upper edge
+/// so the readout never crosses its tier's ceiling. `toStringAsFixed(1)`
+/// alone would render 9999 as `"10.0K"`, which is visually identical to
+/// the *next* tier's `"10K"` but two characters wider — i.e. the column
+/// re-flows on the boundary. Truncation gives the clean sequence
+/// `9.8K, 9.9K, 10K`.
 String formatCompactCount(int n) {
   if (n < 1000) return n.toString();
-  if (n < 10_000) return '${(n / 1000).toStringAsFixed(1)}K';
-  if (n < 1_000_000) return '${(n / 1000).round()}K';
-  if (n < 10_000_000) return '${(n / 1_000_000).toStringAsFixed(1)}M';
-  return '${(n / 1_000_000).round()}M';
+  if (n < 10_000) {
+    final tenths = (n ~/ 100) % 10;
+    final whole = n ~/ 1000;
+    return '$whole.${tenths}K';
+  }
+  if (n < 1_000_000) return '${n ~/ 1000}K';
+  if (n < 10_000_000) {
+    final tenths = (n ~/ 100_000) % 10;
+    final whole = n ~/ 1_000_000;
+    return '$whole.${tenths}M';
+  }
+  return '${n ~/ 1_000_000}M';
 }

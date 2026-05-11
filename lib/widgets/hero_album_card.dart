@@ -78,7 +78,7 @@ class HeroAlbumCard extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       // ignore: deprecated_member_use
-                      color: AfColors.surfaceHigh.withOpacity(0.24),
+                      color: AfColors.surfaceHigh.withValues(alpha: 0.24),
                       borderRadius: AfRadii.borderPill,
                     ),
                     child: Text(
@@ -104,7 +104,7 @@ class HeroAlbumCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: AfTypography.bodyMedium.copyWith(
                       // ignore: deprecated_member_use
-                      color: AfColors.textOnPrimary.withOpacity(0.8),
+                      color: AfColors.textOnPrimary.withValues(alpha: 0.8),
                     ),
                   ),
                   const SizedBox(height: AfSpacing.s12),

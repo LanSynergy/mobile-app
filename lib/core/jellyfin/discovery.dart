@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert' show base64UrlEncode;
 import 'dart:io';
+import 'dart:math' show Random;
 
 import 'package:async/async.dart' show StreamGroup;
 import 'package:multicast_dns/multicast_dns.dart';
@@ -101,7 +103,13 @@ class JellyfinDiscovery {
     try {
       final probe = JellyfinClient(
         server: JellyfinServer(baseUrl: https, name: addr, isLocal: true),
-        deviceId: 'aetherfin-discovery-probe',
+        // CLAUDE.md §5 forbids reusing static DeviceId values — Jellyfin
+        // keys session/device records on this string and a probe sharing
+        // an ID with another install (or with our own persisted ID) can
+        // poison those records. The probe never authenticates, so we use
+        // a throwaway random ID per call rather than the real
+        // per-install ID.
+        deviceId: _ephemeralDeviceId(),
       );
       try {
         await probe.publicInfo().timeout(const Duration(seconds: 2));
@@ -113,6 +121,16 @@ class JellyfinDiscovery {
       return 'http://$addr:$port';
     }
   }
+
+  /// 16 random bytes, base64url-encoded, prefixed so a server admin
+  /// reading the audit log can immediately tell this came from a
+  /// discovery probe (not a real authenticated session).
+  static String _ephemeralDeviceId() {
+    final bytes = List<int>.generate(16, (_) => _rng.nextInt(256));
+    return 'aetherfin-probe-${base64UrlEncode(bytes).replaceAll('=', '')}';
+  }
+
+  static final Random _rng = Random.secure();
 }
 
 

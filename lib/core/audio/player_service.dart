@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 
+import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
 
 /// Wraps `just_audio` + `audio_service` so:
@@ -31,17 +32,21 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
     _player.playbackEventStream.listen(
       _broadcastPlaybackEvent,
       onError: (Object e, StackTrace stack) {
-        // ignore: avoid_print
-        print('aetherfin:audio playbackEventStream error: $e');
-        // ignore: avoid_print
-        print('aetherfin:audio stack: $stack');
+        afLog(
+          'audio',
+          'playbackEventStream error',
+          error: e,
+          stackTrace: stack,
+        );
       },
     );
     _player.processingStateStream.listen((state) {
-      // ignore: avoid_print
-      print('aetherfin:audio processingState=${state.name} '
-          'playing=${_player.playing} position=${_player.position.inMilliseconds}ms '
-          'duration=${_player.duration?.inMilliseconds ?? "?"}ms');
+      afLog(
+        'audio',
+        'processingState=${state.name} '
+        'playing=${_player.playing} position=${_player.position.inMilliseconds}ms '
+        'duration=${_player.duration?.inMilliseconds ?? "?"}ms',
+      );
     });
     _player.currentIndexStream.listen((idx) {
       if (idx == null) return;
@@ -55,9 +60,9 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
       final track = _trackQueue[idx];
       mediaItem.add(_mediaItemFor(track));
       _trackController.add(track);
-      // ignore: avoid_print
-      print(
-        'aetherfin:data currentTrack source=live id=${track.id} '
+      afLog(
+        'data',
+        'currentTrack source=live id=${track.id} '
         'title="${track.title}" index=$idx',
       );
       onTrackChanged?.call(track);
@@ -113,6 +118,10 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
         : (startIndex >= tracks.length ? tracks.length - 1 : startIndex);
     final previousIndex = _currentIndex;
     final previousQueue = List<AfTrack>.from(_trackQueue);
+    final previousTrack =
+        (previousIndex >= 0 && previousIndex < previousQueue.length)
+            ? previousQueue[previousIndex]
+            : null;
     _trackQueue
       ..clear()
       ..addAll(tracks);
@@ -135,9 +144,9 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
     _currentIndex = safeIndex;
     mediaItem.add(_mediaItemFor(startTrack));
     _trackController.add(startTrack);
-    // ignore: avoid_print
-    print(
-      'aetherfin:data playQueue source=live size=${tracks.length} '
+    afLog(
+      'data',
+      'playQueue source=live size=${tracks.length} '
       'startIndex=$safeIndex first="${startTrack.title}"',
     );
     onTrackChanged?.call(startTrack);
@@ -146,28 +155,37 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
         ConcatenatingAudioSource(children: sources),
         initialIndex: safeIndex,
       );
+      await _player.play();
     } on Object catch (e, stack) {
-      // ignore: avoid_print
-      print('aetherfin:audio setAudioSource failed: $e');
-      // ignore: avoid_print
-      print('aetherfin:audio stack: $stack');
-      // Revert the optimistic queue + index update so the UI doesn't
-      // keep claiming a track is loaded that we couldn't actually wire up.
+      afLog(
+        'audio',
+        'playQueue failed',
+        error: e,
+        stackTrace: stack,
+      );
+      // Revert the FULL optimistic update so the UI doesn't keep claiming
+      // a track is loaded that we couldn't actually wire up. The original
+      // rollback only un-set `_trackQueue` and `_currentIndex` — the
+      // `mediaItem`, `_trackController`, and `onTrackChanged` broadcasts
+      // still pointed at the failed start track, so MiniPlayer + Now
+      // Playing rendered metadata for audio that would never play.
       _trackQueue
         ..clear()
         ..addAll(previousQueue);
       _currentIndex = previousIndex;
       queue.add(previousQueue.map(_mediaItemFor).toList());
       _queueController.add(List.unmodifiable(_trackQueue));
-      rethrow;
-    }
-    try {
-      await _player.play();
-    } on Object catch (e, stack) {
-      // ignore: avoid_print
-      print('aetherfin:audio play() failed: $e');
-      // ignore: avoid_print
-      print('aetherfin:audio stack: $stack');
+      // audio_service's `mediaItem` is BehaviorSubject<MediaItem?>; emit
+      // null when there was no prior track so the lock-screen / OS card
+      // clears too. Previously the failed `mediaItem.add(_mediaItemFor(
+      // startTrack))` stayed wedged on the OS layer.
+      mediaItem.add(
+        previousTrack != null ? _mediaItemFor(previousTrack) : null,
+      );
+      _trackController.add(previousTrack);
+      if (previousTrack != null) {
+        onTrackChanged?.call(previousTrack);
+      }
       rethrow;
     }
   }
@@ -210,8 +228,7 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
       await _player.shuffle();
     }
     await _player.setShuffleModeEnabled(enabled);
-    // ignore: avoid_print
-    print('aetherfin:data shuffleMode source=live enabled=$enabled');
+    afLog('data', 'shuffleMode source=live enabled=$enabled');
   }
 
   /// Set loop mode to `off`, `one`, or `all`.
@@ -220,15 +237,13 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
   /// `BaseAudioHandler.setRepeatMode(AudioServiceRepeatMode)`.
   Future<void> setAfLoopMode(LoopMode mode) async {
     await _player.setLoopMode(mode);
-    // ignore: avoid_print
-    print('aetherfin:data loopMode source=live mode=${mode.name}');
+    afLog('data', 'loopMode source=live mode=${mode.name}');
   }
 
   /// Set playback speed multiplier (0.5–2.0 is the user-facing range).
   Future<void> setAfSpeed(double speed) async {
     await _player.setSpeed(speed);
-    // ignore: avoid_print
-    print('aetherfin:data playbackSpeed source=live speed=$speed');
+    afLog('data', 'playbackSpeed source=live speed=$speed');
   }
 
   Future<void> dispose() async {
@@ -266,13 +281,20 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
         MediaAction.seekBackward,
       },
       androidCompactActionIndices: const [0, 1, 2],
+      // The lookup defaults to AudioProcessingState.idle when just_audio
+      // adds a new ProcessingState enum value (e.g. a future "stalled")
+      // we haven't taught the map about. The old `[..]!` null-bang would
+      // crash the playback handler the first time the new value showed
+      // up — idle is the only sound default since it stops the lock-screen
+      // controls from claiming progress that isn't happening.
       processingState: const {
-        ProcessingState.idle: AudioProcessingState.idle,
-        ProcessingState.loading: AudioProcessingState.loading,
-        ProcessingState.buffering: AudioProcessingState.buffering,
-        ProcessingState.ready: AudioProcessingState.ready,
-        ProcessingState.completed: AudioProcessingState.completed,
-      }[_player.processingState]!,
+            ProcessingState.idle: AudioProcessingState.idle,
+            ProcessingState.loading: AudioProcessingState.loading,
+            ProcessingState.buffering: AudioProcessingState.buffering,
+            ProcessingState.ready: AudioProcessingState.ready,
+            ProcessingState.completed: AudioProcessingState.completed,
+          }[_player.processingState] ??
+          AudioProcessingState.idle,
       playing: playing,
       updatePosition: _player.position,
       bufferedPosition: _player.bufferedPosition,

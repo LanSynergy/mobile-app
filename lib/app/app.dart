@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../utils/log.dart';
 import 'router.dart';
 import 'theme.dart';
 
@@ -10,8 +11,7 @@ class AetherfinApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // ignore: avoid_print
-    print('aetherfin:boot AetherfinApp.build');
+    afLog('boot', 'AetherfinApp.build');
     // Edge-to-edge canvas: the app draws under the status/nav bars.
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
