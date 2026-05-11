@@ -14,6 +14,12 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!-- Android 16+ "Live Updates" (Promoted Ongoing Notifications). Required
+         for the playback live-update chip / lockscreen tile published by
+         `dev.aetherfin.aetherfin.live_update.LiveUpdatePlugin`. Older
+         devices ignore this permission and the plugin no-ops there. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS"/>
+
     <application
         android:label="Aetherfin"
         android:name="${applicationName}"

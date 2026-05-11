@@ -1,7 +1,10 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart' show LoopMode;
 
 import '../core/audio/jellyfin_playback_reporter.dart';
+import '../core/audio/live_update_service.dart';
 import '../core/audio/player_service.dart';
 import '../core/audio/spectral_extractor.dart';
 import '../core/demo/demo_library.dart';
@@ -142,7 +145,13 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     svc,
     () => ref.read(jellyfinClientProvider),
   );
+  // Live-update chip / lockscreen tile (Android 16+ only). No-op on
+  // older Android, iOS, and tests — attach() probes support before
+  // subscribing to any streams.
+  final liveUpdate = LiveUpdateService(svc);
+  unawaited(liveUpdate.attach());
   ref.onDispose(() async {
+    await liveUpdate.dispose();
     await reporter.dispose();
     await svc.dispose();
   });

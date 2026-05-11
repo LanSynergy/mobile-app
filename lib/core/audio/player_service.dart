@@ -85,6 +85,10 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
       (_currentIndex >= 0 && _currentIndex < _trackQueue.length)
           ? _trackQueue[_currentIndex]
           : null;
+  /// Synchronous snapshot of the play/pause state. Backs the live-
+  /// update notification's "playing" colour cue — the chip needs the
+  /// current value at post-time, not just a stream subscription.
+  bool get isPlaying => _player.playing;
   bool get isShuffleEnabled => _player.shuffleModeEnabled;
   LoopMode get loopMode => _player.loopMode;
   double get speed => _player.speed;
