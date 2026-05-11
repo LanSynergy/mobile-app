@@ -9,7 +9,7 @@ import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/time_format.dart';
-import '../../widgets/artwork.dart';
+import '../../widgets/beat_pulse_artwork.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/quality_chip.dart';
 import '../../widgets/waveform.dart';
@@ -85,10 +85,13 @@ class NowPlayingScreen extends ConsumerWidget {
                                 ),
                               ],
                             ),
-                            child: Artwork(
-                              url: track.imageUrl,
+                            child: BeatPulseArtwork(
+                              imageUrl: track.imageUrl,
                               size: 320,
                               radius: AfRadii.borderLg,
+                              peaks: peaks,
+                              progress: progress,
+                              isPlaying: isPlaying,
                             ),
                           ),
                         ),

@@ -246,6 +246,56 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
     afLog('data', 'playbackSpeed source=live speed=$speed');
   }
 
+  /// Move a track within the queue from [oldIndex] to [newIndex].
+  ///
+  /// Updates both the in-memory [_trackQueue] list and the underlying
+  /// [ConcatenatingAudioSource] so the player's actual playback order
+  /// matches what the Queue screen shows. Previously only the UI mirror
+  /// was updated — the player kept the original order and skip-next
+  /// would play the wrong track after a drag.
+  ///
+  /// [oldIndex] and [newIndex] are the indices BEFORE the standard
+  /// `ReorderableListView` adjustment (i.e. the raw values from
+  /// `onReorder`). The caller must apply the `if (newIndex > oldIndex)
+  /// newIndex -= 1` adjustment before calling this method.
+  Future<void> reorderQueue(int oldIndex, int newIndex) async {
+    if (oldIndex < 0 ||
+        oldIndex >= _trackQueue.length ||
+        newIndex < 0 ||
+        newIndex >= _trackQueue.length ||
+        oldIndex == newIndex) {
+      return;
+    }
+    // Update the in-memory track list.
+    final track = _trackQueue.removeAt(oldIndex);
+    _trackQueue.insert(newIndex, track);
+    // Update the audio source so the player's skip-next/prev order
+    // matches. ConcatenatingAudioSource.move() is the just_audio API
+    // for this — it moves the source at [currentIndex] to [newIndex]
+    // without interrupting playback.
+    final source = _player.audioSource;
+    if (source is ConcatenatingAudioSource) {
+      await source.move(oldIndex, newIndex);
+    }
+    // Keep _currentIndex in sync — if the currently-playing track was
+    // moved, or if the move shifted it, update the pointer.
+    if (_currentIndex == oldIndex) {
+      _currentIndex = newIndex;
+    } else if (oldIndex < _currentIndex && newIndex >= _currentIndex) {
+      _currentIndex -= 1;
+    } else if (oldIndex > _currentIndex && newIndex <= _currentIndex) {
+      _currentIndex += 1;
+    }
+    // Broadcast the new queue so the Queue screen re-renders.
+    queue.add(_trackQueue.map(_mediaItemFor).toList());
+    _queueController.add(List.unmodifiable(_trackQueue));
+    afLog(
+      'audio',
+      'reorderQueue oldIndex=$oldIndex newIndex=$newIndex '
+      'currentIndex=$_currentIndex queueSize=${_trackQueue.length}',
+    );
+  }
+
   Future<void> dispose() async {
     await _player.dispose();
     await _trackController.close();

@@ -102,11 +102,20 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                 itemCount: _items.length,
                 buildDefaultDragHandles: false,
                 onReorder: (oldIndex, newIndex) {
+                  // Apply the standard ReorderableListView adjustment
+                  // before touching either the local mirror or the player.
+                  if (newIndex > oldIndex) newIndex -= 1;
                   setState(() {
-                    if (newIndex > oldIndex) newIndex -= 1;
                     final item = _items.removeAt(oldIndex);
                     _items.insert(newIndex, item);
                   });
+                  // Sync the player's ConcatenatingAudioSource so
+                  // skip-next/prev honour the new order. The adjusted
+                  // indices are passed directly — reorderQueue expects
+                  // the post-adjustment values.
+                  ref
+                      .read(playerServiceProvider)
+                      .reorderQueue(oldIndex, newIndex);
                 },
                 itemBuilder: (context, i) {
                   final t = _items[i];
