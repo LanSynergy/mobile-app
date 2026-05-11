@@ -11,10 +11,11 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Audio
-  just_audio: ^0.10.0
+  # Audio — mpv_audio_kit replaces just_audio + audio_session.
+  # audio_service is kept for lock-screen / notification controls;
+  # MpvAudioHandler bridges the two.
+  mpv_audio_kit: ^0.1.3
   audio_service: ^0.18.18
-  audio_session: ^0.2.2
 
   # State management
   flutter_riverpod: ^2.6.1

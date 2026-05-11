@@ -10,41 +10,47 @@ Jellyfin is the file source.
 [![Flutter](https://img.shields.io/badge/Flutter-3.41.9-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.11.5-0175C2?logo=dart)](https://dart.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Android](https://img.shields.io/badge/Android-5.0%2B-3DDC84?logo=android)](https://developer.android.com)
+[![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android)](https://developer.android.com)
 
 ---
 
 ## What it is
 
 Aetherfin streams music from a Jellyfin server you own and decodes it
-fully on-device. No Aetherfin-operated servers exist. No telemetry.
-Jellyfin is treated as a passive file source plus per-user state store
-(favorites, play counts, playlists). Everything else — buffering,
-decoding, queue management, lyrics, lock-screen controls, sleep timer,
-spectral color extraction — runs on your phone.
+fully on-device using **libmpv** via
+[mpv_audio_kit](https://pub.dev/packages/mpv_audio_kit). No
+Aetherfin-operated servers exist. No telemetry. Jellyfin is treated as a
+passive file source plus per-user state store (favorites, play counts,
+playlists). Everything else — buffering, decoding, queue management,
+lyrics, lock-screen controls, sleep timer, spectral color extraction,
+real-time FFT visualizer — runs on your phone.
 
 **Why this matters**
 
 - The Jellyfin server's CPU stays cool. Tracks are served as raw bytes
   via `/Audio/{id}/stream?Static=true`. No HLS transcoding round-trip.
-- You can play lossless FLAC / ALAC / OPUS files without quality loss.
-- Aetherfin keeps working as long as your Jellyfin server is reachable
-  on the network. There is no "Aetherfin cloud" to depend on.
+- You can play lossless FLAC / ALAC / OPUS / WAV files without quality loss.
+- The FFT spectrum visualizer is driven by the actual audio output
+  post-DSP — no `RECORD_AUDIO` permission needed.
+- Aetherfin keeps working as long as your Jellyfin server is reachable.
+  There is no "Aetherfin cloud" to depend on.
 
 ## Features
 
 - **Library, Albums, Artists, Genres, Playlists** browsing
-- **Search** (`/Users/{id}/Items?searchTerm=…`)
+- **Search** across tracks, albums, artists, playlists
 - **Queue** with drag-to-reorder
-- **Now Playing** with waveform scrubbing, shuffle, loop (off / all / one),
-  playback speed (0.5×–2.0×), favorite toggle
-- **Synced lyrics** (LRC parsed on-device)
+- **Now Playing** with waveform scrubbing, real-time FFT artwork pulse,
+  shuffle, loop (off / track / playlist), playback speed (0.5×–2.0×),
+  favorite toggle, Instant Mix radio
+- **Synced lyrics** (LRC parsed on-device, auto-scrolling)
 - **Lock-screen / notification** media controls via
   [`audio_service`](https://pub.dev/packages/audio_service)
 - **Sleep timer**, **cast picker** (output routing)
 - **mDNS discovery** of Jellyfin servers on the local network
-- **Spectral-derived UI accents** — palette is sampled from the current
-  cover art
+- **Spectral-derived UI accents** — palette sampled from current cover art
+- **Gapless playback** — libmpv pre-fetches the next track in the background
+- **Genre detail screens** — tap any genre to browse its albums
 - **Offline-friendly metadata cache** (cover art via
   [`cached_network_image`](https://pub.dev/packages/cached_network_image),
   Dio HTTP cache for catalog requests)
@@ -57,7 +63,7 @@ spectral color extraction — runs on your phone.
 
 ## Requirements
 
-- **Android 5.0 (API 21)** or newer.
+- **Android 7.0 (API 24)** or newer.
 - A reachable [**Jellyfin 10.8+**](https://jellyfin.org/downloads/server)
   server with at least one music library.
 - Network reachability between phone and server (LAN, VPN, or
@@ -67,7 +73,7 @@ spectral color extraction — runs on your phone.
 
 ### Install the APK
 
-1. Download the most recent `app-release.apk` (or per-ABI variant) from
+1. Download the most recent `app-release.apk` from
    [Releases](https://github.com/Aetherfin/mobile-app/releases) or the
    [latest CI build](https://github.com/Aetherfin/mobile-app/actions/workflows/build-apk.yml).
 2. Enable "Install from unknown sources" for your file manager / browser.
@@ -78,8 +84,7 @@ spectral color extraction — runs on your phone.
 1. **Discover or enter your server URL** (e.g. `http://omahsangar.local:8097`
    or `https://music.example.com`). mDNS will list nearby Jellyfin
    instances; otherwise type the URL manually.
-2. **Sign in** with your Jellyfin username and password. Aetherfin uses
-   the standard Jellyfin auth flow (`POST /Users/AuthenticateByName`).
+2. **Sign in** with your Jellyfin username and password.
 3. **You're in.** Pick a track. It plays.
 
 ## Building from source
@@ -87,7 +92,7 @@ spectral color extraction — runs on your phone.
 ```bash
 # Prereqs: Flutter 3.41.9 stable, Dart 3.11.5, Java 17, Android SDK
 flutter --version    # must say 3.41.9
-flutter pub get
+flutter pub get      # also downloads libmpv.so for Android (~20 MB per ABI)
 
 # Run on a connected device / emulator
 flutter run --debug
@@ -104,7 +109,7 @@ flutter build apk --release --split-per-abi
 
 ```bash
 flutter analyze --no-fatal-infos   # 0 errors, 0 warnings
-flutter test                       # 6/6 pass
+flutter test                       # all pass
 ```
 
 CI runs both on every PR. See
@@ -113,22 +118,23 @@ CI runs both on every PR. See
 ## Architecture (the 30-second version)
 
 ```
-   ┌────────────────────────────┐         ┌──────────────────────────────┐
-   │   Aetherfin (Android)      │         │   Your Jellyfin server       │
-   │                            │         │                              │
-   │  ExoPlayer (just_audio) ◄──┼─bytes───┤  /Audio/{id}/stream          │
-   │  Queue / shuffle / loop    │         │   ?Static=true               │
-   │  Lyrics parse + sync       │◄─meta───┤  /Users/{id}/Items …         │
-   │  Lock-screen controls      │         │  /Users/{id}/FavoriteItems   │
-   │  Cover-art file cache      │◄─image──┤  /Items/{id}/Images/Primary  │
-   │                            │         │                              │
-   │  Optimistic favorite UI ───┼─POST────┤  (server is source of truth) │
-   │  Telemetry (display only) ─┼─POST────┤  /Sessions/Playing[/Progress]│
-   └────────────────────────────┘         └──────────────────────────────┘
+   ┌────────────────────────────────┐         ┌──────────────────────────────┐
+   │   Aetherfin (Android)          │         │   Your Jellyfin server       │
+   │                                │         │                              │
+   │  libmpv (mpv_audio_kit) ◄──────┼─bytes───┤  /Audio/{id}/stream          │
+   │  Queue / shuffle / loop        │         │   ?Static=true               │
+   │  Gapless prefetch              │◄─meta───┤  /Users/{id}/Items …         │
+   │  FFT spectrum (post-DSP)       │         │  /Users/{id}/FavoriteItems   │
+   │  Lyrics parse + sync           │◄─image──┤  /Items/{id}/Images/Primary  │
+   │  Lock-screen (audio_service)   │         │                              │
+   │  Cover-art file cache          │         │                              │
+   │                                │         │                              │
+   │  Optimistic favorite UI ───────┼─POST────┤  (server is source of truth) │
+   │  Telemetry (display only) ─────┼─POST────┤  /Sessions/Playing[/Progress]│
+   └────────────────────────────────┘         └──────────────────────────────┘
 ```
 
-Full architectural rules live in [`CLAUDE.md`](./CLAUDE.md), the
-guide for any agent or human contributor.
+Full architectural rules live in [`CLAUDE.md`](./CLAUDE.md).
 
 ## Privacy
 
@@ -151,15 +157,16 @@ project is not affiliated with the Jellyfin project.
 
 PRs welcome. Read [CLAUDE.md](./CLAUDE.md) first — it covers the auth
 header format, the data-source split, the design tokens, and the
-non-negotiable rules. Branches are named `devin/<timestamp>-<slug>` for
-agent-authored work; humans can use any naming they like.
+non-negotiable rules.
 
 ## Acknowledgements
 
 - [Jellyfin](https://jellyfin.org) — the free software media system this
   app is built around.
-- [Finamp](https://github.com/jmshrv/finamp) — the prior-art Jellyfin
-  music client whose auth-header format we follow.
-- [just_audio](https://pub.dev/packages/just_audio) and
-  [audio_service](https://pub.dev/packages/audio_service) — the audio
-  + lock-screen plumbing.
+- [Finamp](https://github.com/jmshrv/finamp) — prior-art Jellyfin music
+  client whose auth-header format we follow.
+- [mpv_audio_kit](https://pub.dev/packages/mpv_audio_kit) — the
+  libmpv-backed audio engine powering playback, gapless transitions,
+  and the real-time FFT spectrum.
+- [audio_service](https://pub.dev/packages/audio_service) — lock-screen
+  and notification media controls.

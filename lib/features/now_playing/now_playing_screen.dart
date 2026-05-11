@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:just_audio/just_audio.dart' show LoopMode;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop;
 
 import '../../core/audio/play_actions.dart';
 import '../../core/demo/demo_library.dart';
@@ -195,7 +195,7 @@ class NowPlayingScreen extends ConsumerWidget {
                               .watch(loopModeProvider)
                               .maybeWhen(
                                 data: (v) => v,
-                                orElse: () => LoopMode.off,
+                                orElse: () => Loop.off,
                               ),
                           accent: spectral.energy,
                           onShuffle: () {
@@ -205,9 +205,9 @@ class NowPlayingScreen extends ConsumerWidget {
                           onRepeat: () {
                             final svc = ref.read(playerServiceProvider);
                             final next = switch (svc.loopMode) {
-                              LoopMode.off => LoopMode.all,
-                              LoopMode.all => LoopMode.one,
-                              LoopMode.one => LoopMode.off,
+                              Loop.off => Loop.playlist,
+                              Loop.playlist => Loop.file,
+                              Loop.file => Loop.off,
                             };
                             svc.setAfLoopMode(next);
                           },
@@ -345,7 +345,7 @@ class _TransportRow extends StatelessWidget {
   final bool isPlaying;
   final Spectral spectral;
   final bool shuffleOn;
-  final LoopMode loopMode;
+  final Loop loopMode;
   final Color accent;
   final VoidCallback onPlayPause;
   final VoidCallback onPrev;
@@ -393,11 +393,11 @@ class _TransportRow extends StatelessWidget {
           onTap: onNext,
         ),
         _TransportButton(
-          icon: loopMode == LoopMode.one
+          icon: loopMode == Loop.file
               ? Icons.repeat_one_rounded
               : Icons.repeat_rounded,
           size: 28,
-          color: loopMode == LoopMode.off
+          color: loopMode == Loop.off
               ? AfColors.textPrimary
               : accent,
           onTap: onRepeat,

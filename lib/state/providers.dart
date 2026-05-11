@@ -1,13 +1,12 @@
 import 'dart:async' show unawaited;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:just_audio/just_audio.dart' show LoopMode;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop, FftFrame;
 
 import '../core/audio/jellyfin_playback_reporter.dart';
 import '../core/audio/live_update_service.dart';
 import '../core/audio/player_service.dart';
 import '../core/audio/spectral_extractor.dart';
-import '../core/audio/visualizer_service.dart';
 import '../core/demo/demo_library.dart';
 import '../core/jellyfin/auth_storage.dart';
 import '../core/jellyfin/client.dart';
@@ -146,27 +145,16 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     svc,
     () => ref.read(jellyfinClientProvider),
   );
-  // Live-update chip / lockscreen tile (Android 16+ only).
+  // Live-update chip / lockscreen tile (Android 16+ only). No-op on
+  // older Android and tests — attach() probes support before subscribing.
   final liveUpdate = LiveUpdateService(svc);
   unawaited(liveUpdate.attach());
-  // Real-time FFT visualizer. We create the service here so it lives for
-  // the app lifetime, but we do NOT call attach() yet — that requires
-  // RECORD_AUDIO permission which needs an Activity context. attach() is
-  // called lazily the first time Now Playing opens via [visualizerProvider].
-  final visualizer = VisualizerService(svc);
   ref.onDispose(() async {
     await liveUpdate.dispose();
-    await visualizer.dispose();
     await reporter.dispose();
     await svc.dispose();
   });
-  // Store the visualizer instance so [visualizerProvider] can reach it.
-  _visualizerInstance = visualizer;
 }
-
-/// Singleton [VisualizerService] created by [wirePlayerService].
-/// Null until the first player is wired (i.e. after [runApp]).
-VisualizerService? _visualizerInstance;
 
 final playerServiceProvider = Provider<AfPlayerService>((ref) {
   final svc = AfPlayerService();
@@ -213,11 +201,10 @@ final shuffleModeProvider = StreamProvider.autoDispose<bool>((ref) {
   });
 });
 
-/// Live loop mode — drives the repeat icon (off / all / one) in
-/// Now Playing.
-final loopModeProvider = StreamProvider.autoDispose<LoopMode>((ref) {
+/// Live loop mode — drives the repeat icon (off / all / one) in Now Playing.
+final loopModeProvider = StreamProvider.autoDispose<Loop>((ref) {
   final svc = ref.watch(playerServiceProvider);
-  return Stream<LoopMode>.multi((controller) {
+  return Stream<Loop>.multi((controller) {
     controller.add(svc.loopMode);
     final sub = svc.loopModeStream.listen(controller.add);
     controller.onCancel = sub.cancel;
@@ -234,20 +221,13 @@ final playbackSpeedProvider = StreamProvider.autoDispose<double>((ref) {
   });
 });
 
-/// Real-time FFT magnitude from the native Android Visualizer, normalised
-/// to [0.0, 1.0] at ~60 Hz. Drives [BeatPulseArtwork]'s Transform.scale.
-/// Emits nothing on non-Android platforms or when the plugin is absent —
-/// the widget falls back to a static scale in that case.
-///
-/// Calling this provider for the first time triggers [VisualizerService.attach],
-/// which requests RECORD_AUDIO permission if needed (requires an Activity —
-/// safe to call from Now Playing which always has one).
-final fftMagnitudeProvider = StreamProvider.autoDispose<double>((ref) {
-  final viz = _visualizerInstance;
-  if (viz == null) return const Stream.empty();
-  // attach() is idempotent and handles permission + session wiring.
-  unawaited(viz.attach());
-  return viz.magnitudeStream;
+/// Real-time FFT spectrum from mpv_audio_kit — 64 log-spaced bands in
+/// [0, 1] at ~30 fps, post-DSP (after EQ, volume, compressor).
+/// No RECORD_AUDIO permission needed. Lazy: pipeline starts on first
+/// listener, stops on last cancel. Drives [BeatPulseArtwork].
+final fftSpectrumProvider = StreamProvider.autoDispose<FftFrame>((ref) {
+  final svc = ref.watch(playerServiceProvider);
+  return svc.spectrumStream;
 });
 
 /// Currently-playing track (changes when the player advances within
