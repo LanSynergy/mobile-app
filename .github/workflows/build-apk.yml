@@ -72,6 +72,27 @@ jobs:
       - name: Test
         run: flutter test
 
+      - name: Decode signing keystore (release mode only)
+        if: ${{ inputs.build_mode == 'release' }}
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 not set; building unsigned release APK."
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > android/app/aetherfin-release.jks
+          cat > android/key.properties <<EOF
+          storeFile=aetherfin-release.jks
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          echo "Signing config wired. Keystore size: $(wc -c < android/app/aetherfin-release.jks) bytes"
+
       - name: Build APK
         run: |
           ARGS="--${{ inputs.build_mode }}"
