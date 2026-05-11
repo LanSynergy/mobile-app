@@ -68,7 +68,7 @@ class LyricsScreen extends ConsumerWidget {
             colors: [
               AfColors.surfaceCanvas,
               // ignore: deprecated_member_use
-              spectral.shadow.withOpacity(0.5),
+              spectral.shadow.withValues(alpha: 0.5),
             ],
           ),
         ),
@@ -84,7 +84,7 @@ class LyricsScreen extends ConsumerWidget {
                 ),
                 decoration: BoxDecoration(
                   // ignore: deprecated_member_use
-                  color: AfColors.semanticInfo.withOpacity(0.15),
+                  color: AfColors.semanticInfo.withValues(alpha: 0.15),
                   borderRadius: AfRadii.borderPill,
                   border: Border.all(
                       color: AfColors.semanticInfo, width: 1),

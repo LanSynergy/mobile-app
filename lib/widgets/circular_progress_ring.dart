@@ -160,7 +160,7 @@ class _IndeterminateArcState extends State<_IndeterminateArc>
           painter: _IndeterminatePainter(
             value: _ctrl.value,
             // ignore: deprecated_member_use
-            trackColor: widget.trackColor.withOpacity(0.3),
+            trackColor: widget.trackColor.withValues(alpha: 0.3),
             progressColor: widget.progressColor,
             strokeWidth: widget.strokeWidth,
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/providers.dart';
+import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
 
 /// Cross-cutting "Play" entry points used by every screen so that we
@@ -49,10 +50,12 @@ class PlayActions {
         // (`aetherfin:audio` lines from player_service already cover
         // setAudioSource/play failures; this catches anything thrown
         // before/around them).
-        // ignore: avoid_print
-        print('aetherfin:audio playQueue failed: $e');
-        // ignore: avoid_print
-        print('aetherfin:audio stack: $stack');
+        afLog(
+          'audio',
+          'playQueue failed',
+          error: e,
+          stackTrace: stack,
+        );
       }
     }
   }
@@ -85,15 +88,19 @@ class PlayActions {
         for (final t in mix)
           if (t.id != seed.id) t,
       ];
-      // ignore: avoid_print
-      print('aetherfin:audio instantMix seed=${seed.id} '
-          'queue=${queue.length} (from server: ${mix.length})');
+      afLog(
+        'audio',
+        'instantMix seed=${seed.id} '
+        'queue=${queue.length} (from server: ${mix.length})',
+      );
       await playQueue(queue);
     } catch (e, stack) {
-      // ignore: avoid_print
-      print('aetherfin:audio instantMix failed: $e');
-      // ignore: avoid_print
-      print('aetherfin:audio stack: $stack');
+      afLog(
+        'audio',
+        'instantMix failed',
+        error: e,
+        stackTrace: stack,
+      );
       // Best-effort fallback: at least play the seed track.
       await playSingle(seed);
     }

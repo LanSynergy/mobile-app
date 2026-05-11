@@ -2,10 +2,24 @@ import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 
+import '../../utils/log.dart';
 import 'models/items.dart';
 import 'models/library.dart';
 import 'models/quality.dart';
 import 'models/server.dart';
+
+/// The Aetherfin client version sent in `User-Agent` and the `MediaBrowser
+/// Authorization` header's `Version` field. Single source of truth so a
+/// version bump only needs to change two places (this constant + pubspec.yaml).
+///
+/// We intentionally don't pull this from `package_info_plus` at runtime: the
+/// auth header builder is synchronous (called from constructors and re-built
+/// per request) and PackageInfo is an async platform-channel lookup, so
+/// adopting it would require either caching a static after first-frame or
+/// reordering boot to await it before `runApp`. A two-line manual bump is
+/// less risk than the async plumbing for a value that changes ~once a month.
+const _kAetherfinVersion = '0.1.0';
+const _kAetherfinUserAgent = 'Aetherfin/$_kAetherfinVersion (Android)';
 
 /// Thin Dio-backed Jellyfin REST client.
 ///
@@ -60,7 +74,7 @@ class JellyfinClient {
               userId: userId,
             ),
             'Content-Type': 'application/json',
-            'User-Agent': 'Aetherfin/0.1.0 (Android)',
+            'User-Agent': _kAetherfinUserAgent,
             'Accept': 'application/json',
           },
         )) {
@@ -84,28 +98,33 @@ class JellyfinClient {
             final redactedHeaders = Map<String, dynamic>.from(options.headers)
               ..updateAll((k, v) =>
                   k.toLowerCase().contains('auth') ? '<redacted>' : v);
-            // ignore: avoid_print
-            print('aetherfin:http → ${options.method} ${_redactUrl(options.uri)}');
-            // ignore: avoid_print
-            print('aetherfin:http headers: $redactedHeaders');
+            afLog('http',
+                '→ ${options.method} ${_redactUrl(options.uri)}');
+            afLog('http', 'headers: $redactedHeaders');
             // For auth-sensitive endpoints, redact the body too.
             final isAuth =
                 options.uri.path.toLowerCase().contains('authenticate');
-            // ignore: avoid_print
-            print('aetherfin:http body: '
-                '${isAuth ? '<redacted ${options.data is Map ? (options.data as Map).keys.toList() : options.data.runtimeType}>' : options.data}');
+            afLog(
+              'http',
+              'body: '
+              '${isAuth ? '<redacted ${options.data is Map ? (options.data as Map).keys.toList() : options.data.runtimeType}>' : options.data}',
+            );
             handler.next(options);
           },
           onResponse: (response, handler) {
-            // ignore: avoid_print
-            print('aetherfin:http ← ${response.statusCode} '
-                '${response.requestOptions.method} ${_redactUrl(response.requestOptions.uri)}');
+            afLog(
+              'http',
+              '← ${response.statusCode} '
+              '${response.requestOptions.method} ${_redactUrl(response.requestOptions.uri)}',
+            );
             handler.next(response);
           },
           onError: (err, handler) {
-            // ignore: avoid_print
-            print('aetherfin:http ✕ ${err.response?.statusCode ?? '?'} '
-                '${err.requestOptions.method} ${_redactUrl(err.requestOptions.uri)}');
+            afLog(
+              'http',
+              '✕ ${err.response?.statusCode ?? '?'} '
+              '${err.requestOptions.method} ${_redactUrl(err.requestOptions.uri)}',
+            );
             handler.next(err);
           },
         ),
@@ -120,7 +139,7 @@ class JellyfinClient {
   /// Mirrors what the Dio client sends. Empty map if no token is set.
   Map<String, String> get authHeaders {
     final headers = <String, String>{
-      'User-Agent': 'Aetherfin/0.1.0 (Android)',
+      'User-Agent': _kAetherfinUserAgent,
       'Accept': '*/*',
     };
     if (accessToken != null) {
@@ -203,7 +222,7 @@ class JellyfinClient {
     // a microsecond timestamp). Strip non-ASCII here only so Jellyfin's
     // strict 7-bit header parser never sees an emoji-bearing device name.
     parts.add('DeviceId="${_asciiClean(_escapeHeaderValue(deviceId))}"');
-    parts.add('Version="0.1.0"');
+    parts.add('Version="$_kAetherfinVersion"');
     return 'MediaBrowser ${parts.join(", ")}';
   }
 
@@ -286,7 +305,7 @@ class JellyfinClient {
           token: apiKey,
         ),
         'Content-Type': 'application/json',
-        'User-Agent': 'Aetherfin/0.1.0 (Android)',
+        'User-Agent': _kAetherfinUserAgent,
         'Accept': 'application/json',
       },
     ));
@@ -306,9 +325,12 @@ class JellyfinClient {
           );
         }
       }
+      // Intentionally generic — echoing the full user list would let an
+      // attacker who possesses only the API key enumerate every account
+      // on the server by typing arbitrary usernames into the sign-in
+      // screen. The user knows their own username; a typo is on them.
       throw StateError(
-        'No user named "$username" on this server. '
-        'Available: ${users.map((u) => u['Name']).join(", ")}',
+        'No user named "$username" on this server.',
       );
     } finally {
       probe.close(force: true);

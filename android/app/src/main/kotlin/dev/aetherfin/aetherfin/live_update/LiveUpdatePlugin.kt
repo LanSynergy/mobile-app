@@ -219,9 +219,18 @@ class LiveUpdatePlugin : FlutterPlugin, MethodCallHandler {
             // small icon. "M:SS / M:SS" reads naturally and fits within
             // the chip's 96dp width as long as durations are < 100min.
             .setShortCriticalText(shortCriticalText)
-            // Promotion request — the system decides whether to honour
-            // it based on Live-Updates settings + OEM policy.
-            .setRequestPromotedOngoing(true)
+
+        // Promotion request — the system decides whether to honour it based on
+        // Live-Updates settings + OEM policy. We can't call
+        // `builder.setRequestPromotedOngoing(true)` directly because that method
+        // landed in API 36.1 (Notification.Builder diff 36 → 36.1) and Flutter
+        // 3.41.9 pins compileSdk to 36.0. The platform reads the same flag via
+        // the documented Notification.EXTRA_REQUEST_PROMOTED_ONGOING string
+        // ("android.requestPromotedOngoing") on every API 36+ build, so set it
+        // directly on the extras Bundle. The constant value is part of the
+        // Android public API contract; the *Java symbol* exposing it is the
+        // thing that's gated on 36.1+.
+        builder.extras.putBoolean("android.requestPromotedOngoing", true)
 
         val notification = builder.build()
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
