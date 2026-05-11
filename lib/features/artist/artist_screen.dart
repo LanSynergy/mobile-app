@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/demo/demo_library.dart';
+import '../../core/audio/play_actions.dart';
+import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/artwork.dart';
@@ -24,13 +25,16 @@ class ArtistScreen extends ConsumerWidget {
         error: (_, __) => const Center(child: Icon(Icons.error_outline)),
         data: (artist) {
           if (artist == null) return const Center(child: Text('Not found'));
-          final albums = DemoLibrary.albums
-              .where((a) => a.artistName == artist.name)
-              .toList();
-          final topTracks = DemoLibrary.tracks
-              .where((t) => t.artistName == artist.name)
-              .take(5)
-              .toList();
+          final albumsAsync = ref.watch(artistAlbumsProvider(artistId));
+          final topTracksAsync = ref.watch(artistTopTracksProvider(artistId));
+          final albums = albumsAsync.maybeWhen(
+            data: (a) => a,
+            orElse: () => const <AfAlbum>[],
+          );
+          final topTracks = topTracksAsync.maybeWhen(
+            data: (t) => t,
+            orElse: () => const <AfTrack>[],
+          );
           return CustomScrollView(
             physics: const ClampingScrollPhysics(),
             slivers: [
@@ -117,7 +121,12 @@ class ArtistScreen extends ConsumerWidget {
                       for (final t in topTracks)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 4),
-                          child: TrackRow(track: t),
+                          child: TrackRow(
+                            track: t,
+                            onTap: () => ref
+                                .read(playActionsProvider)
+                                .playSingle(t),
+                          ),
                         ),
                     ],
                   ),

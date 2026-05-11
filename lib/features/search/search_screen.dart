@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/demo/demo_library.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
+import '../../state/providers.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/track_row.dart';
 import 'ask_sheet.dart';
@@ -23,33 +23,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void dispose() {
     _controller.dispose();
     super.dispose();
-  }
-
-  List<AfTrack> get _tracks =>
-      DemoLibrary.tracks.where(_matches).toList();
-  List<AfAlbum> get _albums =>
-      DemoLibrary.albums.where(_matchesAlbum).toList();
-  List<AfArtist> get _artists =>
-      DemoLibrary.artists.where(_matchesArtist).toList();
-
-  bool _matches(AfTrack t) {
-    if (_query.isEmpty) return false;
-    final q = _query.toLowerCase();
-    return t.title.toLowerCase().contains(q) ||
-        t.artistName.toLowerCase().contains(q) ||
-        t.albumName.toLowerCase().contains(q);
-  }
-
-  bool _matchesAlbum(AfAlbum a) {
-    if (_query.isEmpty) return false;
-    final q = _query.toLowerCase();
-    return a.name.toLowerCase().contains(q) ||
-        a.artistName.toLowerCase().contains(q);
-  }
-
-  bool _matchesArtist(AfArtist a) {
-    if (_query.isEmpty) return false;
-    return a.name.toLowerCase().contains(_query.toLowerCase());
   }
 
   @override
@@ -85,11 +58,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ? _SearchIdleState(
                     onAskTap: () => AskSheet.show(context),
                   )
-                : _SearchResults(
-                    tracks: _tracks,
-                    albums: _albums,
-                    artists: _artists,
-                  ),
+                : _LiveSearchResults(query: _query),
           ),
         ],
       ),
@@ -97,13 +66,55 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 }
 
-class _SearchIdleState extends StatelessWidget {
+/// Live results panel — watches [searchProvider] so a flick of the
+/// keyboard hits the Jellyfin server (`/Users/{id}/Items?searchTerm=`),
+/// not `DemoLibrary`. Loading state is intentionally blank so the rapid
+/// keystrokes don't trigger a spinner storm; an empty-result state has
+/// its own message.
+class _LiveSearchResults extends ConsumerWidget {
+  final String query;
+  const _LiveSearchResults({required this.query});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(searchProvider(query));
+    return async.maybeWhen(
+      data: (res) => _SearchResults(
+        tracks: res.tracks,
+        albums: res.albums,
+        artists: res.artists,
+      ),
+      error: (e, _) => Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AfSpacing.s16,
+          vertical: AfSpacing.s24,
+        ),
+        child: Text(
+          'Search failed: $e',
+          style: AfTypography.bodySmall.copyWith(
+            color: AfColors.semanticError,
+          ),
+        ),
+      ),
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+}
+
+/// Idle (empty query) panel. Genres come from `allGenresProvider` so
+/// signed-in users see their real library, signed-out users see the
+/// demo palette — single source of truth, no duplicated fallback.
+class _SearchIdleState extends ConsumerWidget {
   final VoidCallback onAskTap;
   const _SearchIdleState({required this.onAskTap});
 
   @override
-  Widget build(BuildContext context) {
-    final genres = DemoLibrary.genres;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final genresAsync = ref.watch(allGenresProvider);
+    final genres = genresAsync.maybeWhen(
+      data: (g) => g,
+      orElse: () => const <AfGenre>[],
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
       child: ListView(

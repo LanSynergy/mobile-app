@@ -21,10 +21,7 @@ void _boot(String message) {
   print('aetherfin:boot $message');
 }
 
-/// A holder so the OS-integrated audio handler — once initialized — can be
-/// injected into the Riverpod tree. Init runs in the background AFTER the
-/// first frame so the UI is never blocked by audio_service warm-up.
-final _handlerCompleter = Completer<AfPlayerService>();
+
 
 Future<void> main() async {
   _boot('main() entered');
@@ -85,6 +82,14 @@ Future<void> main() async {
       initialAuth = null;
     }
 
+    // Construct THE one and only audio handler up front so the exact
+    // same instance is shared between Riverpod (via
+    // `playerServiceProvider` override) and `AudioService.init` below.
+    // Previously the override created one service and `_warmUpAudio()`
+    // created a second orphaned one — lock-screen controls flapped
+    // against a dead handler and never drove playback.
+    final handler = AfPlayerService();
+
     // Launch the UI immediately — audio init runs in the background AFTER
     // the first frame.
     _boot('calling runApp');
@@ -94,12 +99,12 @@ Future<void> main() async {
           deviceIdProvider.overrideWithValue(deviceId),
           initialAuthProvider.overrideWithValue(initialAuth),
           playerServiceProvider.overrideWith((ref) {
-            // Until AudioService.init resolves, hand out a bare service so
-            // the UI doesn't crash if it reads playerServiceProvider before
-            // the OS-integrated handler is ready.
-            final svc = AfPlayerService();
-            ref.onDispose(svc.dispose);
-            return svc;
+            // Apply the same Riverpod-side wiring the default factory
+            // would have applied (currentTrack forwarding + Jellyfin
+            // session reporter), but on the singleton `handler` so the
+            // OS-integrated handler IS the one the UI sees.
+            wirePlayerService(ref, handler);
+            return handler;
           }),
         ],
         child: const AetherfinApp(),
@@ -113,7 +118,7 @@ Future<void> main() async {
     // works without lock-screen controls.
     SchedulerBinding.instance.addPostFrameCallback((_) {
       _boot('first frame painted — kicking AudioService init');
-      unawaited(_warmUpAudio());
+      unawaited(_warmUpAudio(handler));
     });
   }, (error, stack) {
     // ignore: avoid_print
@@ -123,10 +128,9 @@ Future<void> main() async {
   });
 }
 
-Future<void> _warmUpAudio() async {
+Future<void> _warmUpAudio(AfPlayerService handler) async {
   try {
     _boot('AudioService.init starting');
-    final handler = AfPlayerService();
     await AudioService.init(
       builder: () => handler,
       config: const AudioServiceConfig(
@@ -138,9 +142,6 @@ Future<void> _warmUpAudio() async {
       ),
     );
     _boot('AudioService.init OK');
-    if (!_handlerCompleter.isCompleted) {
-      _handlerCompleter.complete(handler);
-    }
   } catch (e, stack) {
     // ignore: avoid_print
     print('aetherfin:error AudioService.init failed: $e');

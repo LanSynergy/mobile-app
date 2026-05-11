@@ -291,6 +291,14 @@ output is enough to diagnose most issues without attaching a debugger.
 | `aetherfin:http ←` | Successful response (status, method, URL) | `aetherfin:http ← 200 GET http://srv/System/Info/Public` |
 | `aetherfin:http ✕` | Failed response (status, method, URL) | `aetherfin:http ✕ 500 POST http://srv/Users/AuthenticateByName` |
 | `aetherfin:error` | Caught exception with full Dio error + stacktrace | (multi-line block) |
+| `aetherfin:data` | Data-source provenance — fires every time a Riverpod provider serves data, marking whether the bytes came from live Jellyfin (`source=live`), the bundled signed-out preview (`source=demo`), or a still-mocked code path (`source=mock`). | `aetherfin:data recentlyAddedAlbums source=live count=20` / `aetherfin:data search source=demo query="rain" tracks=3 albums=1 artists=0` |
+
+`aetherfin:data` lines are emitted by `_logData()` in `lib/state/providers.dart`
+and by `AfPlayerService` / `JellyfinPlaybackReporter` for queue + playback
+events. Use `adb logcat -s flutter | grep aetherfin:data` to spot any screen
+that has regressed onto `DemoLibrary` after sign-in — every signed-in
+session should show `source=live` exclusively (with `source=demo` only on
+the signed-out onboarding preview).
 
 When adding new diagnostics:
 - Always go through `print('aetherfin:<category> …')`. No `debugPrint`,

@@ -9,25 +9,6 @@ import '../../state/providers.dart';
 class LyricsScreen extends ConsumerWidget {
   const LyricsScreen({super.key});
 
-  static const _demoLrc = '''
-[ti:Driftless]
-[ar:Skylark]
-[al:Neon Cathedral]
-[00:00.00] —
-[00:08.00] We woke up early
-[00:12.00] before the kettle
-[00:18.00] before the radio
-[00:24.00] The window was bright
-[00:32.00] and quiet for once
-[00:40.00] The plants knew
-[00:48.00] before we did
-[00:56.00] that the season had turned
-[01:08.00] A small thing
-[01:16.00] but a clear thing
-[01:28.00] We carried it
-[01:36.00] all through the morning
-''';
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final track = ref.watch(currentTrackProvider);
@@ -36,8 +17,17 @@ class LyricsScreen extends ConsumerWidget {
         positionAsync.maybeWhen(data: (p) => p, orElse: () => Duration.zero);
     final spectral = ref.watch(currentSpectralProvider);
 
-    final lrc = parseLrc(_demoLrc);
-    final active = lrc.activeIndex(position);
+    // Real lyrics from Jellyfin (`/Audio/{id}/Lyrics`). Returns `null` when
+    // the server has none — we render a small empty state below rather
+    // than fall back to the previous hard-coded demo LRC.
+    final lrcAsync = track == null
+        ? const AsyncValue<Lrc?>.data(null)
+        : ref.watch(lyricsProvider(track.id));
+    final lrc = lrcAsync.maybeWhen(
+      data: (parsed) => parsed,
+      orElse: () => null,
+    );
+    final active = lrc?.activeIndex(position) ?? -1;
 
     return Scaffold(
       appBar: AppBar(
@@ -117,36 +107,76 @@ class LyricsScreen extends ConsumerWidget {
                 ),
               ),
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AfSpacing.gutterGenerous,
-                    vertical: AfSpacing.s24,
+                child: lrcAsync.maybeWhen(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(),
                   ),
-                  itemCount: lrc.lines.length,
-                  itemBuilder: (context, i) {
-                    final isActive = i == active;
-                    return AnimatedContainer(
-                      duration: AfDurations.quick,
-                      curve: AfCurves.easeOut,
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 8),
-                      child: AnimatedScale(
-                        scale: isActive ? 1.04 : 1.0,
-                        duration: AfDurations.quick,
-                        curve: AfCurves.easeOut,
-                        alignment: Alignment.centerLeft,
-                        child: AnimatedDefaultTextStyle(
-                          duration: AfDurations.quick,
-                          style: AfTypography.titleMedium.copyWith(
-                            color: isActive
-                                ? spectral.energy
-                                : AfColors.textSecondary,
-                            fontWeight:
-                                isActive ? FontWeight.w600 : FontWeight.w400,
-                          ),
-                          child: Text(lrc.lines[i].text),
-                        ),
+                  error: (e, _) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.gutterGenerous,
                       ),
+                      child: Text(
+                        'Could not load lyrics: $e',
+                        style: AfTypography.bodySmall.copyWith(
+                          color: AfColors.semanticError,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                  orElse: () {
+                    if (lrc == null || lrc.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AfSpacing.gutterGenerous,
+                          ),
+                          child: Text(
+                            track == null
+                                ? 'Start a track to see lyrics.'
+                                : 'No lyrics available for this track.',
+                            style: AfTypography.bodyMedium.copyWith(
+                              color: AfColors.textTertiary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
+                    }
+                    return ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.gutterGenerous,
+                        vertical: AfSpacing.s24,
+                      ),
+                      itemCount: lrc.lines.length,
+                      itemBuilder: (context, i) {
+                        final isActive = i == active;
+                        return AnimatedContainer(
+                          duration: AfDurations.quick,
+                          curve: AfCurves.easeOut,
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 8),
+                          child: AnimatedScale(
+                            scale: isActive ? 1.04 : 1.0,
+                            duration: AfDurations.quick,
+                            curve: AfCurves.easeOut,
+                            alignment: Alignment.centerLeft,
+                            child: AnimatedDefaultTextStyle(
+                              duration: AfDurations.quick,
+                              style: AfTypography.titleMedium.copyWith(
+                                color: isActive
+                                    ? spectral.energy
+                                    : AfColors.textSecondary,
+                                fontWeight: isActive
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                              ),
+                              child: Text(lrc.lines[i].text),
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
