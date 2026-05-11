@@ -13,7 +13,6 @@ import '../../widgets/beat_pulse_artwork.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/quality_chip.dart';
 import '../../widgets/waveform.dart';
-
 /// Mockup 10 — Now Playing.
 class NowPlayingScreen extends ConsumerWidget {
   const NowPlayingScreen({super.key});
@@ -139,7 +138,7 @@ class NowPlayingScreen extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: AfSpacing.s24),
-                        Waveform(
+                        FftWaveform(
                           peaks: peaks,
                           progress: progress,
                           isPlaying: isPlaying,
