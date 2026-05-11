@@ -1,43 +1,39 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design_tokens/tokens.dart';
+import '../state/providers.dart';
 import 'artwork.dart';
 
-/// Album artwork that breathes in time with the track's energy profile.
+/// Album artwork that pulses in real-time sync with the audio output.
 ///
-/// ## How it works (no FFT package required)
+/// ## How it works
 ///
-/// Real-time FFT from `just_audio` / ExoPlayer is not exposed to Dart —
-/// ExoPlayer decodes internally and doesn't surface PCM samples. Rather
-/// than adding a native plugin, we derive a per-beat energy signal from
-/// the **waveform peaks array** that the app already carries on every
-/// [AfTrack]:
+/// On Android, [VisualizerPlugin] (Kotlin) attaches
+/// `android.media.audiofx.Visualizer` to ExoPlayer's audio session and
+/// streams normalised FFT magnitude values (~60 Hz) via an [EventChannel].
+/// [fftMagnitudeProvider] exposes that stream to the Riverpod tree.
 ///
-///   1. The peaks array encodes the track's loudness at each bar position
-///      (0–100). We map the current playback progress to a bar index and
-///      read the local energy window (±[_windowBars] bars around the
-///      playhead).
-///   2. That energy value (0.0–1.0) drives an [AnimationController] that
-///      runs a sine-wave oscillation. The oscillation speed is fixed at
-///      ~1.6 s/cycle (matching the waveform widget's own animation) and
-///      the *amplitude* of the scale excursion is proportional to the
-///      local energy — loud passages pulse more, quiet passages barely
-///      move.
-///   3. The controller is paused when [isPlaying] is false and the scale
-///      smoothly returns to 1.0 via [AnimationController.animateTo].
+/// Each FFT frame drives an [AnimationController] target: the controller
+/// animates toward the incoming magnitude with a short spring-like decay
+/// so rapid transients produce a sharp attack and a smooth tail rather
+/// than a jittery flicker.
 ///
-/// The result is artwork that visually "breathes" with the song's energy
-/// curve — the same premium effect Spotify uses — without any new
-/// dependencies or native code.
+/// The magnitude is mapped to a [Transform.scale] in [1.0, 1.06] — the
+/// artwork grows up to 6 % on loud beats and returns to rest on silence.
+///
+/// ## Fallback
+///
+/// When [fftMagnitudeProvider] emits nothing (non-Android, plugin absent,
+/// or paused), the controller decays to 0 and the artwork sits at scale
+/// 1.0 — no animation, no battery drain.
 ///
 /// ## Design token compliance
 ///
-/// Audio-coupled animations must use [AfCurves.linear] (per the design
-/// token constraints). The oscillation is a raw sine wave evaluated from
-/// the controller's linear 0→1 value, which satisfies this rule.
-class BeatPulseArtwork extends StatefulWidget {
+/// Audio-coupled animations must use [AfCurves.linear]. The controller
+/// drives a raw linear interpolation toward the target; no easing curve
+/// is applied on top of it.
+class BeatPulseArtwork extends ConsumerStatefulWidget {
   /// Cover art URL (may be null — falls back to the placeholder).
   final String? imageUrl;
 
@@ -47,72 +43,45 @@ class BeatPulseArtwork extends StatefulWidget {
   /// Corner radius applied to the artwork.
   final BorderRadius radius;
 
-  /// Per-bar peak amplitudes in [0, 100]. Same array used by [Waveform].
-  /// When empty, the artwork still animates at a gentle fixed amplitude.
-  final List<int> peaks;
-
-  /// Current playback progress in [0.0, 1.0]. Used to look up the local
-  /// energy window in [peaks].
-  final double progress;
-
-  /// Whether the player is currently playing. Pauses the animation when
-  /// false.
-  final bool isPlaying;
-
   const BeatPulseArtwork({
     super.key,
     required this.imageUrl,
     required this.size,
     required this.radius,
-    required this.peaks,
-    required this.progress,
-    required this.isPlaying,
   });
 
   @override
-  State<BeatPulseArtwork> createState() => _BeatPulseArtworkState();
+  ConsumerState<BeatPulseArtwork> createState() => _BeatPulseArtworkState();
 }
 
-class _BeatPulseArtworkState extends State<BeatPulseArtwork>
+class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctl;
 
-  /// Number of bars on each side of the playhead to average for the
-  /// local energy window. Wider windows smooth out transients; narrower
-  /// windows react faster. 4 bars ≈ ~3 % of a 128-bar waveform.
-  static const int _windowBars = 4;
+  /// Maximum scale excursion at full FFT magnitude (1.0).
+  /// 0.06 = artwork grows to 106 % on the loudest beats.
+  static const double _maxScaleDelta = 0.06;
 
-  /// Maximum scale excursion at full energy (1.0 = 100 % peak amplitude).
-  /// 0.035 means the artwork grows to 103.5 % at the loudest passages.
-  static const double _maxScaleDelta = 0.035;
+  /// How quickly the controller chases the incoming FFT value.
+  /// Lower = snappier attack; higher = smoother but more lag.
+  static const double _attackLerp = 0.55;
 
-  /// Minimum scale excursion even at silence — keeps the animation alive
-  /// during quiet intros/outros so the artwork never looks frozen.
-  static const double _minScaleDelta = 0.008;
+  /// How quickly the controller decays back toward zero when no FFT
+  /// data arrives (pause / silence).
+  static const double _decayLerp = 0.12;
 
-  /// Duration of one full oscillation cycle. Matches the waveform widget.
-  static const Duration _cycleDuration = Duration(milliseconds: 1600);
+  /// Current target magnitude [0.0, 1.0] set by the FFT stream.
+  double _target = 0.0;
 
   @override
   void initState() {
     super.initState();
-    _ctl = AnimationController(vsync: this, duration: _cycleDuration);
-    if (widget.isPlaying) _ctl.repeat();
-  }
-
-  @override
-  void didUpdateWidget(covariant BeatPulseArtwork old) {
-    super.didUpdateWidget(old);
-    if (widget.isPlaying && !_ctl.isAnimating) {
-      _ctl.repeat();
-    } else if (!widget.isPlaying && _ctl.isAnimating) {
-      // Wind down to neutral scale smoothly — same pattern as Waveform.
-      _ctl.animateTo(
-        0,
-        duration: AfDurations.quick,
-        curve: AfCurves.easeOut,
-      );
-    }
+    _ctl = AnimationController(
+      vsync: this,
+      // Duration is irrelevant — we drive the value manually each tick.
+      duration: const Duration(milliseconds: 16),
+    )..addListener(_onTick);
+    _ctl.repeat();
   }
 
   @override
@@ -121,40 +90,36 @@ class _BeatPulseArtworkState extends State<BeatPulseArtwork>
     super.dispose();
   }
 
-  /// Compute the normalised local energy (0.0–1.0) around the current
-  /// playhead position from the peaks array.
-  double _localEnergy() {
-    final peaks = widget.peaks;
-    if (peaks.isEmpty) return 0.5; // fallback: mid-energy
-    final barCount = peaks.length;
-    final headBar = (widget.progress * barCount).round().clamp(0, barCount - 1);
-    final lo = (headBar - _windowBars).clamp(0, barCount - 1);
-    final hi = (headBar + _windowBars).clamp(0, barCount - 1);
-    if (lo > hi) return peaks[headBar] / 100.0;
-    var sum = 0;
-    for (var i = lo; i <= hi; i++) {
-      sum += peaks[i];
-    }
-    return (sum / ((hi - lo + 1) * 100.0)).clamp(0.0, 1.0);
+  /// Called every frame (~60 fps) by the AnimationController repeat loop.
+  /// Lerps the controller's value toward [_target] for attack, or toward
+  /// 0.0 for decay when no new FFT data has arrived.
+  void _onTick() {
+    final current = _ctl.value;
+    final lerp = _target > current ? _attackLerp : _decayLerp;
+    final next = current + ((_target - current) * lerp);
+    // Clamp to [0, 1] and write back without triggering a rebuild loop —
+    // AnimationController.value setter notifies listeners (including this
+    // one) but the repeat() loop drives the next frame independently.
+    _ctl.value = next.clamp(0.0, 1.0);
+    // Decay target toward silence so the artwork returns to rest when
+    // the FFT stream stops emitting (pause / end of track).
+    _target *= 0.85;
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch the FFT stream. Each new magnitude value updates [_target];
+    // the AnimationController tick loop smoothly chases it.
+    ref.listen<AsyncValue<double>>(fftMagnitudeProvider, (_, next) {
+      next.whenData((magnitude) {
+        _target = magnitude.clamp(0.0, 1.0);
+      });
+    });
+
     return AnimatedBuilder(
       animation: _ctl,
       builder: (context, child) {
-        final energy = _localEnergy();
-        // Scale delta is linearly interpolated between min and max based
-        // on local energy. The sine wave maps the controller's 0→1 linear
-        // value to a smooth oscillation.
-        final scaleDelta = _minScaleDelta +
-            (_maxScaleDelta - _minScaleDelta) * energy;
-        // sin(2π·t) oscillates between -1 and +1. We shift it to [0, 1]
-        // so the artwork only ever scales UP from its resting size (no
-        // shrink below 1.0, which would look like the artwork is gasping).
-        final sine = (math.sin(2 * math.pi * _ctl.value) + 1) / 2;
-        final scale = 1.0 + scaleDelta * sine;
-
+        final scale = 1.0 + _maxScaleDelta * _ctl.value;
         return Transform.scale(
           scale: scale,
           child: child,

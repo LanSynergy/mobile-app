@@ -2,6 +2,7 @@ package dev.aetherfin.aetherfin
 
 import com.ryanheise.audioservice.AudioServiceActivity
 import dev.aetherfin.aetherfin.live_update.LiveUpdatePlugin
+import dev.aetherfin.aetherfin.visualizer.VisualizerPlugin
 import io.flutter.embedding.engine.FlutterEngine
 
 /// Extends [AudioServiceActivity] (from the `audio_service` plugin) instead
@@ -10,12 +11,12 @@ import io.flutter.embedding.engine.FlutterEngine
 ///   "The Activity class declared in your AndroidManifest.xml is wrong or
 ///    has not provided the correct FlutterEngine."
 class MainActivity : AudioServiceActivity() {
-    /// Manual registration for the in-app [LiveUpdatePlugin] — it lives
-    /// in `android/app/src/main/kotlin/.../live_update/` rather than as
-    /// a separate published plugin, so Flutter's auto-registration
-    /// doesn't pick it up.
+    /// Manual registration for in-app plugins — they live in
+    /// `android/app/src/main/kotlin/.../` rather than as separate published
+    /// plugins, so Flutter's auto-registration doesn't pick them up.
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         flutterEngine.plugins.add(LiveUpdatePlugin())
+        flutterEngine.plugins.add(VisualizerPlugin())
     }
 }

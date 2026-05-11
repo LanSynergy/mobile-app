@@ -7,6 +7,7 @@ import '../core/audio/jellyfin_playback_reporter.dart';
 import '../core/audio/live_update_service.dart';
 import '../core/audio/player_service.dart';
 import '../core/audio/spectral_extractor.dart';
+import '../core/audio/visualizer_service.dart';
 import '../core/demo/demo_library.dart';
 import '../core/jellyfin/auth_storage.dart';
 import '../core/jellyfin/client.dart';
@@ -150,8 +151,13 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
   // subscribing to any streams.
   final liveUpdate = LiveUpdateService(svc);
   unawaited(liveUpdate.attach());
+  // Real-time FFT visualizer — attaches Android's Visualizer to ExoPlayer's
+  // audio session. No-op on non-Android and when the plugin is absent.
+  final visualizer = VisualizerService(svc);
+  unawaited(visualizer.attach());
   ref.onDispose(() async {
     await liveUpdate.dispose();
+    await visualizer.dispose();
     await reporter.dispose();
     await svc.dispose();
   });
@@ -221,6 +227,23 @@ final playbackSpeedProvider = StreamProvider.autoDispose<double>((ref) {
     final sub = svc.speedStream.listen(controller.add);
     controller.onCancel = sub.cancel;
   });
+});
+
+/// Real-time FFT magnitude from the native Android Visualizer, normalised
+/// to [0.0, 1.0] at ~60 Hz. Drives [BeatPulseArtwork]'s Transform.scale.
+/// Emits nothing on non-Android platforms or when the plugin is absent —
+/// the widget falls back to a static scale in that case.
+final fftMagnitudeProvider = StreamProvider.autoDispose<double>((ref) {
+  final svc = ref.watch(playerServiceProvider);
+  // VisualizerService is already attached inside wirePlayerService; we
+  // create a second lightweight instance here purely to expose its stream
+  // to the provider tree. It shares the same EventChannel broadcast stream
+  // so there's no double-attachment — the Kotlin side only has one
+  // Visualizer instance (managed by the wired service).
+  final viz = VisualizerService(svc);
+  unawaited(viz.attach());
+  ref.onDispose(viz.dispose);
+  return viz.magnitudeStream;
 });
 
 /// Currently-playing track (changes when the player advances within

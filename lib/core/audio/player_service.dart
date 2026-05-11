@@ -98,6 +98,16 @@ class AfPlayerService extends BaseAudioHandler with QueueHandler, SeekHandler {
   LoopMode get loopMode => _player.loopMode;
   double get speed => _player.speed;
 
+  /// The Android audio session ID of the underlying ExoPlayer instance.
+  /// Used by [VisualizerService] to attach [android.media.audiofx.Visualizer].
+  /// Returns null before the first [playQueue] call (player not yet initialised).
+  int? get audioSessionId => _player.androidAudioSessionId;
+
+  /// Stream of Android audio session ID changes. ExoPlayer can recreate
+  /// its session on some devices after a seek or source change — the
+  /// [VisualizerService] re-attaches on each new value.
+  Stream<int?> get audioSessionIdStream => _player.androidAudioSessionIdStream;
+
   /// Replace the queue with [tracks] and start playback at [startIndex].
   ///
   /// [streamHeaders] are attached to every `AudioSource.uri` so the
