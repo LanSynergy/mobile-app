@@ -305,10 +305,11 @@ class _FftWaveformPainter extends CustomPainter {
         }
         final rawFft = (sum / (hi - lo + 1)).clamp(0.0, 1.0);
 
-        // Boost the signal so quiet passages still show visible movement.
-        // Without this, bars sit near the floor even during normal playback.
-        final boosted = math.pow(rawFft, 0.5).toDouble(); // sqrt boost
-
+        // Power curve > 1 compresses quiet sounds down and lets loud beats
+        // spike high — the opposite of sqrt. This gives visible dynamic range:
+        // quiet passages sit low, loud beats clearly reach the peak.
+        // Exponent 1.8: 0.1^1.8≈0.016, 0.5^1.8≈0.29, 1.0^1.8=1.0
+        final boosted = math.pow(rawFft, 1.8).toDouble();
         // Use boosted FFT as the height fraction of the static peak ceiling.
         amp = (boosted * staticPeak).clamp(_minBarHeightFraction, staticPeak);
       } else {
