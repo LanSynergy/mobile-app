@@ -146,22 +146,27 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     svc,
     () => ref.read(jellyfinClientProvider),
   );
-  // Live-update chip / lockscreen tile (Android 16+ only). No-op on
-  // older Android, iOS, and tests — attach() probes support before
-  // subscribing to any streams.
+  // Live-update chip / lockscreen tile (Android 16+ only).
   final liveUpdate = LiveUpdateService(svc);
   unawaited(liveUpdate.attach());
-  // Real-time FFT visualizer — attaches Android's Visualizer to ExoPlayer's
-  // audio session. No-op on non-Android and when the plugin is absent.
+  // Real-time FFT visualizer. We create the service here so it lives for
+  // the app lifetime, but we do NOT call attach() yet — that requires
+  // RECORD_AUDIO permission which needs an Activity context. attach() is
+  // called lazily the first time Now Playing opens via [visualizerProvider].
   final visualizer = VisualizerService(svc);
-  unawaited(visualizer.attach());
   ref.onDispose(() async {
     await liveUpdate.dispose();
     await visualizer.dispose();
     await reporter.dispose();
     await svc.dispose();
   });
+  // Store the visualizer instance so [visualizerProvider] can reach it.
+  _visualizerInstance = visualizer;
 }
+
+/// Singleton [VisualizerService] created by [wirePlayerService].
+/// Null until the first player is wired (i.e. after [runApp]).
+VisualizerService? _visualizerInstance;
 
 final playerServiceProvider = Provider<AfPlayerService>((ref) {
   final svc = AfPlayerService();
@@ -233,16 +238,15 @@ final playbackSpeedProvider = StreamProvider.autoDispose<double>((ref) {
 /// to [0.0, 1.0] at ~60 Hz. Drives [BeatPulseArtwork]'s Transform.scale.
 /// Emits nothing on non-Android platforms or when the plugin is absent —
 /// the widget falls back to a static scale in that case.
+///
+/// Calling this provider for the first time triggers [VisualizerService.attach],
+/// which requests RECORD_AUDIO permission if needed (requires an Activity —
+/// safe to call from Now Playing which always has one).
 final fftMagnitudeProvider = StreamProvider.autoDispose<double>((ref) {
-  final svc = ref.watch(playerServiceProvider);
-  // VisualizerService is already attached inside wirePlayerService; we
-  // create a second lightweight instance here purely to expose its stream
-  // to the provider tree. It shares the same EventChannel broadcast stream
-  // so there's no double-attachment — the Kotlin side only has one
-  // Visualizer instance (managed by the wired service).
-  final viz = VisualizerService(svc);
+  final viz = _visualizerInstance;
+  if (viz == null) return const Stream.empty();
+  // attach() is idempotent and handles permission + session wiring.
   unawaited(viz.attach());
-  ref.onDispose(viz.dispose);
   return viz.magnitudeStream;
 });
 

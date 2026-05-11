@@ -11,19 +11,19 @@ import 'player_service.dart';
 /// audio session and exposes a [Stream<double>] of normalised FFT magnitude
 /// values in [0.0, 1.0] at ~60 Hz.
 ///
+/// ## Permission
+///
+/// `RECORD_AUDIO` is required by the Android Visualizer API. This service
+/// calls `requestPermission()` on the Kotlin side before attaching — the
+/// plugin shows the system dialog if needed and resolves the future with
+/// the result. If the user denies, [magnitudeStream] simply emits nothing
+/// and the artwork falls back to a static scale.
+///
 /// ## Lifecycle
 ///
-/// 1. Call [attach] once playback starts (or when the audio session ID
-///    becomes available). Safe to call multiple times — re-attaches cleanly.
-/// 2. Call [detach] on pause / stop to release the native Visualizer
-///    resource (it holds a system-wide audio effect slot).
+/// 1. Call [attach] once playback starts. Safe to call multiple times.
+/// 2. Call [detach] on pause/stop to free the audio effect slot.
 /// 3. Call [dispose] when the owning service is torn down.
-///
-/// ## Fallback
-///
-/// On non-Android platforms, in tests, or when the native plugin is absent,
-/// every method is a no-op and [magnitudeStream] emits nothing. Callers
-/// should fall back to a static animation in that case.
 class VisualizerService {
   static const _method = MethodChannel('aetherfin.visualizer');
   static const _event  = EventChannel('aetherfin.visualizer/fft');
@@ -34,6 +34,8 @@ class VisualizerService {
   StreamSubscription<dynamic>? _sessionSub;
   final _magnitudeController = StreamController<double>.broadcast();
   bool _attached = false;
+  bool _permissionGranted = false;
+  bool _permissionChecked = false;
 
   VisualizerService(this._player);
 
@@ -41,12 +43,21 @@ class VisualizerService {
   /// ~60 Hz while the Visualizer is attached and playing.
   Stream<double> get magnitudeStream => _magnitudeController.stream;
 
-  /// Wire up the Visualizer to the player's current audio session.
-  ///
-  /// Subscribes to [AudioPlayer.androidAudioSessionIdStream] so the
-  /// Visualizer automatically re-attaches when ExoPlayer recreates its
-  /// audio session (e.g. after a seek on some devices).
+  /// Request RECORD_AUDIO permission (if not already granted), then wire
+  /// the Visualizer to the player's current audio session.
   Future<void> attach() async {
+    // Ensure permission before doing anything else.
+    if (!_permissionChecked) {
+      _permissionChecked = true;
+      _permissionGranted = await _requestPermission();
+      if (!_permissionGranted) {
+        afLog('audio', 'visualizer: RECORD_AUDIO denied — FFT disabled');
+        return;
+      }
+    } else if (!_permissionGranted) {
+      return;
+    }
+
     // Subscribe to session ID changes so we re-attach if ExoPlayer
     // recreates its audio session mid-playback.
     _sessionSub ??= _player.audioSessionIdStream.listen((sessionId) async {
@@ -55,16 +66,14 @@ class VisualizerService {
       }
     });
 
-    // Also try the current session ID immediately in case the stream
-    // won't emit until the next change.
+    // Try the current session ID immediately.
     final current = _player.audioSessionId;
     if (current != null && current >= 0) {
       await _attachToSession(current);
     }
   }
 
-  /// Release the native Visualizer. Call on pause/stop to free the
-  /// system audio effect slot.
+  /// Release the native Visualizer.
   Future<void> detach() async {
     if (!_attached) return;
     _attached = false;
@@ -73,7 +82,7 @@ class VisualizerService {
     try {
       await _method.invokeMethod<void>('detach');
     } on MissingPluginException {
-      // Non-Android / test environment — ignore.
+      // Non-Android / test environment.
     } catch (e, stack) {
       afLog('audio', 'visualizer detach failed', error: e, stackTrace: stack);
     }
@@ -88,20 +97,35 @@ class VisualizerService {
 
   // ---------------------------------------------------------------------------
 
-  Future<void> _attachToSession(int sessionId) async {
-    // Detach any existing Visualizer before re-attaching.
-    if (_attached) await detach();
+  Future<bool> _requestPermission() async {
+    try {
+      // First check without showing a dialog.
+      final has = await _method.invokeMethod<bool>('hasPermission');
+      if (has == true) return true;
+      // Not granted — show the system dialog.
+      final granted = await _method.invokeMethod<bool>('requestPermission');
+      return granted == true;
+    } on MissingPluginException {
+      return false;
+    } catch (e, stack) {
+      afLog('audio', 'visualizer permission check failed',
+          error: e, stackTrace: stack);
+      return false;
+    }
+  }
 
+  Future<void> _attachToSession(int sessionId) async {
+    if (_attached) await detach();
     try {
       final ok = await _method.invokeMethod<bool>('attach', sessionId);
       if (ok != true) {
-        afLog('audio', 'visualizer attach returned false for session=$sessionId');
+        afLog('audio',
+            'visualizer attach returned false for session=$sessionId');
         return;
       }
       _attached = true;
       afLog('audio', 'visualizer attached session=$sessionId');
 
-      // Subscribe to the FFT event stream.
       _eventSub = _event.receiveBroadcastStream().listen(
         (dynamic value) {
           if (value is double) {
@@ -115,7 +139,7 @@ class VisualizerService {
         },
       );
     } on MissingPluginException {
-      // Non-Android / test environment — silently skip.
+      // Non-Android / test environment.
     } catch (e, stack) {
       afLog('audio', 'visualizer attach failed', error: e, stackTrace: stack);
     }

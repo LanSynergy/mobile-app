@@ -14,6 +14,13 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!-- Required by android.media.audiofx.Visualizer to read audio effect
+         data from ExoPlayer's audio session. Without this the Visualizer
+         constructor throws a RuntimeException on Android 6+. This does NOT
+         enable microphone recording — it only gates access to the audio
+         effects pipeline for the session the app already owns. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
     <!-- Android 16+ "Live Updates" (Promoted Ongoing Notifications). Required
          for the playback live-update chip / lockscreen tile published by
          `dev.aetherfin.aetherfin.live_update.LiveUpdatePlugin`. Older
