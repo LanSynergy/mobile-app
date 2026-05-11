@@ -170,8 +170,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           ),
         ],
       ),
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding:
               const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
           child: Column(
@@ -199,9 +200,6 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               const SizedBox(height: AfSpacing.s12),
               TextField(
                 controller: _pass,
-                // Always obscure — both passwords and API tokens are
-                // sensitive secrets that should never be visible on a
-                // shoulder-surfed device.
                 obscureText: true,
                 autocorrect: false,
                 decoration: InputDecoration(
@@ -227,7 +225,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   ),
                 ],
               ),
-              const Spacer(),
+              const SizedBox(height: AfSpacing.s32),
               ElevatedButton(
                 onPressed: _busy ? null : _submit,
                 child: _busy
