@@ -146,6 +146,56 @@ class JellyfinClient {
     );
   }
 
+  /// Authenticate via a server-issued API key (created in
+  /// `Dashboard → API Keys`). This bypasses `/Users/AuthenticateByName`
+  /// — and therefore Jellyfin's session-creation / `LogSessionActivity`
+  /// code path entirely — so it works even when plugins or stale device
+  /// state cause that endpoint to 500.
+  ///
+  /// We list users with the API key, find the one whose name matches
+  /// [username] (case-insensitive), and return their userId + the key
+  /// as the access token. Throws [StateError] if no matching user is
+  /// found, with a clear message the UI can surface.
+  Future<JellyfinAuth> authenticateWithApiKey({
+    required String username,
+    required String apiKey,
+  }) async {
+    // Build a temporary client carrying the API key in the Authorization
+    // header. We can't just swap headers on `_dio` because that would
+    // mutate state shared with other callers.
+    final probe = Dio(BaseOptions(
+      baseUrl: _dio.options.baseUrl,
+      connectTimeout: const Duration(seconds: 5),
+      sendTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 15),
+      headers: {
+        'Authorization': _buildAuthHeader(deviceId, apiKey),
+        'X-Emby-Authorization': _buildAuthHeader(deviceId, apiKey),
+        'User-Agent': 'Aetherfin/0.1.0 (Android)',
+        'Accept': 'application/json',
+      },
+    ));
+    final res = await probe.get<List<dynamic>>('Users');
+    final users = (res.data ?? const []).cast<Map>();
+    final wanted = username.trim().toLowerCase();
+    for (final raw in users) {
+      final u = raw.cast<String, dynamic>();
+      final name = (u['Name'] as String?)?.trim() ?? '';
+      if (name.toLowerCase() == wanted) {
+        return JellyfinAuth(
+          server: server,
+          userId: u['Id'] as String,
+          userName: name,
+          accessToken: apiKey,
+        );
+      }
+    }
+    throw StateError(
+      'No user named "$username" on this server. '
+      'Available: ${users.map((u) => u['Name']).join(", ")}',
+    );
+  }
+
   /// `GET /Users/{userId}/Views` — the list of libraries the user can see.
   Future<List<LibraryView>> userViews() async {
     final res = await _dio.get<Map<String, dynamic>>('Users/$userId/Views');

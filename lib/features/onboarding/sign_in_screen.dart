@@ -43,14 +43,16 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       );
       final JellyfinAuth auth;
       if (_useToken) {
-        // For "API token" path the user pastes a long-lived token. We
-        // ask for the username alongside it so we have a stable user ID
-        // for `/Users/{userId}/...` calls.
-        auth = JellyfinAuth(
-          server: widget.server,
-          userId: _user.text.trim(),
-          userName: _user.text.trim(),
-          accessToken: _pass.text.trim(),
+        // API key path. The user pastes their Jellyfin "API Key" (from
+        // Dashboard → API Keys) and their plain username. We hit
+        // `GET /Users` with the key to resolve the userId — this avoids
+        // making the user hunt for the raw UUID, AND it doubles as a
+        // health check that the key actually works. Crucially this path
+        // does NOT touch `/Users/AuthenticateByName` so it works even
+        // when that endpoint 500s due to a plugin / stale device state.
+        auth = await client.authenticateWithApiKey(
+          username: _user.text.trim(),
+          apiKey: _pass.text.trim(),
         );
       } else {
         auth = await client.authenticate(
