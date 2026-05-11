@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show MpvAudioKit;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -101,16 +100,37 @@ Future<void> main() async {
     MpvAudioKit.ensureInitialized();
     _boot('MpvAudioKit.ensureInitialized OK');
 
-    // Construct THE one and only audio handler up front so the exact
-    // same instance is shared between Riverpod (via
-    // `playerServiceProvider` override) and `AudioService.init` below.
-    // Previously the override created one service and `_warmUpAudio()`
-    // created a second orphaned one — lock-screen controls flapped
-    // against a dead handler and never drove playback.
-    final handler = AfPlayerService();
+    // Initialize audio_service BEFORE runApp so the foreground service is
+    // registered with the OS before any playback call can arrive.
+    //
+    // audio_service's builder() is called by the framework to create the
+    // handler — we construct AfPlayerService() inside it so the same
+    // instance is returned to both audio_service and Riverpod.
+    late final AfPlayerService handler;
+    try {
+      _boot('AudioService.init starting');
+      handler = await AudioService.init(
+        builder: () {
+          final svc = AfPlayerService();
+          return svc;
+        },
+        config: const AudioServiceConfig(
+          androidNotificationChannelId: 'dev.aetherfin.audio',
+          androidNotificationChannelName: 'Aetherfin playback',
+          androidNotificationOngoing: true,
+          androidStopForegroundOnPause: true,
+          notificationColor: Color(0xFF332C7A),
+        ),
+      );
+      _boot('AudioService.init OK');
+    } catch (e, stack) {
+      afLog('error', 'AudioService.init failed', error: e, stackTrace: stack);
+      // Fallback: create the handler without OS integration so the app
+      // still works (in-app controls work, lock-screen controls won't).
+      handler = AfPlayerService();
+      _boot('AudioService.init failed — using bare handler');
+    }
 
-    // Launch the UI immediately — audio init runs in the background AFTER
-    // the first frame.
     _boot('calling runApp');
     runApp(
       ProviderScope(
@@ -118,10 +138,6 @@ Future<void> main() async {
           deviceIdProvider.overrideWithValue(deviceId),
           initialAuthProvider.overrideWithValue(initialAuth),
           playerServiceProvider.overrideWith((ref) {
-            // Apply the same Riverpod-side wiring the default factory
-            // would have applied (currentTrack forwarding + Jellyfin
-            // session reporter), but on the singleton `handler` so the
-            // OS-integrated handler IS the one the UI sees.
             wirePlayerService(ref, handler);
             return handler;
           }),
@@ -130,15 +146,6 @@ Future<void> main() async {
       ),
     );
     _boot('runApp returned');
-
-    // Schedule audio_service init AFTER the first frame is painted so we
-    // are 100% sure the UI is alive before we touch the OS. If init fails
-    // (e.g. on a stripped-down device), we log + carry on; the app still
-    // works without lock-screen controls.
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      _boot('first frame painted — kicking AudioService init');
-      unawaited(_warmUpAudio(handler));
-    });
   }, (error, stack) {
     afLog('error', 'zoned uncaught', error: error, stackTrace: stack);
   });
@@ -176,33 +183,6 @@ Future<String> _loadOrCreateFallbackDeviceId() async {
     // new device every time. This branch is essentially unreachable on
     // a normal Android device.
     return 'aetherfin-fallback-${DateTime.now().microsecondsSinceEpoch}';
-  }
-}
-
-Future<void> _warmUpAudio(AfPlayerService handler) async {
-  try {
-    _boot('AudioService.init starting');
-    await AudioService.init(
-      builder: () => handler,
-      config: const AudioServiceConfig(
-        androidNotificationChannelId: 'dev.aetherfin.audio',
-        androidNotificationChannelName: 'Aetherfin playback',
-        androidNotificationOngoing: true,
-        androidStopForegroundOnPause: true,
-        notificationColor: Color(0xFF332C7A),
-      ),
-    );
-    _boot('AudioService.init OK');
-  } catch (e, stack) {
-    afLog(
-      'error',
-      'AudioService.init failed',
-      error: e,
-      stackTrace: stack,
-    );
-    // Don't rethrow — the UI must keep working even without OS audio
-    // integration. The mini-player + Now Playing will still drive playback
-    // via the in-app handler that was already wired through ProviderScope.
   }
 }
 
