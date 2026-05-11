@@ -18,11 +18,14 @@ JellyfinClient _client({
 
 void main() {
   group('trackStreamUrl', () {
-    test('omits api_key — auth rides on Authorization header now', () {
+    test('embeds api_key in URL for libmpv/FFmpeg compatibility', () {
+      // FFmpeg's HTTP client rejects the MediaBrowser Authorization header
+      // because it contains commas (used as field separators). Jellyfin
+      // accepts api_key as an equivalent auth mechanism for media streams.
       final url = _client(token: 't-abc', userId: 'u-1')
           .trackStreamUrl('track-1', maxBitrateKbps: 320);
-      expect(url.contains('api_key='), isFalse,
-          reason: 'Token must not be embedded in the URL.');
+      expect(url.contains('api_key=t-abc'), isTrue,
+          reason: 'Token must be embedded as api_key for libmpv compatibility.');
       expect(url.contains('Static=true'), isTrue);
       expect(url.contains('Audio/track-1/stream'), isTrue);
       expect(url.contains('MaxStreamingBitrate=320000'), isTrue);
