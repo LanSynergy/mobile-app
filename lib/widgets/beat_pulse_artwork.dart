@@ -3,29 +3,18 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import 'artwork.dart';
 
 /// Album artwork that pulses in real-time sync with the audio output.
 ///
-/// ## How it works
+/// Uses [fftSpectrumProvider] (mpv_audio_kit's post-DSP FFT stream) to
+/// drive a [Transform.scale]. The scale is animated with a short
+/// spring-like tween so each beat hit is smooth rather than a hard jump.
 ///
-/// [fftSpectrumProvider] exposes `Player.stream.spectrum` from
-/// mpv_audio_kit — 64 log-spaced perceptual bands in [0, 1] at ~30 fps,
-/// captured post-DSP (after EQ, volume, compressor: what you actually
-/// hear). No RECORD_AUDIO permission needed.
-///
-/// Each FFT frame drives an [AnimationController] target: the controller
-/// lerps toward the incoming RMS energy with a fast attack and slow decay
-/// so rapid transients produce a sharp hit and a smooth tail.
-///
-/// The energy is mapped to [Transform.scale] in [1.0, 1.06].
-///
-/// ## Design token compliance
-///
-/// Audio-coupled animations must use [AfCurves.linear]. The controller
-/// drives a raw linear interpolation — no easing curve on top.
+/// The AnimationController only runs when there is actual FFT energy —
+/// it stays idle when paused or when the screen is not visible, avoiding
+/// the 60fps drain that caused the mini-player tap freeze.
 class BeatPulseArtwork extends ConsumerStatefulWidget {
   final String? imageUrl;
   final double size;
@@ -45,26 +34,22 @@ class BeatPulseArtwork extends ConsumerStatefulWidget {
 class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctl;
+  late final Animation<double> _scaleAnim;
 
-  /// Maximum scale excursion at full energy. 0.06 = 106 % on loud beats.
-  static const double _maxScaleDelta = 0.06;
-
-  /// Lerp factor toward the incoming FFT value (attack).
-  static const double _attackLerp = 0.55;
-
-  /// Lerp factor back toward zero when no new frame arrives (decay).
-  static const double _decayLerp = 0.12;
-
-  double _target = 0.0;
+  /// Maximum scale at full energy.
+  static const double _maxScale = 1.06;
 
   @override
   void initState() {
     super.initState();
     _ctl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 16),
-    )..addListener(_onTick);
-    _ctl.repeat();
+      duration: const Duration(milliseconds: 120),
+      reverseDuration: const Duration(milliseconds: 400),
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: _maxScale).animate(
+      CurvedAnimation(parent: _ctl, curve: Curves.easeOut),
+    );
   }
 
   @override
@@ -73,17 +58,7 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
     super.dispose();
   }
 
-  void _onTick() {
-    final current = _ctl.value;
-    final lerp = _target > current ? _attackLerp : _decayLerp;
-    _ctl.value = (current + (_target - current) * lerp).clamp(0.0, 1.0);
-    // Decay target so the artwork returns to rest when the stream pauses.
-    _target *= 0.85;
-  }
-
-  /// Compute RMS energy from the low-to-mid bands (indices 0..15 of 64).
-  /// These cover roughly 20 Hz – 2 kHz — the range that drives perceived
-  /// beat energy.
+  /// Compute RMS energy from the low-to-mid bands (first quarter of 64 bands).
   double _rmsEnergy(Float32List bands) {
     if (bands.isEmpty) return 0.0;
     final end = (bands.length ~/ 4).clamp(1, bands.length);
@@ -96,20 +71,30 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(fftSpectrumProvider, (_, next) {
+    // Listen to FFT frames and drive the controller forward/reverse
+    // based on energy. No continuous tick loop — only animates on beat.
+    ref.listen(fftSpectrumProvider, (prev, next) {
       next.whenData((frame) {
-        _target = _rmsEnergy(frame.bands);
+        final energy = _rmsEnergy(frame.bands);
+        if (energy > 0.15) {
+          // Beat detected — animate to scaled-up position.
+          final target = ((energy - 0.15) / 0.85).clamp(0.0, 1.0);
+          _ctl.animateTo(target, duration: const Duration(milliseconds: 80));
+        } else {
+          // Silence / low energy — decay back to rest.
+          if (_ctl.value > 0.01) {
+            _ctl.animateTo(0.0, duration: const Duration(milliseconds: 350));
+          }
+        }
       });
     });
 
     return AnimatedBuilder(
-      animation: _ctl,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: 1.0 + _maxScaleDelta * _ctl.value,
-          child: child,
-        );
-      },
+      animation: _scaleAnim,
+      builder: (context, child) => Transform.scale(
+        scale: _scaleAnim.value,
+        child: child,
+      ),
       child: Artwork(
         url: widget.imageUrl,
         size: widget.size,

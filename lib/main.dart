@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show MpvAudioKit;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
@@ -93,6 +94,12 @@ Future<void> main() async {
       deviceId = await _loadOrCreateFallbackDeviceId();
       initialAuth = null;
     }
+
+    // Initialize mpv_audio_kit's native backend BEFORE creating any Player
+    // instances. This loads libmpv.so and cleans up any handles leaked
+    // across a Flutter Hot-Restart. Must happen before AfPlayerService().
+    MpvAudioKit.ensureInitialized();
+    _boot('MpvAudioKit.ensureInitialized OK');
 
     // Construct THE one and only audio handler up front so the exact
     // same instance is shared between Riverpod (via
