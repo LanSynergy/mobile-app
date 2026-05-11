@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AfColors.surfaceCanvas — matches lib/design_tokens/colors.dart so the
+         Android window background and the Flutter Scaffold canvas are the
+         same color. No flash, no white edges, no jarring jump. -->
+    <color name="aetherfin_canvas">#FF0B0B14</color>
+</resources>

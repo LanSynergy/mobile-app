@@ -16,6 +16,8 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ignore: avoid_print
+    print('aetherfin:boot WelcomeScreen.build');
     return Scaffold(
       body: DecoratedBox(
         decoration: const BoxDecoration(

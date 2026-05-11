@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,47 +12,56 @@ import 'core/audio/player_service.dart';
 import 'design_tokens/tokens.dart';
 import 'state/providers.dart';
 
+/// Boot breadcrumb — every checkpoint prefixes with this so a single
+/// `adb logcat | grep aetherfin:boot` shows the full startup trace.
+void _boot(String message) {
+  // ignore: avoid_print
+  print('aetherfin:boot $message');
+}
+
 /// A holder so the OS-integrated audio handler — once initialized — can be
-/// injected into the Riverpod tree. Init runs in the background after the
+/// injected into the Riverpod tree. Init runs in the background AFTER the
 /// first frame so the UI is never blocked by audio_service warm-up.
 final _handlerCompleter = Completer<AfPlayerService>();
 
 Future<void> main() async {
+  _boot('main() entered');
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    _boot('WidgetsFlutterBinding.ensureInitialized OK');
 
-    // Surface framework errors via Logcat AND keep a visible breadcrumb on
-    // screen via [_RootErrorWidget]. Without this a single thrown exception
-    // can leave the user staring at an empty surface.
+    // Surface framework errors to Logcat (always) AND keep a visible
+    // breadcrumb on screen via [_RootErrorWidget]. Without this a single
+    // thrown exception can leave the user staring at an empty surface.
     FlutterError.onError = (details) {
       FlutterError.presentError(details);
-      developer.log(
-        'FlutterError: ${details.exceptionAsString()}',
-        name: 'aetherfin',
-        error: details.exception,
-        stackTrace: details.stack,
-      );
+      // ignore: avoid_print
+      print('aetherfin:error FlutterError: ${details.exceptionAsString()}');
+      if (details.stack != null) {
+        // ignore: avoid_print
+        print('aetherfin:error stack: ${details.stack}');
+      }
     };
     PlatformDispatcher.instance.onError = (error, stack) {
-      developer.log(
-        'PlatformDispatcher: $error',
-        name: 'aetherfin',
-        error: error,
-        stackTrace: stack,
-      );
+      // ignore: avoid_print
+      print('aetherfin:error PlatformDispatcher: $error');
+      // ignore: avoid_print
+      print('aetherfin:error stack: $stack');
       return true;
     };
     ErrorWidget.builder = (details) => _RootErrorWidget(details: details);
+    _boot('error handlers installed');
 
-    // Launch the UI immediately — audio init runs in the background.
+    // Launch the UI immediately — audio init runs in the background AFTER
+    // the first frame.
+    _boot('calling runApp');
     runApp(
       ProviderScope(
         overrides: [
           playerServiceProvider.overrideWith((ref) {
-            // Until AudioService.init resolves, hand out a bare service so the
-            // UI doesn't crash if it reads playerServiceProvider before the
-            // OS-integrated handler is ready. Once the OS handler arrives, it
-            // is exposed to the rest of the tree via [audioHandlerProvider].
+            // Until AudioService.init resolves, hand out a bare service so
+            // the UI doesn't crash if it reads playerServiceProvider before
+            // the OS-integrated handler is ready.
             final svc = AfPlayerService();
             ref.onDispose(svc.dispose);
             return svc;
@@ -61,23 +70,27 @@ Future<void> main() async {
         child: const AetherfinApp(),
       ),
     );
+    _boot('runApp returned');
 
-    // Warm up audio_service in the background — never block the UI on this.
-    // If init fails (e.g. on a stripped-down device), we log + carry on; the
-    // app still works without lock-screen controls.
-    unawaited(_warmUpAudio());
+    // Schedule audio_service init AFTER the first frame is painted so we
+    // are 100% sure the UI is alive before we touch the OS. If init fails
+    // (e.g. on a stripped-down device), we log + carry on; the app still
+    // works without lock-screen controls.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _boot('first frame painted — kicking AudioService init');
+      unawaited(_warmUpAudio());
+    });
   }, (error, stack) {
-    developer.log(
-      'Zoned uncaught: $error',
-      name: 'aetherfin',
-      error: error,
-      stackTrace: stack,
-    );
+    // ignore: avoid_print
+    print('aetherfin:error zoned uncaught: $error');
+    // ignore: avoid_print
+    print('aetherfin:error stack: $stack');
   });
 }
 
 Future<void> _warmUpAudio() async {
   try {
+    _boot('AudioService.init starting');
     final handler = AfPlayerService();
     await AudioService.init(
       builder: () => handler,
@@ -89,16 +102,15 @@ Future<void> _warmUpAudio() async {
         notificationColor: Color(0xFF332C7A),
       ),
     );
+    _boot('AudioService.init OK');
     if (!_handlerCompleter.isCompleted) {
       _handlerCompleter.complete(handler);
     }
   } catch (e, stack) {
-    developer.log(
-      'AudioService.init failed: $e',
-      name: 'aetherfin',
-      error: e,
-      stackTrace: stack,
-    );
+    // ignore: avoid_print
+    print('aetherfin:error AudioService.init failed: $e');
+    // ignore: avoid_print
+    print('aetherfin:error stack: $stack');
     // Don't rethrow — the UI must keep working even without OS audio
     // integration. The mini-player + Now Playing will still drive playback
     // via the in-app handler that was already wired through ProviderScope.

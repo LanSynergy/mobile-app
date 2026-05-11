@@ -10,6 +10,8 @@ class AetherfinApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // ignore: avoid_print
+    print('aetherfin:boot AetherfinApp.build');
     // Edge-to-edge canvas: the app draws under the status/nav bars.
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
