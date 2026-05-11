@@ -125,7 +125,15 @@ jobs:
           RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           cd build/app/outputs/flutter-apk
           shopt -s nullglob
-          APKS=(*.apk)
+          # Prefer the arm64 split if it exists (per user request); otherwise fall
+          # back to the universal APK from a non-split build.
+          APKS=(*arm64-v8a*.apk)
+          if [ ${#APKS[@]} -eq 0 ]; then
+            APKS=(*.apk)
+            echo "No arm64-v8a split found; falling back to universal APK(s)."
+          else
+            echo "Sending arm64-v8a build only (per workflow config). Other ABIs remain in the workflow artifact."
+          fi
           if [ ${#APKS[@]} -eq 0 ]; then
             echo "::error::No APKs found to send."
             exit 1
