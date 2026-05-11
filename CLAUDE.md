@@ -160,6 +160,103 @@ the known fix and it has solved every instance we've seen.
 **Do not** disable plugins, downgrade Jellyfin, or modify our header to
 work around it — those are all dead-ends.
 
+### 5.2 Race-free auth hydration (post-mortem from PR #2)
+
+**Symptom we burned a day on:** sign-in returned `200 OK` with a valid
+`AccessToken`, but the very next request — `GET /Users/{id}/Views` —
+returned `401`. Every subsequent library / home / artist / genre request
+also 401’d. The token *was* being persisted to secure storage; the user
+was just being kicked back to onboarding on every app launch.
+
+**Root cause:** `AuthNotifier` was hydrated lazily with the cascade
+`AuthNotifier(...)..hydrate()`. `hydrate()` is an async call into
+`flutter_secure_storage`. On Android, **flutter_secure_storage serializes
+all calls on a single MethodChannel** — reads and writes interleave on
+one queue. At sign-in time the queue looked like:
+
+```
+load()    ← hydrate, started when authProvider was first read
+write()   ← save, called by sign-in screen with the new auth
+```
+
+`load()` returned `null` (storage was empty pre-sign-in) and set
+`state = null` — **after** the sign-in screen had synchronously set
+`state = auth` but **before** the write finished. The token landed in
+secure storage; the in-memory state did not. `jellyfinClientProvider`
+rebuilt with `auth == null`, so every follow-up request flew without a
+`Token=` in the header.
+
+**The pattern we use now (`lib/state/providers.dart`, `lib/main.dart`):**
+
+1. `main()` reads `AuthStorage().load()` **synchronously** (in parallel
+   with `loadOrCreateDeviceId()`) before `runApp`.
+2. The result is injected into the provider tree via an override:
+   ```dart
+   ProviderScope(overrides: [
+     deviceIdProvider.overrideWithValue(deviceId),
+     initialAuthProvider.overrideWithValue(initialAuth),
+     …
+   ])
+   ```
+3. `AuthNotifier` takes the initial value through its constructor:
+   ```dart
+   AuthNotifier(this._storage, {JellyfinAuth? initial}) : super(initial);
+   ```
+   No async hydrate. No race window.
+4. `save(auth)` does `state = auth; await _storage.save(auth);` — nothing
+   is competing to overwrite `state` because the load already happened
+   before the widget tree was even built.
+
+**Rules to keep this race dead:**
+- **Never** add a second async hydrator that runs after construction.
+- **Never** read `authProvider` lazily for the first time *during*
+  sign-in. If you need a new provider that depends on auth, watch
+  `authProvider` from the start — don't `ref.read(authProvider.notifier)`
+  for the side-effect of building it.
+- The boot trace logs `aetherfin:boot device id loaded (len=22); auth
+  restored for <userName>` (or `auth absent`). If you don't see this line
+  before `runApp returned`, the override is missing.
+
+### 5.3 Router-level auth redirects
+
+`go_router` has no built-in awareness of Riverpod state, so we wire it up
+explicitly in `lib/app/router.dart`:
+
+```dart
+final refresh = _AuthRefreshListenable();
+ref.listen<JellyfinAuth?>(authProvider, (_, __) => refresh._notify());
+
+return GoRouter(
+  refreshListenable: refresh,
+  redirect: (context, state) {
+    final auth = ref.read(authProvider);
+    final inOnboarding =
+        state.matchedLocation == '/' ||
+        state.matchedLocation.startsWith('/onboarding');
+    if (auth != null && inOnboarding) return '/home';   // signed in → skip onboarding
+    if (auth == null && !inOnboarding) return '/';      // anonymous → back to welcome
+    return null;
+  },
+  …
+);
+```
+
+Rules:
+- **Every new onboarding route must start with `/onboarding/`** so the
+  redirect's prefix check catches it. The bare `/` is also treated as
+  onboarding.
+- **Every post-auth route must NOT start with `/onboarding/`**. Putting a
+  signed-in screen under `/onboarding/*` would make the redirect bounce
+  the user to `/home` forever.
+- After `await authProvider.notifier.save(auth)` you can still call
+  `context.go('/home')` manually. The refreshListenable will also fire,
+  but the explicit `go()` covers the rare frame where the listener
+  hasn't propagated yet.
+- Don't call `context.pop()` on a screen that was reached via
+  `context.go()` — the stack is empty and you'll hit
+  `GoError("There is nothing to pop")`. Guard with `context.canPop()`
+  or fall back to an explicit `context.go('/')`.
+
 ## 6. Build, run, lint, test
 
 ```bash
@@ -189,7 +286,7 @@ output is enough to diagnose most issues without attaching a debugger.
 
 | Prefix | When | Example |
 |---|---|---|
-| `aetherfin:boot` | Boot ordering, AudioService init | `aetherfin:boot first frame painted — kicking AudioService init` |
+| `aetherfin:boot` | Boot ordering, persisted auth restoration, AudioService init | `aetherfin:boot device id loaded (len=22); auth restored for azrim` |
 | `aetherfin:http →` | Outgoing request (method, URL, headers redacted, body redacted if auth-sensitive) | `aetherfin:http → POST http://srv/Users/AuthenticateByName` |
 | `aetherfin:http ←` | Successful response (status, method, URL) | `aetherfin:http ← 200 GET http://srv/System/Info/Public` |
 | `aetherfin:http ✕` | Failed response (status, method, URL) | `aetherfin:http ✕ 500 POST http://srv/Users/AuthenticateByName` |
@@ -258,6 +355,17 @@ seems obvious.
    signed in we hit `/MusicGenres`. Use `FutureProvider.autoDispose`.
 7. **"Build a parallel HTTP client for endpoint X."** Don't. Add a method
    to `JellyfinClient`.
+8. **"Just hydrate `AuthNotifier` asynchronously — it’s a tiny read."**
+   No. flutter_secure_storage serializes on a single MethodChannel; an
+   async hydrate races sign-in `save()` and clobbers the token in memory.
+   Load auth in `main()` and inject via `initialAuthProvider`. (§5.2.)
+9. **"go_router will figure out where to send a signed-in user on cold
+   start."** No. Without `redirect:` + `refreshListenable`, you land on
+   WelcomeScreen even with valid persisted auth. (§5.3.)
+10. **"`context.pop()` is safe on any screen with a back button."** No.
+    Screens reached via `context.go()` have an empty navigator stack and
+    `pop()` raises `GoError("There is nothing to pop")`. Guard with
+    `canPop()` or fall back to `context.go('/')`.
 
 ## 11. Glossary
 
