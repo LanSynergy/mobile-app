@@ -148,6 +148,16 @@ Future<void> main() async {
     // function can read auth state without BuildContext dependency.
     setRouterContainer(container);
 
+    // Trigger an initial redirect evaluation now that the container is
+    // wired. Without this, the router's first redirect fires during the
+    // widget tree build — before UncontrolledProviderScope is mounted —
+    // so _container.read(authProvider) may return null even when auth
+    // was loaded. The notification schedules a re-evaluation on the next
+    // frame, after the widget tree is fully mounted.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      notifyAuthChanged();
+    });
+
     // Wire the auth → router redirect listener on the container directly.
     // This avoids putting ref.listen inside routerProvider which caused
     // routerProvider to rebuild on every auth change, triggering

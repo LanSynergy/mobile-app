@@ -252,20 +252,39 @@ class AfPlayerService extends BaseAudioHandler
 
   void _bindStreams() {
     // Sync current track when the playlist index changes.
+    // Also handles auto-advance: when mpv moves to the next track (either
+    // via gapless or manual skip), we update our state and ensure playback
+    // is running. This replaces the fragile `completed` stream approach
+    // which raced with mpv's internal state updates.
     _subs.add(_player.stream.playlist.listen((playlist) {
       final idx = playlist.index;
       if (idx < 0 || idx >= _trackQueue.length) return;
-      if (idx == _currentIndex) return;
+
+      final indexChanged = idx != _currentIndex;
       _currentIndex = idx;
-      final track = _trackQueue[idx];
-      _trackController.add(track);
-      afLog(
-        'data',
-        'currentTrack source=live id=${track.id} '
-        'title="${track.title}" index=$idx',
-      );
-      onTrackChanged?.call(track);
-      _updateMediaItem();
+
+      if (indexChanged) {
+        final track = _trackQueue[idx];
+        _trackController.add(track);
+        afLog(
+          'data',
+          'currentTrack source=live id=${track.id} '
+          'title="${track.title}" index=$idx',
+        );
+        onTrackChanged?.call(track);
+        _updateMediaItem();
+
+        // Ensure playback resumes after auto-advance. mpv with Gapless.weak
+        // advances the index but may leave the player in a paused state.
+        // We give it a short window to start playing on its own, then
+        // nudge it if it hasn't.
+        Future.delayed(const Duration(milliseconds: 150), () {
+          if (_currentIndex == idx && !_player.state.playing) {
+            _player.play();
+            afLog('audio', 'auto-advance nudge play() at index=$idx');
+          }
+        });
+      }
     }));
 
     // Sync playback state to audio_service.
@@ -275,17 +294,28 @@ class AfPlayerService extends BaseAudioHandler
     _subs.add(_player.stream.completed.listen((_) => _updatePlaybackState()));
     _subs.add(_player.stream.rate.listen((_) => _updatePlaybackState()));
 
-    // Auto-advance: when a track completes and the playlist has more tracks,
-    // call play() so the next track starts. mpv advances the index internally
-    // but leaves the player paused — we need to explicitly resume.
+    // Fallback auto-advance via completed stream: handles the case where
+    // mpv signals completion but doesn't advance the playlist index
+    // (e.g. last track in queue with loop=none, or gapless disabled).
     _subs.add(_player.stream.completed.listen((completed) {
       if (!completed) return;
       final nextIdx = _currentIndex + 1;
       if (nextIdx < _trackQueue.length) {
-        // Small delay so mpv has time to load the next track's demuxer.
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (_player.state.playlist.index == nextIdx) {
+        // mpv should have already advanced via the playlist stream above.
+        // This is a safety net for edge cases where it hasn't.
+        Future.delayed(const Duration(milliseconds: 300), () {
+          final currentMpvIdx = _player.state.playlist.index;
+          if (currentMpvIdx == nextIdx && !_player.state.playing) {
             _player.play();
+            afLog('audio', 'completed fallback: play() at index=$nextIdx');
+          } else if (currentMpvIdx == _currentIndex) {
+            // mpv didn't advance — force jump to next track.
+            _player.jump(nextIdx).then((_) {
+              Future.delayed(const Duration(milliseconds: 100), () {
+                _player.play();
+              });
+            });
+            afLog('audio', 'completed fallback: jump+play to index=$nextIdx');
           }
         });
       }
