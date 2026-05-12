@@ -49,6 +49,7 @@ final _router = GoRouter(
     final auth = _container?.read(authProvider);
     final loc = state.matchedLocation;
     final inOnboarding = loc == '/' || loc.startsWith('/onboarding');
+    print('[router] redirect loc=$loc auth=${auth != null ? auth.userName : "null"} inOnboarding=$inOnboarding');
     if (auth != null && inOnboarding) return '/home';
     if (auth == null && !inOnboarding) return '/';
     return null;

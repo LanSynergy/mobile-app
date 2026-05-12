@@ -32,43 +32,46 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AfSpacing.s16,
-              AfSpacing.s8,
-              AfSpacing.s16,
-              AfSpacing.s8,
-            ),
-            child: Row(
-              children: [
-                Text('Library', style: AfTypography.titleLarge),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.sort_rounded),
-                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Sort coming soon'),
-                      duration: Duration(seconds: 2),
+    return ColoredBox(
+      color: AfColors.surfaceCanvas,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                AfSpacing.s8,
+                AfSpacing.s16,
+                AfSpacing.s8,
+              ),
+              child: Row(
+                children: [
+                  Text('Library', style: AfTypography.titleLarge),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.sort_rounded),
+                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Sort coming soon'),
+                        duration: Duration(seconds: 2),
+                      ),
                     ),
+                    tooltip: 'Sort',
                   ),
-                  tooltip: 'Sort',
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          _SegmentedPill(
-            value: _section,
-            onChanged: (v) => setState(() => _section = v),
-          ),
-          const SizedBox(height: AfSpacing.s16),
-          Expanded(
-            child: _SectionBody(section: _section),
-          ),
-        ],
+            _SegmentedPill(
+              value: _section,
+              onChanged: (v) => setState(() => _section = v),
+            ),
+            const SizedBox(height: AfSpacing.s16),
+            Expanded(
+              child: _SectionBody(section: _section),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -53,40 +53,43 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AfSpacing.s16,
-              AfSpacing.s8,
-              AfSpacing.s16,
-              AfSpacing.s8,
-            ),
-            child: Text('Search', style: AfTypography.titleLarge),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-            child: TextField(
-              controller: _controller,
-              autofocus: false,
-              decoration: const InputDecoration(
-                hintText: 'Artists, albums, tracks…',
-                prefixIcon: Icon(Icons.search_rounded),
+    return ColoredBox(
+      color: AfColors.surfaceCanvas,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                AfSpacing.s8,
+                AfSpacing.s16,
+                AfSpacing.s8,
               ),
-              onChanged: _onChanged,
+              child: Text('Search', style: AfTypography.titleLarge),
             ),
-          ),
-          const SizedBox(height: AfSpacing.s16),
-          Expanded(
-            child: _query.isEmpty
-                ? _SearchIdleState(
-                    onAskTap: () => AskSheet.show(context),
-                  )
-                : _LiveSearchResults(query: _query),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+              child: TextField(
+                controller: _controller,
+                autofocus: false,
+                decoration: const InputDecoration(
+                  hintText: 'Artists, albums, tracks…',
+                  prefixIcon: Icon(Icons.search_rounded),
+                ),
+                onChanged: _onChanged,
+              ),
+            ),
+            const SizedBox(height: AfSpacing.s16),
+            Expanded(
+              child: _query.isEmpty
+                  ? _SearchIdleState(
+                      onAskTap: () => AskSheet.show(context),
+                    )
+                  : _LiveSearchResults(query: _query),
+            ),
+          ],
+        ),
       ),
     );
   }
