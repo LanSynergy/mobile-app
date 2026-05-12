@@ -16,14 +16,28 @@ import '../../widgets/beat_pulse_artwork.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/quality_chip.dart';
 import '../../widgets/waveform.dart';
-/// Mockup 10 — Now Playing.
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NowPlayingScreen — Reactive Islands architecture
+//
+// Rebuild topology:
+//   NowPlayingScreen   watches: currentTrackProvider (changes on skip only)
+//   _ReactiveBackground watches: currentSpectralProvider (color extraction)
+//   _ReactiveArtwork    watches: currentSpectralProvider
+//   _ReactiveProgress   watches: positionStreamProvider (high-frequency)
+//   _ReactiveTransport  watches: playingStreamProvider, shuffle, loop
+//
+// High-frequency streams (position, playing) are isolated to leaf widgets
+// so they never trigger rebuilds of the artwork, gradient, or metadata.
+// ─────────────────────────────────────────────────────────────────────────────
+
 class NowPlayingScreen extends ConsumerWidget {
   const NowPlayingScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Only watches track identity — rebuilds on skip, not on position tick.
     final track = ref.watch(currentTrackProvider);
-    final spectral = ref.watch(currentSpectralProvider);
 
     if (track == null) {
       return Scaffold(
@@ -32,210 +46,37 @@ class NowPlayingScreen extends ConsumerWidget {
       );
     }
 
-    final positionAsync = ref.watch(positionStreamProvider);
-    final position = positionAsync.maybeWhen(
-      data: (p) => p,
-      orElse: () => Duration.zero,
-    );
-    final isPlaying = ref.watch(playingStreamProvider).maybeWhen(
-          data: (v) => v,
-          orElse: () => false,
-        );
-    final duration = track.duration;
-    final progress = duration.inMilliseconds == 0
-        ? 0.0
-        : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
-    final peaks = track.peaks ?? DemoLibrary.peaksFor(track.id);
-
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AfColors.surfaceCanvas,
-              spectral.shadow,
-            ],
-            stops: const [0.4, 1.0],
-          ),
-        ),
+      body: _ReactiveBackground(
         child: SafeArea(
           child: Column(
             children: [
-              _TopBar(spectral: spectral, track: track),
+              _TopBar(track: track),
               Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AfSpacing.gutterGenerous,
+                child: CustomScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.gutterGenerous,
+                      ),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          const SizedBox(height: AfSpacing.s24),
+                          _ReactiveArtwork(track: track),
+                          const SizedBox(height: AfSpacing.s24),
+                          _MetadataRow(track: track),
+                          const SizedBox(height: AfSpacing.s24),
+                          _ReactiveProgress(track: track),
+                          const SizedBox(height: AfSpacing.s24),
+                          _ReactiveTransport(track: track),
+                          const SizedBox(height: AfSpacing.s32),
+                          const _UtilityRow(),
+                          const SizedBox(height: AfSpacing.s24),
+                        ]),
+                      ),
                     ),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: AfSpacing.s24),
-                        Hero(
-                          tag: 'now-playing-artwork',
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: AfRadii.borderLg,
-                              boxShadow: [
-                                // Tight inner shadow — depth.
-                                BoxShadow(
-                                  color: spectral.shadow.withValues(alpha: 0.6),
-                                  blurRadius: 48,
-                                  offset: const Offset(0, 24),
-                                ),
-                                // Wide ambient glow — spectral color halo.
-                                BoxShadow(
-                                  color: spectral.energy.withValues(alpha: 0.35),
-                                  blurRadius: 72,
-                                  spreadRadius: 8,
-                                  offset: Offset.zero,
-                                ),
-                              ],
-                            ),
-                            child: BeatPulseArtwork(
-                              imageUrl: track.imageUrl,
-                              size: 320,
-                              radius: AfRadii.borderLg,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AfSpacing.s24),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    track.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AfTypography.titleLarge,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    track.artistName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AfTypography.bodyMedium.copyWith(
-                                      color: AfColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                track.isFavorite
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: track.isFavorite
-                                    ? AfColors.semanticError
-                                    : AfColors.textPrimary,
-                              ),
-                              tooltip: track.isFavorite
-                                  ? 'Remove from favorites'
-                                  : 'Add to favorites',
-                              onPressed: () =>
-                                  ref.read(favoriteToggleProvider)(track),
-                            ),
-                            if (track.quality != null)
-                              QualityChip(quality: track.quality!),
-                          ],
-                        ),
-                        const SizedBox(height: AfSpacing.s24),
-                        FftWaveform(
-                          peaks: peaks,
-                          progress: progress,
-                          isPlaying: isPlaying,
-                          playedColor: spectral.energy,
-                          height: 80,
-                          onScrub: (p) {
-                            final newPos = Duration(
-                              milliseconds:
-                                  (p * duration.inMilliseconds).round(),
-                            );
-                            ref.read(playerServiceProvider).seek(newPos);
-                          },
-                          onScrubEnd: (p) {
-                            final newPos = Duration(
-                              milliseconds:
-                                  (p * duration.inMilliseconds).round(),
-                            );
-                            ref.read(playerServiceProvider).seek(newPos);
-                          },
-                        ),
-                        const SizedBox(height: AfSpacing.s8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              formatTrackDuration(position),
-                              style: AfTypography.mono.copyWith(
-                                color: AfColors.textSecondary,
-                              ),
-                            ),
-                            Text(
-                              formatRemaining(
-                                  duration - position < Duration.zero
-                                      ? Duration.zero
-                                      : duration - position),
-                              style: AfTypography.mono.copyWith(
-                                color: AfColors.textTertiary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: AfSpacing.s24),
-                        _TransportRow(
-                          isPlaying: isPlaying,
-                          spectral: spectral,
-                          shuffleOn: ref
-                              .watch(shuffleModeProvider)
-                              .maybeWhen(
-                                data: (v) => v,
-                                orElse: () => false,
-                              ),
-                          loopMode: ref
-                              .watch(loopModeProvider)
-                              .maybeWhen(
-                                data: (v) => v,
-                                orElse: () => Loop.off,
-                              ),
-                          accent: spectral.energy,
-                          onShuffle: () {
-                            final svc = ref.read(playerServiceProvider);
-                            unawaited(svc.setAfShuffleMode(!svc.isShuffleEnabled));
-                          },
-                          onRepeat: () {
-                            final svc = ref.read(playerServiceProvider);
-                            final next = switch (svc.loopMode) {
-                              Loop.off => Loop.playlist,
-                              Loop.playlist => Loop.file,
-                              Loop.file => Loop.off,
-                            };
-                            unawaited(svc.setAfLoopMode(next));
-                          },
-                          onPlayPause: () {
-                            final svc =
-                                ref.read(playerServiceProvider);
-                            isPlaying ? svc.pause() : svc.play();
-                          },
-                          onPrev: () =>
-                              ref.read(playerServiceProvider).skipToPrevious(),
-                          onNext: () =>
-                              ref.read(playerServiceProvider).skipToNext(),
-                        ),
-                        const SizedBox(height: AfSpacing.s32),
-                        const _UtilityRow(),
-                        const SizedBox(height: AfSpacing.s24),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -246,10 +87,279 @@ class NowPlayingScreen extends ConsumerWidget {
   }
 }
 
-class _TopBar extends ConsumerWidget {
-  final Spectral spectral;
+// ─────────────────────────────────────────────────────────────────────────────
+// Reactive islands
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Watches spectral for the background gradient only.
+/// Rebuilds when artwork color changes — not on position ticks.
+class _ReactiveBackground extends ConsumerWidget {
+  final Widget child;
+  const _ReactiveBackground({required this.child});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
+    return AnimatedContainer(
+      duration: AfDurations.expressive,
+      curve: AfCurves.easeStandard,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AfColors.surfaceCanvas, spectral.shadow],
+          stops: const [0.4, 1.0],
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Watches spectral for artwork glow only.
+/// Hero wraps only the static artwork image — glow is a separate layer
+/// so Hero transitions don't fight the reactive animation.
+class _ReactiveArtwork extends ConsumerWidget {
   final AfTrack track;
-  const _TopBar({required this.spectral, required this.track});
+  const _ReactiveArtwork({required this.track});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
+    return RepaintBoundary(
+      child: AnimatedContainer(
+        duration: AfDurations.expressive,
+        curve: AfCurves.easeStandard,
+        decoration: BoxDecoration(
+          borderRadius: AfRadii.borderLg,
+          // Reduced blur radii (was 48/72) to lower GPU cost.
+          // Dynamic shadow colors are the expensive part — AnimatedContainer
+          // interpolates them so the GPU doesn't recompile shaders per frame.
+          boxShadow: [
+            BoxShadow(
+              color: spectral.shadow.withValues(alpha: 0.55),
+              blurRadius: 32,
+              offset: const Offset(0, 16),
+            ),
+            BoxShadow(
+              color: spectral.energy.withValues(alpha: 0.28),
+              blurRadius: 48,
+              spreadRadius: 4,
+              offset: Offset.zero,
+            ),
+          ],
+        ),
+        child: Hero(
+          tag: 'now-playing-artwork',
+          child: BeatPulseArtwork(
+            imageUrl: track.imageUrl,
+            size: 320,
+            radius: AfRadii.borderLg,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Static metadata row — only rebuilds when track changes (on skip).
+class _MetadataRow extends ConsumerWidget {
+  final AfTrack track;
+  const _MetadataRow({required this.track});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                track.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AfTypography.titleLarge,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                track.artistName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AfTypography.bodyMedium.copyWith(
+                  color: AfColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          icon: Icon(
+            track.isFavorite ? Icons.favorite : Icons.favorite_border,
+            color: track.isFavorite
+                ? AfColors.semanticError
+                : AfColors.textPrimary,
+          ),
+          tooltip: track.isFavorite
+              ? 'Remove from favorites'
+              : 'Add to favorites',
+          onPressed: () => ref.read(favoriteToggleProvider)(track),
+        ),
+        if (track.quality != null) QualityChip(quality: track.quality!),
+      ],
+    );
+  }
+}
+
+/// Watches positionStreamProvider — the only widget that does.
+/// Rebuilds at position tick rate; everything above is unaffected.
+///
+/// Scrub architecture:
+///   onScrub    → local preview only (no seek, no audio pipeline churn)
+///   onScrubEnd → single committed seek
+class _ReactiveProgress extends ConsumerStatefulWidget {
+  final AfTrack track;
+  const _ReactiveProgress({required this.track});
+
+  @override
+  ConsumerState<_ReactiveProgress> createState() => _ReactiveProgressState();
+}
+
+class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
+  // Local scrub preview — updated during drag without seeking.
+  double? _scrubPreview;
+
+  @override
+  Widget build(BuildContext context) {
+    final positionAsync = ref.watch(positionStreamProvider);
+    final position = positionAsync.maybeWhen(
+      data: (p) => p,
+      orElse: () => Duration.zero,
+    );
+    final isPlaying = ref.watch(playingStreamProvider).maybeWhen(
+      data: (v) => v,
+      orElse: () => false,
+    );
+    final spectral = ref.watch(currentSpectralProvider);
+    final duration = widget.track.duration;
+    final serverProgress = duration.inMilliseconds == 0
+        ? 0.0
+        : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
+    // Show scrub preview during drag; server position otherwise.
+    final displayProgress = _scrubPreview ?? serverProgress;
+    final peaks = widget.track.peaks ?? DemoLibrary.peaksFor(widget.track.id);
+
+    // Compute display position from scrub preview when dragging.
+    final displayPosition = _scrubPreview != null
+        ? Duration(
+            milliseconds: (_scrubPreview! * duration.inMilliseconds).round(),
+          )
+        : position;
+    final remaining = duration > displayPosition
+        ? duration - displayPosition
+        : Duration.zero;
+
+    return RepaintBoundary(
+      child: Column(
+        children: [
+          FftWaveform(
+            peaks: peaks,
+            progress: displayProgress,
+            isPlaying: isPlaying,
+            playedColor: spectral.energy,
+            height: 80,
+            // onScrub: update local preview only — no seek.
+            onScrub: (p) => setState(() => _scrubPreview = p),
+            // onScrubEnd: single committed seek.
+            onScrubEnd: (p) {
+              setState(() => _scrubPreview = null);
+              final newPos = Duration(
+                milliseconds: (p * duration.inMilliseconds).round(),
+              );
+              ref.read(playerServiceProvider).seek(newPos);
+            },
+          ),
+          const SizedBox(height: AfSpacing.s8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                formatTrackDuration(displayPosition),
+                style: AfTypography.mono.copyWith(
+                  color: AfColors.textSecondary,
+                ),
+              ),
+              Text(
+                formatRemaining(remaining),
+                style: AfTypography.mono.copyWith(
+                  color: AfColors.textTertiary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Watches playing/shuffle/loop — rebuilds on transport state changes only.
+class _ReactiveTransport extends ConsumerWidget {
+  final AfTrack track;
+  const _ReactiveTransport({required this.track});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPlaying = ref.watch(playingStreamProvider).maybeWhen(
+      data: (v) => v,
+      orElse: () => false,
+    );
+    final shuffleOn = ref.watch(shuffleModeProvider).maybeWhen(
+      data: (v) => v,
+      orElse: () => false,
+    );
+    final loopMode = ref.watch(loopModeProvider).maybeWhen(
+      data: (v) => v,
+      orElse: () => Loop.off,
+    );
+    final spectral = ref.watch(currentSpectralProvider);
+
+    return _TransportRow(
+      isPlaying: isPlaying,
+      spectral: spectral,
+      shuffleOn: shuffleOn,
+      loopMode: loopMode,
+      accent: spectral.energy,
+      onShuffle: () {
+        final svc = ref.read(playerServiceProvider);
+        unawaited(
+          svc.setAfShuffleMode(!svc.isShuffleEnabled).catchError((_) {}),
+        );
+      },
+      onRepeat: () {
+        final svc = ref.read(playerServiceProvider);
+        final next = switch (svc.loopMode) {
+          Loop.off      => Loop.playlist,
+          Loop.playlist => Loop.file,
+          Loop.file     => Loop.off,
+        };
+        unawaited(svc.setAfLoopMode(next).catchError((_) {}));
+      },
+      onPlayPause: () {
+        final svc = ref.read(playerServiceProvider);
+        isPlaying ? svc.pause() : svc.play();
+      },
+      onPrev: () => ref.read(playerServiceProvider).skipToPrevious(),
+      onNext: () => ref.read(playerServiceProvider).skipToNext(),
+    );
+  }
+}
+
+class _TopBar extends ConsumerWidget {
+  final AfTrack track;
+  const _TopBar({required this.track});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -284,9 +394,6 @@ class _TopBar extends ConsumerWidget {
           ),
           PopupMenuButton<_NowPlayingAction>(
             icon: const Icon(Icons.more_horiz_rounded),
-            // Start radio = Jellyfin Instant Mix off this seed track.
-            // Implements the user's "generate queue related song based
-            // on the song played" request.
             onSelected: (action) async {
               switch (action) {
                 case _NowPlayingAction.startRadio:
@@ -296,9 +403,9 @@ class _TopBar extends ConsumerWidget {
                       duration: Duration(seconds: 2),
                     ),
                   );
-                  await ref
-                      .read(playActionsProvider)
-                      .playInstantMix(track);
+                  await ref.read(playActionsProvider).playInstantMix(track);
+                  // Guard navigation after async gap.
+                  if (!context.mounted) return;
                   break;
                 case _NowPlayingAction.goToAlbum:
                   if (track.albumId != null) {
@@ -537,14 +644,23 @@ class _UtilityRow extends ConsumerWidget {
 
     showModalBottomSheet<void>(
       context: context,
+      // isScrollControlled prevents the sheet from being clipped by the
+      // keyboard when the "New playlist" text field is focused.
+      isScrollControlled: true,
       backgroundColor: AfColors.surfaceBase,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AfRadii.lg)),
       ),
-      builder: (sheetCtx) => _SaveToPlaylistSheet(
-        track: track,
-        client: client,
-        onInvalidate: () => ref.invalidate(allPlaylistsProvider),
+      builder: (sheetCtx) => Padding(
+        // Push sheet above keyboard.
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
+        ),
+        child: _SaveToPlaylistSheet(
+          track: track,
+          client: client,
+          onInvalidate: () => ref.invalidate(allPlaylistsProvider),
+        ),
       ),
     );
   }
@@ -618,8 +734,8 @@ class _UtilityIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ensureHitTarget: true ensures 48×48 dp minimum touch area.
     return PressScale(
-      ensureHitTarget: false,
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AfSpacing.s8),
@@ -689,6 +805,8 @@ class _SaveToPlaylistSheetState extends State<_SaveToPlaylistSheet> {
   }
 
   Future<void> _addTo(AfPlaylist playlist) async {
+    // Guard against concurrent taps.
+    if (_saving) return;
     setState(() => _saving = true);
     try {
       await widget.client.addToPlaylist(playlist.id, [widget.track.id]);
@@ -710,6 +828,8 @@ class _SaveToPlaylistSheetState extends State<_SaveToPlaylistSheet> {
   }
 
   Future<void> _createAndAdd() async {
+    // Guard against concurrent taps.
+    if (_saving) return;
     final name = _newNameCtl.text.trim();
     if (name.isEmpty) return;
     setState(() => _saving = true);
