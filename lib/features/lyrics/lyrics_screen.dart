@@ -118,7 +118,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.queue_music_rounded),
-            onPressed: () => context.go('/queue'),
+            onPressed: () => context.push('/queue'),
             tooltip: 'Queue',
           ),
         ],

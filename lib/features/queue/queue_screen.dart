@@ -75,7 +75,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
           }),
           IconButton(
             icon: const Icon(Icons.lyrics_outlined),
-            onPressed: () => context.go('/lyrics'),
+            onPressed: () => context.push('/lyrics'),
             tooltip: 'Lyrics',
           ),
         ],
