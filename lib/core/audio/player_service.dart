@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-
 import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
 
@@ -61,6 +60,26 @@ class AfPlayerService extends BaseAudioHandler
   /// No RECORD_AUDIO permission needed. Lazy: pipeline starts on first
   /// listener, stops on last cancel.
   Stream<FftFrame> get spectrumStream => _player.stream.spectrum;
+
+  /// Configure the spectrum pipeline for visualizer use.
+  /// Called once after the player is ready.
+  Future<void> configureSpectrum() async {
+    try {
+      await _player.setSpectrum(const SpectrumSettings(
+        bandCount: 64,
+        // Wider dB window: normal music peaks at -3 to -6 dB.
+        // Default maxDb=-10 saturates constantly. -3 gives headroom.
+        minDb: -50.0,
+        maxDb: -3.0,
+        // Faster attack so bars snap to beats, slower release for smooth decay.
+        attackSmoothing: 0.7,
+        releaseSmoothing: 0.15,
+        emitInterval: Duration(milliseconds: 33), // ~30 fps
+      ));
+    } catch (_) {
+      // Player not ready yet — spectrum will use defaults.
+    }
+  }
 
   Duration get position => _player.state.position;
   List<AfTrack> get currentQueue => List.unmodifiable(_trackQueue);

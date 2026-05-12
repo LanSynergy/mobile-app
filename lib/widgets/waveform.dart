@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show FftFrame;
@@ -9,52 +8,35 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' show FftFrame;
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 
-/// Combined FFT visualiser + progress scrubber.
+// ─────────────────────────────────────────────────────────────────────────────
+// FftWaveform — live FFT visualiser + progress scrubber
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Combined live FFT visualiser and progress scrubber for Now Playing.
 ///
-/// ## Layout
-/// A single [CustomPaint] canvas draws all bars. Bars to the left of the
-/// playhead are filled with [playedColor]; bars to the right are dim.
-/// A glowing vertical playhead line sits at the progress position.
-/// Drag or tap anywhere to scrub.
+/// ## How it works
 ///
-/// ## Bar heights
-/// When [fftSpectrumProvider] is emitting (i.e. mpv is playing), each
-/// bar's height is driven by the **live FFT magnitude** for that frequency
-/// band, multiplied by the static [peaks] envelope so the shape still
-/// reflects the track's waveform. This gives a real-time visualizer that
-/// also encodes the song's loudness profile.
+/// mpv_audio_kit emits [FftFrame.bands] — 64 log-spaced perceptual bands
+/// already normalised to [0, 1] with asymmetric EMA smoothing. We maintain
+/// a parallel [_smoothed] array and lerp each bar toward the incoming FFT
+/// value every frame. This gives us independent control over the visual
+/// smoothing without fighting mpv's own EMA.
 ///
-/// When no FFT data is available (paused, stream not started), the bars
-/// fall back to the static [peaks] envelope with a gentle sine-wave
-/// oscillation — the same behaviour as before.
+/// The static [peaks] array (track waveform envelope) is used only as a
+/// **ceiling** — a bar can never exceed its recorded peak height. This
+/// preserves the waveform shape while letting the FFT drive the actual
+/// movement.
 ///
-/// ## Design token compliance
-/// Audio-coupled animations use [AfCurves.linear] (raw FFT values, no
-/// easing applied on top of the data).
+/// When no FFT data is available (paused / not started), bars decay to
+/// the static peaks with a gentle sine-wave oscillation.
 class FftWaveform extends ConsumerStatefulWidget {
-  /// Per-bar peak amplitudes in [0, 100]. Used as the static envelope
-  /// and as the fallback when no FFT data is available.
   final List<int> peaks;
-
-  /// Playback progress in [0.0, 1.0].
   final double progress;
-
-  /// Colour for played bars and the playhead glow (spectral.energy).
   final Color playedColor;
-
-  /// Colour for unplayed bars.
   final Color unplayedColor;
-
-  /// Total height of the widget in dp.
   final double height;
-
-  /// Called continuously while the user drags.
   final ValueChanged<double>? onScrub;
-
-  /// Called once when the drag ends.
   final ValueChanged<double>? onScrubEnd;
-
-  /// Whether the player is currently playing. Controls fallback animation.
   final bool isPlaying;
 
   const FftWaveform({
@@ -75,44 +57,92 @@ class FftWaveform extends ConsumerStatefulWidget {
 
 class _FftWaveformState extends ConsumerState<FftWaveform>
     with SingleTickerProviderStateMixin {
-  /// Fallback animation controller — only runs when no FFT data is
-  /// available (paused / stream not started).
-  late final AnimationController _fallbackCtl;
+  /// Drives repaints at ~60 fps so the smoothed bars animate continuously.
+  late final AnimationController _ticker;
 
   bool _dragging = false;
   double _dragProgress = 0.0;
 
-  /// Latest FFT bands received from [fftSpectrumProvider].
-  /// Null when no data has arrived yet (paused / stream not started).
-  Float32List? _fftBands;
+  /// Per-bar smoothed heights in [0, 1]. Updated every tick toward the
+  /// latest FFT target.
+  late Float32List _smoothed;
+
+  /// Latest raw FFT bands from mpv. Null when stream hasn't started.
+  Float32List? _fftTarget;
+
+  /// Whether we have live FFT data this session.
+  bool _hasFft = false;
+
+  /// Fallback sine-wave phase (0..2π), advanced each tick when no FFT.
+  double _fallbackPhase = 0.0;
+
+  // Smoothing constants — tweak these to taste.
+  /// How fast bars rise toward the FFT target (0 = instant, 1 = never).
+  static const double _attackLerp = 0.55;
+  /// How fast bars fall back when FFT drops (0 = instant, 1 = never).
+  static const double _decayLerp = 0.25;
+  /// Minimum bar height fraction so bars are always visible.
+  static const double _minHeight = 0.05;
 
   @override
   void initState() {
     super.initState();
-    _fallbackCtl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    );
-    if (widget.isPlaying) _fallbackCtl.repeat();
-  }
-
-  @override
-  void didUpdateWidget(covariant FftWaveform old) {
-    super.didUpdateWidget(old);
-    // Only run the fallback animation when there's no live FFT data.
-    final needsFallback = widget.isPlaying && _fftBands == null;
-    if (needsFallback && !_fallbackCtl.isAnimating) {
-      _fallbackCtl.repeat();
-    } else if (!needsFallback && _fallbackCtl.isAnimating) {
-      _fallbackCtl.animateTo(0,
-          duration: AfDurations.quick, curve: AfCurves.easeOut);
+    final barCount = widget.peaks.isEmpty ? 64 : widget.peaks.length;
+    _smoothed = Float32List(barCount);
+    // Seed smoothed values from static peaks so bars don't start at zero.
+    for (var i = 0; i < barCount; i++) {
+      _smoothed[i] = widget.peaks.isEmpty
+          ? 0.3
+          : (widget.peaks[i] / 100.0).clamp(_minHeight, 1.0) * 0.5;
     }
+    _ticker = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 16),
+    )..addListener(_onTick);
+    _ticker.repeat();
   }
 
   @override
   void dispose() {
-    _fallbackCtl.dispose();
+    _ticker.dispose();
     super.dispose();
+  }
+
+  void _onTick() {
+    if (!mounted) return;
+    final peaks = widget.peaks.isEmpty
+        ? List<int>.filled(_smoothed.length, 30)
+        : widget.peaks;
+    final barCount = _smoothed.length;
+
+    if (_hasFft && _fftTarget != null) {
+      final bands = _fftTarget!;
+      for (var i = 0; i < barCount; i++) {
+        // Direct 1:1 mapping — mpv's bands are already log-spaced and
+        // match our bar count (both 64). No remapping needed.
+        final bandIdx = (i * bands.length / barCount)
+            .clamp(0, bands.length - 1)
+            .toInt();
+        final peak = (peaks[i] / 100.0).clamp(_minHeight, 1.0);
+        // Target = FFT value clamped to the static peak ceiling.
+        final target = (bands[bandIdx]).clamp(0.0, peak);
+        final current = _smoothed[i];
+        // Asymmetric lerp: fast attack, slower decay.
+        final lerp = target > current ? _attackLerp : _decayLerp;
+        _smoothed[i] = current + (target - current) * lerp;
+      }
+    } else {
+      // Fallback: gentle sine-wave oscillation around the static peaks.
+      _fallbackPhase += 0.04;
+      if (_fallbackPhase > 2 * math.pi) _fallbackPhase -= 2 * math.pi;
+      for (var i = 0; i < barCount; i++) {
+        final peak = (peaks[i] / 100.0).clamp(_minHeight, 1.0);
+        final target = peak * (0.4 + 0.3 * math.sin(_fallbackPhase + i * 0.3));
+        _smoothed[i] = _smoothed[i] + (target - _smoothed[i]) * 0.15;
+      }
+    }
+    // setState triggers a repaint via AnimatedBuilder below.
+    setState(() {});
   }
 
   void _handleDragStart(DragStartDetails d) {
@@ -148,35 +178,15 @@ class _FftWaveformState extends ConsumerState<FftWaveform>
 
   @override
   Widget build(BuildContext context) {
-    // Subscribe to the FFT stream. Each new frame updates _fftBands and
-    // triggers a repaint via setState. When the stream stops emitting
-    // (pause), _fftBands retains the last frame — the painter will decay
-    // it toward the static envelope on the next fallback tick.
     ref.listen<AsyncValue<FftFrame>>(fftSpectrumProvider, (prev, next) {
       next.whenData((frame) {
-        if (!mounted) return;
-        setState(() {
-          _fftBands = frame.bands;
-          // Stop the fallback animation — live FFT is driving the bars.
-          if (_fallbackCtl.isAnimating) {
-            _fallbackCtl.stop();
-          }
-        });
+        _fftTarget = frame.bands;
+        _hasFft = true;
       });
-      // Stream ended (paused / disposed) — restart fallback if playing.
-      if (next is AsyncError || (next is AsyncLoading && prev?.hasValue == true)) {
-        if (mounted && widget.isPlaying && !_fallbackCtl.isAnimating) {
-          _fallbackCtl.repeat();
-        }
-      }
     });
 
     final displayProgress =
         _dragging ? _dragProgress : widget.progress.clamp(0.0, 1.0);
-
-    final peaks = widget.peaks.isEmpty
-        ? List<int>.filled(64, 30)
-        : widget.peaks;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -187,21 +197,13 @@ class _FftWaveformState extends ConsumerState<FftWaveform>
       child: SizedBox(
         height: widget.height,
         width: double.infinity,
-        child: AnimatedBuilder(
-          // Rebuild on both the fallback controller tick AND on FFT data
-          // changes (which come via setState above).
-          animation: _fallbackCtl,
-          builder: (context, child) => CustomPaint(
-            painter: _FftWaveformPainter(
-              peaks: peaks,
-              fftBands: _fftBands,
-              progress: displayProgress,
-              playedColor: widget.playedColor,
-              unplayedColor: widget.unplayedColor,
-              fallbackT: _fallbackCtl.value,
-              useFallback: _fftBands == null,
-              isDragging: _dragging,
-            ),
+        child: CustomPaint(
+          painter: _WaveformPainter(
+            smoothed: Float32List.fromList(_smoothed),
+            progress: displayProgress,
+            playedColor: widget.playedColor,
+            unplayedColor: widget.unplayedColor,
+            isDragging: _dragging,
           ),
         ),
       ),
@@ -209,58 +211,34 @@ class _FftWaveformState extends ConsumerState<FftWaveform>
   }
 }
 
-/// Paints the combined FFT visualiser + scrubber on a single canvas.
-///
-/// ## Bar height model
-///
-/// **Live FFT mode** (fftBands != null):
-///   The 64 FFT bands are resampled to match [peaks.length] bars.
-///   Each bar's height = lerp(staticPeak, fftMagnitude, 0.7) so the
-///   waveform shape is still visible but the live energy dominates.
-///   This gives a visualizer that "breathes" with the music while
-///   retaining the track's loudness profile as a skeleton.
-///
-/// **Fallback mode** (fftBands == null, isPlaying):
-///   Classic sine-wave jitter proportional to each bar's peak amplitude.
-///   Same as the original Waveform widget.
-class _FftWaveformPainter extends CustomPainter {
-  final List<int> peaks;
-  final Float32List? fftBands;
+class _WaveformPainter extends CustomPainter {
+  final Float32List smoothed;
   final double progress;
   final Color playedColor;
   final Color unplayedColor;
-  final double fallbackT;
-  final bool useFallback;
   final bool isDragging;
 
-  static const double _barGapRatio = 0.5;
-  static const double _minBarHeightFraction = 0.06;
-  static const double _maxJitter = 0.28;
-  static const double _focalBoost = 0.12;
-  static const double _focalSigma = 8.0;
+  static const double _barGapRatio = 0.4;
   static const double _playheadWidth = 2.0;
   static const double _playheadGlowRadius = 8.0;
 
-  _FftWaveformPainter({    required this.peaks,
-    required this.fftBands,
+  _WaveformPainter({
+    required this.smoothed,
     required this.progress,
     required this.playedColor,
     required this.unplayedColor,
-    required this.fallbackT,
-    required this.useFallback,
     required this.isDragging,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) return;
+    if (size.width <= 0 || size.height <= 0 || smoothed.isEmpty) return;
 
-    final barCount = peaks.length;
+    final barCount = smoothed.length;
     final barWidth =
         size.width / (barCount * (1 + _barGapRatio) - _barGapRatio);
     final gap = barWidth * _barGapRatio;
     final centerY = size.height / 2;
-    final twoPi = 2 * math.pi;
 
     final headBarF = progress * barCount;
     final headX = progress * size.width;
@@ -269,62 +247,12 @@ class _FftWaveformPainter extends CustomPainter {
       ..color = playedColor
       ..style = PaintingStyle.fill;
     final unplayedPaint = Paint()
-      ..color = unplayedColor.withValues(alpha: 0.28)
+      ..color = unplayedColor.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
 
-    // Pre-resample FFT bands to barCount if available.
-    final bands = fftBands;
-
     for (var i = 0; i < barCount; i++) {
-      final staticPeak =
-          (peaks[i] / 100.0).clamp(_minBarHeightFraction, 1.0);
-
-      double amp;
-      if (!useFallback && bands != null && bands.isNotEmpty) {
-        // Log-scale band mapping: most musical energy lives in low-to-mid
-        // frequencies. A linear mapping sends bars 0..N all to the same
-        // low-energy high-frequency bins. Log mapping spreads bass/mid
-        // energy across the full bar range so every bar reacts.
-        //
-        // Map bar i → FFT band using: idx = (e^(i/N * ln(bandCount)) - 1)
-        // This gives index 0 → band 0, index N-1 → band bandCount-1,
-        // with denser sampling at low frequencies.
-        final n = bands.length.toDouble();
-        final t = i / (barCount - 1).toDouble(); // 0..1
-        final fftIdx = (math.pow(n, t) - 1)
-            .clamp(0, n - 1)
-            .toInt();
-
-        // Average a small window around the mapped index to smooth
-        // single-bin spikes that would make bars flicker randomly.
-        final lo = (fftIdx - 1).clamp(0, bands.length - 1);
-        final hi = (fftIdx + 1).clamp(0, bands.length - 1);
-        var sum = 0.0;
-        for (var k = lo; k <= hi; k++) {
-          sum += bands[k];
-        }
-        final rawFft = (sum / (hi - lo + 1)).clamp(0.0, 1.0);
-
-        // Power curve > 1 compresses quiet sounds down and lets loud beats
-        // spike high — the opposite of sqrt. This gives visible dynamic range:
-        // quiet passages sit low, loud beats clearly reach the peak.
-        // Exponent 1.8: 0.1^1.8≈0.016, 0.5^1.8≈0.29, 1.0^1.8=1.0
-        final boosted = math.pow(rawFft, 1.8).toDouble();
-        // Use boosted FFT as the height fraction of the static peak ceiling.
-        amp = (boosted * staticPeak).clamp(_minBarHeightFraction, staticPeak);
-      } else {
-        // Fallback: sine-wave jitter proportional to peak amplitude.
-        final jitterScale = staticPeak * _maxJitter;
-        final distToHead = (i - headBarF).abs();
-        final focal = _focalBoost * math.exp(-distToHead / _focalSigma);
-        final phase = twoPi * fallbackT + i * 0.55;
-        amp = (staticPeak +
-                jitterScale * math.sin(phase) +
-                focal * math.sin(phase + 0.8))
-            .clamp(_minBarHeightFraction, 1.0);
-      }
-
-      final h = (size.height * amp).clamp(2.0, size.height);
+      final amp = smoothed[i].clamp(0.05, 1.0);
+      final h = (size.height * amp).clamp(3.0, size.height);
       final x = i * (barWidth + gap);
       final isPlayed = i < headBarF.floor();
 
@@ -347,7 +275,7 @@ class _FftWaveformPainter extends CustomPainter {
       );
     }
 
-    // ── Playhead ─────────────────────────────────────────────────────────
+    // Playhead glow.
     canvas.drawRect(
       Rect.fromLTWH(
         headX - _playheadGlowRadius,
@@ -356,18 +284,14 @@ class _FftWaveformPainter extends CustomPainter {
         size.height,
       ),
       Paint()
-        ..color = playedColor.withValues(alpha: isDragging ? 0.22 : 0.14)
+        ..color = playedColor.withValues(alpha: isDragging ? 0.25 : 0.15)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
     );
 
+    // Playhead line.
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          headX - _playheadWidth / 2,
-          0,
-          _playheadWidth,
-          size.height,
-        ),
+        Rect.fromLTWH(headX - _playheadWidth / 2, 0, _playheadWidth, size.height),
         const Radius.circular(1),
       ),
       Paint()
@@ -377,6 +301,7 @@ class _FftWaveformPainter extends CustomPainter {
         ..style = PaintingStyle.fill,
     );
 
+    // Thumb dot.
     canvas.drawCircle(
       Offset(headX, centerY),
       isDragging ? 7.0 : 5.0,
@@ -397,25 +322,20 @@ class _FftWaveformPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_FftWaveformPainter old) =>
-      old.fallbackT != fallbackT ||
+  bool shouldRepaint(_WaveformPainter old) =>
       old.progress != progress ||
       old.isDragging != isDragging ||
-      old.useFallback != useFallback ||
-      old.fftBands != fftBands ||
-      !listEquals(old.peaks, peaks) ||
+      old.smoothed != smoothed ||
       old.playedColor != playedColor ||
       old.unplayedColor != unplayedColor;
 }
 
-// ---------------------------------------------------------------------------
-// Keep the old Waveform class as a thin alias so other screens that import
-// it (queue, mini-player ring, etc.) don't break. It uses the static
-// peaks-only path — no FFT dependency outside Now Playing.
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
+// Waveform — static peaks-only scrubber (used outside Now Playing)
+// ─────────────────────────────────────────────────────────────────────────────
 
-/// Static peaks-only waveform scrubber. Used outside Now Playing where
-/// the FFT stream is not needed. For the live FFT version see [FftWaveform].
+/// Static peaks-only waveform scrubber. No FFT dependency.
+/// Used in Queue, mini-player ring, etc.
 class Waveform extends StatefulWidget {
   final List<int> peaks;
   final double progress;
@@ -462,8 +382,7 @@ class _WaveformState extends State<Waveform>
     if (widget.isPlaying && !_ctl.isAnimating) {
       _ctl.repeat();
     } else if (!widget.isPlaying && _ctl.isAnimating) {
-      _ctl.animateTo(0,
-          duration: AfDurations.quick, curve: AfCurves.easeOut);
+      _ctl.animateTo(0, duration: AfDurations.quick, curve: AfCurves.easeOut);
     }
   }
 
@@ -510,6 +429,16 @@ class _WaveformState extends State<Waveform>
         _dragging ? _dragProgress : widget.progress.clamp(0.0, 1.0);
     final peaks =
         widget.peaks.isEmpty ? List<int>.filled(64, 30) : widget.peaks;
+    final barCount = peaks.length;
+
+    // Build a static smoothed array from peaks + sine jitter.
+    final smoothed = Float32List(barCount);
+    final t = _ctl.value;
+    for (var i = 0; i < barCount; i++) {
+      final peak = (peaks[i] / 100.0).clamp(0.05, 1.0);
+      final jitter = peak * 0.25 * math.sin(2 * math.pi * t + i * 0.55);
+      smoothed[i] = (peak + jitter).clamp(0.05, 1.0);
+    }
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -523,14 +452,11 @@ class _WaveformState extends State<Waveform>
         child: AnimatedBuilder(
           animation: _ctl,
           builder: (context, child) => CustomPaint(
-            painter: _FftWaveformPainter(
-              peaks: peaks,
-              fftBands: null,
+            painter: _WaveformPainter(
+              smoothed: smoothed,
               progress: displayProgress,
               playedColor: widget.playedColor,
               unplayedColor: widget.unplayedColor,
-              fallbackT: _ctl.value,
-              useFallback: true,
               isDragging: _dragging,
             ),
           ),

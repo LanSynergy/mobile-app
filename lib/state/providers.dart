@@ -145,10 +145,11 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     svc,
     () => ref.read(jellyfinClientProvider),
   );
-  // Live-update chip / lockscreen tile (Android 16+ only). No-op on
-  // older Android and tests — attach() probes support before subscribing.
   final liveUpdate = LiveUpdateService(svc);
   unawaited(liveUpdate.attach());
+  // Configure spectrum settings for the visualizer — wider dB range so
+  // normal music doesn't saturate at 1.0 constantly.
+  unawaited(svc.configureSpectrum());
   ref.onDispose(() async {
     await liveUpdate.dispose();
     await reporter.dispose();
