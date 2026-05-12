@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show FftFrame;
 
 import '../state/providers.dart';
 import 'artwork.dart';
@@ -56,7 +57,7 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ticker;
   late final _BeatNotifier _notifier;
-  StreamSubscription<dynamic>? _fftSub;
+  StreamSubscription<FftFrame>? _fftSub;
 
   @override
   void initState() {
