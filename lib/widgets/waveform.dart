@@ -217,14 +217,10 @@ class _WaveformNotifier extends ChangeNotifier {
   Color  _unplayedColor = AfColors.textTertiary;
 
   // ── Smoothing constants ───────────────────────────────────────────────────
-  // Sharper attack/decay for clear frequency separation between bars.
-  // Previous values (0.45/0.10) caused neighboring bars to blur together.
-  static const double _attackLerp  = 0.72;
-  static const double _decayLerp   = 0.18;
+  static const double _attackLerp  = 0.78;
+  static const double _decayLerp   = 0.22;
   static const double _minHeight   = 0.06;
-  // Lower power curve (was 1.4) — 0.85 keeps quieter frequencies visible
-  // so the spectrum looks rich instead of center-heavy.
-  static const double _powerCurve  = 0.85;
+  static const double _powerCurve  = 0.82;
   static const double _settleThresh = 0.001;
 
   _WaveformNotifier(List<int> peaks) {

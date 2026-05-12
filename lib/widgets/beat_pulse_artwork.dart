@@ -160,8 +160,8 @@ class _BeatNotifier extends ChangeNotifier {
 
   // ── Visual limits ─────────────────────────────────────────────────────────
   // Increased from 1.06 — previous range was imperceptible (1.000→1.012
-  // after RMS + power curve compression). 1.14 gives visible beat pulse.
-  static const double _maxScale      = 1.14;
+  // after RMS + power curve compression). 1.16 gives visible beat pulse.
+  static const double _maxScale      = 1.16;
   static const double _ringMaxRadius = 0.14;
   static const double _haloMaxAlpha  = 0.50;
   static const double _settleThresh  = 0.0005;
@@ -181,9 +181,8 @@ class _BeatNotifier extends ChangeNotifier {
     // Transient detection: delta between current and smoothed bass.
     // Kick drums produce a sharp spike (bassNow >> bass) — amplify that
     // delta so the artwork pulses on the beat, not just on sustained bass.
-    // Without this, RMS-only energy feels "dead" even with loud music.
     final transient = math.max(0.0, bassNow - bass);
-    _bassTarget = (bassNow * 0.45 + transient * 1.8).clamp(0.0, 1.0);
+    _bassTarget = (bassNow * 0.35 + transient * 2.2).clamp(0.0, 1.0);
 
     // Reduced power curve (was 1.6) — 0.9 preserves more dynamic range
     // so quiet passages still show movement instead of being crushed to zero.
