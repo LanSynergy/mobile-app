@@ -13,6 +13,27 @@ import '../../widgets/section_header.dart';
 import '../../widgets/track_row.dart';
 import 'ask_sheet.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SearchScreen
+//
+// Architecture
+// ────────────
+// • Query state lives in a ValueNotifier<String> so only the results
+//   panel rebuilds on keystroke — the search field and header are static.
+//
+// • Normalization: queries are trimmed + lowercased before comparison so
+//   "Radiohead", "radiohead ", " RADIOHEAD" all hit the same provider key.
+//
+// • Minimum length: queries shorter than 2 chars don't fire a request.
+//
+// • Stale-result guard: Riverpod autoDispose.family cancels in-flight
+//   requests when the query key changes. The when() builder (not maybeWhen)
+//   surfaces loading state so the user sees a skeleton instead of stale data.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Minimum query length before a server request is fired.
+const _kMinQueryLength = 2;
+
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
 
@@ -22,32 +43,42 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
-  // Wait this long after the last keystroke before firing a request —
-  // matches Jellyfin's own web client (~250ms) and avoids one
-  // `/Users/{id}/Items?searchTerm=` per keystroke.
+  // ValueNotifier so only the results panel rebuilds on query change.
+  final _queryNotifier = ValueNotifier<String>('');
+
   static const _debounce = Duration(milliseconds: 250);
   Timer? _debounceTimer;
-  String _query = '';
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
     _controller.dispose();
+    _queryNotifier.dispose();
     super.dispose();
   }
 
   void _onChanged(String raw) {
     _debounceTimer?.cancel();
-    // An empty query collapses back to the idle state — do that
-    // synchronously so the keyboard's clear-button feels instant.
-    if (raw.isEmpty) {
-      if (_query.isNotEmpty) setState(() => _query = '');
+    // Normalize: trim + lowercase for consistent provider key.
+    final normalized = raw.trim().toLowerCase();
+
+    // Empty → collapse to idle immediately (feels instant on clear).
+    if (normalized.isEmpty) {
+      _queryNotifier.value = '';
       return;
     }
+
+    // Below minimum length → show idle, don't fire request.
+    if (normalized.length < _kMinQueryLength) {
+      _queryNotifier.value = '';
+      return;
+    }
+
+    // Debounce: wait for typing to settle before firing.
     _debounceTimer = Timer(_debounce, () {
       if (!mounted) return;
-      if (_query == raw) return;
-      setState(() => _query = raw);
+      if (_queryNotifier.value == normalized) return;
+      _queryNotifier.value = normalized;
     });
   }
 
@@ -73,20 +104,33 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               child: TextField(
                 controller: _controller,
                 autofocus: false,
+                textInputAction: TextInputAction.search,
                 decoration: const InputDecoration(
                   hintText: 'Artists, albums, tracks…',
                   prefixIcon: Icon(Icons.search_rounded),
                 ),
                 onChanged: _onChanged,
+                onSubmitted: (_) {
+                  // Commit immediately on keyboard search action.
+                  _debounceTimer?.cancel();
+                  final normalized = _controller.text.trim().toLowerCase();
+                  if (normalized.length >= _kMinQueryLength) {
+                    _queryNotifier.value = normalized;
+                  }
+                },
               ),
             ),
             const SizedBox(height: AfSpacing.s16),
             Expanded(
-              child: _query.isEmpty
-                  ? _SearchIdleState(
-                      onAskTap: () => AskSheet.show(context),
-                    )
-                  : _LiveSearchResults(query: _query),
+              // ValueListenableBuilder: only this subtree rebuilds on query change.
+              child: ValueListenableBuilder<String>(
+                valueListenable: _queryNotifier,
+                builder: (context, query, _) => query.isEmpty
+                    ? _SearchIdleState(
+                        onAskTap: () => AskSheet.show(context),
+                      )
+                    : _LiveSearchResults(query: query),
+              ),
             ),
           ],
         ),
@@ -95,11 +139,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 }
 
-/// Live results panel — watches [searchProvider] so a flick of the
-/// keyboard hits the Jellyfin server (`/Users/{id}/Items?searchTerm=`),
-/// not `DemoLibrary`. Loading state is intentionally blank so the rapid
-/// keystrokes don't trigger a spinner storm; an empty-result state has
-/// its own message.
+/// Live results panel.
+///
+/// Uses when() (not maybeWhen) so loading state shows a skeleton instead
+/// of stale data. Riverpod autoDispose.family cancels the in-flight request
+/// when the query key changes, preventing stale-result races.
 class _LiveSearchResults extends ConsumerWidget {
   final String query;
   const _LiveSearchResults({required this.query});
@@ -107,7 +151,20 @@ class _LiveSearchResults extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(searchProvider(query));
-    return async.maybeWhen(
+    return async.when(
+      loading: () => const _SearchLoadingSkeleton(),
+      error: (e, _) => Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AfSpacing.s16,
+          vertical: AfSpacing.s24,
+        ),
+        child: Text(
+          'Search failed: $e',
+          style: AfTypography.bodySmall.copyWith(
+            color: AfColors.semanticError,
+          ),
+        ),
+      ),
       data: (res) {
         final empty = res.tracks.isEmpty &&
             res.albums.isEmpty &&
@@ -120,7 +177,7 @@ class _LiveSearchResults extends ConsumerWidget {
               vertical: AfSpacing.s24,
             ),
             child: Text(
-              'No results for “$query”.',
+              'No results for "$query".',
               style: AfTypography.bodyMedium.copyWith(
                 color: AfColors.textTertiary,
               ),
@@ -134,26 +191,55 @@ class _LiveSearchResults extends ConsumerWidget {
           playlists: res.playlists,
         );
       },
-      error: (e, _) => Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AfSpacing.s16,
-          vertical: AfSpacing.s24,
-        ),
-        child: Text(
-          'Search failed: $e',
-          style: AfTypography.bodySmall.copyWith(
-            color: AfColors.semanticError,
-          ),
-        ),
-      ),
-      orElse: () => const SizedBox.shrink(),
     );
   }
 }
 
-/// Idle (empty query) panel. Genres come from `allGenresProvider` so
-/// signed-in users see their real library, signed-out users see the
-/// demo palette — single source of truth, no duplicated fallback.
+/// Subtle loading skeleton — avoids the "frozen UI" feeling of a blank
+/// state while preventing spinner storms on fast networks.
+class _SearchLoadingSkeleton extends StatelessWidget {
+  const _SearchLoadingSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AfSpacing.s16,
+        vertical: AfSpacing.s24,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < 5; i++) ...[
+            _SkeletonBar(width: i.isEven ? 200 : 140, height: 14),
+            const SizedBox(height: AfSpacing.s12),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SkeletonBar extends StatelessWidget {
+  final double width;
+  final double height;
+  const _SkeletonBar({required this.width, required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: AfColors.surfaceBase,
+        borderRadius: AfRadii.borderSm,
+      ),
+    );
+  }
+}
+
+/// Idle (empty query) panel — uses CustomScrollView + slivers to avoid
+/// the shrinkWrap GridView-inside-ListView layout penalty.
 class _SearchIdleState extends ConsumerWidget {
   final VoidCallback onAskTap;
   const _SearchIdleState({required this.onAskTap});
@@ -165,80 +251,109 @@ class _SearchIdleState extends ConsumerWidget {
       data: (g) => g,
       orElse: () => const <AfGenre>[],
     );
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-      child: ListView(
-        children: [
-          SectionHeader(title: 'Genres', uppercase: true),
-          const SizedBox(height: AfSpacing.s12),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: genres.length,
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
+
+    return CustomScrollView(
+      physics: const ClampingScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+          sliver: SliverToBoxAdapter(
+            child: SectionHeader(title: 'Genres', uppercase: true),
+          ),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+          sliver: SliverGrid.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               mainAxisExtent: 80,
               crossAxisSpacing: AfSpacing.s12,
               mainAxisSpacing: AfSpacing.s12,
             ),
+            itemCount: genres.length,
             itemBuilder: (context, i) {
               final g = genres[i];
-              final tint = Color(int.parse(
-                  g.tint.replaceFirst('#', '0xFF')));
-              return Container(
-                decoration: BoxDecoration(
-                  color: tint,
-                  borderRadius: AfRadii.borderMd,
-                ),
-                padding: const EdgeInsets.all(AfSpacing.s12),
-                alignment: Alignment.bottomLeft,
-                child: Text(
-                  g.name,
-                  style: AfTypography.titleSmall.copyWith(
-                    color: AfColors.textOnPrimary,
+              // Defensive color parsing — malformed server hex won't crash.
+              final tint = _parseTint(g.tint);
+              return GestureDetector(
+                onTap: () =>
+                    context.push('/genre/${Uri.encodeComponent(g.name)}'),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: tint,
+                    borderRadius: AfRadii.borderMd,
+                  ),
+                  padding: const EdgeInsets.all(AfSpacing.s12),
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    g.name,
+                    style: AfTypography.titleSmall.copyWith(
+                      color: AfColors.textOnPrimary,
+                    ),
                   ),
                 ),
               );
             },
           ),
-          const SizedBox(height: AfSpacing.s24),
-          GestureDetector(
-            onTap: onAskTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AfSpacing.s16,
-                vertical: AfSpacing.s12,
-              ),
-              decoration: BoxDecoration(
-                color: AfColors.surfaceBase,
-                borderRadius: AfRadii.borderPill,
-                border: Border.all(
-                    color: AfColors.surfaceHigh, width: 1),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.auto_awesome_rounded,
-                      color: AfColors.indigo300, size: 20),
-                  const SizedBox(width: AfSpacing.s12),
-                  Expanded(
-                    child: Text(
-                      'Ask your library…',
-                      style: AfTypography.bodyMedium.copyWith(
-                        color: AfColors.textSecondary,
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s24)),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+          sliver: SliverToBoxAdapter(
+            child: GestureDetector(
+              onTap: onAskTap,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.s16,
+                  vertical: AfSpacing.s12,
+                ),
+                decoration: BoxDecoration(
+                  color: AfColors.surfaceBase,
+                  borderRadius: AfRadii.borderPill,
+                  border: Border.all(color: AfColors.surfaceHigh, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.auto_awesome_rounded,
+                        color: AfColors.indigo300, size: 20),
+                    const SizedBox(width: AfSpacing.s12),
+                    Expanded(
+                      child: Text(
+                        'Ask your library…',
+                        style: AfTypography.bodyMedium.copyWith(
+                          color: AfColors.textSecondary,
+                        ),
                       ),
                     ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded,
-                      color: AfColors.textTertiary),
-                ],
+                    const Icon(Icons.chevron_right_rounded,
+                        color: AfColors.textTertiary),
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
-        ],
-      ),
+        ),
+        const SliverToBoxAdapter(
+          child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
+        ),
+      ],
     );
+  }
+
+  /// Parse a hex color string from the server, falling back to indigo on error.
+  static Color _parseTint(String hex) {
+    try {
+      final cleaned = hex.replaceFirst('#', '');
+      if (cleaned.length != 6 && cleaned.length != 8) return AfColors.indigo600;
+      final value = int.parse(
+        cleaned.length == 6 ? 'FF$cleaned' : cleaned,
+        radix: 16,
+      );
+      return Color(value);
+    } catch (_) {
+      return AfColors.indigo600;
+    }
   }
 }
 
@@ -268,9 +383,6 @@ class _SearchResults extends ConsumerWidget {
         if (tracks.isNotEmpty) ...[
           SectionHeader(title: 'Tracks', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
-          // Show up to 20 result rows (was 4) and tap any to play.
-          // Tapping replaces the queue with the full set of search
-          // results so the user can skip-next through them.
           for (var i = 0; i < tracks.length && i < 20; i++)
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
@@ -291,10 +403,7 @@ class _SearchResults extends ConsumerWidget {
               leading: SizedBox(
                 width: 44,
                 height: 44,
-                child: Artwork(
-                  url: a.imageUrl,
-                  size: 44,
-                ),
+                child: Artwork(url: a.imageUrl, size: 44),
               ),
               title: Text(a.name, style: AfTypography.bodyMedium),
               subtitle: Text(
@@ -314,20 +423,12 @@ class _SearchResults extends ConsumerWidget {
           const SizedBox(height: AfSpacing.s8),
           for (final a in artists.take(10))
             ListTile(
-              leading: CircleAvatar(
-                radius: 22,
-                backgroundColor: AfColors.indigo800,
-                backgroundImage: a.imageUrl != null
-                    ? NetworkImage(a.imageUrl!)
-                    : null,
-                child: a.imageUrl == null
-                    ? Text(
-                        a.name.isNotEmpty ? a.name.substring(0, 1) : '?',
-                        style: AfTypography.titleSmall.copyWith(
-                          color: AfColors.textOnPrimary,
-                        ),
-                      )
-                    : null,
+              // Use Artwork widget (cached_network_image) instead of raw
+              // NetworkImage to avoid repeated fetches and memory spikes.
+              leading: Artwork(
+                url: a.imageUrl,
+                size: 44,
+                radius: BorderRadius.circular(22),
               ),
               title: Text(a.name, style: AfTypography.bodyMedium),
               subtitle: Text(
