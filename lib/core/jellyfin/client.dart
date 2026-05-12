@@ -757,6 +757,49 @@ class JellyfinClient {
     return res.data?['Id'] as String?;
   }
 
+  /// `DELETE /Playlists/{id}/Items` — remove tracks from a playlist by
+  /// their entry IDs (not track IDs — Jellyfin uses per-entry IDs for
+  /// playlist items to support duplicate tracks).
+  Future<void> removeFromPlaylist(
+      String playlistId, List<String> entryIds) async {
+    _assertUser();
+    await _dio.delete<void>(
+      'Playlists/$playlistId/Items',
+      queryParameters: <String, dynamic>{
+        'EntryIds': entryIds.join(','),
+      },
+    );
+  }
+
+  /// `POST /Playlists/{id}/Items/Move/{itemId}` — move a playlist item
+  /// to a new position (0-based).
+  Future<void> movePlaylistItem(
+      String playlistId, String itemId, int newIndex) async {
+    _assertUser();
+    await _dio.post<void>(
+      'Playlists/$playlistId/Items/Move/$itemId',
+      queryParameters: <String, dynamic>{
+        'NewIndex': newIndex,
+      },
+    );
+  }
+
+  /// `DELETE /Items/{id}` — delete a playlist entirely.
+  Future<void> deletePlaylist(String playlistId) async {
+    _assertUser();
+    await _dio.delete<void>('Items/$playlistId');
+  }
+
+  /// `POST /Items/{id}` — rename a playlist.
+  Future<void> renamePlaylist(String playlistId, String newName) async {
+    _assertUser();
+    // Jellyfin uses the standard item update endpoint.
+    await _dio.post<void>(
+      'Items/$playlistId',
+      data: {'Name': newName},
+    );
+  }
+
   /// `GET /Items/{id}/InstantMix` — Jellyfin's server-side similar-songs
   /// generator. Given a seed track / album / artist ID, returns up to
   /// [limit] related tracks. Used to extend the queue with a "radio"
