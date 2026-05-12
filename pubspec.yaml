@@ -47,6 +47,7 @@ dependencies:
   collection: ^1.18.0
   intl: ^0.19.0
   palette_generator_master: ^1.1.0
+  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:

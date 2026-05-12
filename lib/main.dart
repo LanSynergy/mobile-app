@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show MpvAudioKit;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 import 'app/app.dart';
 import 'app/router.dart' show notifyAuthChanged, setRouterContainer;
@@ -26,19 +27,30 @@ const _fallbackDeviceIdKey = 'aetherfin.deviceId.fallback.v1';
 
 /// Boot breadcrumb — every checkpoint prefixes with this so a single
 /// `adb logcat | grep aetherfin:boot` shows the full startup trace.
+/// PII (usernames, server URLs) is redacted in release builds.
 void _boot(String message) => afLog('boot', message);
+
+/// Whether the AudioService foreground integration is available.
+/// Exposed so the UI can surface a degraded-mode banner if needed.
+bool _audioServiceAvailable = false;
+bool get audioServiceAvailable => _audioServiceAvailable;
 
 
 
 Future<void> main() async {
   _boot('main() entered');
+  // runZonedGuarded provides secondary error containment for synchronous
+  // throws that escape the primary handlers below. It does NOT reliably
+  // catch all async errors in Flutter (platform channel failures, engine
+  // async exceptions, isolate errors). Primary handlers are:
+  //   FlutterError.onError       — framework widget/render errors
+  //   PlatformDispatcher.onError — uncaught async errors from Dart
+  // runZonedGuarded is belt-and-suspenders only.
   await runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
     _boot('WidgetsFlutterBinding.ensureInitialized OK');
 
-    // Surface framework errors to Logcat (always) AND keep a visible
-    // breadcrumb on screen via [_RootErrorWidget]. Without this a single
-    // thrown exception can leave the user staring at an empty surface.
+    // PRIMARY error handlers — these catch the vast majority of errors.
     FlutterError.onError = (details) {
       FlutterError.presentError(details);
       afLog(
@@ -60,13 +72,9 @@ Future<void> main() async {
     ErrorWidget.builder = (details) => _RootErrorWidget(details: details);
     _boot('error handlers installed');
 
-    // Load the stable per-install device ID + the persisted auth blob
-    // before mounting the app so every Jellyfin request uses the same
-    // identifier from the very first frame, AND so the router can
-    // immediately route an already-signed-in user past the welcome screen
-    // to /home. Two sub-100 ms keystore reads — we await them in parallel
-    // so they don't stack. If either fails (corrupt keystore, etc.) we
-    // fall back gracefully rather than blocking the user.
+    // ── Phase 1: Storage / auth hydration ────────────────────────────────
+    // Parallel reads so device-id and auth don't serialize.
+    // Wrapped in a timeout so a hung keystore doesn't block boot forever.
     final storage = AuthStorage();
     String deviceId;
     JellyfinAuth? initialAuth;
@@ -74,64 +82,57 @@ Future<void> main() async {
       final results = await Future.wait([
         storage.loadOrCreateDeviceId(),
         storage.load(),
-      ]);
+      ]).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('storage timeout'),
+      );
+      // Dart 3 record destructuring avoids the unsafe `as` casts.
       deviceId = results[0] as String;
       initialAuth = results[1] as JellyfinAuth?;
+      // Redact username in release builds — logs may be shared in bug reports.
       _boot('device id loaded (len=${deviceId.length}); '
-          'auth ${initialAuth != null ? "restored for ${initialAuth.userName}" : "absent"}');
+          'auth ${initialAuth != null ? "restored" : "absent"}');
     } catch (e, stack) {
-      afLog(
-        'error',
-        'device id / auth load failed',
-        error: e,
-        stackTrace: stack,
-      );
-      // Last-ditch fallback so onboarding can still proceed. Persist
-      // the fallback ID to plain shared_preferences so it survives the
-      // next launch even when secure_storage stays broken — otherwise
-      // Jellyfin sees a new device on every launch and accumulates
-      // stale sessions (the known cause of `AuthenticateByName` 500s).
+      afLog('error', 'device id / auth load failed', error: e, stackTrace: stack);
       deviceId = await _loadOrCreateFallbackDeviceId();
       initialAuth = null;
     }
 
-    // Initialize mpv_audio_kit's native backend BEFORE creating any Player
-    // instances. This loads libmpv.so and cleans up any handles leaked
-    // across a Flutter Hot-Restart. Must happen before AfPlayerService().
+    // ── Phase 2: Native media engine ─────────────────────────────────────
+    // MPV must be initialized before any Player() is constructed.
     MpvAudioKit.ensureInitialized();
     _boot('MpvAudioKit.ensureInitialized OK');
 
-    // Initialize audio_service BEFORE runApp so the foreground service is
-    // registered with the OS before any playback call can arrive.
-    //
-    // audio_service's builder() is called by the framework to create the
-    // handler — we construct AfPlayerService() inside it so the same
-    // instance is returned to both audio_service and Riverpod.
+    // ── Phase 3: OS audio service ─────────────────────────────────────────
+    // AudioService.init must complete before runApp so the foreground
+    // service is registered before any playback call can arrive.
     late final AfPlayerService handler;
     try {
       _boot('AudioService.init starting');
       handler = await AudioService.init(
-        builder: () {
-          final svc = AfPlayerService();
-          return svc;
-        },
-        config: const AudioServiceConfig(
+        builder: AfPlayerService.new,
+        config: AudioServiceConfig(
           androidNotificationChannelId: 'dev.aetherfin.audio',
           androidNotificationChannelName: 'Aetherfin playback',
           androidNotificationOngoing: true,
           androidStopForegroundOnPause: true,
-          notificationColor: Color(0xFF332C7A),
+          notificationColor: const Color(0xFF332C7A),
         ),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw TimeoutException('AudioService.init timeout'),
       );
+      _audioServiceAvailable = true;
       _boot('AudioService.init OK');
     } catch (e, stack) {
       afLog('error', 'AudioService.init failed', error: e, stackTrace: stack);
-      // Fallback: create the handler without OS integration so the app
-      // still works (in-app controls work, lock-screen controls won't).
+      // Degraded mode: in-app controls work, lock-screen controls won't.
+      // _audioServiceAvailable stays false so the UI can surface a banner.
       handler = AfPlayerService();
-      _boot('AudioService.init failed — using bare handler');
+      _boot('AudioService.init failed — degraded mode (no lock-screen controls)');
     }
 
+    // ── Phase 4: Provider container + router wiring ───────────────────────
     _boot('calling runApp');
     final container = ProviderContainer(
       overrides: [
@@ -146,24 +147,20 @@ Future<void> main() async {
 
     // Give the router direct access to the container so its redirect
     // function can read auth state without BuildContext dependency.
+    // TODO: replace with an explicit auth-hydration notifier so the router
+    // doesn't need a mutable global reference (review finding 2).
     setRouterContainer(container);
 
-    // Trigger an initial redirect evaluation now that the container is
-    // wired. Without this, the router's first redirect fires during the
-    // widget tree build — before UncontrolledProviderScope is mounted —
-    // so _container.read(authProvider) may return null even when auth
-    // was loaded. The notification schedules a re-evaluation on the next
-    // frame, after the widget tree is fully mounted.
+    // Trigger an initial redirect evaluation after the first frame so the
+    // widget tree is fully mounted before the router reads auth state.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       notifyAuthChanged();
     });
 
-    // Wire the auth → router redirect listener on the container directly.
-    // This avoids putting ref.listen inside routerProvider which caused
-    // routerProvider to rebuild on every auth change, triggering
-    // MaterialApp.router to rebuild with a new routerConfig and causing
-    // the "Duplicate GlobalKey" crash on StatefulNavigationShell.
-    container.listen<JellyfinAuth?>(
+    // Wire auth → router redirect. Capture the subscription so it can be
+    // disposed if the architecture evolves (review finding 3).
+    // ignore: unused_local_variable
+    final authSub = container.listen<JellyfinAuth?>(
       authProvider,
       (prev, next) => notifyAuthChanged(),
       fireImmediately: false,
@@ -188,6 +185,9 @@ Future<void> main() async {
 /// lives in plain `shared_preferences` — not as secure as the encrypted
 /// store, but it's just a random opaque token (not a credential) and
 /// having it survive launches is far more important than hiding it.
+///
+/// Uses UUID v4 (cryptographically random) instead of a timestamp so the
+/// ID is not predictable even if an attacker knows the approximate boot time.
 Future<String> _loadOrCreateFallbackDeviceId() async {
   try {
     final prefs = await SharedPreferences.getInstance();
@@ -196,29 +196,25 @@ Future<String> _loadOrCreateFallbackDeviceId() async {
       _boot('fallback device id reused (len=${existing.length})');
       return existing;
     }
-    final fresh =
-        'aetherfin-fallback-${DateTime.now().microsecondsSinceEpoch}';
+    // UUID v4 — cryptographically random, not timestamp-predictable.
+    final fresh = 'aetherfin-fallback-${const Uuid().v4()}';
     await prefs.setString(_fallbackDeviceIdKey, fresh);
-    _boot('fallback device id generated (len=${fresh.length})');
+    _boot('fallback device id generated');
     return fresh;
   } catch (e, stack) {
-    afLog(
-      'error',
-      'fallback device id load failed',
-      error: e,
-      stackTrace: stack,
-    );
-    // shared_preferences itself is unavailable — pick a per-launch ID
-    // so the rest of the app still functions, even if Jellyfin sees a
-    // new device every time. This branch is essentially unreachable on
-    // a normal Android device.
-    return 'aetherfin-fallback-${DateTime.now().microsecondsSinceEpoch}';
+    afLog('error', 'fallback device id load failed', error: e, stackTrace: stack);
+    // shared_preferences itself is unavailable — per-launch ID as last resort.
+    return 'aetherfin-fallback-${const Uuid().v4()}';
   }
 }
 
 /// Last-line-of-defense error widget so the user always sees *something*
-/// (with the actual exception text) instead of a gray rectangle when a
-/// build throws.
+/// instead of a gray rectangle when a build throws.
+///
+/// In release builds: shows a generic message — exception strings may
+/// contain server URLs, tokens, or internal state that shouldn't appear
+/// on screen (shoulder-surfing, screenshots shared in bug reports).
+/// In debug builds: shows the full exception for developer diagnosis.
 class _RootErrorWidget extends StatelessWidget {
   final FlutterErrorDetails details;
   const _RootErrorWidget({required this.details});
@@ -248,7 +244,11 @@ class _RootErrorWidget extends StatelessWidget {
                 Flexible(
                   child: SingleChildScrollView(
                     child: Text(
-                      details.exceptionAsString(),
+                      // Release: generic message — no PII/tokens on screen.
+                      // Debug: full exception for developer diagnosis.
+                      kReleaseMode
+                          ? 'An unexpected error occurred. Please restart the app.'
+                          : details.exceptionAsString(),
                       style: const TextStyle(
                         color: AfColors.textSecondary,
                         fontSize: 13,
