@@ -56,6 +56,17 @@ class AfPlayerService extends BaseAudioHandler
   Stream<Loop> get loopModeStream => _player.stream.loop;
   Stream<double> get speedStream => _player.stream.rate;
 
+  /// Audio device streams for the Output picker.
+  Stream<List<Device>> get audioDevicesStream => _player.stream.audioDevices;
+  Stream<Device> get audioDeviceStream => _player.stream.audioDevice;
+  List<Device> get audioDevices => _player.state.audioDevices;
+  Device get audioDevice => _player.state.audioDevice;
+
+  Future<void> setAudioDevice(Device device) async {
+    await _player.setAudioDevice(device);
+    afLog('audio', 'audioDevice set to ${device.name}');
+  }
+
   /// Real-time FFT spectrum — 64 log-spaced bands in [0, 1] at ~30 fps.
   /// No RECORD_AUDIO permission needed. Lazy: pipeline starts on first
   /// listener, stops on last cancel.

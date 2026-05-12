@@ -5,6 +5,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop;
 
 import '../../core/audio/play_actions.dart';
 import '../../core/demo/demo_library.dart';
+import '../../core/jellyfin/client.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
@@ -510,7 +511,7 @@ class _UtilityRow extends ConsumerWidget {
         _UtilityIcon(
           icon: Icons.playlist_add_rounded,
           label: 'Save',
-          onTap: () => context.push('/library?section=playlists'),
+          onTap: () => _showSaveSheet(context, ref),
         ),
         _UtilityIcon(
           icon: Icons.queue_music_rounded,
@@ -521,8 +522,32 @@ class _UtilityRow extends ConsumerWidget {
     );
   }
 
-  void _showSpeedSheet(BuildContext context, WidgetRef ref) {
-    const speeds = <double>[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+  void _showSaveSheet(BuildContext context, WidgetRef ref) {
+    final track = ref.read(currentTrackProvider);
+    if (track == null) return;
+    final client = ref.read(jellyfinClientProvider);
+    if (client == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in to save to playlists')),
+      );
+      return;
+    }
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AfColors.surfaceBase,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AfRadii.lg)),
+      ),
+      builder: (sheetCtx) => _SaveToPlaylistSheet(
+        track: track,
+        client: client,
+        onInvalidate: () => ref.invalidate(allPlaylistsProvider),
+      ),
+    );
+  }
+
+  void _showSpeedSheet(BuildContext context, WidgetRef ref) {    const speeds = <double>[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
     final current = ref.read(playerServiceProvider).speed;
     showModalBottomSheet<void>(
       context: context,
@@ -608,6 +633,187 @@ class _UtilityIcon extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save to playlist sheet
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SaveToPlaylistSheet extends StatefulWidget {
+  final AfTrack track;
+  final JellyfinClient client;
+  final VoidCallback onInvalidate;
+
+  const _SaveToPlaylistSheet({
+    required this.track,
+    required this.client,
+    required this.onInvalidate,
+  });
+
+  @override
+  State<_SaveToPlaylistSheet> createState() => _SaveToPlaylistSheetState();
+}
+
+class _SaveToPlaylistSheetState extends State<_SaveToPlaylistSheet> {
+  List<AfPlaylist>? _playlists;
+  bool _loading = true;
+  bool _saving = false;
+  String? _error;
+  final _newNameCtl = TextEditingController();
+  bool _showNewPlaylist = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _newNameCtl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final playlists = await widget.client.playlists();
+      if (mounted) setState(() { _playlists = playlists; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  Future<void> _addTo(AfPlaylist playlist) async {
+    setState(() => _saving = true);
+    try {
+      await widget.client.addToPlaylist(playlist.id, [widget.track.id]);
+      widget.onInvalidate();
+      if (mounted) {
+        Navigator.maybePop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Added to ${playlist.name}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _createAndAdd() async {
+    final name = _newNameCtl.text.trim();
+    if (name.isEmpty) return;
+    setState(() => _saving = true);
+    try {
+      await widget.client.createPlaylist(name, [widget.track.id]);
+      widget.onInvalidate();
+      if (mounted) {
+        Navigator.maybePop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Created "$name" and added track')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: AfSpacing.s12),
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: AfColors.textTertiary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: AfSpacing.s12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
+            child: Text('Save to playlist', style: AfTypography.titleSmall),
+          ),
+          const SizedBox(height: AfSpacing.s8),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.all(AfSpacing.s24),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_error != null)
+            Padding(
+              padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
+              child: Text(_error!, style: AfTypography.bodySmall.copyWith(color: AfColors.semanticError)),
+            )
+          else ...[
+            // New playlist row.
+            if (_showNewPlaylist)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AfSpacing.gutterGenerous, 0, AfSpacing.gutterGenerous, AfSpacing.s8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _newNameCtl,
+                        autofocus: true,
+                        decoration: const InputDecoration(hintText: 'Playlist name'),
+                        onSubmitted: (_) => _createAndAdd(),
+                      ),
+                    ),
+                    const SizedBox(width: AfSpacing.s8),
+                    TextButton(
+                      onPressed: _saving ? null : _createAndAdd,
+                      child: const Text('Create'),
+                    ),
+                  ],
+                ),
+              )
+            else
+              ListTile(
+                leading: const Icon(Icons.add_rounded, color: AfColors.indigo300),
+                title: Text('New playlist', style: AfTypography.bodyMedium.copyWith(color: AfColors.indigo300)),
+                onTap: () => setState(() => _showNewPlaylist = true),
+              ),
+            // Existing playlists.
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 300),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _playlists?.length ?? 0,
+                itemBuilder: (context, i) {
+                  final p = _playlists![i];
+                  return ListTile(
+                    leading: const Icon(Icons.playlist_play_rounded, color: AfColors.indigo300),
+                    title: Text(p.name, style: AfTypography.bodyMedium),
+                    subtitle: Text('${p.trackCount} tracks',
+                        style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary)),
+                    onTap: _saving ? null : () => _addTo(p),
+                  );
+                },
+              ),
+            ),
+          ],
+          const SizedBox(height: AfSpacing.s12),
+        ],
       ),
     );
   }

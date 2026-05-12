@@ -730,6 +730,33 @@ class JellyfinClient {
     return (playlist: pl, tracks: tracks);
   }
 
+  /// `POST /Playlists/{id}/Items` — add tracks to an existing playlist.
+  Future<void> addToPlaylist(String playlistId, List<String> trackIds) async {
+    _assertUser();
+    await _dio.post<void>(
+      'Playlists/$playlistId/Items',
+      queryParameters: <String, dynamic>{
+        'Ids': trackIds.join(','),
+        'UserId': userId,
+      },
+    );
+  }
+
+  /// `POST /Playlists` — create a new playlist with the given tracks.
+  Future<String?> createPlaylist(String name, List<String> trackIds) async {
+    _assertUser();
+    final res = await _dio.post<Map<String, dynamic>>(
+      'Playlists',
+      data: {
+        'Name': name,
+        'Ids': trackIds,
+        'UserId': userId,
+        'MediaType': 'Audio',
+      },
+    );
+    return res.data?['Id'] as String?;
+  }
+
   /// `GET /Items/{id}/InstantMix` — Jellyfin's server-side similar-songs
   /// generator. Given a seed track / album / artist ID, returns up to
   /// [limit] related tracks. Used to extend the queue with a "radio"
