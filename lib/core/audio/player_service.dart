@@ -81,14 +81,21 @@ class AfPlayerService extends BaseAudioHandler
       await _player.setGapless(Gapless.weak);
       await _player.setSpectrum(const SpectrumSettings(
         bandCount: 64,
-        // Wider dB window: normal music peaks at -3 to -6 dB.
-        // Default maxDb=-10 saturates constantly. -3 gives headroom.
-        minDb: -50.0,
+        // Wide dB window so the full dynamic range of music is visible.
+        // -90 dB floor = silence. -3 dB ceiling = near-clipping peaks.
+        // A signal at -18 dBFS (typical loud music) maps to ~0.80,
+        // a signal at -40 dBFS (quiet passage) maps to ~0.57 — giving
+        // visible movement across the whole dynamic range.
+        // Previously -50..-3 (47 dB) caused quiet sounds to saturate at 0.68+.
+        minDb: -90.0,
         maxDb: -3.0,
-        // Faster attack so bars snap to beats, slower release for smooth decay.
-        attackSmoothing: 0.7,
-        releaseSmoothing: 0.15,
-        emitInterval: Duration(milliseconds: 33), // ~30 fps
+        // Disable mpv's own EMA smoothing — the widget applies its own
+        // asymmetric attack/decay lerp which gives better visual control.
+        // With mpv smoothing ON, bars stay elevated between beats and
+        // the visualizer looks "stuck at max".
+        attackSmoothing: 0.0,
+        releaseSmoothing: 0.0,
+        emitInterval: Duration(milliseconds: 16), // ~60 fps
       ));
     } catch (_) {
       // Player not ready yet — spectrum will use defaults.

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -73,7 +74,7 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
     }
   }
 
-  /// RMS of the first quarter of bands (bass + low-mid).
+  /// RMS of the first quarter of bands (bass + low-mid), with power curve.
   double _rms(Float32List bands) {
     if (bands.isEmpty) return 0.0;
     final end = (bands.length ~/ 4).clamp(1, bands.length);
@@ -81,7 +82,9 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
     for (var i = 0; i < end; i++) {
       sum += bands[i] * bands[i];
     }
-    return (sum / end).clamp(0.0, 1.0);
+    final rms = math.sqrt(sum / end).clamp(0.0, 1.0);
+    // Power curve: quiet passages stay near 1.0 scale, only real beats pulse.
+    return math.pow(rms, 2.5).toDouble().clamp(0.0, 1.0);
   }
 
   @override

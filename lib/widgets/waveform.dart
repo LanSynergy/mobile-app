@@ -78,11 +78,15 @@ class _FftWaveformState extends ConsumerState<FftWaveform>
 
   // Smoothing constants — tweak these to taste.
   /// How fast bars rise toward the FFT target (0 = instant, 1 = never).
-  static const double _attackLerp = 0.55;
+  static const double _attackLerp = 0.4;
   /// How fast bars fall back when FFT drops (0 = instant, 1 = never).
-  static const double _decayLerp = 0.25;
+  static const double _decayLerp = 0.12;
   /// Minimum bar height fraction so bars are always visible.
-  static const double _minHeight = 0.05;
+  static const double _minHeight = 0.04;
+  /// Power curve exponent applied to raw FFT values.
+  /// > 1.0 compresses quiet sounds down and lets loud beats spike high.
+  /// 2.5 gives a good "quiet=low, loud=high" feel without clipping.
+  static const double _powerCurve = 2.5;
 
   @override
   void initState() {
@@ -118,16 +122,16 @@ class _FftWaveformState extends ConsumerState<FftWaveform>
     if (_hasFft && _fftTarget != null) {
       final bands = _fftTarget!;
       for (var i = 0; i < barCount; i++) {
-        // Direct 1:1 mapping — mpv's bands are already log-spaced and
-        // match our bar count (both 64). No remapping needed.
         final bandIdx = (i * bands.length / barCount)
             .clamp(0, bands.length - 1)
             .toInt();
-        final peak = (peaks[i] / 100.0).clamp(_minHeight, 1.0);
-        // Target = FFT value clamped to the static peak ceiling.
-        final target = (bands[bandIdx]).clamp(0.0, peak);
+        // Apply power curve: compresses quiet sounds, lets loud beats spike.
+        // raw=0.3 (quiet) → 0.3^2.5 ≈ 0.049  (stays low)
+        // raw=0.7 (medium) → 0.7^2.5 ≈ 0.41   (moderate)
+        // raw=0.9 (loud)   → 0.9^2.5 ≈ 0.77   (high but not maxed)
+        final raw = bands[bandIdx].clamp(0.0, 1.0);
+        final target = math.pow(raw, _powerCurve).toDouble().clamp(_minHeight, 1.0);
         final current = _smoothed[i];
-        // Asymmetric lerp: fast attack, slower decay.
         final lerp = target > current ? _attackLerp : _decayLerp;
         _smoothed[i] = current + (target - current) * lerp;
       }
