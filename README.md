@@ -38,15 +38,20 @@ real-time FFT visualizer — runs on your phone.
 ## Features
 
 - **Library, Albums, Artists, Genres, Playlists** browsing
-- **Search** across tracks, albums, artists, playlists
-- **Queue** with drag-to-reorder
-- **Now Playing** with waveform scrubbing, real-time FFT artwork pulse,
-  shuffle, loop (off / track / playlist), playback speed (0.5×–2.0×),
-  favorite toggle, Instant Mix radio
-- **Synced lyrics** (LRC parsed on-device, auto-scrolling)
-- **Lock-screen / notification** media controls via
-  [`audio_service`](https://pub.dev/packages/audio_service)
-- **Sleep timer**, **cast picker** (output routing)
+- **Search** across tracks, albums, artists, playlists (debounced, normalized)
+- **Queue** with drag-to-reorder and swipe-to-remove
+- **Now Playing** with:
+  - Real-time FFT spectrum visualizer (64 independent frequency bars with psychoacoustic weighting)
+  - Artwork pulse driven by a dual-envelope beat detector (kick drums punch, sustained bass sustains)
+  - Waveform scrubber with haptic feedback
+  - Shuffle, loop (off / track / playlist), playback speed (0.5×–2.0×)
+  - Favorite toggle, Instant Mix radio
+- **Synced lyrics** (LRC parsed on-device, auto-scrolling, displayed on lock-screen)
+- **Lock-screen / notification** media controls (prev, play/pause, next)
+- **Sleep timer** (presets + end-of-track mode)
+- **Output routing** (mpv audio device picker)
+- **Save to playlist** / create playlist from Now Playing
+- **Playlist management** — reorder, remove, rename, delete
 - **mDNS discovery** of Jellyfin servers on the local network
 - **Spectral-derived UI accents** — palette sampled from current cover art
 - **Gapless playback** — libmpv pre-fetches the next track in the background
@@ -54,12 +59,6 @@ real-time FFT visualizer — runs on your phone.
 - **Offline-friendly metadata cache** (cover art via
   [`cached_network_image`](https://pub.dev/packages/cached_network_image),
   Dio HTTP cache for catalog requests)
-
-## Screenshots
-
-> Coming soon. In the meantime, see the
-> [APK builds](https://github.com/Aetherfin/mobile-app/actions/workflows/build-apk.yml)
-> — install the latest one and try it against your own server.
 
 ## Requirements
 
@@ -81,7 +80,7 @@ real-time FFT visualizer — runs on your phone.
 
 ### First-run onboarding
 
-1. **Discover or enter your server URL** (e.g. `http://omahsangar.local:8097`
+1. **Discover or enter your server URL** (e.g. `http://192.168.1.10:8096`
    or `https://music.example.com`). mDNS will list nearby Jellyfin
    instances; otherwise type the URL manually.
 2. **Sign in** with your Jellyfin username and password.
@@ -122,7 +121,7 @@ CI runs both on every PR. See
    │   Aetherfin (Android)          │         │   Your Jellyfin server       │
    │                                │         │                              │
    │  libmpv (mpv_audio_kit) ◄──────┼─bytes───┤  /Audio/{id}/stream          │
-   │  Queue / shuffle / loop        │         │   ?Static=true               │
+   │  Queue / shuffle / loop        │         │   ?Static=true&api_key=…     │
    │  Gapless prefetch              │◄─meta───┤  /Users/{id}/Items …         │
    │  FFT spectrum (post-DSP)       │         │  /Users/{id}/FavoriteItems   │
    │  Lyrics parse + sync           │◄─image──┤  /Items/{id}/Images/Primary  │
@@ -133,6 +132,16 @@ CI runs both on every PR. See
    │  Telemetry (display only) ─────┼─POST────┤  /Sessions/Playing[/Progress]│
    └────────────────────────────────┘         └──────────────────────────────┘
 ```
+
+### Visualizer architecture
+
+The FFT visualizer uses a **3-layer architecture**:
+
+1. **Raw FFT truth** — 64 bands from mpv, treated as immutable instantaneous truth. Bar i = FFT bin i (no resampling).
+2. **Independent visual envelopes** — each bar owns its own attack/decay. Bass bars move heavy and sustain; treble bars flicker and decay fast.
+3. **Psychoacoustic weighting** — bass amplified ×1.6, treble attenuated ×0.85, matching human hearing perception.
+
+The artwork pulse uses a **dual-envelope beat detector**: a fast envelope (attack 0.55) tracks kick transients; a slow envelope (attack 0.08) tracks average bass energy. The beat impulse is `fast - slow`, amplified ×4.5 — kick drums punch visibly even at moderate volume.
 
 Full architectural rules live in [`CLAUDE.md`](./CLAUDE.md).
 
