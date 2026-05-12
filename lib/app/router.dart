@@ -36,19 +36,17 @@ final _rootKey = GlobalKey<NavigatorState>();
 final _shellKey = GlobalKey<NavigatorState>();
 final _authRefresh = _AuthRefreshListenable();
 
+// Container reference set by main.dart before runApp so the router's
+// redirect can read auth state without depending on BuildContext.
+ProviderContainer? _container;
+
 /// The single [GoRouter] instance. Created once; never recreated.
-///
-/// Auth redirects are driven by [_authRefresh] which is notified by
-/// [routerProvider] via [ref.listen] — the provider itself never rebuilds
-/// the router, it only wires the listener.
 final _router = GoRouter(
   navigatorKey: _rootKey,
   initialLocation: '/',
   refreshListenable: _authRefresh,
   redirect: (context, state) {
-    // Read auth from the container stored on the context by ProviderScope.
-    final container = ProviderScope.containerOf(context, listen: false);
-    final auth = container.read(authProvider);
+    final auth = _container?.read(authProvider);
     final loc = state.matchedLocation;
     final inOnboarding = loc == '/' || loc.startsWith('/onboarding');
     if (auth != null && inOnboarding) return '/home';
@@ -211,6 +209,11 @@ GoRouter get appRouter => _router;
 
 class _AuthRefreshListenable extends ChangeNotifier {
   void _notify() => notifyListeners();
+}
+
+/// Called from main.dart to wire the container before runApp.
+void setRouterContainer(ProviderContainer container) {
+  _container = container;
 }
 
 /// Called from main.dart when auth state changes to trigger router redirect.

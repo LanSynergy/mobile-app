@@ -8,7 +8,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' show MpvAudioKit;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
-import 'app/router.dart' show notifyAuthChanged;
+import 'app/router.dart' show notifyAuthChanged, setRouterContainer;
 import 'core/audio/player_service.dart';
 import 'core/jellyfin/auth_storage.dart';
 import 'core/jellyfin/models/server.dart';
@@ -143,6 +143,10 @@ Future<void> main() async {
         }),
       ],
     );
+
+    // Give the router direct access to the container so its redirect
+    // function can read auth state without BuildContext dependency.
+    setRouterContainer(container);
 
     // Wire the auth → router redirect listener on the container directly.
     // This avoids putting ref.listen inside routerProvider which caused
