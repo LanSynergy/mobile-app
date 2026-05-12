@@ -102,18 +102,11 @@ class AppShell extends ConsumerWidget {
           // Sleep timer watcher — invisible, fires pause when timer expires.
           const SleepTimerWatcher(),
 
-          // Tab content.
-          Positioned.fill(
-            child: AnimatedSwitcher(
-              duration: AfDurations.instant,
-              switchInCurve: AfCurves.linear,
-              switchOutCurve: AfCurves.linear,
-              child: KeyedSubtree(
-                key: ValueKey(shell.currentIndex),
-                child: shell,
-              ),
-            ),
-          ),
+          // Tab content — direct, no AnimatedSwitcher.
+          // AnimatedSwitcher held both old and new tab children simultaneously
+          // during the transition, causing go_router's StatefulNavigationShell
+          // internal LabeledGlobalKey to appear twice → Duplicate GlobalKey crash.
+          Positioned.fill(child: shell),
 
           // Floating mini-player.
           if (hasMini)
