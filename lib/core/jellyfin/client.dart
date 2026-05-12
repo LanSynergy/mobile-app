@@ -531,17 +531,19 @@ class JellyfinClient {
   /// `GET /Users/{userId}/Items?IncludeItemTypes=MusicArtist` — all artists
   /// the user has access to.
   ///
-  /// We use the `/Users/{userId}/Items` endpoint instead of `/Artists`
-  /// because the latter does not return `AlbumCount` / `SongCount` as
-  /// part of the standard `Fields` projection — those fields are only
-  /// populated on `BaseItemDto` responses from the Items endpoint.
-  /// `EnableImageTypes=Primary` is required for artist photo URLs.
+  /// `GET /Artists/AlbumArtists` — album artists from the user's music libraries.
+  ///
+  /// Uses the dedicated `/Artists/AlbumArtists` endpoint (not
+  /// `/Users/{id}/Items?IncludeItemTypes=MusicArtist`) because the Items
+  /// endpoint returns artists from ALL libraries including TV shows, movies,
+  /// and other non-music content. AlbumArtists scopes to music only and
+  /// matches what the Jellyfin web UI shows under Music → Artists.
   Future<List<AfArtist>> artists({int limit = 200}) async {
     _assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
-      'Users/$userId/Items',
+      'Artists/AlbumArtists',
       queryParameters: <String, dynamic>{
-        'IncludeItemTypes': 'MusicArtist',
+        'UserId': userId,
         'Recursive': true,
         'SortBy': 'SortName',
         'SortOrder': 'Ascending',
