@@ -172,10 +172,17 @@ class AfPlayerService extends BaseAudioHandler
   }
 
   @override
-  Future<void> play() => _player.play();
+  Future<void> play() async {
+    _userPaused = false;
+    await _player.play();
+  }
 
   @override
-  Future<void> pause() => _player.pause();
+  Future<void> pause() async {
+    _userPaused = true;
+    _pendingPlayNudgeIdx = null; // cancel any pending nudge
+    await _player.pause();
+  }
 
   @override
   Future<void> stop() async {
@@ -254,9 +261,12 @@ class AfPlayerService extends BaseAudioHandler
   }
 
   // Set to the expected next index when an auto-advance is in progress.
-  // Cleared when mpv fires playing=true for that index.
-  // Used to nudge play() without Future.delayed (which Doze throttles).
+  // Cleared when mpv fires playing=true for that index OR when the user
+  // explicitly pauses (to prevent the nudge from un-pausing them).
   int? _pendingPlayNudgeIdx;
+  // Set to true when the user explicitly calls pause() so the nudge
+  // listener knows not to call play() on the next playing=false event.
+  bool _userPaused = false;
 
   // ---------------------------------------------------------------------------
   // Internal stream wiring
@@ -295,11 +305,14 @@ class AfPlayerService extends BaseAudioHandler
     _subs.add(_player.stream.playing.listen((playing) {
       _updatePlaybackState();
       if (playing) {
-        // mpv started playing — clear the nudge flag.
+        // mpv started playing — clear the nudge flag and user-pause flag.
         _pendingPlayNudgeIdx = null;
-      } else if (_pendingPlayNudgeIdx != null &&
+        _userPaused = false;
+      } else if (!_userPaused &&
+          _pendingPlayNudgeIdx != null &&
           _pendingPlayNudgeIdx == _currentIndex) {
         // mpv advanced the index but stopped — nudge it to play.
+        // Only if the user didn't explicitly pause.
         _player.play();
         afLog('audio', 'auto-advance nudge play() at index=$_currentIndex');
         _pendingPlayNudgeIdx = null;
@@ -396,10 +409,19 @@ class AfPlayerService extends BaseAudioHandler
     }
     final ext = raw.mimeType.split('/').last;
     final id = ++_coverCounter;
-    final path =
-        '${Directory.systemTemp.path}${Platform.pathSeparator}'
-        'aetherfin_cover_$id.$ext';
+    // Use the app's temp directory (guaranteed to be in cacheDir on Android,
+    // cleaned up by the OS). Delete the previous file to avoid unbounded growth
+    // over a long listening session (finding 3.9 / 4.8).
+    final tmpDir = Directory.systemTemp.path;
+    final path = '$tmpDir${Platform.pathSeparator}aetherfin_cover_$id.$ext';
     try {
+      // Delete previous cover file before writing the new one.
+      if (_coverPath != null) {
+        final prev = File(_coverPath!);
+        if (await prev.exists()) {
+          await prev.delete();
+        }
+      }
       await File(path).writeAsBytes(raw.bytes, flush: true);
       _coverPath = path;
       _updateMediaItem();

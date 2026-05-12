@@ -27,15 +27,18 @@ class AlbumScreen extends ConsumerStatefulWidget {
 
 class _AlbumScreenState extends ConsumerState<AlbumScreen> {
   final _scroll = ScrollController();
+  late final ValueNotifier<double> _scrollOffset = ValueNotifier(0.0);
 
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(() => setState(() {}));
+    _scroll.addListener(() => _scrollOffset.value =
+        _scroll.hasClients ? _scroll.offset : 0.0);
   }
 
   @override
   void dispose() {
+    _scrollOffset.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -56,47 +59,54 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
           final tracks = detail.tracks;
           final width = MediaQuery.of(context).size.width;
           final heroHeight = width; // 1:1
-          final offset = _scroll.hasClients ? _scroll.offset : 0.0;
 
           return Stack(
             children: [
               // Hero artwork — parallax via Transform.translate, scroll-linked.
-              Positioned(
-                top: -offset * 0.5,
-                left: 0,
-                right: 0,
-                child: SizedBox(
-                  height: heroHeight,
-                  child: ShaderMask(
-                    shaderCallback: (rect) {
-                      return const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        stops: [0.6, 1.0],
-                        colors: [Colors.white, Colors.transparent],
-                      ).createShader(rect);
-                    },
-                    blendMode: BlendMode.dstIn,
-                    child: Artwork(
-                      url: album.imageUrl,
-                      size: width,
-                      height: heroHeight,
-                      radius: BorderRadius.zero,
+              // Uses ValueListenableBuilder so only the artwork + app bar
+              // rebuild on scroll, not the entire screen.
+              ValueListenableBuilder<double>(
+                valueListenable: _scrollOffset,
+                builder: (context, offset, _) => Positioned(
+                  top: -offset * 0.5,
+                  left: 0,
+                  right: 0,
+                  child: SizedBox(
+                    height: heroHeight,
+                    child: ShaderMask(
+                      shaderCallback: (rect) {
+                        return const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: [0.6, 1.0],
+                          colors: [Colors.white, Colors.transparent],
+                        ).createShader(rect);
+                      },
+                      blendMode: BlendMode.dstIn,
+                      child: Artwork(
+                        url: album.imageUrl,
+                        size: width,
+                        height: heroHeight,
+                        radius: BorderRadius.zero,
+                      ),
                     ),
                   ),
                 ),
               ),
 
               // App bar — opacity 0→1 as artwork leaves viewport.
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: _OpacityAppBar(
-                  scrollOffset: offset,
-                  threshold: heroHeight - kToolbarHeight,
-                  title: album.name,
-                  onBack: () => context.pop(),
+              ValueListenableBuilder<double>(
+                valueListenable: _scrollOffset,
+                builder: (context, offset, _) => Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: _OpacityAppBar(
+                    scrollOffset: offset,
+                    threshold: heroHeight - kToolbarHeight,
+                    title: album.name,
+                    onBack: () => context.pop(),
+                  ),
                 ),
               ),
 

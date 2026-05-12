@@ -263,7 +263,11 @@ class _SleepTimerWatcherState extends ConsumerState<SleepTimerWatcher> {
   @override
   void initState() {
     super.initState();
-    _scheduleCheck();
+    // Only start the timer if one is already active (e.g. app restart
+    // with a timer in progress). Otherwise wait for the provider to change.
+    if (ref.read(sleepTimerProvider) != null) {
+      _scheduleCheck();
+    }
   }
 
   @override
@@ -277,14 +281,14 @@ class _SleepTimerWatcherState extends ConsumerState<SleepTimerWatcher> {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       final target = ref.read(sleepTimerProvider);
-      if (target == null) return;
+      if (target == null) {
+        _timer?.cancel();
+        return;
+      }
 
       final isEndOfTrack = target.difference(DateTime.now()).inHours > 12;
 
       if (isEndOfTrack) {
-        // End-of-track mode: pause when the current track completes.
-        // We detect this by watching the playing stream — when it goes
-        // false after having been true, and position is near duration.
         final svc = ref.read(playerServiceProvider);
         final pos = svc.position;
         final current = svc.currentTrack;
@@ -309,7 +313,8 @@ class _SleepTimerWatcherState extends ConsumerState<SleepTimerWatcher> {
 
   @override
   Widget build(BuildContext context) {
-    // Re-schedule whenever the timer target changes.
+    // Start/stop the periodic timer based on whether a sleep timer is active.
+    // This avoids waking the main isolate every second when no timer is set.
     ref.listen(sleepTimerProvider, (prev, next) {
       if (next != null) {
         _scheduleCheck();

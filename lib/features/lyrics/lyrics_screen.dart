@@ -66,9 +66,6 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
   @override
   Widget build(BuildContext context) {
     final track = ref.watch(currentTrackProvider);
-    final positionAsync = ref.watch(positionStreamProvider);
-    final position =
-        positionAsync.maybeWhen(data: (p) => p, orElse: () => Duration.zero);
     final spectral = ref.watch(currentSpectralProvider);
 
     final lrcAsync = track == null
@@ -78,15 +75,22 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
       data: (parsed) => parsed,
       orElse: () => null,
     );
-    final active = lrc?.activeIndex(position) ?? -1;
 
-    // Trigger scroll after the frame is painted so the ScrollController
-    // has a valid position by the time we call animateTo.
-    if (lrc != null && lrc.lines.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Scroll to active line only when position actually changes — not on
+    // every build. Using ref.listen avoids enqueuing a post-frame callback
+    // on every position tick (which was growing the callback queue unboundedly).
+    ref.listen(positionStreamProvider, (_, next) {
+      final position = next.maybeWhen(data: (p) => p, orElse: () => Duration.zero);
+      final active = lrc?.activeIndex(position) ?? -1;
+      if (lrc != null && lrc.lines.isNotEmpty) {
         _scrollToActive(active, lrc.lines.length);
-      });
-    }
+      }
+    });
+
+    final positionAsync = ref.watch(positionStreamProvider);
+    final position =
+        positionAsync.maybeWhen(data: (p) => p, orElse: () => Duration.zero);
+    final active = lrc?.activeIndex(position) ?? -1;
 
     return Scaffold(
       appBar: AppBar(

@@ -32,7 +32,7 @@ void _boot(String message) => afLog('boot', message);
 
 Future<void> main() async {
   _boot('main() entered');
-  runZonedGuarded(() async {
+  await runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
     _boot('WidgetsFlutterBinding.ensureInitialized OK');
 

@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -207,7 +209,7 @@ class NowPlayingScreen extends ConsumerWidget {
                           accent: spectral.energy,
                           onShuffle: () {
                             final svc = ref.read(playerServiceProvider);
-                            svc.setAfShuffleMode(!svc.isShuffleEnabled);
+                            unawaited(svc.setAfShuffleMode(!svc.isShuffleEnabled));
                           },
                           onRepeat: () {
                             final svc = ref.read(playerServiceProvider);
@@ -216,7 +218,7 @@ class NowPlayingScreen extends ConsumerWidget {
                               Loop.playlist => Loop.file,
                               Loop.file => Loop.off,
                             };
-                            svc.setAfLoopMode(next);
+                            unawaited(svc.setAfLoopMode(next));
                           },
                           onPlayPause: () {
                             final svc =
@@ -300,12 +302,12 @@ class _TopBar extends ConsumerWidget {
                   break;
                 case _NowPlayingAction.goToAlbum:
                   if (track.albumId != null) {
-                    context.push('/album/${track.albumId}');
+                    unawaited(context.push('/album/${track.albumId}'));
                   }
                   break;
                 case _NowPlayingAction.goToArtist:
                   if (track.artistId != null) {
-                    context.push('/artist/${track.artistId}');
+                    unawaited(context.push('/artist/${track.artistId}'));
                   }
                   break;
               }
@@ -592,7 +594,7 @@ class _UtilityRow extends ConsumerWidget {
                     ? const Icon(Icons.check_rounded, size: 20)
                     : null,
                 onTap: () {
-                  ref.read(playerServiceProvider).setAfSpeed(s);
+                  unawaited(ref.read(playerServiceProvider).setAfSpeed(s));
                   Navigator.of(sheetCtx).pop();
                 },
               ),
@@ -692,7 +694,7 @@ class _SaveToPlaylistSheetState extends State<_SaveToPlaylistSheet> {
       await widget.client.addToPlaylist(playlist.id, [widget.track.id]);
       widget.onInvalidate();
       if (mounted) {
-        Navigator.maybePop(context);
+        unawaited(Navigator.maybePop(context));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Added to ${playlist.name}')),
         );
@@ -715,7 +717,7 @@ class _SaveToPlaylistSheetState extends State<_SaveToPlaylistSheet> {
       await widget.client.createPlaylist(name, [widget.track.id]);
       widget.onInvalidate();
       if (mounted) {
-        Navigator.maybePop(context);
+        unawaited(Navigator.maybePop(context));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Created "$name" and added track')),
         );

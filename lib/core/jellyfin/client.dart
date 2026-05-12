@@ -311,7 +311,7 @@ class JellyfinClient {
     ));
     try {
       final res = await probe.get<List<dynamic>>('Users');
-      final users = (res.data ?? const []).cast<Map>();
+      final users = (res.data ?? const []).cast<Map<String, dynamic>>();
       final wanted = username.trim().toLowerCase();
       for (final raw in users) {
         final u = raw.cast<String, dynamic>();
@@ -340,7 +340,7 @@ class JellyfinClient {
   /// `GET /Users/{userId}/Views` — the list of libraries the user can see.
   Future<List<LibraryView>> userViews() async {
     final res = await _dio.get<Map<String, dynamic>>('Users/$userId/Views');
-    final items = (res.data?['Items'] as List? ?? const []).cast<Map>();
+    final items = (res.data?['Items'] as List? ?? const []).cast<Map<String, dynamic>>();
     return items
         .map((m) => LibraryView(
               id: m['Id'] as String,
@@ -984,7 +984,7 @@ class JellyfinClient {
       final res = await _dio.get<Map<String, dynamic>>(
         'Audio/$trackId/Lyrics',
       );
-      final lyricsList = (res.data?['Lyrics'] as List? ?? const []).cast<Map>();
+      final lyricsList = (res.data?['Lyrics'] as List? ?? const []).cast<Map<String, dynamic>>();
       if (lyricsList.isEmpty) return null;
       // Reconstruct an LRC blob from the structured lyrics Jellyfin returns.
       // Each entry has `Text` and optionally `Start` (in ticks). For unsynced
@@ -1055,7 +1055,7 @@ class JellyfinClient {
 
   List<Map<String, dynamic>> _normaliseItems(Iterable<dynamic> items) =>
       items
-          .whereType<Map>()
+          .whereType<Map<String, dynamic>>()
           .map((m) => m.cast<String, dynamic>())
           .toList(growable: false);
 
@@ -1100,7 +1100,7 @@ class JellyfinClient {
     final userData = (m['UserData'] as Map?)?.cast<String, dynamic>();
     final dateCreated = m['DateCreated'] as String?;
     final artistIds = (m['ArtistItems'] as List?)
-        ?.whereType<Map>()
+        ?.whereType<Map<String, dynamic>>()
         .map((i) => i['Id'])
         .whereType<String>()
         .toList();
@@ -1141,7 +1141,7 @@ class JellyfinClient {
     if (sources == null || sources.isEmpty) return null;
     final src = (sources.first as Map).cast<String, dynamic>();
     final streams = (src['MediaStreams'] as List? ?? const [])
-        .whereType<Map>()
+        .whereType<Map<String, dynamic>>()
         .map((s) => s.cast<String, dynamic>())
         .where((s) => (s['Type'] as String?) == 'Audio')
         .toList();
@@ -1184,7 +1184,7 @@ class JellyfinClient {
     final artists = m['ArtistItems'] as List?;
     if (artists != null && artists.isNotEmpty) {
       final names = artists
-          .whereType<Map>()
+          .whereType<Map<String, dynamic>>()
           .map((a) => a['Name'] as String?)
           .whereType<String>()
           .where((s) => s.isNotEmpty);

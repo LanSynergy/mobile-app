@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Device;
@@ -98,7 +100,7 @@ class CastPickerScreen extends ConsumerWidget {
                           borderRadius: AfRadii.borderMd),
                       onTap: () async {
                         await svc.setAudioDevice(device);
-                        if (context.mounted) Navigator.maybePop(context);
+                        if (context.mounted) unawaited(Navigator.maybePop(context));
                       },
                     );
                   },

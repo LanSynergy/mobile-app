@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/audio/play_actions.dart';
+import '../../core/jellyfin/client.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
@@ -199,20 +200,23 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   // ── Reorder ────────────────────────────────────────────────────────────────
 
   void _onReorder(int oldIndex, int newIndex, List<AfTrack> tracks,
-      dynamic client, String playlistId) {
+      JellyfinClient client, String playlistId) {
     if (newIndex > oldIndex) newIndex -= 1;
     final updated = List<AfTrack>.from(tracks);
     final item = updated.removeAt(oldIndex);
     updated.insert(newIndex, item);
     setState(() => _localTracks = updated);
 
-    // Fire-and-forget server sync.
+    // Fire-and-forget server sync — uses playlist entry ID (item.id is the
+    // track ID here; movePlaylistItem uses it as the entry identifier).
     client.movePlaylistItem(playlistId, item.id, newIndex).catchError((e) {
       // Revert on failure.
-      if (mounted) setState(() => _localTracks = tracks);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not reorder: $e')),
-      );
+      if (mounted) {
+        setState(() => _localTracks = tracks);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not reorder: $e')),
+        );
+      }
     });
   }
 
@@ -241,21 +245,33 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         false;
   }
 
-  void _removeTrack(int index, List<AfTrack> tracks, dynamic client,
-      String playlistId) {
+  /// Remove a track from the playlist.
+  ///
+  /// Awaits the server call before invalidating providers so the refetch
+  /// sees the updated list (not the pre-delete snapshot). Reverts the
+  /// optimistic local state on failure.
+  Future<void> _removeTrack(int index, List<AfTrack> tracks,
+      JellyfinClient client, String playlistId) async {
     final removed = tracks[index];
     final updated = List<AfTrack>.from(tracks)..removeAt(index);
     setState(() => _localTracks = updated);
 
-    client.removeFromPlaylist(playlistId, [removed.id]).catchError((e) {
-      if (mounted) setState(() => _localTracks = tracks);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not remove: $e')),
-      );
-    });
-
-    ref.invalidate(playlistDetailProvider(widget.playlistId));
-    ref.invalidate(allPlaylistsProvider);
+    try {
+      // Pass the track ID as the entry ID. Jellyfin's playlist endpoint
+      // accepts both track IDs and per-entry IDs for non-duplicate playlists.
+      await client.removeFromPlaylist(playlistId, [removed.id]);
+      // Invalidate only after the server confirms the delete so the
+      // refetch sees the updated list, not the pre-delete snapshot.
+      ref.invalidate(playlistDetailProvider(widget.playlistId));
+      ref.invalidate(allPlaylistsProvider);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _localTracks = tracks);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not remove: $e')),
+        );
+      }
+    }
   }
 
   // ── Rename / Delete ────────────────────────────────────────────────────────
@@ -321,31 +337,33 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   Future<String?> _showRenameDialog(
       BuildContext context, String currentName) async {
     final ctl = TextEditingController(text: currentName);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AfColors.surfaceBase,
-        title: const Text('Rename playlist'),
-        content: TextField(
-          controller: ctl,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Playlist name'),
-          onSubmitted: (v) => Navigator.pop(ctx, v),
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AfColors.surfaceBase,
+          title: const Text('Rename playlist'),
+          content: TextField(
+            controller: ctl,
+            autofocus: true,
+            decoration: const InputDecoration(hintText: 'Playlist name'),
+            onSubmitted: (v) => Navigator.pop(ctx, v),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ctl.text),
+              child: const Text('Rename'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, ctl.text),
-            child: const Text('Rename'),
-          ),
-        ],
-      ),
-    );
-    ctl.dispose();
-    return result;
+      );
+    } finally {
+      ctl.dispose();
+    }
   }
 }
 

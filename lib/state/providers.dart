@@ -147,9 +147,17 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
   );
   final liveUpdate = LiveUpdateService(svc);
   unawaited(liveUpdate.attach());
-  // Configure spectrum settings for the visualizer — wider dB range so
-  // normal music doesn't saturate at 1.0 constantly.
   unawaited(svc.configureSpectrum());
+
+  // When the user signs out (auth → null), send a final Stopped ping so
+  // Jellyfin's activity feed doesn't show the user as "still playing".
+  // requestStopOnDispose() must be called before dispose() fires.
+  ref.listen<JellyfinAuth?>(authProvider, (prev, next) {
+    if (prev != null && next == null) {
+      reporter.requestStopOnDispose();
+    }
+  });
+
   ref.onDispose(() async {
     await liveUpdate.dispose();
     await reporter.dispose();

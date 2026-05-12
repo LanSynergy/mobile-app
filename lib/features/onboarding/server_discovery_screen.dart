@@ -27,7 +27,7 @@ class ServerDiscoveryScreen extends ConsumerStatefulWidget {
 }
 
 class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
-  late final StreamSubscription<JellyfinServer> _sub;
+  StreamSubscription<JellyfinServer>? _sub;
   final _manualController = TextEditingController(text: 'http://');
   bool _scanning = true;
   String? _manualError;
@@ -41,6 +41,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
   void _startScan() {
     setState(() => _scanning = true);
     ref.read(discoveredServersProvider.notifier).state = const [];
+    _sub?.cancel();
     _sub = JellyfinDiscovery().scan().listen(
       (s) {
         final current = ref.read(discoveredServersProvider);
@@ -94,6 +95,8 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
       );
       setState(() =>
           _manualError = 'Couldn’t reach ${server.baseUrl}. $e');
+    } finally {
+      client.close();
     }
   }
 
@@ -104,7 +107,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
 
   @override
   void dispose() {
-    _sub.cancel();
+    _sub?.cancel();
     _manualController.dispose();
     super.dispose();
   }
