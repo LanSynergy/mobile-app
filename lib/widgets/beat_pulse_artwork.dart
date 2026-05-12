@@ -10,31 +10,25 @@ import '../state/providers.dart';
 import 'artwork.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BeatPulseArtwork
-//
-// Album artwork surrounded by three reactive radial layers driven by the
-// live FFT spectrum:
-//
-//   • Inner core  — bass energy  (bands 0–7,   ~20–250 Hz)
-//     Drives a subtle scale pulse on the artwork itself (1.0 → 1.06).
-//
-//   • Mid ring    — mid energy   (bands 8–31,  ~250 Hz–4 kHz)
-//     A thin ring that expands outward and fades on beats.
-//
-//   • Outer halo  — treble energy (bands 32–63, ~4–20 kHz)
-//     A soft bloom painted with a radial gradient; opacity tracks treble.
+// BeatPulseArtwork — circular spectrum analyzer around album artwork
 //
 // Architecture
 // ────────────
-// • A single [_BeatNotifier] (ChangeNotifier) owns all animation state.
-//   It drives both the CustomPainter repaint and the Transform.scale
-//   via AnimatedBuilder — no setState() anywhere.
+// Each of the 64 FFT bins controls its own radial spike positioned around
+// the artwork at angle (i / 64) * 2π. Spikes are independent — bin 0 is
+// bass at the bottom-left, bin 32 is treble at the top-right. The eye
+// perceives distributed spectral motion, not a single scaling object.
 //
-// • The ticker only runs when FFT data is arriving AND the widget is
-//   visible. It stops automatically when playback pauses.
+// Per-bin envelope:
+//   • Bass bins (0–7):    slow attack, very slow decay — kick drums sustain
+//   • Low-mid (8–15):     medium
+//   • Mid (16–31):        neutral
+//   • Treble (32–63):     fast attack, fast decay — hi-hats flicker
 //
-// • FFT values are validated (NaN/Infinity guard) before entering the
-//   smoothing pipeline.
+// Psychoacoustic amplitude weighting per region matches the waveform widget.
+//
+// No uniform Transform.scale — that always reads as one object.
+// No global ring radius — that always reads as one oscillator.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class BeatPulseArtwork extends ConsumerStatefulWidget {
@@ -56,29 +50,25 @@ class BeatPulseArtwork extends ConsumerStatefulWidget {
 class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ticker;
-  late final _BeatNotifier _notifier;
+  late final _SpectrumNotifier _notifier;
   StreamSubscription<FftFrame>? _fftSub;
-  // Track whether FFT arrived recently so we don't stop the ticker
-  // between frames and kill visible animation.
   bool _hasRecentFft = false;
 
   @override
   void initState() {
     super.initState();
-    _notifier = _BeatNotifier();
+    _notifier = _SpectrumNotifier();
     _ticker = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 16),
     )..addListener(_onTick);
-    // Ticker starts only when FFT data arrives (see didChangeDependencies).
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Only resubscribe if the player service instance changed.
-    final svc = ref.read(playerServiceProvider);
     _fftSub?.cancel();
+    final svc = ref.read(playerServiceProvider);
     _fftSub = svc.spectrumStream.listen((frame) {
       _notifier._updateTarget(frame.bands);
       _hasRecentFft = true;
@@ -97,208 +87,207 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
   void _onTick() {
     if (!mounted) return;
     final changed = _notifier._tick();
-    // Only stop when settled AND no recent FFT arriving.
-    // Previously stopped aggressively between frames, killing visible animation.
     if (!changed && !_hasRecentFft) _ticker.stop();
-    _hasRecentFft = false; // reset each tick; set again by next FFT frame
+    _hasRecentFft = false;
   }
 
   @override
   Widget build(BuildContext context) {
     final spectral = ref.watch(currentSpectralProvider);
-    return AnimatedBuilder(
-      animation: _notifier,
-      builder: (context, child) {
-        return SizedBox(
-          width: widget.size,
-          height: widget.size,
-          child: CustomPaint(
-            painter: _LayersPainter(
-              notifier: _notifier,
-              size: widget.size,
-              energy: spectral.energy,
-              glow: spectral.glow,
-            ),
-            child: Transform.scale(
-              scale: _notifier.scale,
-              child: child,
-            ),
+    // Outer SizedBox is slightly larger than artwork to give spikes room.
+    final outerSize = widget.size + _SpectrumPainter.maxSpikeLength * 2;
+    return SizedBox(
+      width: outerSize,
+      height: outerSize,
+      child: AnimatedBuilder(
+        animation: _notifier,
+        builder: (context, child) => CustomPaint(
+          painter: _SpectrumPainter(
+            notifier: _notifier,
+            artworkSize: widget.size,
+            energy: spectral.energy,
+            glow: spectral.glow,
           ),
-        );
-      },
-      child: Artwork(
-        url: widget.imageUrl,
-        size: widget.size,
-        radius: widget.radius,
+          child: child,
+        ),
+        child: Center(
+          child: Artwork(
+            url: widget.imageUrl,
+            size: widget.size,
+            radius: widget.radius,
+          ),
+        ),
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _BeatNotifier — owns all animation state, drives repaints via ChangeNotifier
+// _SpectrumNotifier — 64 independent per-bin envelopes
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _BeatNotifier extends ChangeNotifier {
-  // ── Smoothed values [0, 1] ────────────────────────────────────────────────
-  double bass   = 0.0;
-  double mid    = 0.0;
-  double treble = 0.0;
+class _SpectrumNotifier extends ChangeNotifier {
+  static const int _binCount = 64;
 
-  // ── Targets set by latest FFT frame ──────────────────────────────────────
-  double _bassTarget   = 0.0;
-  double _midTarget    = 0.0;
-  double _trebleTarget = 0.0;
+  // Per-bin visual heights [0, 1] — mutated in-place each tick.
+  final Float32List bins = Float32List(_binCount);
 
-  // ── Dual-envelope beat detector ───────────────────────────────────────────
-  // Fast envelope tracks kicks immediately; slow envelope tracks overall
-  // bass energy. Beat impulse = fast - slow. This avoids the self-suppression
-  // bug where (bassNow - smoothedBass) ≈ 0 because smoothing already follows.
-  double _fastBass = 0.0;
-  double _slowBass = 0.0;
+  // Per-bin attack/decay — pre-computed by frequency region.
+  final Float32List _attack = Float32List(_binCount);
+  final Float32List _decay  = Float32List(_binCount);
 
-  // ── Attack / release lerp constants ──────────────────────────────────────
-  static const double _bassAttack    = 0.82;
-  static const double _bassRelease   = 0.22;
-  static const double _midAttack     = 0.40;
-  static const double _midRelease    = 0.08;
-  static const double _trebleAttack  = 0.25;
-  static const double _trebleRelease = 0.05;
+  // Raw FFT target — written by stream, read by tick.
+  Float32List? _fftTarget;
 
-  // ── Visual limits ─────────────────────────────────────────────────────────
-  static const double _maxScale      = 1.24;
-  static const double _ringMaxRadius = 0.14;
-  static const double _haloMaxAlpha  = 0.50;
-  static const double _settleThresh  = 0.0005;
+  static const double _settleThresh = 0.0008;
+  static const double _minHeight    = 0.0;
 
-  double get scale      => 1.0 + bass * (_maxScale - 1.0);
-  double ringRadius(double size) =>
-      size / 2 + mid * size * _ringMaxRadius;
-  double get haloAlpha  => treble * _haloMaxAlpha;
+  // Frequency region boundaries (same as waveform widget).
+  static const int _bassEnd   = 8;
+  static const int _lowMidEnd = 16;
+  static const int _midEnd    = 32;
+
+  _SpectrumNotifier() {
+    for (var i = 0; i < _binCount; i++) {
+      if (i < _bassEnd) {
+        _attack[i] = 0.65;
+        _decay[i]  = 0.06; // very slow — bass sustains
+      } else if (i < _lowMidEnd) {
+        _attack[i] = 0.72;
+        _decay[i]  = 0.12;
+      } else if (i < _midEnd) {
+        _attack[i] = 0.78;
+        _decay[i]  = 0.20;
+      } else {
+        _attack[i] = 0.90; // treble: instant snap
+        _decay[i]  = 0.35; // treble: fast flicker
+      }
+    }
+  }
 
   void _updateTarget(Float32List bands) {
-    if (bands.isEmpty) return;
-    final n = bands.length;
-    final bassEnd  = (n * 0.125).round().clamp(1, n);
-    final midEnd   = (n * 0.50).round().clamp(bassEnd + 1, n);
-
-    final bassNow = _rms(bands, 0, bassEnd);
-
-    // Dual-envelope beat detector:
-    //   fast envelope (0.55) captures kick transients immediately.
-    //   slow envelope (0.08) tracks overall bass energy level.
-    //   beat impulse = fast - slow = energy above the running average.
-    _fastBass += (bassNow - _fastBass) * 0.55;
-    _slowBass += (bassNow - _slowBass) * 0.08;
-    final beat = math.max(0.0, _fastBass - _slowBass);
-
-    // Strong transient amplification: beat * 4.5 makes kicks punch visibly.
-    // bassNow * 0.25 provides a floor so sustained bass still shows.
-    _bassTarget = (bassNow * 0.25 + beat * 4.5).clamp(0.0, 1.0);
-
-    _midTarget    = (_rms(bands, bassEnd, midEnd) * 1.1).clamp(0.0, 1.0);
-    _trebleTarget = (_rms(bands, midEnd, n)       * 0.9).clamp(0.0, 1.0);
+    _fftTarget = bands;
   }
 
-  /// Returns true if any value is still moving (ticker should keep running).
   bool _tick() {
-    final nb = _lerp(bass,   _bassTarget,   _bassTarget   > bass   ? _bassAttack   : _bassRelease);
-    final nm = _lerp(mid,    _midTarget,    _midTarget    > mid    ? _midAttack    : _midRelease);
-    final nt = _lerp(treble, _trebleTarget, _trebleTarget > treble ? _trebleAttack : _trebleRelease);
+    final bands = _fftTarget;
+    if (bands == null) return false;
 
-    final changed = (nb - bass).abs()   > _settleThresh ||
-                    (nm - mid).abs()    > _settleThresh ||
-                    (nt - treble).abs() > _settleThresh;
-    bass   = nb;
-    mid    = nm;
-    treble = nt;
-    // Always notify during active FFT — don't quantize visual updates
-    // by gating on settle threshold (scale changes matter before threshold).
-    notifyListeners();
-    return changed;
-  }
+    var anyMoving = false;
+    for (var i = 0; i < _binCount; i++) {
+      final raw = i < bands.length ? bands[i] : 0.0;
+      final safeRaw = raw.isFinite ? raw.clamp(0.0, 1.0) : 0.0;
 
-  static double _rms(Float32List b, int start, int end) {
-    final count = end - start;
-    if (count <= 0) return 0.0;
-    var sum = 0.0;
-    for (var i = start; i < end; i++) {
-      final v = b[i];
-      // Guard against NaN / Infinity from malformed FFT frames.
-      if (!v.isFinite) continue;
-      sum += v * v;
+      // Psychoacoustic amplitude weighting — same as waveform.
+      final double weighted;
+      if (i < _bassEnd) {
+        weighted = (safeRaw * 1.8).clamp(0.0, 1.0); // bass amplified more for spikes
+      } else if (i < _lowMidEnd) {
+        weighted = (safeRaw * 1.3).clamp(0.0, 1.0);
+      } else if (i < _midEnd) {
+        weighted = safeRaw;
+      } else {
+        weighted = (safeRaw * 0.80).clamp(0.0, 1.0);
+      }
+
+      final target = weighted.clamp(_minHeight, 1.0);
+      final lerp   = target > bins[i] ? _attack[i] : _decay[i];
+      final next   = bins[i] + (target - bins[i]) * lerp;
+      if ((next - bins[i]).abs() > _settleThresh) anyMoving = true;
+      bins[i] = next;
     }
-    return math.sqrt(sum / count).clamp(0.0, 1.0);
-  }
 
-  static double _lerp(double current, double target, double t) =>
-      current + (target - current) * t;
+    notifyListeners();
+    return anyMoving;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _LayersPainter — draws mid ring + treble halo behind the artwork.
-// Repaint is driven by _BeatNotifier (Listenable), not setState.
+// _SpectrumPainter — draws 64 radial spikes around the artwork
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _LayersPainter extends CustomPainter {
-  final _BeatNotifier notifier;
-  final double size;
+class _SpectrumPainter extends CustomPainter {
+  final _SpectrumNotifier notifier;
+  final double artworkSize;
   final Color energy;
   final Color glow;
 
-  _LayersPainter({
+  // Maximum radial extension of a spike at full energy.
+  static const double maxSpikeLength = 28.0;
+  // Minimum spike length so the ring is always visible.
+  static const double minSpikeLength = 2.0;
+  // Gap between artwork edge and spike base.
+  static const double spikeGap = 4.0;
+  // Spike width at base.
+  static const double spikeWidth = 2.5;
+
+  const _SpectrumPainter({
     required this.notifier,
-    required this.size,
+    required this.artworkSize,
     required this.energy,
     required this.glow,
   }) : super(repaint: notifier);
 
   @override
-  void paint(Canvas canvas, Size canvasSize) {
-    final center = Offset(canvasSize.width / 2, canvasSize.height / 2);
-    final haloAlpha  = notifier.haloAlpha;
-    final ringAlpha  = notifier.mid;
-    final ringRadius = notifier.ringRadius(size);
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final innerRadius = artworkSize / 2 + spikeGap;
+    final bins = notifier.bins;
+    final n = bins.length;
 
-    // ── Outer halo (treble) ───────────────────────────────────────────────
-    if (haloAlpha > 0.005) {
-      final haloRadius = size * 0.62;
-      // Use a fixed blur radius to avoid per-frame shader recompilation.
-      // Proportional blur (haloRadius * 0.35) caused raster cache misses.
-      canvas.drawCircle(
-        center,
-        haloRadius,
-        Paint()
-          ..shader = RadialGradient(
-            colors: [
-              glow.withValues(alpha: haloAlpha),
-              glow.withValues(alpha: haloAlpha * 0.4),
-              glow.withValues(alpha: 0.0),
-            ],
-            stops: const [0.0, 0.55, 1.0],
-          ).createShader(Rect.fromCircle(center: center, radius: haloRadius))
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 24.0),
+    for (var i = 0; i < n; i++) {
+      final amp = bins[i];
+      if (amp < 0.01) continue; // skip invisible spikes
+
+      // Angle: distribute bins evenly around the circle.
+      // Start at top (-π/2) so bass (bin 0) is at the top.
+      final angle = -math.pi / 2 + (i / n) * 2 * math.pi;
+      final cos = math.cos(angle);
+      final sin = math.sin(angle);
+
+      final spikeLen = minSpikeLength + amp * (maxSpikeLength - minSpikeLength);
+      final outerRadius = innerRadius + spikeLen;
+
+      final p1 = Offset(
+        center.dx + cos * innerRadius,
+        center.dy + sin * innerRadius,
       );
-    }
+      final p2 = Offset(
+        center.dx + cos * outerRadius,
+        center.dy + sin * outerRadius,
+      );
 
-    // ── Mid ring ──────────────────────────────────────────────────────────
-    if (ringAlpha > 0.01) {
-      canvas.drawCircle(
-        center,
-        ringRadius,
+      // Color: bass bins use energy color, treble bins use glow color.
+      // Interpolate between them across the spectrum.
+      final t = i / (n - 1);
+      final spikeColor = Color.lerp(energy, glow, t)!
+          .withValues(alpha: (0.4 + amp * 0.6).clamp(0.0, 1.0));
+
+      // Glow pass (wider, blurred).
+      canvas.drawLine(
+        p1,
+        p2,
         Paint()
-          ..color = energy.withValues(alpha: ringAlpha * 0.55)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = math.max(1.0, ringAlpha * 3.0)
-          // Fixed blur radius — avoids proportional shader recompilation.
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0),
+          ..color = spikeColor.withValues(alpha: amp * 0.35)
+          ..strokeWidth = spikeWidth * 2.5
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0),
+      );
+
+      // Sharp pass.
+      canvas.drawLine(
+        p1,
+        p2,
+        Paint()
+          ..color = spikeColor
+          ..strokeWidth = spikeWidth
+          ..strokeCap = StrokeCap.round,
       );
     }
   }
 
   @override
-  bool shouldRepaint(_LayersPainter old) =>
-      old.energy != energy || old.glow != glow || old.size != size;
-  // Value changes are handled by the repaint: notifier — no structural
-  // comparison needed here.
+  bool shouldRepaint(_SpectrumPainter old) =>
+      old.energy != energy || old.glow != glow || old.artworkSize != artworkSize;
+  // Value changes handled by repaint: notifier.
 }

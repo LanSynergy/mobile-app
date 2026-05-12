@@ -117,45 +117,21 @@ class _ReactiveBackground extends ConsumerWidget {
 }
 
 /// Watches spectral for artwork glow only.
-/// Hero wraps only the static artwork image — glow is a separate layer
-/// so Hero transitions don't fight the reactive animation.
+/// The circular spectrum analyzer (BeatPulseArtwork) provides its own
+/// visual energy — no additional box shadows needed.
 class _ReactiveArtwork extends ConsumerWidget {
   final AfTrack track;
   const _ReactiveArtwork({required this.track});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
     return RepaintBoundary(
-      child: AnimatedContainer(
-        duration: AfDurations.expressive,
-        curve: AfCurves.easeStandard,
-        decoration: BoxDecoration(
-          borderRadius: AfRadii.borderLg,
-          // Reduced blur radii (was 48/72) to lower GPU cost.
-          // Dynamic shadow colors are the expensive part — AnimatedContainer
-          // interpolates them so the GPU doesn't recompile shaders per frame.
-          boxShadow: [
-            BoxShadow(
-              color: spectral.shadow.withValues(alpha: 0.55),
-              blurRadius: 32,
-              offset: const Offset(0, 16),
-            ),
-            BoxShadow(
-              color: spectral.energy.withValues(alpha: 0.28),
-              blurRadius: 48,
-              spreadRadius: 4,
-              offset: Offset.zero,
-            ),
-          ],
-        ),
-        child: Hero(
-          tag: 'now-playing-artwork',
-          child: BeatPulseArtwork(
-            imageUrl: track.imageUrl,
-            size: 320,
-            radius: AfRadii.borderLg,
-          ),
+      child: Hero(
+        tag: 'now-playing-artwork',
+        child: BeatPulseArtwork(
+          imageUrl: track.imageUrl,
+          size: 280,
+          radius: AfRadii.borderLg,
         ),
       ),
     );
