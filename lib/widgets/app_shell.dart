@@ -75,6 +75,8 @@ class AppShell extends ConsumerWidget {
     final miniBottom =
         AfSpacing.bottomNavHeight + bottomNav + AfSpacing.miniPlayerNavGap;
 
+    print('[AppShell] build hasMini=$hasMini currentIndex=${shell.currentIndex}');
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -97,18 +99,24 @@ class AppShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
       extendBody: true,
+      // StackFit.expand ensures the Stack fills the Scaffold body even when
+      // all children are Positioned (no non-positioned child to size from).
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          // Sleep timer watcher — invisible, fires pause when timer expires.
-          const SleepTimerWatcher(),
+          // Tab content fills the entire body area.
+          // Must be first (bottom of stack) so overlays paint on top.
+          shell,
 
-          // Tab content — direct, no AnimatedSwitcher.
-          // AnimatedSwitcher held both old and new tab children simultaneously
-          // during the transition, causing go_router's StatefulNavigationShell
-          // internal LabeledGlobalKey to appear twice → Duplicate GlobalKey crash.
-          Positioned.fill(child: shell),
+          // Sleep timer watcher — zero-sized, invisible.
+          // Kept as Positioned so it doesn't affect Stack sizing.
+          const Positioned(
+            width: 0,
+            height: 0,
+            child: SleepTimerWatcher(),
+          ),
 
-          // Floating mini-player.
+          // Floating mini-player overlay.
           if (hasMini)
             Positioned(
               left: 0,
