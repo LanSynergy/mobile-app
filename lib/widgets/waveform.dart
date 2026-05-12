@@ -15,25 +15,23 @@ import '../state/providers.dart';
 //
 // Architecture
 // ────────────
-// • Single CustomPainter — the entire waveform is one paint pass.
-//   No widget-per-bar, no ListView, no Opacity widgets.
+// • A [_WaveformNotifier] (ChangeNotifier) owns all animation state:
+//   FFT smoothing, idle oscillation, drag progress.
+//   It drives repaints via CustomPainter(repaint: notifier) — no setState.
 //
-// • FFT data is consumed via a direct StreamSubscription wired in
-//   didChangeDependencies so frames are never dropped between rebuilds.
+// • The ticker only runs when playing or dragging. It stops automatically
+//   when paused and no FFT frames are arriving.
 //
-// • Asymmetric EMA smoothing: fast attack (bars snap to beats),
-//   slow release (bars decay gracefully between beats).
+// • The smoothed Float32List is mutated in-place — no per-frame allocation.
+//   shouldRepaint() is always false because repaint is driven by the
+//   Listenable, not structural comparison.
 //
-// • Progress overlay: bars left of the playhead are painted with
-//   playedColor; bars right use unplayedColor at reduced opacity.
-//   The transition bar is lerped between the two colors.
+// • FFT values are validated (NaN/Infinity guard) before smoothing.
 //
-// • Scrub thumb: circle + glow, haptic feedback on drag start.
+// • Reduced-motion accessibility: idle animation disabled when
+//   MediaQuery.disableAnimations is true.
 //
-// • Idle pose: when isPlaying=false and no FFT data, bars hold their
-//   static peak heights with no animation — no jitter, no fake motion.
-//
-// Public API (unchanged from previous version):
+// Public API (unchanged):
 //   peaks, progress, isPlaying, playedColor, unplayedColor,
 //   height, onScrub, onScrubEnd
 // ─────────────────────────────────────────────────────────────────────────────
@@ -52,12 +50,12 @@ class FftWaveform extends ConsumerStatefulWidget {
     super.key,
     required this.peaks,
     required this.progress,
-    this.playedColor = AfColors.indigo300,
+    this.playedColor   = AfColors.indigo300,
     this.unplayedColor = AfColors.textTertiary,
-    this.height = 72,
+    this.height        = 72,
     this.onScrub,
     this.onScrubEnd,
-    this.isPlaying = true,
+    this.isPlaying     = true,
   });
 
   @override
@@ -66,137 +64,91 @@ class FftWaveform extends ConsumerStatefulWidget {
 
 class _FftWaveformState extends ConsumerState<FftWaveform>
     with SingleTickerProviderStateMixin {
-  // ── 60 fps ticker ─────────────────────────────────────────────────────────
   late final AnimationController _ticker;
-
-  // ── Scrub state ───────────────────────────────────────────────────────────
-  bool   _dragging     = false;
-  double _dragProgress = 0.0;
-
-  // ── Per-bar smoothed heights [0, 1] ───────────────────────────────────────
-  late Float32List _smoothed;
-
-  // ── Latest raw FFT bands ──────────────────────────────────────────────────
-  Float32List? _fftTarget;
-  bool _hasFft = false;
+  late final _WaveformNotifier _notifier;
   StreamSubscription<FftFrame>? _fftSub;
-
-  // ── Smoothing constants ───────────────────────────────────────────────────
-  /// Bars rise quickly toward the FFT target (snappy beat response).
-  static const double _attackLerp  = 0.45;
-  /// Bars fall slowly (smooth decay between beats).
-  static const double _decayLerp   = 0.10;
-  /// Minimum bar height so the waveform shape is always visible.
-  static const double _minHeight   = 0.06;
-  /// Power curve: compresses quiet signals, lets loud beats spike.
-  /// 1.4 is mild — quiet passages stay visible, peaks still punch.
-  static const double _powerCurve  = 1.4;
-
-  // ── Idle fallback phase ───────────────────────────────────────────────────
-  double _idlePhase = 0.0;
 
   @override
   void initState() {
     super.initState();
-    _initSmoothed();
+    _notifier = _WaveformNotifier(widget.peaks);
     _ticker = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 16),
     )..addListener(_onTick);
-    _ticker.repeat();
+    _maybeStartTicker();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Subscribe directly to the spectrum stream so we never miss a frame
-    // between widget rebuilds (ref.listen in build() can drop frames).
     _fftSub?.cancel();
     final svc = ref.read(playerServiceProvider);
     _fftSub = svc.spectrumStream.listen((frame) {
-      _fftTarget = frame.bands;
-      _hasFft = true;
+      _notifier._setFftTarget(frame.bands);
+      _maybeStartTicker();
     });
   }
 
   @override
   void didUpdateWidget(FftWaveform old) {
     super.didUpdateWidget(old);
-    // Re-seed if the peaks array changed (new track).
-    if (old.peaks != widget.peaks) _initSmoothed();
+    if (old.peaks != widget.peaks) {
+      _notifier._resetPeaks(widget.peaks);
+    }
+    if (old.isPlaying != widget.isPlaying) {
+      _maybeStartTicker();
+    }
+    // Forward progress/color changes to notifier so painter sees them.
+    _notifier._progress = widget.progress;
+    _notifier._playedColor   = widget.playedColor;
+    _notifier._unplayedColor = widget.unplayedColor;
   }
 
   @override
   void dispose() {
     _fftSub?.cancel();
     _ticker.dispose();
+    _notifier.dispose();
     super.dispose();
   }
 
-  void _initSmoothed() {
-    final barCount = widget.peaks.isEmpty ? 64 : widget.peaks.length;
-    _smoothed = Float32List(barCount);
-    for (var i = 0; i < barCount; i++) {
-      _smoothed[i] = widget.peaks.isEmpty
-          ? _minHeight
-          : (widget.peaks[i] / 100.0).clamp(_minHeight, 1.0) * 0.5;
+  void _maybeStartTicker() {
+    if ((widget.isPlaying || _notifier._dragging) && !_ticker.isAnimating) {
+      _ticker.repeat();
     }
   }
 
-  // ── Per-frame smoothing ───────────────────────────────────────────────────
-
   void _onTick() {
     if (!mounted) return;
-    final barCount = _smoothed.length;
-    final peaks = widget.peaks.isEmpty
-        ? List<int>.filled(barCount, 30)
-        : widget.peaks;
-
-    if (_hasFft && _fftTarget != null) {
-      final bands = _fftTarget!;
-      for (var i = 0; i < barCount; i++) {
-        final bandIdx = (i * bands.length / barCount)
-            .clamp(0, bands.length - 1)
-            .toInt();
-        final raw    = bands[bandIdx].clamp(0.0, 1.0);
-        final target = math.pow(raw, _powerCurve).toDouble().clamp(_minHeight, 1.0);
-        final lerp   = target > _smoothed[i] ? _attackLerp : _decayLerp;
-        _smoothed[i] = _smoothed[i] + (target - _smoothed[i]) * lerp;
-      }
-    } else if (widget.isPlaying) {
-      // Idle animation: gentle sine-wave oscillation around static peaks.
-      _idlePhase = (_idlePhase + 0.035) % (2 * math.pi);
-      for (var i = 0; i < barCount; i++) {
-        final peak   = (peaks[i] / 100.0).clamp(_minHeight, 1.0);
-        final target = peak * (0.45 + 0.25 * math.sin(_idlePhase + i * 0.28));
-        _smoothed[i] = _smoothed[i] + (target - _smoothed[i]) * 0.12;
-      }
+    final reducedMotion = MediaQuery.of(context).disableAnimations;
+    final changed = _notifier._tick(
+      isPlaying: widget.isPlaying,
+      reducedMotion: reducedMotion,
+    );
+    // Stop ticker when paused and all bars have settled.
+    if (!changed && !widget.isPlaying && !_notifier._dragging) {
+      _ticker.stop();
     }
-    // When paused and no FFT: bars hold their current position — no jitter.
-
-    setState(() {});
   }
 
   // ── Gesture handlers ──────────────────────────────────────────────────────
 
   void _handleDragStart(DragStartDetails d) {
     HapticFeedback.selectionClick();
-    setState(() {
-      _dragging     = true;
-      _dragProgress = _toProgress(d.localPosition.dx);
-    });
-    widget.onScrub?.call(_dragProgress);
+    _notifier._setDrag(true, _toProgress(d.localPosition.dx));
+    widget.onScrub?.call(_notifier._dragProgress);
+    _maybeStartTicker();
   }
 
   void _handleDragUpdate(DragUpdateDetails d) {
-    final p = _toProgress(d.localPosition.dx);
-    setState(() => _dragProgress = p);
-    widget.onScrub?.call(p);
+    _notifier._setDrag(true, _toProgress(d.localPosition.dx));
+    widget.onScrub?.call(_notifier._dragProgress);
   }
 
   void _handleDragEnd(DragEndDetails _) {
-    widget.onScrubEnd?.call(_dragProgress);
-    setState(() => _dragging = false);
+    widget.onScrubEnd?.call(_notifier._dragProgress);
+    _notifier._setDrag(false, _notifier._dragProgress);
   }
 
   void _handleTap(TapDownDetails d) {
@@ -212,29 +164,25 @@ class _FftWaveformState extends ConsumerState<FftWaveform>
     return (dx / box.size.width).clamp(0.0, 1.0);
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    final displayProgress =
-        _dragging ? _dragProgress : widget.progress.clamp(0.0, 1.0);
+    // Sync progress/colors on every build (cheap field writes).
+    _notifier._progress      = widget.progress;
+    _notifier._playedColor   = widget.playedColor;
+    _notifier._unplayedColor = widget.unplayedColor;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onHorizontalDragStart: _handleDragStart,
-      onHorizontalDragUpdate: _handleDragUpdate,
-      onHorizontalDragEnd: _handleDragEnd,
-      onTapDown: _handleTap,
-      child: SizedBox(
-        height: widget.height,
-        width: double.infinity,
-        child: CustomPaint(
-          painter: _WaveformPainter(
-            smoothed:     Float32List.fromList(_smoothed),
-            progress:     displayProgress,
-            playedColor:  widget.playedColor,
-            unplayedColor: widget.unplayedColor,
-            isDragging:   _dragging,
+    return RepaintBoundary(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragStart: _handleDragStart,
+        onHorizontalDragUpdate: _handleDragUpdate,
+        onHorizontalDragEnd: _handleDragEnd,
+        onTapDown: _handleTap,
+        child: SizedBox(
+          height: widget.height,
+          width: double.infinity,
+          child: CustomPaint(
+            painter: _WaveformPainter(notifier: _notifier),
           ),
         ),
       ),
@@ -243,59 +191,152 @@ class _FftWaveformState extends ConsumerState<FftWaveform>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// _WaveformNotifier — owns all mutable animation state.
+// Drives repaints via ChangeNotifier (repaint: notifier in CustomPainter).
+// No per-frame allocation — smoothed buffer is mutated in-place.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _WaveformNotifier extends ChangeNotifier {
+  // ── Smoothed bar heights [0, 1] — mutated in-place, never reallocated ────
+  late Float32List smoothed;
+
+  // ── FFT target — written by stream, read by ticker ───────────────────────
+  Float32List? _fftTarget;
+  bool _hasFft = false;
+
+  // ── Idle animation phase ──────────────────────────────────────────────────
+  double _idlePhase = 0.0;
+
+  // ── Drag state ────────────────────────────────────────────────────────────
+  bool   _dragging     = false;
+  double _dragProgress = 0.0;
+
+  // ── Display state (written by widget, read by painter) ───────────────────
+  double _progress      = 0.0;
+  Color  _playedColor   = AfColors.indigo300;
+  Color  _unplayedColor = AfColors.textTertiary;
+
+  // ── Smoothing constants ───────────────────────────────────────────────────
+  static const double _attackLerp  = 0.45;
+  static const double _decayLerp   = 0.10;
+  static const double _minHeight   = 0.06;
+  static const double _powerCurve  = 1.4;
+  static const double _settleThresh = 0.001;
+
+  _WaveformNotifier(List<int> peaks) {
+    _initSmoothed(peaks);
+  }
+
+  void _initSmoothed(List<int> peaks) {
+    final barCount = peaks.isEmpty ? 64 : peaks.length;
+    smoothed = Float32List(barCount);
+    for (var i = 0; i < barCount; i++) {
+      smoothed[i] = peaks.isEmpty
+          ? _minHeight
+          : (peaks[i] / 100.0).clamp(_minHeight, 1.0) * 0.5;
+    }
+  }
+
+  void _resetPeaks(List<int> peaks) => _initSmoothed(peaks);
+
+  void _setFftTarget(Float32List bands) {
+    _fftTarget = bands;
+    _hasFft = true;
+  }
+
+  void _setDrag(bool dragging, double progress) {
+    _dragging     = dragging;
+    _dragProgress = progress;
+    notifyListeners();
+  }
+
+  double get displayProgress =>
+      _dragging ? _dragProgress : _progress.clamp(0.0, 1.0);
+
+  /// Advance one frame. Returns true if any bar is still moving.
+  bool _tick({required bool isPlaying, required bool reducedMotion}) {
+    final barCount = smoothed.length;
+    var anyMoving = false;
+
+    if (_hasFft && _fftTarget != null) {
+      final bands = _fftTarget!;
+      for (var i = 0; i < barCount; i++) {
+        final bandIdx = (i * bands.length / barCount)
+            .clamp(0, bands.length - 1)
+            .toInt();
+        final raw = bands[bandIdx];
+        // Guard NaN / Infinity from malformed FFT frames.
+        final safeRaw = raw.isFinite ? raw.clamp(0.0, 1.0) : 0.0;
+        final target = math.pow(safeRaw, _powerCurve)
+            .toDouble()
+            .clamp(_minHeight, 1.0);
+        final lerp = target > smoothed[i] ? _attackLerp : _decayLerp;
+        final next = smoothed[i] + (target - smoothed[i]) * lerp;
+        if ((next - smoothed[i]).abs() > _settleThresh) anyMoving = true;
+        smoothed[i] = next;
+      }
+    } else if (isPlaying && !reducedMotion) {
+      // Idle animation: gentle sine-wave oscillation around static peaks.
+      _idlePhase = (_idlePhase + 0.035) % (2 * math.pi);
+      for (var i = 0; i < barCount; i++) {
+        final peak   = smoothed[i].clamp(_minHeight, 1.0);
+        final target = peak * (0.45 + 0.25 * math.sin(_idlePhase + i * 0.28));
+        final next   = smoothed[i] + (target - smoothed[i]) * 0.12;
+        if ((next - smoothed[i]).abs() > _settleThresh) anyMoving = true;
+        smoothed[i] = next;
+      }
+    }
+    // When paused: bars hold position, no animation.
+
+    notifyListeners();
+    return anyMoving;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // _WaveformPainter
+//
+// Repaint is driven by _WaveformNotifier (Listenable).
+// shouldRepaint() always returns false — structural comparison is unnecessary
+// because the Listenable handles invalidation.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _WaveformPainter extends CustomPainter {
-  final Float32List smoothed;
-  final double      progress;
-  final Color       playedColor;
-  final Color       unplayedColor;
-  final bool        isDragging;
+  final _WaveformNotifier notifier;
 
-  // Bar geometry
-  static const double _barGapFraction = 0.35; // gap / barWidth
-  static const double _minBarHeight   = 3.0;  // dp
-
-  // Playhead
-  static const double _headWidth      = 2.0;
-  static const double _thumbRadius    = 5.0;
+  static const double _barGapFraction  = 0.35;
+  static const double _minBarHeight    = 3.0;
+  static const double _headWidth       = 2.0;
+  static const double _thumbRadius     = 5.0;
   static const double _thumbRadiusDrag = 7.5;
-  static const double _glowRadius     = 10.0;
+  static const double _glowRadius      = 10.0;
 
-  const _WaveformPainter({
-    required this.smoothed,
-    required this.progress,
-    required this.playedColor,
-    required this.unplayedColor,
-    required this.isDragging,
-  });
+  _WaveformPainter({required this.notifier}) : super(repaint: notifier);
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0 || smoothed.isEmpty) return;
+    if (size.width <= 0 || size.height <= 0) return;
+    final smoothed = notifier.smoothed;
+    if (smoothed.isEmpty) return;
 
     final barCount  = smoothed.length;
-    final totalGaps = barCount - 1;
-    // barWidth * barCount + gap * totalGaps = size.width
-    // gap = barWidth * _barGapFraction
-    // barWidth * (barCount + _barGapFraction * totalGaps) = size.width
-    final barWidth  = size.width / (barCount + _barGapFraction * totalGaps);
+    final barWidth  = size.width / (barCount + _barGapFraction * (barCount - 1));
     final gap       = barWidth * _barGapFraction;
     final centerY   = size.height / 2;
-
+    final progress  = notifier.displayProgress;
     final headBarF  = progress * barCount;
     final headX     = progress * size.width;
+    final isDragging = notifier._dragging;
 
     final playedPaint = Paint()
-      ..color = playedColor
+      ..color = notifier._playedColor
       ..style = PaintingStyle.fill;
     final unplayedPaint = Paint()
-      ..color = unplayedColor.withValues(alpha: 0.28)
+      ..color = notifier._unplayedColor.withValues(alpha: 0.28)
       ..style = PaintingStyle.fill;
     final capRadius = Radius.circular(barWidth / 2);
 
-    // ── Draw bars ────────────────────────────────────────────────────────
+    // ── Bars ─────────────────────────────────────────────────────────────
     for (var i = 0; i < barCount; i++) {
       final amp  = smoothed[i].clamp(_minBarHeight / size.height, 1.0);
       final h    = math.max(_minBarHeight, size.height * amp);
@@ -306,7 +347,6 @@ class _WaveformPainter extends CustomPainter {
       if (i < headBarF.floor()) {
         paint = playedPaint;
       } else if (i == headBarF.floor()) {
-        // Transition bar: lerp color at sub-bar precision.
         final frac = headBarF - headBarF.floor();
         paint = Paint()
           ..color = Color.lerp(unplayedPaint.color, playedPaint.color, frac)!
@@ -322,7 +362,8 @@ class _WaveformPainter extends CustomPainter {
     canvas.drawRect(
       Rect.fromLTWH(headX - _glowRadius, 0, _glowRadius * 2, size.height),
       Paint()
-        ..color = playedColor.withValues(alpha: isDragging ? 0.22 : 0.12)
+        ..color = notifier._playedColor
+            .withValues(alpha: isDragging ? 0.22 : 0.12)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
     );
 
@@ -335,19 +376,18 @@ class _WaveformPainter extends CustomPainter {
       Paint()
         ..color = isDragging
             ? AfColors.textPrimary
-            : playedColor.withValues(alpha: 0.9)
+            : notifier._playedColor.withValues(alpha: 0.9)
         ..style = PaintingStyle.fill,
     );
 
     // ── Scrub thumb ──────────────────────────────────────────────────────
     final thumbR = isDragging ? _thumbRadiusDrag : _thumbRadius;
     if (isDragging) {
-      // Outer glow ring when dragging.
       canvas.drawCircle(
         Offset(headX, centerY),
         thumbR + 7,
         Paint()
-          ..color = playedColor.withValues(alpha: 0.22)
+          ..color = notifier._playedColor.withValues(alpha: 0.22)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
       );
     }
@@ -361,19 +401,16 @@ class _WaveformPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_WaveformPainter old) =>
-      old.progress      != progress      ||
-      old.isDragging    != isDragging    ||
-      old.smoothed      != smoothed      ||
-      old.playedColor   != playedColor   ||
-      old.unplayedColor != unplayedColor;
+  bool shouldRepaint(_WaveformPainter _) => false;
+  // Repaint is driven by the Listenable (notifier) — structural comparison
+  // is unnecessary and would break if we ever stop allocating per frame.
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Waveform — static peaks-only scrubber (Queue, mini-player, etc.)
 //
-// No FFT dependency. Animates with a gentle sine-wave jitter when playing,
-// holds a clean static pose when paused.
+// Same architecture: ChangeNotifier drives repaints, no setState.
+// Ticker stops when paused and bars have settled.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class Waveform extends StatefulWidget {
@@ -405,53 +442,70 @@ class Waveform extends StatefulWidget {
 class _WaveformState extends State<Waveform>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctl;
-  bool   _dragging     = false;
-  double _dragProgress = 0.0;
+  late final _WaveformNotifier _notifier;
 
   @override
   void initState() {
     super.initState();
+    _notifier = _WaveformNotifier(widget.peaks);
+    _notifier._progress      = widget.progress;
+    _notifier._playedColor   = widget.playedColor;
+    _notifier._unplayedColor = widget.unplayedColor;
     _ctl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    );
+      duration: const Duration(milliseconds: 16),
+    )..addListener(_onTick);
     if (widget.isPlaying) _ctl.repeat();
   }
 
   @override
   void didUpdateWidget(covariant Waveform old) {
     super.didUpdateWidget(old);
+    if (old.peaks != widget.peaks) _notifier._resetPeaks(widget.peaks);
+    _notifier._progress      = widget.progress;
+    _notifier._playedColor   = widget.playedColor;
+    _notifier._unplayedColor = widget.unplayedColor;
     if (widget.isPlaying && !_ctl.isAnimating) {
       _ctl.repeat();
     } else if (!widget.isPlaying && _ctl.isAnimating) {
-      _ctl.animateTo(0, duration: AfDurations.quick, curve: AfCurves.easeOut);
+      // Let bars settle before stopping.
     }
   }
 
   @override
   void dispose() {
     _ctl.dispose();
+    _notifier.dispose();
     super.dispose();
+  }
+
+  void _onTick() {
+    if (!mounted) return;
+    final reducedMotion = MediaQuery.of(context).disableAnimations;
+    final changed = _notifier._tick(
+      isPlaying: widget.isPlaying,
+      reducedMotion: reducedMotion,
+    );
+    if (!changed && !widget.isPlaying && !_notifier._dragging) {
+      _ctl.stop();
+    }
   }
 
   void _handleDragStart(DragStartDetails d) {
     HapticFeedback.selectionClick();
-    setState(() {
-      _dragging     = true;
-      _dragProgress = _toProgress(d.localPosition.dx);
-    });
-    widget.onScrub?.call(_dragProgress);
+    _notifier._setDrag(true, _toProgress(d.localPosition.dx));
+    widget.onScrub?.call(_notifier._dragProgress);
+    if (!_ctl.isAnimating) _ctl.repeat();
   }
 
   void _handleDragUpdate(DragUpdateDetails d) {
-    final p = _toProgress(d.localPosition.dx);
-    setState(() => _dragProgress = p);
-    widget.onScrub?.call(p);
+    _notifier._setDrag(true, _toProgress(d.localPosition.dx));
+    widget.onScrub?.call(_notifier._dragProgress);
   }
 
   void _handleDragEnd(DragEndDetails _) {
-    widget.onScrubEnd?.call(_dragProgress);
-    setState(() => _dragging = false);
+    widget.onScrubEnd?.call(_notifier._dragProgress);
+    _notifier._setDrag(false, _notifier._dragProgress);
   }
 
   void _handleTap(TapDownDetails d) {
@@ -469,45 +523,23 @@ class _WaveformState extends State<Waveform>
 
   @override
   Widget build(BuildContext context) {
-    final displayProgress =
-        _dragging ? _dragProgress : widget.progress.clamp(0.0, 1.0);
-    final peaks    = widget.peaks.isEmpty
-        ? List<int>.filled(64, 30)
-        : widget.peaks;
-    final barCount = peaks.length;
+    _notifier._progress      = widget.progress;
+    _notifier._playedColor   = widget.playedColor;
+    _notifier._unplayedColor = widget.unplayedColor;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onHorizontalDragStart: _handleDragStart,
-      onHorizontalDragUpdate: _handleDragUpdate,
-      onHorizontalDragEnd: _handleDragEnd,
-      onTapDown: _handleTap,
-      child: SizedBox(
-        height: widget.height,
-        width: double.infinity,
-        child: AnimatedBuilder(
-          animation: _ctl,
-          builder: (context, _) {
-            final t = _ctl.value;
-            final smoothed = Float32List(barCount);
-            for (var i = 0; i < barCount; i++) {
-              final peak   = (peaks[i] / 100.0).clamp(0.06, 1.0);
-              // Jitter only when playing; static pose when paused.
-              final jitter = widget.isPlaying
-                  ? peak * 0.22 * math.sin(2 * math.pi * t + i * 0.52)
-                  : 0.0;
-              smoothed[i] = (peak + jitter).clamp(0.06, 1.0);
-            }
-            return CustomPaint(
-              painter: _WaveformPainter(
-                smoothed:      smoothed,
-                progress:      displayProgress,
-                playedColor:   widget.playedColor,
-                unplayedColor: widget.unplayedColor,
-                isDragging:    _dragging,
-              ),
-            );
-          },
+    return RepaintBoundary(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragStart: _handleDragStart,
+        onHorizontalDragUpdate: _handleDragUpdate,
+        onHorizontalDragEnd: _handleDragEnd,
+        onTapDown: _handleTap,
+        child: SizedBox(
+          height: widget.height,
+          width: double.infinity,
+          child: CustomPaint(
+            painter: _WaveformPainter(notifier: _notifier),
+          ),
         ),
       ),
     );
