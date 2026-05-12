@@ -76,6 +76,9 @@ class AfPlayerService extends BaseAudioHandler
   /// Called once after the player is ready.
   Future<void> configureSpectrum() async {
     try {
+      // Enable gapless playback — mpv pre-fetches the next track so
+      // transitions are seamless and auto-advance works correctly.
+      await _player.setGapless(Gapless.weak);
       await _player.setSpectrum(const SpectrumSettings(
         bandCount: 64,
         // Wider dB window: normal music peaks at -3 to -6 dB.
@@ -271,6 +274,22 @@ class AfPlayerService extends BaseAudioHandler
     _subs.add(_player.stream.buffering.listen((_) => _updatePlaybackState()));
     _subs.add(_player.stream.completed.listen((_) => _updatePlaybackState()));
     _subs.add(_player.stream.rate.listen((_) => _updatePlaybackState()));
+
+    // Auto-advance: when a track completes and the playlist has more tracks,
+    // call play() so the next track starts. mpv advances the index internally
+    // but leaves the player paused — we need to explicitly resume.
+    _subs.add(_player.stream.completed.listen((completed) {
+      if (!completed) return;
+      final nextIdx = _currentIndex + 1;
+      if (nextIdx < _trackQueue.length) {
+        // Small delay so mpv has time to load the next track's demuxer.
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (_player.state.playlist.index == nextIdx) {
+            _player.play();
+          }
+        });
+      }
+    }));
 
     // Persist embedded cover art to a temp file for the OS media widget.
     _subs.add(_player.stream.coverArt.listen(_persistCover));
