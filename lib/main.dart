@@ -8,6 +8,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' show MpvAudioKit;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
+import 'app/router.dart' show notifyAuthChanged;
 import 'core/audio/player_service.dart';
 import 'core/jellyfin/auth_storage.dart';
 import 'core/jellyfin/models/server.dart';
@@ -132,16 +133,31 @@ Future<void> main() async {
     }
 
     _boot('calling runApp');
+    final container = ProviderContainer(
+      overrides: [
+        deviceIdProvider.overrideWithValue(deviceId),
+        initialAuthProvider.overrideWithValue(initialAuth),
+        playerServiceProvider.overrideWith((ref) {
+          wirePlayerService(ref, handler);
+          return handler;
+        }),
+      ],
+    );
+
+    // Wire the auth → router redirect listener on the container directly.
+    // This avoids putting ref.listen inside routerProvider which caused
+    // routerProvider to rebuild on every auth change, triggering
+    // MaterialApp.router to rebuild with a new routerConfig and causing
+    // the "Duplicate GlobalKey" crash on StatefulNavigationShell.
+    container.listen<JellyfinAuth?>(
+      authProvider,
+      (prev, next) => notifyAuthChanged(),
+      fireImmediately: false,
+    );
+
     runApp(
-      ProviderScope(
-        overrides: [
-          deviceIdProvider.overrideWithValue(deviceId),
-          initialAuthProvider.overrideWithValue(initialAuth),
-          playerServiceProvider.overrideWith((ref) {
-            wirePlayerService(ref, handler);
-            return handler;
-          }),
-        ],
+      UncontrolledProviderScope(
+        container: container,
         child: const AetherfinApp(),
       ),
     );

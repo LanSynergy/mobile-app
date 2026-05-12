@@ -203,11 +203,18 @@ final routerProvider = Provider<GoRouter>((ref) {
   return _router;
 });
 
+/// Direct access to the singleton router for use in [AetherfinApp].
+/// Prefer this over [routerProvider] to avoid unnecessary rebuilds.
+GoRouter get appRouter => _router;
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AuthRefreshListenable extends ChangeNotifier {
   void _notify() => notifyListeners();
 }
+
+/// Called from main.dart when auth state changes to trigger router redirect.
+void notifyAuthChanged() => _authRefresh._notify();
 
 class _NowPlayingPage extends Page<void> {
   @override
