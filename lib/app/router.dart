@@ -26,194 +26,185 @@ import '../features/settings/settings_screen.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
 import '../widgets/app_shell.dart';
 
-/// Stable navigator keys — declared at module level so they are never
-/// recreated when [routerProvider] rebuilds on auth state changes.
-/// Recreating these keys causes `Duplicate GlobalKey` errors because the
-/// old [GoRouter] still holds a reference to the previous key while the
-/// new one is being inserted into the tree.
+// ─────────────────────────────────────────────────────────────────────────────
+// All navigation state is module-level so it is created exactly once for
+// the lifetime of the process. Recreating GoRouter or its navigator keys
+// causes Duplicate GlobalKey errors and blanks all screens.
+// ─────────────────────────────────────────────────────────────────────────────
+
 final _rootKey = GlobalKey<NavigatorState>();
 final _shellKey = GlobalKey<NavigatorState>();
+final _authRefresh = _AuthRefreshListenable();
 
-/// Single source of truth for all in-app navigation.
+/// The single [GoRouter] instance. Created once; never recreated.
 ///
-/// Onboarding lives outside the shell so the bottom nav doesn't appear
-/// before the user has chosen a library. All four tabs sit inside a
-/// [StatefulShellRoute], which preserves each tab's stack across switches
-/// (per design spec §11.6).
+/// Auth redirects are driven by [_authRefresh] which is notified by
+/// [routerProvider] via [ref.listen] — the provider itself never rebuilds
+/// the router, it only wires the listener.
+final _router = GoRouter(
+  navigatorKey: _rootKey,
+  initialLocation: '/',
+  refreshListenable: _authRefresh,
+  redirect: (context, state) {
+    // Read auth from the container stored on the context by ProviderScope.
+    final container = ProviderScope.containerOf(context, listen: false);
+    final auth = container.read(authProvider);
+    final loc = state.matchedLocation;
+    final inOnboarding = loc == '/' || loc.startsWith('/onboarding');
+    if (auth != null && inOnboarding) return '/home';
+    if (auth == null && !inOnboarding) return '/';
+    return null;
+  },
+  routes: [
+    // Onboarding
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const WelcomeScreen(),
+    ),
+    GoRoute(
+      path: '/onboarding/discover',
+      builder: (context, state) => const ServerDiscoveryScreen(),
+    ),
+    GoRoute(
+      path: '/onboarding/sign-in',
+      builder: (_, state) =>
+          SignInScreen(server: state.extra! as JellyfinServer),
+    ),
+    GoRoute(
+      path: '/onboarding/scope',
+      builder: (context, state) => const LibraryScopeScreen(),
+    ),
+    GoRoute(
+      path: '/onboarding/done',
+      builder: (context, state) => const AllSetScreen(),
+    ),
+
+    // Shell — 4 tabs.
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, shell) => AppShell(shell: shell),
+      branches: [
+        StatefulShellBranch(
+          navigatorKey: _shellKey,
+          routes: [
+            GoRoute(
+              path: '/home',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: HomeScreen()),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/search',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: SearchScreen()),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/library',
+              pageBuilder: (_, state) {
+                final raw = state.uri.queryParameters['section'];
+                final section = raw == null
+                    ? null
+                    : LibrarySection.values
+                        .where((s) => s.name == raw)
+                        .firstOrNull;
+                return NoTransitionPage(
+                  child: LibraryScreen(initialSection: section),
+                );
+              },
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/profile',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: ProfileScreen()),
+            ),
+          ],
+        ),
+      ],
+    ),
+
+    // Overlays above the shell.
+    GoRoute(
+      path: '/now-playing',
+      parentNavigatorKey: _rootKey,
+      pageBuilder: (context, state) => _NowPlayingPage(),
+    ),
+    GoRoute(
+      path: '/lyrics',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) => const LyricsScreen(),
+    ),
+    GoRoute(
+      path: '/queue',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) => const QueueScreen(),
+    ),
+    GoRoute(
+      path: '/sleep',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) => const SleepTimerScreen(),
+    ),
+    GoRoute(
+      path: '/cast',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) => const CastPickerScreen(),
+    ),
+    GoRoute(
+      path: '/settings',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/album/:id',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) =>
+          AlbumScreen(albumId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/artist/:id',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) =>
+          ArtistScreen(artistId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/playlist/:id',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) =>
+          PlaylistScreen(playlistId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/genre/:name',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) => GenreScreen(
+          genreName:
+              Uri.decodeComponent(state.pathParameters['name']!)),
+    ),
+  ],
+);
+
+/// Provides the singleton [GoRouter]. The provider itself never rebuilds
+/// the router — it only wires the auth listener that notifies [_authRefresh]
+/// so [_router.redirect] re-runs when auth state changes.
 final routerProvider = Provider<GoRouter>((ref) {
-  // Re-evaluate redirects whenever auth changes so signing in lands you on
-  // /home and signing out drops you back at /.
-  final refresh = _AuthRefreshListenable();
-  ref.listen<JellyfinAuth?>(authProvider, (prev, next) => refresh._notify(),
-      fireImmediately: false);
-  ref.onDispose(refresh.dispose);
-
-  return GoRouter(
-    navigatorKey: _rootKey,
-    initialLocation: '/',
-    refreshListenable: refresh,
-    redirect: (context, state) {
-      final auth = ref.read(authProvider);
-      final loc = state.matchedLocation;
-      final inOnboarding = loc == '/' || loc.startsWith('/onboarding');
-      if (auth != null && inOnboarding) {
-        // Already signed in — fast-forward past welcome / discovery.
-        return '/home';
-      }
-      if (auth == null && !inOnboarding) {
-        // No credentials — send the user through onboarding before we
-        // try to render any post-auth screen (which would 401 anyway).
-        return '/';
-      }
-      return null;
-    },
-    routes: [
-      // Onboarding
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const WelcomeScreen(),
-      ),
-      GoRoute(
-        path: '/onboarding/discover',
-        builder: (context, state) => const ServerDiscoveryScreen(),
-      ),
-      GoRoute(
-        path: '/onboarding/sign-in',
-        builder: (_, state) =>
-            SignInScreen(server: state.extra! as JellyfinServer),
-      ),
-      GoRoute(
-        path: '/onboarding/scope',
-        builder: (context, state) => const LibraryScopeScreen(),
-      ),
-      GoRoute(
-        path: '/onboarding/done',
-        builder: (context, state) => const AllSetScreen(),
-      ),
-
-      // Shell — 4 tabs.
-      StatefulShellRoute.indexedStack(
-        builder: (context, state, shell) => AppShell(shell: shell),
-        branches: [
-          StatefulShellBranch(
-            navigatorKey: _shellKey,
-            routes: [
-              GoRoute(
-                path: '/home',
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: HomeScreen()),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/search',
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: SearchScreen()),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/library',
-                pageBuilder: (_, state) {
-                  final raw = state.uri.queryParameters['section'];
-                  final section = raw == null
-                      ? null
-                      : LibrarySection.values.where((s) => s.name == raw).firstOrNull;
-                  return NoTransitionPage(
-                    child: LibraryScreen(initialSection: section),
-                  );
-                },
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/profile',
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: ProfileScreen()),
-              ),
-            ],
-          ),
-        ],
-      ),
-
-      // Top-level sheets / overlays (live above the shell).
-      GoRoute(
-        path: '/now-playing',
-        parentNavigatorKey: _rootKey,
-        pageBuilder: (context, state) => _NowPlayingPage(),
-      ),
-      GoRoute(
-        path: '/lyrics',
-        parentNavigatorKey: _rootKey,
-        builder: (context, state) => const LyricsScreen(),
-      ),
-      GoRoute(
-        path: '/queue',
-        parentNavigatorKey: _rootKey,
-        builder: (context, state) => const QueueScreen(),
-      ),
-      GoRoute(
-        path: '/sleep',
-        parentNavigatorKey: _rootKey,
-        builder: (context, state) => const SleepTimerScreen(),
-      ),
-      GoRoute(
-        path: '/cast',
-        parentNavigatorKey: _rootKey,
-        builder: (context, state) => const CastPickerScreen(),
-      ),
-      GoRoute(
-        path: '/settings',
-        parentNavigatorKey: _rootKey,
-        builder: (context, state) => const SettingsScreen(),
-      ),
-
-      // Top-level album / artist routes. We register these above the shell
-      // so that `context.push('/album/<id>')` and
-      // `context.push('/artist/<id>')` resolve identically regardless of
-      // which tab the user is currently on — code in widgets like
-      // `library_screen.dart` and `home_screen.dart` pushes the bare path,
-      // and previously hit `GoException: no routes for location: /artist/<id>`
-      // because the routes were only registered as nested children of each
-      // shell branch (e.g. `/home/artist/:id`). Living above the shell also
-      // hides the bottom nav while the user is browsing detail screens.
-      GoRoute(
-        path: '/album/:id',
-        parentNavigatorKey: _rootKey,
-        builder: (_, state) =>
-            AlbumScreen(albumId: state.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: '/artist/:id',
-        parentNavigatorKey: _rootKey,
-        builder: (_, state) =>
-            ArtistScreen(artistId: state.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: '/playlist/:id',
-        parentNavigatorKey: _rootKey,
-        builder: (_, state) =>
-            PlaylistScreen(playlistId: state.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: '/genre/:name',
-        parentNavigatorKey: _rootKey,
-        builder: (_, state) =>
-            GenreScreen(genreName: Uri.decodeComponent(state.pathParameters['name']!)),
-      ),
-    ],
+  ref.listen<JellyfinAuth?>(
+    authProvider,
+    (prev, next) => _authRefresh._notify(),
+    fireImmediately: false,
   );
+  return _router;
 });
 
-/// Thin ChangeNotifier we hand to GoRouter so it re-runs `redirect` when
-/// auth state flips. We can't pass `authProvider` directly because
-/// GoRouter expects a Listenable and Riverpod providers are not Listenables.
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _AuthRefreshListenable extends ChangeNotifier {
   void _notify() => notifyListeners();
 }
@@ -225,7 +216,8 @@ class _NowPlayingPage extends Page<void> {
       settings: this,
       transitionDuration: AfDurations.expressive,
       reverseTransitionDuration: AfDurations.expressive,
-      pageBuilder: (context, animation, secondaryAnimation) => const NowPlayingScreen(),
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          const NowPlayingScreen(),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final reduced = MediaQuery.of(context).disableAnimations;
         if (reduced) {
