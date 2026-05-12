@@ -10,45 +10,48 @@ import '../state/providers.dart';
 import 'artwork.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BeatPulseArtwork — circular spectral field
+// BeatPulseArtwork — distributed perceptual spectral field
 //
 // Architecture
 // ────────────
 // The artwork is the center anchor. Around it: a circular spectral field
 // of independent emitters, one per perceptual frequency band.
 //
-// Signal pipeline (signal-inward, not UI-outward):
+// Signal pipeline:
 //
 //   Layer 1 — Raw FFT truth (64 bins, never globally smoothed)
 //
 //   Layer 2 — Spectral redistribution
-//     64 FFT bins → 32 perceptual bands via logarithmic remapping.
+//     64 FFT bins → 32 perceptual bands via logarithmic (mel-inspired) mapping.
 //     Low frequencies get more visual bands (perceptually wider).
-//     High frequencies get fewer (perceptually compressed).
-//     Each band extracts BOTH energy AND transient (delta from slow envelope).
+//     Each band extracts BOTH sustained energy AND transient impulse.
+//     Dual-envelope per band: fast - slow = impulse.
 //
-//   Layer 3 — Independent emitters
-//     Each of the 32 bands owns:
-//       • angle (fixed, log-spaced around circle)
-//       • current spike length (independent attack/decay)
-//       • transient impulse (separate fast-decay channel)
-//       • micro-jitter (per-emitter noise for organic feel)
+//   Layer 3 — Independent emitters (32 bands)
+//     Each emitter owns:
+//       • fixed angle (log-spaced, asymmetrically seeded)
+//       • sustained energy (slow envelope, frequency-dependent decay)
+//       • transient impulse (fast-decay channel, amplified 3.2×)
+//       • micro-jitter (per-emitter noise, frequency-dependent speed)
+//       • width multiplier (bass wide, treble thin)
 //     No shared state. No global coherence.
 //
-//   Layer 4 — Spatial renderer
-//     Radial spikes with:
-//       • base length from sustained energy
-//       • tip extension from transient impulse
-//       • color interpolated by frequency position
-//       • glow pass + sharp pass per spike
-//       • micro-jitter in angle for organic asymmetry
+//   Layer 4 — Asymmetric spatial renderer
+//     Per-emitter:
+//       • spike body: sustained energy × maxSpike × widthMul
+//       • transient tip: impulse × maxSpike × 0.9 (extends beyond body)
+//       • color: bass→mid→treble color gradient (not uniform)
+//       • glow pass: wide blurred stroke, low opacity
+//       • sharp pass: crisp stroke, full opacity
+//       • tip dot: bright point at spike tip for transient punch
+//       • opacity: energy-driven (low-energy emitters fade out)
 //
-// Why this works perceptually:
-//   • Kick drum → bass emitters spike independently, others unaffected
-//   • Hi-hat → treble emitters flicker, bass stays calm
+// Perceptual result:
+//   • Kick drum → bass emitters (bottom arc) spike wide and heavy
+//   • Hi-hat → treble emitters (top arc) flicker thin and fast
 //   • Chord → mid emitters light up in a cluster
 //   • Silence → all emitters decay to minimum independently
-//   The eye sees localized activity, not one breathing object.
+//   The eye sees localized activity in distinct arc regions, not one pulse.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Number of perceptual bands (emitters) around the artwork.
@@ -153,64 +156,94 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // _SpectralField — Layer 2 + 3: redistribution + independent emitters
+//
+// Key design decisions:
+//
+// 1. ASYMMETRIC ANGLE SEEDING
+//    Bands are NOT evenly spaced. Each band gets a small random angular
+//    offset at construction time (seeded deterministically). This breaks
+//    the "perfect circle" topology — the field looks like a living organism,
+//    not a UI widget.
+//
+// 2. FREQUENCY-DEPENDENT SPIKE WIDTH
+//    Bass emitters are wider (spectral weight is perceptually wide).
+//    Treble emitters are thinner (hi-hats are point sources).
+//    Width is encoded in _widthMul[b] and passed to the painter.
+//
+// 3. DUAL-ENVELOPE TRANSIENT DETECTION PER BAND
+//    fast[b] tracks instantaneous energy (lerp 0.55–0.90).
+//    slow[b] tracks sustained baseline (lerp 0.04–0.12).
+//    impulse = max(0, fast - slow) = the "new energy" this frame.
+//    Transient is amplified 3.2× — individual hits punch through.
+//
+// 4. ENERGY-DRIVEN OPACITY
+//    spikeAlpha() returns near-zero for silent bands.
+//    This creates visible "holes" in the spectrum during silence,
+//    making active regions pop by contrast.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SpectralField extends ChangeNotifier {
-  static const int _fftBins  = 64;
-  static const int _bands    = _kBandCount;
+  static const int _fftBins = 64;
+  static const int _bands   = _kBandCount; // 32
 
   // ── Per-band state ────────────────────────────────────────────────────────
-  // Sustained energy (slow envelope).
-  final Float32List _energy    = Float32List(_bands);
-  // Transient impulse (fast envelope, separate decay).
-  final Float32List _transient = Float32List(_bands);
-  // Slow envelope for transient detection (per-band baseline).
-  final Float32List _slow      = Float32List(_bands);
-  // Fast envelope for transient detection.
-  final Float32List _fast      = Float32List(_bands);
-  // Per-band micro-jitter phase (organic asymmetry).
-  final Float32List _jitter    = Float32List(_bands);
-  // Per-band jitter velocity.
-  final Float32List _jitterV   = Float32List(_bands);
+  final Float32List _energy    = Float32List(_bands); // sustained energy
+  final Float32List _transient = Float32List(_bands); // impulse channel
+  final Float32List _slow      = Float32List(_bands); // slow baseline
+  final Float32List _fast      = Float32List(_bands); // fast tracker
+  final Float32List _jitter    = Float32List(_bands); // angle micro-jitter
+  final Float32List _jitterV   = Float32List(_bands); // jitter velocity
 
   // ── Per-band envelope parameters ─────────────────────────────────────────
   final Float32List _attack    = Float32List(_bands);
   final Float32List _decay     = Float32List(_bands);
-  final Float32List _tDecay    = Float32List(_bands); // transient decay
+  final Float32List _tDecay    = Float32List(_bands);
+  final Float32List _fastLerp  = Float32List(_bands);
+  final Float32List _slowLerp  = Float32List(_bands);
+
+  // ── Per-band geometry ─────────────────────────────────────────────────────
+  // Width multiplier: bass wide (1.8), treble thin (0.5).
+  final Float32List _widthMul  = Float32List(_bands);
+  // Asymmetric angular offset seeded at construction.
+  final Float32List _angleOffset = Float32List(_bands);
 
   // ── Logarithmic bin mapping ───────────────────────────────────────────────
-  // Maps each perceptual band to a range of FFT bins.
-  // Low bands cover fewer bins (bass is spectrally dense).
-  // High bands cover more bins (treble is spectrally sparse in perception).
-  late final List<(int, int)> _binRanges; // (startBin, endBin) per band
+  late final List<(int, int)> _binRanges;
 
-  static const double _settleThresh = 0.0006;
+  static const double _settleThresh = 0.0005;
 
-  final _rng = math.Random();
+  final _rng = math.Random(7); // deterministic seed for stable geometry
 
   _SpectralField() {
     _buildLogMapping();
     _buildEnvelopes();
-    // Seed jitter phases randomly so emitters start at different positions.
     for (var i = 0; i < _bands; i++) {
+      // Jitter phase: random start so emitters are incoherent from frame 1.
       _jitter[i] = _rng.nextDouble() * 2 * math.pi;
-      _jitterV[i] = (0.02 + _rng.nextDouble() * 0.04) *
-          (_rng.nextBool() ? 1 : -1);
+      // Jitter velocity: treble faster (hi-hat shimmer), bass slower.
+      final t = i / (_bands - 1);
+      final jSpeed = 0.012 + t * 0.048;
+      _jitterV[i] = jSpeed * (_rng.nextBool() ? 1 : -1);
+
+      // Asymmetric angle offset: small random perturbation per emitter.
+      // This breaks the perfect-circle topology.
+      // Bass emitters get larger offsets (bass is spatially diffuse).
+      // Treble emitters get smaller offsets (hi-hats are point sources).
+      final maxOffset = (0.08 - t * 0.05).clamp(0.03, 0.08);
+      _angleOffset[i] = (_rng.nextDouble() * 2 - 1) * maxOffset;
+
+      // Width multiplier: bass wide, treble thin.
+      _widthMul[i] = (1.8 - t * 1.3).clamp(0.5, 1.8);
     }
   }
 
-  /// Build logarithmic frequency-to-band mapping.
-  /// Band 0 = lowest perceptual frequency, band 31 = highest.
-  /// Uses mel-scale-inspired spacing: more bands for bass, fewer for treble.
   void _buildLogMapping() {
-    // Map _bands perceptual bands across _fftBins using log spacing.
-    // f(i) = fftBins * (exp(i / bands * ln(fftBins+1)) - 1) / fftBins
     final ranges = <(int, int)>[];
     int prev = 0;
     for (var b = 0; b < _bands; b++) {
-      final t = (b + 1) / _bands;
+      final t    = (b + 1) / _bands;
       final binF = _fftBins * (math.exp(t * math.log(_fftBins + 1)) - 1) / _fftBins;
-      final end = binF.round().clamp(prev + 1, _fftBins);
+      final end  = binF.round().clamp(prev + 1, _fftBins);
       ranges.add((prev, end));
       prev = end;
     }
@@ -219,12 +252,12 @@ class _SpectralField extends ChangeNotifier {
 
   void _buildEnvelopes() {
     for (var i = 0; i < _bands; i++) {
-      final t = i / (_bands - 1); // 0 = bass, 1 = treble
-      // Bass: slow attack, very slow decay (sustain).
-      // Treble: fast attack, fast decay (flicker).
-      _attack[i]  = (0.55 + t * 0.35).clamp(0.55, 0.90);
-      _decay[i]   = (0.05 + t * 0.30).clamp(0.05, 0.35);
-      _tDecay[i]  = (0.15 + t * 0.50).clamp(0.15, 0.65); // transient decays faster
+      final t = i / (_bands - 1); // 0=bass, 1=treble
+      _attack[i]   = (0.55 + t * 0.35).clamp(0.55, 0.90);
+      _decay[i]    = (0.04 + t * 0.28).clamp(0.04, 0.32);
+      _tDecay[i]   = (0.16 + t * 0.48).clamp(0.16, 0.64);
+      _fastLerp[i] = (0.55 + t * 0.35).clamp(0.55, 0.90);
+      _slowLerp[i] = (0.04 + t * 0.08).clamp(0.04, 0.12);
     }
   }
 
@@ -245,23 +278,34 @@ class _SpectralField extends ChangeNotifier {
       final rms = count > 0 ? math.sqrt(sum / count).clamp(0.0, 1.0) : 0.0;
 
       // Psychoacoustic amplitude weighting.
-      // Bass amplified (perceptually louder), treble attenuated.
+      // Bass: sqrt curve + amplification (perceptually louder, spatially wide).
+      // Treble: linear attenuation (prevent harsh spikes).
       final t = b / (_bands - 1);
-      final weight = 1.8 - t * 1.0; // 1.8 at bass, 0.8 at treble
-      final weighted = (rms * weight).clamp(0.0, 1.0);
+      final double weighted;
+      if (b < 4) {
+        // Sub-bass: strong sqrt boost.
+        weighted = (math.sqrt(rms) * 1.9).clamp(0.0, 1.0);
+      } else if (b < 10) {
+        // Bass: moderate boost.
+        weighted = (rms * 1.6).clamp(0.0, 1.0);
+      } else if (b < 20) {
+        // Mid: neutral.
+        weighted = rms;
+      } else {
+        // Treble: attenuate but preserve transient punch.
+        weighted = (rms * (1.0 - t * 0.35)).clamp(0.0, 1.0);
+      }
 
-      // Dual-envelope transient detector per band.
-      _fast[b] += (weighted - _fast[b]) * 0.60;
-      _slow[b] += (weighted - _slow[b]) * 0.08;
+      // Dual-envelope transient detection.
+      _fast[b] += (weighted - _fast[b]) * _fastLerp[b];
+      _slow[b] += (weighted - _slow[b]) * _slowLerp[b];
       final impulse = math.max(0.0, _fast[b] - _slow[b]);
 
-      // Transient target: impulse amplified strongly.
-      // This is what makes individual hits punch.
-      final tTarget = (impulse * 3.5).clamp(0.0, 1.0);
-      // Only update transient upward (attack); decay handled in tick().
-      if (tTarget > _transient[b]) _transient[b] = tTarget;
+      // Transient: amplify impulse strongly. Individual hits punch through.
+      final tTarget = (impulse * 3.2).clamp(0.0, 1.0);
+      if (tTarget > _transient[b]) _transient[b] = tTarget; // instant attack
 
-      // Energy target: sustained level.
+      // Sustained energy: attack/decay envelope.
       if (weighted > _energy[b]) {
         _energy[b] += (weighted - _energy[b]) * _attack[b];
       }
@@ -273,49 +317,86 @@ class _SpectralField extends ChangeNotifier {
     var anyMoving = false;
 
     for (var b = 0; b < _bands; b++) {
-      // Energy decay.
+      // Sustained energy decay.
       final eNext = _energy[b] * (1.0 - _decay[b]);
       if ((_energy[b] - eNext).abs() > _settleThresh) anyMoving = true;
       _energy[b] = eNext;
 
-      // Transient decay (faster than energy).
+      // Transient decay (faster than sustained).
       final tNext = _transient[b] * (1.0 - _tDecay[b]);
       if ((_transient[b] - tNext).abs() > _settleThresh) anyMoving = true;
       _transient[b] = tNext;
 
-      // Micro-jitter: each emitter oscillates slightly in angle.
-      // Creates organic asymmetry — emitters don't all point the same way.
+      // Micro-jitter: each emitter oscillates in angle independently.
       _jitter[b] += _jitterV[b];
       // Slowly drift jitter velocity for long-term variation.
-      _jitterV[b] += (_rng.nextDouble() - 0.5) * 0.002;
-      _jitterV[b] = _jitterV[b].clamp(-0.06, 0.06);
+      _jitterV[b] += (_rng.nextDouble() - 0.5) * 0.0025;
+      final t = b / (_bands - 1);
+      final maxV = 0.012 + t * 0.048;
+      _jitterV[b] = _jitterV[b].clamp(-maxV, maxV);
     }
 
     notifyListeners();
     return anyMoving;
   }
 
-  /// Spike length for band [b]: sustained energy + transient tip.
+  /// Spike body length for band [b].
   double spikeLength(int b, double maxSpike) {
-    final base = _energy[b] * maxSpike * 0.6;
-    final tip  = _transient[b] * maxSpike * 0.9;
+    final base = _energy[b] * maxSpike * 0.65;
+    final tip  = _transient[b] * maxSpike * 0.95;
     return (base + tip).clamp(1.0, maxSpike);
   }
 
-  /// Spike opacity for band [b].
-  double spikeAlpha(int b) =>
-      (0.15 + (_energy[b] + _transient[b] * 1.5) * 0.85).clamp(0.0, 1.0);
+  /// Spike opacity for band [b]: energy-driven, fades to near-zero in silence.
+  double spikeAlpha(int b) {
+    final e = _energy[b];
+    final tr = _transient[b];
+    // Low-energy bands fade out — creates visible spectral holes.
+    return (0.08 + (e * 0.7 + tr * 1.2) * 0.92).clamp(0.0, 1.0);
+  }
 
-  /// Angle for band [b] with micro-jitter.
+  /// Angle for band [b] with asymmetric offset + micro-jitter.
   double angle(int b) {
     // Start at top (-π/2), distribute bands around circle.
     final base = -math.pi / 2 + (b / _bands) * 2 * math.pi;
-    return base + _jitter[b] * 0.04; // small jitter in radians
+    // Asymmetric offset (fixed per emitter) + dynamic micro-jitter.
+    return base + _angleOffset[b] + _jitter[b] * 0.035;
   }
+
+  /// Width multiplier for band [b]: bass wide, treble thin.
+  double widthMul(int b) => _widthMul[b];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _SpectralFieldPainter — Layer 4: spatial renderer
+// _SpectralFieldPainter — Layer 4: asymmetric spatial renderer
+//
+// Key departures from the old uniform spike renderer:
+//
+// 1. FREQUENCY-DEPENDENT SPIKE WIDTH
+//    Bass spikes are wider (spectral weight is perceptually wide).
+//    Treble spikes are thinner (hi-hats are point sources).
+//    Width = spikeWidth * field.widthMul(b).
+//
+// 2. SEPARATE BODY + TIP RENDERING
+//    Body: sustained energy length, full opacity.
+//    Tip: transient impulse extension, brighter color, wider dot.
+//    The tip is rendered as a separate line segment beyond the body.
+//    This makes individual hits visually distinct from sustained energy.
+//
+// 3. THREE-COLOR GRADIENT (not two)
+//    bass → mid → treble uses three color stops:
+//      shadow (bass) → energy (mid) → glow (treble)
+//    This gives each frequency region a distinct visual identity.
+//
+// 4. ENERGY-DRIVEN OPACITY
+//    Silent bands fade to near-zero opacity.
+//    Active bands are fully opaque.
+//    This creates visible spectral holes during silence.
+//
+// 5. NO UNIFORM GLOW BLUR on every spike
+//    Glow is only applied to high-energy spikes (energy > 0.3).
+//    This prevents the "everything glows equally" look.
+//    Transient tips always get a glow dot for punch readability.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SpectralFieldPainter extends CustomPainter {
@@ -325,9 +406,14 @@ class _SpectralFieldPainter extends CustomPainter {
   final Color glow;
   final Color shadow;
 
-  static const double maxSpike   = 36.0;
-  static const double spikeGap   = 5.0;  // gap between artwork edge and spike base
-  static const double spikeWidth = 2.2;
+  // Maximum spike length (body + tip combined).
+  static const double maxSpike   = 40.0;
+  // Gap between artwork edge and spike base.
+  static const double spikeGap   = 6.0;
+  // Base spike stroke width (scaled by widthMul per band).
+  static const double spikeWidth = 1.8;
+  // Energy threshold above which glow blur is applied.
+  static const double _glowThresh = 0.30;
 
   const _SpectralFieldPainter({
     required this.field,
@@ -343,52 +429,92 @@ class _SpectralFieldPainter extends CustomPainter {
     final innerR = artworkSize / 2 + spikeGap;
 
     for (var b = 0; b < _kBandCount; b++) {
-      final len   = field.spikeLength(b, maxSpike);
-      final alpha = field.spikeAlpha(b);
-      final ang   = field.angle(b);
+      final alpha  = field.spikeAlpha(b);
+      if (alpha < 0.04) continue; // skip silent bands entirely
 
-      if (len < 1.5 || alpha < 0.05) continue;
+      final ang    = field.angle(b);
+      final wMul   = field.widthMul(b);
+      final eLevel = field._energy[b];
+      final tLevel = field._transient[b];
+
+      // Body length: sustained energy only.
+      final bodyLen = (eLevel * maxSpike * 0.65).clamp(0.0, maxSpike * 0.75);
+      // Tip length: transient impulse only (extends beyond body).
+      final tipLen  = (tLevel * maxSpike * 0.90).clamp(0.0, maxSpike * 0.50);
 
       final cos = math.cos(ang);
       final sin = math.sin(ang);
 
-      final p1 = Offset(center.dx + cos * innerR,
-                        center.dy + sin * innerR);
-      final p2 = Offset(center.dx + cos * (innerR + len),
-                        center.dy + sin * (innerR + len));
+      final pBase = Offset(center.dx + cos * innerR,
+                           center.dy + sin * innerR);
+      final pBodyEnd = Offset(center.dx + cos * (innerR + bodyLen),
+                              center.dy + sin * (innerR + bodyLen));
+      final pTipEnd  = Offset(center.dx + cos * (innerR + bodyLen + tipLen),
+                              center.dy + sin * (innerR + bodyLen + tipLen));
 
-      // Color: interpolate energy→glow across frequency (bass→treble).
+      // Three-color gradient: shadow (bass) → energy (mid) → glow (treble).
       final t = b / (_kBandCount - 1);
-      final spikeColor = Color.lerp(energy, glow, t)!
-          .withValues(alpha: alpha);
+      final Color spikeColor;
+      if (t < 0.5) {
+        spikeColor = Color.lerp(shadow, energy, t * 2)!;
+      } else {
+        spikeColor = Color.lerp(energy, glow, (t - 0.5) * 2)!;
+      }
 
-      // Glow pass — wide, blurred, lower opacity.
-      canvas.drawLine(
-        p1, p2,
-        Paint()
-          ..color = spikeColor.withValues(alpha: alpha * 0.30)
-          ..strokeWidth = spikeWidth * 3.0
-          ..strokeCap = StrokeCap.round
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0),
-      );
+      final strokeW = spikeWidth * wMul;
 
-      // Sharp pass — crisp, full opacity.
-      canvas.drawLine(
-        p1, p2,
-        Paint()
-          ..color = spikeColor
-          ..strokeWidth = spikeWidth
-          ..strokeCap = StrokeCap.round,
-      );
-
-      // Transient tip dot — extra bright point at spike tip for punch.
-      final tAmp = field._transient[b];
-      if (tAmp > 0.1) {
-        canvas.drawCircle(
-          p2,
-          spikeWidth * (0.8 + tAmp * 1.2),
+      // ── Glow pass (only for high-energy spikes) ───────────────────────
+      if (eLevel > _glowThresh && bodyLen > 2.0) {
+        canvas.drawLine(
+          pBase, pBodyEnd,
           Paint()
-            ..color = spikeColor.withValues(alpha: tAmp * 0.9)
+            ..color = spikeColor.withValues(alpha: alpha * 0.25)
+            ..strokeWidth = strokeW * 2.8
+            ..strokeCap = StrokeCap.round
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.5),
+        );
+      }
+
+      // ── Body: sharp pass ──────────────────────────────────────────────
+      if (bodyLen > 1.0) {
+        canvas.drawLine(
+          pBase, pBodyEnd,
+          Paint()
+            ..color = spikeColor.withValues(alpha: alpha)
+            ..strokeWidth = strokeW
+            ..strokeCap = StrokeCap.round,
+        );
+      }
+
+      // ── Transient tip ─────────────────────────────────────────────────
+      if (tLevel > 0.08 && tipLen > 1.0) {
+        // Tip line: brighter, slightly thinner.
+        final tipColor = Color.lerp(spikeColor, glow, 0.4)!
+            .withValues(alpha: (alpha * tLevel * 1.3).clamp(0.0, 1.0));
+
+        canvas.drawLine(
+          pBodyEnd, pTipEnd,
+          Paint()
+            ..color = tipColor
+            ..strokeWidth = strokeW * 0.75
+            ..strokeCap = StrokeCap.round,
+        );
+
+        // Tip dot: bright point at spike tip for punch readability.
+        final dotR = strokeW * (0.9 + tLevel * 1.4);
+        // Glow halo around tip dot.
+        canvas.drawCircle(
+          pTipEnd,
+          dotR * 2.2,
+          Paint()
+            ..color = tipColor.withValues(alpha: tLevel * 0.35)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0),
+        );
+        canvas.drawCircle(
+          pTipEnd,
+          dotR,
+          Paint()
+            ..color = tipColor
             ..style = PaintingStyle.fill,
         );
       }

@@ -11,22 +11,61 @@ import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// REDESIGNED SIGNAL ARCHITECTURE — waveform.dart
+//
+// The previous renderer was a uniform horizontal bar chart. Every bar shared
+// the same center-Y, same width, same color gradient direction. The topology
+// was a single organism by construction — perceptually dead.
+//
+// New architecture: DISTRIBUTED SPECTRAL FIELD
+// ─────────────────────────────────────────────
+// Layer 1 — Raw FFT truth (64 bins, immutable per frame)
+//   Direct 1:1 mapping. Never globally smoothed.
+//
+// Layer 2 — Spectral redistribution + transient extraction
+//   Per-bar dual-envelope transient detector (fast - slow = impulse).
+//   Logarithmic psychoacoustic amplitude weighting.
+//   Delta-energy emphasis: transients amplified 3× over sustained energy.
+//
+// Layer 3 — Independent emitters (one per bar)
+//   Each bar owns: sustained energy, transient impulse, vertical anchor,
+//   width multiplier, opacity, micro-jitter phase.
+//   No shared state. No global coherence.
+//
+// Layer 4 — Asymmetric spatial renderer
+//   Bars are NOT uniform. Each bar has:
+//     • frequency-dependent width (bass wide, treble thin)
+//     • frequency-dependent vertical anchor (bass bottom-anchored,
+//       treble top-anchored, mid center-anchored)
+//     • transient tip extension above/below the bar body
+//     • per-bar micro-jitter in height for organic instability
+//     • color: played/unplayed split still works for scrubbing
+//
+// Why this produces perceptual separation:
+//   • Kick drum → bass bars spike from the bottom, wide, heavy
+//   • Hi-hat → treble bars flicker from the top, thin, fast
+//   • Vocal → mid bars pulse from center, medium width
+//   • The eye sees localized activity in different spatial zones,
+//     not one breathing shape.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
 // FftWaveform — live FFT visualiser + progress scrubber
 //
 // Architecture
 // ────────────
 // • A [_WaveformNotifier] (ChangeNotifier) owns all animation state:
-//   FFT smoothing, idle oscillation, drag progress.
+//   FFT signal processing, idle oscillation, drag progress.
 //   It drives repaints via CustomPainter(repaint: notifier) — no setState.
 //
 // • The ticker only runs when playing or dragging. It stops automatically
-//   when paused and no FFT frames are arriving.
+//   when paused and all emitters have settled.
 //
-// • The smoothed Float32List is mutated in-place — no per-frame allocation.
+// • All buffers are pre-allocated — no per-frame allocation.
 //   shouldRepaint() is always false because repaint is driven by the
 //   Listenable, not structural comparison.
 //
-// • FFT values are validated (NaN/Infinity guard) before smoothing.
+// • FFT values are validated (NaN/Infinity guard) before processing.
 //
 // • Reduced-motion accessibility: idle animation disabled when
 //   MediaQuery.disableAnimations is true.
@@ -191,110 +230,114 @@ class _FftWaveformState extends ConsumerState<FftWaveform>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _WaveformNotifier — owns all mutable animation state.
-// Drives repaints via ChangeNotifier (repaint: notifier in CustomPainter).
-// No per-frame allocation — all buffers are pre-allocated.
+// _WaveformNotifier — distributed spectral field signal processor.
 //
-// Architecture
-// ────────────
-// Layer 1 — Raw FFT truth (never mutated between frames)
-//   _fftTarget: the latest FFT snapshot from mpv. Treated as immutable
-//   instantaneous truth. Bars chase this, not the other way around.
-//
-// Layer 2 — Independent visual envelopes
-//   Each bar owns its own value + velocity. Attack and decay are
-//   frequency-dependent so bass moves heavy and treble flickers.
-//   This is what makes bars feel independent instead of "one organism."
-//
-// Layer 3 — Psychoacoustic weighting
-//   Bass bins are amplified and decay slowly (human hearing is bass-heavy).
-//   Treble bins decay fast and flicker. Mid bins are neutral.
+// Layer 1: Raw FFT truth — 64 bins, immutable per frame.
+// Layer 2: Per-bar dual-envelope transient extraction.
+//   fast[i] tracks instantaneous energy (lerp 0.65–0.90 by frequency).
+//   slow[i] tracks sustained baseline (lerp 0.05–0.12 by frequency).
+//   transient[i] = max(0, fast[i] - slow[i]) — the "punch" signal.
+// Layer 3: Independent emitters.
+//   sustained[i] = smoothed energy, frequency-weighted.
+//   transient[i] = impulse channel, decays faster than sustained.
+//   jitter[i]    = per-bar micro-noise for organic instability.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _WaveformNotifier extends ChangeNotifier {
   // ── Layer 1: Raw FFT truth ────────────────────────────────────────────────
-  // Written by the FFT stream, read by _tick(). Never smoothed in-place.
   Float32List? _fftTarget;
   bool _hasFft = false;
 
-  // ── Layer 2: Independent visual envelopes ─────────────────────────────────
-  // smoothed[i] = current visual height of bar i, in [0, 1].
-  // Mutated in-place each tick — no allocation.
-  late Float32List smoothed;
+  // ── Layer 2+3: Independent emitter state ─────────────────────────────────
+  // sustained[i]: smoothed energy level, [0,1]. Drives bar body height.
+  late Float32List sustained;
+  // transient[i]: impulse channel. Drives tip extension above/below bar.
+  late Float32List _transient;
+  // fast/slow envelopes for transient detection.
+  late Float32List _fast;
+  late Float32List _slow;
+  // Per-bar micro-jitter for organic instability (especially treble).
+  late Float32List _jitter;
+  late Float32List _jitterV;
 
-  // Per-bar attack lerp — pre-computed once in _initEnvelopes.
-  late Float32List _attack;
-  // Per-bar decay lerp — pre-computed once in _initEnvelopes.
-  late Float32List _decay;
+  // Pre-computed per-bar envelope parameters.
+  late Float32List _attack;   // sustained attack lerp
+  late Float32List _decay;    // sustained decay lerp
+  late Float32List _tDecay;   // transient decay lerp (faster)
+  late Float32List _fastLerp; // fast envelope lerp
+  late Float32List _slowLerp; // slow envelope lerp
 
-  // ── Idle animation phase ──────────────────────────────────────────────────
+  // ── Idle animation ────────────────────────────────────────────────────────
   double _idlePhase = 0.0;
 
   // ── Drag state ────────────────────────────────────────────────────────────
   bool   _dragging     = false;
   double _dragProgress = 0.0;
 
-  // ── Display state (written by widget, read by painter) ───────────────────
+  // ── Display state ─────────────────────────────────────────────────────────
   double _progress      = 0.0;
   Color  _playedColor   = AfColors.indigo300;
   Color  _unplayedColor = AfColors.textTertiary;
 
-  // ── Global constants ──────────────────────────────────────────────────────
-  static const double _minHeight    = 0.05;
-  static const double _settleThresh = 0.0008;
-
-  // ── FFT topology ──────────────────────────────────────────────────────────
-  // Always 64 bars = FFT band count. Bar i = FFT bin i.
-  static const int _barCount = 64;
+  static const int    _barCount     = 64;
+  static const double _minHeight    = 0.04;
+  static const double _settleThresh = 0.0006;
 
   // Frequency region boundaries (bin indices):
-  //   bass:   0–7   (~20–250 Hz)   — heavy, slow decay
-  //   low-mid: 8–15  (~250–500 Hz)  — medium
-  //   mid:    16–31  (~500 Hz–4 kHz) — neutral
-  //   treble: 32–63  (~4–20 kHz)   — fast flicker
-  static const int _bassEnd    = 8;
-  static const int _lowMidEnd  = 16;
-  static const int _midEnd     = 32;
+  //   bass:    0–7   heavy, bottom-anchored, wide bars
+  //   low-mid: 8–15  medium weight, slight bottom bias
+  //   mid:     16–31 center-anchored, neutral
+  //   treble:  32–63 top-anchored, thin, fast flicker
+  static const int _bassEnd   = 8;
+  static const int _lowMidEnd = 16;
+  static const int _midEnd    = 32;
+
+  final _rng = math.Random(42); // seeded for deterministic jitter init
 
   _WaveformNotifier(List<int> peaks) {
-    _initEnvelopes(peaks);
+    _initBuffers(peaks);
   }
 
-  void _initEnvelopes(List<int> peaks) {
-    smoothed = Float32List(_barCount);
-    _attack  = Float32List(_barCount);
-    _decay   = Float32List(_barCount);
+  void _initBuffers(List<int> peaks) {
+    sustained  = Float32List(_barCount);
+    _transient = Float32List(_barCount);
+    _fast      = Float32List(_barCount);
+    _slow      = Float32List(_barCount);
+    _jitter    = Float32List(_barCount);
+    _jitterV   = Float32List(_barCount);
+    _attack    = Float32List(_barCount);
+    _decay     = Float32List(_barCount);
+    _tDecay    = Float32List(_barCount);
+    _fastLerp  = Float32List(_barCount);
+    _slowLerp  = Float32List(_barCount);
 
     for (var i = 0; i < _barCount; i++) {
-      // Seed visual height from peaks if available.
-      final peakVal = (i < peaks.length)
-          ? (peaks[i] / 100.0).clamp(_minHeight, 1.0) * 0.5
-          : _minHeight;
-      smoothed[i] = peakVal;
+      final t = i / (_barCount - 1); // 0=bass, 1=treble
 
-      // ── Layer 3: Psychoacoustic per-bar envelope parameters ──────────────
-      // Bass: slow attack (weight builds), very slow decay (sustain).
-      // Low-mid: medium.
-      // Mid: neutral.
-      // Treble: fast attack + fast decay = flicker/sparkle.
-      if (i < _bassEnd) {
-        _attack[i] = 0.65;
-        _decay[i]  = 0.08;
-      } else if (i < _lowMidEnd) {
-        _attack[i] = 0.72;
-        _decay[i]  = 0.14;
-      } else if (i < _midEnd) {
-        _attack[i] = 0.78;
-        _decay[i]  = 0.20;
-      } else {
-        // Treble: snappy attack, fast decay — hi-hats flicker independently.
-        _attack[i] = 0.88;
-        _decay[i]  = 0.32;
-      }
+      // Seed from static peaks waveform.
+      final peakVal = (i < peaks.length)
+          ? (peaks[i] / 100.0).clamp(_minHeight, 1.0) * 0.4
+          : _minHeight;
+      sustained[i] = peakVal;
+
+      // ── Psychoacoustic envelope parameters ───────────────────────────────
+      // Bass: slow attack, very slow decay — weight builds, sustains.
+      // Treble: fast attack, fast decay — flickers, sparkles.
+      _attack[i]   = (0.55 + t * 0.35).clamp(0.55, 0.90);
+      _decay[i]    = (0.05 + t * 0.28).clamp(0.05, 0.33);
+      _tDecay[i]   = (0.18 + t * 0.45).clamp(0.18, 0.63); // transient faster
+      _fastLerp[i] = (0.55 + t * 0.35).clamp(0.55, 0.90);
+      _slowLerp[i] = (0.04 + t * 0.08).clamp(0.04, 0.12);
+
+      // Seed jitter at random phases so bars start incoherent.
+      _jitter[i]  = _rng.nextDouble() * 2 * math.pi;
+      // Treble bars get faster jitter velocity — hi-hat instability.
+      final jSpeed = 0.015 + t * 0.055;
+      _jitterV[i] = jSpeed * (_rng.nextBool() ? 1 : -1);
     }
   }
 
-  void _resetPeaks(List<int> peaks) => _initEnvelopes(peaks);
+  void _resetPeaks(List<int> peaks) => _initBuffers(peaks);
 
   void _setFftTarget(Float32List bands) {
     _fftTarget = bands;
@@ -310,7 +353,7 @@ class _WaveformNotifier extends ChangeNotifier {
   double get displayProgress =>
       _dragging ? _dragProgress : _progress.clamp(0.0, 1.0);
 
-  /// Advance one frame. Returns true if any bar is still moving.
+  /// Advance one frame. Returns true if any emitter is still moving.
   bool _tick({required bool isPlaying, required bool reducedMotion}) {
     var anyMoving = false;
 
@@ -319,47 +362,74 @@ class _WaveformNotifier extends ChangeNotifier {
 
       for (var i = 0; i < _barCount; i++) {
         // ── Layer 1: Raw FFT truth ──────────────────────────────────────────
-        // Direct 1:1 mapping: bar i = FFT bin i. No resampling.
-        final raw = i < bands.length ? bands[i] : 0.0;
+        final raw    = i < bands.length ? bands[i] : 0.0;
         final safeRaw = raw.isFinite ? raw.clamp(0.0, 1.0) : 0.0;
 
-        // ── Layer 3: Psychoacoustic amplitude weighting ─────────────────────
-        // Bass bins are amplified (human hearing is bass-heavy).
-        // Treble bins are slightly attenuated to prevent harsh spikes.
+        // ── Psychoacoustic amplitude weighting ──────────────────────────────
+        // Bass amplified (perceptually louder), treble attenuated.
+        // Weighting is non-linear: bass gets a hard boost, treble a soft cut.
         final double weighted;
         if (i < _bassEnd) {
-          weighted = (safeRaw * 1.6).clamp(0.0, 1.0);
+          // Bass: strong boost + slight saturation curve.
+          weighted = (math.sqrt(safeRaw) * 1.7).clamp(0.0, 1.0);
         } else if (i < _lowMidEnd) {
-          weighted = (safeRaw * 1.2).clamp(0.0, 1.0);
+          weighted = (safeRaw * 1.25).clamp(0.0, 1.0);
         } else if (i < _midEnd) {
           weighted = safeRaw;
         } else {
-          weighted = (safeRaw * 0.85).clamp(0.0, 1.0);
+          // Treble: attenuate but preserve transient punch.
+          weighted = (safeRaw * 0.80).clamp(0.0, 1.0);
         }
 
-        final target = weighted.clamp(_minHeight, 1.0);
+        // ── Layer 2: Dual-envelope transient detection ──────────────────────
+        // fast tracks instantaneous energy; slow tracks baseline.
+        // impulse = fast - slow = the "new energy" this frame.
+        _fast[i] += (weighted - _fast[i]) * _fastLerp[i];
+        _slow[i] += (weighted - _slow[i]) * _slowLerp[i];
+        final impulse = math.max(0.0, _fast[i] - _slow[i]);
 
-        // ── Layer 2: Independent per-bar envelope ───────────────────────────
-        // Each bar uses its own attack/decay — NOT a shared global lerp.
-        // This is what makes bass move heavy and treble flicker independently.
-        final lerp = target > smoothed[i] ? _attack[i] : _decay[i];
-        final next = smoothed[i] + (target - smoothed[i]) * lerp;
-        if ((next - smoothed[i]).abs() > _settleThresh) anyMoving = true;
-        smoothed[i] = next;
+        // Transient: amplify impulse strongly. This is what makes
+        // individual hits punch through without smearing.
+        final tTarget = (impulse * 3.2).clamp(0.0, 1.0);
+        if (tTarget > _transient[i]) {
+          _transient[i] = tTarget; // instant attack
+        }
+
+        // ── Layer 3: Independent sustained envelope ─────────────────────────
+        final sTarget = weighted.clamp(_minHeight, 1.0);
+        final sLerp   = sTarget > sustained[i] ? _attack[i] : _decay[i];
+        final sNext   = sustained[i] + (sTarget - sustained[i]) * sLerp;
+        if ((sNext - sustained[i]).abs() > _settleThresh) anyMoving = true;
+        sustained[i] = sNext;
+
+        // Transient decay (faster than sustained).
+        final tNext = _transient[i] * (1.0 - _tDecay[i]);
+        if ((_transient[i] - tNext).abs() > _settleThresh) anyMoving = true;
+        _transient[i] = tNext;
+
+        // ── Micro-jitter: per-bar organic instability ───────────────────────
+        // Treble bars oscillate faster — hi-hat shimmer.
+        // Bass bars oscillate slowly — sub-bass breathing.
+        _jitter[i] += _jitterV[i];
+        // Slowly drift jitter velocity for long-term variation.
+        _jitterV[i] += (_rng.nextDouble() - 0.5) * 0.003;
+        final maxV = 0.015 + (i / _barCount) * 0.055;
+        _jitterV[i] = _jitterV[i].clamp(-maxV, maxV);
       }
     } else if (isPlaying && !reducedMotion) {
-      // Idle: gentle sine-wave oscillation. Each bar still uses its own
-      // decay so the idle animation also feels frequency-differentiated.
-      _idlePhase = (_idlePhase + 0.03) % (6.2832); // 2π
+      // Idle: per-bar sine oscillation with frequency-differentiated phases.
+      // Each bar still uses its own decay so idle feels spectrally alive.
+      _idlePhase = (_idlePhase + 0.025) % (math.pi * 2);
       for (var i = 0; i < _barCount; i++) {
-        final peak   = smoothed[i].clamp(_minHeight, 1.0);
-        final target = peak * (0.4 + 0.22 * math.sin(_idlePhase + i * 0.25));
-        final next   = smoothed[i] + (target - smoothed[i]) * _decay[i];
-        if ((next - smoothed[i]).abs() > _settleThresh) anyMoving = true;
-        smoothed[i] = next;
+        final peak   = sustained[i].clamp(_minHeight, 1.0);
+        // Phase offset varies by bar so they don't all move together.
+        final target = peak * (0.35 + 0.20 * math.sin(_idlePhase + i * 0.31));
+        final next   = sustained[i] + (target - sustained[i]) * _decay[i];
+        if ((next - sustained[i]).abs() > _settleThresh) anyMoving = true;
+        sustained[i] = next;
+        _jitter[i] += _jitterV[i] * 0.3;
       }
     }
-    // Paused + no FFT: bars hold position. No animation.
 
     notifyListeners();
     return anyMoving;
@@ -367,18 +437,61 @@ class _WaveformNotifier extends ChangeNotifier {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _WaveformPainter
+// _WaveformPainter — asymmetric distributed spectral field renderer.
 //
-// Repaint is driven by _WaveformNotifier (Listenable).
-// shouldRepaint() always returns false — structural comparison is unnecessary
-// because the Listenable handles invalidation.
+// Layer 4: Spatial renderer.
+//
+// Key departures from the old uniform bar chart:
+//
+// 1. VERTICAL ANCHOR by frequency region:
+//    Bass bars grow upward from the bottom — like a kick drum hitting the floor.
+//    Treble bars grow downward from the top — hi-hats shimmer from above.
+//    Mid bars grow from center — vocals occupy the middle space.
+//    This creates three distinct spatial zones the eye can track independently.
+//
+// 2. VARIABLE BAR WIDTH by frequency:
+//    Bass bars are wider (spectral weight is perceptually wide).
+//    Treble bars are thinner (hi-hats are point sources).
+//    This breaks the uniform grid topology.
+//
+// 3. TRANSIENT TIP EXTENSION:
+//    Each bar has a body (sustained energy) + a tip (transient impulse).
+//    The tip extends beyond the body in the anchor direction.
+//    Kicks punch through the bottom; hi-hats spike through the top.
+//    The tip is brighter and slightly wider than the body.
+//
+// 4. MICRO-JITTER in height:
+//    Each bar's height is modulated by its jitter phase.
+//    Treble bars jitter fast (shimmer). Bass bars jitter slow (breathe).
+//    This injects controlled incoherence — no two bars move identically.
+//
+// 5. OPACITY by energy:
+//    Low-energy bars fade out rather than staying at minimum height.
+//    This creates visible "holes" in the spectrum during silence,
+//    making active regions pop by contrast.
+//
+// 6. PLAYED/UNPLAYED split still works:
+//    The color split is applied per-bar based on progress, same as before.
+//    Scrubbing still works correctly.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _WaveformPainter extends CustomPainter {
   final _WaveformNotifier notifier;
 
-  static const double _barGapFraction  = 0.35;
-  static const double _minBarHeight    = 3.0;
+  // Bar width multipliers by frequency region.
+  // Bass bars are 1.6× the base width; treble bars are 0.55×.
+  static const double _bassWidthMul   = 1.60;
+  static const double _lowMidWidthMul = 1.20;
+  static const double _midWidthMul    = 0.90;
+  static const double _trebleWidthMul = 0.55;
+
+  // Gap between bars as a fraction of base bar width.
+  static const double _gapFraction = 0.40;
+
+  // Minimum rendered bar height in logical pixels.
+  static const double _minBarPx = 2.5;
+
+  // Playhead geometry.
   static const double _headWidth       = 2.0;
   static const double _thumbRadius     = 5.0;
   static const double _thumbRadiusDrag = 7.5;
@@ -389,46 +502,144 @@ class _WaveformPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (size.width <= 0 || size.height <= 0) return;
-    final smoothed = notifier.smoothed;
-    if (smoothed.isEmpty) return;
+    final s = notifier.sustained;
+    if (s.isEmpty) return;
 
-    final barCount  = smoothed.length;
-    final barWidth  = size.width / (barCount + _barGapFraction * (barCount - 1));
-    final gap       = barWidth * _barGapFraction;
-    final centerY   = size.height / 2;
-    final progress  = notifier.displayProgress;
-    final headBarF  = progress * barCount;
-    final headX     = progress * size.width;
+    final barCount = s.length;
+    // Base bar width: divide total width evenly, then scale per-bar.
+    // We compute a nominal width assuming average multiplier ~1.0.
+    final baseWidth = size.width / (barCount * (1.0 + _gapFraction));
+    final gap       = baseWidth * _gapFraction;
+
+    final progress   = notifier.displayProgress;
+    final headBarF   = progress * barCount;
+    final headX      = progress * size.width;
     final isDragging = notifier._dragging;
 
-    final playedPaint = Paint()
-      ..color = notifier._playedColor
-      ..style = PaintingStyle.fill;
-    final unplayedPaint = Paint()
-      ..color = notifier._unplayedColor.withValues(alpha: 0.28)
-      ..style = PaintingStyle.fill;
-    final capRadius = Radius.circular(barWidth / 2);
+    final playedPaint   = Paint()..style = PaintingStyle.fill;
+    final unplayedPaint = Paint()..style = PaintingStyle.fill;
 
     // ── Bars ─────────────────────────────────────────────────────────────
+    // We accumulate x manually because bar widths vary.
+    var x = 0.0;
     for (var i = 0; i < barCount; i++) {
-      final amp  = smoothed[i].clamp(_minBarHeight / size.height, 1.0);
-      final h    = math.max(_minBarHeight, size.height * amp);
-      final x    = i * (barWidth + gap);
-      final rect = Rect.fromLTWH(x, centerY - h / 2, barWidth, h);
+      final t = i / (barCount - 1); // 0=bass, 1=treble
 
-      final Paint paint;
-      if (i < headBarF.floor()) {
-        paint = playedPaint;
-      } else if (i == headBarF.floor()) {
-        final frac = headBarF - headBarF.floor();
-        paint = Paint()
-          ..color = Color.lerp(unplayedPaint.color, playedPaint.color, frac)!
-          ..style = PaintingStyle.fill;
+      // ── Bar width: frequency-dependent ───────────────────────────────
+      final double widthMul;
+      if (i < _WaveformNotifier._bassEnd) {
+        widthMul = _bassWidthMul;
+      } else if (i < _WaveformNotifier._lowMidEnd) {
+        widthMul = _lowMidWidthMul;
+      } else if (i < _WaveformNotifier._midEnd) {
+        widthMul = _midWidthMul;
       } else {
-        paint = unplayedPaint;
+        widthMul = _trebleWidthMul;
+      }
+      final barW = baseWidth * widthMul;
+
+      // ── Energy + jitter ───────────────────────────────────────────────
+      final energy    = s[i];
+      final transient = notifier._transient[i];
+      final jitter    = notifier._jitter[i];
+
+      // Micro-jitter modulates height by ±8% for bass, ±18% for treble.
+      final jitterAmp  = 0.08 + t * 0.10;
+      final jitterMod  = 1.0 + jitterAmp * math.sin(jitter);
+      final bodyHeight = math.max(_minBarPx,
+          size.height * energy * jitterMod).clamp(_minBarPx, size.height * 0.92);
+      final tipHeight  = transient * size.height * 0.28;
+
+      // ── Vertical anchor: frequency-dependent ─────────────────────────
+      // Bass: bottom-anchored (grows up from floor).
+      // Treble: top-anchored (grows down from ceiling).
+      // Mid: center-anchored.
+      // Low-mid: slight bottom bias (lerp between bass and mid).
+      final double bodyTop;
+      final double tipTop;
+      if (i < _WaveformNotifier._bassEnd) {
+        // Bottom-anchored.
+        bodyTop = size.height - bodyHeight;
+        tipTop  = bodyTop - tipHeight;
+      } else if (i < _WaveformNotifier._lowMidEnd) {
+        // Slight bottom bias: lerp between bottom-anchor and center.
+        final bias = 0.35; // 0=center, 1=bottom
+        final centerTop = (size.height - bodyHeight) / 2;
+        final bottomTop = size.height - bodyHeight;
+        bodyTop = centerTop + (bottomTop - centerTop) * bias;
+        tipTop  = bodyTop - tipHeight;
+      } else if (i < _WaveformNotifier._midEnd) {
+        // Center-anchored.
+        bodyTop = (size.height - bodyHeight) / 2;
+        tipTop  = bodyTop - tipHeight / 2; // tip splits above and below
+      } else {
+        // Top-anchored (treble grows down from ceiling).
+        bodyTop = 0;
+        tipTop  = bodyHeight; // tip extends below the bar body
       }
 
-      canvas.drawRRect(RRect.fromRectAndRadius(rect, capRadius), paint);
+      // ── Opacity: energy-driven ────────────────────────────────────────
+      // Low-energy bars fade out. Creates visible spectral holes.
+      final alpha = (0.12 + energy * 0.88).clamp(0.0, 1.0);
+
+      // ── Color: played/unplayed split ──────────────────────────────────
+      final isPlayed = i < headBarF;
+      final isSplit  = i == headBarF.floor();
+      final Color baseColor;
+      if (isPlayed) {
+        baseColor = notifier._playedColor;
+      } else if (isSplit) {
+        final frac = headBarF - headBarF.floor();
+        baseColor = Color.lerp(
+          notifier._unplayedColor.withValues(alpha: 0.28),
+          notifier._playedColor,
+          frac,
+        )!;
+      } else {
+        baseColor = notifier._unplayedColor.withValues(alpha: 0.28);
+      }
+
+      playedPaint.color = baseColor.withValues(alpha: alpha);
+
+      // ── Draw bar body ─────────────────────────────────────────────────
+      final capR = Radius.circular(barW / 2);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, bodyTop, barW, bodyHeight),
+          capR,
+        ),
+        playedPaint,
+      );
+
+      // ── Draw transient tip ────────────────────────────────────────────
+      if (transient > 0.06 && tipHeight > 1.0) {
+        final tipW = barW * (0.7 + transient * 0.5);
+        final tipX = x + (barW - tipW) / 2;
+        final tipColor = baseColor.withValues(alpha: (alpha * transient * 1.4).clamp(0.0, 1.0));
+        unplayedPaint.color = tipColor;
+
+        if (i < _WaveformNotifier._midEnd) {
+          // Bass/low-mid/mid: tip extends upward.
+          canvas.drawRRect(
+            RRect.fromRectAndRadius(
+              Rect.fromLTWH(tipX, tipTop, tipW, tipHeight),
+              Radius.circular(tipW / 2),
+            ),
+            unplayedPaint,
+          );
+        } else {
+          // Treble: tip extends downward below bar body.
+          canvas.drawRRect(
+            RRect.fromRectAndRadius(
+              Rect.fromLTWH(tipX, tipTop, tipW, tipHeight),
+              Radius.circular(tipW / 2),
+            ),
+            unplayedPaint,
+          );
+        }
+      }
+
+      x += barW + gap;
     }
 
     // ── Playhead glow ────────────────────────────────────────────────────
@@ -454,7 +665,8 @@ class _WaveformPainter extends CustomPainter {
     );
 
     // ── Scrub thumb ──────────────────────────────────────────────────────
-    final thumbR = isDragging ? _thumbRadiusDrag : _thumbRadius;
+    final centerY = size.height / 2;
+    final thumbR  = isDragging ? _thumbRadiusDrag : _thumbRadius;
     if (isDragging) {
       canvas.drawCircle(
         Offset(headX, centerY),
@@ -475,8 +687,6 @@ class _WaveformPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WaveformPainter _) => false;
-  // Repaint is driven by the Listenable (notifier) — structural comparison
-  // is unnecessary and would break if we ever stop allocating per frame.
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
