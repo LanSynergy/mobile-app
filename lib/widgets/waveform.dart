@@ -217,10 +217,14 @@ class _WaveformNotifier extends ChangeNotifier {
   Color  _unplayedColor = AfColors.textTertiary;
 
   // ── Smoothing constants ───────────────────────────────────────────────────
-  static const double _attackLerp  = 0.45;
-  static const double _decayLerp   = 0.10;
+  // Sharper attack/decay for clear frequency separation between bars.
+  // Previous values (0.45/0.10) caused neighboring bars to blur together.
+  static const double _attackLerp  = 0.72;
+  static const double _decayLerp   = 0.18;
   static const double _minHeight   = 0.06;
-  static const double _powerCurve  = 1.4;
+  // Lower power curve (was 1.4) — 0.85 keeps quieter frequencies visible
+  // so the spectrum looks rich instead of center-heavy.
+  static const double _powerCurve  = 0.85;
   static const double _settleThresh = 0.001;
 
   _WaveformNotifier(List<int> peaks) {
@@ -228,12 +232,17 @@ class _WaveformNotifier extends ChangeNotifier {
   }
 
   void _initSmoothed(List<int> peaks) {
-    final barCount = peaks.isEmpty ? 64 : peaks.length;
+    // Always 64 bars to match the FFT band count exactly.
+    // Previously derived from peaks.length which caused mismatch between
+    // visual bars and FFT bins — multiple bars duplicated the same bin.
+    const barCount = 64;
     smoothed = Float32List(barCount);
     for (var i = 0; i < barCount; i++) {
-      smoothed[i] = peaks.isEmpty
-          ? _minHeight
-          : (peaks[i] / 100.0).clamp(_minHeight, 1.0) * 0.5;
+      // Seed from peaks if available, otherwise flat minimum.
+      final peakVal = (i < peaks.length)
+          ? (peaks[i] / 100.0).clamp(_minHeight, 1.0) * 0.5
+          : _minHeight;
+      smoothed[i] = peakVal;
     }
   }
 
@@ -261,10 +270,12 @@ class _WaveformNotifier extends ChangeNotifier {
     if (_hasFft && _fftTarget != null) {
       final bands = _fftTarget!;
       for (var i = 0; i < barCount; i++) {
-        final bandIdx = (i * bands.length / barCount)
-            .clamp(0, bands.length - 1)
-            .toInt();
-        final raw = bands[bandIdx];
+        // Direct 1:1 mapping: bar i = FFT band i.
+        // Previously used resampled mapping (i * bands.length / barCount)
+        // which caused multiple bars to duplicate the same bin when
+        // barCount > bands.length, making the spectrum look smeared.
+        // Now barCount is always 64 = bands.length, so this is exact.
+        final raw = i < bands.length ? bands[i] : 0.0;
         // Guard NaN / Infinity from malformed FFT frames.
         final safeRaw = raw.isFinite ? raw.clamp(0.0, 1.0) : 0.0;
         final target = math.pow(safeRaw, _powerCurve)

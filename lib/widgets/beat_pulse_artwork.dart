@@ -58,6 +58,9 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
   late final AnimationController _ticker;
   late final _BeatNotifier _notifier;
   StreamSubscription<FftFrame>? _fftSub;
+  // Track whether FFT arrived recently so we don't stop the ticker
+  // between frames and kill visible animation.
+  bool _hasRecentFft = false;
 
   @override
   void initState() {
@@ -78,6 +81,7 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
     _fftSub?.cancel();
     _fftSub = svc.spectrumStream.listen((frame) {
       _notifier._updateTarget(frame.bands);
+      _hasRecentFft = true;
       if (!_ticker.isAnimating) _ticker.repeat();
     });
   }
@@ -93,8 +97,10 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
   void _onTick() {
     if (!mounted) return;
     final changed = _notifier._tick();
-    // Stop ticker when all values have settled to avoid idle CPU burn.
-    if (!changed) _ticker.stop();
+    // Only stop when settled AND no recent FFT arriving.
+    // Previously stopped aggressively between frames, killing visible animation.
+    if (!changed && !_hasRecentFft) _ticker.stop();
+    _hasRecentFft = false; // reset each tick; set again by next FFT frame
   }
 
   @override
@@ -153,9 +159,11 @@ class _BeatNotifier extends ChangeNotifier {
   static const double _trebleRelease = 0.05;
 
   // ── Visual limits ─────────────────────────────────────────────────────────
-  static const double _maxScale      = 1.06;
-  static const double _ringMaxRadius = 0.12;
-  static const double _haloMaxAlpha  = 0.45;
+  // Increased from 1.06 — previous range was imperceptible (1.000→1.012
+  // after RMS + power curve compression). 1.14 gives visible beat pulse.
+  static const double _maxScale      = 1.14;
+  static const double _ringMaxRadius = 0.14;
+  static const double _haloMaxAlpha  = 0.50;
   static const double _settleThresh  = 0.0005;
 
   double get scale      => 1.0 + bass * (_maxScale - 1.0);
@@ -169,9 +177,18 @@ class _BeatNotifier extends ChangeNotifier {
     final bassEnd  = (n * 0.125).round().clamp(1, n);
     final midEnd   = (n * 0.50).round().clamp(bassEnd + 1, n);
 
-    _bassTarget   = math.pow(_rms(bands, 0, bassEnd),   1.6).toDouble();
-    _midTarget    = math.pow(_rms(bands, bassEnd, midEnd), 1.4).toDouble();
-    _trebleTarget = math.pow(_rms(bands, midEnd, n),    1.2).toDouble();
+    final bassNow = _rms(bands, 0, bassEnd);
+    // Transient detection: delta between current and smoothed bass.
+    // Kick drums produce a sharp spike (bassNow >> bass) — amplify that
+    // delta so the artwork pulses on the beat, not just on sustained bass.
+    // Without this, RMS-only energy feels "dead" even with loud music.
+    final transient = math.max(0.0, bassNow - bass);
+    _bassTarget = (bassNow * 0.45 + transient * 1.8).clamp(0.0, 1.0);
+
+    // Reduced power curve (was 1.6) — 0.9 preserves more dynamic range
+    // so quiet passages still show movement instead of being crushed to zero.
+    _midTarget    = math.pow(_rms(bands, bassEnd, midEnd), 1.0).toDouble();
+    _trebleTarget = math.pow(_rms(bands, midEnd, n),       0.9).toDouble();
   }
 
   /// Returns true if any value is still moving (ticker should keep running).
