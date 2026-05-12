@@ -150,18 +150,23 @@ class _BeatNotifier extends ChangeNotifier {
   double _midTarget    = 0.0;
   double _trebleTarget = 0.0;
 
+  // ── Dual-envelope beat detector ───────────────────────────────────────────
+  // Fast envelope tracks kicks immediately; slow envelope tracks overall
+  // bass energy. Beat impulse = fast - slow. This avoids the self-suppression
+  // bug where (bassNow - smoothedBass) ≈ 0 because smoothing already follows.
+  double _fastBass = 0.0;
+  double _slowBass = 0.0;
+
   // ── Attack / release lerp constants ──────────────────────────────────────
-  static const double _bassAttack    = 0.55;
-  static const double _bassRelease   = 0.10;
+  static const double _bassAttack    = 0.82;
+  static const double _bassRelease   = 0.22;
   static const double _midAttack     = 0.40;
   static const double _midRelease    = 0.08;
   static const double _trebleAttack  = 0.25;
   static const double _trebleRelease = 0.05;
 
   // ── Visual limits ─────────────────────────────────────────────────────────
-  // Increased from 1.06 — previous range was imperceptible (1.000→1.012
-  // after RMS + power curve compression). 1.16 gives visible beat pulse.
-  static const double _maxScale      = 1.16;
+  static const double _maxScale      = 1.24;
   static const double _ringMaxRadius = 0.14;
   static const double _haloMaxAlpha  = 0.50;
   static const double _settleThresh  = 0.0005;
@@ -178,14 +183,19 @@ class _BeatNotifier extends ChangeNotifier {
     final midEnd   = (n * 0.50).round().clamp(bassEnd + 1, n);
 
     final bassNow = _rms(bands, 0, bassEnd);
-    // Transient detection: delta between current and smoothed bass.
-    // Kick drums produce a sharp spike (bassNow >> bass) — amplify that
-    // delta so the artwork pulses on the beat, not just on sustained bass.
-    final transient = math.max(0.0, bassNow - bass);
-    _bassTarget = (bassNow * 0.35 + transient * 2.2).clamp(0.0, 1.0);
 
-    // Mid and treble: no power curve — direct RMS, region-weighted.
-    // Each region has independent visual identity, not a shared transfer function.
+    // Dual-envelope beat detector:
+    //   fast envelope (0.55) captures kick transients immediately.
+    //   slow envelope (0.08) tracks overall bass energy level.
+    //   beat impulse = fast - slow = energy above the running average.
+    _fastBass += (bassNow - _fastBass) * 0.55;
+    _slowBass += (bassNow - _slowBass) * 0.08;
+    final beat = math.max(0.0, _fastBass - _slowBass);
+
+    // Strong transient amplification: beat * 4.5 makes kicks punch visibly.
+    // bassNow * 0.25 provides a floor so sustained bass still shows.
+    _bassTarget = (bassNow * 0.25 + beat * 4.5).clamp(0.0, 1.0);
+
     _midTarget    = (_rms(bands, bassEnd, midEnd) * 1.1).clamp(0.0, 1.0);
     _trebleTarget = (_rms(bands, midEnd, n)       * 0.9).clamp(0.0, 1.0);
   }
@@ -202,7 +212,9 @@ class _BeatNotifier extends ChangeNotifier {
     bass   = nb;
     mid    = nm;
     treble = nt;
-    if (changed) notifyListeners();
+    // Always notify during active FFT — don't quantize visual updates
+    // by gating on settle threshold (scale changes matter before threshold).
+    notifyListeners();
     return changed;
   }
 
