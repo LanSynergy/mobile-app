@@ -41,34 +41,47 @@ class SpectralExtractor {
     String imageUrl, {
     Map<String, String>? headers,
   }) async {
-    final cached = _cache[imageUrl];
-    if (cached != null) return cached;
-    final palette = await PaletteGeneratorMaster.fromImageProvider(
-      CachedNetworkImageProvider(imageUrl, headers: headers),
-      maximumColorCount: 16,
-    );
-    final samples = palette.colors.toList(growable: false);
-    Spectral result;
-    if (samples.isEmpty) {
-      result = Spectral.fallback;
-    } else {
-      final hue = pickSpectralHue(samples);
-      if (hue == null) {
+    // LRU promotion: remove and re-insert so the most-recently-used entry
+    // is always at the tail of the LinkedHashMap. FIFO eviction (removing
+    // keys.first) would evict frequently-reused artwork.
+    final cached = _cache.remove(imageUrl);
+    if (cached != null) {
+      _cache[imageUrl] = cached; // re-insert at tail = mark as recently used
+      return cached;
+    }
+    try {
+      final palette = await PaletteGeneratorMaster.fromImageProvider(
+        CachedNetworkImageProvider(imageUrl, headers: headers),
+        maximumColorCount: 16,
+      );
+      final samples = palette.colors.toList(growable: false);
+      Spectral result;
+      if (samples.isEmpty) {
         result = Spectral.fallback;
       } else {
-        final triple = buildSpectralTriple(hue.h);
-        result = Spectral(
-          energy: triple.energy,
-          shadow: triple.shadow,
-          glow: triple.glow,
-        );
+        final hue = pickSpectralHue(samples);
+        if (hue == null) {
+          result = Spectral.fallback;
+        } else {
+          final triple = buildSpectralTriple(hue.h);
+          result = Spectral(
+            energy: triple.energy,
+            shadow: triple.shadow,
+            glow: triple.glow,
+          );
+        }
       }
+      _cache[imageUrl] = result;
+      // Evict oldest (head) entry when over limit.
+      if (_cache.length > _cacheLimit) {
+        _cache.remove(_cache.keys.first);
+      }
+      return result;
+    } catch (_) {
+      // Image decode failure, malformed image, or palette extraction crash.
+      // Return fallback so the UI never crashes on bad artwork.
+      return Spectral.fallback;
     }
-    _cache[imageUrl] = result;
-    if (_cache.length > _cacheLimit) {
-      _cache.remove(_cache.keys.first);
-    }
-    return result;
   }
 
   /// Synchronous fallback used in widget tests / preview mode.

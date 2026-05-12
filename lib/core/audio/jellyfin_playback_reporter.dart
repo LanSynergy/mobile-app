@@ -31,8 +31,8 @@ class JellyfinPlaybackReporter {
 
   StreamSubscription<AfTrack?>? _trackSub;
   StreamSubscription<bool>? _playingSub;
-  Timer? _progressTimer;
   String? _lastReportedTrackId;
+  bool _disposed = false;
   // dispose() must NOT send a `Stopped` ping when the reporter is being
   // torn down purely because the ProviderScope rebuilt around a still-
   // playing track — otherwise Jellyfin's activity feed flips to "stopped"
@@ -46,30 +46,24 @@ class JellyfinPlaybackReporter {
   }
 
   Future<void> _onTrackChanged(AfTrack? track) async {
+    if (_disposed) return;
     final client = _clientGetter();
     final previousId = _lastReportedTrackId;
 
     if (previousId != null && previousId != track?.id) {
-      // Send the stop for the outgoing track before we open a session
-      // for the incoming one — Jellyfin keys the active session by the
-      // last reported start, and overlapping sessions confuse the
-      // activity feed.
       final position = _player.position;
       if (client != null) {
         try {
-          await client.reportPlaybackStop(previousId, position);
+          await client
+              .reportPlaybackStop(previousId, position)
+              .timeout(const Duration(seconds: 5));
           afLog(
             'data',
             'playbackStop source=live track=$previousId '
             'positionMs=${position.inMilliseconds}',
           );
         } catch (e, stack) {
-          afLog(
-            'error',
-            'reportPlaybackStop failed',
-            error: e,
-            stackTrace: stack,
-          );
+          afLog('error', 'reportPlaybackStop failed', error: e, stackTrace: stack);
         }
       }
     }
@@ -83,56 +77,39 @@ class JellyfinPlaybackReporter {
 
     _lastReportedTrackId = track.id;
     if (client == null) {
-      afLog(
-        'data',
-        'playbackStart source=demo track=${track.id} '
-        '(no JellyfinClient; signed out)',
-      );
+      afLog('data', 'playbackStart source=demo track=${track.id} (signed out)');
       _stopProgressTimer();
       return;
     }
     try {
-      await client.reportPlaybackStart(track.id);
-      afLog(
-        'data',
-        'playbackStart source=live track=${track.id} '
-        'title="${track.title}"',
-      );
+      await client
+          .reportPlaybackStart(track.id)
+          .timeout(const Duration(seconds: 5));
+      afLog('data', 'playbackStart source=live track=${track.id}');
       _startProgressTimer();
     } catch (e, stack) {
-      afLog(
-        'error',
-        'reportPlaybackStart failed',
-        error: e,
-        stackTrace: stack,
-      );
+      afLog('error', 'reportPlaybackStart failed', error: e, stackTrace: stack);
     }
   }
 
   Future<void> _onPlayingChanged(bool isPlaying) async {
+    if (_disposed) return;
     final trackId = _lastReportedTrackId;
     if (trackId == null) return;
     final client = _clientGetter();
     if (client == null) return;
     final position = _player.position;
     try {
-      await client.reportProgress(
-        trackId,
-        position,
-        isPaused: !isPlaying,
-      );
+      await client
+          .reportProgress(trackId, position, isPaused: !isPlaying)
+          .timeout(const Duration(seconds: 5));
       afLog(
         'data',
         'playbackProgress source=live track=$trackId '
         'positionMs=${position.inMilliseconds} paused=${!isPlaying}',
       );
     } catch (e, stack) {
-      afLog(
-        'error',
-        'reportProgress (transition) failed',
-        error: e,
-        stackTrace: stack,
-      );
+      afLog('error', 'reportProgress (transition) failed', error: e, stackTrace: stack);
     }
     if (isPlaying) {
       _startProgressTimer();
@@ -143,62 +120,68 @@ class JellyfinPlaybackReporter {
 
   void _startProgressTimer() {
     _stopProgressTimer();
-    _progressTimer = Timer.periodic(_progressInterval, (_) async {
+    // Use a serialized loop instead of Timer.periodic to prevent concurrent
+    // network calls. Timer.periodic does NOT await the callback — if the
+    // server is slow, multiple in-flight requests pile up and stale progress
+    // can arrive after newer progress, regressing backend state.
+    _progressRunning = true;
+    _runProgressLoop();
+  }
+
+  bool _progressRunning = false;
+
+  Future<void> _runProgressLoop() async {
+    while (_progressRunning) {
+      await Future.delayed(_progressInterval);
+      if (!_progressRunning) break;
       final trackId = _lastReportedTrackId;
-      if (trackId == null) return;
+      if (trackId == null) break;
       final client = _clientGetter();
-      if (client == null) return;
+      if (client == null) break;
       final position = _player.position;
       try {
-        await client.reportProgress(trackId, position);
+        await client
+            .reportProgress(trackId, position)
+            .timeout(const Duration(seconds: 5));
         afLog(
           'data',
           'playbackProgress source=live track=$trackId '
           'positionMs=${position.inMilliseconds} (tick)',
         );
       } catch (e, stack) {
-        afLog(
-          'error',
-          'reportProgress (tick) failed',
-          error: e,
-          stackTrace: stack,
-        );
+        afLog('error', 'reportProgress (tick) failed', error: e, stackTrace: stack);
+        // Continue loop — a single failed tick shouldn't stop reporting.
       }
-    });
+    }
   }
 
   void _stopProgressTimer() {
-    _progressTimer?.cancel();
-    _progressTimer = null;
+    _progressRunning = false;
   }
 
   Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
     await _trackSub?.cancel();
     await _playingSub?.cancel();
     _stopProgressTimer();
     final trackId = _lastReportedTrackId;
     if (trackId == null) return;
-    // Only emit a Stopped on dispose if it was explicitly requested
-    // (sign-out, audio handler tear-down) — a Riverpod scope rebuild
-    // around a still-playing track must NOT flip the activity feed.
     if (!_shouldStopOnDispose) return;
     final client = _clientGetter();
     if (client == null) return;
     final position = _player.position;
     try {
-      await client.reportPlaybackStop(trackId, position);
+      await client
+          .reportPlaybackStop(trackId, position)
+          .timeout(const Duration(seconds: 5));
       afLog(
         'data',
         'playbackStop source=live track=$trackId '
         'positionMs=${position.inMilliseconds} (reporter disposed)',
       );
     } catch (e, stack) {
-      afLog(
-        'error',
-        'reportPlaybackStop (dispose) failed',
-        error: e,
-        stackTrace: stack,
-      );
+      afLog('error', 'reportPlaybackStop (dispose) failed', error: e, stackTrace: stack);
     }
   }
 

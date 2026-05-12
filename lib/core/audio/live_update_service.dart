@@ -39,6 +39,11 @@ class LiveUpdateService {
   final AfPlayerService _player;
   bool _supported = false;
   bool _live = false;
+  bool _disposed = false;
+  /// In-flight guard: prevents concurrent MethodChannel calls from
+  /// overlapping when rapid position events arrive faster than the
+  /// native side can process them.
+  bool _updating = false;
   AfTrack? _track;
   Duration _lastPositionPushed = Duration.zero;
   DateTime _lastPushAt = DateTime.fromMillisecondsSinceEpoch(0);
@@ -83,6 +88,8 @@ class LiveUpdateService {
 
   /// Tear down listeners and cancel the notification.
   Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
     for (final s in _subs) {
       await s.cancel();
     }
@@ -119,7 +126,10 @@ class LiveUpdateService {
   }
 
   Future<void> _startOrUpdate({bool force = false}) async {
-    if (!_supported) return;
+    if (!_supported || _disposed) return;
+    // Serialize: skip if a previous update is still in flight.
+    // This prevents MethodChannel call pileups from rapid position events.
+    if (_updating) return;
     final track = _track ?? _player.currentTrack;
     if (track == null) return;
     final duration = track.duration;
@@ -147,27 +157,22 @@ class LiveUpdateService {
       'shortCriticalText': '${_fmtClock(clampedPos)} / ${_fmtClock(duration)}',
     };
 
+    _updating = true;
     try {
       final method = _live ? 'update' : 'start';
       final ok = await _channel.invokeMethod<bool>(method, args);
       if (ok == true) {
         _live = true;
       } else if (method == 'start') {
-        // start() can return false when POST_NOTIFICATIONS hasn't been
-        // granted yet. Keep _live=false so a later track change retries.
         _log('start returned false — likely missing POST_NOTIFICATIONS');
       }
     } on PlatformException catch (e) {
       _log('$_live ? update : start failed: $e');
     } on MissingPluginException {
-      // The native plugin is missing entirely (e.g. running on a custom
-      // build that compiled out the live_update bridge). Mark unsupported
-      // AND tear down the live-status flag so the next track change
-      // doesn't try `update` (which always returns MissingPluginException
-      // and would leave `_live=true` forever, breaking the start/update
-      // gating logic in the catch block above).
       _supported = false;
       _live = false;
+    } finally {
+      _updating = false;
     }
   }
 

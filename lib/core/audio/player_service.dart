@@ -32,12 +32,28 @@ class AfPlayerService extends BaseAudioHandler
   /// `playerServiceProvider` to keep `currentTrackProvider` in sync.
   void Function(AfTrack track)? onTrackChanged;
 
-  final List<StreamSubscription<dynamic>> _subs = [];
+  final List<StreamSubscription<Object?>> _subs = [];
 
   /// Monotonic counter for cover-art temp files so the OS media widget
   /// doesn't cache stale artwork when the path stays the same.
   int _coverCounter = 0;
   String? _coverPath;
+
+  /// Disposed flag — guards against double-dispose and post-dispose callbacks.
+  bool _disposed = false;
+
+  /// Throttle: last time _updatePlaybackState was pushed to audio_service.
+  /// Position stream fires at 30-60 Hz; the OS media session only needs
+  /// ~2 Hz for human-visible progress. We skip updates that arrive within
+  /// 500ms of the last one unless playing/buffering state changed.
+  DateTime _lastPlaybackStatePush = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _lastPushedPlaying = false;
+  bool _lastPushedBuffering = false;
+
+  /// Bounded retry counter for auto-advance nudge.
+  /// Prevents infinite play() loops if MPV repeatedly fails to start.
+  int _nudgeRetries = 0;
+  static const _maxNudgeRetries = 3;
 
   AfPlayerService() : _player = Player() {
     _bindStreams();
@@ -252,6 +268,8 @@ class AfPlayerService extends BaseAudioHandler
   }
 
   Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
     for (final s in _subs) {
       await s.cancel();
     }
@@ -292,8 +310,9 @@ class AfPlayerService extends BaseAudioHandler
         onTrackChanged?.call(track);
         _updateMediaItem();
 
+        // Reset nudge retry counter for the new track.
+        _nudgeRetries = 0;
         // Mark that we expect mpv to start playing this index.
-        // The playing stream listener will nudge play() if it doesn't.
         _pendingPlayNudgeIdx = idx;
       }
     }));
@@ -312,14 +331,22 @@ class AfPlayerService extends BaseAudioHandler
           _pendingPlayNudgeIdx != null &&
           _pendingPlayNudgeIdx == _currentIndex) {
         // mpv advanced the index but stopped — nudge it to play.
-        // Only if the user didn't explicitly pause.
-        _player.play();
-        afLog('audio', 'auto-advance nudge play() at index=$_currentIndex');
+        // Bounded retry: if MPV repeatedly fails, stop nudging to avoid
+        // an infinite play() loop that thrashes CPU and logs.
+        if (_nudgeRetries < _maxNudgeRetries) {
+          _nudgeRetries++;
+          _player.play();
+          afLog('audio',
+              'auto-advance nudge play() at index=$_currentIndex (attempt $_nudgeRetries)');
+        } else {
+          afLog('audio',
+              'auto-advance nudge exhausted after $_maxNudgeRetries attempts at index=$_currentIndex');
+        }
         _pendingPlayNudgeIdx = null;
       }
     }));
 
-    _subs.add(_player.stream.position.listen((_) => _updatePlaybackState()));
+    _subs.add(_player.stream.position.listen((_) => _updatePlaybackStateThrottled()));
     _subs.add(_player.stream.buffering.listen((_) => _updatePlaybackState()));
 
     // Fallback: mpv signalled completion but didn't advance the index.
@@ -344,6 +371,26 @@ class AfPlayerService extends BaseAudioHandler
 
     // Persist embedded cover art to a temp file for the OS media widget.
     _subs.add(_player.stream.coverArt.listen(_persistCover));
+  }
+
+  /// Throttled wrapper for position-stream updates.
+  /// Pushes at most ~2 Hz to avoid flooding the Android MediaSession
+  /// (which syncs to the lock-screen and notification on every push).
+  /// State-change events (playing/buffering) bypass the throttle.
+  void _updatePlaybackStateThrottled() {
+    final s = _player.state;
+    final now = DateTime.now();
+    final stateChanged =
+        s.playing != _lastPushedPlaying || s.buffering != _lastPushedBuffering;
+    if (!stateChanged &&
+        now.difference(_lastPlaybackStatePush) <
+            const Duration(milliseconds: 500)) {
+      return;
+    }
+    _lastPlaybackStatePush = now;
+    _lastPushedPlaying = s.playing;
+    _lastPushedBuffering = s.buffering;
+    _updatePlaybackState();
   }
 
   void _updatePlaybackState() {
@@ -422,7 +469,9 @@ class AfPlayerService extends BaseAudioHandler
           await prev.delete();
         }
       }
-      await File(path).writeAsBytes(raw.bytes, flush: true);
+      // No flush: true — avoids blocking IO on slower storage.
+      // The OS will flush when it needs to; we don't need durability here.
+      await File(path).writeAsBytes(raw.bytes);
       _coverPath = path;
       _updateMediaItem();
     } catch (_) {
