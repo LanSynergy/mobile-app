@@ -193,16 +193,39 @@ class _FftWaveformState extends ConsumerState<FftWaveform>
 // ─────────────────────────────────────────────────────────────────────────────
 // _WaveformNotifier — owns all mutable animation state.
 // Drives repaints via ChangeNotifier (repaint: notifier in CustomPainter).
-// No per-frame allocation — smoothed buffer is mutated in-place.
+// No per-frame allocation — all buffers are pre-allocated.
+//
+// Architecture
+// ────────────
+// Layer 1 — Raw FFT truth (never mutated between frames)
+//   _fftTarget: the latest FFT snapshot from mpv. Treated as immutable
+//   instantaneous truth. Bars chase this, not the other way around.
+//
+// Layer 2 — Independent visual envelopes
+//   Each bar owns its own value + velocity. Attack and decay are
+//   frequency-dependent so bass moves heavy and treble flickers.
+//   This is what makes bars feel independent instead of "one organism."
+//
+// Layer 3 — Psychoacoustic weighting
+//   Bass bins are amplified and decay slowly (human hearing is bass-heavy).
+//   Treble bins decay fast and flicker. Mid bins are neutral.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _WaveformNotifier extends ChangeNotifier {
-  // ── Smoothed bar heights [0, 1] — mutated in-place, never reallocated ────
-  late Float32List smoothed;
-
-  // ── FFT target — written by stream, read by ticker ───────────────────────
+  // ── Layer 1: Raw FFT truth ────────────────────────────────────────────────
+  // Written by the FFT stream, read by _tick(). Never smoothed in-place.
   Float32List? _fftTarget;
   bool _hasFft = false;
+
+  // ── Layer 2: Independent visual envelopes ─────────────────────────────────
+  // smoothed[i] = current visual height of bar i, in [0, 1].
+  // Mutated in-place each tick — no allocation.
+  late Float32List smoothed;
+
+  // Per-bar attack lerp — pre-computed once in _initEnvelopes.
+  late Float32List _attack;
+  // Per-bar decay lerp — pre-computed once in _initEnvelopes.
+  late Float32List _decay;
 
   // ── Idle animation phase ──────────────────────────────────────────────────
   double _idlePhase = 0.0;
@@ -216,33 +239,62 @@ class _WaveformNotifier extends ChangeNotifier {
   Color  _playedColor   = AfColors.indigo300;
   Color  _unplayedColor = AfColors.textTertiary;
 
-  // ── Smoothing constants ───────────────────────────────────────────────────
-  static const double _attackLerp  = 0.78;
-  static const double _decayLerp   = 0.22;
-  static const double _minHeight   = 0.06;
-  static const double _powerCurve  = 0.82;
-  static const double _settleThresh = 0.001;
+  // ── Global constants ──────────────────────────────────────────────────────
+  static const double _minHeight    = 0.05;
+  static const double _settleThresh = 0.0008;
+
+  // ── FFT topology ──────────────────────────────────────────────────────────
+  // Always 64 bars = FFT band count. Bar i = FFT bin i.
+  static const int _barCount = 64;
+
+  // Frequency region boundaries (bin indices):
+  //   bass:   0–7   (~20–250 Hz)   — heavy, slow decay
+  //   low-mid: 8–15  (~250–500 Hz)  — medium
+  //   mid:    16–31  (~500 Hz–4 kHz) — neutral
+  //   treble: 32–63  (~4–20 kHz)   — fast flicker
+  static const int _bassEnd    = 8;
+  static const int _lowMidEnd  = 16;
+  static const int _midEnd     = 32;
 
   _WaveformNotifier(List<int> peaks) {
-    _initSmoothed(peaks);
+    _initEnvelopes(peaks);
   }
 
-  void _initSmoothed(List<int> peaks) {
-    // Always 64 bars to match the FFT band count exactly.
-    // Previously derived from peaks.length which caused mismatch between
-    // visual bars and FFT bins — multiple bars duplicated the same bin.
-    const barCount = 64;
-    smoothed = Float32List(barCount);
-    for (var i = 0; i < barCount; i++) {
-      // Seed from peaks if available, otherwise flat minimum.
+  void _initEnvelopes(List<int> peaks) {
+    smoothed = Float32List(_barCount);
+    _attack  = Float32List(_barCount);
+    _decay   = Float32List(_barCount);
+
+    for (var i = 0; i < _barCount; i++) {
+      // Seed visual height from peaks if available.
       final peakVal = (i < peaks.length)
           ? (peaks[i] / 100.0).clamp(_minHeight, 1.0) * 0.5
           : _minHeight;
       smoothed[i] = peakVal;
+
+      // ── Layer 3: Psychoacoustic per-bar envelope parameters ──────────────
+      // Bass: slow attack (weight builds), very slow decay (sustain).
+      // Low-mid: medium.
+      // Mid: neutral.
+      // Treble: fast attack + fast decay = flicker/sparkle.
+      if (i < _bassEnd) {
+        _attack[i] = 0.65;
+        _decay[i]  = 0.08;
+      } else if (i < _lowMidEnd) {
+        _attack[i] = 0.72;
+        _decay[i]  = 0.14;
+      } else if (i < _midEnd) {
+        _attack[i] = 0.78;
+        _decay[i]  = 0.20;
+      } else {
+        // Treble: snappy attack, fast decay — hi-hats flicker independently.
+        _attack[i] = 0.88;
+        _decay[i]  = 0.32;
+      }
     }
   }
 
-  void _resetPeaks(List<int> peaks) => _initSmoothed(peaks);
+  void _resetPeaks(List<int> peaks) => _initEnvelopes(peaks);
 
   void _setFftTarget(Float32List bands) {
     _fftTarget = bands;
@@ -260,40 +312,54 @@ class _WaveformNotifier extends ChangeNotifier {
 
   /// Advance one frame. Returns true if any bar is still moving.
   bool _tick({required bool isPlaying, required bool reducedMotion}) {
-    final barCount = smoothed.length;
     var anyMoving = false;
 
     if (_hasFft && _fftTarget != null) {
       final bands = _fftTarget!;
-      for (var i = 0; i < barCount; i++) {
-        // Direct 1:1 mapping: bar i = FFT band i.
-        // Previously used resampled mapping (i * bands.length / barCount)
-        // which caused multiple bars to duplicate the same bin when
-        // barCount > bands.length, making the spectrum look smeared.
-        // Now barCount is always 64 = bands.length, so this is exact.
+
+      for (var i = 0; i < _barCount; i++) {
+        // ── Layer 1: Raw FFT truth ──────────────────────────────────────────
+        // Direct 1:1 mapping: bar i = FFT bin i. No resampling.
         final raw = i < bands.length ? bands[i] : 0.0;
-        // Guard NaN / Infinity from malformed FFT frames.
         final safeRaw = raw.isFinite ? raw.clamp(0.0, 1.0) : 0.0;
-        final target = math.pow(safeRaw, _powerCurve)
-            .toDouble()
-            .clamp(_minHeight, 1.0);
-        final lerp = target > smoothed[i] ? _attackLerp : _decayLerp;
+
+        // ── Layer 3: Psychoacoustic amplitude weighting ─────────────────────
+        // Bass bins are amplified (human hearing is bass-heavy).
+        // Treble bins are slightly attenuated to prevent harsh spikes.
+        final double weighted;
+        if (i < _bassEnd) {
+          weighted = (safeRaw * 1.6).clamp(0.0, 1.0);
+        } else if (i < _lowMidEnd) {
+          weighted = (safeRaw * 1.2).clamp(0.0, 1.0);
+        } else if (i < _midEnd) {
+          weighted = safeRaw;
+        } else {
+          weighted = (safeRaw * 0.85).clamp(0.0, 1.0);
+        }
+
+        final target = weighted.clamp(_minHeight, 1.0);
+
+        // ── Layer 2: Independent per-bar envelope ───────────────────────────
+        // Each bar uses its own attack/decay — NOT a shared global lerp.
+        // This is what makes bass move heavy and treble flicker independently.
+        final lerp = target > smoothed[i] ? _attack[i] : _decay[i];
         final next = smoothed[i] + (target - smoothed[i]) * lerp;
         if ((next - smoothed[i]).abs() > _settleThresh) anyMoving = true;
         smoothed[i] = next;
       }
     } else if (isPlaying && !reducedMotion) {
-      // Idle animation: gentle sine-wave oscillation around static peaks.
-      _idlePhase = (_idlePhase + 0.035) % (2 * math.pi);
-      for (var i = 0; i < barCount; i++) {
+      // Idle: gentle sine-wave oscillation. Each bar still uses its own
+      // decay so the idle animation also feels frequency-differentiated.
+      _idlePhase = (_idlePhase + 0.03) % (6.2832); // 2π
+      for (var i = 0; i < _barCount; i++) {
         final peak   = smoothed[i].clamp(_minHeight, 1.0);
-        final target = peak * (0.45 + 0.25 * math.sin(_idlePhase + i * 0.28));
-        final next   = smoothed[i] + (target - smoothed[i]) * 0.12;
+        final target = peak * (0.4 + 0.22 * math.sin(_idlePhase + i * 0.25));
+        final next   = smoothed[i] + (target - smoothed[i]) * _decay[i];
         if ((next - smoothed[i]).abs() > _settleThresh) anyMoving = true;
         smoothed[i] = next;
       }
     }
-    // When paused: bars hold position, no animation.
+    // Paused + no FFT: bars hold position. No animation.
 
     notifyListeners();
     return anyMoving;

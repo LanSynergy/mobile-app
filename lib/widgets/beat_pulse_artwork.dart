@@ -184,10 +184,10 @@ class _BeatNotifier extends ChangeNotifier {
     final transient = math.max(0.0, bassNow - bass);
     _bassTarget = (bassNow * 0.35 + transient * 2.2).clamp(0.0, 1.0);
 
-    // Reduced power curve (was 1.6) — 0.9 preserves more dynamic range
-    // so quiet passages still show movement instead of being crushed to zero.
-    _midTarget    = math.pow(_rms(bands, bassEnd, midEnd), 1.0).toDouble();
-    _trebleTarget = math.pow(_rms(bands, midEnd, n),       0.9).toDouble();
+    // Mid and treble: no power curve — direct RMS, region-weighted.
+    // Each region has independent visual identity, not a shared transfer function.
+    _midTarget    = (_rms(bands, bassEnd, midEnd) * 1.1).clamp(0.0, 1.0);
+    _trebleTarget = (_rms(bands, midEnd, n)       * 0.9).clamp(0.0, 1.0);
   }
 
   /// Returns true if any value is still moving (ticker should keep running).
