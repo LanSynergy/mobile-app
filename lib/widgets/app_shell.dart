@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../design_tokens/tokens.dart';
+import '../features/sleep_timer/sleep_timer_screen.dart';
 import '../state/providers.dart';
 import 'bottom_nav.dart';
 import 'mini_player.dart';
@@ -98,6 +99,9 @@ class AppShell extends ConsumerWidget {
       extendBody: true,
       body: Stack(
         children: [
+          // Sleep timer watcher — invisible, fires pause when timer expires.
+          const SleepTimerWatcher(),
+
           // Tab content.
           Positioned.fill(
             child: AnimatedSwitcher(

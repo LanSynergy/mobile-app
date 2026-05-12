@@ -1,24 +1,129 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../design_tokens/tokens.dart';
+import '../../state/providers.dart';
 
-/// Mockup 13 — Sleep timer.
+// ─────────────────────────────────────────────────────────────────────────────
+// Sleep timer state — lives in providers.dart scope so it survives
+// navigation away from the sheet.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The DateTime at which the player should pause. Null = no timer active.
+final sleepTimerProvider = StateProvider<DateTime?>((ref) => null);
+
+/// Remaining duration until the timer fires. Null when no timer is active.
+/// Recomputed every second by [_SleepTimerScreenState].
+final sleepTimerRemainingProvider = StateProvider<Duration?>((ref) => null);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Screen
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Sleep timer sheet — lets the user schedule an automatic pause.
+///
+/// Presets: 5 / 10 / 15 / 30 / 45 / 60 minutes, or "End of track"
+/// (pauses when the current track finishes).
+///
+/// The timer fires in [_SleepTimerWatcher] which is mounted in the app
+/// shell so it keeps ticking even when the sheet is closed.
 class SleepTimerScreen extends ConsumerStatefulWidget {
   const SleepTimerScreen({super.key});
 
   @override
-  ConsumerState<SleepTimerScreen> createState() =>
-      _SleepTimerScreenState();
+  ConsumerState<SleepTimerScreen> createState() => _SleepTimerScreenState();
 }
 
 class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
-  int? _selectedMinutes;
+  int? _selectedMinutes; // null = nothing picked, 0 = end of track
+  Timer? _countdownTimer;
 
   static const _presets = [5, 10, 15, 30, 45, 60];
 
   @override
+  void initState() {
+    super.initState();
+    // If a timer is already active, pre-select the closest preset.
+    final existing = ref.read(sleepTimerProvider);
+    if (existing != null) {
+      final remaining = existing.difference(DateTime.now());
+      if (remaining.isNegative) {
+        // Timer already fired — clear it.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(sleepTimerProvider.notifier).state = null;
+          ref.read(sleepTimerRemainingProvider.notifier).state = null;
+        });
+      }
+    }
+    _startCountdown();
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startCountdown() {
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final target = ref.read(sleepTimerProvider);
+      if (target == null) {
+        ref.read(sleepTimerRemainingProvider.notifier).state = null;
+        return;
+      }
+      final remaining = target.difference(DateTime.now());
+      if (remaining.isNegative) {
+        ref.read(sleepTimerProvider.notifier).state = null;
+        ref.read(sleepTimerRemainingProvider.notifier).state = null;
+      } else {
+        ref.read(sleepTimerRemainingProvider.notifier).state = remaining;
+      }
+    });
+  }
+
+  void _setTimer() {
+    if (_selectedMinutes == null) return;
+    if (_selectedMinutes == 0) {
+      // End of track — set a sentinel far in the future; the watcher
+      // checks for track completion separately.
+      ref.read(sleepTimerProvider.notifier).state =
+          DateTime.now().add(const Duration(days: 1));
+      ref.read(sleepTimerRemainingProvider.notifier).state = null;
+    } else {
+      final target =
+          DateTime.now().add(Duration(minutes: _selectedMinutes!));
+      ref.read(sleepTimerProvider.notifier).state = target;
+      ref.read(sleepTimerRemainingProvider.notifier).state =
+          Duration(minutes: _selectedMinutes!);
+    }
+    Navigator.maybePop(context);
+  }
+
+  void _cancelTimer() {
+    ref.read(sleepTimerProvider.notifier).state = null;
+    ref.read(sleepTimerRemainingProvider.notifier).state = null;
+    setState(() => _selectedMinutes = null);
+  }
+
+  String _formatRemaining(Duration d) {
+    if (d.inSeconds <= 0) return '0:00';
+    final m = d.inMinutes;
+    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final activeTimer = ref.watch(sleepTimerProvider);
+    final remaining = ref.watch(sleepTimerRemainingProvider);
+    final isEndOfTrack =
+        activeTimer != null && activeTimer.difference(DateTime.now()).inHours > 12;
+    final isActive = activeTimer != null;
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -35,13 +140,58 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: AfSpacing.s8),
-              Text(
-                'Pause playback after a quiet interval.',
-                style: AfTypography.bodyMedium.copyWith(
-                  color: AfColors.textSecondary,
+
+              // Active timer status.
+              if (isActive) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AfSpacing.s16,
+                    vertical: AfSpacing.s12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AfColors.indigo800.withValues(alpha: 0.4),
+                    borderRadius: AfRadii.borderMd,
+                    border: Border.all(color: AfColors.indigo600, width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.bedtime_rounded,
+                          color: AfColors.indigo300, size: 20),
+                      const SizedBox(width: AfSpacing.s12),
+                      Expanded(
+                        child: Text(
+                          isEndOfTrack
+                              ? 'Pausing after current track'
+                              : 'Pausing in ${remaining != null ? _formatRemaining(remaining) : '…'}',
+                          style: AfTypography.bodyMedium.copyWith(
+                            color: AfColors.indigo300,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _cancelTimer,
+                        child: Text(
+                          'Cancel',
+                          style: AfTypography.bodySmall.copyWith(
+                            color: AfColors.semanticError,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: AfSpacing.s24),
+                const SizedBox(height: AfSpacing.s24),
+              ] else ...[
+                Text(
+                  'Pause playback after a set time.',
+                  style: AfTypography.bodyMedium.copyWith(
+                    color: AfColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AfSpacing.s24),
+              ],
+
+              // Preset chips.
               Wrap(
                 spacing: AfSpacing.s12,
                 runSpacing: AfSpacing.s12,
@@ -75,15 +225,13 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
                   ),
                 ],
               ),
+
               const Spacer(),
+
               ElevatedButton(
-                onPressed: _selectedMinutes == null
-                    ? null
-                    : () => Navigator.maybePop(context),
+                onPressed: _selectedMinutes == null ? null : _setTimer,
                 child: Text(
-                  _selectedMinutes == null
-                      ? 'Pick a time'
-                      : 'Set timer',
+                  _selectedMinutes == null ? 'Pick a time' : 'Set timer',
                 ),
               ),
               const SizedBox(height: AfSpacing.s24),
@@ -92,5 +240,83 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
         ),
       ),
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SleepTimerWatcher — mounts in AppShell, fires the actual pause
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Invisible widget that watches [sleepTimerProvider] and pauses the player
+/// when the timer fires. Mount this once in [AppShell] so it stays alive
+/// regardless of which screen is open.
+class SleepTimerWatcher extends ConsumerStatefulWidget {
+  const SleepTimerWatcher({super.key});
+
+  @override
+  ConsumerState<SleepTimerWatcher> createState() => _SleepTimerWatcherState();
+}
+
+class _SleepTimerWatcherState extends ConsumerState<SleepTimerWatcher> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleCheck();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleCheck() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final target = ref.read(sleepTimerProvider);
+      if (target == null) return;
+
+      final isEndOfTrack = target.difference(DateTime.now()).inHours > 12;
+
+      if (isEndOfTrack) {
+        // End-of-track mode: pause when the current track completes.
+        // We detect this by watching the playing stream — when it goes
+        // false after having been true, and position is near duration.
+        final svc = ref.read(playerServiceProvider);
+        final pos = svc.position;
+        final current = svc.currentTrack;
+        if (current != null &&
+            current.duration > Duration.zero &&
+            (current.duration - pos).inSeconds <= 2 &&
+            !svc.isPlaying) {
+          _fire();
+        }
+      } else if (DateTime.now().isAfter(target)) {
+        _fire();
+      }
+    });
+  }
+
+  void _fire() {
+    _timer?.cancel();
+    ref.read(sleepTimerProvider.notifier).state = null;
+    ref.read(sleepTimerRemainingProvider.notifier).state = null;
+    ref.read(playerServiceProvider).pause();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Re-schedule whenever the timer target changes.
+    ref.listen(sleepTimerProvider, (prev, next) {
+      if (next != null) {
+        _scheduleCheck();
+      } else {
+        _timer?.cancel();
+      }
+    });
+    return const SizedBox.shrink();
   }
 }
