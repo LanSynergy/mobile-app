@@ -253,16 +253,17 @@ class AfPlayerService extends BaseAudioHandler
     await _player.dispose();
   }
 
+  // Set to the expected next index when an auto-advance is in progress.
+  // Cleared when mpv fires playing=true for that index.
+  // Used to nudge play() without Future.delayed (which Doze throttles).
+  int? _pendingPlayNudgeIdx;
+
   // ---------------------------------------------------------------------------
   // Internal stream wiring
   // ---------------------------------------------------------------------------
 
   void _bindStreams() {
     // Sync current track when the playlist index changes.
-    // Also handles auto-advance: when mpv moves to the next track (either
-    // via gapless or manual skip), we update our state and ensure playback
-    // is running. This replaces the fragile `completed` stream approach
-    // which raced with mpv's internal state updates.
     _subs.add(_player.stream.playlist.listen((playlist) {
       final idx = playlist.index;
       if (idx < 0 || idx >= _trackQueue.length) return;
@@ -281,52 +282,52 @@ class AfPlayerService extends BaseAudioHandler
         onTrackChanged?.call(track);
         _updateMediaItem();
 
-        // Ensure playback resumes after auto-advance. mpv with Gapless.weak
-        // advances the index but may leave the player in a paused state.
-        // We give it a short window to start playing on its own, then
-        // nudge it if it hasn't.
-        Future.delayed(const Duration(milliseconds: 150), () {
-          if (_currentIndex == idx && !_player.state.playing) {
-            _player.play();
-            afLog('audio', 'auto-advance nudge play() at index=$idx');
-          }
-        });
+        // Mark that we expect mpv to start playing this index.
+        // The playing stream listener will nudge play() if it doesn't.
+        _pendingPlayNudgeIdx = idx;
       }
     }));
 
-    // Sync playback state to audio_service.
-    _subs.add(_player.stream.playing.listen((_) => _updatePlaybackState()));
+    // Sync playback state. Also handles auto-advance nudge without timers:
+    // if mpv advanced the index but didn't start playing, nudge it here.
+    // This fires synchronously in the foreground service — not throttled
+    // by Android Doze unlike Future.delayed.
+    _subs.add(_player.stream.playing.listen((playing) {
+      _updatePlaybackState();
+      if (playing) {
+        // mpv started playing — clear the nudge flag.
+        _pendingPlayNudgeIdx = null;
+      } else if (_pendingPlayNudgeIdx != null &&
+          _pendingPlayNudgeIdx == _currentIndex) {
+        // mpv advanced the index but stopped — nudge it to play.
+        _player.play();
+        afLog('audio', 'auto-advance nudge play() at index=$_currentIndex');
+        _pendingPlayNudgeIdx = null;
+      }
+    }));
+
     _subs.add(_player.stream.position.listen((_) => _updatePlaybackState()));
     _subs.add(_player.stream.buffering.listen((_) => _updatePlaybackState()));
-    _subs.add(_player.stream.completed.listen((_) => _updatePlaybackState()));
-    _subs.add(_player.stream.rate.listen((_) => _updatePlaybackState()));
 
-    // Fallback auto-advance via completed stream: handles the case where
-    // mpv signals completion but doesn't advance the playlist index
-    // (e.g. last track in queue with loop=none, or gapless disabled).
+    // Fallback: mpv signalled completion but didn't advance the index.
+    // Jump to next track directly — no delay, fires in foreground context.
     _subs.add(_player.stream.completed.listen((completed) {
+      _updatePlaybackState();
       if (!completed) return;
       final nextIdx = _currentIndex + 1;
       if (nextIdx < _trackQueue.length) {
-        // mpv should have already advanced via the playlist stream above.
-        // This is a safety net for edge cases where it hasn't.
-        Future.delayed(const Duration(milliseconds: 300), () {
-          final currentMpvIdx = _player.state.playlist.index;
-          if (currentMpvIdx == nextIdx && !_player.state.playing) {
-            _player.play();
-            afLog('audio', 'completed fallback: play() at index=$nextIdx');
-          } else if (currentMpvIdx == _currentIndex) {
-            // mpv didn't advance — force jump to next track.
-            _player.jump(nextIdx).then((_) {
-              Future.delayed(const Duration(milliseconds: 100), () {
-                _player.play();
-              });
-            });
-            afLog('audio', 'completed fallback: jump+play to index=$nextIdx');
-          }
-        });
+        final currentMpvIdx = _player.state.playlist.index;
+        if (currentMpvIdx == _currentIndex) {
+          // mpv didn't advance — force jump to next track.
+          _player.jump(nextIdx).then((_) => _player.play());
+          afLog('audio', 'completed fallback: jump+play to index=$nextIdx');
+        }
+        // If mpv already advanced (currentMpvIdx == nextIdx), the playlist
+        // stream + playing stream listeners handle it above.
       }
     }));
+
+    _subs.add(_player.stream.rate.listen((_) => _updatePlaybackState()));
 
     // Persist embedded cover art to a temp file for the OS media widget.
     _subs.add(_player.stream.coverArt.listen(_persistCover));
@@ -334,23 +335,24 @@ class AfPlayerService extends BaseAudioHandler
 
   void _updatePlaybackState() {
     final s = _player.state;
+    final isQueueEnd = s.completed && (_currentIndex >= _trackQueue.length - 1);
     playbackState.add(
       PlaybackState(
         controls: [
           MediaControl.skipToPrevious,
           s.playing ? MediaControl.pause : MediaControl.play,
-          MediaControl.stop,
           MediaControl.skipToNext,
         ],
         systemActions: const {
           MediaAction.seek,
           MediaAction.seekForward,
           MediaAction.seekBackward,
+          MediaAction.stop,
         },
-        androidCompactActionIndices: const [0, 1, 3],
+        androidCompactActionIndices: const [0, 1, 2],
         processingState: s.buffering
             ? AudioProcessingState.buffering
-            : s.completed
+            : isQueueEnd
                 ? AudioProcessingState.completed
                 : AudioProcessingState.ready,
         playing: s.playing,

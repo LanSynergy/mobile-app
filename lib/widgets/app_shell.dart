@@ -75,8 +75,6 @@ class AppShell extends ConsumerWidget {
     final miniBottom =
         AfSpacing.bottomNavHeight + bottomNav + AfSpacing.miniPlayerNavGap;
 
-    print('[AppShell] build hasMini=$hasMini currentIndex=${shell.currentIndex}');
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {

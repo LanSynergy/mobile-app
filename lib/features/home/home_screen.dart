@@ -21,14 +21,6 @@ class HomeScreen extends ConsumerWidget {
     final artistsAsync = ref.watch(allArtistsProvider);
     final genresAsync = ref.watch(allGenresProvider);
 
-    // Debug: surface any loading/error state so blank screens are diagnosable.
-    print('[HomeScreen] albums=${albumsAsync.runtimeType} '
-        'tracks=${recentTracksAsync.runtimeType} '
-        'artists=${artistsAsync.runtimeType}');
-    albumsAsync.whenOrNull(error: (e, s) => print('[HomeScreen] albums error: $e'));
-    recentTracksAsync.whenOrNull(error: (e, s) => print('[HomeScreen] tracks error: $e'));
-    artistsAsync.whenOrNull(error: (e, s) => print('[HomeScreen] artists error: $e'));
-
     return ColoredBox(
       color: AfColors.surfaceCanvas,
       child: SafeArea(
