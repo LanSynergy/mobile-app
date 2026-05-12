@@ -10,26 +10,49 @@ import '../state/providers.dart';
 import 'artwork.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BeatPulseArtwork — circular spectrum analyzer around album artwork
+// BeatPulseArtwork — circular spectral field
 //
 // Architecture
 // ────────────
-// Each of the 64 FFT bins controls its own radial spike positioned around
-// the artwork at angle (i / 64) * 2π. Spikes are independent — bin 0 is
-// bass at the bottom-left, bin 32 is treble at the top-right. The eye
-// perceives distributed spectral motion, not a single scaling object.
+// The artwork is the center anchor. Around it: a circular spectral field
+// of independent emitters, one per perceptual frequency band.
 //
-// Per-bin envelope:
-//   • Bass bins (0–7):    slow attack, very slow decay — kick drums sustain
-//   • Low-mid (8–15):     medium
-//   • Mid (16–31):        neutral
-//   • Treble (32–63):     fast attack, fast decay — hi-hats flicker
+// Signal pipeline (signal-inward, not UI-outward):
 //
-// Psychoacoustic amplitude weighting per region matches the waveform widget.
+//   Layer 1 — Raw FFT truth (64 bins, never globally smoothed)
 //
-// No uniform Transform.scale — that always reads as one object.
-// No global ring radius — that always reads as one oscillator.
+//   Layer 2 — Spectral redistribution
+//     64 FFT bins → 32 perceptual bands via logarithmic remapping.
+//     Low frequencies get more visual bands (perceptually wider).
+//     High frequencies get fewer (perceptually compressed).
+//     Each band extracts BOTH energy AND transient (delta from slow envelope).
+//
+//   Layer 3 — Independent emitters
+//     Each of the 32 bands owns:
+//       • angle (fixed, log-spaced around circle)
+//       • current spike length (independent attack/decay)
+//       • transient impulse (separate fast-decay channel)
+//       • micro-jitter (per-emitter noise for organic feel)
+//     No shared state. No global coherence.
+//
+//   Layer 4 — Spatial renderer
+//     Radial spikes with:
+//       • base length from sustained energy
+//       • tip extension from transient impulse
+//       • color interpolated by frequency position
+//       • glow pass + sharp pass per spike
+//       • micro-jitter in angle for organic asymmetry
+//
+// Why this works perceptually:
+//   • Kick drum → bass emitters spike independently, others unaffected
+//   • Hi-hat → treble emitters flicker, bass stays calm
+//   • Chord → mid emitters light up in a cluster
+//   • Silence → all emitters decay to minimum independently
+//   The eye sees localized activity, not one breathing object.
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Number of perceptual bands (emitters) around the artwork.
+const _kBandCount = 32;
 
 class BeatPulseArtwork extends ConsumerStatefulWidget {
   final String? imageUrl;
@@ -50,14 +73,14 @@ class BeatPulseArtwork extends ConsumerStatefulWidget {
 class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ticker;
-  late final _SpectrumNotifier _notifier;
+  late final _SpectralField _field;
   StreamSubscription<FftFrame>? _fftSub;
   bool _hasRecentFft = false;
 
   @override
   void initState() {
     super.initState();
-    _notifier = _SpectrumNotifier();
+    _field = _SpectralField();
     _ticker = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 16),
@@ -70,7 +93,7 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
     _fftSub?.cancel();
     final svc = ref.read(playerServiceProvider);
     _fftSub = svc.spectrumStream.listen((frame) {
-      _notifier._updateTarget(frame.bands);
+      _field.ingest(frame.bands);
       _hasRecentFft = true;
       if (!_ticker.isAnimating) _ticker.repeat();
     });
@@ -80,41 +103,47 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
   void dispose() {
     _fftSub?.cancel();
     _ticker.dispose();
-    _notifier.dispose();
+    _field.dispose();
     super.dispose();
   }
 
   void _onTick() {
     if (!mounted) return;
-    final changed = _notifier._tick();
-    if (!changed && !_hasRecentFft) _ticker.stop();
+    final moving = _field.tick();
+    if (!moving && !_hasRecentFft) _ticker.stop();
     _hasRecentFft = false;
   }
 
   @override
   Widget build(BuildContext context) {
     final spectral = ref.watch(currentSpectralProvider);
-    // Outer SizedBox is slightly larger than artwork to give spikes room.
-    final outerSize = widget.size + _SpectrumPainter.maxSpikeLength * 2;
-    return SizedBox(
-      width: outerSize,
-      height: outerSize,
-      child: AnimatedBuilder(
-        animation: _notifier,
-        builder: (context, child) => CustomPaint(
-          painter: _SpectrumPainter(
-            notifier: _notifier,
-            artworkSize: widget.size,
-            energy: spectral.energy,
-            glow: spectral.glow,
+    // Canvas is larger than artwork to give spikes room.
+    final canvasSize = widget.size + _SpectralFieldPainter.maxSpike * 2 + 16;
+    return RepaintBoundary(
+      child: SizedBox(
+        width: canvasSize,
+        height: canvasSize,
+        child: AnimatedBuilder(
+          animation: _field,
+          builder: (context, child) => CustomPaint(
+            painter: _SpectralFieldPainter(
+              field: _field,
+              artworkSize: widget.size,
+              energy: spectral.energy,
+              glow: spectral.glow,
+              shadow: spectral.shadow,
+            ),
+            child: child,
           ),
-          child: child,
-        ),
-        child: Center(
-          child: Artwork(
-            url: widget.imageUrl,
-            size: widget.size,
-            radius: widget.radius,
+          child: Center(
+            child: Hero(
+              tag: 'now-playing-artwork',
+              child: Artwork(
+                url: widget.imageUrl,
+                size: widget.size,
+                radius: widget.radius,
+              ),
+            ),
           ),
         ),
       ),
@@ -123,171 +152,253 @@ class _BeatPulseArtworkState extends ConsumerState<BeatPulseArtwork>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _SpectrumNotifier — 64 independent per-bin envelopes
+// _SpectralField — Layer 2 + 3: redistribution + independent emitters
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _SpectrumNotifier extends ChangeNotifier {
-  static const int _binCount = 64;
+class _SpectralField extends ChangeNotifier {
+  static const int _fftBins  = 64;
+  static const int _bands    = _kBandCount;
 
-  // Per-bin visual heights [0, 1] — mutated in-place each tick.
-  final Float32List bins = Float32List(_binCount);
+  // ── Per-band state ────────────────────────────────────────────────────────
+  // Sustained energy (slow envelope).
+  final Float32List _energy    = Float32List(_bands);
+  // Transient impulse (fast envelope, separate decay).
+  final Float32List _transient = Float32List(_bands);
+  // Slow envelope for transient detection (per-band baseline).
+  final Float32List _slow      = Float32List(_bands);
+  // Fast envelope for transient detection.
+  final Float32List _fast      = Float32List(_bands);
+  // Per-band micro-jitter phase (organic asymmetry).
+  final Float32List _jitter    = Float32List(_bands);
+  // Per-band jitter velocity.
+  final Float32List _jitterV   = Float32List(_bands);
 
-  // Per-bin attack/decay — pre-computed by frequency region.
-  final Float32List _attack = Float32List(_binCount);
-  final Float32List _decay  = Float32List(_binCount);
+  // ── Per-band envelope parameters ─────────────────────────────────────────
+  final Float32List _attack    = Float32List(_bands);
+  final Float32List _decay     = Float32List(_bands);
+  final Float32List _tDecay    = Float32List(_bands); // transient decay
 
-  // Raw FFT target — written by stream, read by tick.
-  Float32List? _fftTarget;
+  // ── Logarithmic bin mapping ───────────────────────────────────────────────
+  // Maps each perceptual band to a range of FFT bins.
+  // Low bands cover fewer bins (bass is spectrally dense).
+  // High bands cover more bins (treble is spectrally sparse in perception).
+  late final List<(int, int)> _binRanges; // (startBin, endBin) per band
 
-  static const double _settleThresh = 0.0008;
-  static const double _minHeight    = 0.0;
+  static const double _settleThresh = 0.0006;
 
-  // Frequency region boundaries (same as waveform widget).
-  static const int _bassEnd   = 8;
-  static const int _lowMidEnd = 16;
-  static const int _midEnd    = 32;
+  final _rng = math.Random();
 
-  _SpectrumNotifier() {
-    for (var i = 0; i < _binCount; i++) {
-      if (i < _bassEnd) {
-        _attack[i] = 0.65;
-        _decay[i]  = 0.06; // very slow — bass sustains
-      } else if (i < _lowMidEnd) {
-        _attack[i] = 0.72;
-        _decay[i]  = 0.12;
-      } else if (i < _midEnd) {
-        _attack[i] = 0.78;
-        _decay[i]  = 0.20;
-      } else {
-        _attack[i] = 0.90; // treble: instant snap
-        _decay[i]  = 0.35; // treble: fast flicker
+  _SpectralField() {
+    _buildLogMapping();
+    _buildEnvelopes();
+    // Seed jitter phases randomly so emitters start at different positions.
+    for (var i = 0; i < _bands; i++) {
+      _jitter[i] = _rng.nextDouble() * 2 * math.pi;
+      _jitterV[i] = (0.02 + _rng.nextDouble() * 0.04) *
+          (_rng.nextBool() ? 1 : -1);
+    }
+  }
+
+  /// Build logarithmic frequency-to-band mapping.
+  /// Band 0 = lowest perceptual frequency, band 31 = highest.
+  /// Uses mel-scale-inspired spacing: more bands for bass, fewer for treble.
+  void _buildLogMapping() {
+    // Map _bands perceptual bands across _fftBins using log spacing.
+    // f(i) = fftBins * (exp(i / bands * ln(fftBins+1)) - 1) / fftBins
+    final ranges = <(int, int)>[];
+    int prev = 0;
+    for (var b = 0; b < _bands; b++) {
+      final t = (b + 1) / _bands;
+      final binF = _fftBins * (math.exp(t * math.log(_fftBins + 1)) - 1) / _fftBins;
+      final end = binF.round().clamp(prev + 1, _fftBins);
+      ranges.add((prev, end));
+      prev = end;
+    }
+    _binRanges = ranges;
+  }
+
+  void _buildEnvelopes() {
+    for (var i = 0; i < _bands; i++) {
+      final t = i / (_bands - 1); // 0 = bass, 1 = treble
+      // Bass: slow attack, very slow decay (sustain).
+      // Treble: fast attack, fast decay (flicker).
+      _attack[i]  = (0.55 + t * 0.35).clamp(0.55, 0.90);
+      _decay[i]   = (0.05 + t * 0.30).clamp(0.05, 0.35);
+      _tDecay[i]  = (0.15 + t * 0.50).clamp(0.15, 0.65); // transient decays faster
+    }
+  }
+
+  /// Layer 2: ingest raw FFT, redistribute into perceptual bands.
+  void ingest(Float32List bands) {
+    for (var b = 0; b < _bands; b++) {
+      final (start, end) = _binRanges[b];
+      // RMS over the bin range for this perceptual band.
+      var sum = 0.0;
+      var count = 0;
+      for (var k = start; k < end && k < bands.length; k++) {
+        final v = bands[k];
+        if (v.isFinite) {
+          sum += v * v;
+          count++;
+        }
+      }
+      final rms = count > 0 ? math.sqrt(sum / count).clamp(0.0, 1.0) : 0.0;
+
+      // Psychoacoustic amplitude weighting.
+      // Bass amplified (perceptually louder), treble attenuated.
+      final t = b / (_bands - 1);
+      final weight = 1.8 - t * 1.0; // 1.8 at bass, 0.8 at treble
+      final weighted = (rms * weight).clamp(0.0, 1.0);
+
+      // Dual-envelope transient detector per band.
+      _fast[b] += (weighted - _fast[b]) * 0.60;
+      _slow[b] += (weighted - _slow[b]) * 0.08;
+      final impulse = math.max(0.0, _fast[b] - _slow[b]);
+
+      // Transient target: impulse amplified strongly.
+      // This is what makes individual hits punch.
+      final tTarget = (impulse * 3.5).clamp(0.0, 1.0);
+      // Only update transient upward (attack); decay handled in tick().
+      if (tTarget > _transient[b]) _transient[b] = tTarget;
+
+      // Energy target: sustained level.
+      if (weighted > _energy[b]) {
+        _energy[b] += (weighted - _energy[b]) * _attack[b];
       }
     }
   }
 
-  void _updateTarget(Float32List bands) {
-    _fftTarget = bands;
-  }
-
-  bool _tick() {
-    final bands = _fftTarget;
-    if (bands == null) return false;
-
+  /// Layer 3: advance all emitters one frame.
+  bool tick() {
     var anyMoving = false;
-    for (var i = 0; i < _binCount; i++) {
-      final raw = i < bands.length ? bands[i] : 0.0;
-      final safeRaw = raw.isFinite ? raw.clamp(0.0, 1.0) : 0.0;
 
-      // Psychoacoustic amplitude weighting — same as waveform.
-      final double weighted;
-      if (i < _bassEnd) {
-        weighted = (safeRaw * 1.8).clamp(0.0, 1.0); // bass amplified more for spikes
-      } else if (i < _lowMidEnd) {
-        weighted = (safeRaw * 1.3).clamp(0.0, 1.0);
-      } else if (i < _midEnd) {
-        weighted = safeRaw;
-      } else {
-        weighted = (safeRaw * 0.80).clamp(0.0, 1.0);
-      }
+    for (var b = 0; b < _bands; b++) {
+      // Energy decay.
+      final eNext = _energy[b] * (1.0 - _decay[b]);
+      if ((_energy[b] - eNext).abs() > _settleThresh) anyMoving = true;
+      _energy[b] = eNext;
 
-      final target = weighted.clamp(_minHeight, 1.0);
-      final lerp   = target > bins[i] ? _attack[i] : _decay[i];
-      final next   = bins[i] + (target - bins[i]) * lerp;
-      if ((next - bins[i]).abs() > _settleThresh) anyMoving = true;
-      bins[i] = next;
+      // Transient decay (faster than energy).
+      final tNext = _transient[b] * (1.0 - _tDecay[b]);
+      if ((_transient[b] - tNext).abs() > _settleThresh) anyMoving = true;
+      _transient[b] = tNext;
+
+      // Micro-jitter: each emitter oscillates slightly in angle.
+      // Creates organic asymmetry — emitters don't all point the same way.
+      _jitter[b] += _jitterV[b];
+      // Slowly drift jitter velocity for long-term variation.
+      _jitterV[b] += (_rng.nextDouble() - 0.5) * 0.002;
+      _jitterV[b] = _jitterV[b].clamp(-0.06, 0.06);
     }
 
     notifyListeners();
     return anyMoving;
   }
+
+  /// Spike length for band [b]: sustained energy + transient tip.
+  double spikeLength(int b, double maxSpike) {
+    final base = _energy[b] * maxSpike * 0.6;
+    final tip  = _transient[b] * maxSpike * 0.9;
+    return (base + tip).clamp(1.0, maxSpike);
+  }
+
+  /// Spike opacity for band [b].
+  double spikeAlpha(int b) =>
+      (0.15 + (_energy[b] + _transient[b] * 1.5) * 0.85).clamp(0.0, 1.0);
+
+  /// Angle for band [b] with micro-jitter.
+  double angle(int b) {
+    // Start at top (-π/2), distribute bands around circle.
+    final base = -math.pi / 2 + (b / _bands) * 2 * math.pi;
+    return base + _jitter[b] * 0.04; // small jitter in radians
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _SpectrumPainter — draws 64 radial spikes around the artwork
+// _SpectralFieldPainter — Layer 4: spatial renderer
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _SpectrumPainter extends CustomPainter {
-  final _SpectrumNotifier notifier;
+class _SpectralFieldPainter extends CustomPainter {
+  final _SpectralField field;
   final double artworkSize;
   final Color energy;
   final Color glow;
+  final Color shadow;
 
-  // Maximum radial extension of a spike at full energy.
-  static const double maxSpikeLength = 28.0;
-  // Minimum spike length so the ring is always visible.
-  static const double minSpikeLength = 2.0;
-  // Gap between artwork edge and spike base.
-  static const double spikeGap = 4.0;
-  // Spike width at base.
-  static const double spikeWidth = 2.5;
+  static const double maxSpike   = 36.0;
+  static const double spikeGap   = 5.0;  // gap between artwork edge and spike base
+  static const double spikeWidth = 2.2;
 
-  const _SpectrumPainter({
-    required this.notifier,
+  const _SpectralFieldPainter({
+    required this.field,
     required this.artworkSize,
     required this.energy,
     required this.glow,
-  }) : super(repaint: notifier);
+    required this.shadow,
+  }) : super(repaint: field);
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final innerRadius = artworkSize / 2 + spikeGap;
-    final bins = notifier.bins;
-    final n = bins.length;
+    final innerR = artworkSize / 2 + spikeGap;
 
-    for (var i = 0; i < n; i++) {
-      final amp = bins[i];
-      if (amp < 0.01) continue; // skip invisible spikes
+    for (var b = 0; b < _kBandCount; b++) {
+      final len   = field.spikeLength(b, maxSpike);
+      final alpha = field.spikeAlpha(b);
+      final ang   = field.angle(b);
 
-      // Angle: distribute bins evenly around the circle.
-      // Start at top (-π/2) so bass (bin 0) is at the top.
-      final angle = -math.pi / 2 + (i / n) * 2 * math.pi;
-      final cos = math.cos(angle);
-      final sin = math.sin(angle);
+      if (len < 1.5 || alpha < 0.05) continue;
 
-      final spikeLen = minSpikeLength + amp * (maxSpikeLength - minSpikeLength);
-      final outerRadius = innerRadius + spikeLen;
+      final cos = math.cos(ang);
+      final sin = math.sin(ang);
 
-      final p1 = Offset(
-        center.dx + cos * innerRadius,
-        center.dy + sin * innerRadius,
-      );
-      final p2 = Offset(
-        center.dx + cos * outerRadius,
-        center.dy + sin * outerRadius,
-      );
+      final p1 = Offset(center.dx + cos * innerR,
+                        center.dy + sin * innerR);
+      final p2 = Offset(center.dx + cos * (innerR + len),
+                        center.dy + sin * (innerR + len));
 
-      // Color: bass bins use energy color, treble bins use glow color.
-      // Interpolate between them across the spectrum.
-      final t = i / (n - 1);
+      // Color: interpolate energy→glow across frequency (bass→treble).
+      final t = b / (_kBandCount - 1);
       final spikeColor = Color.lerp(energy, glow, t)!
-          .withValues(alpha: (0.4 + amp * 0.6).clamp(0.0, 1.0));
+          .withValues(alpha: alpha);
 
-      // Glow pass (wider, blurred).
+      // Glow pass — wide, blurred, lower opacity.
       canvas.drawLine(
-        p1,
-        p2,
+        p1, p2,
         Paint()
-          ..color = spikeColor.withValues(alpha: amp * 0.35)
-          ..strokeWidth = spikeWidth * 2.5
+          ..color = spikeColor.withValues(alpha: alpha * 0.30)
+          ..strokeWidth = spikeWidth * 3.0
           ..strokeCap = StrokeCap.round
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0),
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0),
       );
 
-      // Sharp pass.
+      // Sharp pass — crisp, full opacity.
       canvas.drawLine(
-        p1,
-        p2,
+        p1, p2,
         Paint()
           ..color = spikeColor
           ..strokeWidth = spikeWidth
           ..strokeCap = StrokeCap.round,
       );
+
+      // Transient tip dot — extra bright point at spike tip for punch.
+      final tAmp = field._transient[b];
+      if (tAmp > 0.1) {
+        canvas.drawCircle(
+          p2,
+          spikeWidth * (0.8 + tAmp * 1.2),
+          Paint()
+            ..color = spikeColor.withValues(alpha: tAmp * 0.9)
+            ..style = PaintingStyle.fill,
+        );
+      }
     }
   }
 
   @override
-  bool shouldRepaint(_SpectrumPainter old) =>
-      old.energy != energy || old.glow != glow || old.artworkSize != artworkSize;
-  // Value changes handled by repaint: notifier.
+  bool shouldRepaint(_SpectralFieldPainter old) =>
+      old.energy != energy ||
+      old.glow   != glow   ||
+      old.shadow != shadow ||
+      old.artworkSize != artworkSize;
 }
