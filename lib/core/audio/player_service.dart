@@ -91,21 +91,18 @@ class AfPlayerService extends BaseAudioHandler
   /// Configure the spectrum pipeline for visualizer use.
   /// Called once after the player is ready.
   ///
-  /// Uses the engine's native asymmetric EMA (attack 0.5, release 0.1)
-  /// which tracks each band independently — a band that just got a
-  /// transient spike shows it while its neighbors stay low. This is
-  /// what gives per-band differentiation. Setting alpha=1 (raw pass-
-  /// through) defeats this because the band aggregation uses *mean*
-  /// of all bins in each log-spaced bucket — wide treble bands average
-  /// out to similar values, making all bars move together.
+  /// Uses the documented defaults from the official mpv_audio_kit
+  /// example — the engine's native EMA (attack 0.5, release 0.1)
+  /// produces the "bouncy visualizer feel" when painted directly.
+  /// The client adds only a display-layer spring for extra recoil.
   ///
   ///   fftSize: 2048     — sub-50 Hz resolution at 48 kHz, <43 ms block
   ///   bandCount: 64     — matches renderer 1:1, no resampling
   ///   bandLowHz: 20     — full audible range (pipeline handles Nyquist)
   ///   bandHighHz: 20000
   ///   window: hann      — universal music-visualizer default
-  ///   attackSmoothing 0.5  — preserves per-band transient detail
-  ///   releaseSmoothing 0.1 — natural decay, bands fall independently
+  ///   attackSmoothing 0.5  — documented default; transients pop
+  ///   releaseSmoothing 0.1 — documented default; natural decay
   ///   minDb -70 / maxDb -10 — documented visualizer preset
   ///   emitInterval 16ms — 60 fps motion
   Future<void> configureSpectrum() async {

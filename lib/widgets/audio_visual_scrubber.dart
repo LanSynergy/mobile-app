@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -80,7 +79,7 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
           // Drop FFT data when obscured or backgrounded.
           if (!_shouldRender) return;
           _silenceTimer?.cancel();
-          _fftNotifier.ingest(frame.bins, frame.sampleRate);
+          _fftNotifier.ingest(frame.bands);
           if (!_ticker.isAnimating) _ticker.repeat();
           _silenceTimer = Timer(const Duration(milliseconds: 150), () {
             if (mounted && _shouldRender) {
@@ -235,110 +234,65 @@ class _BlockNotifier extends ChangeNotifier {
   final Float32List smoothed = Float32List(bins);
   final Float32List velocity = Float32List(bins);
 
-  double _rawEnergy = 0.0, totalEnergy = 0.0;
+  double totalEnergy = 0.0;
 
-  // Cached band edge mapping — recomputed when binCount changes.
-  Int32List? _bandStart;
-  Int32List? _bandEnd;
-  int _lastBinCount = 0;
+  /// Accepts `frame.bands` directly from the engine. The pipeline
+  /// already delivers per-band values that are:
+  ///   - log-spaced (20 Hz..20 kHz geometric bands)
+  ///   - dB-clipped and normalised to [0, 1]
+  ///   - asymmetrically EMA-smoothed (attack 0.5, release 0.1)
+  ///
+  /// Per the official mpv_audio_kit example: "No AnimationController
+  /// needed — painting the values directly produces the bouncy
+  /// visualizer feel." We add only a display-layer spring for extra
+  /// recoil on decay, but do NOT re-process the signal.
+  void ingest(Float32List bands) {
+    if (bands.isEmpty) return;
+    double energy = 0.0;
 
-  /// Accepts raw FFT magnitude bins (linear frequency axis, normalised
-  /// to [0, 1] by the engine's dB clip). We do our own log-frequency
-  /// max-pooling here because the engine's band aggregation uses *mean*
-  /// which smears wide treble bands into the same value. Max-pooling
-  /// picks the loudest bin in each band's range — that's what gives
-  /// per-band independence and makes each bar dance on its own.
-  void ingest(Float32List rawBins, int sampleRate) {
-    if (rawBins.isEmpty) return;
-    final int binCount = rawBins.length;
-
-    // Recompute log-spaced band edges when bin count changes.
-    if (binCount != _lastBinCount) {
-      _computeBandMapping(binCount);
-      _lastBinCount = binCount;
+    final int n = bands.length < bins ? bands.length : bins;
+    for (var i = 0; i < n; i++) {
+      final v = bands[i].clamp(0.0, 1.0);
+      target[i] = v;
+      energy += v;
     }
-
-    double sum = 0.0;
-    final bandStart = _bandStart!;
-    final bandEnd = _bandEnd!;
-
-    for (var i = 0; i < bins; i++) {
-      final int s = bandStart[i];
-      final int e = bandEnd[i];
-
-      // Max pooling — pick the peak bin in this band's range.
-      double peak = 0.0;
-      for (var j = s; j < e; j++) {
-        final v = rawBins[j];
-        if (v > peak) peak = v;
-      }
-
-      // Mild treble lift so the right half stays visible on bass-heavy
-      // material. 1.0x at bass, 1.8x at treble.
-      final boost = 1.0 + (i / bins) * 0.8;
-      target[i] = (peak * boost).clamp(0.0, 1.0);
-      sum += target[i];
+    for (var i = n; i < bins; i++) {
+      target[i] = 0.0;
     }
-    _rawEnergy = sum / bins;
-  }
-
-  /// Log-spaced band edges from 20 Hz to Nyquist, mapped onto the
-  /// linear bin array. Geometric ratio per band.
-  void _computeBandMapping(int binCount) {
-    _bandStart = Int32List(bins);
-    _bandEnd = Int32List(bins);
-
-    // The raw bins cover 0..Nyquist linearly. Bin i corresponds to
-    // frequency i * (sampleRate / fftSize). Since we only have binCount
-    // (= fftSize/2) bins, bin indices map directly to frequency slots.
-    // We map 20 Hz..Nyquist onto these bins using log spacing.
-    const double lowBin = 1.0; // skip DC (bin 0)
-    final double highBin = binCount.toDouble();
-    final double ratio = math.pow(highBin / lowBin, 1.0 / bins).toDouble();
-
-    for (var b = 0; b < bins; b++) {
-      var s = (lowBin * math.pow(ratio, b)).floor();
-      var e = (lowBin * math.pow(ratio, b + 1)).ceil();
-      if (s < 1) s = 1;
-      if (s >= binCount) s = binCount - 1;
-      if (e <= s) e = s + 1;
-      if (e > binCount) e = binCount;
-      _bandStart![b] = s;
-      _bandEnd![b] = e;
-    }
+    totalEnergy = energy / bins;
   }
 
   void clearTarget() {
     for (var i = 0; i < bins; i++) {
       target[i] = 0.0;
     }
-    _rawEnergy = 0.0;
+    totalEnergy = 0.0;
   }
 
-  /// Motion model — slower attack to stop blinking, spring decay on fall.
+  /// Display-layer spring — adds visual recoil on decay without
+  /// altering the engine's calibrated amplitude.
   ///
-  /// - Rising target: lerp 0.35 — at 60 fps that's ~3–4 frames (50–65 ms)
-  ///   to reach target. Fast enough to feel tactile on kicks, slow
-  ///   enough that bar-height noise doesn't flicker.
-  /// - Falling target: damped spring with floor bounce (stiffness 0.12,
-  ///   damping 0.82, restitution 0.35). Bars coast down with a tiny
-  ///   recoil, settling in 2–3 cycles.
+  /// - Rising: lerp 0.5 — matches the engine's attack coefficient so
+  ///   the display tracks the signal without adding lag.
+  /// - Falling: damped spring with floor bounce. Bars coast down with
+  ///   a tiny recoil, settling in 2–3 cycles.
   bool tick() {
-    totalEnergy += (_rawEnergy - totalEnergy) * 0.1;
     var moving = totalEnergy > 0.001;
 
     for (var i = 0; i < bins; i++) {
       final diff = target[i] - smoothed[i];
       if (diff > 0) {
-        smoothed[i] += diff * 0.35;
+        // Rise: track the engine's smoothed output directly.
+        smoothed[i] += diff * 0.5;
         velocity[i] = 0.0;
       } else {
+        // Fall: spring decay with floor bounce.
         velocity[i] += diff * 0.12;
         velocity[i] *= 0.82;
         smoothed[i] += velocity[i];
         if (smoothed[i] < 0.0) {
           smoothed[i] = 0.0;
-          velocity[i] = -velocity[i] * 0.35;
+          velocity[i] = -velocity[i] * 0.3;
         }
       }
       if (smoothed[i] > 0.001 || velocity[i].abs() > 0.001) moving = true;
