@@ -36,7 +36,8 @@ Treat Jellyfin as a **file source + library state store**, nothing else.
 - Queue management (order, shuffle, repeat, reorder).
 - UI rendering for every screen.
 - LRC parsing + synced line highlighting.
-- Real-time FFT spectrum for the visualizer (`Player.stream.spectrum`).
+- Real-time FFT spectrum + client-side DSP for the visualizer.
+- FFT-driven artwork pulse (sub-bass transient detector).
 - Spectral color extraction from artwork (`palette_generator_master`).
 - Lock-screen / notification media-session integration (`audio_service`).
 - Cover-art file cache (`cached_network_image`).
@@ -103,19 +104,19 @@ player.stream.playing     // Stream<bool>
 player.stream.shuffle     // Stream<bool>
 player.stream.loop        // Stream<Loop>  (Loop.off / Loop.file / Loop.playlist)
 player.stream.rate        // Stream<double>
-player.stream.spectrum    // Stream<FftFrame> — 48 bands, post-DSP, ~60 fps
+player.stream.spectrum    // Stream<FftFrame> — 64 bands, post-DSP, ~60 fps
 player.stream.coverArt    // Stream<CoverArt?> — embedded art bytes
 player.stream.playlist    // Stream<Playlist>
 player.stream.completed   // Stream<bool>
 player.stream.buffering   // Stream<bool>
 
-// Spectrum configuration — player owns all DSP
+// Spectrum configuration — player provides smoothed perceptual bands
 await player.setSpectrum(SpectrumSettings(
-  bandCount: 48,       // matches renderer bar count 1:1
-  minDb: -40.0,        // signals below -40 dBFS are invisible
-  maxDb: -12.0,        // loud peaks approach full height
+  bandCount: 64,
+  minDb: -30.0,
+  maxDb: -12.0,
   attackSmoothing: 0.72,
-  releaseSmoothing: 0.16,
+  releaseSmoothing: 0.08,
   emitInterval: Duration(milliseconds: 16), // ~60 fps
 ));
 
@@ -163,12 +164,12 @@ lib/
 │  └─ providers.dart        ← All Riverpod providers in one file (intentional)
 ├─ widgets/                 ← Shared visual atoms
 │  ├─ mini_player.dart      ← 56 dp floating mini-player
-│  ├─ audio_motion_visualizer.dart ← 48-bar spectrum visualizer
-│  │                          _AmaNotifier: neighbor blend only, no client-side DSP.
-│  │                          Stream cadence IS the animation loop — no ticker.
-│  ├─ waveform.dart         ← Minimal pill progress scrubber (Waveform)
-│  │                          3dp track, accent fill, thumb on drag only.
-│  │                          No FFT, no ticker.
+│  ├─ audio_visual_scrubber.dart ← Combined FFT visualizer + progress scrubber.
+│  │                          _BlockNotifier: log+treble compression, AGC, asymmetric lerp.
+│  │                          _ScrubNotifier: drag state.
+│  │                          Two Stack layers: _CombinedBarPainter + _ScrubOverlayPainter.
+│  │                          Lifecycle-aware (AppLifecycleListener + route obscure detection).
+│  │                          Self-stopping ticker, 150ms silence timer.
 │  └─ …
 └─ utils/
    ├─ log.dart              ← afLog() wrapper around dart:developer.log
@@ -217,10 +218,10 @@ android/app/src/main/kotlin/dev/aetherfin/aetherfin/
 ### 4.4 Now Playing screen layout (order matters)
 ```
 TopBar (album context + overflow menu)
-Artwork (240dp, spectral glow BoxShadow)
+Artwork (240dp, spectral glow BoxShadow, FFT-driven scale pulse)
 Metadata (title + artist + favorite + quality chip)
-AudioMotionVisualizer (48-bar spectrum, 96dp tall)
-Progress scrubber (3dp pill + time labels)
+AudioVisualScrubber (120dp — FFT bars + scrubber overlay merged)
+Time labels (position / remaining)
 Transport controls (shuffle, prev, play/pause, next, repeat)
 Utility row (sleep, lyrics, speed, output, save, queue)
 ```
@@ -293,48 +294,89 @@ start with `/onboarding/`.
 - Nudge is bounded to `_maxNudgeRetries = 3` to prevent infinite play loops.
 - `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission declared in manifest. Battery exemption dialog shown on first HomeScreen visit via `BatteryOpt.requestIgnore()` → `BatteryOptPlugin` (`aetherfin.battery_opt` MethodChannel).
 
-## 9. Visualizer architecture
+## 9. Visualizer + scrubber architecture
+
+The visualizer and progress scrubber are merged into a single widget
+(`AudioVisualScrubber` at `lib/widgets/audio_visual_scrubber.dart`) with
+two painter layers in a `Stack`.
+
+### 9.1 Signal pipeline (`_BlockNotifier`)
 
 ```
-Player.stream.spectrum (48 bands, 60 fps, pre-smoothed by mpv)
+Player.stream.spectrum (64 bands, 60 fps, pre-smoothed)
     │
-    ▼  _AmaNotifier.ingest() — neighbor blend only
-out[i] = src[i]*0.84 + src[i-1]*0.08 + src[i+1]*0.08
+    ▼  ingest() — per-visual-bar chunk averaging
+chunkSize = floor(src.length / bins)
+for each bin i:
+  chunkSum = Σ src[j].abs() × (1 + (i/bins) × 3.0)    ← treble boost
+  target[i] = log(1 + chunkSum / chunkSize)           ← log compression
     │
-    ▼  notifyListeners() — stream cadence IS the animation loop, no ticker
-_AmaPainter (CustomPainter, repaint: notifier)
+    ▼  AGC normalization
+_globalPeak = max(frameMax, _globalPeak × 0.98)       ← instant attack, slow decay
+target[i] = (target[i] / safePeak).clamp(0, 1)
     │
-    ▼  48 uniform bars, bottom-anchored, growing upward
-    max fill = 55% of zone height
-    horizontal frequency gradient (single shader, pre-computed once per paint):
-      bass (left, 70% opacity) → mid (100%) → treble (right, 85%)
-    each bar's color = its frequency position in the gradient
+    ▼  tick() — asymmetric per-bar lerp every 16ms
+smoothed[i] += (target[i] - smoothed[i]) × (diff > 0 ? 0.2 : 0.08)
+totalEnergy += (_rawEnergy - totalEnergy) × 0.1       ← EMA for radial glow
+returns true if any bar or totalEnergy > 0.001        ← self-stopping ticker
 ```
 
-**Key rules:**
-- The player pipeline owns all DSP. Do not add client-side EMA, decay, or smoothing.
-- `_AmaNotifier` has no ticker, no `AnimationController`. The 60 fps stream cadence drives repaints directly.
-- The gradient shader is created **once per `paint()` call** against the full zone rect and reused for all 48 bars. Creating a shader per bar (48×/frame) causes raster-thread GC lag.
-- `bandCount: 48` in `SpectrumSettings` must match `_AmaNotifier._n = 48`. Do not change one without the other.
-- dB window: `minDb: -40.0, maxDb: -12.0`. Signals below -40 dBFS are invisible. Raising `minDb` further reduces sensitivity; lowering it increases it.
+**Silence handling:** a 150ms `_silenceTimer` fires `clearTarget()` so bars
+decay to zero during pauses and buffering.
 
-### Progress scrubber (`waveform.dart`)
+**Lifecycle awareness:**
+- `AppLifecycleListener` stops the ticker on `onPause`, resumes on `onResume`.
+- `ModalRoute.secondaryAnimation` detects when another screen covers Now
+  Playing; `_shouldRender` guards drop FFT frames entirely when obscured.
+
+### 9.2 Rendering (two painter layers)
+
+Layer 1 — `_CombinedBarPainter` (repaint: `Listenable.merge([fft, scrub])`):
+- 64 solid rounded bars, bottom-anchored, growing upward (80% max of half-height)
+- Reflection: 40% height, 35% opacity, grows downward
+- Per-bar color: `playedColor` if bar center ≤ playhead, else `unplayedColor`
+- Radial glow background driven by `totalEnergy`
+
+Layer 2 — `_ScrubOverlayPainter` (repaint: `_ScrubNotifier` only):
+- 3dp rounded track (unplayed: textTertiary 20% opacity)
+- Gradient tail: transparent → `playedColor` across the filled portion
+- Playhead flare: ambient glow circle + horizontal "star" streak
+- White-hot 4dp core during drag
+
+### 9.3 Key invariants
+
+- The player pipeline provides smoothed bands; the visualizer applies its own
+  client-side DSP (log, treble boost, AGC, asymmetric lerp) tuned for musical
+  readability. Changing `SpectrumSettings` is not a substitute for tuning the
+  visualizer's own parameters.
+- `bandCount: 64` in `SpectrumSettings` must match `_BlockNotifier.bins = 64`.
+- No shaders are allocated per bar. The gradient tail shader in the scrub
+  overlay is created once per `paint()` call.
+- Both `shouldRepaint` methods only check color props — the repaint flow is
+  driven by the `Listenable` passed to `super(repaint:)`.
+
+## 10. Artwork pulse architecture
+
+The artwork bumps on kick drums via a transient detector on FFT bin 0.
 
 ```
-_ScrubNotifier (ChangeNotifier) — drag state + display progress
+_bassAverage += (rawBass - _bassAverage) × 0.05       ← running baseline
+if (rawBass > _bassAverage × 1.5 && rawBass > 0.02 && _cooldown == 0):
+  _scale.value = 1.06                                 ← +6% bump
+  _cooldown    = 15                                   ← ~250ms lockout
+  ticker.repeat()
     │
-    ▼  notifyListeners() on drag or progress update
-_ScrubPainter (CustomPainter, repaint: notifier)
+    ▼  spring decay each frame
+_scale.value = 1.0 + (_scale.value - 1.0) × 0.85
+ticker stops when scale < 1.001
     │
-    ▼  3dp rounded track (unplayed: textTertiary 20% opacity)
-    accent fill grows left-to-right with progress
-    thumb (6dp circle) appears only during drag
+    ▼  ValueListenableBuilder → Transform.scale
 ```
 
-No FFT, no ticker. Repaints only on drag or external progress updates.
-The `peaks` parameter is kept for API compatibility but not rendered.
+Lives in `_ReactiveArtworkState` inside `now_playing_screen.dart`.
+`ValueNotifier<double>` + `Transform.scale` — no `setState`, no parent rebuild.
 
-## 10. Build, run, lint, test
+## 11. Build, run, lint, test
 
 ```bash
 flutter pub get
@@ -346,7 +388,7 @@ flutter build apk --release --split-per-abi
 adb logcat -c && adb logcat -s flutter
 ```
 
-## 11. Debug trace conventions
+## 12. Debug trace conventions
 
 Use `afLog('<category>', '<message>')` from `lib/utils/log.dart`.
 PII (usernames, server URLs) must be redacted in release builds.
@@ -359,7 +401,7 @@ PII (usernames, server URLs) must be redacted in release builds.
 | `aetherfin:data` | Provider data provenance (`source=live\|demo`) |
 | `aetherfin:audio` | Player state transitions |
 
-## 12. Data layer conventions
+## 13. Data layer conventions
 
 - `JellyfinClient` is the **only** file that speaks HTTP.
 - All endpoints assert `userId` via `_assertUser()`.
@@ -367,14 +409,14 @@ PII (usernames, server URLs) must be redacted in release builds.
 - Image URLs embed the `tag` query param for HTTP cacheability.
 - Search queries are normalized (trim + lowercase) before hitting the provider. Minimum 2 characters.
 
-## 13. PR & CI rules
+## 14. PR & CI rules
 
 - Run `flutter analyze --no-fatal-infos` and `flutter test` before pushing.
 - Do **not** force-push to `main`.
 - Do **not** disable plugins or change the auth header shape to "fix" a 500.
 - CI is manual trigger only (`workflow_dispatch`). Gradle daemon is stopped before the build step to prevent file-watcher collisions.
 
-## 14. Things AI agents have gotten wrong before
+## 15. Things AI agents have gotten wrong before
 
 1. **"Just send Token="" — it's cleaner."** No. Omit the field entirely.
 2. **"Static DeviceId is fine."** No. Per-install UUID v4 in secure_storage.
@@ -393,21 +435,24 @@ PII (usernames, server URLs) must be redacted in release builds.
 15. **"Use `Future.delayed` for auto-advance."** No. Doze throttles it when the screen is off. Use stream callbacks.
 16. **"Use `.then()` chaining for jump+play."** No. Doze can defer `.then()` callbacks. Use `async/await` in a named method (`_jumpAndPlay`).
 17. **"Set `androidStopForegroundOnPause: false`."** No. Samsung One UI hides the notification when the service is demoted. Keep it `true`.
-18. **"Add client-side EMA/smoothing to the visualizer."** No. The player pipeline already owns smoothing. Adding more creates syrupy, detached motion. Trust `SpectrumSettings`.
-19. **"Create a shader per bar inside `paint()`."** No. That's 48 allocations/frame at 60fps — causes raster-thread GC lag. Pre-compute one shader per `paint()` call and reuse it.
-20. **"Use `beat_pulse_artwork.dart` or `_WaveformNotifier`."** These no longer exist. The visualizer is `audio_motion_visualizer.dart` (`_AmaNotifier`). The scrubber is `waveform.dart` (`_ScrubNotifier`).
-21. **"The battery channel is `dev.aetherfin.aetherfin/battery`."** No. It's `aetherfin.battery_opt` (matches `BatteryOptPlugin.CHANNEL_NAME`).
+18. **"Use `AudioMotionVisualizer` or `Waveform` widgets."** These were deleted. The combined widget is `AudioVisualScrubber`.
+19. **"The visualizer shouldn't apply any client-side DSP — trust the player."** That was the old model. The current visualizer deliberately applies log compression, treble boost, AGC, and asymmetric lerp on top of the player's smoothing. Tuned for musical readability.
+20. **"Create a shader per bar inside `paint()`."** No. That's 64 allocations/frame at 60fps — causes raster-thread GC lag. Pre-compute shaders once per `paint()` call.
+21. **"Subscribe to `spectrumStream` in `didChangeDependencies`."** No. It fires on every ancestor dependency change and causes stream churn. Subscribe once in `initState` via `addPostFrameCallback`.
+22. **"The battery channel is `dev.aetherfin.aetherfin/battery`."** No. It's `aetherfin.battery_opt` (matches `BatteryOptPlugin.CHANNEL_NAME`).
+23. **"Drive the artwork pulse by continuously scaling with bin 0 amplitude."** No. That flickers on every frame. Use a transient detector with running baseline + cooldown + spring decay.
 
-## 15. Glossary
+## 16. Glossary
 
 - **`RunTimeTicks`**: Jellyfin duration unit. 1 tick = 100 ns. Divide by 10 for microseconds.
 - **`PrimaryImageTag`**: Short hash for HTTP cache-busting on image URLs.
 - **`Loop.off / Loop.file / Loop.playlist`**: mpv_audio_kit loop enum.
-- **`FftFrame`**: mpv_audio_kit spectrum frame — `bands: Float32List` (48 values in [0,1], post-DSP).
+- **`FftFrame`**: mpv_audio_kit spectrum frame — `bands: Float32List` (64 values in [0,1], post-DSP).
 - **`AfPlayerService`**: The app's audio handler. Extends `BaseAudioHandler` (audio_service) and wraps `Player` (mpv_audio_kit).
 - **`_pendingPlayNudgeIdx`**: State machine field in `AfPlayerService`. Set when playlist index changes; cleared when `playing=true` fires. Prevents `Future.delayed` for auto-advance.
-- **`_AmaNotifier`**: `ChangeNotifier` inside `AudioMotionVisualizer`. Applies neighbor blend to incoming FFT bands. Drives `_AmaPainter` repaints via `repaint:` Listenable. No ticker.
-- **`_ScrubNotifier`**: `ChangeNotifier` inside `Waveform`. Owns drag state and display progress. Drives `_ScrubPainter` repaints. No ticker, no FFT.
+- **`AudioVisualScrubber`**: Combined FFT visualizer + progress scrubber widget. Owns `_BlockNotifier` (signal DSP) and `_ScrubNotifier` (drag state). Two `RepaintBoundary` layers.
+- **`_BlockNotifier`**: `ChangeNotifier` inside `AudioVisualScrubber`. Applies log+treble compression, AGC, asymmetric lerp to FFT data. Self-stopping ticker. 150ms silence timer.
+- **`_ScrubNotifier`**: `ChangeNotifier` inside `AudioVisualScrubber`. Owns drag state and display progress.
 - **`Spectral`**: Runtime color triple (`energy`, `shadow`, `glow`) extracted from current artwork. Lives in `currentSpectralProvider`. Never hardcode these values.
 - **`BatteryOptPlugin`**: Kotlin `ActivityAware` plugin on channel `aetherfin.battery_opt`. Fires `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` on first HomeScreen visit.
 - **Reactive islands**: Architecture pattern in `NowPlayingScreen` where high-frequency streams (position, FFT) are isolated to leaf `ConsumerWidget`s so the top-level scaffold doesn't rebuild on every tick.

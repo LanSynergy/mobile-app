@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -81,7 +82,7 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
           _silenceTimer?.cancel();
           _fftNotifier.ingest(frame.bands);
           if (!_ticker.isAnimating) _ticker.repeat();
-          _silenceTimer = Timer(const Duration(milliseconds: 150), () {
+          _silenceTimer = Timer(const Duration(milliseconds: 300), () {
             if (mounted && _shouldRender) {
               _fftNotifier.clearTarget();
               if (!_ticker.isAnimating) _ticker.repeat();
@@ -250,7 +251,10 @@ class _BlockNotifier extends ChangeNotifier {
 
     final int n = bands.length < bins ? bands.length : bins;
     for (var i = 0; i < n; i++) {
-      final v = bands[i].clamp(0.0, 1.0);
+      double raw = bands[i].clamp(0.0, 1.0);
+      
+      final v = math.pow(raw, 500).toDouble();
+      
       target[i] = v;
       energy += v;
     }

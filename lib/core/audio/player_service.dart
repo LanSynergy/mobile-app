@@ -121,8 +121,8 @@ class AfPlayerService extends BaseAudioHandler
         bandHighHz: 20000.0,
         attackSmoothing: 0.5,
         releaseSmoothing: 0.1,
-        minDb: -70.0,
-        maxDb: -10.0,
+        minDb: -80.0, // Widen dynamic range
+        maxDb: 0.0,   // Raise ceiling to prevent clipping
         emitInterval: Duration(milliseconds: 16),
       ));
     } catch (_) {
