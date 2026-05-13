@@ -8,11 +8,22 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' show AudioParams, Cache, Forma
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  bool _exclusiveMode = false;
+  bool _audioStreamSilence = false;
+  int _audioBufferMs = 200; // default
+
+  void _setAudioBuffer(int ms) => setState(() => _audioBufferMs = ms);
+
+  @override
+  Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
     final showLabels = ref.watch(showNavLabelsProvider);
     return Scaffold(
@@ -126,8 +137,9 @@ class SettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: AfSpacing.s8),
             SwitchListTile.adaptive(
-              value: false, // Read from player state if needed
+              value: _exclusiveMode,
               onChanged: (v) {
+                setState(() => _exclusiveMode = v);
                 unawaited(ref.read(playerServiceProvider).setAudioExclusive(v));
               },
               title: const Text('Exclusive mode'),
@@ -177,8 +189,9 @@ class SettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: AfSpacing.s8),
             SwitchListTile.adaptive(
-              value: false,
+              value: _audioStreamSilence,
               onChanged: (v) {
+                setState(() => _audioStreamSilence = v);
                 unawaited(
                     ref.read(playerServiceProvider).setAudioStreamSilence(v));
               },
@@ -338,6 +351,8 @@ void _showCacheDurationDialog(BuildContext context, WidgetRef ref) {
   ];
 
   final currentSecs = ref.read(playerServiceProvider).cacheSettings.secs.inSeconds;
+  // If the player hasn't been configured yet, default highlights "30 seconds".
+  final effectiveSecs = currentSecs > 0 ? currentSecs : 30;
 
   showDialog<void>(
     context: context,
@@ -369,7 +384,7 @@ void _showCacheDurationDialog(BuildContext context, WidgetRef ref) {
             for (final (secs, label) in options)
               _OptionTile(
                 label: label,
-                isActive: secs == currentSecs,
+                isActive: secs == effectiveSecs,
                 onTap: () {
                   final svc = ref.read(playerServiceProvider);
                   unawaited(svc.setCache(
@@ -396,6 +411,10 @@ void _showAudioBufferDialog(BuildContext context, WidgetRef ref) {
     (500, '500 ms (stable)'),
     (1000, '1000 ms (very stable)'),
   ];
+
+  // Read from the enclosing state.
+  final state = context.findAncestorStateOfType<_SettingsScreenState>();
+  final currentMs = state?._audioBufferMs ?? 200;
 
   showDialog<void>(
     context: context,
@@ -427,8 +446,9 @@ void _showAudioBufferDialog(BuildContext context, WidgetRef ref) {
             for (final (ms, label) in options)
               _OptionTile(
                 label: label,
-                isActive: false, // Audio buffer state not easily readable
+                isActive: ms == currentMs,
                 onTap: () {
+                  state?._setAudioBuffer(ms);
                   unawaited(ref.read(playerServiceProvider).setAudioBuffer(
                         Duration(milliseconds: ms),
                       ));
