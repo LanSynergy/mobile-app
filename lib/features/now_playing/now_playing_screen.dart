@@ -12,7 +12,8 @@ import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/time_format.dart';
-import '../../widgets/beat_pulse_artwork.dart';
+import '../../widgets/artwork.dart';
+import '../../widgets/audio_motion_visualizer.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/quality_chip.dart';
 import '../../widgets/waveform.dart';
@@ -21,13 +22,13 @@ import '../../widgets/waveform.dart';
 // NowPlayingScreen — Reactive Islands architecture
 //
 // Rebuild topology:
-//   NowPlayingScreen   watches: currentTrackProvider (changes on skip only)
+//   NowPlayingScreen    watches: currentTrackProvider (changes on skip only)
 //   _ReactiveBackground watches: currentSpectralProvider (color extraction)
-//   _ReactiveArtwork    watches: currentSpectralProvider
+//   _ReactiveArtwork    watches: currentSpectralProvider (artwork + visualizer)
 //   _ReactiveProgress   watches: positionStreamProvider (high-frequency)
 //   _ReactiveTransport  watches: playingStreamProvider, shuffle, loop
 //
-// High-frequency streams (position, playing) are isolated to leaf widgets
+// High-frequency streams (position, FFT) are isolated to leaf widgets
 // so they never trigger rebuilds of the artwork, gradient, or metadata.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -64,7 +65,9 @@ class NowPlayingScreen extends ConsumerWidget {
                         delegate: SliverChildListDelegate([
                           const SizedBox(height: AfSpacing.s24),
                           _ReactiveArtwork(track: track),
-                          const SizedBox(height: AfSpacing.s24),
+                          const SizedBox(height: AfSpacing.s16),
+                          _ReactiveVisualizer(),
+                          const SizedBox(height: AfSpacing.s16),
                           _MetadataRow(track: track),
                           const SizedBox(height: AfSpacing.s24),
                           _ReactiveProgress(track: track),
@@ -116,23 +119,61 @@ class _ReactiveBackground extends ConsumerWidget {
   }
 }
 
-/// Watches spectral for artwork glow only.
-/// The circular spectrum analyzer (BeatPulseArtwork) provides its own
-/// visual energy — no additional box shadows needed.
+/// Plain artwork with spectral glow shadow.
+/// The AudioMotionVisualizer below it provides all the live visual energy.
 class _ReactiveArtwork extends ConsumerWidget {
   final AfTrack track;
   const _ReactiveArtwork({required this.track});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return RepaintBoundary(
-      child: Hero(
-        tag: 'now-playing-artwork',
-        child: BeatPulseArtwork(
-          imageUrl: track.imageUrl,
-          size: 280,
-          radius: AfRadii.borderLg,
+      child: Center(
+        child: Hero(
+          tag: 'now-playing-artwork',
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: AfRadii.borderLg,
+              boxShadow: [
+                BoxShadow(
+                  color: spectral.glow.withValues(alpha: 0.30),
+                  blurRadius: 40,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            child: Artwork(
+              url: track.imageUrl,
+              size: 240,
+              radius: AfRadii.borderLg,
+            ),
+          ),
         ),
+      ),
+    );
+  }
+}
+
+/// AudioMotion-style spectrum visualizer — full width, sits between
+/// artwork and metadata. Isolated in its own island so FFT repaints
+/// never propagate up the widget tree.
+class _ReactiveVisualizer extends ConsumerWidget {
+  const _ReactiveVisualizer();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Only needs to rebuild when spectral colors change (on track skip).
+    // FFT repaints are driven by the Listenable inside the widget itself.
+    ref.watch(currentSpectralProvider);
+    return const RepaintBoundary(
+      child: AudioMotionVisualizer(
+        height: 100,
+        reflexRatio: 0.40,
+        reflexAlpha: 0.30,
+        barSpace: 0.20,
+        showPeaks: true,
+        roundBars: true,
       ),
     );
   }
@@ -240,15 +281,13 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
     return RepaintBoundary(
       child: Column(
         children: [
-          FftWaveform(
+          Waveform(
             peaks: peaks,
             progress: displayProgress,
             isPlaying: isPlaying,
             playedColor: spectral.energy,
-            height: 80,
-            // onScrub: update local preview only — no seek.
+            height: 48,
             onScrub: (p) => setState(() => _scrubPreview = p),
-            // onScrubEnd: single committed seek.
             onScrubEnd: (p) {
               setState(() => _scrubPreview = null);
               final newPos = Duration(
