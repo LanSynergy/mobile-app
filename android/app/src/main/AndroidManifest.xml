@@ -14,6 +14,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!-- Exempt from Doze / battery optimization so auto-advance works
+         when the screen is off. The user is prompted on first HomeScreen
+         visit via BatteryOptPlugin / Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+
     <!-- Android 16+ "Live Updates" (Promoted Ongoing Notifications). Required
          for the playback live-update chip / lockscreen tile published by
          `dev.aetherfin.aetherfin.live_update.LiveUpdatePlugin`. Older

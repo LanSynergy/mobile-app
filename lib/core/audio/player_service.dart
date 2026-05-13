@@ -286,6 +286,22 @@ class AfPlayerService extends BaseAudioHandler
   // listener knows not to call play() on the next playing=false event.
   bool _userPaused = false;
 
+  /// Jump to [index] and immediately play.
+  ///
+  /// Uses async/await rather than .then() chaining — under Android Doze
+  /// with the screen off, Future.then() callbacks on chained Futures can
+  /// be deferred by the scheduler. An async method with await runs as a
+  /// single continuation and is not subject to the same deferral.
+  Future<void> _jumpAndPlay(int index) async {
+    try {
+      await _player.jump(index);
+      await _player.play();
+    } catch (e, stack) {
+      afLog('audio', '_jumpAndPlay failed at index=$index',
+          error: e, stackTrace: stack);
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Internal stream wiring
   // ---------------------------------------------------------------------------
@@ -314,6 +330,21 @@ class AfPlayerService extends BaseAudioHandler
         _nudgeRetries = 0;
         // Mark that we expect mpv to start playing this index.
         _pendingPlayNudgeIdx = idx;
+
+        // Race-condition guard: if mpv already fired playing=false before
+        // this playlist event arrived (can happen under Doze load), the
+        // playing stream listener already missed the nudge window.
+        // Check synchronously here — if we're not playing and not user-paused,
+        // nudge immediately without waiting for the next playing=false event.
+        if (!_player.state.playing && !_userPaused) {
+          if (_nudgeRetries < _maxNudgeRetries) {
+            _nudgeRetries++;
+            _player.play();
+            afLog('audio',
+                'auto-advance nudge (playlist event) play() at index=$idx (attempt $_nudgeRetries)');
+          }
+          _pendingPlayNudgeIdx = null;
+        }
       }
     }));
 
@@ -359,7 +390,9 @@ class AfPlayerService extends BaseAudioHandler
         final currentMpvIdx = _player.state.playlist.index;
         if (currentMpvIdx == _currentIndex) {
           // mpv didn't advance — force jump to next track.
-          _player.jump(nextIdx).then((_) => _player.play());
+          // Use async/await instead of .then() — Doze can defer .then()
+          // callbacks on chained Futures when the screen is off.
+          _jumpAndPlay(nextIdx);
           afLog('audio', 'completed fallback: jump+play to index=$nextIdx');
         }
         // If mpv already advanced (currentMpvIdx == nextIdx), the playlist

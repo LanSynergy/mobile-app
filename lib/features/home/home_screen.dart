@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/audio/play_actions.dart';
+import '../../core/battery_opt.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/hero_album_card.dart';
@@ -11,11 +12,36 @@ import '../../widgets/tile.dart';
 import '../../widgets/track_row.dart';
 
 /// Mockup 04 — Home.
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Request battery-optimization exemption on first visit.
+    // Required for reliable auto-advance when the screen is off —
+    // without this, Doze can freeze the Dart isolate between tracks
+    // on Samsung, Xiaomi, and other aggressive OEMs.
+    // The system shows its own dialog; we only fire it if not already exempt.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestBatteryExemptionIfNeeded();
+    });
+  }
+
+  Future<void> _requestBatteryExemptionIfNeeded() async {
+    final alreadyIgnoring = await BatteryOpt.isIgnoring();
+    if (!alreadyIgnoring && mounted) {
+      await BatteryOpt.requestIgnore();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final albumsAsync = ref.watch(recentlyAddedAlbumsProvider);
     final recentTracksAsync = ref.watch(recentlyPlayedTracksProvider);
     final artistsAsync = ref.watch(allArtistsProvider);
