@@ -51,12 +51,17 @@ class _AudioMotionVisualizerState extends ConsumerState<AudioMotionVisualizer> {
   StreamSubscription<FftFrame>? _fftSub;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _fftSub?.cancel();
-    _fftSub = ref.read(playerServiceProvider).spectrumStream.listen(
-      (frame) => _notifier.ingest(frame.bands),
-    );
+  void initState() {
+    super.initState();
+    // Subscribe once in initState — never re-subscribe.
+    // didChangeDependencies fires on every ancestor dependency change and
+    // would cancel+restart the stream each time, causing dropped frames.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _fftSub = ref.read(playerServiceProvider).spectrumStream.listen(
+        (frame) => _notifier.ingest(frame.bands),
+      );
+    });
   }
 
   @override
