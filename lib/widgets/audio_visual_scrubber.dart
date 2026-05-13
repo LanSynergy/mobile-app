@@ -148,7 +148,6 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
 
   @override
   Widget build(BuildContext context) {
-    final spectral = ref.watch(currentSpectralProvider);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onHorizontalDragStart: (d) {
@@ -177,7 +176,6 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
                 painter: _CombinedBarPainter(
                   fftNotifier:   _fftNotifier,
                   scrubNotifier: _scrubNotifier,
-                  glow:          spectral.glow,
                   playedColor:   widget.playedColor,
                   unplayedColor: widget.unplayedColor,
                 ),
@@ -310,14 +308,12 @@ class _BlockNotifier extends ChangeNotifier {
 class _CombinedBarPainter extends CustomPainter {
   final _BlockNotifier fftNotifier;
   final _ScrubNotifier scrubNotifier;
-  final Color glow;
   final Color playedColor;
   final Color unplayedColor;
 
   _CombinedBarPainter({
     required this.fftNotifier,
     required this.scrubNotifier,
-    required this.glow,
     required this.playedColor,
     required this.unplayedColor,
   }) : super(repaint: Listenable.merge([fftNotifier, scrubNotifier]));
@@ -334,23 +330,6 @@ class _CombinedBarPainter extends CustomPainter {
     final barRadius      = Radius.circular(barW / 2);
 
     final paint = Paint()..style = PaintingStyle.fill;
-
-    // Background radial glow.
-    if (fftNotifier.totalEnergy > 0.05) {
-      final rect = Rect.fromCenter(
-        center: Offset(size.width / 2, midY),
-        width:  size.width,
-        height: size.height * 0.8,
-      );
-      paint.shader = RadialGradient(
-        colors: [
-          glow.withValues(alpha: fftNotifier.totalEnergy * 0.35),
-          Colors.transparent,
-        ],
-      ).createShader(rect);
-      canvas.drawRect(rect, paint);
-      paint.shader = null;
-    }
 
     // Path batching: 4 distinct paint states to prevent breaking the
     // Skia pipeline batch. Grouping by color avoids ~128 individual
@@ -398,7 +377,6 @@ class _CombinedBarPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _CombinedBarPainter old) =>
-      old.glow != glow ||
       old.playedColor != playedColor ||
       old.unplayedColor != unplayedColor;
 }
