@@ -178,6 +178,8 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
                   fftNotifier:   _fftNotifier,
                   scrubNotifier: _scrubNotifier,
                   glow:          spectral.glow,
+                  playedColor:   widget.playedColor,
+                  unplayedColor: widget.unplayedColor,
                 ),
               ),
             ),
@@ -227,12 +229,6 @@ class _ScrubNotifier extends ChangeNotifier {
 
 class _BlockNotifier extends ChangeNotifier {
   static const int bins = 64;
-
-  // Cyan → magenta gradient stops. Pure visualizer signature — not
-  // derived from spectral or player accent. Bass punches cyan on the
-  // left, treble ripples magenta on the right.
-  static const Color gradientLeft  = Color(0xFF00E5FF); // cyan
-  static const Color gradientRight = Color(0xFFFF3DDC); // magenta
 
   /// Target values received from `Player.stream.spectrum.bands`. The
   /// player pipeline delivers these already:
@@ -338,11 +334,15 @@ class _CombinedBarPainter extends CustomPainter {
   final _BlockNotifier fftNotifier;
   final _ScrubNotifier scrubNotifier;
   final Color glow;
+  final Color playedColor;
+  final Color unplayedColor;
 
   _CombinedBarPainter({
     required this.fftNotifier,
     required this.scrubNotifier,
     required this.glow,
+    required this.playedColor,
+    required this.unplayedColor,
   }) : super(repaint: Listenable.merge([fftNotifier, scrubNotifier]));
 
   @override
@@ -351,54 +351,42 @@ class _CombinedBarPainter extends CustomPainter {
 
     final double midY    = size.height / 2;
     final double slotW   = size.width / _BlockNotifier.bins;
-    final double barW    = (slotW * 0.55).clamp(1.0, 6.0);
-    final double maxBarH = midY * 0.9;
+    final double barW    = (slotW * 0.7).clamp(1.0, 8.0);
+    final double fillX   = scrubNotifier.displayProgress * size.width;
+    final double maxBarH = midY * 0.8;
     final barRadius      = Radius.circular(barW / 2);
 
-    // Shared cyan → magenta gradient for the whole strip. Bars inherit
-    // their color from their horizontal position so bass punches cyan
-    // and treble ripples magenta, consistent left to right.
-    final gradientShader = LinearGradient(
-      colors: const [
-        _BlockNotifier.gradientLeft,
-        _BlockNotifier.gradientRight,
-      ],
-    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    final paint = Paint()..style = PaintingStyle.fill;
 
-    final paint = Paint()
-      ..style  = PaintingStyle.fill
-      ..shader = gradientShader;
-
-    // Background radial glow — uses the spectral token so the scene still
-    // follows the cover art even though the bars themselves are fixed.
+    // Background radial glow.
     if (fftNotifier.totalEnergy > 0.05) {
       final rect = Rect.fromCenter(
         center: Offset(size.width / 2, midY),
         width:  size.width,
-        height: size.height,
+        height: size.height * 0.8,
       );
-      canvas.drawRect(
-        rect,
-        Paint()
-          ..shader = RadialGradient(
-            colors: [
-              glow.withValues(alpha: fftNotifier.totalEnergy * 0.30),
-              Colors.transparent,
-            ],
-          ).createShader(rect),
-      );
+      paint.shader = RadialGradient(
+        colors: [
+          glow.withValues(alpha: fftNotifier.totalEnergy * 0.35),
+          Colors.transparent,
+        ],
+      ).createShader(rect);
+      canvas.drawRect(rect, paint);
+      paint.shader = null;
     }
 
-    // Mirrored solid bars — same geometry above and below the axis.
+    // Solid bars.
     for (var i = 0; i < _BlockNotifier.bins; i++) {
       final level = fftNotifier.smoothed[i];
       if (level < 0.01) continue;
 
-      final cx   = (i + 0.5) * slotW;
-      final x    = cx - barW / 2;
-      final barH = (level * maxBarH).clamp(2.0, maxBarH);
+      final cx        = (i + 0.5) * slotW;
+      final x         = cx - barW / 2;
+      final barH      = (level * maxBarH).clamp(2.0, maxBarH);
+      final baseColor = cx <= fillX ? playedColor : unplayedColor;
 
-      // Top half — grows upward from axis.
+      // Top bar (grows upward).
+      paint.color = baseColor;
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(x, midY - barH, barW, barH),
@@ -407,10 +395,11 @@ class _CombinedBarPainter extends CustomPainter {
         paint,
       );
 
-      // Bottom half — true mirror. Same height, same geometry.
+      // Reflection (40% height, 35% opacity, grows downward).
+      paint.color = baseColor.withValues(alpha: 0.35);
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, midY, barW, barH),
+          Rect.fromLTWH(x, midY + 2.0, barW, barH * 0.4),
           barRadius,
         ),
         paint,
@@ -419,7 +408,10 @@ class _CombinedBarPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _CombinedBarPainter old) => old.glow != glow;
+  bool shouldRepaint(covariant _CombinedBarPainter old) =>
+      old.glow != glow ||
+      old.playedColor != playedColor ||
+      old.unplayedColor != unplayedColor;
 }
 
 class _ScrubOverlayPainter extends CustomPainter {
