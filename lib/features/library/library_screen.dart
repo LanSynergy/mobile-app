@@ -6,6 +6,7 @@ import '../../core/audio/play_actions.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/tile.dart';
+import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 
 enum LibrarySection { albums, artists, songs, playlists, genres }
@@ -168,6 +169,8 @@ class _SectionBody extends ConsumerWidget {
                 imageUrl: a.imageUrl,
                 size: double.infinity,
                 onTap: () => context.push('/album/${a.id}'),
+                onLongPress: () =>
+                    showAlbumContextMenu(context, ref, a),
               );
             },
           ),
@@ -223,6 +226,8 @@ class _SectionBody extends ConsumerWidget {
                   onTap: () => ref
                       .read(playActionsProvider)
                       .playQueue(list, startIndex: i),
+                  onLongPress: () =>
+                      showTrackContextMenu(context, ref, t),
                 );
               },
             ),

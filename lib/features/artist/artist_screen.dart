@@ -9,6 +9,7 @@ import '../../state/providers.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/tile.dart';
+import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 
 /// Mockup 08 — Artist detail.
@@ -126,6 +127,8 @@ class ArtistScreen extends ConsumerWidget {
                             onTap: () => ref
                                 .read(playActionsProvider)
                                 .playSingle(t),
+                            onLongPress: () =>
+                                showTrackContextMenu(context, ref, t),
                           ),
                         ),
                     ],

@@ -8,6 +8,7 @@ import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/press_scale.dart';
+import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 
 /// Playlist detail screen with full management:
@@ -148,6 +149,8 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                     onTap: () => ref
                                         .read(playActionsProvider)
                                         .playQueue(tracks, startIndex: i),
+                                    onLongPress: () =>
+                                        showTrackContextMenu(context, ref, t),
                                   ),
                                 ),
                                 ReorderableDragStartListener(
@@ -181,6 +184,8 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                           onTap: () => ref
                               .read(playActionsProvider)
                               .playQueue(tracks, startIndex: i),
+                          onLongPress: () =>
+                              showTrackContextMenu(context, ref, t),
                         ),
                       );
                     },

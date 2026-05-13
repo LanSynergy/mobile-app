@@ -10,6 +10,7 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/section_header.dart';
+import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import 'ask_sheet.dart';
 
@@ -391,6 +392,8 @@ class _SearchResults extends ConsumerWidget {
                 onTap: () => ref
                     .read(playActionsProvider)
                     .playQueue(tracks, startIndex: i),
+                onLongPress: () =>
+                    showTrackContextMenu(context, ref, tracks[i]),
               ),
             ),
           const SizedBox(height: AfSpacing.s16),

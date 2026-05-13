@@ -343,6 +343,42 @@ class AfPlayerService extends BaseAudioHandler
     );
   }
 
+  /// Insert [track] immediately after the current track (play next).
+  /// If nothing is playing, appends to the end.
+  Future<void> playNext(
+    AfTrack track, {
+    required String Function(AfTrack) resolveStreamUrl,
+  }) async {
+    final insertAt = _currentIndex >= 0 && _currentIndex < _trackQueue.length
+        ? _currentIndex + 1
+        : _trackQueue.length;
+
+    _trackQueue.insert(insertAt, track);
+    await _player.sendRawCommand([
+      'loadfile',
+      resolveStreamUrl(track),
+      'insert-at',
+      '$insertAt',
+    ]);
+    _queueController.add(List.unmodifiable(_trackQueue));
+    afLog('audio', 'playNext "${track.title}" at index=$insertAt');
+  }
+
+  /// Append [track] to the end of the queue.
+  Future<void> addToQueue(
+    AfTrack track, {
+    required String Function(AfTrack) resolveStreamUrl,
+  }) async {
+    _trackQueue.add(track);
+    await _player.sendRawCommand([
+      'loadfile',
+      resolveStreamUrl(track),
+      'append',
+    ]);
+    _queueController.add(List.unmodifiable(_trackQueue));
+    afLog('audio', 'addToQueue "${track.title}" at end');
+  }
+
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;

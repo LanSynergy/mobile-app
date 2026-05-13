@@ -9,6 +9,7 @@ import '../../state/providers.dart';
 import '../../widgets/hero_album_card.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/tile.dart';
+import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 
 /// Mockup 04 — Home.
@@ -128,6 +129,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     density: TrackRowDensity.generous,
                     onTap: () =>
                         ref.read(playActionsProvider).playSingle(t),
+                    onLongPress: () =>
+                        showTrackContextMenu(context, ref, t),
                   );
                 },
               ),

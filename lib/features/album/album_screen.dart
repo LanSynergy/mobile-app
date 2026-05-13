@@ -9,6 +9,7 @@ import '../../state/providers.dart';
 import '../../utils/log.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/press_scale.dart';
+import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 
 /// Mockup 07 — Album detail.
@@ -174,6 +175,8 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                         onTap: () => ref
                             .read(playActionsProvider)
                             .playQueue(tracks, startIndex: i),
+                        onLongPress: () =>
+                            showTrackContextMenu(context, ref, tracks[i]),
                       ),
                     ),
                   ),
