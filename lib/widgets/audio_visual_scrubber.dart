@@ -178,37 +178,49 @@ class _ScrubNotifier extends ChangeNotifier {
 class _BlockNotifier extends ChangeNotifier {
   static const int bins = 64;
 
-  // target: raw player values written by ingest().
-  // smoothed: interpolated toward target each tick — asymmetric attack/decay.
   final Float32List target   = Float32List(bins);
   final Float32List smoothed = Float32List(bins);
 
   double _rawEnergy  = 0.0;
-  double totalEnergy = 0.0; // EMA of _rawEnergy — drives glow intensity
+  double totalEnergy = 0.0;
+  double _globalPeak = 1.0; // AGC tracker
 
   void ingest(Float32List src) {
-    double sum = 0;
-    const double gain = 0.4; // reduce sensitivity 60%
+    double sum      = 0;
+    double frameMax = 0.0;
+
+    // 1. Find the highest value in this frame.
+    for (var i = 0; i < bins && i < src.length; i++) {
+      final val = src[i].isFinite ? src[i] : 0.0;
+      if (val > frameMax) frameMax = val;
+    }
+
+    // 2. Calibrate global peak — instant attack, very slow decay.
+    if (frameMax > _globalPeak) {
+      _globalPeak = frameMax;
+    } else {
+      _globalPeak *= 0.995; // drifts down slowly to track song volume
+    }
+
+    // Avoid division by zero.
+    final safePeak = _globalPeak < 0.1 ? 0.1 : _globalPeak;
+
+    // 3. Dynamic normalization — divide by the song's running absolute peak.
     for (var i = 0; i < bins && i < src.length; i++) {
       final raw = src[i].isFinite ? src[i] : 0.0;
-      // Scale down before clamping so peaks aren't clipped at full gain.
-      target[i] = (raw * gain).clamp(0.0, 1.0);
+      target[i] = (raw / safePeak).clamp(0.0, 1.0);
       sum += target[i];
     }
     _rawEnergy = sum / bins;
   }
 
   void tick() {
-    // Smooth totalEnergy toward raw energy (EMA, τ ≈ 6 frames).
     totalEnergy += (_rawEnergy - totalEnergy) * 0.15;
-
-    // Per-bar asymmetric lerp: fast attack (0.4), slow decay (0.1).
     for (var i = 0; i < bins; i++) {
       final diff  = target[i] - smoothed[i];
       final speed = diff > 0 ? 0.4 : 0.1;
       smoothed[i] += diff * speed;
     }
-
     notifyListeners();
   }
 }
