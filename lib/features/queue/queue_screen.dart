@@ -26,6 +26,10 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
   List<AfTrack> _items = const [];
   List<String> _lastQueueIds = const [];
 
+  /// Key for the currently playing item — used to scroll to it on open.
+  final _activeKey = GlobalKey();
+  bool _hasScrolledToActive = false;
+
   @override
   Widget build(BuildContext context) {
     final queueAsync = ref.watch(playerQueueProvider);
@@ -44,6 +48,23 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     if (!_listsMatch(liveIds, _lastQueueIds)) {
       _items = List<AfTrack>.from(liveQueue);
       _lastQueueIds = liveIds;
+      _hasScrolledToActive = false; // re-scroll on queue change
+    }
+
+    // Scroll to the active track after the first frame.
+    if (!_hasScrolledToActive && _items.isNotEmpty && current != null) {
+      _hasScrolledToActive = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctx = _activeKey.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(
+            ctx,
+            alignment: 0.3, // position ~30% from top
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
     }
 
     return Scaffold(
@@ -124,6 +145,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                     key: ValueKey(t.id),
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Row(
+                      key: active ? _activeKey : null,
                       children: [
                         Expanded(
                           child: TrackRow(
