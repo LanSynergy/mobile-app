@@ -234,25 +234,31 @@ class _BlockNotifier extends ChangeNotifier {
   final Float32List smoothed = Float32List(bins);
   final Float32List velocity = Float32List(bins);
 
-  double _rawEnergy = 0.0, totalEnergy = 0.0, _globalPeak = 1.0;
+  double _rawEnergy = 0.0, totalEnergy = 0.0;
 
+  /// Bands arrive already dB-normalised to `[0, 1]` per bin (the player
+  /// is configured with minDb=-70 / maxDb=-10 and pass-through native
+  /// smoothing). We apply only:
+  ///   - a gentle treble boost (1x..2.5x linear) so the right half of
+  ///     the strip dances on bright material — music is naturally
+  ///     bass-heavy, boosting treble perceptually levels the visual.
+  ///   - a saturating clamp so the boost never paints above the ceiling.
+  ///
+  /// No AGC here: AGC fights the engine's dB-calibrated window and
+  /// crushes quiet-band detail whenever a single loud bin appears.
   void ingest(Float32List bands) {
     if (bands.isEmpty) return;
-    double sum = 0.0, frameMax = 0.0;
+    double sum = 0.0;
 
-    for (var i = 0; i < bins && i < bands.length; i++) {
-      final boost = 1.0 + (i / bins) * 2.5; // Treble boost
-      final raw = bands[i].abs() * boost;
-      if (raw > frameMax) frameMax = raw;
-      target[i] = raw;
-    }
-
-    _globalPeak = frameMax > _globalPeak ? frameMax : _globalPeak * 0.98;
-    final safePeak = _globalPeak < 0.1 ? 0.1 : _globalPeak;
-
-    for (var i = 0; i < bins; i++) {
-      target[i] = (target[i] / safePeak).clamp(0.0, 1.0);
+    final int n = bands.length < bins ? bands.length : bins;
+    for (var i = 0; i < n; i++) {
+      final boost = 1.0 + (i / bins) * 1.5; // 1.0x (bass) -> 2.5x (treble)
+      final v = (bands[i] * boost).clamp(0.0, 1.0);
+      target[i] = v.isFinite ? v : 0.0;
       sum += target[i];
+    }
+    for (var i = n; i < bins; i++) {
+      target[i] = 0.0;
     }
     _rawEnergy = sum / bins;
   }
@@ -264,6 +270,14 @@ class _BlockNotifier extends ChangeNotifier {
     _rawEnergy = 0.0;
   }
 
+  /// Motion model — slower attack to stop blinking, spring decay on fall.
+  ///
+  /// - Rising target: lerp 0.35 — at 60 fps that's ~3–4 frames (50–65 ms)
+  ///   to reach target. Fast enough to feel tactile on kicks, slow
+  ///   enough that bar-height noise doesn't flicker.
+  /// - Falling target: damped spring with floor bounce (stiffness 0.12,
+  ///   damping 0.82, restitution 0.35). Bars coast down with a tiny
+  ///   recoil, settling in 2–3 cycles.
   bool tick() {
     totalEnergy += (_rawEnergy - totalEnergy) * 0.1;
     var moving = totalEnergy > 0.001;
@@ -271,7 +285,7 @@ class _BlockNotifier extends ChangeNotifier {
     for (var i = 0; i < bins; i++) {
       final diff = target[i] - smoothed[i];
       if (diff > 0) {
-        smoothed[i] += diff * 0.35; // Slower attack fixes blinking
+        smoothed[i] += diff * 0.35;
         velocity[i] = 0.0;
       } else {
         velocity[i] += diff * 0.12;

@@ -91,21 +91,24 @@ class AfPlayerService extends BaseAudioHandler
   /// Configure the spectrum pipeline for visualizer use.
   /// Called once after the player is ready.
   ///
-  /// Native smoothing and dB clipping are both disabled — the pipeline
-  /// hands us raw log-spaced bands and the client does the treble
-  /// boost, AGC normalisation and display smoothing in `_BlockNotifier`.
-  /// This keeps bass peaks from saturating (maxDb 0, not -10) and lets
-  /// the renderer apply its own asymmetric attack / spring decay
-  /// without fighting a native EMA.
+  /// Native smoothing is set to 1.0 on both edges — that's the engine's
+  /// *pass-through* mode (raw = smoothed, no EMA), NOT 0.0 which
+  /// freezes the band output at its initial zero value. All visual
+  /// smoothing happens client-side in `_BlockNotifier`.
+  ///
+  /// dB window is the documented music-visualizer default (-70..-10).
+  /// Wider windows (minDb -80 / maxDb 0) were too forgiving at the
+  /// top — every loud passage saturated bass bars near 1.0 before
+  /// the treble had any visual headroom.
   ///
   ///   fftSize: 2048     — sub-50 Hz resolution at 48 kHz, <43 ms block
   ///   bandCount: 64     — matches renderer 1:1, no resampling
   ///   bandLowHz: 20     — full audible range (pipeline handles Nyquist)
   ///   bandHighHz: 20000
-  ///   attackSmoothing 0 — native EMA off, client owns smoothing
-  ///   releaseSmoothing 0
-  ///   minDb -80         — deeper noise floor, more "lift" on quiet parts
-  ///   maxDb 0           — stop clipping bass peaks
+  ///   attackSmoothing 1.0  — engine pass-through; client owns smoothing
+  ///   releaseSmoothing 1.0
+  ///   minDb -70 / maxDb -10 — "leaves lift" in quiet passages, saturates
+  ///                           on loud peaks before digital clipping
   ///   emitInterval 16ms — 60 fps motion
   Future<void> configureSpectrum() async {
     try {
@@ -117,10 +120,10 @@ class AfPlayerService extends BaseAudioHandler
         bandCount: 64,
         bandLowHz: 20.0,
         bandHighHz: 20000.0,
-        attackSmoothing: 0.0,  // Disable native smoothing
-        releaseSmoothing: 0.0,
-        minDb: -80.0,
-        maxDb: 0.0,            // Stop clipping bass peaks
+        attackSmoothing: 1.0,  // pass-through (0.0 freezes the signal!)
+        releaseSmoothing: 1.0,
+        minDb: -70.0,
+        maxDb: -10.0,
         emitInterval: Duration(milliseconds: 16),
       ));
     } catch (_) {
