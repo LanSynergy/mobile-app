@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Device, Loop;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart'
+    show AcompressorSettings, AudioEffects, BassSettings, Device, LoudnormSettings, Loop, TrebleSettings;
 
 import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/client.dart';
@@ -677,27 +678,12 @@ class _UtilityRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _UtilityIcon(
-          icon: Icons.bedtime_outlined,
-          label: 'Sleep',
-          onTap: () => _showSleepDialog(context, ref),
-        ),
         _UtilityIcon(
           icon: Icons.lyrics_outlined,
           label: 'Lyrics',
           onTap: () => context.push('/lyrics'),
-        ),
-        _UtilityIcon(
-          icon: Icons.speed_rounded,
-          label: 'Speed',
-          onTap: () => _showSpeedDialog(context, ref),
-        ),
-        _UtilityIcon(
-          icon: Icons.cast_outlined,
-          label: 'Output',
-          onTap: () => _showOutputDialog(context, ref),
         ),
         _UtilityIcon(
           icon: Icons.playlist_add_rounded,
@@ -709,7 +695,74 @@ class _UtilityRow extends ConsumerWidget {
           label: 'Queue',
           onTap: () => context.push('/queue'),
         ),
+        _UtilityIcon(
+          icon: Icons.more_horiz_rounded,
+          label: 'More',
+          onTap: () => _showMoreSheet(context, ref),
+        ),
       ],
+    );
+  }
+
+  void _showMoreSheet(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: AfColors.surfaceBase,
+        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _MoreItem(
+                icon: Icons.bedtime_outlined,
+                label: 'Sleep timer',
+                onTap: () {
+                  Navigator.of(dialogCtx).pop();
+                  _showSleepDialog(context, ref);
+                },
+              ),
+              _MoreItem(
+                icon: Icons.speed_rounded,
+                label: 'Playback speed',
+                onTap: () {
+                  Navigator.of(dialogCtx).pop();
+                  _showSpeedDialog(context, ref);
+                },
+              ),
+              _MoreItem(
+                icon: Icons.cast_outlined,
+                label: 'Audio output',
+                onTap: () {
+                  Navigator.of(dialogCtx).pop();
+                  _showOutputDialog(context, ref);
+                },
+              ),
+              _MoreItem(
+                icon: Icons.equalizer_rounded,
+                label: 'Equalizer & DSP',
+                onTap: () {
+                  Navigator.of(dialogCtx).pop();
+                  _showEqDialog(context, ref);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEqDialog(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: AfColors.surfaceBase,
+        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+        child: _EqDialogContent(),
+      ),
     );
   }
 
@@ -838,6 +891,206 @@ class _UtilityIcon extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _MoreItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _MoreItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AfSpacing.gutterGenerous,
+          vertical: AfSpacing.s12,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 22, color: AfColors.textSecondary),
+            const SizedBox(width: AfSpacing.s16),
+            Text(label, style: AfTypography.bodyMedium),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Equalizer & DSP dialog
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _EqDialogContent extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_EqDialogContent> createState() => _EqDialogContentState();
+}
+
+class _EqDialogContentState extends ConsumerState<_EqDialogContent> {
+  double _bass = 0.0;
+  double _treble = 0.0;
+  bool _loudnorm = false;
+  bool _compressor = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final fx = ref.read(playerServiceProvider).audioEffects;
+    _bass = fx.bass.g;
+    _treble = fx.treble.g;
+    _loudnorm = fx.loudnorm.enabled;
+    _compressor = fx.acompressor.enabled;
+  }
+
+  void _apply() {
+    final svc = ref.read(playerServiceProvider);
+    unawaited(svc.updateAudioEffects((e) => e.copyWith(
+          bass: BassSettings(enabled: _bass != 0, g: _bass),
+          treble: TrebleSettings(enabled: _treble != 0, g: _treble),
+          loudnorm: LoudnormSettings(enabled: _loudnorm),
+          acompressor: AcompressorSettings(
+            enabled: _compressor,
+            threshold: 0.1,
+            ratio: 4.0,
+            attack: 20.0,
+            release: 250.0,
+          ),
+        )));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Equalizer & DSP', style: AfTypography.titleSmall),
+          const SizedBox(height: AfSpacing.s24),
+
+          // Bass shelf.
+          Row(
+            children: [
+              const Icon(Icons.graphic_eq_rounded,
+                  size: 18, color: AfColors.textSecondary),
+              const SizedBox(width: AfSpacing.s8),
+              Text('Bass', style: AfTypography.bodyMedium),
+              const Spacer(),
+              Text(
+                '${_bass > 0 ? "+" : ""}${_bass.toStringAsFixed(0)} dB',
+                style: AfTypography.mono.copyWith(
+                  color: AfColors.textTertiary,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: _bass,
+            min: -12,
+            max: 12,
+            divisions: 24,
+            activeColor: AfColors.indigo400,
+            onChanged: (v) => setState(() => _bass = v),
+            onChangeEnd: (_) => _apply(),
+          ),
+
+          // Treble shelf.
+          Row(
+            children: [
+              const Icon(Icons.graphic_eq_rounded,
+                  size: 18, color: AfColors.textSecondary),
+              const SizedBox(width: AfSpacing.s8),
+              Text('Treble', style: AfTypography.bodyMedium),
+              const Spacer(),
+              Text(
+                '${_treble > 0 ? "+" : ""}${_treble.toStringAsFixed(0)} dB',
+                style: AfTypography.mono.copyWith(
+                  color: AfColors.textTertiary,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: _treble,
+            min: -12,
+            max: 12,
+            divisions: 24,
+            activeColor: AfColors.indigo400,
+            onChanged: (v) => setState(() => _treble = v),
+            onChangeEnd: (_) => _apply(),
+          ),
+
+          const SizedBox(height: AfSpacing.s8),
+          const Divider(height: 1, color: AfColors.surfaceHigh),
+          const SizedBox(height: AfSpacing.s8),
+
+          // Loudness normalization.
+          SwitchListTile.adaptive(
+            value: _loudnorm,
+            onChanged: (v) {
+              setState(() => _loudnorm = v);
+              _apply();
+            },
+            title: Text('Loudness normalization',
+                style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'EBU R128 (-16 LUFS)',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+
+          // Compressor.
+          SwitchListTile.adaptive(
+            value: _compressor,
+            onChanged: (v) {
+              setState(() => _compressor = v);
+              _apply();
+            },
+            title: Text('Dynamic compressor', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Reduces volume spikes',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+
+          const SizedBox(height: AfSpacing.s16),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _bass = 0;
+                _treble = 0;
+                _loudnorm = false;
+                _compressor = false;
+              });
+              unawaited(ref
+                  .read(playerServiceProvider)
+                  .setAudioEffects(const AudioEffects()));
+            },
+            child: Text(
+              'Reset all',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.semanticError),
+            ),
+          ),
+        ],
       ),
     );
   }

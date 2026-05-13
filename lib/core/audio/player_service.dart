@@ -308,6 +308,27 @@ class AfPlayerService extends BaseAudioHandler
   Stream<ReplayGainSettings> get replayGainStream => _player.stream.replayGain;
   ReplayGainSettings get replayGain => _player.state.replayGain;
 
+  // ---------------------------------------------------------------------------
+  // Gapless & prefetch
+  // ---------------------------------------------------------------------------
+
+  /// Set gapless playback mode.
+  Future<void> setGapless(Gapless mode) async {
+    await _player.setGapless(mode);
+    afLog('audio', 'gapless=${mode.name}');
+  }
+
+  Gapless get gaplessMode => _player.state.gapless;
+  Stream<Gapless> get gaplessStream => _player.stream.gapless;
+
+  /// Enable background prefetch of the next playlist entry.
+  Future<void> setPrefetchPlaylist(bool enabled) async {
+    await _player.setPrefetchPlaylist(enabled);
+    afLog('audio', 'prefetchPlaylist=$enabled');
+  }
+
+  bool get prefetchPlaylist => _player.state.prefetchPlaylist;
+
   /// Real-time FFT spectrum — 64 log-spaced bands in [0, 1] at ~30 fps.
   /// No RECORD_AUDIO permission needed. Lazy: pipeline starts on first
   /// listener, stops on last cancel.
