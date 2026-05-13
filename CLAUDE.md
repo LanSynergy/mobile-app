@@ -41,7 +41,7 @@ Treat Jellyfin as a **file source + library state store**, nothing else.
 - Spectral color extraction from artwork (`palette_generator_master`).
 - Lock-screen / notification media-session integration (`audio_service`).
 - Cover-art file cache (`cached_network_image`).
-- Local settings: audio-quality preference, sleep timer.
+- Local settings: audio-quality preference, sleep timer, EQ/DSP, ReplayGain.
 
 **Strict consequence:** stream URLs MUST use
 `/Audio/{id}/stream?Static=true` — the direct-stream endpoint. The
@@ -97,8 +97,14 @@ await player.next();
 await player.previous();
 await player.jump(index);
 await player.setGapless(Gapless.weak);
+await player.setShuffle(true);   // calls mpv playlist-shuffle
+await player.setShuffle(false);  // calls mpv playlist-unshuffle
 
-// State streams
+// Queue manipulation
+await player.playNext(media);    // insert after current track
+await player.addToQueue(media);  // append to end of queue
+
+// State streams (core)
 player.stream.position    // Stream<Duration>
 player.stream.playing     // Stream<bool>
 player.stream.shuffle     // Stream<bool>
@@ -109,6 +115,44 @@ player.stream.coverArt    // Stream<CoverArt?> — embedded art bytes
 player.stream.playlist    // Stream<Playlist>
 player.stream.completed   // Stream<bool>
 player.stream.buffering   // Stream<bool>
+
+// Playback state (extended)
+player.mpvPlaybackStateStream  // Stream — raw mpv playback state
+player.bufferingStream         // Stream<bool>
+player.bufferingPercentageStream // Stream<double>
+
+// Volume
+player.volumeStream       // Stream<double>
+player.setVolume(double)
+player.muteStream         // Stream<bool>
+player.setMute(bool)
+
+// Quality info
+player.audioBitrateStream   // Stream<int?>
+player.audioParamsStream    // Stream<AudioParams?>
+
+// Gapless
+player.prefetchStateStream  // Stream
+player.setGapless(Gapless)
+player.setPrefetchPlaylist(bool)
+
+// Errors
+player.errorStream          // Stream<String?>
+
+// A-B loop
+player.setAbLoopA / setAbLoopB / setAbLoopCount
+player.abLoopAStream        // Stream<Duration?>
+player.abLoopBStream        // Stream<Duration?>
+player.remainingAbLoopsStream // Stream<int?>
+
+// DSP / Audio effects
+player.setAudioEffects(AudioEffects)
+player.updateAudioEffects(AudioEffects)
+player.audioEffectsStream   // Stream<AudioEffects>
+
+// ReplayGain
+player.setReplayGain(ReplayGainMode)
+player.replayGainStream     // Stream<ReplayGainMode>
 
 // Spectrum configuration — engine handles all bounce physics in C++
 await player.setSpectrum(SpectrumSettings(
@@ -146,7 +190,13 @@ lib/
 │  │  ├─ player_service.dart        ← AfPlayerService: mpv_audio_kit + audio_service bridge
 │  │  │                               Throttled playbackState (~2 Hz), _pendingPlayNudgeIdx
 │  │  │                               state machine, _jumpAndPlay async/await, _disposed guards.
+│  │  │                               playNext() and addToQueue() for context-menu actions.
+│  │  │                               Shuffle: setShuffle(true/false) → mpv playlist-shuffle/unshuffle.
+│  │  │                               Syncs _trackQueue via _player.stream.playlist.first after command.
+│  │  │                               Track-ID guard in playlist listener prevents displayed song change.
+│  │  │                               _originalQueue stores unshuffled order.
 │  │  ├─ play_actions.dart          ← Cross-cutting play entry points
+│  │  │                               PlayActions.playQueue shuffles before loading when shuffle is ON.
 │  │  ├─ jellyfin_playback_reporter.dart ← POST /Sessions/Playing* lifecycle
 │  │  │                               Serialized progress loop (not Timer.periodic), 5s timeouts.
 │  │  ├─ live_update_service.dart   ← Android 16+ Live Update chip (in-flight guard)
@@ -163,17 +213,28 @@ lib/
 │  ├─ home/        library/  album/      artist/     genre/
 │  ├─ search/      queue/    now_playing/ lyrics/
 │  ├─ onboarding/  profile/  settings/    cast_picker/  sleep_timer/  playlist/
+│  │                            settings/ sections: Server, Appearance, Audio output
+│  │                            (current output info, sample rate, bit depth, exclusive mode),
+│  │                            Network & cache (cache duration, audio buffer, keep audio active),
+│  │                            Audio processing (ReplayGain picker), About.
+│  │                            queue/ auto-scrolls to currently playing track on open.
+│  │                            Long-press context menus on track rows (Play next, Add to queue,
+│  │                            Go to album, Go to artist) and album tiles (Play album, Go to artist).
 ├─ state/
 │  └─ providers.dart        ← All Riverpod providers in one file (intentional)
 ├─ widgets/                 ← Shared visual atoms
 │  ├─ mini_player.dart      ← 56 dp floating mini-player
 │  ├─ audio_visual_scrubber.dart ← Combined FFT visualizer + progress scrubber.
 │  │                          _BlockNotifier: power-8 curve, vsync-aligned flush.
+│  │                          Engine-driven rendering: ingest() updates data only (no
+│  │                          notifyListeners). Ticker runs at vsync, calls flush() which
+│  │                          fires notifyListeners when dirty.
 │  │                          _ScrubNotifier: drag state.
-│  │                          Two Stack layers: _CombinedBarPainter (path-batched) +
+│  │                          Two Stack layers: _CombinedBarPainter (path-batched, 4 draw calls) +
 │  │                          _ScrubOverlayPainter.
 │  │                          Lifecycle-aware (AppLifecycleListener + route obscure detection).
-│  │                          Ticker drives repaints at vsync; 300ms silence timer for fade-out.
+│  │                          Ticker drives repaints at vsync; 300ms silence timer for fade-out
+│  │                          (0.85× decay). Scrubber drag race fix with _isDragging flag.
 │  └─ …
 └─ utils/
    ├─ log.dart              ← afLog() wrapper around dart:developer.log
@@ -227,8 +288,24 @@ Metadata (title + artist + favorite + quality chip)
 AudioVisualScrubber (120dp — FFT bars + scrubber overlay merged)
 Time labels (position / remaining)
 Transport controls (shuffle, prev, play/pause, next, repeat)
-Utility row (sleep, lyrics, speed, output, save, queue)
+Utility row (lyrics, save, queue, more)
 ```
+
+The utility row was reduced from 6 icons to 4. The **"More"** button opens
+a popup dialog containing: Sleep timer, Playback speed, Audio output,
+Equalizer & DSP.
+
+### 4.5 EQ dialog (inline, from More menu)
+
+Accessible via Now Playing → More → Equalizer & DSP. Controls:
+- Bass shelf: -12 dB to +12 dB
+- Treble shelf: -12 dB to +12 dB
+- Loudness normalization toggle (EBU R128, target -16 LUFS)
+- Dynamic compressor toggle
+- Reset all button
+
+Uses `player.updateAudioEffects(AudioEffects(...))` API. State is streamed
+via `player.audioEffectsStream`.
 
 ## 5. Jellyfin auth — battle-tested format
 
@@ -298,11 +375,15 @@ start with `/onboarding/`.
 - Nudge is bounded to `_maxNudgeRetries = 3` to prevent infinite play loops.
 - `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission declared in manifest. Battery exemption dialog shown on first HomeScreen visit via `BatteryOpt.requestIgnore()` → `BatteryOptPlugin` (`aetherfin.battery_opt` MethodChannel).
 
-## 9. Visualizer + scrubber architecture
+## 9. Visualizer + scrubber architecture (engine-driven rendering)
 
 The visualizer and progress scrubber are merged into a single widget
 (`AudioVisualScrubber` at `lib/widgets/audio_visual_scrubber.dart`) with
-two painter layers in a `Stack`.
+two painter layers in a `Stack`. The architecture is engine-driven:
+`ingest()` updates data only (no notifyListeners). A ticker runs at vsync
+and calls `flush()` which fires notifyListeners when dirty. Power-8 curve.
+300ms silence timer triggers fade-out (0.85× decay). Path-batched painter
+(4 draw calls). Scrubber drag race fix with `_isDragging` flag.
 
 ### 9.1 Signal pipeline (`_BlockNotifier`)
 
@@ -461,6 +542,9 @@ PII (usernames, server URLs) must be redacted in release builds.
 21. **"Subscribe to `spectrumStream` in `didChangeDependencies`."** No. It fires on every ancestor dependency change and causes stream churn. Subscribe once in `initState` via `addPostFrameCallback`.
 22. **"The battery channel is `dev.aetherfin.aetherfin/battery`."** No. It's `aetherfin.battery_opt` (matches `BatteryOptPlugin.CHANNEL_NAME`).
 23. **"Drive the artwork pulse by continuously scaling with bin 0 amplitude."** No. That flickers on every frame. Use a transient detector with running baseline + cooldown + spring decay.
+24. **"Implement shuffle by rebuilding the queue in Dart."** No. Use mpv's native `setShuffle(true/false)` which calls `playlist-shuffle`/`playlist-unshuffle` without interrupting playback. Sync `_trackQueue` by awaiting `_player.stream.playlist.first` after the command. Store `_originalQueue` for unshuffle.
+25. **"The utility row has 6 icons."** No. It's 4: Lyrics, Save, Queue, More. Sleep timer, playback speed, audio output, and EQ are behind the More popup.
+26. **"Apply EQ/DSP via a separate audio pipeline."** No. Use `player.updateAudioEffects(AudioEffects(...))`. The engine handles DSP natively.
 
 ## 16. Glossary
 
@@ -476,6 +560,10 @@ PII (usernames, server URLs) must be redacted in release builds.
 - **`Spectral`**: Runtime color triple (`energy`, `shadow`, `glow`) extracted from current artwork. Lives in `currentSpectralProvider`. Never hardcode these values.
 - **`BatteryOptPlugin`**: Kotlin `ActivityAware` plugin on channel `aetherfin.battery_opt`. Fires `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` on first HomeScreen visit.
 - **Reactive islands**: Architecture pattern in `NowPlayingScreen` where high-frequency streams (position, FFT) are isolated to leaf `ConsumerWidget`s so the top-level scaffold doesn't rebuild on every tick.
+- **`AudioEffects`**: mpv_audio_kit model for DSP state — bass shelf, treble shelf, loudness normalization, dynamic compressor. Streamed via `audioEffectsStream`, mutated via `updateAudioEffects`.
+- **`ReplayGainMode`**: mpv_audio_kit enum for ReplayGain behavior (off, track, album). Set via `setReplayGain`, observed via `replayGainStream`.
+- **`_originalQueue`**: Field in `AfPlayerService` storing the unshuffled track order. Restored when shuffle is toggled off via mpv's `playlist-unshuffle`.
+- **`playNext()` / `addToQueue()`**: `AfPlayerService` methods for inserting tracks relative to the current position. Used by long-press context menus on track rows and album tiles.
 
 ---
 
