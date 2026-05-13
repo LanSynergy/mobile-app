@@ -169,7 +169,6 @@ class _ReactiveVisualizer extends ConsumerWidget {
     return const RepaintBoundary(
       child: AudioMotionVisualizer(
         height: 96,
-        barSpace: 0.18,
       ),
     );
   }

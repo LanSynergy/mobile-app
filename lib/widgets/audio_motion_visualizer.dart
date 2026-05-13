@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -8,37 +9,28 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' show FftFrame;
 import '../state/providers.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AudioMotionVisualizer
+// AudioMotionVisualizer — three spectral actors
 //
-// The player pipeline (mpv_audio_kit) already owns:
-//   • perceptual band mapping (48 log-spaced bands)
-//   • psychoacoustic amplitude scaling
-//   • asymmetric EMA smoothing (attack 0.72 / release 0.16)
-//   • fixed 60 fps cadence
+// Each frequency region owns its own motion law, geometry, and visual language.
+// No shared rendering. No neighbor blending. No global gradient.
 //
-// This widget is a topology renderer, not a signal processor.
-// It applies one light transform — neighbor blending for lateral coherence —
-// then paints. No EMA, no decay loop, no ticker, no synthetic animation.
+// Bass   (bins 0–7):   thick arcs, bottom-anchored, wide, heavy
+// Mids   (bins 8–31):  vertical segments, center-anchored, structured
+// Treble (bins 32–47): scattered dots, random vertical scatter, fast flicker
 //
-// Signal path:
-//   Player.stream.spectrum (48 bands, 60 fps, pre-smoothed)
-//     → _AmaNotifier.ingest()   — neighbor blend only
-//     → notifyListeners()       — triggers repaint
-//     → _AmaPainter.paint()     — draws bars
+// The player pipeline owns all temporal smoothing (attack 0.72 / release 0.08).
+// This renderer owns only geometry and paint — no DSP.
 //
-// The stream cadence IS the animation loop. Removing the ticker eliminates
-// synthetic frame pumping, reduces UI-thread wakeups, and cuts raster churn —
-// especially important on OLED where unnecessary repaints cost battery.
+// Stream lifecycle: subscribed once in initState via addPostFrameCallback.
+// The stream cadence (60 fps) drives repaints directly — no ticker.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AudioMotionVisualizer extends ConsumerStatefulWidget {
   final double height;
-  final double barSpace;
 
   const AudioMotionVisualizer({
     super.key,
-    this.height   = 96,
-    this.barSpace = 0.18,
+    this.height = 96,
   });
 
   @override
@@ -47,15 +39,12 @@ class AudioMotionVisualizer extends ConsumerStatefulWidget {
 }
 
 class _AudioMotionVisualizerState extends ConsumerState<AudioMotionVisualizer> {
-  final _notifier = _AmaNotifier();
+  final _notifier = _SpectralNotifier();
   StreamSubscription<FftFrame>? _fftSub;
 
   @override
   void initState() {
     super.initState();
-    // Subscribe once in initState — never re-subscribe.
-    // didChangeDependencies fires on every ancestor dependency change and
-    // would cancel+restart the stream each time, causing dropped frames.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _fftSub = ref.read(playerServiceProvider).spectrumStream.listen(
@@ -79,10 +68,11 @@ class _AudioMotionVisualizerState extends ConsumerState<AudioMotionVisualizer> {
         height: widget.height,
         width: double.infinity,
         child: CustomPaint(
-          painter: _AmaPainter(
-            notifier:  _notifier,
-            accent:    spectral.energy,
-            barSpace:  widget.barSpace,
+          painter: _SpectralPainter(
+            notifier: _notifier,
+            energy:   spectral.energy,
+            glow:     spectral.glow,
+            shadow:   spectral.shadow,
           ),
         ),
       ),
@@ -91,115 +81,214 @@ class _AudioMotionVisualizerState extends ConsumerState<AudioMotionVisualizer> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _AmaNotifier — topology transform only
+// _SpectralNotifier
 //
-// Neighbor blend: out[i] = src[i]*0.84 + src[i-1]*0.08 + src[i+1]*0.08
+// Stores the raw band values from the player. No processing — the player
+// already applied attack/release smoothing. The notifier just holds state
+// and notifies the painter on each new frame.
 //
-// This creates lateral wave propagation — a transient in bin 10 ripples
-// into bins 9 and 11 — without adding any temporal smoothing on top of
-// what the player already provides. Weights are tighter than before
-// (0.84/0.08/0.08 vs 0.72/0.14/0.14) because upstream smoothing already
-// exists; heavier blending would create gelatin motion.
+// Treble dot positions are seeded deterministically per bin so they don't
+// jump on every frame — only their vertical scatter amplitude changes with
+// energy.
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _AmaNotifier extends ChangeNotifier {
-  static const int _n = 48;
+class _SpectralNotifier extends ChangeNotifier {
+  static const int _n      = 48;
+  static const int _nBass  = 8;   // bins 0–7
+  static const int _nMid   = 24;  // bins 8–31
+  static const int _nTreb  = 16;  // bins 32–47
 
-  final Float32List bars = Float32List(_n);
+  final Float32List bands = Float32List(_n);
+
+  // Treble dot vertical offsets — seeded once, deterministic per bin.
+  // Each treble bin gets a fixed horizontal sub-position within its slot
+  // and a fixed phase offset for its scatter animation.
+  late final Float32List _trebPhase;
+
+  _SpectralNotifier() {
+    final rng = math.Random(0xAF5EC); // deterministic seed
+    _trebPhase = Float32List(_nTreb);
+    for (var i = 0; i < _nTreb; i++) {
+      _trebPhase[i] = rng.nextDouble() * math.pi * 2;
+    }
+  }
 
   void ingest(Float32List src) {
-    // src is already 48 bands from the player (bandCount: 48 in configureSpectrum).
-    // If the player emits a different length for any reason, clamp safely.
     final len = src.length < _n ? src.length : _n;
-
     for (var i = 0; i < len; i++) {
-      final left  = src[(i - 1).clamp(0, len - 1)];
-      final mid   = src[i].isFinite ? src[i] : 0.0;
-      final right = src[(i + 1).clamp(0, len - 1)];
-      bars[i] = mid * 0.84 + left * 0.08 + right * 0.08;
+      bands[i] = src[i].isFinite ? src[i].clamp(0.0, 1.0) : 0.0;
     }
-
     notifyListeners();
   }
+
+  double bassAt(int i)  => bands[i.clamp(0, _nBass - 1)];
+  double midAt(int i)   => bands[(_nBass + i).clamp(0, _nBass + _nMid - 1)];
+  double trebAt(int i)  => bands[(_nBass + _nMid + i).clamp(0, _n - 1)];
+  double trebPhase(int i) => _trebPhase[i.clamp(0, _nTreb - 1)];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _AmaPainter
+// _SpectralPainter — three distinct rendering regions
 //
-// Uniform bars, bottom-anchored, growing upward.
-// Amplitude clamped to 72% of zone height — peaks have room to travel.
-// Single accent color with vertical opacity fade (100% → 55%).
-// Motion carries the visual identity; color just tints it.
+// Bass region (left ~25% of width):
+//   Thick rounded rectangles, bottom-anchored.
+//   Width scales with energy — wide at full energy, narrow at low.
+//   Color: shadow → energy gradient, local per-bar.
+//   Gap between bars is large (0.45) so each arc reads as a distinct mass.
+//
+// Mid region (center ~50% of width):
+//   Thin vertical segments, center-anchored (grow up AND down from midline).
+//   Uniform width. Color: energy at full opacity.
+//   Tight spacing (0.15 gap) — reads as a structured field.
+//
+// Treble region (right ~25% of width):
+//   Small circles scattered vertically within the zone.
+//   Vertical position = midline ± (energy × scatter amplitude × phase offset).
+//   Radius scales with energy. Color: glow.
+//   No alignment — deliberately unstable.
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _AmaPainter extends CustomPainter {
-  final _AmaNotifier notifier;
-  final Color        accent;
-  final double       barSpace;
+class _SpectralPainter extends CustomPainter {
+  final _SpectralNotifier notifier;
+  final Color energy;
+  final Color glow;
+  final Color shadow;
 
-  static const int    _n       = _AmaNotifier._n;
-  static const double _maxFill = 0.55;
-  static const double _minPx   = 2.0;
+  static const int _nBass = _SpectralNotifier._nBass;
+  static const int _nMid  = _SpectralNotifier._nMid;
+  static const int _nTreb = _SpectralNotifier._nTreb;
 
-  const _AmaPainter({
+  // Zone width fractions.
+  static const double _bassW = 0.28;
+  static const double _midW  = 0.46;
+  static const double _trebW = 0.26;
+
+  // Bass geometry.
+  static const double _bassGap     = 0.45; // fraction of slot
+  static const double _bassMaxFill = 0.80; // max height fraction of zone
+
+  // Mid geometry.
+  static const double _midGap     = 0.20;
+  static const double _midMaxFill = 0.90; // half-height each direction
+
+  // Treble geometry.
+  static const double _trebMaxR    = 3.5;  // max dot radius dp
+  static const double _trebScatter = 0.38; // vertical scatter as fraction of zone
+
+  const _SpectralPainter({
     required this.notifier,
-    required this.accent,
-    required this.barSpace,
+    required this.energy,
+    required this.glow,
+    required this.shadow,
   }) : super(repaint: notifier);
 
   @override
   void paint(Canvas canvas, Size size) {
     if (size.width <= 0 || size.height <= 0) return;
 
-    final zoneH   = size.height;
-    final slotW   = size.width / _n;
-    final barW    = slotW * (1.0 - barSpace.clamp(0.0, 0.9));
-    final offsetX = (slotW - barW) / 2;
-    final maxH    = zoneH * _maxFill;
-    final capR    = Radius.circular(barW / 2);
+    final W = size.width;
+    final H = size.height;
 
-    // Horizontal gradient: each bar gets a distinct color by frequency position.
-    // Bass (left) = shadow, mid = accent, treble (right) = glow.
-    // Pre-computed once — no per-bar allocation.
-    final freqShader = LinearGradient(
-      begin: Alignment.centerLeft,
-      end:   Alignment.centerRight,
-      colors: [
-        accent.withValues(alpha: 0.70),  // bass — slightly muted
-        accent,                           // mid — full accent
-        accent.withValues(alpha: 0.85),  // treble — slightly pulled back
-      ],
-      stops: const [0.0, 0.45, 1.0],
-    ).createShader(Rect.fromLTWH(0, 0, size.width, zoneH));
+    final bassX0 = 0.0;
+    final bassW  = W * _bassW;
+    final midX0  = bassW;
+    final midW   = W * _midW;
+    final trebX0 = bassW + midW;
 
-    final paint = Paint()
-      ..style  = PaintingStyle.fill
-      ..shader = freqShader;
+    _paintBass(canvas, bassX0, bassW, H);
+    _paintMid(canvas, midX0, midW, H);
+    _paintTreble(canvas, trebX0, W * _trebW, H);
+  }
 
-    for (var i = 0; i < _n; i++) {
-      final level = notifier.bars[i];
-      if (level < 0.002) continue;
+  // ── Bass: thick bottom-anchored arcs ────────────────────────────────────
 
-      final barH = (level * maxH).clamp(_minPx, maxH);
-      final x    = i * slotW + offsetX;
-      final y    = zoneH - barH;
+  void _paintBass(Canvas canvas, double x0, double zoneW, double H) {
+    final slotW = zoneW / _nBass;
+    final paint = Paint()..style = PaintingStyle.fill;
 
-      if (barH > barW) {
-        canvas.drawRRect(
-          RRect.fromRectAndCorners(
-            Rect.fromLTWH(x, y, barW, barH),
-            topLeft:  capR,
-            topRight: capR,
-          ),
-          paint,
-        );
-      } else {
-        canvas.drawRect(Rect.fromLTWH(x, y, barW, barH), paint);
-      }
+    for (var i = 0; i < _nBass; i++) {
+      final level = notifier.bassAt(i);
+      if (level < 0.01) continue;
+
+      // Width scales with energy: full energy = full slot width minus gap.
+      // Low energy = narrower bar — creates visual mass differentiation.
+      final widthFrac = 0.35 + level * 0.65; // 35%–100% of (slot - gap)
+      final barW = slotW * (1.0 - _bassGap) * widthFrac;
+      final x    = x0 + i * slotW + (slotW - barW) / 2;
+      final barH = (level * H * _bassMaxFill).clamp(2.0, H * _bassMaxFill);
+      final y    = H - barH;
+      final r    = Radius.circular(barW / 2);
+
+      // Per-bar color: low energy = shadow, high energy = energy color.
+      paint.color = Color.lerp(shadow, energy, level)!
+          .withValues(alpha: 0.55 + level * 0.45);
+
+      canvas.drawRRect(
+        RRect.fromRectAndCorners(
+          Rect.fromLTWH(x, y, barW, barH),
+          topLeft: r, topRight: r,
+        ),
+        paint,
+      );
+    }
+  }
+
+  // ── Mids: thin center-anchored segments ─────────────────────────────────
+
+  void _paintMid(Canvas canvas, double x0, double zoneW, double H) {
+    final slotW  = zoneW / _nMid;
+    final midY   = H / 2;
+    final maxArm = H / 2 * _midMaxFill; // max half-height
+    final paint  = Paint()..style = PaintingStyle.fill;
+
+    for (var i = 0; i < _nMid; i++) {
+      final level = notifier.midAt(i);
+      if (level < 0.015) continue;
+
+      final barW = slotW * (1.0 - _midGap);
+      final x    = x0 + i * slotW + (slotW - barW) / 2;
+      final arm  = (level * maxArm).clamp(1.5, maxArm);
+      final r    = Radius.circular(barW / 2);
+
+      paint.color = energy.withValues(alpha: 0.40 + level * 0.60);
+
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, midY - arm, barW, arm * 2),
+          r,
+        ),
+        paint,
+      );
+    }
+  }
+
+  // ── Treble: scattered dots ───────────────────────────────────────────────
+
+  void _paintTreble(Canvas canvas, double x0, double zoneW, double H) {
+    final slotW  = zoneW / _nTreb;
+    final midY   = H / 2;
+    final scatter = H * _trebScatter;
+    final paint  = Paint()..style = PaintingStyle.fill;
+
+    for (var i = 0; i < _nTreb; i++) {
+      final level = notifier.trebAt(i);
+      if (level < 0.02) continue;
+
+      // Dot center: midline ± scatter driven by energy × phase.
+      // Phase is fixed per bin — the dot doesn't jump randomly each frame,
+      // it oscillates at a fixed position scaled by energy.
+      final phase  = notifier.trebPhase(i);
+      final cy     = midY + math.sin(phase) * scatter * level;
+      final cx     = x0 + i * slotW + slotW / 2;
+      final radius = (_trebMaxR * level).clamp(0.8, _trebMaxR);
+
+      paint.color = glow.withValues(alpha: 0.35 + level * 0.65);
+
+      canvas.drawCircle(Offset(cx, cy), radius, paint);
     }
   }
 
   @override
-  bool shouldRepaint(_AmaPainter old) =>
-      old.accent != accent || old.barSpace != barSpace;
+  bool shouldRepaint(_SpectralPainter old) =>
+      old.energy != energy || old.glow != glow || old.shadow != shadow;
 }
