@@ -6,17 +6,15 @@ import 'package:go_router/go_router.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop;
 
 import '../../core/audio/play_actions.dart';
-import '../../core/demo/demo_library.dart';
 import '../../core/jellyfin/client.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/time_format.dart';
 import '../../widgets/artwork.dart';
-import '../../widgets/audio_motion_visualizer.dart';
+import '../../widgets/audio_visual_scrubber.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/quality_chip.dart';
-import '../../widgets/waveform.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NowPlayingScreen — Reactive Islands architecture
@@ -68,8 +66,6 @@ class NowPlayingScreen extends ConsumerWidget {
                           const SizedBox(height: AfSpacing.s24),
                           _MetadataRow(track: track),
                           const SizedBox(height: AfSpacing.s16),
-                          _ReactiveVisualizer(),
-                          const SizedBox(height: AfSpacing.s20),
                           _ReactiveProgress(track: track),
                           const SizedBox(height: AfSpacing.s24),
                           _ReactiveTransport(track: track),
@@ -155,25 +151,6 @@ class _ReactiveArtwork extends ConsumerWidget {
   }
 }
 
-/// AudioMotion-style spectrum visualizer — full width, sits between
-/// artwork and metadata. Isolated in its own island so FFT repaints
-/// never propagate up the widget tree.
-class _ReactiveVisualizer extends ConsumerWidget {
-  const _ReactiveVisualizer();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Only needs to rebuild when spectral colors change (on track skip).
-    // FFT repaints are driven by the Listenable inside the widget itself.
-    ref.watch(currentSpectralProvider);
-    return const RepaintBoundary(
-      child: AudioMotionVisualizer(
-        height: 120,
-      ),
-    );
-  }
-}
-
 /// Static metadata row — only rebuilds when track changes (on skip).
 class _MetadataRow extends ConsumerWidget {
   final AfTrack track;
@@ -250,18 +227,12 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
       data: (p) => p,
       orElse: () => Duration.zero,
     );
-    final isPlaying = ref.watch(playingStreamProvider).maybeWhen(
-      data: (v) => v,
-      orElse: () => false,
-    );
     final spectral = ref.watch(currentSpectralProvider);
     final duration = widget.track.duration;
     final serverProgress = duration.inMilliseconds == 0
         ? 0.0
         : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
-    // Show scrub preview during drag; server position otherwise.
     final displayProgress = _scrubPreview ?? serverProgress;
-    final peaks = widget.track.peaks ?? DemoLibrary.peaksFor(widget.track.id);
 
     // Compute display position from scrub preview when dragging.
     final displayPosition = _scrubPreview != null
@@ -276,12 +247,10 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
     return RepaintBoundary(
       child: Column(
         children: [
-          Waveform(
-            peaks: peaks,
+          AudioVisualScrubber(
             progress: displayProgress,
-            isPlaying: isPlaying,
             playedColor: spectral.energy,
-            height: 36,
+            height: 120,
             onScrub: (p) => setState(() => _scrubPreview = p),
             onScrubEnd: (p) {
               setState(() => _scrubPreview = null);
