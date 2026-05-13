@@ -95,6 +95,9 @@ jobs:
 
       - name: Build APK
         run: |
+          # Stop any lingering Gradle daemon from earlier steps to prevent
+          # the "Already watching path" file-watcher collision on the CI runner.
+          (cd android && ./gradlew --stop) || true
           ARGS="--${{ inputs.build_mode }}"
           if [ "${{ inputs.split_per_abi }}" = "true" ]; then
             ARGS="$ARGS --split-per-abi"
