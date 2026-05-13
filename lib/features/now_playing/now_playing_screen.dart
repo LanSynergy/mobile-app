@@ -305,6 +305,7 @@ class _ReactiveProgress extends ConsumerStatefulWidget {
 class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
   // Local scrub preview — updated during drag without seeking.
   double? _scrubPreview;
+  bool _isDragging = false;
 
   @override
   Widget build(BuildContext context) {
@@ -315,13 +316,17 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
     );
     final spectral = ref.watch(currentSpectralProvider);
     final duration = widget.track.duration;
-    final serverProgress = duration.inMilliseconds == 0
+
+    // Only use engine position if NOT dragging — prevents the playhead
+    // from stuttering between the drag position and the engine's real
+    // position (which keeps advancing during the gesture).
+    final engineProgress = duration.inMilliseconds == 0
         ? 0.0
         : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
-    final displayProgress = _scrubPreview ?? serverProgress;
+    final displayProgress =
+        _isDragging ? (_scrubPreview ?? engineProgress) : engineProgress;
 
-    // Compute display position from scrub preview when dragging.
-    final displayPosition = _scrubPreview != null
+    final displayPosition = _isDragging && _scrubPreview != null
         ? Duration(
             milliseconds: (_scrubPreview! * duration.inMilliseconds).round(),
           )
@@ -337,13 +342,25 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
             progress: displayProgress,
             playedColor: spectral.energy,
             height: 120,
-            onScrub: (p) => setState(() => _scrubPreview = p),
+            onScrub: (p) => setState(() {
+              _isDragging = true;
+              _scrubPreview = p;
+            }),
             onScrubEnd: (p) {
-              setState(() => _scrubPreview = null);
               final newPos = Duration(
                 milliseconds: (p * duration.inMilliseconds).round(),
               );
-              ref.read(playerServiceProvider).seek(newPos);
+              // Hold the drag lock until the seek resolves so the engine's
+              // new position matches the scrubber's drop point before we
+              // hand control back to the stream.
+              ref.read(playerServiceProvider).seek(newPos).then((_) {
+                if (mounted) {
+                  setState(() {
+                    _isDragging = false;
+                    _scrubPreview = null;
+                  });
+                }
+              });
             },
           ),
           const SizedBox(height: AfSpacing.s4),

@@ -352,36 +352,48 @@ class _CombinedBarPainter extends CustomPainter {
       paint.shader = null;
     }
 
-    // Solid bars.
+    // Path batching: 4 distinct paint states to prevent breaking the
+    // Skia pipeline batch. Grouping by color avoids ~128 individual
+    // drawRRect calls that thrash the GPU state.
+    final topPlayedPath    = Path();
+    final topUnplayedPath  = Path();
+    final refPlayedPath    = Path();
+    final refUnplayedPath  = Path();
+
     for (var i = 0; i < _BlockNotifier.bins; i++) {
       final level = fftNotifier.smoothed[i];
       if (level < 0.01) continue;
 
-      final cx        = (i + 0.5) * slotW;
-      final x         = cx - barW / 2;
-      final barH      = (level * maxBarH).clamp(2.0, maxBarH);
-      final baseColor = cx <= fillX ? playedColor : unplayedColor;
+      final cx   = (i + 0.5) * slotW;
+      final x    = cx - barW / 2;
+      final barH = (level * maxBarH).clamp(2.0, maxBarH);
+      final isPlayed = cx <= fillX;
 
-      // Top bar (grows upward).
-      paint.color = baseColor;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, midY - barH, barW, barH),
-          barRadius,
-        ),
-        paint,
+      final topRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x, midY - barH, barW, barH),
+        barRadius,
+      );
+      final refRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x, midY + 2.0, barW, barH * 0.4),
+        barRadius,
       );
 
-      // Reflection (40% height, 35% opacity, grows downward).
-      paint.color = baseColor.withValues(alpha: 0.35);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, midY + 2.0, barW, barH * 0.4),
-          barRadius,
-        ),
-        paint,
-      );
+      if (isPlayed) {
+        topPlayedPath.addRRect(topRect);
+        refPlayedPath.addRRect(refRect);
+      } else {
+        topUnplayedPath.addRRect(topRect);
+        refUnplayedPath.addRRect(refRect);
+      }
     }
+
+    // Render 4 batched draw calls instead of ~128 individual ones.
+    canvas.drawPath(topPlayedPath, paint..color = playedColor);
+    canvas.drawPath(topUnplayedPath, paint..color = unplayedColor);
+    canvas.drawPath(
+        refPlayedPath, paint..color = playedColor.withValues(alpha: 0.35));
+    canvas.drawPath(
+        refUnplayedPath, paint..color = unplayedColor.withValues(alpha: 0.35));
   }
 
   @override
