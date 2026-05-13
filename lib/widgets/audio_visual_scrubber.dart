@@ -231,7 +231,6 @@ class _BlockNotifier extends ChangeNotifier {
 
   final Float32List target   = Float32List(bins);
   final Float32List smoothed = Float32List(bins);
-  final Float32List velocity = Float32List(bins);
 
   double totalEnergy = 0.0;
 
@@ -243,18 +242,15 @@ class _BlockNotifier extends ChangeNotifier {
   ///
   /// Per the official mpv_audio_kit example: "No AnimationController
   /// needed — painting the values directly produces the bouncy
-  /// visualizer feel." We add only a display-layer spring for extra
-  /// recoil on decay, but do NOT re-process the signal.
+  /// visualizer feel."
   void ingest(Float32List bands) {
     if (bands.isEmpty) return;
     double energy = 0.0;
 
     final int n = bands.length < bins ? bands.length : bins;
     for (var i = 0; i < n; i++) {
-      double raw = bands[i].clamp(0.0, 1.0);
-      
+      final double raw = bands[i].clamp(0.0, 1.0);
       final v = math.pow(raw, 500).toDouble();
-      
       target[i] = v;
       energy += v;
     }
@@ -271,33 +267,14 @@ class _BlockNotifier extends ChangeNotifier {
     totalEnergy = 0.0;
   }
 
-  /// Display-layer spring — adds visual recoil on decay without
-  /// altering the engine's calibrated amplitude.
-  ///
-  /// - Rising: lerp 0.5 — matches the engine's attack coefficient so
-  ///   the display tracks the signal without adding lag.
-  /// - Falling: damped spring with floor bounce. Bars coast down with
-  ///   a tiny recoil, settling in 2–3 cycles.
+  /// Copies target directly to smoothed — the engine's native EMA
+  /// already provides the attack/release feel.
   bool tick() {
     var moving = totalEnergy > 0.001;
 
     for (var i = 0; i < bins; i++) {
-      final diff = target[i] - smoothed[i];
-      if (diff > 0) {
-        // Rise: track the engine's smoothed output directly.
-        smoothed[i] += diff * 0.5;
-        velocity[i] = 0.0;
-      } else {
-        // Fall: spring decay with floor bounce.
-        velocity[i] += diff * 0.12;
-        velocity[i] *= 0.82;
-        smoothed[i] += velocity[i];
-        if (smoothed[i] < 0.0) {
-          smoothed[i] = 0.0;
-          velocity[i] = -velocity[i] * 0.3;
-        }
-      }
-      if (smoothed[i] > 0.001 || velocity[i].abs() > 0.001) moving = true;
+      smoothed[i] = target[i];
+      if (smoothed[i] > 0.001) moving = true;
     }
 
     notifyListeners();
