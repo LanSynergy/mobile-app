@@ -39,22 +39,32 @@ real-time FFT visualizer — runs on your phone.
 
 - **Library, Albums, Artists, Genres, Playlists** browsing
 - **Search** across tracks, albums, artists, playlists (debounced, normalized)
-- **Queue** with drag-to-reorder and swipe-to-remove
+- **Queue** with drag-to-reorder, swipe-to-remove, auto-scroll to current track
+- **Long-press context menus** on tracks (Play next, Add to queue, Go to album/artist) and albums (Play album, Go to artist)
 - **Now Playing** with:
-  - Real-time FFT spectrum visualizer (64 independent frequency bars with psychoacoustic weighting)
-  - Artwork pulse driven by a dual-envelope beat detector (kick drums punch, sustained bass sustains)
-  - Waveform scrubber with haptic feedback
-  - Shuffle, loop (off / track / playlist), playback speed (0.5×–2.0×)
+  - Real-time FFT spectrum visualizer (64 bars, engine-driven rendering at 60 fps, path-batched painter)
+  - Artwork pulse driven by sub-bass transient detector (bins 1–6, 250ms cooldown, spring decay)
+  - Progress scrubber with haptic feedback and drag-race-free seeking
+  - Shuffle (native mpv playlist-shuffle, never changes displayed song), loop (off / track / playlist), playback speed (0.5×–2.0×)
   - Favorite toggle, Instant Mix radio
+- **Equalizer & DSP** (accessible from Now Playing → More):
+  - Bass shelf (-12 to +12 dB)
+  - Treble shelf (-12 to +12 dB)
+  - Loudness normalization (EBU R128, -16 LUFS)
+  - Dynamic compressor (threshold 0.1, ratio 4:1)
+  - ReplayGain (off / track / album)
 - **Synced lyrics** (LRC parsed on-device, auto-scrolling, displayed on lock-screen)
 - **Lock-screen / notification** media controls (prev, play/pause, next)
 - **Sleep timer** (presets + end-of-track mode)
-- **Output routing** (mpv audio device picker)
+- **Audio output routing** (mpv audio device picker)
+- **Audio hardware settings** — sample rate, bit depth, exclusive mode, audio buffer
+- **Network & cache settings** — cache duration, buffer size, keep-audio-active toggle
 - **Save to playlist** / create playlist from Now Playing
 - **Playlist management** — reorder, remove, rename, delete
 - **mDNS discovery** of Jellyfin servers on the local network
 - **Spectral-derived UI accents** — palette sampled from current cover art
 - **Gapless playback** — libmpv pre-fetches the next track in the background
+- **A-B loop** — repeat a section of a track (API ready, UI pending)
 - **Genre detail screens** — tap any genre to browse its albums
 - **Offline-friendly metadata cache** (cover art via
   [`cached_network_image`](https://pub.dev/packages/cached_network_image),
@@ -135,13 +145,13 @@ CI runs both on every PR. See
 
 ### Visualizer architecture
 
-The FFT visualizer uses a **3-layer architecture**:
+The FFT visualizer uses an **engine-driven rendering** model:
 
-1. **Raw FFT truth** — 64 bands from mpv, treated as immutable instantaneous truth. Bar i = FFT bin i (no resampling).
-2. **Independent visual envelopes** — each bar owns its own attack/decay. Bass bars move heavy and sustain; treble bars flicker and decay fast.
-3. **Psychoacoustic weighting** — bass amplified ×1.6, treble attenuated ×0.85, matching human hearing perception.
+1. **Engine-side DSP** — mpv_audio_kit's C++ pipeline handles all smoothing physics (attack 0.8, release 0.1). Emits 64 log-spaced bands at ~120 fps, already dB-normalized to [0, 1].
+2. **Client-side rendering** — `ingest()` applies a power-8 curve for visual compression and marks data dirty. A vsync-aligned ticker calls `flush()` at 60 fps, guaranteeing frame-aligned repaints regardless of stream event timing.
+3. **Path-batched painter** — 4 `Path` objects (top/reflection × played/unplayed) drawn with 4 `drawPath` calls instead of ~128 individual `drawRRect` calls. Eliminates Skia pipeline thrashing.
 
-The artwork pulse uses a **dual-envelope beat detector**: a fast envelope (attack 0.55) tracks kick transients; a slow envelope (attack 0.08) tracks average bass energy. The beat impulse is `fast - slow`, amplified ×4.5 — kick drums punch visibly even at moderate volume.
+The artwork pulse uses a **transient detector** on bins 1–6 (kick/sub-bass region, 22–45 Hz). Running baseline EMA + 1.5× threshold + 250ms cooldown prevents double-kick chatter. Spring decay (0.85× per frame) via `ValueNotifier<double>` + `Transform.scale` — no setState, no parent rebuild.
 
 Full architectural rules live in [`CLAUDE.md`](./CLAUDE.md).
 
