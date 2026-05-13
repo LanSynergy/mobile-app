@@ -304,34 +304,54 @@ class AfPlayerService extends BaseAudioHandler
     afLog('data', 'shuffleMode source=live enabled=$enabled');
   }
 
-  /// Rebuilds the mpv playlist from _trackQueue, starting playback at
-  /// _currentIndex. Preserves the current playback position so the song
-  /// doesn't restart from the beginning.
+  /// Rearranges the mpv playlist to match _trackQueue without interrupting
+  /// the currently playing track. Clears all entries except the current one,
+  /// then re-appends tracks in the correct order around it.
   Future<void> _rebuildMpvPlaylist() async {
     final client = _resolveStreamUrl;
     if (client == null) return;
+    if (_trackQueue.isEmpty) return;
 
-    // Save current position and playing state before replacing the playlist.
-    final savedPosition = _player.state.position;
-    final wasPlaying = _player.state.playing;
+    final playlistLen = _player.state.playlist.items.length;
 
-    final medias = _trackQueue
-        .map((t) => Media(client(t)))
-        .toList();
-
-    try {
-      await _player.openAll(
-        medias,
-        index: _currentIndex,
-        play: wasPlaying,
-      );
-      // Restore position so the song doesn't restart.
-      if (savedPosition > Duration.zero) {
-        await _player.seek(savedPosition);
-      }
-    } catch (e, stack) {
-      afLog('audio', '_rebuildMpvPlaylist failed', error: e, stackTrace: stack);
+    // If nothing is loaded, just open fresh (no interruption possible).
+    if (playlistLen == 0) {
+      final medias = _trackQueue.map((t) => Media(client(t))).toList();
+      try {
+        await _player.openAll(medias, index: _currentIndex, play: false);
+      } catch (_) {}
+      return;
     }
+
+    // Step 1: Remove all entries except the currently playing one.
+    // After this, mpv has 1 item at index 0 (the current track).
+    final currentMpvIdx = _player.state.playlist.index;
+    for (var i = playlistLen - 1; i >= 0; i--) {
+      if (i == currentMpvIdx) continue;
+      await _player.sendRawCommand(['playlist-remove', '$i']);
+    }
+    // Now: mpv playlist = [currentTrack] at index 0.
+
+    // Step 2: Append tracks that come AFTER current in the new order.
+    for (var i = _currentIndex + 1; i < _trackQueue.length; i++) {
+      await _player.sendRawCommand([
+        'loadfile', client(_trackQueue[i]), 'append',
+      ]);
+    }
+
+    // Step 3: Insert tracks that come BEFORE current in the new order.
+    // These need to go before index 0 (the current track).
+    for (var i = 0; i < _currentIndex; i++) {
+      await _player.sendRawCommand([
+        'loadfile', client(_trackQueue[i]), 'append',
+      ]);
+      // Move the just-appended item (at the end) to position i.
+      final lastIdx = _player.state.playlist.items.length - 1;
+      await _player.sendRawCommand(['playlist-move', '$lastIdx', '$i']);
+    }
+
+    afLog('audio',
+        '_rebuildMpvPlaylist done: currentIndex=$_currentIndex queueSize=${_trackQueue.length}');
   }
 
   /// Cached stream URL resolver — set by playQueue, used by shuffle rebuild.
