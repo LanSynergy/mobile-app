@@ -191,7 +191,6 @@ class AfPlayerService extends BaseAudioHandler
     // Build Media list. Auth is embedded in the URL via api_key= so
     // libmpv/FFmpeg can authenticate without needing the Authorization
     // header (which FFmpeg rejects due to its comma separators).
-    _resolveStreamUrl = resolveStreamUrl;
     final medias = tracks
         .map((t) => Media(resolveStreamUrl(t)))
         .toList();
@@ -244,118 +243,92 @@ class AfPlayerService extends BaseAudioHandler
   @override
   Future<void> skipToQueueItem(int index) => _player.jump(index);
 
-  /// Toggle shuffle mode. Managed entirely in Dart — does NOT call
-  /// mpv's setShuffle (which causes race conditions with playlist events).
+  /// Toggle shuffle mode using mpv's native playlist-shuffle / playlist-unshuffle
+  /// commands which reorder the playlist WITHOUT interrupting playback.
   ///
   /// Behavior:
-  /// - Toggle ON while playing: keep current track at index 0, shuffle
-  ///   the remaining tracks below it. Rebuild the mpv playlist.
-  /// - Toggle OFF while playing: restore original queue order, keep
-  ///   current track playing at its original position.
-  /// - Never changes the currently displayed/playing song.
+  /// - Toggle ON: mpv shuffles the playlist. We sync _trackQueue to match
+  ///   mpv's new order. Current track keeps playing uninterrupted.
+  /// - Toggle OFF: mpv restores original load order. We sync _trackQueue.
+  ///   Current track keeps playing uninterrupted.
+  /// - Never changes the currently displayed/playing song (track-ID guard
+  ///   in the playlist listener prevents spurious emissions).
   Future<void> setAfShuffleMode(bool enabled) async {
     if (_shuffleEnabled == enabled) return;
     _shuffleEnabled = enabled;
     _shuffleController.add(enabled);
 
     final playingTrack = currentTrack;
-    if (_trackQueue.isEmpty || playingTrack == null) {
+    if (_trackQueue.isEmpty) {
       afLog('data', 'shuffleMode source=live enabled=$enabled (queue empty)');
       return;
     }
 
+    // Suppress playlist listener — mpv will emit a reordered playlist
+    // event which would trigger a track-change if _trackQueue is stale.
     _suppressPlaylistSync = true;
 
-    if (enabled) {
-      // Save original order before shuffling.
+    // Save original order before first shuffle so unshuffle can restore.
+    if (enabled && _originalQueue.isEmpty) {
       _originalQueue = List.of(_trackQueue);
-
-      // Remove current track, shuffle the rest, put current at front.
-      final rest = List.of(_trackQueue)
-        ..removeWhere((t) => t.id == playingTrack.id);
-      rest.shuffle();
-
-      _trackQueue
-        ..clear()
-        ..add(playingTrack)
-        ..addAll(rest);
-      _currentIndex = 0;
-    } else {
-      // Restore original order, find current track's original position.
-      if (_originalQueue.isNotEmpty) {
-        _trackQueue
-          ..clear()
-          ..addAll(_originalQueue);
-        _currentIndex = _trackQueue.indexWhere((t) => t.id == playingTrack.id);
-        if (_currentIndex < 0) _currentIndex = 0;
-      }
-      _originalQueue = [];
     }
 
-    // Rebuild the mpv playlist to match the new _trackQueue order.
-    await _rebuildMpvPlaylist();
+    // mpv's setShuffle: playlist-shuffle keeps current file playing,
+    // playlist-unshuffle restores original load order. Neither interrupts.
+    await _player.setShuffle(enabled);
+
+    // Sync _trackQueue to mpv's new playlist order.
+    final mpvItems = _player.state.playlist.items;
+    final newIdx = _player.state.playlist.index;
+
+    if (mpvItems.isNotEmpty) {
+      final byId = <String, AfTrack>{};
+      for (final t in _trackQueue) {
+        byId[t.id] = t;
+      }
+
+      final reordered = <AfTrack>[];
+      for (final media in mpvItems) {
+        final id = _extractTrackId(media.uri);
+        final track = id != null ? byId[id] : null;
+        if (track != null) {
+          reordered.add(track);
+        }
+      }
+
+      if (reordered.length == _trackQueue.length) {
+        _trackQueue
+          ..clear()
+          ..addAll(reordered);
+        _currentIndex = newIdx.clamp(0, _trackQueue.length - 1);
+      }
+    }
+
+    if (!enabled) _originalQueue = [];
 
     _suppressPlaylistSync = false;
 
     // Emit updated queue without changing the displayed track.
     _queueController.add(List.unmodifiable(_trackQueue));
-    _trackController.add(playingTrack);
+    if (playingTrack != null) {
+      _trackController.add(playingTrack);
+    }
 
     afLog('data', 'shuffleMode source=live enabled=$enabled');
   }
 
-  /// Rearranges the mpv playlist to match _trackQueue without interrupting
-  /// the currently playing track. Clears all entries except the current one,
-  /// then re-appends tracks in the correct order around it.
-  Future<void> _rebuildMpvPlaylist() async {
-    final client = _resolveStreamUrl;
-    if (client == null) return;
-    if (_trackQueue.isEmpty) return;
-
-    final playlistLen = _player.state.playlist.items.length;
-
-    // If nothing is loaded, just open fresh (no interruption possible).
-    if (playlistLen == 0) {
-      final medias = _trackQueue.map((t) => Media(client(t))).toList();
-      try {
-        await _player.openAll(medias, index: _currentIndex, play: false);
-      } catch (_) {}
-      return;
+  /// Extracts the Jellyfin track ID from a stream URL.
+  /// URL format: `.../Audio/{trackId}/stream?...`
+  static String? _extractTrackId(String uri) {
+    final segments = Uri.tryParse(uri)?.pathSegments;
+    if (segments == null) return null;
+    for (var i = 0; i < segments.length - 1; i++) {
+      if (segments[i].toLowerCase() == 'audio') {
+        return segments[i + 1];
+      }
     }
-
-    // Step 1: Remove all entries except the currently playing one.
-    // After this, mpv has 1 item at index 0 (the current track).
-    final currentMpvIdx = _player.state.playlist.index;
-    for (var i = playlistLen - 1; i >= 0; i--) {
-      if (i == currentMpvIdx) continue;
-      await _player.sendRawCommand(['playlist-remove', '$i']);
-    }
-    // Now: mpv playlist = [currentTrack] at index 0.
-
-    // Step 2: Append tracks that come AFTER current in the new order.
-    for (var i = _currentIndex + 1; i < _trackQueue.length; i++) {
-      await _player.sendRawCommand([
-        'loadfile', client(_trackQueue[i]), 'append',
-      ]);
-    }
-
-    // Step 3: Insert tracks that come BEFORE current in the new order.
-    // These need to go before index 0 (the current track).
-    for (var i = 0; i < _currentIndex; i++) {
-      await _player.sendRawCommand([
-        'loadfile', client(_trackQueue[i]), 'append',
-      ]);
-      // Move the just-appended item (at the end) to position i.
-      final lastIdx = _player.state.playlist.items.length - 1;
-      await _player.sendRawCommand(['playlist-move', '$lastIdx', '$i']);
-    }
-
-    afLog('audio',
-        '_rebuildMpvPlaylist done: currentIndex=$_currentIndex queueSize=${_trackQueue.length}');
+    return null;
   }
-
-  /// Cached stream URL resolver — set by playQueue, used by shuffle rebuild.
-  String Function(AfTrack)? _resolveStreamUrl;
 
   Future<void> setAfLoopMode(Loop mode) async {
     await _player.setLoop(mode);
