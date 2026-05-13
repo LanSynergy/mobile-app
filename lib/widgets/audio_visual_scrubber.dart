@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -79,7 +80,7 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
           // Drop FFT data when obscured or backgrounded.
           if (!_shouldRender) return;
           _silenceTimer?.cancel();
-          _fftNotifier.ingest(frame.bands);
+          _fftNotifier.ingest(frame.bins, frame.sampleRate);
           if (!_ticker.isAnimating) _ticker.repeat();
           _silenceTimer = Timer(const Duration(milliseconds: 150), () {
             if (mounted && _shouldRender) {
@@ -236,27 +237,75 @@ class _BlockNotifier extends ChangeNotifier {
 
   double _rawEnergy = 0.0, totalEnergy = 0.0;
 
-  /// Bands arrive with the engine's native EMA already applied (attack
-  /// 0.5, release 0.1). Each band tracks its own history independently
-  /// so transients in one band don't bleed into neighbors. We apply:
-  ///   - a mild treble lift (1.0x..1.8x) so the right half stays
-  ///     visible on bass-heavy material without homogenizing the strip.
-  ///   - saturating clamp to [0, 1].
-  void ingest(Float32List bands) {
-    if (bands.isEmpty) return;
-    double sum = 0.0;
+  // Cached band edge mapping — recomputed when binCount changes.
+  Int32List? _bandStart;
+  Int32List? _bandEnd;
+  int _lastBinCount = 0;
 
-    final int n = bands.length < bins ? bands.length : bins;
-    for (var i = 0; i < n; i++) {
-      final boost = 1.0 + (i / bins) * 0.8; // 1.0x (bass) -> 1.8x (treble)
-      final v = (bands[i] * boost).clamp(0.0, 1.0);
-      target[i] = v.isFinite ? v : 0.0;
+  /// Accepts raw FFT magnitude bins (linear frequency axis, normalised
+  /// to [0, 1] by the engine's dB clip). We do our own log-frequency
+  /// max-pooling here because the engine's band aggregation uses *mean*
+  /// which smears wide treble bands into the same value. Max-pooling
+  /// picks the loudest bin in each band's range — that's what gives
+  /// per-band independence and makes each bar dance on its own.
+  void ingest(Float32List rawBins, int sampleRate) {
+    if (rawBins.isEmpty) return;
+    final int binCount = rawBins.length;
+
+    // Recompute log-spaced band edges when bin count changes.
+    if (binCount != _lastBinCount) {
+      _computeBandMapping(binCount);
+      _lastBinCount = binCount;
+    }
+
+    double sum = 0.0;
+    final bandStart = _bandStart!;
+    final bandEnd = _bandEnd!;
+
+    for (var i = 0; i < bins; i++) {
+      final int s = bandStart[i];
+      final int e = bandEnd[i];
+
+      // Max pooling — pick the peak bin in this band's range.
+      double peak = 0.0;
+      for (var j = s; j < e; j++) {
+        final v = rawBins[j];
+        if (v > peak) peak = v;
+      }
+
+      // Mild treble lift so the right half stays visible on bass-heavy
+      // material. 1.0x at bass, 1.8x at treble.
+      final boost = 1.0 + (i / bins) * 0.8;
+      target[i] = (peak * boost).clamp(0.0, 1.0);
       sum += target[i];
     }
-    for (var i = n; i < bins; i++) {
-      target[i] = 0.0;
-    }
     _rawEnergy = sum / bins;
+  }
+
+  /// Log-spaced band edges from 20 Hz to Nyquist, mapped onto the
+  /// linear bin array. Geometric ratio per band.
+  void _computeBandMapping(int binCount) {
+    _bandStart = Int32List(bins);
+    _bandEnd = Int32List(bins);
+
+    // The raw bins cover 0..Nyquist linearly. Bin i corresponds to
+    // frequency i * (sampleRate / fftSize). Since we only have binCount
+    // (= fftSize/2) bins, bin indices map directly to frequency slots.
+    // We map 20 Hz..Nyquist onto these bins using log spacing.
+    const double lowBin = 1.0; // skip DC (bin 0)
+    final double highBin = binCount.toDouble();
+    final double ratio = math.pow(highBin / lowBin, 1.0 / bins).toDouble();
+
+    for (var b = 0; b < bins; b++) {
+      var s = (lowBin * math.pow(ratio, b)).floor();
+      var e = (lowBin * math.pow(ratio, b + 1)).ceil();
+      if (s < 1) s = 1;
+      if (s >= binCount) s = binCount - 1;
+      if (e <= s) e = s + 1;
+      if (e > binCount) e = binCount;
+      _bandStart![b] = s;
+      _bandEnd![b] = e;
+    }
   }
 
   void clearTarget() {
