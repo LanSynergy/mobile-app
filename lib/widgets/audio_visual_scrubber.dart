@@ -319,17 +319,12 @@ class _CombinedBarPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (size.width <= 0 || size.height <= 0) return;
 
-    final double midY  = size.height / 2;
-    final double slotW = size.width / _BlockNotifier.bins;
-    final double barW  = (slotW * 0.7).clamp(1.0, 8.0);
-    final double fillX = scrubNotifier.displayProgress * size.width;
-
-    // Retro LED blocks: segment height = bar width (perfect squares).
-    final double segH  = barW;
-    const double gap   = 1.5;
-    final double step  = segH + gap;
-    final int maxSegs  = (midY ~/ step);
-    final radius       = Radius.circular(barW > 3 ? 1.0 : 0.0);
+    final double midY    = size.height / 2;
+    final double slotW   = size.width / _BlockNotifier.bins;
+    final double barW    = (slotW * 0.7).clamp(1.0, 8.0);
+    final double fillX   = scrubNotifier.displayProgress * size.width;
+    final double maxBarH = midY * 0.8;
+    final barRadius      = Radius.circular(barW / 2);
 
     final paint = Paint()..style = PaintingStyle.fill;
 
@@ -342,7 +337,7 @@ class _CombinedBarPainter extends CustomPainter {
       );
       paint.shader = RadialGradient(
         colors: [
-          glow.withValues(alpha: fftNotifier.totalEnergy * 0.4),
+          glow.withValues(alpha: fftNotifier.totalEnergy * 0.35),
           Colors.transparent,
         ],
       ).createShader(rect);
@@ -350,41 +345,35 @@ class _CombinedBarPainter extends CustomPainter {
       paint.shader = null;
     }
 
-    // LED block rendering.
+    // Solid bars.
     for (var i = 0; i < _BlockNotifier.bins; i++) {
       final level = fftNotifier.smoothed[i];
       if (level < 0.01) continue;
 
-      final activeSegs = (level * maxSegs).ceil();
-      final cx         = (i + 0.5) * slotW;
-      final x          = cx - barW / 2;
-      final baseColor  = cx <= fillX ? playedColor : unplayedColor;
+      final cx        = (i + 0.5) * slotW;
+      final x         = cx - barW / 2;
+      final barH      = (level * maxBarH).clamp(2.0, maxBarH);
+      final baseColor = cx <= fillX ? playedColor : unplayedColor;
 
-      for (var s = 0; s < activeSegs; s++) {
-        final offset   = s * step;
-        final segAlpha = (1.0 - (s / maxSegs) * 0.3).clamp(0.4, 1.0);
+      // Top bar (grows upward).
+      paint.color = baseColor;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, midY - barH, barW, barH),
+          barRadius,
+        ),
+        paint,
+      );
 
-        // Top block (main bar grows upward).
-        paint.color = baseColor.withValues(alpha: segAlpha);
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromLTWH(x, midY - offset - segH, barW, segH),
-            radius,
-          ),
-          paint,
-        );
-
-        // Bottom block (reflection grows downward, fades faster).
-        final refAlpha = segAlpha * 0.35 * (1.0 - (s / activeSegs));
-        paint.color = baseColor.withValues(alpha: refAlpha);
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromLTWH(x, midY + offset + gap, barW, segH),
-            radius,
-          ),
-          paint,
-        );
-      }
+      // Reflection (40% height, 35% opacity, grows downward).
+      paint.color = baseColor.withValues(alpha: 0.35);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, midY + 2.0, barW, barH * 0.4),
+          barRadius,
+        ),
+        paint,
+      );
     }
   }
 
