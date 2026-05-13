@@ -141,6 +141,55 @@ class AfPlayerService extends BaseAudioHandler
   Stream<AudioParams> get audioOutParamsStream => _player.stream.audioOutParams;
   AudioParams get audioOutParams => _player.state.audioOutParams;
 
+  // ---------------------------------------------------------------------------
+  // Network & caching
+  // ---------------------------------------------------------------------------
+
+  /// Set cache configuration (mode, duration, disk overflow, pause behavior).
+  Future<void> setCache(CacheSettings settings) async {
+    await _player.setCache(settings);
+    afLog('audio', 'cache set: mode=${settings.mode} secs=${settings.secs}');
+  }
+
+  CacheSettings get cacheSettings => _player.state.cache;
+  Stream<CacheSettings> get cacheStream => _player.stream.cache;
+
+  /// Maximum bytes the demuxer caches ahead (default: 150 MiB).
+  Future<void> setDemuxerMaxBytes(int bytes) async {
+    await _player.setDemuxerMaxBytes(bytes);
+    afLog('audio', 'demuxerMaxBytes=${bytes ~/ (1024 * 1024)} MiB');
+  }
+
+  /// Maximum bytes for the seekback buffer (default: 50 MiB).
+  Future<void> setDemuxerMaxBackBytes(int bytes) async {
+    await _player.setDemuxerMaxBackBytes(bytes);
+    afLog('audio', 'demuxerMaxBackBytes=${bytes ~/ (1024 * 1024)} MiB');
+  }
+
+  /// How many seconds ahead the demuxer should read (default: 1).
+  Future<void> setDemuxerReadaheadSecs(int secs) async {
+    await _player.setDemuxerReadaheadSecs(secs);
+    afLog('audio', 'demuxerReadaheadSecs=$secs');
+  }
+
+  /// Network timeout — fail after this duration of no data.
+  Future<void> setNetworkTimeout(Duration timeout) async {
+    await _player.setNetworkTimeout(timeout);
+    afLog('audio', 'networkTimeout=${timeout.inSeconds}s');
+  }
+
+  /// Hardware audio buffer size. Lower = less latency, higher = more stable.
+  Future<void> setAudioBuffer(Duration buffer) async {
+    await _player.setAudioBuffer(buffer);
+    afLog('audio', 'audioBuffer=${buffer.inMilliseconds}ms');
+  }
+
+  /// Keep audio hardware active when paused (eliminates click/pop on resume).
+  Future<void> setAudioStreamSilence(bool enabled) async {
+    await _player.setAudioStreamSilence(enabled);
+    afLog('audio', 'audioStreamSilence=$enabled');
+  }
+
   /// Real-time FFT spectrum — 64 log-spaced bands in [0, 1] at ~30 fps.
   /// No RECORD_AUDIO permission needed. Lazy: pipeline starts on first
   /// listener, stops on last cancel.

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart' show AudioParams, Format;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show AudioParams, Cache, Format;
 
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
@@ -139,6 +139,58 @@ class SettingsScreen extends ConsumerWidget {
                   borderRadius: AfRadii.borderMd),
             ),
             const SizedBox(height: AfSpacing.s24),
+            _SectionLabel('Network & cache'),
+            ListTile(
+              leading: const Icon(Icons.cached_rounded),
+              title: const Text('Cache duration'),
+              subtitle: Text(
+                'How far ahead to buffer',
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textTertiary,
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              tileColor: AfColors.surfaceBase,
+              shape: const RoundedRectangleBorder(
+                  borderRadius: AfRadii.borderMd),
+              onTap: () => _showCacheDurationDialog(context, ref),
+            ),
+            const SizedBox(height: AfSpacing.s8),
+            ListTile(
+              leading: const Icon(Icons.storage_rounded),
+              title: const Text('Buffer size'),
+              subtitle: Text(
+                'Audio hardware buffer (latency vs stability)',
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textTertiary,
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              tileColor: AfColors.surfaceBase,
+              shape: const RoundedRectangleBorder(
+                  borderRadius: AfRadii.borderMd),
+              onTap: () => _showAudioBufferDialog(context, ref),
+            ),
+            const SizedBox(height: AfSpacing.s8),
+            SwitchListTile.adaptive(
+              value: false,
+              onChanged: (v) {
+                unawaited(
+                    ref.read(playerServiceProvider).setAudioStreamSilence(v));
+              },
+              title: const Text('Keep audio active on pause'),
+              subtitle: Text(
+                'Eliminates click/pop on resume. Uses more battery.',
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textTertiary,
+                ),
+              ),
+              activeThumbColor: AfColors.indigo500,
+              tileColor: AfColors.surfaceBase,
+              shape: const RoundedRectangleBorder(
+                  borderRadius: AfRadii.borderMd),
+            ),
+            const SizedBox(height: AfSpacing.s24),
             _SectionLabel('About'),
             ListTile(
               leading: const Icon(Icons.info_outline_rounded),
@@ -255,6 +307,116 @@ void _showFormatDialog(BuildContext context, WidgetRef ref) {
                 onTap: () {
                   unawaited(
                       ref.read(playerServiceProvider).setAudioFormat(format));
+                  Navigator.of(dialogCtx).pop();
+                },
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+void _showCacheDurationDialog(BuildContext context, WidgetRef ref) {
+  const options = <(int, String)>[
+    (10, '10 seconds'),
+    (30, '30 seconds (default)'),
+    (60, '1 minute'),
+    (120, '2 minutes'),
+    (300, '5 minutes'),
+  ];
+
+  showDialog<void>(
+    context: context,
+    builder: (dialogCtx) => Dialog(
+      backgroundColor: AfColors.surfaceBase,
+      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.gutterGenerous),
+              child: Text('Cache duration', style: AfTypography.titleSmall),
+            ),
+            const SizedBox(height: AfSpacing.s4),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.gutterGenerous),
+              child: Text(
+                'How far ahead to buffer audio from the server.',
+                style: AfTypography.bodySmall
+                    .copyWith(color: AfColors.textTertiary),
+              ),
+            ),
+            const SizedBox(height: AfSpacing.s8),
+            for (final (secs, label) in options)
+              ListTile(
+                title: Text(label, style: AfTypography.bodyMedium),
+                onTap: () {
+                  final svc = ref.read(playerServiceProvider);
+                  unawaited(svc.setCache(
+                    svc.cacheSettings.copyWith(
+                      mode: Cache.yes,
+                      secs: Duration(seconds: secs),
+                    ),
+                  ));
+                  Navigator.of(dialogCtx).pop();
+                },
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+void _showAudioBufferDialog(BuildContext context, WidgetRef ref) {
+  const options = <(int, String)>[
+    (50, '50 ms (low latency)'),
+    (100, '100 ms'),
+    (200, '200 ms (default)'),
+    (500, '500 ms (stable)'),
+    (1000, '1000 ms (very stable)'),
+  ];
+
+  showDialog<void>(
+    context: context,
+    builder: (dialogCtx) => Dialog(
+      backgroundColor: AfColors.surfaceBase,
+      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.gutterGenerous),
+              child: Text('Audio buffer', style: AfTypography.titleSmall),
+            ),
+            const SizedBox(height: AfSpacing.s4),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.gutterGenerous),
+              child: Text(
+                'Lower = less latency. Higher = more stable on slow networks.',
+                style: AfTypography.bodySmall
+                    .copyWith(color: AfColors.textTertiary),
+              ),
+            ),
+            const SizedBox(height: AfSpacing.s8),
+            for (final (ms, label) in options)
+              ListTile(
+                title: Text(label, style: AfTypography.bodyMedium),
+                onTap: () {
+                  unawaited(ref.read(playerServiceProvider).setAudioBuffer(
+                        Duration(milliseconds: ms),
+                      ));
                   Navigator.of(dialogCtx).pop();
                 },
               ),
