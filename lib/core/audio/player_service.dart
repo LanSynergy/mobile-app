@@ -109,7 +109,7 @@ class AfPlayerService extends BaseAudioHandler
       // transitions are seamless and auto-advance works correctly.
       await _player.setGapless(Gapless.weak);
       await _player.setSpectrum(const SpectrumSettings(
-        bandCount: 48,
+        bandCount: 64,
         minDb: -30.0,
         maxDb: -12.0,
         attackSmoothing: 0.72,
