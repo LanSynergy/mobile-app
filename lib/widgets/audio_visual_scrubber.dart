@@ -82,7 +82,7 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
           _silenceTimer?.cancel();
           _fftNotifier.ingest(frame.bands);
           if (!_ticker.isAnimating) _ticker.repeat();
-          _silenceTimer = Timer(const Duration(milliseconds: 300), () {
+          _silenceTimer = Timer(const Duration(milliseconds: 150), () {
             if (mounted && _shouldRender) {
               _fftNotifier.clearTarget();
               if (!_ticker.isAnimating) _ticker.repeat();
@@ -234,33 +234,44 @@ class _BlockNotifier extends ChangeNotifier {
   final Float32List target   = Float32List(bins);
   final Float32List smoothed = Float32List(bins);
 
-  double _rawEnergy = 0.0, totalEnergy = 0.0, _globalPeak = 1.0;
+  double _rawEnergy = 0.0, totalEnergy = 0.0;
 
   void ingest(Float32List src) {
     if (src.isEmpty) return;
-    double sum = 0, frameMax = 0.0;
+    double sum = 0.0;
 
-    final int chunkSize = (src.length / bins).floor();
-    if (chunkSize < 1) return;
+    // Skip DC offset (index 0) and cap at the audible range so very-high
+    // bins don't flatten the perceptual response.
+    const int minIdx = 1;
+    final int maxIdx = src.length > 512 ? 512 : src.length - 1;
+    if (maxIdx <= minIdx) return;
 
     for (var i = 0; i < bins; i++) {
-      double chunkSum = 0.0;
-      for (var j = 0; j < chunkSize; j++) {
-        if (i * chunkSize + j < src.length) {
-          // Treble boost + log compression.
-          chunkSum += src[i * chunkSize + j].abs() * (1 + (i / bins) * 3.0);
-        }
+      // 1. Logarithmic frequency mapping — spreads bins the way human
+      //    hearing does, so bass doesn't collapse into a single bar and
+      //    treble doesn't dominate a wide slice of the spectrum.
+      final double startRatio = i / bins;
+      final double endRatio   = (i + 1) / bins;
+      final int startIdx =
+          (minIdx * math.pow(maxIdx / minIdx, startRatio)).floor();
+      final int endIdx =
+          (minIdx * math.pow(maxIdx / minIdx, endRatio))
+              .ceil()
+              .clamp(startIdx + 1, maxIdx);
+
+      // 2. Max pooling + treble boost — take the peak of the slice and
+      //    amplify higher bins so the right half of the visualizer
+      //    actually dances on bright material.
+      double binMax = 0.0;
+      for (var j = startIdx; j < endIdx && j < src.length; j++) {
+        final double boost = 1.0 + (j / maxIdx) * 15.0;
+        final double raw   = src[j].abs() * boost;
+        if (raw > binMax) binMax = raw;
       }
-      final val = math.log(1.0 + (chunkSum / chunkSize));
-      target[i] = val.isFinite ? val : 0.0;
-      if (target[i] > frameMax) frameMax = target[i];
-    }
 
-    _globalPeak = frameMax > _globalPeak ? frameMax : _globalPeak * 0.98;
-    final safePeak = _globalPeak < 0.1 ? 0.1 : _globalPeak;
-
-    for (var i = 0; i < bins; i++) {
-      target[i] = (target[i] / safePeak).clamp(0.0, 1.0);
+      // 3. Logarithmic amplitude (decibel-like curve) in [0, 1].
+      final double scaled = math.log(1.0 + binMax * 4.0) / 4.0;
+      target[i] = scaled.isFinite ? scaled.clamp(0.0, 1.0) : 0.0;
       sum += target[i];
     }
     _rawEnergy = sum / bins;
@@ -280,8 +291,9 @@ class _BlockNotifier extends ChangeNotifier {
 
     for (var i = 0; i < bins; i++) {
       final diff = target[i] - smoothed[i];
-      // Slower attack (0.2) stops blinking; slow decay (0.08) for breathing.
-      smoothed[i] += diff * (diff > 0 ? 0.2 : 0.08);
+      // Fast attack (0.6) for instant spike response;
+      // smooth decay (0.12) gives gravity / breathing.
+      smoothed[i] += diff * (diff > 0 ? 0.6 : 0.12);
       if (smoothed[i] > 0.001) moving = true;
     }
 

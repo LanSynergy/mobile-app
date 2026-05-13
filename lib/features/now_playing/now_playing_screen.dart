@@ -159,7 +159,16 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
           if (frame.bands.isEmpty) return;
           _silenceTimer?.cancel();
 
-          final rawBass = frame.bands[0].abs();
+          // Kick / sub-bass pool (skip DC bin 0) — peak of the first few
+          // low-frequency bands. Matches the visualizer's "skip DC" rule
+          // and survives bass bins that occasionally go silent between
+          // hits on heavily sidechained tracks.
+          final int hi = frame.bands.length < 4 ? frame.bands.length : 4;
+          double rawBass = 0.0;
+          for (var i = 1; i < hi; i++) {
+            final v = frame.bands[i].abs();
+            if (v > rawBass) rawBass = v;
+          }
 
           // Track running bass baseline.
           _bassAverage += (rawBass - _bassAverage) * 0.05;
