@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -130,10 +129,12 @@ class _ReactiveArtwork extends ConsumerStatefulWidget {
 class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
     with SingleTickerProviderStateMixin {
   final ValueNotifier<double> _scale = ValueNotifier(1.0);
-  double _target = 1.0;
   late final AnimationController _ticker;
   StreamSubscription<dynamic>? _fftSub;
   Timer? _silenceTimer;
+
+  double _bassAverage = 0.0;
+  int    _cooldown    = 0;
 
   @override
   void initState() {
@@ -142,13 +143,13 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
       vsync: this,
       duration: const Duration(milliseconds: 16),
     )..addListener(() {
-        final diff = _target - _scale.value;
-        if (diff.abs() < 0.001 && _target == 1.0) {
+        if (_scale.value > 1.001) {
+          // Exponential spring decay back to 1.0.
+          _scale.value = 1.0 + (_scale.value - 1.0) * 0.85;
+        } else {
+          _scale.value = 1.0;
           _ticker.stop();
-          return;
         }
-        // Ultra-slow attack (0.08) for breathing album art, not blinking.
-        _scale.value += diff * (diff > 0 ? 0.08 : 0.04);
       });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -157,14 +158,23 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
         (frame) {
           if (frame.bands.isEmpty) return;
           _silenceTimer?.cancel();
-          final bass = math.log(1.0 + frame.bands[0].abs());
-          _target = 1.0 + (bass * 0.02).clamp(0.0, 0.06);
-          if (!_ticker.isAnimating) _ticker.repeat();
+
+          final rawBass = frame.bands[0].abs();
+
+          // Track running bass baseline.
+          _bassAverage += (rawBass - _bassAverage) * 0.05;
+
+          // Transient detection: fire only when bass spikes above baseline.
+          if (_cooldown > 0) {
+            _cooldown--;
+          } else if (rawBass > _bassAverage * 1.5 && rawBass > 0.02) {
+            _scale.value = 1.06;  // +6% bump
+            _cooldown    = 15;    // ~250ms lockout prevents chatter
+            if (!_ticker.isAnimating) _ticker.repeat();
+          }
+
           _silenceTimer = Timer(const Duration(milliseconds: 300), () {
-            if (mounted) {
-              _target = 1.0;
-              if (!_ticker.isAnimating) _ticker.repeat();
-            }
+            if (mounted) _bassAverage = 0.0;
           });
         },
       );
