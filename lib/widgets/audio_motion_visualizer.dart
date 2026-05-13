@@ -153,18 +153,23 @@ class _AmaPainter extends CustomPainter {
     final maxH    = zoneH * _maxFill;
     final capR    = Radius.circular(barW / 2);
 
-    // Pre-compute shader once against the full zone height.
-    // Reusing a single shader across all bars eliminates 48 per-frame
-    // LinearGradient allocations that were causing raster-thread lag.
-    final shader = LinearGradient(
-      begin: Alignment.bottomCenter,
-      end:   Alignment.topCenter,
-      colors: [accent, accent.withValues(alpha: 0.55)],
+    // Horizontal gradient: each bar gets a distinct color by frequency position.
+    // Bass (left) = shadow, mid = accent, treble (right) = glow.
+    // Pre-computed once — no per-bar allocation.
+    final freqShader = LinearGradient(
+      begin: Alignment.centerLeft,
+      end:   Alignment.centerRight,
+      colors: [
+        accent.withValues(alpha: 0.70),  // bass — slightly muted
+        accent,                           // mid — full accent
+        accent.withValues(alpha: 0.85),  // treble — slightly pulled back
+      ],
+      stops: const [0.0, 0.45, 1.0],
     ).createShader(Rect.fromLTWH(0, 0, size.width, zoneH));
 
     final paint = Paint()
       ..style  = PaintingStyle.fill
-      ..shader = shader;
+      ..shader = freqShader;
 
     for (var i = 0; i < _n; i++) {
       final level = notifier.bars[i];
