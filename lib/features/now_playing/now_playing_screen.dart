@@ -147,8 +147,8 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
           _ticker.stop();
           return;
         }
-        // Asymmetric lerp: fast attack (0.4), slow decay (0.1).
-        _scale.value += diff * (diff > 0 ? 0.4 : 0.1);
+        // Ultra-slow attack (0.08) for breathing album art, not blinking.
+        _scale.value += diff * (diff > 0 ? 0.08 : 0.04);
       });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -157,12 +157,10 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
         (frame) {
           if (frame.bands.isEmpty) return;
           _silenceTimer?.cancel();
-          // Bin 0 = sub-bass / kick drum. sqrt compresses dynamic range.
-          final bass = math.sqrt(frame.bands[0].abs());
-          // Base scale 1.0, max bump +8%.
-          _target = 1.0 + (bass * 0.06).clamp(0.0, 0.08);
+          final bass = math.log(1.0 + frame.bands[0].abs());
+          _target = 1.0 + (bass * 0.02).clamp(0.0, 0.06);
           if (!_ticker.isAnimating) _ticker.repeat();
-          _silenceTimer = Timer(const Duration(milliseconds: 150), () {
+          _silenceTimer = Timer(const Duration(milliseconds: 300), () {
             if (mounted) {
               _target = 1.0;
               if (!_ticker.isAnimating) _ticker.repeat();

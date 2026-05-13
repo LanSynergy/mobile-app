@@ -82,7 +82,7 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
           _silenceTimer?.cancel();
           _fftNotifier.ingest(frame.bands);
           if (!_ticker.isAnimating) _ticker.repeat();
-          _silenceTimer = Timer(const Duration(milliseconds: 150), () {
+          _silenceTimer = Timer(const Duration(milliseconds: 300), () {
             if (mounted && _shouldRender) {
               _fftNotifier.clearTarget();
               if (!_ticker.isAnimating) _ticker.repeat();
@@ -234,37 +234,31 @@ class _BlockNotifier extends ChangeNotifier {
   final Float32List target   = Float32List(bins);
   final Float32List smoothed = Float32List(bins);
 
-  double _rawEnergy  = 0.0;
-  double totalEnergy = 0.0;
-  double _globalPeak = 1.0;
+  double _rawEnergy = 0.0, totalEnergy = 0.0, _globalPeak = 1.0;
 
   void ingest(Float32List src) {
     if (src.isEmpty) return;
-    double sum      = 0;
-    double frameMax = 0.0;
+    double sum = 0, frameMax = 0.0;
 
-    // Average energy across a chunk of source bins per visual bar.
     final int chunkSize = (src.length / bins).floor();
     if (chunkSize < 1) return;
 
     for (var i = 0; i < bins; i++) {
-      double chunkSum  = 0.0;
-      final int startIdx = i * chunkSize;
+      double chunkSum = 0.0;
       for (var j = 0; j < chunkSize; j++) {
-        if (startIdx + j < src.length) {
-          chunkSum += math.sqrt(src[startIdx + j].abs());
+        if (i * chunkSize + j < src.length) {
+          // Treble boost + log compression.
+          chunkSum += src[i * chunkSize + j].abs() * (1 + (i / bins) * 3.0);
         }
       }
-      final val = chunkSum / chunkSize;
+      final val = math.log(1.0 + (chunkSum / chunkSize));
       target[i] = val.isFinite ? val : 0.0;
       if (target[i] > frameMax) frameMax = target[i];
     }
 
-    // AGC — instant attack, fast decay (0.95).
-    _globalPeak = frameMax > _globalPeak ? frameMax : _globalPeak * 0.95;
-    final safePeak = _globalPeak < 0.01 ? 0.01 : _globalPeak;
+    _globalPeak = frameMax > _globalPeak ? frameMax : _globalPeak * 0.98;
+    final safePeak = _globalPeak < 0.1 ? 0.1 : _globalPeak;
 
-    // Normalize.
     for (var i = 0; i < bins; i++) {
       target[i] = (target[i] / safePeak).clamp(0.0, 1.0);
       sum += target[i];
@@ -281,13 +275,13 @@ class _BlockNotifier extends ChangeNotifier {
 
   /// Returns true if any bar is still moving (ticker should keep running).
   bool tick() {
-    totalEnergy += (_rawEnergy - totalEnergy) * 0.15;
+    totalEnergy += (_rawEnergy - totalEnergy) * 0.1;
     var moving = totalEnergy > 0.001;
 
     for (var i = 0; i < bins; i++) {
-      final diff  = target[i] - smoothed[i];
-      final speed = diff > 0 ? 0.4 : 0.1;
-      smoothed[i] += diff * speed;
+      final diff = target[i] - smoothed[i];
+      // Slower attack (0.2) stops blinking; slow decay (0.08) for breathing.
+      smoothed[i] += diff * (diff > 0 ? 0.2 : 0.08);
       if (smoothed[i] > 0.001) moving = true;
     }
 
