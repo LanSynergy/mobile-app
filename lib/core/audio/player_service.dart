@@ -247,12 +247,10 @@ class AfPlayerService extends BaseAudioHandler
   /// commands which reorder the playlist WITHOUT interrupting playback.
   ///
   /// Behavior:
-  /// - Toggle ON: mpv shuffles the playlist. We sync _trackQueue to match
-  ///   mpv's new order. Current track keeps playing uninterrupted.
-  /// - Toggle OFF: mpv restores original load order. We sync _trackQueue.
-  ///   Current track keeps playing uninterrupted.
-  /// - Never changes the currently displayed/playing song (track-ID guard
-  ///   in the playlist listener prevents spurious emissions).
+  /// - Toggle ON: mpv shuffles the playlist. We wait for the playlist
+  ///   stream event to get the actual new order, then sync _trackQueue.
+  /// - Toggle OFF: mpv restores original load order. Same sync.
+  /// - Never changes the currently displayed/playing song.
   Future<void> setAfShuffleMode(bool enabled) async {
     if (_shuffleEnabled == enabled) return;
     _shuffleEnabled = enabled;
@@ -264,44 +262,31 @@ class AfPlayerService extends BaseAudioHandler
       return;
     }
 
-    // Suppress playlist listener — mpv will emit a reordered playlist
-    // event which would trigger a track-change if _trackQueue is stale.
+    // Suppress playlist listener so it doesn't emit a track change.
     _suppressPlaylistSync = true;
 
-    // Save original order before first shuffle so unshuffle can restore.
+    // Save original order before first shuffle.
     if (enabled && _originalQueue.isEmpty) {
       _originalQueue = List.of(_trackQueue);
     }
 
-    // mpv's setShuffle: playlist-shuffle keeps current file playing,
-    // playlist-unshuffle restores original load order. Neither interrupts.
+    // Call mpv's native shuffle/unshuffle — doesn't interrupt playback.
     await _player.setShuffle(enabled);
 
-    // Sync _trackQueue to mpv's new playlist order.
-    final mpvItems = _player.state.playlist.items;
-    final newIdx = _player.state.playlist.index;
+    // Wait for the playlist stream to emit the new order. This is the
+    // only reliable way to get mpv's actual post-shuffle state — reading
+    // _player.state.playlist synchronously can return stale data.
+    try {
+      final newPlaylist = await _player.stream.playlist
+          .first
+          .timeout(const Duration(seconds: 2));
 
-    if (mpvItems.isNotEmpty) {
-      final byId = <String, AfTrack>{};
-      for (final t in _trackQueue) {
-        byId[t.id] = t;
-      }
-
-      final reordered = <AfTrack>[];
-      for (final media in mpvItems) {
-        final id = _extractTrackId(media.uri);
-        final track = id != null ? byId[id] : null;
-        if (track != null) {
-          reordered.add(track);
-        }
-      }
-
-      if (reordered.length == _trackQueue.length) {
-        _trackQueue
-          ..clear()
-          ..addAll(reordered);
-        _currentIndex = newIdx.clamp(0, _trackQueue.length - 1);
-      }
+      _syncTrackQueueFromMpv(newPlaylist.items, newPlaylist.index);
+    } catch (_) {
+      // Timeout — try reading state directly as fallback.
+      final mpvItems = _player.state.playlist.items;
+      final newIdx = _player.state.playlist.index;
+      _syncTrackQueueFromMpv(mpvItems, newIdx);
     }
 
     if (!enabled) _originalQueue = [];
@@ -314,7 +299,39 @@ class AfPlayerService extends BaseAudioHandler
       _trackController.add(playingTrack);
     }
 
-    afLog('data', 'shuffleMode source=live enabled=$enabled');
+    afLog('data', 'shuffleMode source=live enabled=$enabled '
+        'queueSize=${_trackQueue.length} currentIndex=$_currentIndex');
+  }
+
+  /// Syncs _trackQueue to match mpv's playlist order by extracting track
+  /// IDs from Media URIs and looking them up in our known tracks.
+  void _syncTrackQueueFromMpv(List<Media> mpvItems, int newIdx) {
+    if (mpvItems.isEmpty) return;
+
+    // Build lookup from ALL known tracks.
+    final byId = <String, AfTrack>{};
+    for (final t in _trackQueue) {
+      byId[t.id] = t;
+    }
+    for (final t in _originalQueue) {
+      byId[t.id] = t;
+    }
+
+    final reordered = <AfTrack>[];
+    for (final media in mpvItems) {
+      final id = _extractTrackId(media.uri);
+      final track = id != null ? byId[id] : null;
+      if (track != null) {
+        reordered.add(track);
+      }
+    }
+
+    if (reordered.length == mpvItems.length) {
+      _trackQueue
+        ..clear()
+        ..addAll(reordered);
+      _currentIndex = newIdx.clamp(0, _trackQueue.length - 1);
+    }
   }
 
   /// Extracts the Jellyfin track ID from a stream URL.
@@ -473,8 +490,7 @@ class AfPlayerService extends BaseAudioHandler
         // Guard: if the track identity hasn't actually changed (same ID),
         // skip the emission. This happens during shuffle — mpv reorders
         // the playlist and emits a new index, but the audio keeps playing
-        // the same file. The stream event can arrive after our suppress
-        // flag is cleared due to async delivery timing.
+        // the same file.
         if (track.id == previousTrackId) return;
 
         _trackController.add(track);
