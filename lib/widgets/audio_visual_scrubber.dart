@@ -243,15 +243,28 @@ class _BlockNotifier extends ChangeNotifier {
     double sum      = 0;
     double frameMax = 0.0;
 
-    for (var i = 0; i < bins && i < src.length; i++) {
-      final val = math.sqrt(src[i].abs());
+    // Average energy across a chunk of source bins per visual bar.
+    final int chunkSize = (src.length / bins).floor();
+    if (chunkSize < 1) return;
+
+    for (var i = 0; i < bins; i++) {
+      double chunkSum  = 0.0;
+      final int startIdx = i * chunkSize;
+      for (var j = 0; j < chunkSize; j++) {
+        if (startIdx + j < src.length) {
+          chunkSum += math.sqrt(src[startIdx + j].abs());
+        }
+      }
+      final val = chunkSum / chunkSize;
       target[i] = val.isFinite ? val : 0.0;
       if (target[i] > frameMax) frameMax = target[i];
     }
 
+    // AGC — instant attack, fast decay (0.95).
     _globalPeak = frameMax > _globalPeak ? frameMax : _globalPeak * 0.95;
     final safePeak = _globalPeak < 0.01 ? 0.01 : _globalPeak;
 
+    // Normalize.
     for (var i = 0; i < bins; i++) {
       target[i] = (target[i] / safePeak).clamp(0.0, 1.0);
       sum += target[i];
