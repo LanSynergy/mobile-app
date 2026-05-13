@@ -236,23 +236,19 @@ class _BlockNotifier extends ChangeNotifier {
 
   double _rawEnergy = 0.0, totalEnergy = 0.0;
 
-  /// Bands arrive already dB-normalised to `[0, 1]` per bin (the player
-  /// is configured with minDb=-70 / maxDb=-10 and pass-through native
-  /// smoothing). We apply only:
-  ///   - a gentle treble boost (1x..2.5x linear) so the right half of
-  ///     the strip dances on bright material — music is naturally
-  ///     bass-heavy, boosting treble perceptually levels the visual.
-  ///   - a saturating clamp so the boost never paints above the ceiling.
-  ///
-  /// No AGC here: AGC fights the engine's dB-calibrated window and
-  /// crushes quiet-band detail whenever a single loud bin appears.
+  /// Bands arrive with the engine's native EMA already applied (attack
+  /// 0.5, release 0.1). Each band tracks its own history independently
+  /// so transients in one band don't bleed into neighbors. We apply:
+  ///   - a mild treble lift (1.0x..1.8x) so the right half stays
+  ///     visible on bass-heavy material without homogenizing the strip.
+  ///   - saturating clamp to [0, 1].
   void ingest(Float32List bands) {
     if (bands.isEmpty) return;
     double sum = 0.0;
 
     final int n = bands.length < bins ? bands.length : bins;
     for (var i = 0; i < n; i++) {
-      final boost = 1.0 + (i / bins) * 1.5; // 1.0x (bass) -> 2.5x (treble)
+      final boost = 1.0 + (i / bins) * 0.8; // 1.0x (bass) -> 1.8x (treble)
       final v = (bands[i] * boost).clamp(0.0, 1.0);
       target[i] = v.isFinite ? v : 0.0;
       sum += target[i];
