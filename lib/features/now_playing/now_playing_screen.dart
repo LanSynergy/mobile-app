@@ -116,7 +116,6 @@ class _ReactiveBackground extends ConsumerWidget {
 }
 
 /// Plain artwork with spectral glow shadow.
-/// The AudioMotionVisualizer below it provides all the live visual energy.
 class _ReactiveArtwork extends ConsumerWidget {
   final AfTrack track;
   const _ReactiveArtwork({required this.track});
