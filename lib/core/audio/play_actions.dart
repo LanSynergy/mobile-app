@@ -12,6 +12,8 @@ class PlayActions {
   PlayActions(this.ref);
 
   /// Replace the queue with [tracks] and start playback at [startIndex].
+  /// If shuffle mode is ON, the selected track plays first and the rest
+  /// are shuffled below it.
   Future<void> playQueue(
     List<AfTrack> tracks, {
     int startIndex = 0,
@@ -21,26 +23,36 @@ class PlayActions {
     final client = ref.read(jellyfinClientProvider);
 
     String resolveStreamUrl(AfTrack t) {
-      // When connected to Jellyfin, ask the server for a transcode-aware URL.
       if (client != null) {
         return client.trackStreamUrl(t.id, maxBitrateKbps: 320);
       }
-      // Demo mode — no real stream URLs. The audio service will simply
-      // surface buffering, which is the honest UX for "no server configured".
       return 'about:blank';
     }
 
-    // Clamp the caller-supplied index so a stale UI snapshot can't push us
-    // into a RangeError when we look up `tracks[startIndex]` below.
     final safeIndex = startIndex < 0
         ? 0
         : (startIndex >= tracks.length ? tracks.length - 1 : startIndex);
-    ref.read(currentTrackProvider.notifier).state = tracks[safeIndex];
+
+    // If shuffle is ON, put the selected track first and shuffle the rest.
+    List<AfTrack> finalQueue;
+    int finalIndex;
+    if (svc.isShuffleEnabled) {
+      final selected = tracks[safeIndex];
+      final rest = List.of(tracks)..removeAt(safeIndex);
+      rest.shuffle();
+      finalQueue = [selected, ...rest];
+      finalIndex = 0;
+    } else {
+      finalQueue = tracks;
+      finalIndex = safeIndex;
+    }
+
+    ref.read(currentTrackProvider.notifier).state = finalQueue[finalIndex];
     if (client != null) {
       try {
         await svc.playQueue(
-          tracks,
-          startIndex: safeIndex,
+          finalQueue,
+          startIndex: finalIndex,
           resolveStreamUrl: resolveStreamUrl,
           streamHeaders: client.authHeaders,
         );

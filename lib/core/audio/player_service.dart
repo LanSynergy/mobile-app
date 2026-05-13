@@ -25,6 +25,16 @@ class AfPlayerService extends BaseAudioHandler
   final List<AfTrack> _trackQueue = [];
   int _currentIndex = -1;
 
+  /// Original (unshuffled) queue order — stored when shuffle is toggled
+  /// ON so we can restore it when shuffle is toggled OFF.
+  List<AfTrack> _originalQueue = [];
+
+  /// Dart-managed shuffle state. We don't use mpv's setShuffle because
+  /// it physically reorders the playlist and emits index-change events
+  /// that race with our state sync.
+  bool _shuffleEnabled = false;
+  final _shuffleController = StreamController<bool>.broadcast();
+
   final _trackController = StreamController<AfTrack?>.broadcast();
   final _queueController = StreamController<List<AfTrack>>.broadcast();
 
@@ -72,7 +82,7 @@ class AfPlayerService extends BaseAudioHandler
   Stream<bool> get playingStream => _player.stream.playing;
   Stream<AfTrack?> get currentTrackStream => _trackController.stream;
   Stream<List<AfTrack>> get queueStream => _queueController.stream;
-  Stream<bool> get shuffleModeStream => _player.stream.shuffle;
+  Stream<bool> get shuffleModeStream => _shuffleController.stream;
   Stream<Loop> get loopModeStream => _player.stream.loop;
   Stream<double> get speedStream => _player.stream.rate;
 
@@ -137,7 +147,7 @@ class AfPlayerService extends BaseAudioHandler
           ? _trackQueue[_currentIndex]
           : null;
   bool get isPlaying => _player.state.playing;
-  bool get isShuffleEnabled => _player.state.shuffle;
+  bool get isShuffleEnabled => _shuffleEnabled;
   Loop get loopMode => _player.state.loop;
   double get speed => _player.state.rate;
 
@@ -165,6 +175,9 @@ class AfPlayerService extends BaseAudioHandler
     _currentIndex = safeIndex;
     _queueController.add(List.unmodifiable(_trackQueue));
 
+    // Store the original order for shuffle restore.
+    _originalQueue = _shuffleEnabled ? List.of(tracks) : [];
+
     final startTrack = tracks[safeIndex];
     _trackController.add(startTrack);
     onTrackChanged?.call(startTrack);
@@ -178,6 +191,7 @@ class AfPlayerService extends BaseAudioHandler
     // Build Media list. Auth is embedded in the URL via api_key= so
     // libmpv/FFmpeg can authenticate without needing the Authorization
     // header (which FFmpeg rejects due to its comma separators).
+    _resolveStreamUrl = resolveStreamUrl;
     final medias = tracks
         .map((t) => Media(resolveStreamUrl(t)))
         .toList();
@@ -230,74 +244,89 @@ class AfPlayerService extends BaseAudioHandler
   @override
   Future<void> skipToQueueItem(int index) => _player.jump(index);
 
+  /// Toggle shuffle mode. Managed entirely in Dart — does NOT call
+  /// mpv's setShuffle (which causes race conditions with playlist events).
+  ///
+  /// Behavior:
+  /// - Toggle ON while playing: keep current track at index 0, shuffle
+  ///   the remaining tracks below it. Rebuild the mpv playlist.
+  /// - Toggle OFF while playing: restore original queue order, keep
+  ///   current track playing at its original position.
+  /// - Never changes the currently displayed/playing song.
   Future<void> setAfShuffleMode(bool enabled) async {
-    // Capture the currently playing track before the shuffle reorders
-    // the mpv playlist. After setShuffle, mpv physically reorders the
-    // playlist and emits a new index — but the *audio* keeps playing
-    // the same file. We need to sync _trackQueue to the new order so
-    // _trackQueue[newIndex] still points to the correct AfTrack.
-    final playingTrack = currentTrack;
+    if (_shuffleEnabled == enabled) return;
+    _shuffleEnabled = enabled;
+    _shuffleController.add(enabled);
 
-    // Suppress the playlist listener so it doesn't emit a spurious
-    // track change while we're rebuilding _trackQueue.
+    final playingTrack = currentTrack;
+    if (_trackQueue.isEmpty || playingTrack == null) {
+      afLog('data', 'shuffleMode source=live enabled=$enabled (queue empty)');
+      return;
+    }
+
     _suppressPlaylistSync = true;
 
-    await _player.setShuffle(enabled);
+    if (enabled) {
+      // Save original order before shuffling.
+      _originalQueue = List.of(_trackQueue);
 
-    // Rebuild _trackQueue to match mpv's new playlist order by
-    // matching URIs. Each Media.uri contains `/Audio/{trackId}/stream`
-    // so we extract the track ID and look it up.
-    final mpvItems = _player.state.playlist.items;
-    final newIdx = _player.state.playlist.index;
+      // Remove current track, shuffle the rest, put current at front.
+      final rest = List.of(_trackQueue)
+        ..removeWhere((t) => t.id == playingTrack.id);
+      rest.shuffle();
 
-    if (mpvItems.isNotEmpty && _trackQueue.isNotEmpty) {
-      // Build a lookup from track ID → AfTrack.
-      final byId = <String, AfTrack>{};
-      for (final t in _trackQueue) {
-        byId[t.id] = t;
-      }
-
-      final reordered = <AfTrack>[];
-      for (final media in mpvItems) {
-        final id = _extractTrackId(media.uri);
-        final track = id != null ? byId[id] : null;
-        if (track != null) {
-          reordered.add(track);
-        }
-      }
-
-      if (reordered.length == _trackQueue.length) {
+      _trackQueue
+        ..clear()
+        ..add(playingTrack)
+        ..addAll(rest);
+      _currentIndex = 0;
+    } else {
+      // Restore original order, find current track's original position.
+      if (_originalQueue.isNotEmpty) {
         _trackQueue
           ..clear()
-          ..addAll(reordered);
-        _currentIndex = newIdx.clamp(0, _trackQueue.length - 1);
-        _queueController.add(List.unmodifiable(_trackQueue));
+          ..addAll(_originalQueue);
+        _currentIndex = _trackQueue.indexWhere((t) => t.id == playingTrack.id);
+        if (_currentIndex < 0) _currentIndex = 0;
       }
+      _originalQueue = [];
     }
+
+    // Rebuild the mpv playlist to match the new _trackQueue order.
+    await _rebuildMpvPlaylist();
 
     _suppressPlaylistSync = false;
 
-    // Re-emit the same track so providers stay consistent without
-    // triggering a visual "track changed" flash.
-    if (playingTrack != null) {
-      _trackController.add(playingTrack);
-    }
+    // Emit updated queue without changing the displayed track.
+    _queueController.add(List.unmodifiable(_trackQueue));
+    _trackController.add(playingTrack);
 
     afLog('data', 'shuffleMode source=live enabled=$enabled');
   }
 
-  /// Extracts the Jellyfin track ID from a stream URL.
-  /// URL format: `.../Audio/{trackId}/stream?...`
-  static String? _extractTrackId(String uri) {
-    final segments = Uri.tryParse(uri)?.pathSegments;
-    if (segments == null) return null;
-    for (var i = 0; i < segments.length - 1; i++) {
-      if (segments[i].toLowerCase() == 'audio') {
-        return segments[i + 1];
-      }
+  /// Rebuilds the mpv playlist from _trackQueue, starting playback at
+  /// _currentIndex. Used after shuffle toggle to sync mpv with our order.
+  Future<void> _rebuildMpvPlaylist() async {
+    final client = _resolveStreamUrl;
+    if (client == null) return;
+
+    final medias = _trackQueue
+        .map((t) => Media(client(t)))
+        .toList();
+
+    try {
+      await _player.openAll(
+        medias,
+        index: _currentIndex,
+        play: _player.state.playing,
+      );
+    } catch (e, stack) {
+      afLog('audio', '_rebuildMpvPlaylist failed', error: e, stackTrace: stack);
     }
-    return null;
   }
+
+  /// Cached stream URL resolver — set by playQueue, used by shuffle rebuild.
+  String Function(AfTrack)? _resolveStreamUrl;
 
   Future<void> setAfLoopMode(Loop mode) async {
     await _player.setLoop(mode);
@@ -387,6 +416,7 @@ class AfPlayerService extends BaseAudioHandler
     }
     await _trackController.close();
     await _queueController.close();
+    await _shuffleController.close();
     await _player.dispose();
   }
 
