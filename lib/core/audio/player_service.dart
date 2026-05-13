@@ -119,10 +119,11 @@ class AfPlayerService extends BaseAudioHandler
         bandCount: 64,
         bandLowHz: 20.0,
         bandHighHz: 20000.0,
-        attackSmoothing: 0.5,
-        releaseSmoothing: 0.1,
-        minDb: -80.0, // Widen dynamic range
-        maxDb: 0.0,   // Raise ceiling to prevent clipping
+        // Engine C++ handles bounce physics now.
+        attackSmoothing: 0.65,  // Fast attack for punch
+        releaseSmoothing: 0.15, // Slow release for bouncy decay
+        minDb: -75.0,           // Wider range so bars don't clip early
+        maxDb: -5.0,
         emitInterval: Duration(milliseconds: 16),
       ));
     } catch (_) {

@@ -54,21 +54,18 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
     _fftNotifier   = _BlockNotifier();
     _scrubNotifier = _ScrubNotifier(progress: widget.progress);
 
-    // Stop ticker when app is backgrounded, resume when foregrounded.
     _lifecycle = AppLifecycleListener(
-      onPause:  () { _isAppBackground = true;  _ticker.stop(); },
-      onResume: () {
-        _isAppBackground = false;
-        if (_fftNotifier.totalEnergy > 0) _ticker.repeat();
-      },
+      onPause:  () { _isAppBackground = true; },
+      onResume: () { _isAppBackground = false; },
     );
 
+    // Ticker ONLY runs during fade-out (when audio pauses/stops).
     _ticker = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 16),
     )..addListener(() {
         if (mounted) {
-          final keepAnimating = _fftNotifier.tick();
+          final keepAnimating = _fftNotifier.tickFadeOut();
           if (!keepAnimating) _ticker.stop();
         }
       });
@@ -77,15 +74,14 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
       if (!mounted) return;
       _fftSub = ref.read(playerServiceProvider).spectrumStream.listen(
         (frame) {
-          // Drop FFT data when obscured or backgrounded.
           if (!_shouldRender) return;
           _silenceTimer?.cancel();
+          // Render instantly from the mpv engine — no Dart-side lerp/delay.
           _fftNotifier.ingest(frame.bands);
-          if (!_ticker.isAnimating) _ticker.repeat();
-          _silenceTimer = Timer(const Duration(milliseconds: 300), () {
+          _silenceTimer = Timer(const Duration(milliseconds: 150), () {
             if (mounted && _shouldRender) {
-              _fftNotifier.clearTarget();
-              if (!_ticker.isAnimating) _ticker.repeat();
+              // Audio stopped — run ticker to fade bars down gracefully.
+              _fftNotifier.startFadeOut(_ticker);
             }
           });
         },
@@ -229,56 +225,70 @@ class _ScrubNotifier extends ChangeNotifier {
 class _BlockNotifier extends ChangeNotifier {
   static const int bins = 64;
 
-  final Float32List target   = Float32List(bins);
   final Float32List smoothed = Float32List(bins);
 
   double totalEnergy = 0.0;
+  bool _fadingOut = false;
 
-  /// Accepts `frame.bands` directly from the engine. The pipeline
-  /// already delivers per-band values that are:
-  ///   - log-spaced (20 Hz..20 kHz geometric bands)
-  ///   - dB-clipped and normalised to [0, 1]
-  ///   - asymmetrically EMA-smoothed (attack 0.5, release 0.1)
-  ///
-  /// Per the official mpv_audio_kit example: "No AnimationController
-  /// needed — painting the values directly produces the bouncy
-  /// visualizer feel."
+  /// Accepts `frame.bands` directly from the engine. Renders instantly
+  /// — the engine's native EMA (attack 0.65, release 0.15) already
+  /// provides the bouncy physics. No Dart-side lerp or ticker needed
+  /// during playback.
   void ingest(Float32List bands) {
+    _fadingOut = false;
     if (bands.isEmpty) return;
     double energy = 0.0;
 
     final int n = bands.length < bins ? bands.length : bins;
     for (var i = 0; i < n; i++) {
       final double raw = bands[i].clamp(0.0, 1.0);
-      final v = math.pow(raw, 500).toDouble();
-      target[i] = v;
+      // Cubic power curve: quiet passages stay low, loud peaks reach 1.0.
+      final v = math.pow(raw, 3.0).toDouble();
+      smoothed[i] = v;
       energy += v;
     }
     for (var i = n; i < bins; i++) {
-      target[i] = 0.0;
+      smoothed[i] = 0.0;
     }
     totalEnergy = energy / bins;
+
+    // Paint instantly — no lag.
+    notifyListeners();
+  }
+
+  /// Start the fade-out animation (called when audio goes silent).
+  void startFadeOut(AnimationController ticker) {
+    _fadingOut = true;
+    if (!ticker.isAnimating) ticker.repeat();
+  }
+
+  /// Tick the fade-out: bars decay toward zero with gravity.
+  /// Returns true while any bar is still visible.
+  bool tickFadeOut() {
+    if (!_fadingOut) return false;
+    bool moving = false;
+    double energy = 0.0;
+
+    for (var i = 0; i < bins; i++) {
+      if (smoothed[i] > 0.001) {
+        smoothed[i] *= 0.85; // Gravity fall
+        moving = true;
+      } else {
+        smoothed[i] = 0.0;
+      }
+      energy += smoothed[i];
+    }
+    totalEnergy = energy / bins;
+    notifyListeners();
+    return moving;
   }
 
   void clearTarget() {
     for (var i = 0; i < bins; i++) {
-      target[i] = 0.0;
+      smoothed[i] = 0.0;
     }
     totalEnergy = 0.0;
-  }
-
-  /// Copies target directly to smoothed — the engine's native EMA
-  /// already provides the attack/release feel.
-  bool tick() {
-    var moving = totalEnergy > 0.001;
-
-    for (var i = 0; i < bins; i++) {
-      smoothed[i] = target[i];
-      if (smoothed[i] > 0.001) moving = true;
-    }
-
     notifyListeners();
-    return moving;
   }
 }
 
