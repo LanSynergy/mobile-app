@@ -188,8 +188,11 @@ class _BlockNotifier extends ChangeNotifier {
 
   void ingest(Float32List src) {
     double sum = 0;
+    const double gain = 0.4; // reduce sensitivity 60%
     for (var i = 0; i < bins && i < src.length; i++) {
-      target[i] = src[i].isFinite ? src[i].clamp(0.0, 1.0) : 0.0;
+      final raw = src[i].isFinite ? src[i] : 0.0;
+      // Scale down before clamping so peaks aren't clipped at full gain.
+      target[i] = (raw * gain).clamp(0.0, 1.0);
       sum += target[i];
     }
     _rawEnergy = sum / bins;
