@@ -42,6 +42,10 @@ class AfPlayerService extends BaseAudioHandler
   /// Disposed flag — guards against double-dispose and post-dispose callbacks.
   bool _disposed = false;
 
+  /// Suppresses the playlist stream listener during shuffle reorder so
+  /// the UI doesn't flash a wrong track while _trackQueue is being rebuilt.
+  bool _suppressPlaylistSync = false;
+
   /// Throttle: last time _updatePlaybackState was pushed to audio_service.
   /// Position stream fires at 30-60 Hz; the OS media session only needs
   /// ~2 Hz for human-visible progress. We skip updates that arrive within
@@ -227,8 +231,72 @@ class AfPlayerService extends BaseAudioHandler
   Future<void> skipToQueueItem(int index) => _player.jump(index);
 
   Future<void> setAfShuffleMode(bool enabled) async {
+    // Capture the currently playing track before the shuffle reorders
+    // the mpv playlist. After setShuffle, mpv physically reorders the
+    // playlist and emits a new index — but the *audio* keeps playing
+    // the same file. We need to sync _trackQueue to the new order so
+    // _trackQueue[newIndex] still points to the correct AfTrack.
+    final playingTrack = currentTrack;
+
+    // Suppress the playlist listener so it doesn't emit a spurious
+    // track change while we're rebuilding _trackQueue.
+    _suppressPlaylistSync = true;
+
     await _player.setShuffle(enabled);
+
+    // Rebuild _trackQueue to match mpv's new playlist order by
+    // matching URIs. Each Media.uri contains `/Audio/{trackId}/stream`
+    // so we extract the track ID and look it up.
+    final mpvItems = _player.state.playlist.items;
+    final newIdx = _player.state.playlist.index;
+
+    if (mpvItems.isNotEmpty && _trackQueue.isNotEmpty) {
+      // Build a lookup from track ID → AfTrack.
+      final byId = <String, AfTrack>{};
+      for (final t in _trackQueue) {
+        byId[t.id] = t;
+      }
+
+      final reordered = <AfTrack>[];
+      for (final media in mpvItems) {
+        final id = _extractTrackId(media.uri);
+        final track = id != null ? byId[id] : null;
+        if (track != null) {
+          reordered.add(track);
+        }
+      }
+
+      if (reordered.length == _trackQueue.length) {
+        _trackQueue
+          ..clear()
+          ..addAll(reordered);
+        _currentIndex = newIdx.clamp(0, _trackQueue.length - 1);
+        _queueController.add(List.unmodifiable(_trackQueue));
+      }
+    }
+
+    _suppressPlaylistSync = false;
+
+    // Re-emit the same track so providers stay consistent without
+    // triggering a visual "track changed" flash.
+    if (playingTrack != null) {
+      _trackController.add(playingTrack);
+    }
+
     afLog('data', 'shuffleMode source=live enabled=$enabled');
+  }
+
+  /// Extracts the Jellyfin track ID from a stream URL.
+  /// URL format: `.../Audio/{trackId}/stream?...`
+  static String? _extractTrackId(String uri) {
+    final segments = Uri.tryParse(uri)?.pathSegments;
+    if (segments == null) return null;
+    for (var i = 0; i < segments.length - 1; i++) {
+      if (segments[i].toLowerCase() == 'audio') {
+        return segments[i + 1];
+      }
+    }
+    return null;
   }
 
   Future<void> setAfLoopMode(Loop mode) async {
@@ -319,6 +387,7 @@ class AfPlayerService extends BaseAudioHandler
     _subs.add(_player.stream.playlist.listen((playlist) {
       final idx = playlist.index;
       if (idx < 0 || idx >= _trackQueue.length) return;
+      if (_suppressPlaylistSync) return;
 
       final indexChanged = idx != _currentIndex;
       _currentIndex = idx;
