@@ -305,10 +305,15 @@ class AfPlayerService extends BaseAudioHandler
   }
 
   /// Rebuilds the mpv playlist from _trackQueue, starting playback at
-  /// _currentIndex. Used after shuffle toggle to sync mpv with our order.
+  /// _currentIndex. Preserves the current playback position so the song
+  /// doesn't restart from the beginning.
   Future<void> _rebuildMpvPlaylist() async {
     final client = _resolveStreamUrl;
     if (client == null) return;
+
+    // Save current position and playing state before replacing the playlist.
+    final savedPosition = _player.state.position;
+    final wasPlaying = _player.state.playing;
 
     final medias = _trackQueue
         .map((t) => Media(client(t)))
@@ -318,8 +323,12 @@ class AfPlayerService extends BaseAudioHandler
       await _player.openAll(
         medias,
         index: _currentIndex,
-        play: _player.state.playing,
+        play: wasPlaying,
       );
+      // Restore position so the song doesn't restart.
+      if (savedPosition > Duration.zero) {
+        await _player.seek(savedPosition);
+      }
     } catch (e, stack) {
       afLog('audio', '_rebuildMpvPlaylist failed', error: e, stackTrace: stack);
     }
