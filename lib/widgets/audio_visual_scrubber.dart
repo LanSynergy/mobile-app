@@ -78,7 +78,7 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
           _silenceTimer?.cancel();
           // Render instantly from the mpv engine — no Dart-side lerp/delay.
           _fftNotifier.ingest(frame.bands);
-          _silenceTimer = Timer(const Duration(milliseconds: 150), () {
+          _silenceTimer = Timer(const Duration(milliseconds: 300), () {
             if (mounted && _shouldRender) {
               // Audio stopped — run ticker to fade bars down gracefully.
               _fftNotifier.startFadeOut(_ticker);
@@ -242,8 +242,9 @@ class _BlockNotifier extends ChangeNotifier {
     final int n = bands.length < bins ? bands.length : bins;
     for (var i = 0; i < n; i++) {
       final double raw = bands[i].clamp(0.0, 1.0);
-      // Cubic power curve: quiet passages stay low, loud peaks reach 1.0.
-      final v = math.pow(raw, 3.0).toDouble();
+      // Power-10 curve: aggressive compression — only loud peaks reach
+      // visible height, quiet passages stay near zero.
+      final v = math.pow(raw, 10.0).toDouble();
       smoothed[i] = v;
       energy += v;
     }

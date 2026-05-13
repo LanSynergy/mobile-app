@@ -95,19 +95,18 @@ class AfPlayerService extends BaseAudioHandler
   /// Configure the spectrum pipeline for visualizer use.
   /// Called once after the player is ready.
   ///
-  /// Uses the documented defaults from the official mpv_audio_kit
-  /// example — the engine's native EMA (attack 0.5, release 0.1)
-  /// produces the "bouncy visualizer feel" when painted directly.
-  /// The client adds only a display-layer spring for extra recoil.
+  /// The engine's native EMA (attack 0.65, release 0.15) handles all
+  /// bounce physics in C++. The client renders bands instantly with no
+  /// Dart-side smoothing — only a fade-out ticker runs when audio stops.
   ///
   ///   fftSize: 2048     — sub-50 Hz resolution at 48 kHz, <43 ms block
   ///   bandCount: 64     — matches renderer 1:1, no resampling
   ///   bandLowHz: 20     — full audible range (pipeline handles Nyquist)
   ///   bandHighHz: 20000
   ///   window: hann      — universal music-visualizer default
-  ///   attackSmoothing 0.5  — documented default; transients pop
-  ///   releaseSmoothing 0.1 — documented default; natural decay
-  ///   minDb -70 / maxDb -10 — documented visualizer preset
+  ///   attackSmoothing 0.65 — fast attack for punch
+  ///   releaseSmoothing 0.15 — slow release for bouncy decay
+  ///   minDb -105 / maxDb 35 — very wide range for maximum dynamic headroom
   ///   emitInterval 16ms — 60 fps motion
   Future<void> configureSpectrum() async {
     try {
@@ -122,8 +121,8 @@ class AfPlayerService extends BaseAudioHandler
         // Engine C++ handles bounce physics now.
         attackSmoothing: 0.65,  // Fast attack for punch
         releaseSmoothing: 0.15, // Slow release for bouncy decay
-        minDb: -75.0,           // Wider range so bars don't clip early
-        maxDb: -5.0,
+        minDb: -105.0,          // Very wide range for maximum dynamic headroom
+        maxDb: 35.0,
         emitInterval: Duration(milliseconds: 16),
       ));
     } catch (_) {
