@@ -2,9 +2,23 @@
 
 GitHub Pages site for Aetherfin. Plain HTML + CSS, no build step.
 
-To enable: in the repo settings → Pages, set source to **Deploy from a branch**,
-branch **main**, folder **/docs**. The site will be served at
-`https://aetherfin.github.io/mobile-app/`.
+## How deployment works
+
+The site is deployed by `.github/workflows/pages.yml` on every push to `main`
+that touches `docs/**` (or via manual trigger from the Actions tab).
+The workflow uploads the `docs/` folder as a Pages artifact and the
+`actions/deploy-pages` action publishes it.
+
+## One-time setup
+
+In the repo on GitHub:
+
+1. **Settings → Pages**
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**
+
+That's it — no branch/folder picker, the workflow handles everything.
+
+The site will be live at `https://aetherfin.github.io/mobile-app/`.
 
 ## Files
 
