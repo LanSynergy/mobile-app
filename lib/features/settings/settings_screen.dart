@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show AudioParams, Cache, Format, ReplayGain;
 
+import '../../core/audio/player_settings_store.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 
@@ -135,6 +136,7 @@ class SettingsScreen extends ConsumerWidget {
                   value: enabled,
                   onChanged: (v) {
                     unawaited(svc.setAudioExclusive(v));
+                    unawaited(PlayerSettingsStore.saveExclusive(v));
                   },
                   title: const Text('Exclusive mode'),
                   subtitle: Text(
@@ -193,6 +195,7 @@ class SettingsScreen extends ConsumerWidget {
                   value: enabled,
                   onChanged: (v) {
                     unawaited(svc.setAudioStreamSilence(v));
+                    unawaited(PlayerSettingsStore.saveStreamSilence(v));
                   },
                   title: const Text('Keep audio active on pause'),
                   subtitle: Text(
@@ -303,6 +306,7 @@ void _showSampleRateDialog(BuildContext context, WidgetRef ref) {
                 onTap: () {
                   unawaited(
                       ref.read(playerServiceProvider).setAudioSampleRate(rate));
+                  unawaited(PlayerSettingsStore.saveSampleRate(rate));
                   Navigator.of(dialogCtx).pop();
                 },
               ),
@@ -349,6 +353,7 @@ void _showFormatDialog(BuildContext context, WidgetRef ref) {
                 onTap: () {
                   unawaited(
                       ref.read(playerServiceProvider).setAudioFormat(format));
+                  unawaited(PlayerSettingsStore.saveFormat(format));
                   Navigator.of(dialogCtx).pop();
                 },
               ),
@@ -411,6 +416,7 @@ void _showCacheDurationDialog(BuildContext context, WidgetRef ref) {
                       secs: Duration(seconds: secs),
                     ),
                   ));
+                  unawaited(PlayerSettingsStore.saveCacheSecs(secs));
                   Navigator.of(dialogCtx).pop();
                 },
               ),
@@ -469,6 +475,7 @@ void _showAudioBufferDialog(BuildContext context, WidgetRef ref) {
                   unawaited(ref.read(playerServiceProvider).setAudioBuffer(
                         Duration(milliseconds: ms),
                       ));
+                  unawaited(PlayerSettingsStore.saveBufferMs(ms));
                   Navigator.of(dialogCtx).pop();
                 },
               ),
@@ -594,6 +601,7 @@ void _showReplayGainDialog(BuildContext context, WidgetRef ref) {
                   unawaited(svc.setReplayGain(
                     svc.replayGain.copyWith(mode: mode),
                   ));
+                  unawaited(PlayerSettingsStore.saveReplayGain(mode));
                   Navigator.of(dialogCtx).pop();
                 },
               ),

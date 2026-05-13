@@ -403,7 +403,7 @@ class _ScrubOverlayPainter extends CustomPainter {
     if (size.width <= 0 || size.height <= 0) return;
 
     final midY  = size.height / 2;
-    final fillW = notifier.displayProgress * size.width;
+    final fillW = (notifier.displayProgress * size.width).clamp(0.0, size.width);
 
     // 1. Track background.
     canvas.drawRRect(
@@ -415,7 +415,8 @@ class _ScrubOverlayPainter extends CustomPainter {
     );
 
     // 2. Tail — fading gradient from transparent to playedColor.
-    if (fillW > 0) {
+    // Only draw if there's actually a filled portion (fillW > 1 px).
+    if (fillW > 1) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(0, midY - 1.5, fillW, 3),
@@ -431,10 +432,12 @@ class _ScrubOverlayPainter extends CustomPainter {
       );
     }
 
-    // 3. Playhead flare.
-    if (fillW > 0) {
-      final cx      = fillW.clamp(0.0, size.width);
-      final isDrag  = notifier.dragging;
+    // 3. Playhead flare — ALWAYS rendered, including at position 0.
+    // Previously gated on `fillW > 0` which made the playhead disappear
+    // when the song was at the very start (or seeked back to 0).
+    {
+      final cx     = fillW; // clamped to [0, size.width] above
+      final isDrag = notifier.dragging;
 
       // Ambient glow.
       canvas.drawCircle(

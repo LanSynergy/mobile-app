@@ -6,6 +6,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop, FftFrame;
 import '../core/audio/jellyfin_playback_reporter.dart';
 import '../core/audio/live_update_service.dart';
 import '../core/audio/player_service.dart';
+import '../core/audio/player_settings_store.dart';
 import '../core/audio/spectral_extractor.dart';
 import '../core/demo/demo_library.dart';
 import '../core/jellyfin/auth_storage.dart';
@@ -147,7 +148,11 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
   );
   final liveUpdate = LiveUpdateService(svc);
   unawaited(liveUpdate.attach());
-  unawaited(svc.configureSpectrum());
+  unawaited(svc.configureSpectrum().then((_) {
+    // Apply user-tweaked audio settings (sample rate, bit depth, cache,
+    // ReplayGain, etc.) after the spectrum pipeline is configured.
+    return PlayerSettingsStore.applyPersisted(svc);
+  }));
 
   // When the user signs out (auth → null), send a final Stopped ping so
   // Jellyfin's activity feed doesn't show the user as "still playing".
