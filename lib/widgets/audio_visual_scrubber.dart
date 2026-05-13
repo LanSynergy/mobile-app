@@ -9,24 +9,6 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' show FftFrame;
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AudioVisualScrubber
-//
-// Combines the FFT spectrum visualizer and the progress scrubber into one
-// widget. The visualizer bars are tinted by playhead position — played bars
-// use playedColor, unplayed bars use unplayedColor. A thin track line and
-// drag thumb overlay the bars.
-//
-// Architecture:
-//   _BlockNotifier  — FFT state (instant attack, ×0.75 decay)
-//   _ScrubNotifier  — drag state + display progress
-//   _CombinedBlockPainter — bars + glow, repaints on both notifiers
-//   _ScrubOverlayPainter  — track line + thumb, repaints on scrub only
-//
-// Two RepaintBoundary layers ensure FFT repaints don't invalidate the
-// scrub overlay and vice versa.
-// ─────────────────────────────────────────────────────────────────────────────
-
 class AudioVisualScrubber extends ConsumerStatefulWidget {
   final double height;
   final double progress;
@@ -37,9 +19,9 @@ class AudioVisualScrubber extends ConsumerStatefulWidget {
 
   const AudioVisualScrubber({
     super.key,
-    this.height       = 120,
+    this.height        = 120,
     required this.progress,
-    this.playedColor  = AfColors.indigo300,
+    this.playedColor   = AfColors.indigo300,
     this.unplayedColor = AfColors.textTertiary,
     this.onScrub,
     this.onScrubEnd,
@@ -138,10 +120,9 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Layer 1: FFT bars — repaints on both FFT ticks and scrub progress.
             RepaintBoundary(
               child: CustomPaint(
-                painter: _CombinedBlockPainter(
+                painter: _CombinedBarPainter(
                   fftNotifier:   _fftNotifier,
                   scrubNotifier: _scrubNotifier,
                   glow:          spectral.glow,
@@ -150,7 +131,6 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
                 ),
               ),
             ),
-            // Layer 2: Track line + thumb — repaints on scrub only.
             RepaintBoundary(
               child: CustomPaint(
                 painter: _ScrubOverlayPainter(
@@ -223,14 +203,14 @@ class _BlockNotifier extends ChangeNotifier {
 // Painters
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _CombinedBlockPainter extends CustomPainter {
+class _CombinedBarPainter extends CustomPainter {
   final _BlockNotifier fftNotifier;
   final _ScrubNotifier scrubNotifier;
   final Color glow;
   final Color playedColor;
   final Color unplayedColor;
 
-  _CombinedBlockPainter({
+  _CombinedBarPainter({
     required this.fftNotifier,
     required this.scrubNotifier,
     required this.glow,
@@ -242,15 +222,12 @@ class _CombinedBlockPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (size.width <= 0 || size.height <= 0) return;
 
-    final double midY  = size.height / 2;
-    final double slotW = size.width / _BlockNotifier.bins;
-    final double barW  = (slotW * 0.7).clamp(1.0, 8.0);
-    final double fillX = scrubNotifier.displayProgress * size.width;
-
-    const double segH = 4.0;
-    const double gap  = 1.5;
-    const double step = segH + gap;
-    final int maxSegs  = (midY ~/ step);
+    final double midY    = size.height / 2;
+    final double slotW   = size.width / _BlockNotifier.bins;
+    final double barW    = (slotW * 0.7).clamp(1.0, 8.0);
+    final double fillX   = scrubNotifier.displayProgress * size.width;
+    final double maxBarH = midY * 0.8;
+    final barRadius      = Radius.circular(barW / 2);
 
     final paint = Paint()..style = PaintingStyle.fill;
 
@@ -276,36 +253,38 @@ class _CombinedBlockPainter extends CustomPainter {
       final level = fftNotifier.smoothed[i];
       if (level < 0.02) continue;
 
-      final cx         = (i + 0.5) * slotW;
-      final x          = cx - barW / 2;
-      final activeSegs = (level * maxSegs).ceil();
-      final baseColor  = cx <= fillX ? playedColor : unplayedColor;
+      final cx        = (i + 0.5) * slotW;
+      final x         = cx - barW / 2;
+      final barH      = (level * maxBarH).clamp(2.0, maxBarH);
+      final baseColor = cx <= fillX ? playedColor : unplayedColor;
 
-      for (var s = 0; s < activeSegs; s++) {
-        final offset   = s * step;
-        final segAlpha = (1.0 - (s / maxSegs) * 0.3).clamp(0.4, 1.0);
+      // Main bar (grows upward from midline).
+      paint.color = baseColor;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, midY - barH, barW, barH),
+          barRadius,
+        ),
+        paint,
+      );
 
-        // Top half.
-        paint.color = baseColor.withValues(alpha: segAlpha);
-        canvas.drawRect(
-          Rect.fromLTWH(x, midY - offset - segH, barW, segH),
-          paint,
-        );
-
-        // Bottom half (reflection).
-        paint.color = baseColor.withValues(
-          alpha: segAlpha * 0.35 * (1.0 - (s / activeSegs)),
-        );
-        canvas.drawRect(
-          Rect.fromLTWH(x, midY + offset + gap, barW, segH),
-          paint,
-        );
-      }
+      // Reflection (40% height, 35% opacity, grows downward).
+      paint.color = baseColor.withValues(alpha: 0.35);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, midY + 2.0, barW, barH * 0.4),
+          barRadius,
+        ),
+        paint,
+      );
     }
   }
 
   @override
-  bool shouldRepaint(covariant _CombinedBlockPainter old) => true;
+  bool shouldRepaint(covariant _CombinedBarPainter old) =>
+      old.glow != glow ||
+      old.playedColor != playedColor ||
+      old.unplayedColor != unplayedColor;
 }
 
 class _ScrubOverlayPainter extends CustomPainter {
@@ -365,5 +344,6 @@ class _ScrubOverlayPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ScrubOverlayPainter old) => false;
+  bool shouldRepaint(covariant _ScrubOverlayPainter old) =>
+      old.playedColor != playedColor || old.unplayedColor != unplayedColor;
 }
