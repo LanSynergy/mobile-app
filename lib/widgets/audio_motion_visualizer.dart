@@ -9,31 +9,33 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' show FftFrame;
 import '../state/providers.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AudioMotionVisualizer — three spectral actors with distinct motion semantics
+// AudioMotionVisualizer — one interacting spectral field
 //
-// Regions:
-//   Bass   (bins 0–7):   thick arcs, bottom-anchored, slow temporal decay
-//   Mids   (bins 8–31):  thin segments, center-anchored, medium decay
-//   Treble (bins 32–47): scattered dots, volatile vertical position, instant decay
+// Three species coexist in the SAME canvas space. Zones define motion law,
+// not territory. Every bin can draw anywhere.
 //
-// Motion semantics:
-//   Bass   — lingers. Energy accumulates and releases slowly. Feels heavy.
-//   Mids   — articulates. Tracks signal with moderate inertia. Feels structured.
-//   Treble — evaporates. No decay — raw player output only. Feels unstable.
+// Bass   (bins 0–7):   thick arcs, bottom-anchored, full-width spread,
+//                      slow decay. Pressure glow bleeds upward.
+// Mids   (bins 8–31):  thin segments, center-anchored, full-width spread,
+//                      medium decay. Slightly jittered horizontal position.
+// Treble (bins 32–47): small dots, scattered across full height and width,
+//                      no decay. Occasionally drift into mid territory.
 //
-// Cross-region coupling (perceptual, not signal):
-//   Bass peak energy → slightly amplifies mid arm height (pressure bleeds up)
-//   Treble burst energy → slightly brightens mid opacity (shimmer bleeds down)
+// Spatial rules:
+//   - No hard zone boundaries. All three layers draw on the full canvas.
+//   - Horizontal positions are log-spaced across full width with per-bin
+//     deterministic jitter — breaks grid identity without chaos.
+//   - Bass glow extends upward as a soft bloom, bleeding into mid space.
+//   - Treble dots scatter vertically across the full zone height.
 //
-// Treble instability:
-//   Dot vertical position is driven by the bin's own energy × a fixed
-//   directional sign (up or down, seeded per bin). When energy spikes,
-//   the dot jumps in its assigned direction. When energy drops, it returns
-//   to center. No sine oscillation — position is purely energy-reactive.
+// Motion semantics (unchanged):
+//   Bass   — instant attack, slow decay (×0.82). Lingers.
+//   Mids   — instant attack, medium decay (×0.68). Articulates.
+//   Treble — raw player output, no decay. Evaporates.
 //
-// Silence contrast:
-//   Each region has a minimum energy threshold below which it draws nothing.
-//   The field breathes — silence looks like silence.
+// Cross-region coupling (perceptual):
+//   Bass peak → amplifies mid arm height slightly.
+//   Treble burst → brightens mid opacity slightly.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AudioMotionVisualizer extends ConsumerStatefulWidget {
@@ -59,9 +61,6 @@ class _AudioMotionVisualizerState extends ConsumerState<AudioMotionVisualizer>
   void initState() {
     super.initState();
     _notifier = _SpectralNotifier();
-
-    // Ticker drives the decay loop for bass and mid temporal memory.
-    // Treble has no decay — it reads raw player output directly.
     _ticker = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 16),
@@ -110,21 +109,6 @@ class _AudioMotionVisualizerState extends ConsumerState<AudioMotionVisualizer>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // _SpectralNotifier
-//
-// Owns three separate state layers with different temporal behavior:
-//
-//   bassSmoothed[i]  — slow decay (×0.82/frame). Bass lingers.
-//   midSmoothed[i]   — medium decay (×0.68/frame). Mids articulate.
-//   trebRaw[i]       — no decay. Raw player output. Treble evaporates.
-//
-// Cross-region coupling:
-//   _bassPresence  — mean of top-4 bass bins. Bleeds into mid arm height.
-//   _trebBurst     — mean of top-4 treble bins. Bleeds into mid opacity.
-//
-// Treble dot positions:
-//   Each bin has a fixed directional sign (+1 or -1, seeded per bin).
-//   Vertical offset = sign × energy × scatter amplitude.
-//   No sine, no oscillation — purely energy-reactive.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SpectralNotifier extends ChangeNotifier {
@@ -133,29 +117,43 @@ class _SpectralNotifier extends ChangeNotifier {
   static const int _nMid  = 24;
   static const int _nTreb = 16;
 
-  // Per-region smoothed state.
   final Float32List bassSmoothed = Float32List(_nBass);
   final Float32List midSmoothed  = Float32List(_nMid);
-  final Float32List trebRaw      = Float32List(_nTreb); // no decay
+  final Float32List trebRaw      = Float32List(_nTreb);
 
-  // Cross-region coupling signals.
-  double _bassPresence = 0.0; // top-4 bass mean → mid arm amplifier
-  double _trebBurst    = 0.0; // top-4 treble mean → mid opacity amplifier
-
+  double _bassPresence = 0.0;
+  double _trebBurst    = 0.0;
   double get bassPresence => _bassPresence;
   double get trebBurst    => _trebBurst;
 
-  // Treble directional signs — seeded once, deterministic per bin.
-  // +1 = dot jumps upward on energy spike, -1 = downward.
+  // Per-bin horizontal jitter: small deterministic offset from the
+  // log-spaced center position. Breaks grid identity.
+  late final Float32List bassJitter; // fraction of slot width, [-0.3, 0.3]
+  late final Float32List midJitter;
+  late final Float32List trebJitter;
+
+  // Treble directional signs for vertical scatter.
   late final Int8List _trebSign;
 
   static const double _settleThresh = 0.0004;
 
   _SpectralNotifier() {
     final rng = math.Random(0xAF5EC);
-    _trebSign = Int8List(_nTreb);
+
+    _trebSign  = Int8List(_nTreb);
+    bassJitter = Float32List(_nBass);
+    midJitter  = Float32List(_nMid);
+    trebJitter = Float32List(_nTreb);
+
+    for (var i = 0; i < _nBass; i++) {
+      bassJitter[i] = (rng.nextDouble() - 0.5) * 0.30;
+    }
+    for (var i = 0; i < _nMid; i++) {
+      midJitter[i] = (rng.nextDouble() - 0.5) * 0.20;
+    }
     for (var i = 0; i < _nTreb; i++) {
-      _trebSign[i] = rng.nextBool() ? 1 : -1;
+      _trebSign[i]  = rng.nextBool() ? 1 : -1;
+      trebJitter[i] = (rng.nextDouble() - 0.5) * 0.40;
     }
   }
 
@@ -164,30 +162,23 @@ class _SpectralNotifier extends ChangeNotifier {
   void ingest(Float32List src) {
     final len = src.length < _n ? src.length : _n;
 
-    // Bass: attack toward new value (fast up, slow down handled in tick).
     for (var i = 0; i < _nBass && i < len; i++) {
       final v = src[i].isFinite ? src[i].clamp(0.0, 1.0) : 0.0;
-      if (v > bassSmoothed[i]) bassSmoothed[i] = v; // instant attack
+      if (v > bassSmoothed[i]) bassSmoothed[i] = v;
     }
-
-    // Mid: attack toward new value.
     for (var i = 0; i < _nMid; i++) {
       final srcIdx = _nBass + i;
       final v = srcIdx < len && src[srcIdx].isFinite
-          ? src[srcIdx].clamp(0.0, 1.0)
-          : 0.0;
-      if (v > midSmoothed[i]) midSmoothed[i] = v; // instant attack
+          ? src[srcIdx].clamp(0.0, 1.0) : 0.0;
+      if (v > midSmoothed[i]) midSmoothed[i] = v;
     }
-
-    // Treble: raw, no smoothing.
     for (var i = 0; i < _nTreb; i++) {
       final srcIdx = _nBass + _nMid + i;
       trebRaw[i] = srcIdx < len && src[srcIdx].isFinite
-          ? src[srcIdx].clamp(0.0, 1.0)
-          : 0.0;
+          ? src[srcIdx].clamp(0.0, 1.0) : 0.0;
     }
 
-    // Cross-region coupling: top-4 bass and treble means.
+    // Cross-region coupling signals.
     var bassSum = 0.0;
     for (var i = _nBass - 4; i < _nBass; i++) { bassSum += bassSmoothed[i]; }
     _bassPresence = bassSum / 4;
@@ -197,35 +188,35 @@ class _SpectralNotifier extends ChangeNotifier {
     _trebBurst = trebSum / 4;
   }
 
-  /// Advance decay for bass and mid. Called every frame by the ticker.
   void tick() {
     var anyMoving = false;
-
-    // Bass: slow decay — lingers.
     for (var i = 0; i < _nBass; i++) {
       final next = bassSmoothed[i] * 0.82;
       if ((bassSmoothed[i] - next).abs() > _settleThresh) anyMoving = true;
       bassSmoothed[i] = next;
     }
-
-    // Mid: medium decay — articulates.
     for (var i = 0; i < _nMid; i++) {
       final next = midSmoothed[i] * 0.68;
       if ((midSmoothed[i] - next).abs() > _settleThresh) anyMoving = true;
       midSmoothed[i] = next;
     }
-
     notifyListeners();
-    // Stop ticker when everything has settled (treble is raw — always settles
-    // on its own when the stream stops emitting).
-    if (!anyMoving) {
-      // Ticker will be restarted on next ingest().
-    }
+    if (!anyMoving) _ticker?.stop();
   }
+
+  // Ticker reference for self-stopping — set by the state.
+  AnimationController? _ticker;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // _SpectralPainter
+//
+// All three layers draw on the full canvas. Horizontal positions are
+// log-spaced across the full width with per-bin jitter.
+//
+// Rendering order: bass (bottom) → mid (middle) → treble (top).
+// Layers overlap — treble dots can appear over mid segments, bass glow
+// bleeds into mid territory. This creates field depth, not segmentation.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SpectralPainter extends CustomPainter {
@@ -238,26 +229,18 @@ class _SpectralPainter extends CustomPainter {
   static const int _nMid  = _SpectralNotifier._nMid;
   static const int _nTreb = _SpectralNotifier._nTreb;
 
-  static const double _bassZoneW = 0.28;
-  static const double _midZoneW  = 0.46;
-  static const double _trebZoneW = 0.26;
-
-  // Bass geometry.
-  static const double _bassGap     = 0.42;
+  // Geometry constants.
+  static const double _bassBarW    = 7.0;  // base bar width dp
   static const double _bassMaxFill = 0.82;
+  static const double _midBarW     = 2.5;  // thin segments
+  static const double _midMaxArm   = 0.44; // fraction of half-height
+  static const double _trebMaxR    = 3.0;
+  static const double _trebScatter = 0.42; // vertical scatter fraction
 
-  // Mid geometry.
-  static const double _midGap     = 0.22;
-  static const double _midMaxArm  = 0.44; // fraction of half-height
-
-  // Treble geometry.
-  static const double _trebMaxR    = 3.2;
-  static const double _trebScatter = 0.40;
-
-  // Silence thresholds — below these, nothing is drawn.
+  // Silence thresholds.
   static const double _bassThresh = 0.018;
   static const double _midThresh  = 0.012;
-  static const double _trebThresh = 0.025;
+  static const double _trebThresh = 0.022;
 
   const _SpectralPainter({
     required this.notifier,
@@ -266,46 +249,44 @@ class _SpectralPainter extends CustomPainter {
     required this.shadow,
   }) : super(repaint: notifier);
 
+  /// Log-spaced x position for bin [i] out of [n] across [width].
+  /// Gives more horizontal space to low-frequency bins (perceptually wider).
+  double _logX(int i, int n, double width) {
+    // Map i → [0,1] on a log scale so low bins are spread wider.
+    final t = math.log(1 + i) / math.log(1 + n);
+    return t * width;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     if (size.width <= 0 || size.height <= 0) return;
-
     final W = size.width;
     final H = size.height;
 
-    final bassX0 = 0.0;
-    final bassZW = W * _bassZoneW;
-    final midX0  = bassZW;
-    final midZW  = W * _midZoneW;
-    final trebX0 = bassZW + midZW;
-    final trebZW = W * _trebZoneW;
+    // Cross-region coupling.
+    final bassLift  = notifier.bassPresence * 0.22;
+    final trebShine = notifier.trebBurst    * 0.25;
 
-    _paintBass(canvas, bassX0, bassZW, H);
-    _paintMid(canvas, midX0, midZW, H);
-    _paintTreble(canvas, trebX0, trebZW, H);
-  }
-
-  // ── Bass ────────────────────────────────────────────────────────────────
-
-  void _paintBass(Canvas canvas, double x0, double zoneW, double H) {
-    final slotW = zoneW / _nBass;
     final paint = Paint()..style = PaintingStyle.fill;
 
+    // ── Layer 1: Bass ──────────────────────────────────────────────────────
+    // Bottom-anchored arcs spread across full width (log-spaced).
+    // Glow bloom extends upward, bleeding into mid territory.
     for (var i = 0; i < _nBass; i++) {
       final level = notifier.bassSmoothed[i];
       if (level < _bassThresh) continue;
 
-      // Width expands with energy — mass, not just height.
-      final widthFrac = 0.30 + level * 0.70;
-      final barW = slotW * (1.0 - _bassGap) * widthFrac;
-      final x    = x0 + i * slotW + (slotW - barW) / 2;
+      // Log-spaced center + jitter.
+      final cx   = _logX(i, _nBass, W) + notifier.bassJitter[i] * (W / _nBass);
+      final barW = (_bassBarW * (0.5 + level * 0.5)).clamp(2.0, _bassBarW * 1.4);
+      final x    = cx - barW / 2;
       final barH = (level * H * _bassMaxFill).clamp(2.0, H * _bassMaxFill);
       final y    = H - barH;
       final r    = Radius.circular(barW / 2);
 
+      // Bar body.
       paint.color = Color.lerp(shadow, energy, level)!
-          .withValues(alpha: 0.50 + level * 0.50);
-
+          .withValues(alpha: 0.55 + level * 0.45);
       canvas.drawRRect(
         RRect.fromRectAndCorners(
           Rect.fromLTWH(x, y, barW, barH),
@@ -313,67 +294,63 @@ class _SpectralPainter extends CustomPainter {
         ),
         paint,
       );
+
+      // Upward pressure glow — bleeds into mid space.
+      if (level > 0.25) {
+        final glowH = barH * 0.55 * level;
+        canvas.drawRect(
+          Rect.fromLTWH(cx - barW * 2, y - glowH, barW * 4, glowH),
+          Paint()
+            ..color = energy.withValues(alpha: level * 0.12)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+        );
+      }
     }
-  }
 
-  // ── Mids ────────────────────────────────────────────────────────────────
-
-  void _paintMid(Canvas canvas, double x0, double zoneW, double H) {
-    final slotW  = zoneW / _nMid;
-    final midY   = H / 2;
-    final maxArm = H / 2 * _midMaxArm;
-    final paint  = Paint()..style = PaintingStyle.fill;
-
-    // Cross-region coupling: bass presence amplifies arm height slightly.
-    // Treble burst brightens opacity slightly.
-    final bassLift  = notifier.bassPresence * 0.22; // 0–0.22 extra arm fraction
-    final trebShine = notifier.trebBurst    * 0.25; // 0–0.25 extra opacity
-
+    // ── Layer 2: Mids ──────────────────────────────────────────────────────
+    // Center-anchored segments spread across full width (linear-spaced).
     for (var i = 0; i < _nMid; i++) {
       final level = notifier.midSmoothed[i];
       if (level < _midThresh) continue;
 
-      final barW = slotW * (1.0 - _midGap);
-      final x    = x0 + i * slotW + (slotW - barW) / 2;
-      final arm  = ((level + bassLift) * maxArm).clamp(1.5, maxArm * 1.22);
-      final r    = Radius.circular(barW / 2);
+      // Linear spacing across full width + jitter.
+      final slotW = W / _nMid;
+      final cx    = (i + 0.5) * slotW + notifier.midJitter[i] * slotW;
+      final x     = cx - _midBarW / 2;
+      final midY  = H / 2;
+      final maxArm = H / 2 * _midMaxArm;
+      final arm   = ((level + bassLift) * maxArm).clamp(1.5, maxArm * 1.22);
+      final r     = const Radius.circular(_midBarW / 2);
 
       paint.color = energy.withValues(
-        alpha: (0.35 + level * 0.55 + trebShine).clamp(0.0, 1.0),
+        alpha: (0.30 + level * 0.60 + trebShine).clamp(0.0, 1.0),
       );
-
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, midY - arm, barW, arm * 2),
+          Rect.fromLTWH(x, midY - arm, _midBarW, arm * 2),
           r,
         ),
         paint,
       );
     }
-  }
 
-  // ── Treble ──────────────────────────────────────────────────────────────
-
-  void _paintTreble(Canvas canvas, double x0, double zoneW, double H) {
-    final slotW   = zoneW / _nTreb;
-    final midY    = H / 2;
-    final scatter = H * _trebScatter;
-    final paint   = Paint()..style = PaintingStyle.fill;
-
+    // ── Layer 3: Treble ────────────────────────────────────────────────────
+    // Dots scattered across full width AND full height.
+    // Vertical position: sign × energy × scatter (energy-reactive, not sine).
     for (var i = 0; i < _nTreb; i++) {
       final level = notifier.trebRaw[i];
       if (level < _trebThresh) continue;
 
-      // Vertical position: fixed directional sign × energy × scatter.
-      // No sine — purely energy-reactive. Dot jumps in its assigned
-      // direction when energy spikes, returns to center when it drops.
+      // Spread across full width with jitter — treble invades mid territory.
+      final slotW  = W / _nTreb;
+      final cx     = (i + 0.5) * slotW + notifier.trebJitter[i] * slotW;
+      final midY   = H / 2;
+      final scatter = H * _trebScatter;
       final sign   = notifier.trebSign(i).toDouble();
       final cy     = midY + sign * level * scatter;
-      final cx     = x0 + i * slotW + slotW / 2;
-      final radius = (_trebMaxR * level).clamp(0.6, _trebMaxR);
+      final radius = (_trebMaxR * level).clamp(0.5, _trebMaxR);
 
-      paint.color = glow.withValues(alpha: 0.30 + level * 0.70);
-
+      paint.color = glow.withValues(alpha: 0.28 + level * 0.72);
       canvas.drawCircle(Offset(cx, cy), radius, paint);
     }
   }
