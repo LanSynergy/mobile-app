@@ -90,28 +90,31 @@ class AfPlayerService extends BaseAudioHandler
 
   /// Configure the spectrum pipeline for visualizer use.
   /// Called once after the player is ready.
+  ///
+  /// The player owns all DSP: perceptual band mapping, psychoacoustic
+  /// scaling, smoothing semantics, and cadence. The UI renderer receives
+  /// already-processed bands and applies only a light topology transform
+  /// (neighbor blend). No client-side EMA, decay, or ticker needed.
+  ///
+  /// Settings rationale:
+  ///   bandCount: 48   — matches renderer bar count 1:1, no resampling
+  ///   emitInterval 16ms — 60 fps, tactile sync perception
+  ///   attackSmoothing 0.72 — preserves transient responsiveness
+  ///   releaseSmoothing 0.16 — enough persistence without lag
+  ///   minDb -68 / maxDb -8 — narrower window prevents noise-floor shimmer
+  ///     and keeps the dynamic range in the perceptually active zone
   Future<void> configureSpectrum() async {
     try {
       // Enable gapless playback — mpv pre-fetches the next track so
       // transitions are seamless and auto-advance works correctly.
       await _player.setGapless(Gapless.weak);
       await _player.setSpectrum(const SpectrumSettings(
-        bandCount: 64,
-        // Wide dB window so the full dynamic range of music is visible.
-        // -90 dB floor = silence. -3 dB ceiling = near-clipping peaks.
-        // A signal at -18 dBFS (typical loud music) maps to ~0.80,
-        // a signal at -40 dBFS (quiet passage) maps to ~0.57 — giving
-        // visible movement across the whole dynamic range.
-        // Previously -50..-3 (47 dB) caused quiet sounds to saturate at 0.68+.
-        minDb: -90.0,
-        maxDb: -3.0,
-        // Disable mpv's own EMA smoothing — the widget applies its own
-        // asymmetric attack/decay lerp which gives better visual control.
-        // With mpv smoothing ON, bars stay elevated between beats and
-        // the visualizer looks "stuck at max".
-        attackSmoothing: 0.0,
-        releaseSmoothing: 0.0,
-        emitInterval: Duration(milliseconds: 16), // ~60 fps
+        bandCount: 48,
+        minDb: -68.0,
+        maxDb: -8.0,
+        attackSmoothing: 0.72,
+        releaseSmoothing: 0.16,
+        emitInterval: Duration(milliseconds: 16),
       ));
     } catch (_) {
       // Player not ready yet — spectrum will use defaults.
