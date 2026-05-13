@@ -104,20 +104,23 @@ player.stream.playing     // Stream<bool>
 player.stream.shuffle     // Stream<bool>
 player.stream.loop        // Stream<Loop>  (Loop.off / Loop.file / Loop.playlist)
 player.stream.rate        // Stream<double>
-player.stream.spectrum    // Stream<FftFrame> — 64 bands, post-DSP, ~60 fps
+player.stream.spectrum    // Stream<FftFrame> — 64 bands, post-DSP, ~120 fps
 player.stream.coverArt    // Stream<CoverArt?> — embedded art bytes
 player.stream.playlist    // Stream<Playlist>
 player.stream.completed   // Stream<bool>
 player.stream.buffering   // Stream<bool>
 
-// Spectrum configuration — player provides smoothed perceptual bands
+// Spectrum configuration — engine handles all bounce physics in C++
 await player.setSpectrum(SpectrumSettings(
+  fftSize: 2048,
   bandCount: 64,
-  minDb: -30.0,
-  maxDb: -12.0,
-  attackSmoothing: 0.72,
-  releaseSmoothing: 0.08,
-  emitInterval: Duration(milliseconds: 16), // ~60 fps
+  bandLowHz: 20.0,
+  bandHighHz: 20000.0,
+  attackSmoothing: 0.8,   // Fast attack for punch
+  releaseSmoothing: 0.1,  // Slow release for bouncy decay
+  minDb: -105.0,          // Very wide range for maximum dynamic headroom
+  maxDb: 35.0,
+  emitInterval: Duration(milliseconds: 8), // ~120 fps emission
 ));
 
 // Loop enum values
@@ -165,11 +168,12 @@ lib/
 ├─ widgets/                 ← Shared visual atoms
 │  ├─ mini_player.dart      ← 56 dp floating mini-player
 │  ├─ audio_visual_scrubber.dart ← Combined FFT visualizer + progress scrubber.
-│  │                          _BlockNotifier: log+treble compression, AGC, asymmetric lerp.
+│  │                          _BlockNotifier: power-8 curve, vsync-aligned flush.
 │  │                          _ScrubNotifier: drag state.
-│  │                          Two Stack layers: _CombinedBarPainter + _ScrubOverlayPainter.
+│  │                          Two Stack layers: _CombinedBarPainter (path-batched) +
+│  │                          _ScrubOverlayPainter.
 │  │                          Lifecycle-aware (AppLifecycleListener + route obscure detection).
-│  │                          Self-stopping ticker, 150ms silence timer.
+│  │                          Ticker drives repaints at vsync; 300ms silence timer for fade-out.
 │  └─ …
 └─ utils/
    ├─ log.dart              ← afLog() wrapper around dart:developer.log
@@ -302,27 +306,35 @@ two painter layers in a `Stack`.
 
 ### 9.1 Signal pipeline (`_BlockNotifier`)
 
+The engine's native C++ EMA (attack 0.8, release 0.1) handles all bounce
+physics. The client does NO smoothing — it renders bands directly with
+only a power curve for visual compression.
+
 ```
-Player.stream.spectrum (64 bands, 60 fps, pre-smoothed)
+Player.stream.spectrum (64 bands, ~120 fps, engine-smoothed)
     │
-    ▼  ingest() — per-visual-bar chunk averaging
-chunkSize = floor(src.length / bins)
-for each bin i:
-  chunkSum = Σ src[j].abs() × (1 + (i/bins) × 3.0)    ← treble boost
-  target[i] = log(1 + chunkSum / chunkSize)           ← log compression
+    ▼  ingest() — data update only, no notifyListeners
+for each band i:
+  raw = bands[i].clamp(0, 1)
+  smoothed[i] = pow(raw, 8.0)    ← power-8 compression
+totalEnergy = mean(smoothed)
+_dirty = true
     │
-    ▼  AGC normalization
-_globalPeak = max(frameMax, _globalPeak × 0.98)       ← instant attack, slow decay
-target[i] = (target[i] / safePeak).clamp(0, 1)
-    │
-    ▼  tick() — asymmetric per-bar lerp every 16ms
-smoothed[i] += (target[i] - smoothed[i]) × (diff > 0 ? 0.2 : 0.08)
-totalEnergy += (_rawEnergy - totalEnergy) × 0.1       ← EMA for radial glow
-returns true if any bar or totalEnergy > 0.001        ← self-stopping ticker
+    ▼  flush() — called by ticker on every vsync (60 fps)
+if (_dirty):
+  _dirty = false
+  notifyListeners()              ← triggers repaint, frame-aligned
 ```
 
-**Silence handling:** a 150ms `_silenceTimer` fires `clearTarget()` so bars
-decay to zero during pauses and buffering.
+**Why vsync-aligned:** Stream events arrive from Dart's async zone, not
+aligned to Flutter's vsync. If an event arrives right after a vsync, the
+repaint waits until the next one — halving perceived frame rate. The ticker
+guarantees frame-aligned repaints at a steady 60 fps.
+
+**Fade-out:** When audio stops (300ms silence timer), `startFadeOut()` sets
+a flag. The ticker's `flush()` detects it and runs `_tickFadeOut()` which
+decays bars at 0.85× per frame until they reach zero. Ticker self-stops
+when no energy remains.
 
 **Lifecycle awareness:**
 - `AppLifecycleListener` stops the ticker on `onPause`, resumes on `onResume`.
@@ -332,10 +344,12 @@ decay to zero during pauses and buffering.
 ### 9.2 Rendering (two painter layers)
 
 Layer 1 — `_CombinedBarPainter` (repaint: `Listenable.merge([fft, scrub])`):
+- Path-batched: 4 `Path` objects (top/reflection × played/unplayed) drawn
+  with 4 `drawPath` calls instead of ~128 individual `drawRRect` calls.
+  Eliminates Skia pipeline thrashing from constant color switches.
 - 64 solid rounded bars, bottom-anchored, growing upward (80% max of half-height)
 - Reflection: 40% height, 35% opacity, grows downward
 - Per-bar color: `playedColor` if bar center ≤ playhead, else `unplayedColor`
-- Radial glow background driven by `totalEnergy`
 
 Layer 2 — `_ScrubOverlayPainter` (repaint: `_ScrubNotifier` only):
 - 3dp rounded track (unplayed: textTertiary 20% opacity)
@@ -343,15 +357,21 @@ Layer 2 — `_ScrubOverlayPainter` (repaint: `_ScrubNotifier` only):
 - Playhead flare: ambient glow circle + horizontal "star" streak
 - White-hot 4dp core during drag
 
-### 9.3 Key invariants
+### 9.3 Scrubber drag race fix
 
-- The player pipeline provides smoothed bands; the visualizer applies its own
-  client-side DSP (log, treble boost, AGC, asymmetric lerp) tuned for musical
-  readability. Changing `SpectrumSettings` is not a substitute for tuning the
-  visualizer's own parameters.
+`_ReactiveProgressState` has an `_isDragging` flag that suppresses
+`positionStreamProvider` rebuilds during the drag gesture. Without this,
+the engine keeps emitting position ticks at 30-60 Hz while the user drags,
+causing the playhead to stutter between the drag position and the engine's
+real position. The lock holds until `seek()` resolves.
+
+### 9.4 Key invariants
+
+- The engine handles ALL smoothing/physics in C++. The client applies only
+  a power-8 curve for visual compression — no lerp, no AGC, no treble boost.
 - `bandCount: 64` in `SpectrumSettings` must match `_BlockNotifier.bins = 64`.
-- No shaders are allocated per bar. The gradient tail shader in the scrub
-  overlay is created once per `paint()` call.
+- `ingest()` never calls `notifyListeners()`. Only `flush()` does (on vsync).
+- No shaders are allocated per bar. Path batching keeps GPU state changes to 4.
 - Both `shouldRepaint` methods only check color props — the repaint flow is
   driven by the `Listenable` passed to `super(repaint:)`.
 
@@ -436,7 +456,7 @@ PII (usernames, server URLs) must be redacted in release builds.
 16. **"Use `.then()` chaining for jump+play."** No. Doze can defer `.then()` callbacks. Use `async/await` in a named method (`_jumpAndPlay`).
 17. **"Set `androidStopForegroundOnPause: false`."** No. Samsung One UI hides the notification when the service is demoted. Keep it `true`.
 18. **"Use `AudioMotionVisualizer` or `Waveform` widgets."** These were deleted. The combined widget is `AudioVisualScrubber`.
-19. **"The visualizer shouldn't apply any client-side DSP — trust the player."** That was the old model. The current visualizer deliberately applies log compression, treble boost, AGC, and asymmetric lerp on top of the player's smoothing. Tuned for musical readability.
+19. **"The visualizer should apply its own client-side DSP (log, treble boost, AGC, lerp)."** No. The engine's native C++ EMA handles all bounce physics. The client applies only a power-8 curve for visual compression and renders via vsync-aligned ticker. Adding client-side smoothing fights the engine and causes lag.
 20. **"Create a shader per bar inside `paint()`."** No. That's 64 allocations/frame at 60fps — causes raster-thread GC lag. Pre-compute shaders once per `paint()` call.
 21. **"Subscribe to `spectrumStream` in `didChangeDependencies`."** No. It fires on every ancestor dependency change and causes stream churn. Subscribe once in `initState` via `addPostFrameCallback`.
 22. **"The battery channel is `dev.aetherfin.aetherfin/battery`."** No. It's `aetherfin.battery_opt` (matches `BatteryOptPlugin.CHANNEL_NAME`).
@@ -451,7 +471,7 @@ PII (usernames, server URLs) must be redacted in release builds.
 - **`AfPlayerService`**: The app's audio handler. Extends `BaseAudioHandler` (audio_service) and wraps `Player` (mpv_audio_kit).
 - **`_pendingPlayNudgeIdx`**: State machine field in `AfPlayerService`. Set when playlist index changes; cleared when `playing=true` fires. Prevents `Future.delayed` for auto-advance.
 - **`AudioVisualScrubber`**: Combined FFT visualizer + progress scrubber widget. Owns `_BlockNotifier` (signal DSP) and `_ScrubNotifier` (drag state). Two `RepaintBoundary` layers.
-- **`_BlockNotifier`**: `ChangeNotifier` inside `AudioVisualScrubber`. Applies log+treble compression, AGC, asymmetric lerp to FFT data. Self-stopping ticker. 150ms silence timer.
+- **`_BlockNotifier`**: `ChangeNotifier` inside `AudioVisualScrubber`. Applies power-8 curve to engine bands. `ingest()` updates data only; `flush()` fires `notifyListeners()` on vsync via ticker. 300ms silence timer triggers fade-out (0.85× decay per frame).
 - **`_ScrubNotifier`**: `ChangeNotifier` inside `AudioVisualScrubber`. Owns drag state and display progress.
 - **`Spectral`**: Runtime color triple (`energy`, `shadow`, `glow`) extracted from current artwork. Lives in `currentSpectralProvider`. Never hardcode these values.
 - **`BatteryOptPlugin`**: Kotlin `ActivityAware` plugin on channel `aetherfin.battery_opt`. Fires `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` on first HomeScreen visit.
