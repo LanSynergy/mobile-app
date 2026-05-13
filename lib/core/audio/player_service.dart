@@ -104,10 +104,10 @@ class AfPlayerService extends BaseAudioHandler
   ///   bandLowHz: 20     — full audible range (pipeline handles Nyquist)
   ///   bandHighHz: 20000
   ///   window: hann      — universal music-visualizer default
-  ///   attackSmoothing 0.65 — fast attack for punch
-  ///   releaseSmoothing 0.15 — slow release for bouncy decay
+  ///   attackSmoothing 0.8  — fast attack for punch
+  ///   releaseSmoothing 0.1 — slow release for bouncy decay
   ///   minDb -105 / maxDb 35 — very wide range for maximum dynamic headroom
-  ///   emitInterval 16ms — 60 fps motion
+  ///   emitInterval 8ms  — 120 fps motion
   Future<void> configureSpectrum() async {
     try {
       // Enable gapless playback — mpv pre-fetches the next track so
@@ -119,11 +119,11 @@ class AfPlayerService extends BaseAudioHandler
         bandLowHz: 20.0,
         bandHighHz: 20000.0,
         // Engine C++ handles bounce physics now.
-        attackSmoothing: 0.65,  // Fast attack for punch
-        releaseSmoothing: 0.15, // Slow release for bouncy decay
+        attackSmoothing: 0.8,  // Fast attack for punch
+        releaseSmoothing: 0.1, // Slow release for bouncy decay
         minDb: -105.0,          // Very wide range for maximum dynamic headroom
         maxDb: 35.0,
-        emitInterval: Duration(milliseconds: 16),
+        emitInterval: Duration(milliseconds: 8),
       ));
     } catch (_) {
       // Player not ready yet — spectrum will use defaults.

@@ -242,9 +242,9 @@ class _BlockNotifier extends ChangeNotifier {
     final int n = bands.length < bins ? bands.length : bins;
     for (var i = 0; i < n; i++) {
       final double raw = bands[i].clamp(0.0, 1.0);
-      // Power-10 curve: aggressive compression — only loud peaks reach
+      // Power-8 curve: aggressive compression — only loud peaks reach
       // visible height, quiet passages stay near zero.
-      final v = math.pow(raw, 10.0).toDouble();
+      final v = math.pow(raw, 8.0).toDouble();
       smoothed[i] = v;
       energy += v;
     }
