@@ -1,4 +1,5 @@
-import 'dart:async' show unawaited;
+import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -115,15 +116,82 @@ class _ReactiveBackground extends ConsumerWidget {
   }
 }
 
-/// Plain artwork with spectral glow shadow.
-class _ReactiveArtwork extends ConsumerWidget {
+/// Artwork with sub-bass driven scale pulse.
+/// Bin 0 (kick drum / sub-bass) drives a ±8% scale bump via asymmetric lerp.
+/// ValueNotifier + Transform.scale — no setState, no rebuild of parent.
+class _ReactiveArtwork extends ConsumerStatefulWidget {
   final AfTrack track;
   const _ReactiveArtwork({required this.track});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ReactiveArtwork> createState() => _ReactiveArtworkState();
+}
+
+class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
+    with SingleTickerProviderStateMixin {
+  final ValueNotifier<double> _scale = ValueNotifier(1.0);
+  double _target = 1.0;
+  late final AnimationController _ticker;
+  StreamSubscription<dynamic>? _fftSub;
+  Timer? _silenceTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 16),
+    )..addListener(() {
+        final diff = _target - _scale.value;
+        if (diff.abs() < 0.001 && _target == 1.0) {
+          _ticker.stop();
+          return;
+        }
+        // Asymmetric lerp: fast attack (0.4), slow decay (0.1).
+        _scale.value += diff * (diff > 0 ? 0.4 : 0.1);
+      });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _fftSub = ref.read(playerServiceProvider).spectrumStream.listen(
+        (frame) {
+          if (frame.bands.isEmpty) return;
+          _silenceTimer?.cancel();
+          // Bin 0 = sub-bass / kick drum. sqrt compresses dynamic range.
+          final bass = math.sqrt(frame.bands[0].abs());
+          // Base scale 1.0, max bump +8%.
+          _target = 1.0 + (bass * 0.06).clamp(0.0, 0.08);
+          if (!_ticker.isAnimating) _ticker.repeat();
+          _silenceTimer = Timer(const Duration(milliseconds: 150), () {
+            if (mounted) {
+              _target = 1.0;
+              if (!_ticker.isAnimating) _ticker.repeat();
+            }
+          });
+        },
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _silenceTimer?.cancel();
+    _fftSub?.cancel();
+    _ticker.dispose();
+    _scale.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final spectral = ref.watch(currentSpectralProvider);
-    return RepaintBoundary(
+    return ValueListenableBuilder<double>(
+      valueListenable: _scale,
+      builder: (context, scaleVal, child) => Transform.scale(
+        scale: scaleVal,
+        alignment: Alignment.center,
+        child: child,
+      ),
       child: Center(
         child: Hero(
           tag: 'now-playing-artwork',
@@ -139,7 +207,7 @@ class _ReactiveArtwork extends ConsumerWidget {
               ],
             ),
             child: Artwork(
-              url: track.imageUrl,
+              url: widget.track.imageUrl,
               size: 240,
               radius: AfRadii.borderLg,
             ),
