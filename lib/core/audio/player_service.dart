@@ -91,25 +91,22 @@ class AfPlayerService extends BaseAudioHandler
   /// Configure the spectrum pipeline for visualizer use.
   /// Called once after the player is ready.
   ///
-  /// The player pipeline already does the heavy DSP: log-spaced
-  /// bucketing into 64 bands over 20 Hz..20 kHz, dB clip normalization
-  /// to `[0, 1]`, and asymmetric EMA smoothing (fast attack / slow
-  /// release). Clients should read `frame.bands` directly and hand it
-  /// to a `CustomPainter` — no extra log/band/treble/AGC DSP needed.
-  ///
-  /// Settings — documented "music visualizer" preset with a 60 fps
-  /// emit override for tighter motion sync to the artwork pulse:
+  /// Native smoothing and dB clipping are both disabled — the pipeline
+  /// hands us raw log-spaced bands and the client does the treble
+  /// boost, AGC normalisation and display smoothing in `_BlockNotifier`.
+  /// This keeps bass peaks from saturating (maxDb 0, not -10) and lets
+  /// the renderer apply its own asymmetric attack / spring decay
+  /// without fighting a native EMA.
   ///
   ///   fftSize: 2048     — sub-50 Hz resolution at 48 kHz, <43 ms block
   ///   bandCount: 64     — matches renderer 1:1, no resampling
   ///   bandLowHz: 20     — full audible range (pipeline handles Nyquist)
   ///   bandHighHz: 20000
-  ///   window: hann      — universal music-visualizer default
-  ///   emitInterval 16 ms — 60 fps (default 33 ms / 30 fps feels stuttery)
-  ///   attackSmoothing 0.5  — pipeline default; transients pop
-  ///   releaseSmoothing 0.1 — pipeline default; natural decay
-  ///   minDb -70 / maxDb -10 — "leaves lift" in quiet passages, saturates
-  ///                           on loud peaks before digital clipping.
+  ///   attackSmoothing 0 — native EMA off, client owns smoothing
+  ///   releaseSmoothing 0
+  ///   minDb -80         — deeper noise floor, more "lift" on quiet parts
+  ///   maxDb 0           — stop clipping bass peaks
+  ///   emitInterval 16ms — 60 fps motion
   Future<void> configureSpectrum() async {
     try {
       // Enable gapless playback — mpv pre-fetches the next track so
@@ -120,10 +117,10 @@ class AfPlayerService extends BaseAudioHandler
         bandCount: 64,
         bandLowHz: 20.0,
         bandHighHz: 20000.0,
-        attackSmoothing: 0.5,
-        releaseSmoothing: 0.1,
-        minDb: -70.0,
-        maxDb: -10.0,
+        attackSmoothing: 0.0,  // Disable native smoothing
+        releaseSmoothing: 0.0,
+        minDb: -80.0,
+        maxDb: 0.0,            // Stop clipping bass peaks
         emitInterval: Duration(milliseconds: 16),
       ));
     } catch (_) {

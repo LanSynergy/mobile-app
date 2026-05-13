@@ -230,92 +230,56 @@ class _ScrubNotifier extends ChangeNotifier {
 class _BlockNotifier extends ChangeNotifier {
   static const int bins = 64;
 
-  /// Target values received from `Player.stream.spectrum.bands`. The
-  /// player pipeline delivers these already:
-  ///   - log-spaced (20 Hz..20 kHz geometric bands)
-  ///   - dB-clipped and normalised to `[0, 1]`
-  ///   - EMA-smoothed asymmetrically (fast attack / slow release)
-  ///
-  /// We trust that DSP and only apply a visual motion model on top.
   final Float32List target   = Float32List(bins);
-
-  /// Renderable bar height (what the painter reads). Separate from
-  /// [target] so we can overlay a spring-based motion model — the
-  /// "fast attack, bouncy decay" feel — without touching the engine's
-  /// signal path.
   final Float32List smoothed = Float32List(bins);
-
-  /// Per-bin velocity, driven by the spring model during decay.
   final Float32List velocity = Float32List(bins);
 
-  double totalEnergy = 0.0;
+  double _rawEnergy = 0.0, totalEnergy = 0.0, _globalPeak = 1.0;
 
-  /// Accepts a frame's bands directly. If the frame's bandCount does
-  /// not match [bins] we linearly resample, but the player is
-  /// configured for 64 bands so this is a cheap passthrough copy in
-  /// the happy path.
   void ingest(Float32List bands) {
     if (bands.isEmpty) return;
-    double energy = 0.0;
+    double sum = 0.0, frameMax = 0.0;
 
-    if (bands.length == bins) {
-      for (var i = 0; i < bins; i++) {
-        final v = bands[i];
-        target[i] = v.isFinite ? v.clamp(0.0, 1.0) : 0.0;
-        energy += target[i];
-      }
-    } else {
-      // Fallback: linear resample. The player config pins bandCount
-      // to 64 so this only runs if the settings drift out of sync.
-      final scale = bands.length / bins;
-      for (var i = 0; i < bins; i++) {
-        final idx = (i * scale).floor().clamp(0, bands.length - 1);
-        final v = bands[idx];
-        target[i] = v.isFinite ? v.clamp(0.0, 1.0) : 0.0;
-        energy += target[i];
-      }
+    for (var i = 0; i < bins && i < bands.length; i++) {
+      final boost = 1.0 + (i / bins) * 2.5; // Treble boost
+      final raw = bands[i].abs() * boost;
+      if (raw > frameMax) frameMax = raw;
+      target[i] = raw;
     }
-    totalEnergy = energy / bins;
+
+    _globalPeak = frameMax > _globalPeak ? frameMax : _globalPeak * 0.98;
+    final safePeak = _globalPeak < 0.1 ? 0.1 : _globalPeak;
+
+    for (var i = 0; i < bins; i++) {
+      target[i] = (target[i] / safePeak).clamp(0.0, 1.0);
+      sum += target[i];
+    }
+    _rawEnergy = sum / bins;
   }
 
   void clearTarget() {
     for (var i = 0; i < bins; i++) {
       target[i] = 0.0;
     }
-    totalEnergy = 0.0;
+    _rawEnergy = 0.0;
   }
 
-  /// Returns true if any bar (or its velocity) is still moving.
-  ///
-  /// Motion model — "fast attack, bouncy decay":
-  /// - Rising target: snap toward target at 0.6 (punchy transient).
-  /// - Falling target: damped spring with floor bounce. Velocity
-  ///   accumulates downward, hits the 0 floor, reverses with 35%
-  ///   restitution, damping eats the oscillation in 2–3 cycles.
-  ///
-  /// The engine already smoothed the bands with its own EMA. This
-  /// spring is a *display* layer on top — it adds the visual recoil
-  /// without changing the underlying dB-calibrated amplitude.
   bool tick() {
-    const double attack      = 0.6;
-    const double stiffness   = 0.18;
-    const double damping     = 0.82;
-    const double restitution = 0.35;
-
+    totalEnergy += (_rawEnergy - totalEnergy) * 0.1;
     var moving = totalEnergy > 0.001;
 
     for (var i = 0; i < bins; i++) {
       final diff = target[i] - smoothed[i];
       if (diff > 0) {
-        smoothed[i] += diff * attack;
+        smoothed[i] += diff * 0.35; // Slower attack fixes blinking
         velocity[i] = 0.0;
       } else {
-        velocity[i] += diff * stiffness;
-        velocity[i] *= damping;
+        velocity[i] += diff * 0.12;
+        velocity[i] *= 0.82;
         smoothed[i] += velocity[i];
         if (smoothed[i] < 0.0) {
           smoothed[i] = 0.0;
-          velocity[i] = -velocity[i] * restitution;
+          velocity[i] = -velocity[i] * 0.35;
         }
       }
       if (smoothed[i] > 0.001 || velocity[i].abs() > 0.001) moving = true;
