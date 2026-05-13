@@ -71,13 +71,17 @@ class SettingsScreen extends ConsumerWidget {
               initialData: ref.read(playerServiceProvider).audioOutParams,
               builder: (context, snap) {
                 final params = snap.data;
+                final rate = params?.sampleRate;
+                final fmt = params?.format;
+                final ch = params?.channelCount;
+                final hasData = rate != null && rate > 0;
                 return ListTile(
                   leading: const Icon(Icons.graphic_eq_rounded),
                   title: const Text('Current output'),
                   subtitle: Text(
-                    params != null
-                        ? '${params.sampleRate} Hz · ${params.format?.name ?? "auto"} · ${params.channelCount}ch'
-                        : 'Not active',
+                    hasData
+                        ? '$rate Hz · ${fmt?.name ?? "auto"} · ${ch}ch'
+                        : 'Not active — start playback first',
                     style: AfTypography.bodySmall.copyWith(
                       color: AfColors.textTertiary,
                     ),
