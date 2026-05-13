@@ -190,6 +190,14 @@ class AfPlayerService extends BaseAudioHandler
     afLog('audio', 'audioStreamSilence=$enabled');
   }
 
+  /// Read current audio hardware state.
+  bool get audioExclusive => _player.state.audioExclusive;
+  Stream<bool> get audioExclusiveStream => _player.stream.audioExclusive;
+  bool get audioStreamSilence => _player.state.audioStreamSilence;
+  Stream<bool> get audioStreamSilenceStream => _player.stream.audioStreamSilence;
+  Duration get audioBuffer => _player.state.audioBuffer;
+  Stream<Duration> get audioBufferStream => _player.stream.audioBuffer;
+
   /// Real-time FFT spectrum — 64 log-spaced bands in [0, 1] at ~30 fps.
   /// No RECORD_AUDIO permission needed. Lazy: pipeline starts on first
   /// listener, stops on last cancel.

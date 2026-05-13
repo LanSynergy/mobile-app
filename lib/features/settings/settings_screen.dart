@@ -8,24 +8,14 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' show AudioParams, Cache, Forma
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 
-class SettingsScreen extends ConsumerStatefulWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _exclusiveMode = false;
-  bool _audioStreamSilence = false;
-  int _audioBufferMs = 200; // default
-
-  void _setAudioBuffer(int ms) => setState(() => _audioBufferMs = ms);
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
     final showLabels = ref.watch(showNavLabelsProvider);
+    final svc = ref.read(playerServiceProvider);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -136,23 +126,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               onTap: () => _showFormatDialog(context, ref),
             ),
             const SizedBox(height: AfSpacing.s8),
-            SwitchListTile.adaptive(
-              value: _exclusiveMode,
-              onChanged: (v) {
-                setState(() => _exclusiveMode = v);
-                unawaited(ref.read(playerServiceProvider).setAudioExclusive(v));
+            StreamBuilder<bool>(
+              stream: svc.audioExclusiveStream,
+              initialData: svc.audioExclusive,
+              builder: (context, snap) {
+                final enabled = snap.data ?? false;
+                return SwitchListTile.adaptive(
+                  value: enabled,
+                  onChanged: (v) {
+                    unawaited(svc.setAudioExclusive(v));
+                  },
+                  title: const Text('Exclusive mode'),
+                  subtitle: Text(
+                    'Bypass OS mixer for bit-perfect output. May not work on all devices.',
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                  activeThumbColor: AfColors.indigo500,
+                  tileColor: AfColors.surfaceBase,
+                  shape: const RoundedRectangleBorder(
+                      borderRadius: AfRadii.borderMd),
+                );
               },
-              title: const Text('Exclusive mode'),
-              subtitle: Text(
-                'Bypass OS mixer for bit-perfect output. May not work on all devices.',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
-                ),
-              ),
-              activeThumbColor: AfColors.indigo500,
-              tileColor: AfColors.surfaceBase,
-              shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderMd),
             ),
             const SizedBox(height: AfSpacing.s24),
             _SectionLabel('Network & cache'),
@@ -188,24 +184,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               onTap: () => _showAudioBufferDialog(context, ref),
             ),
             const SizedBox(height: AfSpacing.s8),
-            SwitchListTile.adaptive(
-              value: _audioStreamSilence,
-              onChanged: (v) {
-                setState(() => _audioStreamSilence = v);
-                unawaited(
-                    ref.read(playerServiceProvider).setAudioStreamSilence(v));
+            StreamBuilder<bool>(
+              stream: svc.audioStreamSilenceStream,
+              initialData: svc.audioStreamSilence,
+              builder: (context, snap) {
+                final enabled = snap.data ?? false;
+                return SwitchListTile.adaptive(
+                  value: enabled,
+                  onChanged: (v) {
+                    unawaited(svc.setAudioStreamSilence(v));
+                  },
+                  title: const Text('Keep audio active on pause'),
+                  subtitle: Text(
+                    'Eliminates click/pop on resume. Uses more battery.',
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                  activeThumbColor: AfColors.indigo500,
+                  tileColor: AfColors.surfaceBase,
+                  shape: const RoundedRectangleBorder(
+                      borderRadius: AfRadii.borderMd),
+                );
               },
-              title: const Text('Keep audio active on pause'),
-              subtitle: Text(
-                'Eliminates click/pop on resume. Uses more battery.',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
-                ),
-              ),
-              activeThumbColor: AfColors.indigo500,
-              tileColor: AfColors.surfaceBase,
-              shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderMd),
             ),
             const SizedBox(height: AfSpacing.s24),
             _SectionLabel('About'),
@@ -412,9 +413,9 @@ void _showAudioBufferDialog(BuildContext context, WidgetRef ref) {
     (1000, '1000 ms (very stable)'),
   ];
 
-  // Read from the enclosing state.
-  final state = context.findAncestorStateOfType<_SettingsScreenState>();
-  final currentMs = state?._audioBufferMs ?? 200;
+  final currentMs = ref.read(playerServiceProvider).audioBuffer.inMilliseconds;
+  // Default is 200ms if the player reports 0.
+  final effectiveMs = currentMs > 0 ? currentMs : 200;
 
   showDialog<void>(
     context: context,
@@ -446,9 +447,8 @@ void _showAudioBufferDialog(BuildContext context, WidgetRef ref) {
             for (final (ms, label) in options)
               _OptionTile(
                 label: label,
-                isActive: ms == currentMs,
+                isActive: ms == effectiveMs,
                 onTap: () {
-                  state?._setAudioBuffer(ms);
                   unawaited(ref.read(playerServiceProvider).setAudioBuffer(
                         Duration(milliseconds: ms),
                       ));
