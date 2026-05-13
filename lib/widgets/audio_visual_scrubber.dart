@@ -179,8 +179,6 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
                   fftNotifier:   _fftNotifier,
                   scrubNotifier: _scrubNotifier,
                   glow:          spectral.glow,
-                  playedColor:   widget.playedColor,
-                  unplayedColor: widget.unplayedColor,
                 ),
               ),
             ),
@@ -231,8 +229,15 @@ class _ScrubNotifier extends ChangeNotifier {
 class _BlockNotifier extends ChangeNotifier {
   static const int bins = 64;
 
+  // Cyan → magenta gradient stops. Pure visualizer signature — not derived
+  // from spectral or player accent. Bass punches cyan, treble ripples
+  // magenta, the middle blends.
+  static const Color gradientLeft  = Color(0xFF00E5FF); // cyan
+  static const Color gradientRight = Color(0xFFFF3DDC); // magenta
+
   final Float32List target   = Float32List(bins);
   final Float32List smoothed = Float32List(bins);
+  final Float32List velocity = Float32List(bins);
 
   double _rawEnergy = 0.0, totalEnergy = 0.0;
 
@@ -284,17 +289,37 @@ class _BlockNotifier extends ChangeNotifier {
     _rawEnergy = 0.0;
   }
 
-  /// Returns true if any bar is still moving (ticker should keep running).
+  /// Returns true if any bar (or its velocity) is still moving.
+  ///
+  /// Motion model — "fast attack, bouncy decay":
+  /// - Rising target: snap toward target at 0.6 (instant transient response).
+  /// - Falling target: damped spring with floor bounce. Velocity accumulates
+  ///   downward, hits the 0 floor, reverses with 35% restitution, then the
+  ///   damping eats the oscillation in 2–3 cycles.
   bool tick() {
+    const double attack      = 0.6;   // snap on rise
+    const double stiffness   = 0.18;  // spring pull
+    const double damping     = 0.82;  // velocity damping
+    const double restitution = 0.35;  // floor bounce
+
     totalEnergy += (_rawEnergy - totalEnergy) * 0.1;
     var moving = totalEnergy > 0.001;
 
     for (var i = 0; i < bins; i++) {
       final diff = target[i] - smoothed[i];
-      // Fast attack (0.6) for instant spike response;
-      // smooth decay (0.12) gives gravity / breathing.
-      smoothed[i] += diff * (diff > 0 ? 0.6 : 0.12);
-      if (smoothed[i] > 0.001) moving = true;
+      if (diff > 0) {
+        smoothed[i] += diff * attack;
+        velocity[i] = 0.0;
+      } else {
+        velocity[i] += diff * stiffness;
+        velocity[i] *= damping;
+        smoothed[i] += velocity[i];
+        if (smoothed[i] < 0.0) {
+          smoothed[i] = 0.0;
+          velocity[i] = -velocity[i] * restitution;
+        }
+      }
+      if (smoothed[i] > 0.001 || velocity[i].abs() > 0.001) moving = true;
     }
 
     notifyListeners();
@@ -310,15 +335,11 @@ class _CombinedBarPainter extends CustomPainter {
   final _BlockNotifier fftNotifier;
   final _ScrubNotifier scrubNotifier;
   final Color glow;
-  final Color playedColor;
-  final Color unplayedColor;
 
   _CombinedBarPainter({
     required this.fftNotifier,
     required this.scrubNotifier,
     required this.glow,
-    required this.playedColor,
-    required this.unplayedColor,
   }) : super(repaint: Listenable.merge([fftNotifier, scrubNotifier]));
 
   @override
@@ -327,42 +348,54 @@ class _CombinedBarPainter extends CustomPainter {
 
     final double midY    = size.height / 2;
     final double slotW   = size.width / _BlockNotifier.bins;
-    final double barW    = (slotW * 0.7).clamp(1.0, 8.0);
-    final double fillX   = scrubNotifier.displayProgress * size.width;
-    final double maxBarH = midY * 0.8;
+    final double barW    = (slotW * 0.55).clamp(1.0, 6.0);
+    final double maxBarH = midY * 0.9;
     final barRadius      = Radius.circular(barW / 2);
 
-    final paint = Paint()..style = PaintingStyle.fill;
+    // Shared cyan → magenta gradient for the whole strip. Bars inherit
+    // their color from their horizontal position so bass punches cyan
+    // and treble ripples magenta, consistent left to right.
+    final gradientShader = LinearGradient(
+      colors: const [
+        _BlockNotifier.gradientLeft,
+        _BlockNotifier.gradientRight,
+      ],
+    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    // Background radial glow.
+    final paint = Paint()
+      ..style  = PaintingStyle.fill
+      ..shader = gradientShader;
+
+    // Background radial glow — uses the spectral token so the scene still
+    // follows the cover art even though the bars themselves are fixed.
     if (fftNotifier.totalEnergy > 0.05) {
       final rect = Rect.fromCenter(
         center: Offset(size.width / 2, midY),
         width:  size.width,
-        height: size.height * 0.8,
+        height: size.height,
       );
-      paint.shader = RadialGradient(
-        colors: [
-          glow.withValues(alpha: fftNotifier.totalEnergy * 0.35),
-          Colors.transparent,
-        ],
-      ).createShader(rect);
-      canvas.drawRect(rect, paint);
-      paint.shader = null;
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              glow.withValues(alpha: fftNotifier.totalEnergy * 0.30),
+              Colors.transparent,
+            ],
+          ).createShader(rect),
+      );
     }
 
-    // Solid bars.
+    // Mirrored solid bars — same geometry above and below the axis.
     for (var i = 0; i < _BlockNotifier.bins; i++) {
       final level = fftNotifier.smoothed[i];
       if (level < 0.01) continue;
 
-      final cx        = (i + 0.5) * slotW;
-      final x         = cx - barW / 2;
-      final barH      = (level * maxBarH).clamp(2.0, maxBarH);
-      final baseColor = cx <= fillX ? playedColor : unplayedColor;
+      final cx   = (i + 0.5) * slotW;
+      final x    = cx - barW / 2;
+      final barH = (level * maxBarH).clamp(2.0, maxBarH);
 
-      // Top bar (grows upward).
-      paint.color = baseColor;
+      // Top half — grows upward from axis.
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(x, midY - barH, barW, barH),
@@ -371,11 +404,10 @@ class _CombinedBarPainter extends CustomPainter {
         paint,
       );
 
-      // Reflection (40% height, 35% opacity, grows downward).
-      paint.color = baseColor.withValues(alpha: 0.35);
+      // Bottom half — true mirror. Same height, same geometry.
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, midY + 2.0, barW, barH * 0.4),
+          Rect.fromLTWH(x, midY, barW, barH),
           barRadius,
         ),
         paint,
@@ -384,10 +416,7 @@ class _CombinedBarPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _CombinedBarPainter old) =>
-      old.glow != glow ||
-      old.playedColor != playedColor ||
-      old.unplayedColor != unplayedColor;
+  bool shouldRepaint(covariant _CombinedBarPainter old) => old.glow != glow;
 }
 
 class _ScrubOverlayPainter extends CustomPainter {
