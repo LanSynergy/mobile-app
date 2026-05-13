@@ -3,12 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Device, Loop;
 
 import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/client.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
+import '../../features/sleep_timer/sleep_timer_screen.dart';
 import '../../state/providers.dart';
 import '../../utils/time_format.dart';
 import '../../widgets/artwork.dart';
@@ -664,7 +665,7 @@ class _UtilityRow extends ConsumerWidget {
         _UtilityIcon(
           icon: Icons.bedtime_outlined,
           label: 'Sleep',
-          onTap: () => context.push('/sleep'),
+          onTap: () => _showSleepDialog(context, ref),
         ),
         _UtilityIcon(
           icon: Icons.lyrics_outlined,
@@ -674,17 +675,17 @@ class _UtilityRow extends ConsumerWidget {
         _UtilityIcon(
           icon: Icons.speed_rounded,
           label: 'Speed',
-          onTap: () => _showSpeedSheet(context, ref),
+          onTap: () => _showSpeedDialog(context, ref),
         ),
         _UtilityIcon(
           icon: Icons.cast_outlined,
           label: 'Output',
-          onTap: () => context.push('/cast'),
+          onTap: () => _showOutputDialog(context, ref),
         ),
         _UtilityIcon(
           icon: Icons.playlist_add_rounded,
           label: 'Save',
-          onTap: () => _showSaveSheet(context, ref),
+          onTap: () => _showSaveDialog(context, ref),
         ),
         _UtilityIcon(
           icon: Icons.queue_music_rounded,
@@ -695,7 +696,7 @@ class _UtilityRow extends ConsumerWidget {
     );
   }
 
-  void _showSaveSheet(BuildContext context, WidgetRef ref) {
+  void _showSaveDialog(BuildContext context, WidgetRef ref) {
     final track = ref.read(currentTrackProvider);
     if (track == null) return;
     final client = ref.read(jellyfinClientProvider);
@@ -706,80 +707,85 @@ class _UtilityRow extends ConsumerWidget {
       return;
     }
 
-    showModalBottomSheet<void>(
+    showDialog<void>(
       context: context,
-      // isScrollControlled prevents the sheet from being clipped by the
-      // keyboard when the "New playlist" text field is focused.
-      isScrollControlled: true,
-      backgroundColor: AfColors.surfaceBase,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AfRadii.lg)),
-      ),
-      builder: (sheetCtx) => Padding(
-        // Push sheet above keyboard.
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
-        ),
-        child: _SaveToPlaylistSheet(
-          track: track,
-          client: client,
-          onInvalidate: () => ref.invalidate(allPlaylistsProvider),
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: AfColors.surfaceBase,
+        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
+          child: _SaveToPlaylistSheet(
+            track: track,
+            client: client,
+            onInvalidate: () => ref.invalidate(allPlaylistsProvider),
+          ),
         ),
       ),
     );
   }
 
-  void _showSpeedSheet(BuildContext context, WidgetRef ref) {    const speeds = <double>[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+  void _showSpeedDialog(BuildContext context, WidgetRef ref) {
+    const speeds = <double>[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
     final current = ref.read(playerServiceProvider).speed;
-    showModalBottomSheet<void>(
+    showDialog<void>(
       context: context,
-      backgroundColor: AfColors.surfaceBase,
-      shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AfRadii.lg)),
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: AfColors.surfaceBase,
+        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.gutterGenerous,
+                ),
+                child: Text('Playback speed', style: AfTypography.titleSmall),
+              ),
+              const SizedBox(height: AfSpacing.s8),
+              for (final s in speeds)
+                ListTile(
+                  title: Text(
+                    '${s.toStringAsFixed(s == s.roundToDouble() ? 1 : 2)}×',
+                    style: AfTypography.bodyMedium,
+                  ),
+                  trailing: (s - current).abs() < 0.001
+                      ? const Icon(Icons.check_rounded, size: 20)
+                      : null,
+                  onTap: () {
+                    unawaited(ref.read(playerServiceProvider).setAfSpeed(s));
+                    Navigator.of(dialogCtx).pop();
+                  },
+                ),
+            ],
+          ),
+        ),
       ),
-      builder: (sheetCtx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: AfSpacing.s12),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AfColors.textTertiary,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: AfSpacing.s12),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AfSpacing.gutterGenerous,
-              ),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Playback speed',
-                  style: AfTypography.titleSmall,
-                ),
-              ),
-            ),
-            for (final s in speeds)
-              ListTile(
-                title: Text(
-                  '${s.toStringAsFixed(s == s.roundToDouble() ? 1 : 2)}×',
-                  style: AfTypography.bodyMedium,
-                ),
-                trailing: (s - current).abs() < 0.001
-                    ? const Icon(Icons.check_rounded, size: 20)
-                    : null,
-                onTap: () {
-                  unawaited(ref.read(playerServiceProvider).setAfSpeed(s));
-                  Navigator.of(sheetCtx).pop();
-                },
-              ),
-            const SizedBox(height: AfSpacing.s12),
-          ],
+    );
+  }
+
+  void _showSleepDialog(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: AfColors.surfaceBase,
+        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+        child: const _SleepTimerDialogContent(),
+      ),
+    );
+  }
+
+  void _showOutputDialog(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: AfColors.surfaceBase,
+        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
+          child: const _OutputDialogContent(),
         ),
       ),
     );
@@ -817,6 +823,231 @@ class _UtilityIcon extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sleep timer dialog
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SleepTimerDialogContent extends ConsumerStatefulWidget {
+  const _SleepTimerDialogContent();
+
+  @override
+  ConsumerState<_SleepTimerDialogContent> createState() =>
+      _SleepTimerDialogContentState();
+}
+
+class _SleepTimerDialogContentState
+    extends ConsumerState<_SleepTimerDialogContent> {
+  static const _presets = [5, 10, 15, 30, 45, 60];
+  int? _selectedMinutes;
+
+  void _setTimer() {
+    if (_selectedMinutes == null) return;
+    if (_selectedMinutes == 0) {
+      ref.read(sleepTimerProvider.notifier).state =
+          DateTime.now().add(const Duration(days: 1));
+      ref.read(sleepTimerRemainingProvider.notifier).state = null;
+    } else {
+      final target = DateTime.now().add(Duration(minutes: _selectedMinutes!));
+      ref.read(sleepTimerProvider.notifier).state = target;
+      ref.read(sleepTimerRemainingProvider.notifier).state =
+          Duration(minutes: _selectedMinutes!);
+    }
+    Navigator.of(context).pop();
+  }
+
+  void _cancelTimer() {
+    ref.read(sleepTimerProvider.notifier).state = null;
+    ref.read(sleepTimerRemainingProvider.notifier).state = null;
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activeTimer = ref.watch(sleepTimerProvider);
+    final isActive = activeTimer != null;
+
+    return Padding(
+      padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Sleep timer', style: AfTypography.titleSmall),
+          const SizedBox(height: AfSpacing.s16),
+          if (isActive) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AfSpacing.s12,
+                vertical: AfSpacing.s8,
+              ),
+              decoration: BoxDecoration(
+                color: AfColors.indigo800.withValues(alpha: 0.4),
+                borderRadius: AfRadii.borderMd,
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.bedtime_rounded,
+                      color: AfColors.indigo300, size: 18),
+                  const SizedBox(width: AfSpacing.s8),
+                  Expanded(
+                    child: Text(
+                      'Timer active',
+                      style: AfTypography.bodySmall
+                          .copyWith(color: AfColors.indigo300),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _cancelTimer,
+                    child: Text(
+                      'Cancel',
+                      style: AfTypography.bodySmall
+                          .copyWith(color: AfColors.semanticError),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AfSpacing.s16),
+          ],
+          Wrap(
+            spacing: AfSpacing.s8,
+            runSpacing: AfSpacing.s8,
+            children: [
+              for (final m in _presets)
+                ChoiceChip(
+                  label: Text('$m min'),
+                  selected: _selectedMinutes == m,
+                  onSelected: (_) => setState(() => _selectedMinutes = m),
+                  selectedColor: AfColors.indigo600,
+                  backgroundColor: AfColors.surfaceRaised,
+                  labelStyle: AfTypography.bodySmall.copyWith(
+                    color: _selectedMinutes == m
+                        ? AfColors.textOnPrimary
+                        : AfColors.textPrimary,
+                  ),
+                ),
+              ChoiceChip(
+                label: const Text('End of track'),
+                selected: _selectedMinutes == 0,
+                onSelected: (_) => setState(() => _selectedMinutes = 0),
+                selectedColor: AfColors.indigo600,
+                backgroundColor: AfColors.surfaceRaised,
+                labelStyle: AfTypography.bodySmall.copyWith(
+                  color: _selectedMinutes == 0
+                      ? AfColors.textOnPrimary
+                      : AfColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AfSpacing.s24),
+          ElevatedButton(
+            onPressed: _selectedMinutes == null ? null : _setTimer,
+            child: Text(_selectedMinutes == null ? 'Pick a time' : 'Set timer'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Output dialog
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _OutputDialogContent extends ConsumerWidget {
+  const _OutputDialogContent();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final svc = ref.watch(playerServiceProvider);
+
+    return StreamBuilder<List<Device>>(
+      stream: svc.audioDevicesStream,
+      initialData: svc.audioDevices,
+      builder: (context, devicesSnap) {
+        return StreamBuilder<Device>(
+          stream: svc.audioDeviceStream,
+          initialData: svc.audioDevice,
+          builder: (context, activeSnap) {
+            final devices = devicesSnap.data ?? [];
+            final active = activeSnap.data;
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.gutterGenerous),
+                    child: Text('Output', style: AfTypography.titleSmall),
+                  ),
+                  const SizedBox(height: AfSpacing.s8),
+                  if (devices.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
+                      child: Text(
+                        'No audio devices found.\nStart playback first.',
+                        style: AfTypography.bodyMedium
+                            .copyWith(color: AfColors.textTertiary),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  else
+                    ...devices.map((device) {
+                      final isActive = active?.name == device.name;
+                      return ListTile(
+                        leading: Icon(
+                          _iconForDevice(device.description.isNotEmpty
+                              ? device.description
+                              : device.name),
+                          color: isActive
+                              ? AfColors.indigo300
+                              : AfColors.textSecondary,
+                        ),
+                        title: Text(
+                          device.description.isNotEmpty
+                              ? device.description
+                              : device.name,
+                          style: AfTypography.bodyMedium,
+                        ),
+                        trailing: isActive
+                            ? const Icon(Icons.check_rounded,
+                                color: AfColors.indigo300, size: 20)
+                            : null,
+                        onTap: () async {
+                          await svc.setAudioDevice(device);
+                          if (context.mounted) Navigator.of(context).pop();
+                        },
+                      );
+                    }),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  IconData _iconForDevice(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('bluetooth') || n.contains('bt')) {
+      return Icons.bluetooth_audio_rounded;
+    }
+    if (n.contains('headphone') || n.contains('headset') ||
+        n.contains('earphone') || n.contains('airpod')) {
+      return Icons.headphones_rounded;
+    }
+    if (n.contains('speaker')) return Icons.speaker_rounded;
+    if (n.contains('hdmi')) return Icons.tv_rounded;
+    if (n.contains('usb')) return Icons.usb_rounded;
+    return Icons.smartphone_rounded;
   }
 }
 
