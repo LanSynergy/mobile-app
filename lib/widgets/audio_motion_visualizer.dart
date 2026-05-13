@@ -152,7 +152,19 @@ class _AmaPainter extends CustomPainter {
     final offsetX = (slotW - barW) / 2;
     final maxH    = zoneH * _maxFill;
     final capR    = Radius.circular(barW / 2);
-    final paint   = Paint()..style = PaintingStyle.fill;
+
+    // Pre-compute shader once against the full zone height.
+    // Reusing a single shader across all bars eliminates 48 per-frame
+    // LinearGradient allocations that were causing raster-thread lag.
+    final shader = LinearGradient(
+      begin: Alignment.bottomCenter,
+      end:   Alignment.topCenter,
+      colors: [accent, accent.withValues(alpha: 0.55)],
+    ).createShader(Rect.fromLTWH(0, 0, size.width, zoneH));
+
+    final paint = Paint()
+      ..style  = PaintingStyle.fill
+      ..shader = shader;
 
     for (var i = 0; i < _n; i++) {
       final level = notifier.bars[i];
@@ -161,13 +173,6 @@ class _AmaPainter extends CustomPainter {
       final barH = (level * maxH).clamp(_minPx, maxH);
       final x    = i * slotW + offsetX;
       final y    = zoneH - barH;
-
-      // Vertical opacity fade: full at base, 55% at tip.
-      paint.shader = LinearGradient(
-        begin: Alignment.bottomCenter,
-        end:   Alignment.topCenter,
-        colors: [accent, accent.withValues(alpha: 0.55)],
-      ).createShader(Rect.fromLTWH(x, y, barW, barH));
 
       if (barH > barW) {
         canvas.drawRRect(

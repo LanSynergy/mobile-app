@@ -110,7 +110,7 @@ class AfPlayerService extends BaseAudioHandler
       await _player.setGapless(Gapless.weak);
       await _player.setSpectrum(const SpectrumSettings(
         bandCount: 48,
-        minDb: -55.0,
+        minDb: -40.0,
         maxDb: -12.0,
         attackSmoothing: 0.72,
         releaseSmoothing: 0.16,
