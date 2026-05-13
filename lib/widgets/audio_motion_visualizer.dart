@@ -133,7 +133,7 @@ class _AmaPainter extends CustomPainter {
   final double       barSpace;
 
   static const int    _n       = _AmaNotifier._n;
-  static const double _maxFill = 0.72;
+  static const double _maxFill = 0.55;
   static const double _minPx   = 2.0;
 
   const _AmaPainter({
