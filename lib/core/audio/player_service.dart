@@ -426,10 +426,25 @@ class AfPlayerService extends BaseAudioHandler
       if (_suppressPlaylistSync) return;
 
       final indexChanged = idx != _currentIndex;
+
+      // Capture the track that was playing *before* updating the index.
+      final previousTrackId = (_currentIndex >= 0 &&
+              _currentIndex < _trackQueue.length)
+          ? _trackQueue[_currentIndex].id
+          : null;
+
       _currentIndex = idx;
 
       if (indexChanged) {
         final track = _trackQueue[idx];
+
+        // Guard: if the track identity hasn't actually changed (same ID),
+        // skip the emission. This happens during shuffle — mpv reorders
+        // the playlist and emits a new index, but the audio keeps playing
+        // the same file. The stream event can arrive after our suppress
+        // flag is cleared due to async delivery timing.
+        if (track.id == previousTrackId) return;
+
         _trackController.add(track);
         afLog(
           'data',
