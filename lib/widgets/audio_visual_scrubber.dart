@@ -39,6 +39,7 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
   late final _ScrubNotifier _scrubNotifier;
   late final AnimationController _ticker;
   StreamSubscription<FftFrame>? _fftSub;
+  Timer? _silenceTimer;
 
   @override
   void initState() {
@@ -50,15 +51,26 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
       vsync: this,
       duration: const Duration(milliseconds: 16),
     )..addListener(() {
-        if (mounted) _fftNotifier.tick();
+        if (mounted) {
+          final keepAnimating = _fftNotifier.tick();
+          if (!keepAnimating) _ticker.stop(); // save battery when silent/paused
+        }
       });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _fftSub = ref.read(playerServiceProvider).spectrumStream.listen(
         (frame) {
+          _silenceTimer?.cancel();
           _fftNotifier.ingest(frame.bands);
           if (!_ticker.isAnimating) _ticker.repeat();
+          // If no new frame arrives within 150ms (pause/buffering), drop bars.
+          _silenceTimer = Timer(const Duration(milliseconds: 150), () {
+            if (mounted) {
+              _fftNotifier.clearTarget();
+              if (!_ticker.isAnimating) _ticker.repeat();
+            }
+          });
         },
       );
     });
@@ -72,6 +84,7 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
 
   @override
   void dispose() {
+    _silenceTimer?.cancel();
     _fftSub?.cancel();
     _ticker.dispose();
     _fftNotifier.dispose();
@@ -184,22 +197,19 @@ class _BlockNotifier extends ChangeNotifier {
 
   double _rawEnergy  = 0.0;
   double totalEnergy = 0.0;
-  double _globalPeak = 1.0; // AGC tracker
+  double _globalPeak = 1.0;
 
   void ingest(Float32List src) {
     if (src.isEmpty) return;
     double sum      = 0;
     double frameMax = 0.0;
 
-    // sqrt compresses dynamic range — makes quiet signals more visible
-    // without clipping loud ones.
     for (var i = 0; i < bins && i < src.length; i++) {
       final val = math.sqrt(src[i].abs());
       target[i] = val.isFinite ? val : 0.0;
       if (target[i] > frameMax) frameMax = target[i];
     }
 
-    // Faster peak decay (0.95) so bars don't hang at the top too long.
     _globalPeak = frameMax > _globalPeak ? frameMax : _globalPeak * 0.95;
     final safePeak = _globalPeak < 0.01 ? 0.01 : _globalPeak;
 
@@ -210,14 +220,27 @@ class _BlockNotifier extends ChangeNotifier {
     _rawEnergy = sum / bins;
   }
 
-  void tick() {
+  void clearTarget() {
+    for (var i = 0; i < bins; i++) {
+      target[i] = 0.0;
+    }
+    _rawEnergy = 0.0;
+  }
+
+  /// Returns true if any bar is still moving (ticker should keep running).
+  bool tick() {
     totalEnergy += (_rawEnergy - totalEnergy) * 0.15;
+    var moving = totalEnergy > 0.001;
+
     for (var i = 0; i < bins; i++) {
       final diff  = target[i] - smoothed[i];
       final speed = diff > 0 ? 0.4 : 0.1;
       smoothed[i] += diff * speed;
+      if (smoothed[i] > 0.001) moving = true;
     }
+
     notifyListeners();
+    return moving;
   }
 }
 
@@ -273,7 +296,7 @@ class _CombinedBarPainter extends CustomPainter {
     // Bars.
     for (var i = 0; i < _BlockNotifier.bins; i++) {
       final level = fftNotifier.smoothed[i];
-      if (level < 0.02) continue;
+      if (level < 0.01) continue;
 
       final cx        = (i + 0.5) * slotW;
       final x         = cx - barW / 2;
