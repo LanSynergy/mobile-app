@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -229,80 +228,84 @@ class _ScrubNotifier extends ChangeNotifier {
 class _BlockNotifier extends ChangeNotifier {
   static const int bins = 64;
 
-  // Cyan → magenta gradient stops. Pure visualizer signature — not derived
-  // from spectral or player accent. Bass punches cyan, treble ripples
-  // magenta, the middle blends.
+  // Cyan → magenta gradient stops. Pure visualizer signature — not
+  // derived from spectral or player accent. Bass punches cyan on the
+  // left, treble ripples magenta on the right.
   static const Color gradientLeft  = Color(0xFF00E5FF); // cyan
   static const Color gradientRight = Color(0xFFFF3DDC); // magenta
 
+  /// Target values received from `Player.stream.spectrum.bands`. The
+  /// player pipeline delivers these already:
+  ///   - log-spaced (20 Hz..20 kHz geometric bands)
+  ///   - dB-clipped and normalised to `[0, 1]`
+  ///   - EMA-smoothed asymmetrically (fast attack / slow release)
+  ///
+  /// We trust that DSP and only apply a visual motion model on top.
   final Float32List target   = Float32List(bins);
+
+  /// Renderable bar height (what the painter reads). Separate from
+  /// [target] so we can overlay a spring-based motion model — the
+  /// "fast attack, bouncy decay" feel — without touching the engine's
+  /// signal path.
   final Float32List smoothed = Float32List(bins);
+
+  /// Per-bin velocity, driven by the spring model during decay.
   final Float32List velocity = Float32List(bins);
 
-  double _rawEnergy = 0.0, totalEnergy = 0.0;
+  double totalEnergy = 0.0;
 
-  void ingest(Float32List src) {
-    if (src.isEmpty) return;
-    double sum = 0.0;
+  /// Accepts a frame's bands directly. If the frame's bandCount does
+  /// not match [bins] we linearly resample, but the player is
+  /// configured for 64 bands so this is a cheap passthrough copy in
+  /// the happy path.
+  void ingest(Float32List bands) {
+    if (bands.isEmpty) return;
+    double energy = 0.0;
 
-    // Skip DC offset (index 0) and cap at the audible range so very-high
-    // bins don't flatten the perceptual response.
-    const int minIdx = 1;
-    final int maxIdx = src.length > 512 ? 512 : src.length - 1;
-    if (maxIdx <= minIdx) return;
-
-    for (var i = 0; i < bins; i++) {
-      // 1. Logarithmic frequency mapping — spreads bins the way human
-      //    hearing does, so bass doesn't collapse into a single bar and
-      //    treble doesn't dominate a wide slice of the spectrum.
-      final double startRatio = i / bins;
-      final double endRatio   = (i + 1) / bins;
-      final int startIdx =
-          (minIdx * math.pow(maxIdx / minIdx, startRatio)).floor();
-      final int endIdx =
-          (minIdx * math.pow(maxIdx / minIdx, endRatio))
-              .ceil()
-              .clamp(startIdx + 1, maxIdx);
-
-      // 2. Max pooling + treble boost — take the peak of the slice and
-      //    amplify higher bins so the right half of the visualizer
-      //    actually dances on bright material.
-      double binMax = 0.0;
-      for (var j = startIdx; j < endIdx && j < src.length; j++) {
-        final double boost = 1.0 + (j / maxIdx) * 15.0;
-        final double raw   = src[j].abs() * boost;
-        if (raw > binMax) binMax = raw;
+    if (bands.length == bins) {
+      for (var i = 0; i < bins; i++) {
+        final v = bands[i];
+        target[i] = v.isFinite ? v.clamp(0.0, 1.0) : 0.0;
+        energy += target[i];
       }
-
-      // 3. Logarithmic amplitude (decibel-like curve) in [0, 1].
-      final double scaled = math.log(1.0 + binMax * 4.0) / 4.0;
-      target[i] = scaled.isFinite ? scaled.clamp(0.0, 1.0) : 0.0;
-      sum += target[i];
+    } else {
+      // Fallback: linear resample. The player config pins bandCount
+      // to 64 so this only runs if the settings drift out of sync.
+      final scale = bands.length / bins;
+      for (var i = 0; i < bins; i++) {
+        final idx = (i * scale).floor().clamp(0, bands.length - 1);
+        final v = bands[idx];
+        target[i] = v.isFinite ? v.clamp(0.0, 1.0) : 0.0;
+        energy += target[i];
+      }
     }
-    _rawEnergy = sum / bins;
+    totalEnergy = energy / bins;
   }
 
   void clearTarget() {
     for (var i = 0; i < bins; i++) {
       target[i] = 0.0;
     }
-    _rawEnergy = 0.0;
+    totalEnergy = 0.0;
   }
 
   /// Returns true if any bar (or its velocity) is still moving.
   ///
   /// Motion model — "fast attack, bouncy decay":
-  /// - Rising target: snap toward target at 0.6 (instant transient response).
-  /// - Falling target: damped spring with floor bounce. Velocity accumulates
-  ///   downward, hits the 0 floor, reverses with 35% restitution, then the
-  ///   damping eats the oscillation in 2–3 cycles.
+  /// - Rising target: snap toward target at 0.6 (punchy transient).
+  /// - Falling target: damped spring with floor bounce. Velocity
+  ///   accumulates downward, hits the 0 floor, reverses with 35%
+  ///   restitution, damping eats the oscillation in 2–3 cycles.
+  ///
+  /// The engine already smoothed the bands with its own EMA. This
+  /// spring is a *display* layer on top — it adds the visual recoil
+  /// without changing the underlying dB-calibrated amplitude.
   bool tick() {
-    const double attack      = 0.6;   // snap on rise
-    const double stiffness   = 0.18;  // spring pull
-    const double damping     = 0.82;  // velocity damping
-    const double restitution = 0.35;  // floor bounce
+    const double attack      = 0.6;
+    const double stiffness   = 0.18;
+    const double damping     = 0.82;
+    const double restitution = 0.35;
 
-    totalEnergy += (_rawEnergy - totalEnergy) * 0.1;
     var moving = totalEnergy > 0.001;
 
     for (var i = 0; i < bins; i++) {

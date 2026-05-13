@@ -159,11 +159,12 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
           if (frame.bands.isEmpty) return;
           _silenceTimer?.cancel();
 
-          // Kick / sub-bass pool (skip DC bin 0) — peak of the first few
-          // low-frequency bands. Matches the visualizer's "skip DC" rule
-          // and survives bass bins that occasionally go silent between
-          // hits on heavily sidechained tracks.
-          final int hi = frame.bands.length < 4 ? frame.bands.length : 4;
+          // Kick / low-bass pool. With the player configured for 64
+          // log-spaced bands over 20 Hz..20 kHz, the geometric ratio
+          // is ~1.114/band, so band 0 ≈ 20–22 Hz (mostly room rumble)
+          // and bands 1..6 span ≈ 22–45 Hz — the kick-drum fundamental
+          // region on most music. Pool the peak of that window.
+          final int hi = frame.bands.length < 7 ? frame.bands.length : 7;
           double rawBass = 0.0;
           for (var i = 1; i < hi; i++) {
             final v = frame.bands[i].abs();

@@ -91,29 +91,39 @@ class AfPlayerService extends BaseAudioHandler
   /// Configure the spectrum pipeline for visualizer use.
   /// Called once after the player is ready.
   ///
-  /// The player owns all DSP: perceptual band mapping, psychoacoustic
-  /// scaling, smoothing semantics, and cadence. The UI renderer receives
-  /// already-processed bands and applies only a light topology transform
-  /// (neighbor blend). No client-side EMA, decay, or ticker needed.
+  /// The player pipeline already does the heavy DSP: log-spaced
+  /// bucketing into 64 bands over 20 Hz..20 kHz, dB clip normalization
+  /// to `[0, 1]`, and asymmetric EMA smoothing (fast attack / slow
+  /// release). Clients should read `frame.bands` directly and hand it
+  /// to a `CustomPainter` — no extra log/band/treble/AGC DSP needed.
   ///
-  /// Settings rationale:
-  ///   bandCount: 48   — matches renderer bar count 1:1, no resampling
-  ///   emitInterval 16ms — 60 fps, tactile sync perception
-  ///   attackSmoothing 0.72 — preserves transient responsiveness
-  ///   releaseSmoothing 0.16 — enough persistence without lag
-  ///   minDb -68 / maxDb -8 — narrower window prevents noise-floor shimmer
-  ///     and keeps the dynamic range in the perceptually active zone
+  /// Settings — documented "music visualizer" preset with a 60 fps
+  /// emit override for tighter motion sync to the artwork pulse:
+  ///
+  ///   fftSize: 2048     — sub-50 Hz resolution at 48 kHz, <43 ms block
+  ///   bandCount: 64     — matches renderer 1:1, no resampling
+  ///   bandLowHz: 20     — full audible range (pipeline handles Nyquist)
+  ///   bandHighHz: 20000
+  ///   window: hann      — universal music-visualizer default
+  ///   emitInterval 16 ms — 60 fps (default 33 ms / 30 fps feels stuttery)
+  ///   attackSmoothing 0.5  — pipeline default; transients pop
+  ///   releaseSmoothing 0.1 — pipeline default; natural decay
+  ///   minDb -70 / maxDb -10 — "leaves lift" in quiet passages, saturates
+  ///                           on loud peaks before digital clipping.
   Future<void> configureSpectrum() async {
     try {
       // Enable gapless playback — mpv pre-fetches the next track so
       // transitions are seamless and auto-advance works correctly.
       await _player.setGapless(Gapless.weak);
       await _player.setSpectrum(const SpectrumSettings(
+        fftSize: 2048,
         bandCount: 64,
-        minDb: -30.0,
-        maxDb: -12.0,
-        attackSmoothing: 0.72,
-        releaseSmoothing: 0.08,
+        bandLowHz: 20.0,
+        bandHighHz: 20000.0,
+        attackSmoothing: 0.5,
+        releaseSmoothing: 0.1,
+        minDb: -70.0,
+        maxDb: -10.0,
         emitInterval: Duration(milliseconds: 16),
       ));
     } catch (_) {
