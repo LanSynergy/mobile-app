@@ -40,6 +40,13 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
   late final AnimationController _ticker;
   StreamSubscription<FftFrame>? _fftSub;
   Timer? _silenceTimer;
+  Animation<double>? _overlayAnim;
+  late final AppLifecycleListener _lifecycle;
+
+  bool _isAppBackground = false;
+
+  bool get _isObscured => (_overlayAnim?.value ?? 0.0) > 0.0;
+  bool get _shouldRender => mounted && !_isObscured && !_isAppBackground;
 
   @override
   void initState() {
@@ -47,13 +54,22 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
     _fftNotifier   = _BlockNotifier();
     _scrubNotifier = _ScrubNotifier(progress: widget.progress);
 
+    // Stop ticker when app is backgrounded, resume when foregrounded.
+    _lifecycle = AppLifecycleListener(
+      onPause:  () { _isAppBackground = true;  _ticker.stop(); },
+      onResume: () {
+        _isAppBackground = false;
+        if (_fftNotifier.totalEnergy > 0) _ticker.repeat();
+      },
+    );
+
     _ticker = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 16),
     )..addListener(() {
         if (mounted) {
           final keepAnimating = _fftNotifier.tick();
-          if (!keepAnimating) _ticker.stop(); // save battery when silent/paused
+          if (!keepAnimating) _ticker.stop();
         }
       });
 
@@ -61,12 +77,13 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
       if (!mounted) return;
       _fftSub = ref.read(playerServiceProvider).spectrumStream.listen(
         (frame) {
+          // Drop FFT data when obscured or backgrounded.
+          if (!_shouldRender) return;
           _silenceTimer?.cancel();
           _fftNotifier.ingest(frame.bands);
           if (!_ticker.isAnimating) _ticker.repeat();
-          // If no new frame arrives within 150ms (pause/buffering), drop bars.
           _silenceTimer = Timer(const Duration(milliseconds: 150), () {
-            if (mounted) {
+            if (mounted && _shouldRender) {
               _fftNotifier.clearTarget();
               if (!_ticker.isAnimating) _ticker.repeat();
             }
@@ -77,19 +94,41 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
   }
 
   @override
-  void didUpdateWidget(covariant AudioVisualScrubber old) {
-    super.didUpdateWidget(old);
-    _scrubNotifier.update(widget.progress);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    // Detect when another route (Queue, Lyrics, etc.) covers this screen.
+    if (_overlayAnim != route?.secondaryAnimation) {
+      _overlayAnim?.removeListener(_onVisibilityChange);
+      _overlayAnim = route?.secondaryAnimation;
+      _overlayAnim?.addListener(_onVisibilityChange);
+    }
+  }
+
+  void _onVisibilityChange() {
+    if (_isObscured) {
+      _ticker.stop();
+    } else if (_fftNotifier.totalEnergy > 0.001) {
+      _ticker.repeat();
+    }
   }
 
   @override
   void dispose() {
+    _overlayAnim?.removeListener(_onVisibilityChange);
+    _lifecycle.dispose();
     _silenceTimer?.cancel();
     _fftSub?.cancel();
     _ticker.dispose();
     _fftNotifier.dispose();
     _scrubNotifier.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant AudioVisualScrubber old) {
+    super.didUpdateWidget(old);
+    _scrubNotifier.update(widget.progress);
   }
 
   double _toProgress(double dx) {
