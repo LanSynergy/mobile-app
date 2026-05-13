@@ -65,11 +65,11 @@ class NowPlayingScreen extends ConsumerWidget {
                         delegate: SliverChildListDelegate([
                           const SizedBox(height: AfSpacing.s24),
                           _ReactiveArtwork(track: track),
+                          const SizedBox(height: AfSpacing.s24),
+                          _MetadataRow(track: track),
                           const SizedBox(height: AfSpacing.s16),
                           _ReactiveVisualizer(),
-                          const SizedBox(height: AfSpacing.s16),
-                          _MetadataRow(track: track),
-                          const SizedBox(height: AfSpacing.s24),
+                          const SizedBox(height: AfSpacing.s20),
                           _ReactiveProgress(track: track),
                           const SizedBox(height: AfSpacing.s24),
                           _ReactiveTransport(track: track),
@@ -282,7 +282,7 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
             progress: displayProgress,
             isPlaying: isPlaying,
             playedColor: spectral.energy,
-            height: 48,
+            height: 36,
             onScrub: (p) => setState(() => _scrubPreview = p),
             onScrubEnd: (p) {
               setState(() => _scrubPreview = null);
@@ -292,7 +292,7 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
               ref.read(playerServiceProvider).seek(newPos);
             },
           ),
-          const SizedBox(height: AfSpacing.s8),
+          const SizedBox(height: AfSpacing.s4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
