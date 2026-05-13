@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart' show AudioParams, Cache, Format;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show AudioParams, Cache, Format, ReplayGain;
 
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
@@ -207,6 +207,23 @@ class SettingsScreen extends ConsumerWidget {
                       borderRadius: AfRadii.borderMd),
                 );
               },
+            ),
+            const SizedBox(height: AfSpacing.s24),
+            _SectionLabel('Audio processing'),
+            ListTile(
+              leading: const Icon(Icons.equalizer_rounded),
+              title: const Text('ReplayGain'),
+              subtitle: Text(
+                'Volume normalization across tracks',
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textTertiary,
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              tileColor: AfColors.surfaceBase,
+              shape: const RoundedRectangleBorder(
+                  borderRadius: AfRadii.borderMd),
+              onTap: () => _showReplayGainDialog(context, ref),
             ),
             const SizedBox(height: AfSpacing.s24),
             _SectionLabel('About'),
@@ -465,11 +482,13 @@ void _showAudioBufferDialog(BuildContext context, WidgetRef ref) {
 /// A dialog option row with an accented vertical line on the left when active.
 class _OptionTile extends StatelessWidget {
   final String label;
+  final String? subtitle;
   final bool isActive;
   final VoidCallback onTap;
 
   const _OptionTile({
     required this.label,
+    this.subtitle,
     required this.isActive,
     required this.onTap,
   });
@@ -488,7 +507,7 @@ class _OptionTile extends StatelessWidget {
             // Accented vertical line indicator.
             Container(
               width: 3,
-              height: 20,
+              height: subtitle != null ? 28 : 20,
               decoration: BoxDecoration(
                 color: isActive ? AfColors.indigo400 : Colors.transparent,
                 borderRadius: BorderRadius.circular(1.5),
@@ -496,12 +515,30 @@ class _OptionTile extends StatelessWidget {
             ),
             const SizedBox(width: AfSpacing.s12),
             Expanded(
-              child: Text(
-                label,
-                style: AfTypography.bodyMedium.copyWith(
-                  color: isActive ? AfColors.indigo300 : AfColors.textPrimary,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: AfTypography.bodyMedium.copyWith(
+                      color: isActive
+                          ? AfColors.indigo300
+                          : AfColors.textPrimary,
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                  if (subtitle != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        subtitle!,
+                        style: AfTypography.bodySmall.copyWith(
+                          color: AfColors.textTertiary,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ],
@@ -509,4 +546,60 @@ class _OptionTile extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showReplayGainDialog(BuildContext context, WidgetRef ref) {
+  final svc = ref.read(playerServiceProvider);
+  final current = svc.replayGain.mode;
+
+  const options = <(ReplayGain, String, String)>[
+    (ReplayGain.no, 'Off', 'No volume normalization'),
+    (ReplayGain.track, 'Track', 'Normalize each track independently'),
+    (ReplayGain.album, 'Album', 'Normalize per album (preserves dynamics)'),
+  ];
+
+  showDialog<void>(
+    context: context,
+    builder: (dialogCtx) => Dialog(
+      backgroundColor: AfColors.surfaceBase,
+      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.gutterGenerous),
+              child: Text('ReplayGain', style: AfTypography.titleSmall),
+            ),
+            const SizedBox(height: AfSpacing.s4),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.gutterGenerous),
+              child: Text(
+                'Normalize volume so all tracks play at a similar loudness.',
+                style: AfTypography.bodySmall
+                    .copyWith(color: AfColors.textTertiary),
+              ),
+            ),
+            const SizedBox(height: AfSpacing.s8),
+            for (final (mode, label, subtitle) in options)
+              _OptionTile(
+                label: label,
+                subtitle: subtitle,
+                isActive: mode == current,
+                onTap: () {
+                  unawaited(svc.setReplayGain(
+                    svc.replayGain.copyWith(mode: mode),
+                  ));
+                  Navigator.of(dialogCtx).pop();
+                },
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

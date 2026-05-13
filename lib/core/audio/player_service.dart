@@ -198,6 +198,116 @@ class AfPlayerService extends BaseAudioHandler
   Duration get audioBuffer => _player.state.audioBuffer;
   Stream<Duration> get audioBufferStream => _player.stream.audioBuffer;
 
+  // ---------------------------------------------------------------------------
+  // Playback state & buffering
+  // ---------------------------------------------------------------------------
+
+  /// Aggregate playback lifecycle — one enum instead of checking
+  /// playing + buffering + completed separately.
+  Stream<MpvPlaybackState> get mpvPlaybackStateStream =>
+      _player.stream.playbackState;
+
+  /// True when the player is buffering (network stall or initial load).
+  Stream<bool> get bufferingStream => _player.stream.buffering;
+  bool get isBuffering => _player.state.buffering;
+
+  /// Cache fill percentage (0–100) relative to configured cache duration.
+  Stream<double> get bufferingPercentageStream =>
+      _player.stream.bufferingPercentage;
+  double get bufferingPercentage => _player.state.bufferingPercentage;
+
+  /// Volume control.
+  Stream<double> get volumeStream => _player.stream.volume;
+  double get volume => _player.state.volume;
+  Future<void> setVolume(double vol) async {
+    await _player.setVolume(vol);
+    afLog('audio', 'volume=$vol');
+  }
+
+  /// Mute control.
+  Stream<bool> get muteStream => _player.stream.mute;
+  bool get isMuted => _player.state.mute;
+  Future<void> setMute(bool muted) async {
+    await _player.setMute(muted);
+    afLog('audio', 'mute=$muted');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Audio quality info
+  // ---------------------------------------------------------------------------
+
+  /// Live audio bitrate (bytes/sec) — feed quality chip with real data.
+  Stream<double?> get audioBitrateStream => _player.stream.audioBitrate;
+  double? get audioBitrate => _player.state.audioBitrate;
+
+  /// Decoder-side audio params (codec, sample rate before output conversion).
+  Stream<AudioParams> get audioParamsStream => _player.stream.audioParams;
+  AudioParams get audioParams => _player.state.audioParams;
+
+  /// Prefetch lifecycle — "next track ready" indicator for gapless.
+  Stream<MpvPrefetchState> get prefetchStateStream =>
+      _player.stream.prefetchState;
+
+  /// Error stream — playback failures and engine errors.
+  Stream<MpvPlayerError> get errorStream => _player.stream.error;
+
+  // ---------------------------------------------------------------------------
+  // A-B Loop
+  // ---------------------------------------------------------------------------
+
+  /// Set the A marker (start of loop). Null disables.
+  Future<void> setAbLoopA(Duration? position) async {
+    await _player.setAbLoopA(position);
+    afLog('audio', 'abLoopA=${position?.inMilliseconds}ms');
+  }
+
+  /// Set the B marker (end of loop). Null disables.
+  Future<void> setAbLoopB(Duration? position) async {
+    await _player.setAbLoopB(position);
+    afLog('audio', 'abLoopB=${position?.inMilliseconds}ms');
+  }
+
+  /// Limit loop repetitions. Null = infinite.
+  Future<void> setAbLoopCount(int? count) async {
+    await _player.setAbLoopCount(count);
+    afLog('audio', 'abLoopCount=$count');
+  }
+
+  Stream<Duration?> get abLoopAStream => _player.stream.abLoopA;
+  Duration? get abLoopA => _player.state.abLoopA;
+  Stream<Duration?> get abLoopBStream => _player.stream.abLoopB;
+  Duration? get abLoopB => _player.state.abLoopB;
+  Stream<int?> get remainingAbLoopsStream => _player.stream.remainingAbLoops;
+
+  // ---------------------------------------------------------------------------
+  // DSP / Audio Effects
+  // ---------------------------------------------------------------------------
+
+  /// Replace the entire DSP effects bundle.
+  Future<void> setAudioEffects(AudioEffects effects) async {
+    await _player.setAudioEffects(effects);
+    afLog('audio', 'audioEffects set');
+  }
+
+  /// Mutate one or more DSP fields via copyWith mapper.
+  Future<void> updateAudioEffects(
+      AudioEffects Function(AudioEffects) mapper) async {
+    await _player.updateAudioEffects(mapper);
+    afLog('audio', 'audioEffects updated');
+  }
+
+  Stream<AudioEffects> get audioEffectsStream => _player.stream.audioEffects;
+  AudioEffects get audioEffects => _player.state.audioEffects;
+
+  /// ReplayGain normalization settings.
+  Future<void> setReplayGain(ReplayGainSettings settings) async {
+    await _player.setReplayGain(settings);
+    afLog('audio', 'replayGain mode=${settings.mode}');
+  }
+
+  Stream<ReplayGainSettings> get replayGainStream => _player.stream.replayGain;
+  ReplayGainSettings get replayGain => _player.state.replayGain;
+
   /// Real-time FFT spectrum — 64 log-spaced bands in [0, 1] at ~30 fps.
   /// No RECORD_AUDIO permission needed. Lazy: pipeline starts on first
   /// listener, stops on last cancel.
