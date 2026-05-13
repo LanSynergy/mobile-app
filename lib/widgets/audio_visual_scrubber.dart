@@ -350,7 +350,7 @@ class _ScrubOverlayPainter extends CustomPainter {
     final midY  = size.height / 2;
     final fillW = notifier.displayProgress * size.width;
 
-    // Track background.
+    // 1. Track background.
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(0, midY - 1.5, size.width, 3),
@@ -359,32 +359,57 @@ class _ScrubOverlayPainter extends CustomPainter {
       Paint()..color = unplayedColor.withValues(alpha: 0.20),
     );
 
-    // Played fill.
+    // 2. Tail — fading gradient from transparent to playedColor.
     if (fillW > 0) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(0, midY - 1.5, fillW, 3),
           const Radius.circular(1.5),
         ),
-        Paint()..color = playedColor,
+        Paint()
+          ..shader = LinearGradient(
+            colors: [
+              playedColor.withValues(alpha: 0.0),
+              playedColor,
+            ],
+          ).createShader(Rect.fromLTWH(0, midY - 1.5, fillW, 3)),
       );
     }
 
-    // Drag thumb.
-    if (notifier.dragging) {
-      final cx = fillW.clamp(6.0, size.width - 6.0);
+    // 3. Playhead flare.
+    if (fillW > 0) {
+      final cx      = fillW.clamp(0.0, size.width);
+      final isDrag  = notifier.dragging;
+
+      // Ambient glow.
       canvas.drawCircle(
         Offset(cx, midY),
-        18.0,
+        isDrag ? 24.0 : 12.0,
         Paint()
-          ..color = playedColor.withValues(alpha: 0.18)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+          ..color = playedColor.withValues(alpha: isDrag ? 0.30 : 0.15)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, isDrag ? 12.0 : 8.0),
       );
-      canvas.drawCircle(
-        Offset(cx, midY),
-        6.0,
-        Paint()..color = AfColors.textPrimary,
+
+      // Horizontal light flare — the "star" streak.
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(cx, midY),
+          width:  isDrag ? 48.0 : 20.0,
+          height: 3.0,
+        ),
+        Paint()
+          ..color = playedColor.withValues(alpha: 0.9)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0),
       );
+
+      // White-hot core during drag.
+      if (isDrag) {
+        canvas.drawCircle(
+          Offset(cx, midY),
+          4.0,
+          Paint()..color = Colors.white,
+        );
+      }
     }
   }
 
