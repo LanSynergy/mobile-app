@@ -55,19 +55,21 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
     _scrubNotifier = _ScrubNotifier(progress: widget.progress);
 
     _lifecycle = AppLifecycleListener(
-      onPause:  () { _isAppBackground = true; },
-      onResume: () { _isAppBackground = false; },
+      onPause:  () { _isAppBackground = true; _ticker.stop(); },
+      onResume: () {
+        _isAppBackground = false;
+        if (_fftNotifier.hasEnergy) _ticker.repeat();
+      },
     );
 
-    // Ticker ONLY runs during fade-out (when audio pauses/stops).
+    // Ticker drives repaints at vsync (60 fps). Stream events just update
+    // data; the ticker ensures frame-aligned rendering so the visualizer
+    // doesn't stutter from async stream timing misalignment.
     _ticker = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 16),
     )..addListener(() {
-        if (mounted) {
-          final keepAnimating = _fftNotifier.tickFadeOut();
-          if (!keepAnimating) _ticker.stop();
-        }
+        if (mounted) _fftNotifier.flush();
       });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -76,12 +78,12 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
         (frame) {
           if (!_shouldRender) return;
           _silenceTimer?.cancel();
-          // Render instantly from the mpv engine — no Dart-side lerp/delay.
+          // Update data only — ticker handles the repaint on vsync.
           _fftNotifier.ingest(frame.bands);
+          if (!_ticker.isAnimating) _ticker.repeat();
           _silenceTimer = Timer(const Duration(milliseconds: 300), () {
             if (mounted && _shouldRender) {
-              // Audio stopped — run ticker to fade bars down gracefully.
-              _fftNotifier.startFadeOut(_ticker);
+              _fftNotifier.startFadeOut();
             }
           });
         },
@@ -229,11 +231,13 @@ class _BlockNotifier extends ChangeNotifier {
 
   double totalEnergy = 0.0;
   bool _fadingOut = false;
+  bool _dirty = false;
 
-  /// Accepts `frame.bands` directly from the engine. Renders instantly
-  /// — the engine's native EMA (attack 0.65, release 0.15) already
-  /// provides the bouncy physics. No Dart-side lerp or ticker needed
-  /// during playback.
+  bool get hasEnergy => totalEnergy > 0.001;
+
+  /// Updates bar data from engine bands. Does NOT call notifyListeners —
+  /// the ticker calls flush() on vsync to trigger the repaint at a
+  /// steady frame rate regardless of stream event timing.
   void ingest(Float32List bands) {
     _fadingOut = false;
     if (bands.isEmpty) return;
@@ -252,27 +256,36 @@ class _BlockNotifier extends ChangeNotifier {
       smoothed[i] = 0.0;
     }
     totalEnergy = energy / bins;
+    _dirty = true;
+  }
 
-    // Paint instantly — no lag.
-    notifyListeners();
+  /// Called by the ticker on every vsync. Fires notifyListeners only if
+  /// data changed since last flush — guarantees frame-aligned repaints
+  /// at a steady 60 fps regardless of stream event timing.
+  void flush() {
+    if (_fadingOut) {
+      _tickFadeOut();
+      return;
+    }
+    if (_dirty) {
+      _dirty = false;
+      notifyListeners();
+    }
   }
 
   /// Start the fade-out animation (called when audio goes silent).
-  void startFadeOut(AnimationController ticker) {
+  void startFadeOut() {
     _fadingOut = true;
-    if (!ticker.isAnimating) ticker.repeat();
+    _dirty = false;
   }
 
-  /// Tick the fade-out: bars decay toward zero with gravity.
-  /// Returns true while any bar is still visible.
-  bool tickFadeOut() {
-    if (!_fadingOut) return false;
+  void _tickFadeOut() {
     bool moving = false;
     double energy = 0.0;
 
     for (var i = 0; i < bins; i++) {
       if (smoothed[i] > 0.001) {
-        smoothed[i] *= 0.85; // Gravity fall
+        smoothed[i] *= 0.85;
         moving = true;
       } else {
         smoothed[i] = 0.0;
@@ -281,7 +294,8 @@ class _BlockNotifier extends ChangeNotifier {
     }
     totalEnergy = energy / bins;
     notifyListeners();
-    return moving;
+
+    if (!moving) _fadingOut = false;
   }
 
   void clearTarget() {
