@@ -42,7 +42,7 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
   @override
   void initState() {
     super.initState();
-    _fftNotifier  = _BlockNotifier();
+    _fftNotifier   = _BlockNotifier();
     _scrubNotifier = _ScrubNotifier(progress: widget.progress);
 
     _ticker = AnimationController(
@@ -178,23 +178,34 @@ class _ScrubNotifier extends ChangeNotifier {
 class _BlockNotifier extends ChangeNotifier {
   static const int bins = 64;
 
+  // target: raw player values written by ingest().
+  // smoothed: interpolated toward target each tick — asymmetric attack/decay.
+  final Float32List target   = Float32List(bins);
   final Float32List smoothed = Float32List(bins);
-  double totalEnergy = 0.0;
+
+  double _rawEnergy  = 0.0;
+  double totalEnergy = 0.0; // EMA of _rawEnergy — drives glow intensity
 
   void ingest(Float32List src) {
     double sum = 0;
     for (var i = 0; i < bins && i < src.length; i++) {
-      final v = src[i].isFinite ? src[i].clamp(0.0, 1.0) : 0.0;
-      if (v > smoothed[i]) smoothed[i] = v; // instant attack
-      sum += smoothed[i];
+      target[i] = src[i].isFinite ? src[i].clamp(0.0, 1.0) : 0.0;
+      sum += target[i];
     }
-    totalEnergy = sum / bins;
+    _rawEnergy = sum / bins;
   }
 
   void tick() {
+    // Smooth totalEnergy toward raw energy (EMA, τ ≈ 6 frames).
+    totalEnergy += (_rawEnergy - totalEnergy) * 0.15;
+
+    // Per-bar asymmetric lerp: fast attack (0.4), slow decay (0.1).
     for (var i = 0; i < bins; i++) {
-      smoothed[i] *= 0.75;
+      final diff  = target[i] - smoothed[i];
+      final speed = diff > 0 ? 0.4 : 0.1;
+      smoothed[i] += diff * speed;
     }
+
     notifyListeners();
   }
 }
