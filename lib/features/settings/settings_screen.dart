@@ -246,6 +246,8 @@ void _showSampleRateDialog(BuildContext context, WidgetRef ref) {
     192000: '192 kHz (Studio)',
   };
 
+  final currentRate = ref.read(playerServiceProvider).audioOutParams.sampleRate ?? 0;
+
   showDialog<void>(
     context: context,
     builder: (dialogCtx) => Dialog(
@@ -264,8 +266,9 @@ void _showSampleRateDialog(BuildContext context, WidgetRef ref) {
             ),
             const SizedBox(height: AfSpacing.s8),
             for (final rate in rates)
-              ListTile(
-                title: Text(labels[rate]!, style: AfTypography.bodyMedium),
+              _OptionTile(
+                label: labels[rate]!,
+                isActive: rate == currentRate || (rate == 0 && currentRate == 0),
                 onTap: () {
                   unawaited(
                       ref.read(playerServiceProvider).setAudioSampleRate(rate));
@@ -288,6 +291,8 @@ void _showFormatDialog(BuildContext context, WidgetRef ref) {
     (Format.float64, '64-bit float'),
   ];
 
+  final currentFormat = ref.read(playerServiceProvider).audioOutParams.format;
+
   showDialog<void>(
     context: context,
     builder: (dialogCtx) => Dialog(
@@ -306,8 +311,10 @@ void _showFormatDialog(BuildContext context, WidgetRef ref) {
             ),
             const SizedBox(height: AfSpacing.s8),
             for (final (format, label) in formats)
-              ListTile(
-                title: Text(label, style: AfTypography.bodyMedium),
+              _OptionTile(
+                label: label,
+                isActive: format == currentFormat ||
+                    (format == Format.auto && currentFormat == null),
                 onTap: () {
                   unawaited(
                       ref.read(playerServiceProvider).setAudioFormat(format));
@@ -329,6 +336,8 @@ void _showCacheDurationDialog(BuildContext context, WidgetRef ref) {
     (120, '2 minutes'),
     (300, '5 minutes'),
   ];
+
+  final currentSecs = ref.read(playerServiceProvider).cacheSettings.secs.inSeconds;
 
   showDialog<void>(
     context: context,
@@ -358,8 +367,9 @@ void _showCacheDurationDialog(BuildContext context, WidgetRef ref) {
             ),
             const SizedBox(height: AfSpacing.s8),
             for (final (secs, label) in options)
-              ListTile(
-                title: Text(label, style: AfTypography.bodyMedium),
+              _OptionTile(
+                label: label,
+                isActive: secs == currentSecs,
                 onTap: () {
                   final svc = ref.read(playerServiceProvider);
                   unawaited(svc.setCache(
@@ -415,8 +425,9 @@ void _showAudioBufferDialog(BuildContext context, WidgetRef ref) {
             ),
             const SizedBox(height: AfSpacing.s8),
             for (final (ms, label) in options)
-              ListTile(
-                title: Text(label, style: AfTypography.bodyMedium),
+              _OptionTile(
+                label: label,
+                isActive: false, // Audio buffer state not easily readable
                 onTap: () {
                   unawaited(ref.read(playerServiceProvider).setAudioBuffer(
                         Duration(milliseconds: ms),
@@ -429,4 +440,53 @@ void _showAudioBufferDialog(BuildContext context, WidgetRef ref) {
       ),
     ),
   );
+}
+
+/// A dialog option row with an accented vertical line on the left when active.
+class _OptionTile extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _OptionTile({
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AfSpacing.gutterGenerous,
+          vertical: AfSpacing.s12,
+        ),
+        child: Row(
+          children: [
+            // Accented vertical line indicator.
+            Container(
+              width: 3,
+              height: 20,
+              decoration: BoxDecoration(
+                color: isActive ? AfColors.indigo400 : Colors.transparent,
+                borderRadius: BorderRadius.circular(1.5),
+              ),
+            ),
+            const SizedBox(width: AfSpacing.s12),
+            Expanded(
+              child: Text(
+                label,
+                style: AfTypography.bodyMedium.copyWith(
+                  color: isActive ? AfColors.indigo300 : AfColors.textPrimary,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
