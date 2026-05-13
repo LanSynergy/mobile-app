@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -186,29 +187,24 @@ class _BlockNotifier extends ChangeNotifier {
   double _globalPeak = 1.0; // AGC tracker
 
   void ingest(Float32List src) {
+    if (src.isEmpty) return;
     double sum      = 0;
     double frameMax = 0.0;
 
-    // 1. Find the highest value in this frame.
+    // sqrt compresses dynamic range — makes quiet signals more visible
+    // without clipping loud ones.
     for (var i = 0; i < bins && i < src.length; i++) {
-      final val = src[i].isFinite ? src[i] : 0.0;
-      if (val > frameMax) frameMax = val;
+      final val = math.sqrt(src[i].abs());
+      target[i] = val.isFinite ? val : 0.0;
+      if (target[i] > frameMax) frameMax = target[i];
     }
 
-    // 2. Calibrate global peak — instant attack, very slow decay.
-    if (frameMax > _globalPeak) {
-      _globalPeak = frameMax;
-    } else {
-      _globalPeak *= 0.995; // drifts down slowly to track song volume
-    }
+    // Faster peak decay (0.95) so bars don't hang at the top too long.
+    _globalPeak = frameMax > _globalPeak ? frameMax : _globalPeak * 0.95;
+    final safePeak = _globalPeak < 0.01 ? 0.01 : _globalPeak;
 
-    // Avoid division by zero.
-    final safePeak = _globalPeak < 0.1 ? 0.1 : _globalPeak;
-
-    // 3. Dynamic normalization — divide by the song's running absolute peak.
-    for (var i = 0; i < bins && i < src.length; i++) {
-      final raw = src[i].isFinite ? src[i] : 0.0;
-      target[i] = (raw / safePeak).clamp(0.0, 1.0);
+    for (var i = 0; i < bins; i++) {
+      target[i] = (target[i] / safePeak).clamp(0.0, 1.0);
       sum += target[i];
     }
     _rawEnergy = sum / bins;
