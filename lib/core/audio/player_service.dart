@@ -97,6 +97,50 @@ class AfPlayerService extends BaseAudioHandler
     afLog('audio', 'audioDevice set to ${device.name}');
   }
 
+  // ---------------------------------------------------------------------------
+  // Audio hardware & routing
+  // ---------------------------------------------------------------------------
+
+  /// Set the audio output driver (e.g. 'auto', 'opensles', 'aaudio').
+  Future<void> setAudioDriver(String driver) async {
+    await _player.setAudioDriver(driver);
+    afLog('audio', 'audioDriver set to $driver');
+  }
+
+  /// Enable/disable exclusive mode (bypasses OS mixer for bit-perfect output).
+  Future<void> setAudioExclusive(bool enabled) async {
+    await _player.setAudioExclusive(enabled);
+    afLog('audio', 'audioExclusive=$enabled');
+  }
+
+  /// Force a specific output sample rate (0 = auto).
+  Future<void> setAudioSampleRate(int rate) async {
+    await _player.setAudioSampleRate(rate);
+    afLog('audio', 'audioSampleRate=$rate');
+  }
+
+  /// Force a specific output bit depth format.
+  Future<void> setAudioFormat(Format format) async {
+    await _player.setAudioFormat(format);
+    afLog('audio', 'audioFormat=$format');
+  }
+
+  /// Force a specific channel layout.
+  Future<void> setAudioChannels(Channels channels) async {
+    await _player.setAudioChannels(channels);
+    afLog('audio', 'audioChannels=$channels');
+  }
+
+  /// S/PDIF passthrough for compressed audio (AC3, DTS, etc.).
+  Future<void> setAudioSpdif(Set<Spdif> codecs) async {
+    await _player.setAudioSpdif(codecs);
+    afLog('audio', 'audioSpdif=$codecs');
+  }
+
+  /// Current audio output parameters (sample rate, format, channels).
+  Stream<AudioParams> get audioOutParamsStream => _player.stream.audioOutParams;
+  AudioParams get audioOutParams => _player.state.audioOutParams;
+
   /// Real-time FFT spectrum — 64 log-spaced bands in [0, 1] at ~30 fps.
   /// No RECORD_AUDIO permission needed. Lazy: pipeline starts on first
   /// listener, stops on last cancel.
