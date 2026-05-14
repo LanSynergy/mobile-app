@@ -151,7 +151,7 @@ jobs:
               echo "::error::$apk is $SIZE_HUMAN — over Telegram Bot API's 50 MB sendDocument limit. Re-run with split_per_abi=true."
               exit 1
             fi
-            CAPTION=$(printf '🎵 *Aetherfin* · `%s`\n\n📦 `%s`\n📐 %s\n\n🔀 `%s` on `%s`\n💬 _%s_\n🕐 %s\n\n[View run](%s)' \
+            CAPTION=$(printf '*Aetherfin* · `%s`\n\n`%s`\n%s\n\n`%s` on `%s`\n_%s_\n%s\n\n[View run](%s)' \
               "$BUILD_MODE" "$apk" "$SIZE_HUMAN" "$SHORT_SHA" "$BRANCH" "$COMMIT_MSG" "$TIMESTAMP" "$RUN_URL")
             echo "Uploading $apk ($SIZE_HUMAN)..."
             HTTP_CODE=$(curl -sS -o /tmp/tg-resp.json -w "%{http_code}" \
