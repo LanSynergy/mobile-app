@@ -285,34 +285,40 @@ class AfPlayerService extends BaseAudioHandler
 
   /// Replace the entire DSP effects bundle.
   Future<void> setAudioEffects(AudioEffects effects) async {
-    await _player.setAudioEffects(effects);
+    final optimized = _autoBypassFlat(effects);
+    await _player.setAudioEffects(optimized);
     afLog('audio', 'audioEffects set');
-    await _purgeFlatFilters(effects);
   }
 
   /// Mutate one or more DSP fields via copyWith mapper.
   Future<void> updateAudioEffects(
       AudioEffects Function(AudioEffects) mapper) async {
-    await _player.updateAudioEffects(mapper);
+    await _player.updateAudioEffects((current) {
+      final updated = mapper(current);
+      return _autoBypassFlat(updated);
+    });
     afLog('audio', 'audioEffects updated');
-    await _purgeFlatFilters(_player.state.audioEffects);
   }
 
-  /// Removes MPV audio filters if they are mathematically flat to prevent
-  /// phase delay and FFT visualizer smearing. 0dB in DSP is still a filter pass.
-  Future<void> _purgeFlatFilters(AudioEffects effects) async {
-    // Check if all EQ bands are flat (0.0 dB)
-    final isEqFlat = effects.equalizer.every((gain) => gain == 0.0);
-
-    if (isEqFlat) {
-      try {
-        // Force-remove the filter node from mpv's active chain
-        await _player.sendRawCommand(['af', 'remove', 'equalizer']);
-      } catch (_) {
-        // Safe to ignore: mpv throws an error if we try to remove a filter 
-        // that isn't currently in the chain.
-      }
-    }
+  /// mpv_audio_kit strictly controls the 'af' chain via the typed bundle.
+  /// To drop a flat filter from the graph, we intercept the update and flip
+  /// its built-in `enabled` flag to false.
+  AudioEffects _autoBypassFlat(AudioEffects fx) {
+    return fx.copyWith(
+      // Bypass bass shelf if gain (g) is 0
+      bass: fx.bass.copyWith(
+        enabled: fx.bass.enabled && fx.bass.g != 0,
+      ),
+      // Bypass treble shelf if gain (g) is 0
+      treble: fx.treble.copyWith(
+        enabled: fx.treble.enabled && fx.treble.g != 0,
+      ),
+      // Bypass 18-band graphic EQ if all active bands are flat
+      superequalizer: fx.superequalizer.copyWith(
+        enabled: fx.superequalizer.enabled && 
+                 fx.superequalizer.params.values.any((gain) => gain != 0.0),
+      ),
+    );
   }
 
   Stream<AudioEffects> get audioEffectsStream => _player.stream.audioEffects;
