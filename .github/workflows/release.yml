@@ -202,12 +202,60 @@ jobs:
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
 
+      - name: Generate release notes from commits
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          # Find the previous tag to diff against.
+          PREV_TAG=$(git tag --sort=-v:refname | grep -v "^$TAG$" | head -1)
+          if [ -z "$PREV_TAG" ]; then
+            # No previous tag — include all commits.
+            RANGE="HEAD"
+          else
+            RANGE="${PREV_TAG}..HEAD"
+          fi
+
+          echo "## What's Changed" > release-notes.md
+          echo "" >> release-notes.md
+
+          # Group commits by conventional-commit prefix.
+          declare -A SECTIONS
+          SECTIONS[feat]="### Features"
+          SECTIONS[fix]="### Bug Fixes"
+          SECTIONS[perf]="### Performance"
+          SECTIONS[refactor]="### Refactors"
+          SECTIONS[docs]="### Documentation"
+          SECTIONS[ci]="### CI"
+          SECTIONS[style]="### Style"
+          SECTIONS[chore]="### Chores"
+          SECTIONS[other]="### Other"
+
+          for prefix in feat fix perf refactor docs ci style chore other; do
+            if [ "$prefix" = "other" ]; then
+              COMMITS=$(git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges | grep -v -E "^- (feat|fix|perf|refactor|docs|ci|style|chore)" || true)
+            else
+              COMMITS=$(git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges | grep -E "^- ${prefix}" || true)
+            fi
+            if [ -n "$COMMITS" ]; then
+              echo "${SECTIONS[$prefix]}" >> release-notes.md
+              echo "" >> release-notes.md
+              echo "$COMMITS" >> release-notes.md
+              echo "" >> release-notes.md
+            fi
+          done
+
+          echo "---" >> release-notes.md
+          echo "**Full changelog:** [\`${PREV_TAG:-initial}..v${VERSION}\`](https://github.com/${{ github.repository }}/compare/${PREV_TAG:-$(git rev-list --max-parents=0 HEAD | head -1)}...v${VERSION})" >> release-notes.md
+
+          echo "Release notes:"
+          cat release-notes.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           name: Aetherfin ${{ env.TAG }}
-          generate_release_notes: true
+          body_path: release-notes.md
           prerelease: ${{ inputs.prerelease }}
           draft: ${{ inputs.draft }}
           files: |
