@@ -44,6 +44,16 @@ real-time FFT visualizer — runs on your phone.
   <img src="docs/assets/screencapture/lyrics.jpg" width="23%" hspace="4" alt="Lyrics">
 </p>
 
+## Demo
+
+<p align="center">
+  <video src="https://github.com/Aetherfin/mobile-app/raw/main/docs/assets/screencapture/demo.mp4" width="300" autoplay loop muted playsinline>
+    Your browser does not support the video tag.
+  </video>
+</p>
+
+> *Video not loading? [Download it directly](docs/assets/screencapture/demo.mp4).*
+
 ## Features
 
 - **Library, Albums, Artists, Genres, Playlists** browsing
