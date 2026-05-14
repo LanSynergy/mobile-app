@@ -688,7 +688,12 @@ class _UtilityRow extends ConsumerWidget {
         Consumer(builder: (context, ref, _) {
           final track = ref.watch(currentTrackProvider);
           final savedIds = ref.watch(savedTrackIdsProvider);
-          final isSaved = track != null && savedIds.contains(track.id);
+          final serverIds = ref.watch(playlistTrackIdsProvider).maybeWhen(
+                data: (ids) => ids,
+                orElse: () => const <String>{},
+              );
+          final isSaved = track != null &&
+              (savedIds.contains(track.id) || serverIds.contains(track.id));
           return _UtilityIcon(
             icon: isSaved
                 ? Icons.playlist_add_check_rounded
@@ -800,6 +805,7 @@ class _UtilityRow extends ConsumerWidget {
               ref.read(savedTrackIdsProvider.notifier).update(
                     (ids) => {...ids, track.id},
                   );
+              ref.invalidate(playlistTrackIdsProvider);
             },
           ),
         ),

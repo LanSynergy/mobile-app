@@ -408,6 +408,29 @@ final allPlaylistsProvider =
 /// requiring an API call on every render.
 final savedTrackIdsProvider = StateProvider<Set<String>>((ref) => {});
 
+/// Set of track IDs that exist in ANY of the user's playlists.
+/// Fetched once and invalidated when playlists change.
+final playlistTrackIdsProvider =
+    FutureProvider.autoDispose<Set<String>>((ref) async {
+  final client = ref.watch(jellyfinClientProvider);
+  if (client == null) return {};
+  final playlists = await ref.watch(allPlaylistsProvider.future);
+  final ids = <String>{};
+  for (final pl in playlists) {
+    try {
+      final detail = await client.playlist(pl.id);
+      if (detail != null) {
+        for (final t in detail.tracks) {
+          ids.add(t.id);
+        }
+      }
+    } catch (_) {
+      // Skip playlists that fail to load.
+    }
+  }
+  return ids;
+});
+
 /// User's favourite (heart-flagged) albums. Powers the Profile screen's
 /// "Pinned" row. Previously the row was hard-coded with four demo album
 /// names; now it shows real favourites, falling back to the most
