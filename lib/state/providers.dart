@@ -403,6 +403,11 @@ final allPlaylistsProvider =
   return res;
 });
 
+/// Tracks that have been saved to a playlist during this session.
+/// Used to show "Saved" state on the Now Playing utility row without
+/// requiring an API call on every render.
+final savedTrackIdsProvider = StateProvider<Set<String>>((ref) => {});
+
 /// User's favourite (heart-flagged) albums. Powers the Profile screen's
 /// "Pinned" row. Previously the row was hard-coded with four demo album
 /// names; now it shows real favourites, falling back to the most

@@ -685,11 +685,19 @@ class _UtilityRow extends ConsumerWidget {
           label: 'Lyrics',
           onTap: () => context.push('/lyrics'),
         ),
-        _UtilityIcon(
-          icon: Icons.playlist_add_rounded,
-          label: 'Save',
-          onTap: () => _showSaveDialog(context, ref),
-        ),
+        Consumer(builder: (context, ref, _) {
+          final track = ref.watch(currentTrackProvider);
+          final savedIds = ref.watch(savedTrackIdsProvider);
+          final isSaved = track != null && savedIds.contains(track.id);
+          return _UtilityIcon(
+            icon: isSaved
+                ? Icons.playlist_add_check_rounded
+                : Icons.playlist_add_rounded,
+            label: isSaved ? 'Saved' : 'Save',
+            onTap: () => _showSaveDialog(context, ref),
+            color: isSaved ? AfColors.indigo300 : null,
+          );
+        }),
         _UtilityIcon(
           icon: Icons.queue_music_rounded,
           label: 'Queue',
@@ -788,6 +796,11 @@ class _UtilityRow extends ConsumerWidget {
             track: track,
             client: client,
             onInvalidate: () => ref.invalidate(allPlaylistsProvider),
+            onSaved: () {
+              ref.read(savedTrackIdsProvider.notifier).update(
+                    (ids) => {...ids, track.id},
+                  );
+            },
           ),
         ),
       ),
@@ -866,10 +879,12 @@ class _UtilityIcon extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final Color? color;
   const _UtilityIcon({
     required this.icon,
     required this.label,
     required this.onTap,
+    this.color,
   });
 
   @override
@@ -881,12 +896,12 @@ class _UtilityIcon extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: AfSpacing.s8),
         child: Column(
           children: [
-            Icon(icon, size: 22, color: AfColors.textSecondary),
+            Icon(icon, size: 22, color: color ?? AfColors.textSecondary),
             const SizedBox(height: 4),
             Text(
               label,
               style: AfTypography.caption.copyWith(
-                color: AfColors.textTertiary,
+                color: color ?? AfColors.textTertiary,
               ),
             ),
           ],
@@ -1423,11 +1438,13 @@ class _SaveToPlaylistSheet extends StatefulWidget {
   final AfTrack track;
   final JellyfinClient client;
   final VoidCallback onInvalidate;
+  final VoidCallback? onSaved;
 
   const _SaveToPlaylistSheet({
     required this.track,
     required this.client,
     required this.onInvalidate,
+    this.onSaved,
   });
 
   @override
@@ -1470,6 +1487,7 @@ class _SaveToPlaylistSheetState extends State<_SaveToPlaylistSheet> {
     try {
       await widget.client.addToPlaylist(playlist.id, [widget.track.id]);
       widget.onInvalidate();
+      widget.onSaved?.call();
       if (mounted) {
         unawaited(Navigator.maybePop(context));
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1495,6 +1513,7 @@ class _SaveToPlaylistSheetState extends State<_SaveToPlaylistSheet> {
     try {
       await widget.client.createPlaylist(name, [widget.track.id]);
       widget.onInvalidate();
+      widget.onSaved?.call();
       if (mounted) {
         unawaited(Navigator.maybePop(context));
         ScaffoldMessenger.of(context).showSnackBar(
