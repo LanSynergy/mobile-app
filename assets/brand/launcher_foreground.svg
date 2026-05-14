@@ -1,0 +1,12 @@
+<svg viewBox="0 0 432 432" xmlns="http://www.w3.org/2000/svg">
+  <!-- Adaptive icon foreground: white A chevron + pulse arch on transparent bg.
+       The adaptive icon system composites this over the background color (#251F58). -->
+
+  <!-- Pulse arch (sound wave, behind the A) -->
+  <path d="M 156 244 Q 216 196 276 244"
+        stroke="#CDC6F4" stroke-width="14" stroke-linecap="round" fill="none"/>
+
+  <!-- The A chevron -->
+  <path d="M 132 300 L 216 108 L 300 300"
+        stroke="#ffffff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

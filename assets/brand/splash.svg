@@ -1,0 +1,12 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Splash screen: white A chevron + pulse arch on transparent bg.
+       The splash background color (#0B0B14) is set in pubspec.yaml. -->
+
+  <!-- Pulse arch -->
+  <path d="M 186 288 Q 256 232 326 288"
+        stroke="#CDC6F4" stroke-width="16" stroke-linecap="round" fill="none"/>
+
+  <!-- The A chevron -->
+  <path d="M 156 356 L 256 128 L 356 356"
+        stroke="#ffffff" stroke-width="42" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
