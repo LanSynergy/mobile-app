@@ -287,6 +287,7 @@ class AfPlayerService extends BaseAudioHandler
   Future<void> setAudioEffects(AudioEffects effects) async {
     await _player.setAudioEffects(effects);
     afLog('audio', 'audioEffects set');
+    await _purgeFlatFilters(effects);
   }
 
   /// Mutate one or more DSP fields via copyWith mapper.
@@ -294,6 +295,24 @@ class AfPlayerService extends BaseAudioHandler
       AudioEffects Function(AudioEffects) mapper) async {
     await _player.updateAudioEffects(mapper);
     afLog('audio', 'audioEffects updated');
+    await _purgeFlatFilters(_player.state.audioEffects);
+  }
+
+  /// Removes MPV audio filters if they are mathematically flat to prevent
+  /// phase delay and FFT visualizer smearing. 0dB in DSP is still a filter pass.
+  Future<void> _purgeFlatFilters(AudioEffects effects) async {
+    // Check if all EQ bands are flat (0.0 dB)
+    final isEqFlat = effects.equalizer.every((gain) => gain == 0.0);
+
+    if (isEqFlat) {
+      try {
+        // Force-remove the filter node from mpv's active chain
+        await _player.sendRawCommand(['af', 'remove', 'equalizer']);
+      } catch (_) {
+        // Safe to ignore: mpv throws an error if we try to remove a filter 
+        // that isn't currently in the chain.
+      }
+    }
   }
 
   Stream<AudioEffects> get audioEffectsStream => _player.stream.audioEffects;
