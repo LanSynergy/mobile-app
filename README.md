@@ -38,10 +38,10 @@ real-time FFT visualizer — runs on your phone.
 ## Screenshots
 
 <p align="center">
-  <img src="assets/brand/screencapture/Screenshot_20260514_054739.jpg" width="23%" hspace="4" alt="Now Playing">
-  <img src="assets/brand/screencapture/Screenshot_20260514_054801.jpg" width="23%" hspace="4" alt="Queue">
-  <img src="assets/brand/screencapture/Screenshot_20260514_054809.jpg" width="23%" hspace="4" alt="Library">
-  <img src="assets/brand/screencapture/Screenshot_20260514_054837.jpg" width="23%" hspace="4" alt="Lyrics">
+  <img src="docs/assets/screencapture/now-playing.jpg" width="23%" hspace="4" alt="Now Playing">
+  <img src="docs/assets/screencapture/queue.jpg" width="23%" hspace="4" alt="Queue">
+  <img src="docs/assets/screencapture/library.jpg" width="23%" hspace="4" alt="Library">
+  <img src="docs/assets/screencapture/lyrics.jpg" width="23%" hspace="4" alt="Lyrics">
 </p>
 
 ## Features
