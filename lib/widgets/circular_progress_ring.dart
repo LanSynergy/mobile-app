@@ -97,30 +97,25 @@ class _RingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawCircle(center, radius, track);
 
-    if (progress > 0) {
-      final fg = Paint()
-        ..color = progressColor
-        ..strokeWidth = strokeWidth
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round;
+    final fg = Paint()
+      ..color = progressColor
+      ..strokeWidth = strokeWidth;
+
+    canvas.drawCircle(
+      Offset(center.dx, center.dy - radius),
+      strokeWidth / 2,
+      fg..style = PaintingStyle.fill,
+    );
+
+    if (progress > 0.001) {
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         -math.pi / 2,
         2 * math.pi * progress,
         false,
-        fg,
-      );
-    } else {
-      // At progress 0, draw a small dot at the 12 o'clock position
-      // so the ring doesn't look "empty" when a song just started.
-      final fg = Paint()
-        ..color = progressColor
-        ..strokeWidth = strokeWidth
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(
-        Offset(center.dx, center.dy - radius),
-        strokeWidth,
-        fg,
+        fg
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round,
       );
     }
   }

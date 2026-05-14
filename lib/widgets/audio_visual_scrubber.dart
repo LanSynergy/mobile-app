@@ -334,12 +334,7 @@ class _CombinedBarPainter extends CustomPainter {
     final double fillX   = scrubNotifier.displayProgress * size.width;
     final double maxBarH = midY * 0.8;
     final barRadius      = Radius.circular(barW / 2);
-
-    // When progress is near zero (song just started, seeked to start, or
-    // transitioning between tracks), treat all bars as "played" so the
-    // visualizer shows the accent color. Threshold is 0.5% of width to
-    // prevent blinking from position stream oscillation during transitions.
-    final bool allPlayed = fillX < (size.width * 0.005);
+    final isPlayed = cx <= fillX;
 
     final paint = Paint()..style = PaintingStyle.fill;
 
