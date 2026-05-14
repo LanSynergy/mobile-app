@@ -125,7 +125,7 @@ jobs:
             exit 0
           fi
           SHORT_SHA="${GITHUB_SHA:0:7}"
-          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s" | tr -d '_*`[]')
           BRANCH="${GITHUB_REF_NAME}"
           RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
