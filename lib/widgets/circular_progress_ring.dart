@@ -110,6 +110,18 @@ class _RingPainter extends CustomPainter {
         false,
         fg,
       );
+    } else {
+      // At progress 0, draw a small dot at the 12 o'clock position
+      // so the ring doesn't look "empty" when a song just started.
+      final fg = Paint()
+        ..color = progressColor
+        ..strokeWidth = strokeWidth
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(
+        Offset(center.dx, center.dy - radius),
+        strokeWidth,
+        fg,
+      );
     }
   }
 
