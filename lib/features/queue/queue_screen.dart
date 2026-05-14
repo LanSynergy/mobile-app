@@ -27,8 +27,14 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
   List<String> _lastQueueIds = const [];
 
   /// Key for the currently playing item — used to scroll to it on open.
-  final _activeKey = GlobalKey();
+  final _scrollController = ScrollController();
   bool _hasScrolledToActive = false;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,15 +61,18 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     if (!_hasScrolledToActive && _items.isNotEmpty && current != null) {
       _hasScrolledToActive = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        final ctx = _activeKey.currentContext;
-        if (ctx != null) {
-          Scrollable.ensureVisible(
-            ctx,
-            alignment: 0.3, // position ~30% from top
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
+        if (!mounted || !_scrollController.hasClients) return;
+        final activeIdx = _items.indexWhere((t) => t.id == current.id);
+        if (activeIdx < 0) return;
+        // Each item is ~48dp (compact row 44dp + 4dp vertical padding).
+        const itemExtent = 48.0;
+        final targetOffset = (activeIdx * itemExtent) -
+            (_scrollController.position.viewportDimension * 0.3);
+        _scrollController.animateTo(
+          targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
       });
     }
 
@@ -118,6 +127,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                 ),
               )
             : ReorderableListView.builder(
+                scrollController: _scrollController,
                 padding: const EdgeInsets.symmetric(
                     horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
                 itemCount: _items.length,
@@ -145,7 +155,6 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                     key: ValueKey(t.id),
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Row(
-                      key: active ? _activeKey : null,
                       children: [
                         Expanded(
                           child: TrackRow(

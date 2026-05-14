@@ -355,6 +355,11 @@ class AfPlayerService extends BaseAudioHandler
       // Enable gapless playback — mpv pre-fetches the next track so
       // transitions are seamless and auto-advance works correctly.
       await _player.setGapless(Gapless.weak);
+      // Use AAudio as the default audio output driver on Android.
+      // AAudio provides lower latency and better compatibility than
+      // OpenSL ES on Android 8.1+ (API 27+). Falls back gracefully
+      // on older devices.
+      await _player.setAudioDriver('aaudio');
       await _player.setSpectrum(const SpectrumSettings(
         fftSize: 2048,
         bandCount: 64,
