@@ -35,6 +35,15 @@ real-time FFT visualizer — runs on your phone.
 - Aetherfin keeps working as long as your Jellyfin server is reachable.
   There is no "Aetherfin cloud" to depend on.
 
+## Screenshots
+
+<p align="center">
+  <img src="assets/brand/screencapture/Screenshot_20260514_054739.jpg" width="23%" hspace="4" alt="Now Playing">
+  <img src="assets/brand/screencapture/Screenshot_20260514_054801.jpg" width="23%" hspace="4" alt="Queue">
+  <img src="assets/brand/screencapture/Screenshot_20260514_054809.jpg" width="23%" hspace="4" alt="Library">
+  <img src="assets/brand/screencapture/Screenshot_20260514_054837.jpg" width="23%" hspace="4" alt="Lyrics">
+</p>
+
 ## Features
 
 - **Library, Albums, Artists, Genres, Playlists** browsing
