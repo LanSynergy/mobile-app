@@ -22,3 +22,27 @@ Cache fully streamed songs to disk so they don't need to be fetched from the ser
 - mpv's `cache-on-disk` might handle some of this natively — investigate before building custom
 - File naming: use track ID as filename (GUIDs are unique, no collisions)
 - Storage path: `getApplicationSupportDirectory()` / `audio_cache/`
+
+## Local media player mode
+
+Support playing audio files directly from the device storage without requiring a Jellyfin server connection.
+
+### Requirements
+
+- Browse and play local audio files (MP3, FLAC, OPUS, WAV, M4A, OGG, etc.)
+- Scan device storage for music (MediaStore or manual folder picker)
+- Read embedded metadata (title, artist, album, duration) from file tags
+- Read embedded cover art from file tags
+- Integrate with the existing queue, shuffle, repeat, and visualizer
+- Local files should work alongside Jellyfin streaming (hybrid mode)
+- No server required — app should be fully functional offline with local files
+
+### Implementation notes
+
+- mpv_audio_kit already supports `file://` and `content://` URIs natively
+- Metadata extraction: use mpv's `metadata` stream or a dedicated tag reader package
+- Cover art: mpv's `stream.coverArt` already extracts embedded art from local files
+- Library UI: could reuse existing grid/list views with a "Local" tab or a separate "Device" source
+- Storage access: `file_picker` for folder selection, or `SAF` (Storage Access Framework) for persistent access
+- Database: need local SQLite (via `drift` or `sqflite`) to cache scanned metadata so the library doesn't re-scan on every launch
+- Consider: should local and Jellyfin libraries be merged into one view, or kept separate?
