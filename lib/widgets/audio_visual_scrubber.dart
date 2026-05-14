@@ -248,7 +248,7 @@ class _BlockNotifier extends ChangeNotifier {
       final double raw = bands[i].clamp(0.0, 1.0);
       // Power-10 curve: aggressive compression — only loud peaks reach
       // visible height, quiet passages stay near zero.
-      final v = math.pow(raw, 10).toDouble();
+      final v = math.pow(raw, 10.0).toDouble();
       smoothed[i] = v;
       energy += v;
     }
@@ -334,7 +334,6 @@ class _CombinedBarPainter extends CustomPainter {
     final double fillX   = scrubNotifier.displayProgress * size.width;
     final double maxBarH = midY * 0.8;
     final barRadius      = Radius.circular(barW / 2);
-    final isPlayed = cx <= fillX;
 
     final paint = Paint()..style = PaintingStyle.fill;
 
@@ -353,7 +352,9 @@ class _CombinedBarPainter extends CustomPainter {
       final cx   = (i + 0.5) * slotW;
       final x    = cx - barW / 2;
       final barH = (level * maxBarH).clamp(2.0, maxBarH);
-      final isPlayed = allPlayed || cx <= fillX;
+      
+      // Fix: Calculates play state natively by comparing bar center to scrub position
+      final isPlayed = cx <= fillX;
 
       final topRect = RRect.fromRectAndRadius(
         Rect.fromLTWH(x, midY - barH, barW, barH),
