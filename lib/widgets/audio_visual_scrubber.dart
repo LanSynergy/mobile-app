@@ -439,42 +439,52 @@ class _ScrubOverlayPainter extends CustomPainter {
       );
     }
 
-    // 3. Playhead flare — ALWAYS rendered, including at position 0.
-    // Previously gated on `fillW > 0` which made the playhead disappear
-    // when the song was at the very start (or seeked back to 0).
+    // 3. Playhead shine — bright star-like point that reads as "shining"
+    // rather than just a soft glow. Layers: outer glow → horizontal
+    // streak → vertical cross-streak → white-hot core.
     {
       final cx     = fillW; // clamped to [0, size.width] above
       final isDrag = notifier.dragging;
 
-      // Ambient glow.
+      // Outer ambient glow (soft, wide).
       canvas.drawCircle(
         Offset(cx, midY),
-        isDrag ? 24.0 : 12.0,
+        isDrag ? 28.0 : 16.0,
         Paint()
-          ..color = playedColor.withValues(alpha: isDrag ? 0.30 : 0.15)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, isDrag ? 12.0 : 8.0),
+          ..color = playedColor.withValues(alpha: isDrag ? 0.35 : 0.20)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, isDrag ? 14.0 : 10.0),
       );
 
-      // Horizontal light flare — the "star" streak.
+      // Horizontal light streak — the main "shine" ray.
       canvas.drawOval(
         Rect.fromCenter(
           center: Offset(cx, midY),
-          width:  isDrag ? 48.0 : 20.0,
-          height: 3.0,
+          width: isDrag ? 56.0 : 28.0,
+          height: 2.5,
         ),
         Paint()
-          ..color = playedColor.withValues(alpha: 0.9)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0),
+          ..color = Colors.white.withValues(alpha: 0.85)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0),
       );
 
-      // White-hot core during drag.
-      if (isDrag) {
-        canvas.drawCircle(
-          Offset(cx, midY),
-          4.0,
-          Paint()..color = Colors.white,
-        );
-      }
+      // Vertical cross-streak — gives the star/diamond shape.
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(cx, midY),
+          width: 2.5,
+          height: isDrag ? 24.0 : 14.0,
+        ),
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.6)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0),
+      );
+
+      // White-hot core — always visible, brighter during drag.
+      canvas.drawCircle(
+        Offset(cx, midY),
+        isDrag ? 4.0 : 2.5,
+        Paint()..color = Colors.white,
+      );
     }
   }
 
