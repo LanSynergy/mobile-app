@@ -125,7 +125,10 @@ jobs:
             exit 0
           fi
           SHORT_SHA="${GITHUB_SHA:0:7}"
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+          BRANCH="${GITHUB_REF_NAME}"
           RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
           cd build/app/outputs/flutter-apk
           shopt -s nullglob
           # Prefer the arm64 split if it exists (per user request); otherwise fall
@@ -148,13 +151,14 @@ jobs:
               echo "::error::$apk is $SIZE_HUMAN — over Telegram Bot API's 50 MB sendDocument limit. Re-run with split_per_abi=true."
               exit 1
             fi
-            CAPTION=$(printf 'Aetherfin · %s · %s\nCommit: %s on %s\nSize: %s\nRun: %s' \
-              "$BUILD_MODE" "$apk" "$SHORT_SHA" "$GITHUB_REF_NAME" "$SIZE_HUMAN" "$RUN_URL")
+            CAPTION=$(printf '🎵 *Aetherfin* · `%s`\n\n📦 `%s`\n📐 %s\n\n🔀 `%s` on `%s`\n💬 _%s_\n🕐 %s\n\n[View run](%s)' \
+              "$BUILD_MODE" "$apk" "$SIZE_HUMAN" "$SHORT_SHA" "$BRANCH" "$COMMIT_MSG" "$TIMESTAMP" "$RUN_URL")
             echo "Uploading $apk ($SIZE_HUMAN)..."
             HTTP_CODE=$(curl -sS -o /tmp/tg-resp.json -w "%{http_code}" \
               -F document=@"$apk" \
               -F chat_id="$CHAT_ID" \
               -F caption="$CAPTION" \
+              -F parse_mode="Markdown" \
               "https://api.telegram.org/bot$BOT_TOKEN/sendDocument")
             if [ "$HTTP_CODE" != "200" ]; then
               echo "::error::sendDocument failed for $apk: HTTP $HTTP_CODE"
