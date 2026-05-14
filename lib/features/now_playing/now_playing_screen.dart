@@ -1112,6 +1112,37 @@ class _SleepTimerDialogContentState
     extends ConsumerState<_SleepTimerDialogContent> {
   static const _presets = [5, 10, 15, 30, 45, 60];
   int? _selectedMinutes;
+  bool _showCustomInput = false;
+  final _customController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-select the currently active timer duration so the chip is
+    // highlighted when re-opening the dialog.
+    final activeTimer = ref.read(sleepTimerProvider);
+    if (activeTimer != null) {
+      final isEndOfTrack =
+          activeTimer.difference(DateTime.now()).inHours > 12;
+      if (isEndOfTrack) {
+        _selectedMinutes = 0;
+      } else {
+        final remaining = activeTimer.difference(DateTime.now()).inMinutes;
+        // Find the closest preset, or keep the raw remaining value.
+        final closest = _presets.cast<int?>().firstWhere(
+          (p) => (p! - remaining).abs() <= 2,
+          orElse: () => null,
+        );
+        _selectedMinutes = closest ?? remaining;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _customController.dispose();
+    super.dispose();
+  }
 
   void _setTimer() {
     if (_selectedMinutes == null) return;
@@ -1132,6 +1163,16 @@ class _SleepTimerDialogContentState
     ref.read(sleepTimerProvider.notifier).state = null;
     ref.read(sleepTimerRemainingProvider.notifier).state = null;
     Navigator.of(context).pop();
+  }
+
+  void _applyCustom() {
+    final text = _customController.text.trim();
+    final mins = int.tryParse(text);
+    if (mins == null || mins <= 0) return;
+    setState(() {
+      _selectedMinutes = mins;
+      _showCustomInput = false;
+    });
   }
 
   @override
@@ -1190,7 +1231,10 @@ class _SleepTimerDialogContentState
                 ChoiceChip(
                   label: Text('$m min'),
                   selected: _selectedMinutes == m,
-                  onSelected: (_) => setState(() => _selectedMinutes = m),
+                  onSelected: (_) => setState(() {
+                    _selectedMinutes = m;
+                    _showCustomInput = false;
+                  }),
                   selectedColor: AfColors.indigo600,
                   backgroundColor: AfColors.surfaceRaised,
                   labelStyle: AfTypography.bodySmall.copyWith(
@@ -1202,7 +1246,10 @@ class _SleepTimerDialogContentState
               ChoiceChip(
                 label: const Text('End of track'),
                 selected: _selectedMinutes == 0,
-                onSelected: (_) => setState(() => _selectedMinutes = 0),
+                onSelected: (_) => setState(() {
+                  _selectedMinutes = 0;
+                  _showCustomInput = false;
+                }),
                 selectedColor: AfColors.indigo600,
                 backgroundColor: AfColors.surfaceRaised,
                 labelStyle: AfTypography.bodySmall.copyWith(
@@ -1211,8 +1258,55 @@ class _SleepTimerDialogContentState
                       : AfColors.textPrimary,
                 ),
               ),
+              ChoiceChip(
+                label: Text(_showCustomInput ||
+                        (_selectedMinutes != null &&
+                            _selectedMinutes != 0 &&
+                            !_presets.contains(_selectedMinutes))
+                    ? '${_selectedMinutes ?? "?"} min'
+                    : 'Custom'),
+                selected: _showCustomInput ||
+                    (_selectedMinutes != null &&
+                        _selectedMinutes != 0 &&
+                        !_presets.contains(_selectedMinutes)),
+                onSelected: (_) => setState(() => _showCustomInput = true),
+                selectedColor: AfColors.indigo600,
+                backgroundColor: AfColors.surfaceRaised,
+                labelStyle: AfTypography.bodySmall.copyWith(
+                  color: _showCustomInput ||
+                          (_selectedMinutes != null &&
+                              _selectedMinutes != 0 &&
+                              !_presets.contains(_selectedMinutes))
+                      ? AfColors.textOnPrimary
+                      : AfColors.textPrimary,
+                ),
+              ),
             ],
           ),
+          if (_showCustomInput) ...[
+            const SizedBox(height: AfSpacing.s16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _customController,
+                    autofocus: true,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      hintText: 'Minutes',
+                      isDense: true,
+                    ),
+                    onSubmitted: (_) => _applyCustom(),
+                  ),
+                ),
+                const SizedBox(width: AfSpacing.s8),
+                TextButton(
+                  onPressed: _applyCustom,
+                  child: const Text('Set'),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: AfSpacing.s24),
           ElevatedButton(
             onPressed: _selectedMinutes == null ? null : _setTimer,
