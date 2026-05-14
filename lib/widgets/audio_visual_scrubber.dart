@@ -335,6 +335,13 @@ class _CombinedBarPainter extends CustomPainter {
     final double maxBarH = midY * 0.8;
     final barRadius      = Radius.circular(barW / 2);
 
+    // When progress is effectively zero (song just started or seeked to
+    // start), treat all bars as "played" so the visualizer shows the
+    // accent color instead of the dim unplayed color. Without this,
+    // fillX=0 means cx > fillX for every bar → all unplayed → bars
+    // appear to vanish.
+    final bool allPlayed = fillX < 1.0;
+
     final paint = Paint()..style = PaintingStyle.fill;
 
     // Path batching: 4 distinct paint states to prevent breaking the
@@ -352,7 +359,7 @@ class _CombinedBarPainter extends CustomPainter {
       final cx   = (i + 0.5) * slotW;
       final x    = cx - barW / 2;
       final barH = (level * maxBarH).clamp(2.0, maxBarH);
-      final isPlayed = cx <= fillX;
+      final isPlayed = allPlayed || cx <= fillX;
 
       final topRect = RRect.fromRectAndRadius(
         Rect.fromLTWH(x, midY - barH, barW, barH),
