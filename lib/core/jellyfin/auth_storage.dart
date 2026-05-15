@@ -47,6 +47,7 @@ class AuthStorage {
       'userId': auth.userId,
       'userName': auth.userName,
       'accessToken': auth.accessToken,
+      'serverType': auth.serverType.name,
     };
     await _storage.write(key: _key, value: jsonEncode(json));
   }
@@ -55,10 +56,14 @@ class AuthStorage {
     final raw = await _storage.read(key: _key);
     if (raw == null) return null;
     final m = jsonDecode(raw) as Map<String, dynamic>;
+    final typeStr = m['serverType'] as String?;
+    final serverType = typeStr == 'subsonic'
+        ? ServerType.subsonic
+        : ServerType.jellyfin;
     return JellyfinAuth(
       server: JellyfinServer(
         baseUrl: m['baseUrl'] as String,
-        name: m['name'] as String? ?? 'Jellyfin',
+        name: m['name'] as String? ?? (serverType == ServerType.subsonic ? 'Navidrome' : 'Jellyfin'),
         version: m['version'] as String?,
         id: m['id'] as String?,
         isLocal: m['isLocal'] as bool? ?? false,
@@ -66,6 +71,7 @@ class AuthStorage {
       userId: m['userId'] as String,
       userName: m['userName'] as String,
       accessToken: m['accessToken'] as String,
+      serverType: serverType,
     );
   }
 

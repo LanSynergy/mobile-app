@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/audio/play_actions.dart';
-import '../../core/jellyfin/client.dart';
+import '../../core/backend/music_backend.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
@@ -32,7 +32,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   @override
   Widget build(BuildContext context) {
     final detailAsync = ref.watch(playlistDetailProvider(widget.playlistId));
-    final client = ref.watch(jellyfinClientProvider);
+    final backend = ref.watch(musicBackendProvider);
 
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
@@ -44,7 +44,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         ),
         title: Text('Playlist', style: AfTypography.titleSmall),
         actions: [
-          if (client != null)
+          if (backend != null)
             PopupMenuButton<_PlaylistAction>(
               icon: const Icon(Icons.more_vert_rounded),
               onSelected: (action) => _handleAction(context, action, detailAsync.valueOrNull),
@@ -113,7 +113,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                     child: SizedBox(height: AfSpacing.s16)),
 
                 // Track list — reorderable when signed in.
-                if (client != null && tracks.isNotEmpty)
+                if (backend != null && tracks.isNotEmpty)
                   SliverToBoxAdapter(
                     child: ReorderableListView.builder(
                       shrinkWrap: true,
@@ -123,7 +123,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                       buildDefaultDragHandles: false,
                       itemCount: tracks.length,
                       onReorder: (oldIndex, newIndex) =>
-                          _onReorder(oldIndex, newIndex, tracks, client, pl.id),
+                          _onReorder(oldIndex, newIndex, tracks, backend, pl.id),
                       itemBuilder: (context, i) {
                         final t = tracks[i];
                         return Dismissible(
@@ -138,7 +138,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                           ),
                           confirmDismiss: (_) => _confirmRemove(context, t.title),
                           onDismissed: (_) =>
-                              _removeTrack(i, tracks, client, pl.id),
+                              _removeTrack(i, tracks, backend, pl.id),
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: AfSpacing.s4),
                             child: Row(
@@ -205,7 +205,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   // ── Reorder ────────────────────────────────────────────────────────────────
 
   void _onReorder(int oldIndex, int newIndex, List<AfTrack> tracks,
-      JellyfinClient client, String playlistId) {
+      MusicBackend client, String playlistId) {
     if (newIndex > oldIndex) newIndex -= 1;
     final updated = List<AfTrack>.from(tracks);
     final item = updated.removeAt(oldIndex);
@@ -256,7 +256,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   /// sees the updated list (not the pre-delete snapshot). Reverts the
   /// optimistic local state on failure.
   Future<void> _removeTrack(int index, List<AfTrack> tracks,
-      JellyfinClient client, String playlistId) async {
+      MusicBackend client, String playlistId) async {
     final removed = tracks[index];
     final updated = List<AfTrack>.from(tracks)..removeAt(index);
     setState(() => _localTracks = updated);
@@ -284,15 +284,15 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   Future<void> _handleAction(BuildContext context, _PlaylistAction action,
       ({AfPlaylist playlist, List<AfTrack> tracks})? detail) async {
     if (detail == null) return;
-    final client = ref.read(jellyfinClientProvider);
-    if (client == null) return;
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) return;
 
     switch (action) {
       case _PlaylistAction.rename:
         final newName = await _showRenameDialog(context, detail.playlist.name);
         if (newName == null || newName.isEmpty) return;
         try {
-          await client.renamePlaylist(widget.playlistId, newName);
+          await backend.renamePlaylist(widget.playlistId, newName);
           ref.invalidate(playlistDetailProvider(widget.playlistId));
           ref.invalidate(allPlaylistsProvider);
         } catch (e) {
@@ -326,7 +326,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         );
         if (confirmed != true) return;
         try {
-          await client.deletePlaylist(widget.playlistId);
+          await backend.deletePlaylist(widget.playlistId);
           ref.invalidate(allPlaylistsProvider);
           if (context.mounted) context.pop();
         } catch (e) {

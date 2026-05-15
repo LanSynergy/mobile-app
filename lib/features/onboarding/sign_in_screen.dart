@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/jellyfin/client.dart';
 import '../../core/jellyfin/models/server.dart';
+import '../../core/subsonic/client.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/log.dart';
@@ -13,7 +14,12 @@ import '../../widgets/server_pill.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
   final JellyfinServer server;
-  const SignInScreen({super.key, required this.server});
+  final ServerType serverType;
+  const SignInScreen({
+    super.key,
+    required this.server,
+    this.serverType = ServerType.jellyfin,
+  });
 
   @override
   ConsumerState<SignInScreen> createState() => _SignInScreenState();
@@ -33,30 +39,31 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     super.dispose();
   }
 
+  bool get _isSubsonic => widget.serverType == ServerType.subsonic;
+
   Future<void> _submit() async {
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final client = JellyfinClient(
-        server: widget.server,
-        deviceId: ref.read(deviceIdProvider),
-      );
       final JellyfinAuth auth;
-      if (_useToken) {
-        // API key path. The user pastes their Jellyfin "API Key" (from
-        // Dashboard → API Keys) and their plain username. We hit
-        // `GET /Users` with the key to resolve the userId — this avoids
-        // making the user hunt for the raw UUID, AND it doubles as a
-        // health check that the key actually works. Crucially this path
-        // does NOT touch `/Users/AuthenticateByName` so it works even
-        // when that endpoint 500s due to a plugin / stale device state.
+      if (_isSubsonic) {
+        auth = await _authenticateSubsonic();
+      } else if (_useToken) {
+        final client = JellyfinClient(
+          server: widget.server,
+          deviceId: ref.read(deviceIdProvider),
+        );
         auth = await client.authenticateWithApiKey(
           username: _user.text.trim(),
           apiKey: _pass.text.trim(),
         );
       } else {
+        final client = JellyfinClient(
+          server: widget.server,
+          deviceId: ref.read(deviceIdProvider),
+        );
         auth = await client.authenticate(
           username: _user.text.trim(),
           password: _pass.text,
@@ -64,9 +71,6 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       }
       await ref.read(authProvider.notifier).save(auth);
       if (!mounted) return;
-      // Auth flipping non-null triggers the router's redirect to /home;
-      // calling context.go ourselves also covers the rare case where the
-      // refreshListenable hasn't fired yet.
       context.go('/home');
     } catch (e, stack) {
       afLog('error', 'sign-in failed', error: e, stackTrace: stack);
@@ -86,6 +90,30 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       });
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Authenticate against a Subsonic/Navidrome server.
+  Future<JellyfinAuth> _authenticateSubsonic() async {
+    final username = _user.text.trim();
+    final password = _pass.text;
+    final client = SubsonicClient(
+      server: widget.server,
+      username: username,
+      password: password,
+    );
+    try {
+      // ping verifies the credentials are valid
+      await client.ping();
+      return JellyfinAuth(
+        server: widget.server,
+        userId: username,
+        userName: username,
+        accessToken: password,
+        serverType: ServerType.subsonic,
+      );
+    } finally {
+      client.close();
     }
   }
 
@@ -182,10 +210,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               if (_isCleartext) _CleartextWarning(baseUrl: widget.server.baseUrl),
               if (_isCleartext) const SizedBox(height: AfSpacing.s16),
               Text(
-                _useToken
-                    ? 'Paste a Jellyfin API token. Find these under '
-                        'Dashboard → API Keys on your server.'
-                    : 'Enter your Jellyfin username and password.',
+                _isSubsonic
+                    ? 'Enter your Navidrome username and password.'
+                    : _useToken
+                        ? 'Paste a Jellyfin API token. Find these under '
+                            'Dashboard → API Keys on your server.'
+                        : 'Enter your Jellyfin username and password.',
                 style: AfTypography.bodyMedium.copyWith(
                   color: AfColors.textSecondary,
                 ),
@@ -209,22 +239,23 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 onSubmitted: (_) => _busy ? null : _submit(),
               ),
               const SizedBox(height: AfSpacing.s12),
-              Row(
-                children: [
-                  Switch.adaptive(
-                    value: _useToken,
-                    onChanged: (v) => setState(() => _useToken = v),
-                    activeThumbColor: AfColors.indigo500,
-                  ),
-                  const SizedBox(width: AfSpacing.s8),
-                  Expanded(
-                    child: Text(
-                      'Use API token instead',
-                      style: AfTypography.bodyMedium,
+              if (!_isSubsonic)
+                Row(
+                  children: [
+                    Switch.adaptive(
+                      value: _useToken,
+                      onChanged: (v) => setState(() => _useToken = v),
+                      activeThumbColor: AfColors.indigo500,
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: AfSpacing.s8),
+                    Expanded(
+                      child: Text(
+                        'Use API token instead',
+                        style: AfTypography.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
               const SizedBox(height: AfSpacing.s32),
               ElevatedButton(
                 onPressed: _busy ? null : _submit,

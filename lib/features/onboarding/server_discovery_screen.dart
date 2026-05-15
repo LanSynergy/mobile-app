@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/jellyfin/client.dart';
 import '../../core/jellyfin/discovery.dart';
 import '../../core/jellyfin/models/server.dart';
+import '../../core/subsonic/client.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/log.dart';
@@ -79,13 +80,39 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
       isLocal: false,
     );
 
-    final client = JellyfinClient(
+    // Try Jellyfin first, then Navidrome/Subsonic
+    final jellyfinClient = JellyfinClient(
       server: server,
       deviceId: ref.read(deviceIdProvider),
     );
     try {
-      final resolved = await client.publicInfo();
+      final resolved = await jellyfinClient.publicInfo();
       _continueWith(resolved);
+      return;
+    } catch (_) {
+      // Not a Jellyfin server — try Subsonic/Navidrome below
+    } finally {
+      jellyfinClient.close();
+    }
+
+    // Probe Subsonic ping.view — Navidrome responds with a Subsonic
+    // API envelope even on bad credentials, confirming the server type.
+    try {
+      final testClient = SubsonicClient(
+        server: server,
+        username: '',
+        password: '',
+      );
+      try {
+        await testClient.ping();
+      } on SubsonicApiError {
+        // Expected — wrong/empty creds but the Subsonic envelope arrived
+      }
+      testClient.close();
+      _continueWith(server.copyWith(
+        name: 'Navidrome',
+        isReachable: true,
+      ), serverType: ServerType.subsonic);
     } catch (e, stack) {
       afLog(
         'error',
@@ -95,14 +122,12 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
       );
       setState(() =>
           _manualError = 'Couldn’t reach ${server.baseUrl}. $e');
-    } finally {
-      client.close();
     }
   }
 
-  void _continueWith(JellyfinServer s) {
+  void _continueWith(JellyfinServer s, {ServerType serverType = ServerType.jellyfin}) {
     ref.read(discoveredServersProvider.notifier).state = [s];
-    context.go('/onboarding/sign-in', extra: s);
+    context.go('/onboarding/sign-in', extra: (server: s, serverType: serverType));
   }
 
   @override
@@ -146,7 +171,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
               const SizedBox(height: AfSpacing.s8),
               Text(
                 _scanning
-                    ? 'Scanning your network for Jellyfin servers…'
+                    ? 'Scanning your network for servers…'
                     : 'Pick a server, or enter its address.',
                 style: AfTypography.bodyMedium.copyWith(
                   color: AfColors.textSecondary,
@@ -167,8 +192,9 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
               ],
               if (!_scanning && servers.isEmpty)
                 Text(
-                  'No servers found. Make sure Jellyfin is running and on '
-                  'the same Wi-Fi, then enter its URL below.',
+                  'No servers found. Make sure your server (Jellyfin '
+                  'or Navidrome) is running and on the same Wi-Fi, then '
+                  'enter its URL below.',
                   style: AfTypography.bodyMedium.copyWith(
                     color: AfColors.textTertiary,
                   ),

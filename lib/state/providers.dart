@@ -8,12 +8,14 @@ import '../core/audio/live_update_service.dart';
 import '../core/audio/player_service.dart';
 import '../core/audio/player_settings_store.dart';
 import '../core/audio/spectral_extractor.dart';
+import '../core/backend/music_backend.dart';
 import '../core/demo/demo_library.dart';
 import '../core/jellyfin/auth_storage.dart';
 import '../core/jellyfin/client.dart';
 import '../core/jellyfin/models/items.dart';
 import '../core/jellyfin/models/server.dart';
 import '../core/lyrics/lrc_parser.dart';
+import '../core/subsonic/client.dart';
 import '../design_tokens/colors.dart';
 import '../utils/log.dart';
 
@@ -97,29 +99,51 @@ class AuthNotifier extends StateNotifier<JellyfinAuth?> {
 }
 
 /// ─────────────────────────────────────────────────────────────────────────
-/// Jellyfin client (null when no auth — UI uses demo data in that case)
+/// Music backend (null when no auth — UI uses demo data in that case)
+///
+/// Returns a [JellyfinClient] or [SubsonicClient] depending on the
+/// stored [ServerType]. All data providers below use this instead of
+/// a specific client type.
 /// ─────────────────────────────────────────────────────────────────────────
 
-final jellyfinClientProvider = Provider<JellyfinClient?>((ref) {
+final musicBackendProvider = Provider<MusicBackend?>((ref) {
   final auth = ref.watch(authProvider);
   if (auth == null) {
-    _logData('jellyfinClient', source: 'demo', extra: '(signed out)');
+    _logData('musicBackend', source: 'demo', extra: '(signed out)');
     return null;
   }
-  _logData('jellyfinClient',
+  _logData('musicBackend',
       source: 'live',
-      extra: 'server=${auth.server.baseUrl} user=${auth.userName}');
-  final client = JellyfinClient(
-    server: auth.server,
-    deviceId: ref.watch(deviceIdProvider),
-    accessToken: auth.accessToken,
-    userId: auth.userId,
-  );
-  // When auth flips (sign-out, account switch) the provider rebuilds —
-  // tear down the old client so its HTTP cache + connection pool don't
-  // leak across accounts.
+      extra: 'type=${auth.serverType.name} '
+          'server=${auth.server.baseUrl} user=${auth.userName}');
+  final MusicBackend client;
+  switch (auth.serverType) {
+    case ServerType.subsonic:
+      client = SubsonicClient(
+        server: auth.server,
+        username: auth.userName,
+        password: auth.accessToken, // accessToken stores password for Subsonic
+      );
+    case ServerType.jellyfin:
+      client = JellyfinClient(
+        server: auth.server,
+        deviceId: ref.watch(deviceIdProvider),
+        accessToken: auth.accessToken,
+        userId: auth.userId,
+      );
+  }
   ref.onDispose(client.close);
   return client;
+});
+
+/// Convenience alias: returns the backend as [JellyfinClient] when
+/// the server type is Jellyfin, otherwise `null`. Used for
+/// Jellyfin-specific operations (authenticate, publicInfo) that are
+/// not part of the [MusicBackend] interface.
+final jellyfinClientProvider = Provider<JellyfinClient?>((ref) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend is JellyfinClient) return backend;
+  return null;
 });
 
 /// ─────────────────────────────────────────────────────────────────────────
@@ -144,7 +168,7 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
   };
   final reporter = JellyfinPlaybackReporter(
     svc,
-    () => ref.read(jellyfinClientProvider),
+    () => ref.read(musicBackendProvider),
   );
   final liveUpdate = LiveUpdateService(svc);
   unawaited(liveUpdate.attach());
@@ -258,25 +282,21 @@ final currentTrackProvider = StateProvider<AfTrack?>((ref) => null);
 /// will resync against the server's user-data on the next track fetch.
 final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
   return (AfTrack track) async {
-    final client = ref.read(jellyfinClientProvider);
+    final backend = ref.read(musicBackendProvider);
     final next = !track.isFavorite;
     final updated = track.copyWith(isFavorite: next);
-    // Optimistic UI: update currentTrackProvider if this is the playing
-    // track. (Album / Track tiles read isFavorite from their own
-    // FutureProvider snapshots which will refresh next time their
-    // provider re-runs.)
     final current = ref.read(currentTrackProvider);
     if (current?.id == track.id) {
       ref.read(currentTrackProvider.notifier).state = updated;
     }
-    if (client == null) {
+    if (backend == null) {
       _logData('favoriteToggle',
           source: 'demo',
           extra: '(signed out) id=${track.id} isFavorite=$next');
       return;
     }
     try {
-      await client.setFavorite(track.id, next);
+      await backend.setFavorite(track.id, next);
       _logData('favoriteToggle',
           source: 'live',
           extra: 'id=${track.id} isFavorite=$next');
@@ -327,8 +347,8 @@ final spectralProvider =
   // CachedNetworkImage widgets use — once the token moved out of the
   // URL query string (review S2), unauthed artwork fetches would 401
   // and the player UI would flicker back to fallback indigo.
-  final client = ref.watch(jellyfinClientProvider);
-  final headers = client?.authHeaders;
+  final backend = ref.watch(musicBackendProvider);
+  final headers = backend?.authHeaders;
   try {
     return await ref
         .watch(spectralExtractorProvider)
@@ -354,26 +374,26 @@ final currentSpectralProvider = Provider<Spectral>((ref) {
 /// onboarding "All set" preview still has something to render.
 final recentlyAddedAlbumsProvider =
     FutureProvider.autoDispose<List<AfAlbum>>((ref) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     _logData('recentlyAddedAlbums',
         source: 'demo', extra: '(signed out)');
     return DemoLibrary.albums;
   }
-  final res = await client.recentlyAddedAlbums();
+  final res = await backend.recentlyAddedAlbums();
   _logData('recentlyAddedAlbums', source: 'live', extra: 'count=${res.length}');
   return res;
 });
 
 final recentlyPlayedTracksProvider =
     FutureProvider.autoDispose<List<AfTrack>>((ref) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     _logData('recentlyPlayedTracks',
         source: 'demo', extra: '(signed out)');
     return DemoLibrary.tracks.take(10).toList();
   }
-  final res = await client.recentlyPlayed();
+  final res = await backend.recentlyPlayed();
   _logData('recentlyPlayedTracks',
       source: 'live', extra: 'count=${res.length}');
   return res;
@@ -381,24 +401,24 @@ final recentlyPlayedTracksProvider =
 
 final allArtistsProvider =
     FutureProvider.autoDispose<List<AfArtist>>((ref) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     _logData('allArtists', source: 'demo', extra: '(signed out)');
     return DemoLibrary.artists;
   }
-  final res = await client.artists();
+  final res = await backend.artists();
   _logData('allArtists', source: 'live', extra: 'count=${res.length}');
   return res;
 });
 
 final allPlaylistsProvider =
     FutureProvider.autoDispose<List<AfPlaylist>>((ref) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     _logData('allPlaylists', source: 'demo', extra: '(signed out)');
     return DemoLibrary.playlists;
   }
-  final res = await client.playlists();
+  final res = await backend.playlists();
   _logData('allPlaylists', source: 'live', extra: 'count=${res.length}');
   return res;
 });
@@ -412,13 +432,13 @@ final savedTrackIdsProvider = StateProvider<Set<String>>((ref) => {});
 /// Fetched once and invalidated when playlists change.
 final playlistTrackIdsProvider =
     FutureProvider.autoDispose<Set<String>>((ref) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) return {};
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) return {};
   final playlists = await ref.watch(allPlaylistsProvider.future);
   final ids = <String>{};
   for (final pl in playlists) {
     try {
-      final detail = await client.playlist(pl.id);
+      final detail = await backend.playlist(pl.id);
       if (detail != null) {
         for (final t in detail.tracks) {
           ids.add(t.id);
@@ -438,12 +458,12 @@ final playlistTrackIdsProvider =
 /// the row is never empty.
 final favoriteAlbumsProvider =
     FutureProvider.autoDispose<List<AfAlbum>>((ref) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     _logData('favoriteAlbums', source: 'demo', extra: '(signed out)');
     return DemoLibrary.albums.take(4).toList();
   }
-  final res = await client.favoriteAlbums();
+  final res = await backend.favoriteAlbums();
   _logData('favoriteAlbums', source: 'live', extra: 'count=${res.length}');
   return res;
 });
@@ -454,12 +474,12 @@ final favoriteAlbumsProvider =
 /// underpopulated.
 final allAlbumsProvider =
     FutureProvider.autoDispose<List<AfAlbum>>((ref) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     _logData('allAlbums', source: 'demo', extra: '(signed out)');
     return DemoLibrary.albums;
   }
-  final res = await client.allAlbums();
+  final res = await backend.allAlbums();
   _logData('allAlbums', source: 'live', extra: 'count=${res.length}');
   return res;
 });
@@ -470,12 +490,12 @@ final allAlbumsProvider =
 /// every unplayed song.
 final allTracksProvider =
     FutureProvider.autoDispose<List<AfTrack>>((ref) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     _logData('allTracks', source: 'demo', extra: '(signed out)');
     return DemoLibrary.tracks;
   }
-  final res = await client.allTracks();
+  final res = await backend.allTracks();
   _logData('allTracks', source: 'live', extra: 'count=${res.length}');
   return res;
 });
@@ -484,13 +504,13 @@ final allTracksProvider =
 final playlistDetailProvider = FutureProvider.autoDispose
     .family<({AfPlaylist playlist, List<AfTrack> tracks})?, String>(
         (ref, id) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     _logData('playlistDetail',
         source: 'demo', extra: 'id=$id (signed out)');
     return null;
   }
-  final res = await client.playlist(id);
+  final res = await backend.playlist(id);
   _logData('playlistDetail',
       source: 'live',
       extra: 'id=$id tracks=${res?.tracks.length ?? 0}');
@@ -503,13 +523,13 @@ final playlistDetailProvider = FutureProvider.autoDispose
 /// the user requested).
 final instantMixProvider = FutureProvider.autoDispose
     .family<List<AfTrack>, String>((ref, seedId) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     _logData('instantMix',
         source: 'demo', extra: 'seedId=$seedId (signed out)');
     return const <AfTrack>[];
   }
-  final res = await client.instantMix(seedId);
+  final res = await backend.instantMix(seedId);
   _logData('instantMix',
       source: 'live', extra: 'seedId=$seedId count=${res.length}');
   return res;
@@ -518,12 +538,12 @@ final instantMixProvider = FutureProvider.autoDispose
 /// Albums tagged with a given genre name. Powers the Genre detail screen.
 final genreAlbumsProvider = FutureProvider.autoDispose
     .family<List<AfAlbum>, String>((ref, genre) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     _logData('genreAlbums', source: 'demo', extra: 'genre=$genre (signed out)');
     return DemoLibrary.albums;
   }
-  final res = await client.albumsByGenre(genre);
+  final res = await backend.albumsByGenre(genre);
   _logData('genreAlbums', source: 'live', extra: 'genre=$genre count=${res.length}');
   return res;
 });
@@ -531,21 +551,21 @@ final genreAlbumsProvider = FutureProvider.autoDispose
 /// a small palette to keep the chip row colourful.
 final allGenresProvider =
     FutureProvider.autoDispose<List<AfGenre>>((ref) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     _logData('allGenres', source: 'demo', extra: '(signed out)');
     return DemoLibrary.genres;
   }
-  final res = await client.genres();
+  final res = await backend.genres();
   _logData('allGenres', source: 'live', extra: 'count=${res.length}');
   return res;
 });
 
 final albumDetailProvider = FutureProvider.autoDispose
     .family<({AfAlbum album, List<AfTrack> tracks})?, String>((ref, id) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client != null) {
-    final res = await client.album(id);
+  final backend = ref.watch(musicBackendProvider);
+  if (backend != null) {
+    final res = await backend.album(id);
     _logData('albumDetail',
         source: 'live',
         extra: 'id=$id tracks=${res?.tracks.length ?? 0}');
@@ -565,9 +585,9 @@ final albumDetailProvider = FutureProvider.autoDispose
 
 final artistDetailProvider =
     FutureProvider.autoDispose.family<AfArtist?, String>((ref, id) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client != null) {
-    final res = await client.artist(id);
+  final backend = ref.watch(musicBackendProvider);
+  if (backend != null) {
+    final res = await backend.artist(id);
     _logData('artistDetail',
         source: 'live', extra: 'id=$id found=${res != null}');
     return res;
@@ -583,8 +603,8 @@ final artistDetailProvider =
 /// (which only ever showed demo albums even when signed in).
 final artistAlbumsProvider = FutureProvider.autoDispose
     .family<List<AfAlbum>, String>((ref, artistId) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     final artist = DemoLibrary.artistById(artistId);
     final res = artist == null
         ? const <AfAlbum>[]
@@ -593,7 +613,7 @@ final artistAlbumsProvider = FutureProvider.autoDispose
         source: 'demo', extra: 'artistId=$artistId count=${res.length}');
     return res;
   }
-  final res = await client.artistAlbums(artistId);
+  final res = await backend.artistAlbums(artistId);
   _logData('artistAlbums',
       source: 'live', extra: 'artistId=$artistId count=${res.length}');
   return res;
@@ -604,8 +624,8 @@ final artistAlbumsProvider = FutureProvider.autoDispose
 /// `.where(byName).take(5)` filter on the Artist screen.
 final artistTopTracksProvider = FutureProvider.autoDispose
     .family<List<AfTrack>, String>((ref, artistId) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     final artist = DemoLibrary.artistById(artistId);
     final res = artist == null
         ? const <AfTrack>[]
@@ -617,7 +637,7 @@ final artistTopTracksProvider = FutureProvider.autoDispose
         source: 'demo', extra: 'artistId=$artistId count=${res.length}');
     return res;
   }
-  final res = await client.artistTopTracks(artistId, limit: 5);
+  final res = await backend.artistTopTracks(artistId, limit: 5);
   _logData('artistTopTracks',
       source: 'live', extra: 'artistId=$artistId count=${res.length}');
   return res;
@@ -649,8 +669,8 @@ final searchProvider = FutureProvider.autoDispose
       playlists: const <AfPlaylist>[],
     );
   }
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     final tracks = DemoLibrary.tracks
         .where((t) =>
             t.title.toLowerCase().contains(query.toLowerCase()) ||
@@ -676,7 +696,7 @@ final searchProvider = FutureProvider.autoDispose
       playlists: const <AfPlaylist>[],
     );
   }
-  final res = await client.search(query);
+  final res = await backend.search(query);
   _logData('search',
       source: 'live',
       extra: 'query="$query" tracks=${res.tracks.length} '
@@ -696,13 +716,13 @@ final searchProvider = FutureProvider.autoDispose
 /// the screen doesn't have to know about LRC syntax.
 final lyricsProvider =
     FutureProvider.autoDispose.family<Lrc?, String>((ref, trackId) async {
-  final client = ref.watch(jellyfinClientProvider);
-  if (client == null) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
     _logData('lyrics',
         source: 'demo', extra: 'trackId=$trackId (signed out)');
     return null;
   }
-  final raw = await client.lyrics(trackId);
+  final raw = await backend.lyrics(trackId);
   if (raw == null || raw.isEmpty) {
     _logData('lyrics',
         source: 'live', extra: 'trackId=$trackId result=none');

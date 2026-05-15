@@ -288,14 +288,14 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
 
   Future<void> _toggleFavorite() async {
     if (_favoriteBusy) return;
-    final client = ref.read(jellyfinClientProvider);
-    if (client == null) return;
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) return;
     setState(() {
       _favoriteBusy = true;
       _isFavorite = !_isFavorite;
     });
     try {
-      await client.setFavorite(widget.album.id, _isFavorite);
+      await backend.setFavorite(widget.album.id, _isFavorite);
       afLog(
         'data',
         'albumFavorite source=live '

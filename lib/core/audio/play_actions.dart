@@ -20,11 +20,11 @@ class PlayActions {
   }) async {
     if (tracks.isEmpty) return;
     final svc = ref.read(playerServiceProvider);
-    final client = ref.read(jellyfinClientProvider);
+    final backend = ref.read(musicBackendProvider);
 
     String resolveStreamUrl(AfTrack t) {
-      if (client != null) {
-        return client.trackStreamUrl(t.id, maxBitrateKbps: 320);
+      if (backend != null) {
+        return backend.trackStreamUrl(t.id, maxBitrateKbps: 320);
       }
       return 'about:blank';
     }
@@ -48,13 +48,13 @@ class PlayActions {
     }
 
     ref.read(currentTrackProvider.notifier).state = finalQueue[finalIndex];
-    if (client != null) {
+    if (backend != null) {
       try {
         await svc.playQueue(
           finalQueue,
           startIndex: finalIndex,
           resolveStreamUrl: resolveStreamUrl,
-          streamHeaders: client.authHeaders,
+          streamHeaders: backend.authHeaders,
         );
       } catch (e, stack) {
         afLog(
@@ -81,13 +81,13 @@ class PlayActions {
   /// there's no server to query — surfacing an error toast would be
   /// noisier than silently playing what we have.
   Future<void> playInstantMix(AfTrack seed) async {
-    final client = ref.read(jellyfinClientProvider);
-    if (client == null) {
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) {
       await playSingle(seed);
       return;
     }
     try {
-      final mix = await client.instantMix(seed.id);
+      final mix = await backend.instantMix(seed.id);
       // Server-generated mix sometimes excludes the seed; prepend it so
       // the user hears the song they tapped first, then the radio.
       final queue = <AfTrack>[

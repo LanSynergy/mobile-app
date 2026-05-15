@@ -3,6 +3,7 @@ import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 
 import '../../utils/log.dart';
+import '../backend/music_backend.dart';
 import 'models/items.dart';
 import 'models/library.dart';
 import 'models/quality.dart';
@@ -25,7 +26,7 @@ const _kAetherfinUserAgent = 'Aetherfin/$_kAetherfinVersion (Android)';
 ///
 /// Hand-rolled per design spec §11.1 — community Dart SDKs are stale and
 /// the surface we need is small.
-class JellyfinClient {
+class JellyfinClient implements MusicBackend {
   final JellyfinServer server;
   final String? accessToken;
   final String? userId;
@@ -132,11 +133,15 @@ class JellyfinClient {
     }
   }
 
+  @override
+  ServerType get serverType => ServerType.jellyfin;
+
   /// Headers callers can use to authenticate ad-hoc requests that bypass
   /// the Dio instance — e.g. the audio source URI given to just_audio, or
   /// a CachedNetworkImage that fetches an artwork-protected endpoint.
   ///
   /// Mirrors what the Dio client sends. Empty map if no token is set.
+  @override
   Map<String, String> get authHeaders {
     final headers = <String, String>{
       'User-Agent': _kAetherfinUserAgent,
@@ -175,12 +180,14 @@ class JellyfinClient {
 
   /// Release in-memory cache (used on sign-out so cross-account leakage
   /// is impossible).
+  @override
   void clearCache() {
     _cacheStore.clean();
   }
 
   /// Free the underlying Dio resources. Call on sign-out so HTTP/2
   /// connections + the cache buffer don't leak across accounts.
+  @override
   void close() {
     _cacheStore.close();
     _dio.close(force: true);
@@ -337,7 +344,7 @@ class JellyfinClient {
     }
   }
 
-  /// `GET /Users/{userId}/Views` — the list of libraries the user can see.
+  @override
   Future<List<LibraryView>> userViews() async {
     final res = await _dio.get<Map<String, dynamic>>('Users/$userId/Views');
     final items = (res.data?['Items'] as List? ?? const []).cast<Map<String, dynamic>>();
@@ -366,6 +373,7 @@ class JellyfinClient {
   /// header — it contains commas which FFmpeg treats as header-list separators
   /// and refuses with "must not contain comma". Jellyfin accepts `api_key` as
   /// an equivalent authentication mechanism for media streams.
+  @override
   String trackStreamUrl(
     String trackId, {
     int? maxBitrateKbps,
@@ -405,6 +413,7 @@ class JellyfinClient {
   /// reportPlaybackStart() — ItemId + PositionTicks (always 0 at start) +
   /// PlayMethod=DirectStream so the dashboard doesn't render "Transcoding"
   /// while we're actually direct-playing the cached AAC the server picked.
+  @override
   Future<void> reportPlaybackStart(String trackId) async {
     _assertUser();
     await _dio.post(
@@ -423,6 +432,7 @@ class JellyfinClient {
   /// Called on a ~10s cadence while playing, and once on every pause/seek.
   /// Sending more often than 10s is wasted bandwidth — Jellyfin's web
   /// client and Finamp both use that interval.
+  @override
   Future<void> reportProgress(
     String trackId,
     Duration position, {
@@ -446,6 +456,7 @@ class JellyfinClient {
   /// We send POST .../Stopped rather than DELETE /Sessions/Playing because
   /// that's the path Finamp and the Jellyfin web client use and it works
   /// reliably on plugin-heavy installs where DELETE bodies get stripped.
+  @override
   Future<void> reportPlaybackStop(String trackId, Duration position) async {
     _assertUser();
     await _dio.post(
@@ -463,6 +474,7 @@ class JellyfinClient {
   /// DELETE removes. Both endpoints return the updated `UserItemDataDto`
   /// — we don't need the body, the boolean state in the request is the
   /// source of truth and the UI updates optimistically.
+  @override
   Future<void> setFavorite(String itemId, bool isFavorite) async {
     _assertUser();
     final path = 'Users/$userId/FavoriteItems/$itemId';
@@ -478,6 +490,7 @@ class JellyfinClient {
   // ---------------------------------------------------------------------------
 
   /// `GET /Users/{userId}/Items/Resume` — items the user paused mid-listen.
+  @override
   Future<List<AfTrack>> resumeItems({int limit = 20}) async {
     _assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
@@ -493,6 +506,7 @@ class JellyfinClient {
 
   /// `GET /Users/{userId}/Items/Latest?IncludeItemTypes=MusicAlbum` — albums
   /// recently added to the user's library, newest first.
+  @override
   Future<List<AfAlbum>> recentlyAddedAlbums({int limit = 20}) async {
     _assertUser();
     final res = await _dio.get<List<dynamic>>(
@@ -510,6 +524,7 @@ class JellyfinClient {
   /// `GET /Users/{userId}/Items` — recently played audio tracks. Uses
   /// `Filters=IsPlayed` so the list is restricted to tracks the user has
   /// actually played at least once.
+  @override
   Future<List<AfTrack>> recentlyPlayed({int limit = 20}) async {
     _assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
@@ -538,6 +553,7 @@ class JellyfinClient {
   /// endpoint returns artists from ALL libraries including TV shows, movies,
   /// and other non-music content. AlbumArtists scopes to music only and
   /// matches what the Jellyfin web UI shows under Music → Artists.
+  @override
   Future<List<AfArtist>> artists({int limit = 200}) async {
     _assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
@@ -557,6 +573,7 @@ class JellyfinClient {
   }
 
   /// `GET /Users/{userId}/Items?IncludeItemTypes=Playlist` — user's playlists.
+  @override
   Future<List<AfPlaylist>> playlists({int limit = 200}) async {
     _assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
@@ -587,6 +604,7 @@ class JellyfinClient {
   /// token preserving the title-cased display form of the first
   /// occurrence. A trailing slash inside a token (e.g. `Indie Rock/Rock
   /// pop`) is kept intact — only commas + semicolons split.
+  @override
   Future<List<AfGenre>> genres({int limit = 200}) async {
     _assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
@@ -626,6 +644,7 @@ class JellyfinClient {
   /// — the user's favourite (heart-flagged) albums. Powers the Profile
   /// screen's "Pinned" row — previously the row showed four hard-coded
   /// demo names regardless of the user's actual favourites.
+  @override
   Future<List<AfAlbum>> favoriteAlbums({int limit = 30}) async {
     _assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
@@ -649,6 +668,7 @@ class JellyfinClient {
   /// tab's Albums grid, which has historically conflated
   /// `recentlyAddedAlbums` (top-20-newest) with the full library and
   /// looked permanently underpopulated.
+  @override
   Future<List<AfAlbum>> allAlbums({
     int limit = 500,
     int startIndex = 0,
@@ -675,6 +695,7 @@ class JellyfinClient {
   /// Songs list. The Library used to wire Songs to `recentlyPlayed()`
   /// (filter=IsPlayed, limit=20), so unplayed libraries appeared empty
   /// and played libraries appeared capped at 20 rows.
+  @override
   Future<List<AfTrack>> allTracks({
     int limit = 1000,
     int startIndex = 0,
@@ -699,6 +720,7 @@ class JellyfinClient {
   /// `GET /Playlists/{id}/Items` — the ordered track list for a playlist,
   /// plus the playlist's header metadata. Powers the Playlist detail
   /// screen.
+  @override
   Future<({AfPlaylist playlist, List<AfTrack> tracks})?> playlist(
       String id) async {
     _assertUser();
@@ -731,6 +753,7 @@ class JellyfinClient {
   }
 
   /// `POST /Playlists/{id}/Items` — add tracks to an existing playlist.
+  @override
   Future<void> addToPlaylist(String playlistId, List<String> trackIds) async {
     _assertUser();
     await _dio.post<void>(
@@ -743,6 +766,7 @@ class JellyfinClient {
   }
 
   /// `POST /Playlists` — create a new playlist with the given tracks.
+  @override
   Future<String?> createPlaylist(String name, List<String> trackIds) async {
     _assertUser();
     final res = await _dio.post<Map<String, dynamic>>(
@@ -760,6 +784,7 @@ class JellyfinClient {
   /// `DELETE /Playlists/{id}/Items` — remove tracks from a playlist by
   /// their entry IDs (not track IDs — Jellyfin uses per-entry IDs for
   /// playlist items to support duplicate tracks).
+  @override
   Future<void> removeFromPlaylist(
       String playlistId, List<String> entryIds) async {
     _assertUser();
@@ -773,6 +798,7 @@ class JellyfinClient {
 
   /// `POST /Playlists/{id}/Items/Move/{itemId}` — move a playlist item
   /// to a new position (0-based).
+  @override
   Future<void> movePlaylistItem(
       String playlistId, String itemId, int newIndex) async {
     _assertUser();
@@ -785,12 +811,14 @@ class JellyfinClient {
   }
 
   /// `DELETE /Items/{id}` — delete a playlist entirely.
+  @override
   Future<void> deletePlaylist(String playlistId) async {
     _assertUser();
     await _dio.delete<void>('Items/$playlistId');
   }
 
   /// `POST /Items/{id}` — rename a playlist.
+  @override
   Future<void> renamePlaylist(String playlistId, String newName) async {
     _assertUser();
     // Jellyfin uses the standard item update endpoint.
@@ -806,6 +834,7 @@ class JellyfinClient {
   /// from the currently-playing song (the feature the user requested:
   /// "is it possible to generate queue related song based on the song
   /// played?").
+  @override
   Future<List<AfTrack>> instantMix(String seedId, {int limit = 50}) async {
     _assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
@@ -822,6 +851,7 @@ class JellyfinClient {
 
   /// `GET /Users/{userId}/Items/{albumId}` + `GET /Items?ParentId=…` — full
   /// album detail plus its ordered track list.
+  @override
   Future<({AfAlbum album, List<AfTrack> tracks})?> album(String id) async {
     _assertUser();
     // Same idea as [playlist] — the album header and its track list are
@@ -856,6 +886,7 @@ class JellyfinClient {
 
   /// `GET /Users/{userId}/Items/{artistId}` — full artist detail. Album
   /// + top-track lookups can be layered on top via [artistAlbums] etc.
+  @override
   Future<AfArtist?> artist(String id) async {
     _assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
@@ -870,6 +901,7 @@ class JellyfinClient {
   }
 
   /// `GET /Items?AlbumArtistIds=…` — albums credited to this artist.
+  @override
   Future<List<AfAlbum>> artistAlbums(String artistId, {int limit = 100}) async {
     _assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
@@ -889,6 +921,7 @@ class JellyfinClient {
 
   /// `GET /Users/{userId}/Items?Genres=…&IncludeItemTypes=MusicAlbum` —
   /// albums tagged with the given genre name. Used by the Genre detail screen.
+  @override
   Future<List<AfAlbum>> albumsByGenre(String genre, {int limit = 200}) async {
     _assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
@@ -911,6 +944,7 @@ class JellyfinClient {
   /// most-played tracks, used to populate the "Top songs" rail on the
   /// artist screen. Falls back to alphabetical when the server has no play
   /// counts (fresh library / first sign-in).
+  @override
   Future<List<AfTrack>> artistTopTracks(
     String artistId, {
     int limit = 5,
@@ -934,6 +968,7 @@ class JellyfinClient {
 
   /// `GET /Users/{userId}/Items?searchTerm=…` — full-text search across the
   /// audio item types.
+  @override
   Future<({List<AfTrack> tracks, List<AfAlbum> albums, List<AfArtist> artists, List<AfPlaylist> playlists})>
       search(String query) async {
     _assertUser();
@@ -979,6 +1014,7 @@ class JellyfinClient {
 
   /// `GET /Audio/{trackId}/Lyrics` — returns the LRC text blob if the
   /// server has lyrics for this track, otherwise `null`.
+  @override
   Future<String?> lyrics(String trackId) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(

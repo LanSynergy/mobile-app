@@ -60,16 +60,33 @@ class JellyfinServer {
 /// intentionally no `authHeader` getter here — hard-coding
 /// `DeviceId="aetherfin-android"` was the source of CLAUDE.md §10
 /// footgun #2 and we never want it brought back.
+///
+/// Also used for Subsonic/Navidrome connections: [serverType] indicates
+/// the backend, and [accessToken] stores the Subsonic password (kept in
+/// encrypted secure storage — needed to compute the per-request
+/// `md5(password + salt)` token).
 class JellyfinAuth {
   final JellyfinServer server;
   final String userId;
   final String userName;
   final String accessToken;
 
+  /// Identifies the server backend. Defaults to [ServerType.jellyfin]
+  /// for backward compatibility with persisted auth blobs that predate
+  /// multi-backend support.
+  final ServerType serverType;
+
   const JellyfinAuth({
     required this.server,
     required this.userId,
     required this.userName,
     required this.accessToken,
+    this.serverType = ServerType.jellyfin,
   });
 }
+
+/// Identifies which server backend is connected.
+///
+/// Re-exported from `backend/music_backend.dart` so existing imports
+/// of `models/server.dart` pick it up without an extra import.
+enum ServerType { jellyfin, subsonic }

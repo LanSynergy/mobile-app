@@ -74,8 +74,8 @@ class Artwork extends ConsumerWidget {
       return physical > 1024 ? 1024 : physical;
     }
 
-    final client = ref.watch(jellyfinClientProvider);
-    final headers = client?.authHeaders;
+    final backend = ref.watch(musicBackendProvider);
+    final headers = backend?.authHeaders;
     return ClipRRect(
       borderRadius: radius,
       child: SizedBox(
