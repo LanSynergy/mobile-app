@@ -264,14 +264,14 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     _deesserFreq = fx.deesser.f;
     // Echo
     _echoEnabled = fx.aecho.enabled;
-    _echoInGain = fx.aecho.inGain;
-    _echoOutGain = fx.aecho.outGain;
+    _echoInGain = fx.aecho.in_gain;
+    _echoOutGain = fx.aecho.out_gain;
     _echoDelays = fx.aecho.delays;
     _echoDecays = fx.aecho.decays;
     // Modulation
     _phaser = fx.aphaser.enabled;
-    _phaserInGain = fx.aphaser.inGain;
-    _phaserOutGain = fx.aphaser.outGain;
+    _phaserInGain = fx.aphaser.in_gain;
+    _phaserOutGain = fx.aphaser.out_gain;
     _phaserDelay = fx.aphaser.delay;
     _phaserDecay = fx.aphaser.decay;
     _phaserSpeed = fx.aphaser.speed;
@@ -282,12 +282,12 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     _flangerWidth = fx.flanger.width;
     _flangerSpeed = fx.flanger.speed;
     _chorus = fx.chorus.enabled;
-    _chorusInGain = fx.chorus.inGain;
-    _chorusOutGain = fx.chorus.outGain;
-    _chorusDelays = fx.chorus.delays;
-    _chorusDecays = fx.chorus.decays;
-    _chorusSpeeds = fx.chorus.speeds;
-    _chorusDepths = fx.chorus.depths;
+    _chorusInGain = fx.chorus.in_gain;
+    _chorusOutGain = fx.chorus.out_gain;
+    _chorusDelays = fx.chorus.delays ?? '40|60';
+    _chorusDecays = fx.chorus.decays ?? '0.4|0.32';
+    _chorusSpeeds = fx.chorus.speeds ?? '0.25|0.4';
+    _chorusDepths = fx.chorus.depths ?? '2|3';
     _tremolo = fx.tremolo.enabled;
     _tremoloFreq = fx.tremolo.f;
     _tremoloDepth = fx.tremolo.d;
@@ -373,15 +373,15 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
       ),
       aecho: AechoSettings(
         enabled: _echoEnabled,
-        inGain: _echoInGain,
-        outGain: _echoOutGain,
+        in_gain: _echoInGain,
+        out_gain: _echoOutGain,
         delays: _echoDelays,
         decays: _echoDecays,
       ),
       aphaser: AphaserSettings(
         enabled: _phaser,
-        inGain: _phaserInGain,
-        outGain: _phaserOutGain,
+        in_gain: _phaserInGain,
+        out_gain: _phaserOutGain,
         delay: _phaserDelay,
         decay: _phaserDecay,
         speed: _phaserSpeed,
@@ -396,8 +396,8 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
       ),
       chorus: ChorusSettings(
         enabled: _chorus,
-        inGain: _chorusInGain,
-        outGain: _chorusOutGain,
+        in_gain: _chorusInGain,
+        out_gain: _chorusOutGain,
         delays: _chorusDelays,
         decays: _chorusDecays,
         speeds: _chorusSpeeds,
@@ -575,7 +575,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         actions: [
           Switch.adaptive(
             value: _masterEnabled,
-            activeColor: AfColors.indigo500,
+            activeTrackColor: AfColors.indigo500,
             onChanged: (v) {
               setState(() => _masterEnabled = v);
               if (v) {
@@ -1225,7 +1225,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             label: Text(entry.key),
             selected: isActive,
             onSelected: (_) => _applyPreset(entry.key, entry.value),
-            selectedColor: AfColors.indigo500.withOpacity(0.3),
+            selectedColor: AfColors.indigo500.withValues(alpha: 0.3),
             backgroundColor: AfColors.surfaceHigh,
             labelStyle: AfTypography.bodySmall.copyWith(
               color: isActive ? AfColors.indigo400 : AfColors.textSecondary,
