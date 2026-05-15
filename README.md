@@ -1,8 +1,8 @@
 # Aetherfin
 
 A native-feeling Android music player backed by your self-hosted
-[Jellyfin](https://jellyfin.org) server. Aetherfin is the player —
-Jellyfin is the file source.
+[Jellyfin](https://jellyfin.org) or [Navidrome](https://www.navidrome.org)
+server. Aetherfin is the player — the server is the file source.
 
 > Spotify's polish. Apple Music's typography. Soulseek's respect for the
 > listener.
@@ -16,10 +16,10 @@ Jellyfin is the file source.
 
 ## What it is
 
-Aetherfin streams music from a Jellyfin server you own and decodes it
-fully on-device using **libmpv** via
+Aetherfin streams music from a Jellyfin or Navidrome server you own and
+decodes it fully on-device using **libmpv** via
 [mpv_audio_kit](https://pub.dev/packages/mpv_audio_kit). No
-Aetherfin-operated servers exist. No telemetry. Jellyfin is treated as a
+Aetherfin-operated servers exist. No telemetry. The server is treated as a
 passive file source plus per-user state store (favorites, play counts,
 playlists). Everything else — buffering, decoding, queue management,
 lyrics, lock-screen controls, sleep timer, spectral color extraction,
@@ -27,12 +27,13 @@ real-time FFT visualizer — runs on your phone.
 
 **Why this matters**
 
-- The Jellyfin server's CPU stays cool. Tracks are served as raw bytes
-  via `/Audio/{id}/stream?Static=true`. No HLS transcoding round-trip.
+- The server's CPU stays cool. Tracks are served as raw bytes
+  (Jellyfin: `/Audio/{id}/stream?Static=true`; Navidrome: `/rest/stream.view`).
+  No HLS transcoding round-trip.
 - You can play lossless FLAC / ALAC / OPUS / WAV files without quality loss.
 - The FFT spectrum visualizer is driven by the actual audio output
   post-DSP — no `RECORD_AUDIO` permission needed.
-- Aetherfin keeps working as long as your Jellyfin server is reachable.
+- Aetherfin keeps working as long as your server is reachable.
   There is no "Aetherfin cloud" to depend on.
 
 ## Screenshots
@@ -80,6 +81,8 @@ real-time FFT visualizer — runs on your phone.
 - **Network & cache settings** — cache duration, buffer size, keep-audio-active toggle
 - **Save to playlist** / create playlist from Now Playing
 - **Playlist management** — reorder, remove, rename, delete
+- **Multi-backend support** — works with both **Jellyfin** and **Navidrome** (Subsonic API)
+- **Auto-detection** of server type during onboarding (Jellyfin publicInfo, then Subsonic ping)
 - **mDNS discovery** of Jellyfin servers on the local network
 - **Spectral-derived UI accents** — palette sampled from current cover art
 - **Gapless playback** — libmpv pre-fetches the next track in the background
@@ -92,8 +95,11 @@ real-time FFT visualizer — runs on your phone.
 ## Requirements
 
 - **Android 7.0 (API 24)** or newer.
-- A reachable [**Jellyfin 10.8+**](https://jellyfin.org/downloads/server)
-  server with at least one music library.
+- A reachable music server — either:
+  - [**Jellyfin 10.8+**](https://jellyfin.org/downloads/server), or
+  - [**Navidrome 0.49+**](https://www.navidrome.org/docs/installation/)
+    (or any Subsonic API v1.16.1+ compatible server)
+- At least one music library configured on the server.
 - Network reachability between phone and server (LAN, VPN, or
   publicly-exposed HTTPS — all work).
 
@@ -110,9 +116,11 @@ real-time FFT visualizer — runs on your phone.
 ### First-run onboarding
 
 1. **Discover or enter your server URL** (e.g. `http://192.168.1.10:8096`
-   or `https://music.example.com`). mDNS will list nearby Jellyfin
-   instances; otherwise type the URL manually.
-2. **Sign in** with your Jellyfin username and password.
+   for Jellyfin, `http://192.168.1.10:4533` for Navidrome, or
+   `https://music.example.com`). mDNS will list nearby Jellyfin
+   instances; otherwise type the URL manually. The app auto-detects
+   whether it's a Jellyfin or Navidrome server.
+2. **Sign in** with your username and password.
 3. **You're in.** Pick a track. It plays.
 
 ## Building from source
@@ -147,18 +155,19 @@ CI runs both on every PR. See
 
 ```
    ┌────────────────────────────────┐         ┌──────────────────────────────┐
-   │   Aetherfin (Android)          │         │   Your Jellyfin server       │
+   │   Aetherfin (Android)          │         │   Jellyfin or Navidrome      │
    │                                │         │                              │
-   │  libmpv (mpv_audio_kit) ◄──────┼─bytes───┤  /Audio/{id}/stream          │
-   │  Queue / shuffle / loop        │         │   ?Static=true&api_key=…     │
-   │  Gapless prefetch              │◄─meta───┤  /Users/{id}/Items …         │
-   │  FFT spectrum (post-DSP)       │         │  /Users/{id}/FavoriteItems   │
-   │  Lyrics parse + sync           │◄─image──┤  /Items/{id}/Images/Primary  │
+   │  libmpv (mpv_audio_kit) ◄──────┼─bytes───┤  Jellyfin: /Audio/{id}/stream│
+   │  Queue / shuffle / loop        │         │  Navidrome: /rest/stream.view│
+   │  Gapless prefetch              │◄─meta───┤  Albums, artists, tracks     │
+   │  FFT spectrum (post-DSP)       │         │  Favorites, playlists        │
+   │  Lyrics parse + sync           │◄─image──┤  Cover art                   │
    │  Lock-screen (audio_service)   │         │                              │
    │  Cover-art file cache          │         │                              │
    │                                │         │                              │
    │  Optimistic favorite UI ───────┼─POST────┤  (server is source of truth) │
-   │  Telemetry (display only) ─────┼─POST────┤  /Sessions/Playing[/Progress]│
+   │  Telemetry (display only) ─────┼─POST────┤  Jellyfin: /Sessions/Playing │
+   │                                │         │  Navidrome: scrobble.view    │
    └────────────────────────────────┘         └──────────────────────────────┘
 ```
 
@@ -177,8 +186,8 @@ Full architectural rules live in [`CLAUDE.md`](./CLAUDE.md).
 ## Privacy
 
 Aetherfin does not operate any servers. The app talks only to the
-Jellyfin server you configure. Credentials live in Android's secure
-storage on the device. No analytics, no crash-reporting SDK, no ads,
+Jellyfin or Navidrome server you configure. Credentials live in Android's
+secure storage on the device. No analytics, no crash-reporting SDK, no ads,
 no third-party trackers. Full statement in [PRIVACY.md](./PRIVACY.md).
 
 ## License
@@ -201,6 +210,8 @@ non-negotiable rules.
 
 - [Jellyfin](https://jellyfin.org) — the free software media system this
   app is built around.
+- [Navidrome](https://www.navidrome.org) — the lightweight, self-hosted
+  music server with Subsonic API compatibility.
 - [Finamp](https://github.com/jmshrv/finamp) — prior-art Jellyfin music
   client whose auth-header format we follow.
 - [mpv_audio_kit](https://pub.dev/packages/mpv_audio_kit) — the
