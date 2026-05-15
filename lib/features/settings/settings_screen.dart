@@ -47,10 +47,58 @@ class SettingsScreen extends ConsumerWidget {
                   iconColor: AfColors.indigo400,
                   title: auth?.server.name ?? 'Not connected',
                   subtitle: auth?.server.baseUrl,
-                  trailing: const Icon(Icons.chevron_right_rounded,
-                      color: AfColors.textTertiary, size: 20),
+                ),
+                if (auth != null)
+                  _SettingsTile(
+                    icon: Icons.person_outline_rounded,
+                    iconColor: AfColors.semanticSuccess,
+                    title: auth.userName,
+                    subtitle: auth.serverType.name[0].toUpperCase() +
+                        auth.serverType.name.substring(1),
+                  ),
+                _SettingsTile(
+                  icon: Icons.swap_horiz_rounded,
+                  iconColor: AfColors.semanticInfo,
+                  title: 'Switch server',
+                  subtitle: 'Connect to a different server',
                   onTap: () => context.go('/onboarding/discover'),
                 ),
+                if (auth != null)
+                  _SettingsTile(
+                    icon: Icons.logout_rounded,
+                    iconColor: AfColors.semanticError,
+                    title: 'Sign out',
+                    subtitle: 'Disconnect from ${auth.server.name}',
+                    onTap: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          backgroundColor: AfColors.surfaceBase,
+                          title: const Text('Sign out?'),
+                          content: Text(
+                            'You will be disconnected from ${auth.server.name}.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: Text(
+                                'Sign out',
+                                style: TextStyle(color: AfColors.semanticError),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true && context.mounted) {
+                        await ref.read(authProvider.notifier).clear();
+                        if (context.mounted) context.go('/');
+                      }
+                    },
+                  ),
               ],
             ),
 
