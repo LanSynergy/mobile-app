@@ -69,6 +69,11 @@ class JellyfinAuth {
   final JellyfinServer server;
   final String userId;
   final String userName;
+
+  /// For Jellyfin: the API access token from `/Users/AuthenticateByName`.
+  /// For Subsonic/Navidrome: the user's plaintext password (stored in
+  /// encrypted secure storage), needed to compute `md5(password + salt)`
+  /// per-request auth tokens.
   final String accessToken;
 
   /// Identifies the server backend. Defaults to [ServerType.jellyfin]
