@@ -65,8 +65,14 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/onboarding/sign-in',
-      builder: (_, state) =>
-          SignInScreen(server: state.extra! as JellyfinServer),
+      builder: (_, state) {
+        final extra = state.extra!;
+        if (extra is JellyfinServer) {
+          return SignInScreen(server: extra);
+        }
+        final rec = extra as ({JellyfinServer server, ServerType serverType});
+        return SignInScreen(server: rec.server, serverType: rec.serverType);
+      },
     ),
     GoRoute(
       path: '/onboarding/scope',

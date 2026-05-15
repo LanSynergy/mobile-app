@@ -167,7 +167,7 @@ class SubsonicClient implements MusicBackend {
       'type': 'newest',
       'size': limit,
     });
-    return _parseAlbumList(root['albumList2']);
+    return _parseAlbumList(root['albumList2'] as Map<String, dynamic>?);
   }
 
   @override
@@ -179,7 +179,7 @@ class SubsonicClient implements MusicBackend {
       'type': 'recent',
       'size': limit,
     });
-    final albums = _parseAlbumList(root['albumList2']);
+    final albums = _parseAlbumList(root['albumList2'] as Map<String, dynamic>?);
     if (albums.isEmpty) return const [];
     // Fetch tracks from the first few albums to approximate recently played
     final tracks = <AfTrack>[];
@@ -240,7 +240,7 @@ class SubsonicClient implements MusicBackend {
       'size': limit,
       'offset': startIndex,
     });
-    return _parseAlbumList(root['albumList2']);
+    return _parseAlbumList(root['albumList2'] as Map<String, dynamic>?);
   }
 
   @override
@@ -291,7 +291,7 @@ class SubsonicClient implements MusicBackend {
       'type': 'starred',
       'size': limit,
     });
-    return _parseAlbumList(root['albumList2']);
+    return _parseAlbumList(root['albumList2'] as Map<String, dynamic>?);
   }
 
   // ── Detail views ──────────────────────────────────────────────────────
@@ -370,7 +370,7 @@ class SubsonicClient implements MusicBackend {
       'genre': genre,
       'size': limit,
     });
-    return _parseAlbumList(root['albumList2']);
+    return _parseAlbumList(root['albumList2'] as Map<String, dynamic>?);
   }
 
   @override
