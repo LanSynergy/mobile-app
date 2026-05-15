@@ -1,4 +1,4 @@
-import 'dart:async' show unawaited;
+import 'dart:async' show StreamController, Timer, unawaited;
 
 import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -218,9 +218,42 @@ final playerQueueProvider = StreamProvider.autoDispose<List<AfTrack>>((ref) {
 /// Stream of position from the single player. Per non-negotiable §4.3,
 /// every UI consumer (ring, waveform, lyric scroll, time labels) listens
 /// to THIS stream — never a private timer.
+///
+/// mpv_audio_kit's ReactiveProperty deduplicates by == — when position
+/// resets to the same Duration (e.g. Duration.zero on track change or
+/// seek-to-start), the reactive stream suppresses the event. A 200 ms
+/// heartbeat polls the synchronous position to guarantee the UI always
+/// has fresh data even when the reactive stream is silent.
 final positionStreamProvider = StreamProvider.autoDispose<Duration>((ref) {
   final svc = ref.watch(playerServiceProvider);
-  return svc.positionStream;
+  final ctrl = StreamController<Duration>();
+  Duration lastEmitted = const Duration(microseconds: -1);
+
+  void emit(Duration pos) {
+    if (pos == lastEmitted) return;
+    lastEmitted = pos;
+    ctrl.add(pos);
+  }
+
+  // Seed with the current synchronous position so the first frame
+  // renders without waiting for the next stream tick.
+  emit(svc.position);
+
+  // Forward high-frequency reactive events.
+  final sub = svc.positionStream.listen((pos) => emit(pos));
+
+  // Heartbeat: catch dedup gaps at ~5 Hz.
+  final timer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+    emit(svc.position);
+  });
+
+  ref.onDispose(() {
+    timer.cancel();
+    sub.cancel();
+    ctrl.close();
+  });
+
+  return ctrl.stream;
 });
 
 final playingStreamProvider = StreamProvider.autoDispose<bool>((ref) {
