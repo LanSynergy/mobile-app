@@ -36,7 +36,7 @@ class HeroAlbumCard extends StatelessWidget {
       ensureHitTarget: false,
       onTap: onTap,
       child: Container(
-        height: 168,
+        constraints: const BoxConstraints(minHeight: 168),
         margin: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
@@ -46,7 +46,8 @@ class HeroAlbumCard extends StatelessWidget {
           ),
           borderRadius: AfRadii.borderLg,
         ),
-        child: Stack(
+        child: IntrinsicHeight(
+          child: Stack(
           clipBehavior: Clip.none,
           children: [
             // Artwork — bleeds 8dp past the right edge.
@@ -88,10 +89,10 @@ class HeroAlbumCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: AfSpacing.s12),
                   Text(
                     album.name,
-                    maxLines: 2,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: AfTypography.titleLarge.copyWith(
                       color: AfColors.textOnPrimary,
@@ -113,6 +114,7 @@ class HeroAlbumCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
         ),
       ),
     );
