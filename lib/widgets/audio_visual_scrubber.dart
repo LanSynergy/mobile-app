@@ -331,7 +331,13 @@ class _CombinedBarPainter extends CustomPainter {
     final double midY    = size.height / 2;
     final double slotW   = size.width / _BlockNotifier.bins;
     final double barW    = (slotW * 0.7).clamp(1.0, 8.0);
-    final double fillX   = scrubNotifier.displayProgress * size.width;
+    final double rawFillX = scrubNotifier.displayProgress * size.width;
+    // When FFT bars are active (music is playing), ensure at least the
+    // first bar slot is colored so the visualizer doesn't go fully grey
+    // when position briefly resets to 0 during track transitions.
+    final double fillX   = fftNotifier.hasEnergy
+        ? math.max(rawFillX, slotW * 0.75)
+        : rawFillX;
     final double maxBarH = midY * 0.8;
     final barRadius      = Radius.circular(barW / 2);
 
@@ -438,7 +444,9 @@ class _ScrubOverlayPainter extends CustomPainter {
     // rather than just a soft glow. Layers: outer glow → horizontal
     // streak → vertical cross-streak → white-hot core.
     {
-      final cx     = fillW; // clamped to [0, size.width] above
+      // Ensure the playhead center is at least the core radius from the
+      // left edge so glow effects aren't clipped by Stack.hardEdge.
+      final cx     = math.max(fillW, 2.5);
       final isDrag = notifier.dragging;
 
       // Outer ambient glow (soft, wide).

@@ -107,17 +107,18 @@ class _RingPainter extends CustomPainter {
       fg..style = PaintingStyle.fill,
     );
 
-    if (progress > 0.001) {
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        -math.pi / 2,
-        2 * math.pi * progress,
-        false,
-        fg
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round,
-      );
-    }
+    // Always draw at least a tiny arc so the ring never appears empty
+    // when position briefly resets to 0 during track transitions.
+    final sweepProgress = math.max(progress, 0.005);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      2 * math.pi * sweepProgress,
+      false,
+      fg
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round,
+    );
   }
 
   @override
