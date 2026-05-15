@@ -1,5 +1,5 @@
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
-    show Cache, Format, Gapless, ReplayGain;
+    show Cache, Format, Gapless, ReplayGain, ReplayGainSettings;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/log.dart';
@@ -36,6 +36,11 @@ class PlayerSettingsStore {
   static const _kCacheSecs = 'af.cache_secs';
   static const _kReplayGain = 'af.replay_gain_mode';
   static const _kGapless = 'af.gapless';
+  static const _kReplayGainPreamp = 'af.replay_gain_preamp';
+  static const _kReplayGainFallback = 'af.replay_gain_fallback';
+  static const _kReplayGainClip = 'af.replay_gain_clip';
+  static const _kPrefetchPlaylist = 'af.prefetch_playlist';
+  static const _kAudioEffects = 'af.audio_effects_json';
 
   static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
@@ -74,6 +79,19 @@ class PlayerSettingsStore {
   static Future<void> saveReplayGain(ReplayGain mode) async {
     final p = await _prefs();
     await p.setString(_kReplayGain, mode.name);
+  }
+
+  static Future<void> saveReplayGainFull(ReplayGainSettings settings) async {
+    final p = await _prefs();
+    await p.setString(_kReplayGain, settings.mode.name);
+    await p.setDouble(_kReplayGainPreamp, settings.preamp);
+    await p.setDouble(_kReplayGainFallback, settings.fallback);
+    await p.setBool(_kReplayGainClip, settings.clip);
+  }
+
+  static Future<void> savePrefetchPlaylist(bool enabled) async {
+    final p = await _prefs();
+    await p.setBool(_kPrefetchPlaylist, enabled);
   }
 
   static Future<void> saveGapless(Gapless mode) async {
@@ -148,8 +166,16 @@ class PlayerSettingsStore {
         (m) => m.name == replayGainName,
         orElse: () => ReplayGain.no,
       );
+      final preamp = p.getDouble(_kReplayGainPreamp) ?? 0.0;
+      final fallback = p.getDouble(_kReplayGainFallback) ?? 0.0;
+      final clip = p.getBool(_kReplayGainClip) ?? false;
       await tryApply('replayGain=$replayGainName', () async {
-        await svc.setReplayGain(svc.replayGain.copyWith(mode: mode));
+        await svc.setReplayGain(ReplayGainSettings(
+          mode: mode,
+          preamp: preamp,
+          fallback: fallback,
+          clip: clip,
+        ));
       });
     }
 
@@ -160,6 +186,12 @@ class PlayerSettingsStore {
         orElse: () => Gapless.weak,
       );
       await tryApply('gapless=$gaplessName', () => svc.setGapless(mode));
+    }
+
+    final prefetch = p.getBool(_kPrefetchPlaylist);
+    if (prefetch != null) {
+      await tryApply('prefetchPlaylist=$prefetch',
+          () => svc.setPrefetchPlaylist(prefetch));
     }
 
     afLog('boot', 'PlayerSettingsStore applied persisted settings');

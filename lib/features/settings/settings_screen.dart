@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart' show AudioParams, Cache, Format, ReplayGain;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart'
+    show AudioParams, Cache, Format, Gapless, ReplayGain, ReplayGainSettings;
 
 import '../../core/audio/player_settings_store.dart';
 import '../../design_tokens/tokens.dart';
@@ -227,6 +228,50 @@ class SettingsScreen extends ConsumerWidget {
               shape: const RoundedRectangleBorder(
                   borderRadius: AfRadii.borderMd),
               onTap: () => _showReplayGainDialog(context, ref),
+            ),
+            const SizedBox(height: AfSpacing.s8),
+            ListTile(
+              leading: const Icon(Icons.skip_next_rounded),
+              title: const Text('Gapless playback'),
+              subtitle: Text(
+                'Seamless transitions between tracks',
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textTertiary,
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              tileColor: AfColors.surfaceBase,
+              shape: const RoundedRectangleBorder(
+                  borderRadius: AfRadii.borderMd),
+              onTap: () => _showGaplessDialog(context, ref),
+            ),
+            const SizedBox(height: AfSpacing.s8),
+            StreamBuilder<bool>(
+              stream: Stream<bool>.multi((controller) {
+                controller.add(svc.prefetchPlaylist);
+              }),
+              initialData: svc.prefetchPlaylist,
+              builder: (context, snap) {
+                final enabled = snap.data ?? false;
+                return SwitchListTile.adaptive(
+                  value: enabled,
+                  onChanged: (v) {
+                    unawaited(svc.setPrefetchPlaylist(v));
+                    unawaited(PlayerSettingsStore.savePrefetchPlaylist(v));
+                  },
+                  title: const Text('Prefetch next track'),
+                  subtitle: Text(
+                    'Pre-load next playlist entry in background',
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                  activeThumbColor: AfColors.indigo500,
+                  tileColor: AfColors.surfaceBase,
+                  shape: const RoundedRectangleBorder(
+                      borderRadius: AfRadii.borderMd),
+                );
+              },
             ),
             const SizedBox(height: AfSpacing.s24),
             _SectionLabel('About'),
@@ -555,14 +600,14 @@ class _OptionTile extends StatelessWidget {
   }
 }
 
-void _showReplayGainDialog(BuildContext context, WidgetRef ref) {
+void _showGaplessDialog(BuildContext context, WidgetRef ref) {
   final svc = ref.read(playerServiceProvider);
-  final current = svc.replayGain.mode;
+  final current = svc.gaplessMode;
 
-  const options = <(ReplayGain, String, String)>[
-    (ReplayGain.no, 'Off', 'No volume normalization'),
-    (ReplayGain.track, 'Track', 'Normalize each track independently'),
-    (ReplayGain.album, 'Album', 'Normalize per album (preserves dynamics)'),
+  const options = <(Gapless, String, String)>[
+    (Gapless.yes, 'Full', 'Re-uses decoder for seamless transitions'),
+    (Gapless.weak, 'Weak', 'Gapless only on compatible formats (default)'),
+    (Gapless.no, 'Off', 'Close and re-open audio output between tracks'),
   ];
 
   showDialog<void>(
@@ -579,14 +624,15 @@ void _showReplayGainDialog(BuildContext context, WidgetRef ref) {
             Padding(
               padding: const EdgeInsets.symmetric(
                   horizontal: AfSpacing.gutterGenerous),
-              child: Text('ReplayGain', style: AfTypography.titleSmall),
+              child:
+                  Text('Gapless playback', style: AfTypography.titleSmall),
             ),
             const SizedBox(height: AfSpacing.s4),
             Padding(
               padding: const EdgeInsets.symmetric(
                   horizontal: AfSpacing.gutterGenerous),
               child: Text(
-                'Normalize volume so all tracks play at a similar loudness.',
+                'Controls how the player handles track transitions.',
                 style: AfTypography.bodySmall
                     .copyWith(color: AfColors.textTertiary),
               ),
@@ -598,10 +644,8 @@ void _showReplayGainDialog(BuildContext context, WidgetRef ref) {
                 subtitle: subtitle,
                 isActive: mode == current,
                 onTap: () {
-                  unawaited(svc.setReplayGain(
-                    svc.replayGain.copyWith(mode: mode),
-                  ));
-                  unawaited(PlayerSettingsStore.saveReplayGain(mode));
+                  unawaited(svc.setGapless(mode));
+                  unawaited(PlayerSettingsStore.saveGapless(mode));
                   Navigator.of(dialogCtx).pop();
                 },
               ),
@@ -610,4 +654,190 @@ void _showReplayGainDialog(BuildContext context, WidgetRef ref) {
       ),
     ),
   );
+}
+
+void _showReplayGainDialog(BuildContext context, WidgetRef ref) {
+  showDialog<void>(
+    context: context,
+    builder: (dialogCtx) => Dialog(
+      backgroundColor: AfColors.surfaceBase,
+      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+      child: _ReplayGainDialogContent(),
+    ),
+  );
+}
+
+class _ReplayGainDialogContent extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_ReplayGainDialogContent> createState() =>
+      _ReplayGainDialogContentState();
+}
+
+class _ReplayGainDialogContentState
+    extends ConsumerState<_ReplayGainDialogContent> {
+  late ReplayGain _mode;
+  late double _preamp;
+  late double _fallback;
+  late bool _clip;
+
+  @override
+  void initState() {
+    super.initState();
+    final rg = ref.read(playerServiceProvider).replayGain;
+    _mode = rg.mode;
+    _preamp = rg.preamp.clamp(-15.0, 15.0);
+    _fallback = rg.fallback.clamp(-15.0, 0.0);
+    _clip = rg.clip;
+  }
+
+  void _apply() {
+    final svc = ref.read(playerServiceProvider);
+    final settings = ReplayGainSettings(
+      mode: _mode,
+      preamp: _preamp,
+      fallback: _fallback,
+      clip: _clip,
+    );
+    unawaited(svc.setReplayGain(settings));
+    unawaited(PlayerSettingsStore.saveReplayGainFull(settings));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const options = <(ReplayGain, String, String)>[
+      (ReplayGain.no, 'Off', 'No volume normalization'),
+      (ReplayGain.track, 'Track', 'Normalize each track independently'),
+      (ReplayGain.album, 'Album', 'Normalize per album (preserves dynamics)'),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: AfSpacing.gutterGenerous),
+            child: Text('ReplayGain', style: AfTypography.titleSmall),
+          ),
+          const SizedBox(height: AfSpacing.s4),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: AfSpacing.gutterGenerous),
+            child: Text(
+              'Normalize volume so all tracks play at a similar loudness.',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+          ),
+          const SizedBox(height: AfSpacing.s8),
+          for (final (mode, label, subtitle) in options)
+            _OptionTile(
+              label: label,
+              subtitle: subtitle,
+              isActive: mode == _mode,
+              onTap: () {
+                setState(() => _mode = mode);
+                _apply();
+              },
+            ),
+          if (_mode != ReplayGain.no) ...[
+            const SizedBox(height: AfSpacing.s8),
+            const Divider(height: 1, color: AfColors.surfaceHigh),
+            const SizedBox(height: AfSpacing.s8),
+            // Preamp slider.
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.gutterGenerous),
+              child: Row(
+                children: [
+                  Text('Pre-amp', style: AfTypography.bodyMedium),
+                  const Spacer(),
+                  Text(
+                    '${_preamp >= 0 ? "+" : ""}${_preamp.toStringAsFixed(1)} dB',
+                    style: AfTypography.mono
+                        .copyWith(color: AfColors.textTertiary),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.gutterGenerous),
+              child: Slider(
+                value: _preamp,
+                min: -15,
+                max: 15,
+                divisions: 30,
+                activeColor: AfColors.indigo400,
+                onChanged: (v) => setState(() => _preamp = v),
+                onChangeEnd: (_) => _apply(),
+              ),
+            ),
+            // Fallback gain slider.
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.gutterGenerous),
+              child: Row(
+                children: [
+                  Text('Fallback gain', style: AfTypography.bodyMedium),
+                  const Spacer(),
+                  Text(
+                    '${_fallback.toStringAsFixed(1)} dB',
+                    style: AfTypography.mono
+                        .copyWith(color: AfColors.textTertiary),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.gutterGenerous),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Slider(
+                    value: _fallback,
+                    min: -15,
+                    max: 0,
+                    divisions: 30,
+                    activeColor: AfColors.indigo400,
+                    onChanged: (v) => setState(() => _fallback = v),
+                    onChangeEnd: (_) => _apply(),
+                  ),
+                  Text(
+                    'Applied to files without ReplayGain tags',
+                    style: AfTypography.caption
+                        .copyWith(color: AfColors.textTertiary),
+                  ),
+                ],
+              ),
+            ),
+            // Clip prevention toggle.
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.gutterGenerous),
+              child: SwitchListTile.adaptive(
+                value: !_clip,
+                onChanged: (v) {
+                  setState(() => _clip = !v);
+                  _apply();
+                },
+                title: Text('Prevent clipping',
+                    style: AfTypography.bodyMedium),
+                subtitle: Text(
+                  'Peak-limit output to avoid distortion',
+                  style: AfTypography.bodySmall
+                      .copyWith(color: AfColors.textTertiary),
+                ),
+                activeThumbColor: AfColors.indigo500,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
