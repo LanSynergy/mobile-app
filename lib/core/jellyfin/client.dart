@@ -3,6 +3,7 @@ import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 
 import '../../utils/log.dart';
+import '../../utils/url.dart';
 import '../backend/music_backend.dart';
 import 'models/items.dart';
 import 'models/library.dart';
@@ -391,9 +392,7 @@ class JellyfinClient implements MusicBackend {
       // ignore: use_null_aware_elements — map is Map<String,String>, value is String?
       if (deviceProfileId != null) 'DeviceProfileId': deviceProfileId,
     };
-    final base = server.baseUrl.endsWith('/')
-        ? server.baseUrl.substring(0, server.baseUrl.length - 1)
-        : server.baseUrl;
+    final base = stripTrailingSlash(server.baseUrl);
     return Uri.parse(base)
         .replace(
           path: '${Uri.parse(base).path}/Audio/$trackId/stream',
@@ -1254,9 +1253,7 @@ class JellyfinClient implements MusicBackend {
       'quality': '$quality',
       'tag': tag,
     };
-    final base = server.baseUrl.endsWith('/')
-        ? server.baseUrl.substring(0, server.baseUrl.length - 1)
-        : server.baseUrl;
+    final base = stripTrailingSlash(server.baseUrl);
     return Uri.parse(base)
         .replace(
           path: '${Uri.parse(base).path}/Items/$itemId/Images/$imageType',

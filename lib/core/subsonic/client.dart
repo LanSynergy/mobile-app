@@ -7,6 +7,7 @@ import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 
 import '../../utils/log.dart';
+import '../../utils/url.dart';
 import '../backend/music_backend.dart';
 import '../jellyfin/models/items.dart';
 import '../jellyfin/models/library.dart';
@@ -564,9 +565,7 @@ class SubsonicClient implements MusicBackend {
       'id': trackId,
       if (maxBitrateKbps != null) 'maxBitRate': '$maxBitrateKbps',
     };
-    final base = server.baseUrl.endsWith('/')
-        ? server.baseUrl.substring(0, server.baseUrl.length - 1)
-        : server.baseUrl;
+    final base = stripTrailingSlash(server.baseUrl);
     return Uri.parse(base)
         .replace(
           path: '${Uri.parse(base).path}/rest/stream.view',
@@ -583,9 +582,7 @@ class SubsonicClient implements MusicBackend {
       'id': coverArtId,
       'size': '$size',
     };
-    final base = server.baseUrl.endsWith('/')
-        ? server.baseUrl.substring(0, server.baseUrl.length - 1)
-        : server.baseUrl;
+    final base = stripTrailingSlash(server.baseUrl);
     return Uri.parse(base)
         .replace(
           path: '${Uri.parse(base).path}/rest/getCoverArt.view',
