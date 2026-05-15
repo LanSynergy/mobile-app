@@ -1,0 +1,50 @@
+# Auto detect text files and perform LF normalization
+* text=auto eol=lf
+
+# Dart
+*.dart text eol=lf
+
+# Config / metadata
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.xml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.properties text eol=lf
+*.gradle text eol=lf
+*.kts text eol=lf
+*.kt text eol=lf
+*.java text eol=lf
+*.swift text eol=lf
+*.h text eol=lf
+*.m text eol=lf
+*.plist text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# Binary assets — no diff, no merge, no LF conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text eol=lf
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.jar binary
+*.keystore binary
+*.jks binary
+*.apk binary
+*.aab binary
+
+# Lock files
+pubspec.lock text eol=lf
+
+# Gradle wrapper
+gradlew text eol=lf
+gradlew.bat text eol=crlf
