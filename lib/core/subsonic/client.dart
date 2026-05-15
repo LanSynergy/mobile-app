@@ -476,10 +476,10 @@ class SubsonicClient implements MusicBackend {
   @override
   Future<void> movePlaylistItem(
       String playlistId, String itemId, int newIndex) async {
-    // Subsonic doesn't support direct move. We'd need to rebuild the
-    // playlist. For now, this is a no-op with a log warning.
-    afLog('subsonic',
-        'movePlaylistItem not natively supported by Subsonic API');
+    // Subsonic API has no playlist-reorder endpoint. Throwing lets the UI
+    // catch this and show a toast instead of silently discarding the move.
+    throw UnsupportedError(
+        'Subsonic API does not support playlist item reordering');
   }
 
   @override
