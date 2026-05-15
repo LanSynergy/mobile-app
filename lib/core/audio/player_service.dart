@@ -401,8 +401,8 @@ class AfPlayerService extends BaseAudioHandler
         maxDb: 35.0,
         emitInterval: Duration(milliseconds: 8),
       ));
-    } catch (_) {
-      // Player not ready yet — spectrum will use defaults.
+    } catch (e) {
+      afLog('audio', 'configureSpectrum failed', error: e);
     }
   }
 
@@ -548,8 +548,8 @@ class AfPlayerService extends BaseAudioHandler
           .timeout(const Duration(seconds: 2));
 
       _syncTrackQueueFromMpv(newPlaylist.items, newPlaylist.index);
-    } catch (_) {
-      // Timeout — try reading state directly as fallback.
+    } catch (e) {
+      afLog('audio', 'shuffle playlist stream timeout, using state fallback', error: e);
       final mpvItems = _player.state.playlist.items;
       final newIdx = _player.state.playlist.index;
       _syncTrackQueueFromMpv(mpvItems, newIdx);
@@ -600,16 +600,24 @@ class AfPlayerService extends BaseAudioHandler
     }
   }
 
-  /// Extracts the Jellyfin track ID from a stream URL.
-  /// URL format: `.../Audio/{trackId}/stream?...`
+  /// Extracts the track ID from a stream URL.
+  ///
+  /// Supports both URL formats:
+  ///   Jellyfin:  `.../Audio/{trackId}/stream?...`
+  ///   Subsonic:  `.../rest/stream.view?id={trackId}&...`
   static String? _extractTrackId(String uri) {
-    final segments = Uri.tryParse(uri)?.pathSegments;
-    if (segments == null) return null;
+    final parsed = Uri.tryParse(uri);
+    if (parsed == null) return null;
+    // Jellyfin: /Audio/{id}/stream
+    final segments = parsed.pathSegments;
     for (var i = 0; i < segments.length - 1; i++) {
       if (segments[i].toLowerCase() == 'audio') {
         return segments[i + 1];
       }
     }
+    // Subsonic: /rest/stream.view?id={id}
+    final queryId = parsed.queryParameters['id'];
+    if (queryId != null && queryId.isNotEmpty) return queryId;
     return null;
   }
 
@@ -949,8 +957,8 @@ class AfPlayerService extends BaseAudioHandler
       await File(path).writeAsBytes(raw.bytes);
       _coverPath = path;
       _updateMediaItem();
-    } catch (_) {
-      // Disk full / sandbox — fall back to network URL in _updateMediaItem.
+    } catch (e) {
+      afLog('audio', 'cover art persist failed', error: e);
     }
   }
 }

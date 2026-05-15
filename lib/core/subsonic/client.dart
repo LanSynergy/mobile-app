@@ -7,6 +7,7 @@ import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 
 import '../../utils/log.dart';
+import '../../utils/url.dart';
 import '../backend/music_backend.dart';
 import '../jellyfin/models/items.dart';
 import '../jellyfin/models/library.dart';
@@ -187,7 +188,9 @@ class SubsonicClient implements MusicBackend {
       try {
         final detail = await album(a.id);
         if (detail != null) tracks.addAll(detail.tracks);
-      } catch (_) {}
+      } catch (e) {
+        afLog('subsonic', 'recentlyPlayed album fetch failed id=${a.id}', error: e);
+      }
     }
     return tracks.take(limit).toList(growable: false);
   }
@@ -347,7 +350,8 @@ class SubsonicClient implements MusicBackend {
               ?.cast<Map<String, dynamic>>() ??
           const [];
       return songs.map(_parseTrack).toList(growable: false);
-    } catch (_) {
+    } catch (e) {
+      afLog('subsonic', 'getTopSongs failed, falling back to search', error: e);
       // getTopSongs may not be supported; fall back to search
       final root = await _get('search3', {
         'query': artistObj.name,
@@ -476,10 +480,10 @@ class SubsonicClient implements MusicBackend {
   @override
   Future<void> movePlaylistItem(
       String playlistId, String itemId, int newIndex) async {
-    // Subsonic doesn't support direct move. We'd need to rebuild the
-    // playlist. For now, this is a no-op with a log warning.
-    afLog('subsonic',
-        'movePlaylistItem not natively supported by Subsonic API');
+    // Subsonic API has no playlist-reorder endpoint. Throwing lets the UI
+    // catch this and show a toast instead of silently discarding the move.
+    throw UnsupportedError(
+        'Subsonic API does not support playlist item reordering');
   }
 
   @override
@@ -509,7 +513,8 @@ class SubsonicClient implements MusicBackend {
               ?.cast<Map<String, dynamic>>() ??
           const [];
       return songs.map(_parseTrack).toList(growable: false);
-    } catch (_) {
+    } catch (e) {
+      afLog('subsonic', 'getSimilarSongs2 failed', error: e);
       // getSimilarSongs2 may not be supported; return empty
       return const [];
     }
@@ -549,7 +554,8 @@ class SubsonicClient implements MusicBackend {
         }
       }
       return buf.toString();
-    } catch (_) {
+    } catch (e) {
+      afLog('subsonic', 'getLyricsBySongId failed', error: e);
       // Fall back to legacy getLyrics (requires artist + title)
       return null;
     }
@@ -564,9 +570,7 @@ class SubsonicClient implements MusicBackend {
       'id': trackId,
       if (maxBitrateKbps != null) 'maxBitRate': '$maxBitrateKbps',
     };
-    final base = server.baseUrl.endsWith('/')
-        ? server.baseUrl.substring(0, server.baseUrl.length - 1)
-        : server.baseUrl;
+    final base = stripTrailingSlash(server.baseUrl);
     return Uri.parse(base)
         .replace(
           path: '${Uri.parse(base).path}/rest/stream.view',
@@ -583,9 +587,7 @@ class SubsonicClient implements MusicBackend {
       'id': coverArtId,
       'size': '$size',
     };
-    final base = server.baseUrl.endsWith('/')
-        ? server.baseUrl.substring(0, server.baseUrl.length - 1)
-        : server.baseUrl;
+    final base = stripTrailingSlash(server.baseUrl);
     return Uri.parse(base)
         .replace(
           path: '${Uri.parse(base).path}/rest/getCoverArt.view',
@@ -603,8 +605,8 @@ class SubsonicClient implements MusicBackend {
         'id': trackId,
         'submission': false,
       });
-    } catch (_) {
-      // Best-effort; don't crash if scrobble isn't supported
+    } catch (e) {
+      afLog('subsonic', 'reportPlaybackStart scrobble failed', error: e);
     }
   }
 
@@ -624,8 +626,8 @@ class SubsonicClient implements MusicBackend {
         'id': trackId,
         'submission': true,
       });
-    } catch (_) {
-      // Best-effort
+    } catch (e) {
+      afLog('subsonic', 'reportPlaybackStop scrobble failed', error: e);
     }
   }
 

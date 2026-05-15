@@ -3,6 +3,7 @@ import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 
 import '../../utils/log.dart';
+import '../../utils/url.dart';
 import '../backend/music_backend.dart';
 import 'models/items.dart';
 import 'models/library.dart';
@@ -27,6 +28,8 @@ const _kAetherfinUserAgent = 'Aetherfin/$_kAetherfinVersion (Android)';
 /// Hand-rolled per design spec §11.1 — community Dart SDKs are stale and
 /// the surface we need is small.
 class JellyfinClient implements MusicBackend {
+  static final _genreSplitRe = RegExp(r'[,;]');
+
   final JellyfinServer server;
   final String? accessToken;
   final String? userId;
@@ -362,11 +365,7 @@ class JellyfinClient implements MusicBackend {
   ///
   /// Uses `/Audio/{id}/stream?Static=true` — the direct-stream endpoint
   /// which serves the original file byte-for-byte (mp3 / flac / m4a /
-  /// ogg / wav / opus). just_audio's ExoPlayer plays these natively.
-  ///
-  /// Build a streaming URL for a given track ID.
-  ///
-  /// Uses `/Audio/{id}/stream?Static=true` — the direct-stream endpoint.
+  /// ogg / wav / opus).
   ///
   /// The access token is embedded as `api_key=<token>` in the URL because
   /// libmpv/FFmpeg's HTTP client (lavf) rejects the `Authorization: MediaBrowser …`
@@ -395,9 +394,7 @@ class JellyfinClient implements MusicBackend {
       // ignore: use_null_aware_elements — map is Map<String,String>, value is String?
       if (deviceProfileId != null) 'DeviceProfileId': deviceProfileId,
     };
-    final base = server.baseUrl.endsWith('/')
-        ? server.baseUrl.substring(0, server.baseUrl.length - 1)
-        : server.baseUrl;
+    final base = stripTrailingSlash(server.baseUrl);
     return Uri.parse(base)
         .replace(
           path: '${Uri.parse(base).path}/Audio/$trackId/stream',
@@ -628,7 +625,7 @@ class JellyfinClient implements MusicBackend {
     for (final m in items) {
       final raw = (m['Name'] as String?) ?? '';
       if (raw.isEmpty) continue;
-      for (final part in raw.split(RegExp(r'[,;]'))) {
+      for (final part in raw.split(_genreSplitRe)) {
         final token = part.trim();
         if (token.isEmpty) continue;
         final key = token.toLowerCase();
@@ -1258,9 +1255,7 @@ class JellyfinClient implements MusicBackend {
       'quality': '$quality',
       'tag': tag,
     };
-    final base = server.baseUrl.endsWith('/')
-        ? server.baseUrl.substring(0, server.baseUrl.length - 1)
-        : server.baseUrl;
+    final base = stripTrailingSlash(server.baseUrl);
     return Uri.parse(base)
         .replace(
           path: '${Uri.parse(base).path}/Items/$itemId/Images/$imageType',

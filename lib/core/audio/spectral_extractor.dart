@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart'
 import 'package:palette_generator_master/palette_generator_master.dart';
 
 import '../../design_tokens/colors.dart';
+import '../../utils/log.dart';
 import '../../utils/oklch.dart';
 
 /// Extracts the spectral accent triple from an artwork URL.
@@ -77,9 +78,8 @@ class SpectralExtractor {
         _cache.remove(_cache.keys.first);
       }
       return result;
-    } catch (_) {
-      // Image decode failure, malformed image, or palette extraction crash.
-      // Return fallback so the UI never crashes on bad artwork.
+    } catch (e) {
+      afLog('spectral', 'palette extraction failed for $imageUrl', error: e);
       return Spectral.fallback;
     }
   }
