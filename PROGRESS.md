@@ -61,3 +61,48 @@
 - [x] Update CLAUDE.md — multi-backend architecture, Subsonic auth, source-tree, glossary, AI gotchas
 - [x] Update README.md — Navidrome support, dual-backend architecture diagram, requirements
 - [x] Update PRIVACY.md — dual-backend data handling, Subsonic API section
+
+---
+
+# Audio DSP & Effects — Progress
+
+## Visualizer DSP Bypass
+- [ ] Make FFT spectrum ignore audio effects (pre-DSP tap)
+  - Note: `mpv_audio_kit` 0.1.3 spectrum is post-DSP (`pcm-tap-frame`).
+    No pre-DSP tap available in the library. Documenting as known limitation.
+
+## Equalizer & DSP UI (now_playing_screen.dart)
+- [x] Bass shelf (+/- 12 dB) — already implemented
+- [x] Treble shelf (+/- 12 dB) — already implemented
+- [x] Loudness normalization (EBU R128) toggle — already implemented
+- [x] Dynamic compressor toggle — already implemented
+- [ ] 18-band Superequalizer (ISO graphic EQ)
+- [ ] Rubberband pitch & tempo shifting
+- [ ] Crossfeed (headphone)
+- [ ] Stereo widening
+- [ ] Harmonic exciter
+- [ ] Noise gate
+- [ ] Echo / delay
+- [ ] Virtualizer (virtual bass)
+- [ ] Crystalizer (audio sharpener)
+- [ ] De-esser
+
+## ReplayGain (settings_screen.dart)
+- [x] Mode picker (Off / Track / Album) — already implemented
+- [ ] Preamp adjustment (dB slider)
+- [ ] Fallback gain (dB slider)
+- [ ] Clip prevention toggle
+
+## Gapless & Prefetch (settings_screen.dart)
+- [x] Gapless mode set to `weak` by default — already implemented
+- [ ] Gapless mode picker (Yes / Weak / No) in settings UI
+- [ ] Prefetch playlist toggle in settings UI
+
+## Persistence
+- [x] ReplayGain mode — persisted via PlayerSettingsStore
+- [x] Gapless mode — persisted via PlayerSettingsStore
+- [ ] Audio effects bundle — persist via PlayerSettingsStore
+
+## Quality
+- [ ] `flutter analyze --no-fatal-infos` — 0 errors, 0 warnings
+- [ ] `flutter test` — all tests pass
