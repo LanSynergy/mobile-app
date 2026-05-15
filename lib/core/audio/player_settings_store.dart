@@ -3,14 +3,19 @@ import 'dart:convert';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
     show
         AcompressorSettings,
+        AcrusherSettings,
+        AechoSettings,
         AexciterSettings,
         AgateSettings,
+        AphaserSettings,
         AudioEffects,
         BassSettings,
         Cache,
+        ChorusSettings,
         CrossfeedSettings,
         CrystalizerSettings,
         DeesserSettings,
+        FlangerSettings,
         Format,
         Gapless,
         LoudnormSettings,
@@ -20,6 +25,8 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart'
         StereowidenSettings,
         SuperequalizerSettings,
         TrebleSettings,
+        TremoloSettings,
+        VibratoSettings,
         VirtualbassSettings;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -62,6 +69,8 @@ class PlayerSettingsStore {
   static const _kReplayGainClip = 'af.replay_gain_clip';
   static const _kPrefetchPlaylist = 'af.prefetch_playlist';
   static const _kAudioEffects = 'af.audio_effects_json';
+  static const _kEqPresets = 'af.eq_presets_json';
+  static const _kActivePreset = 'af.active_eq_preset';
 
   static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
@@ -150,9 +159,105 @@ class PlayerSettingsStore {
       'virtualbass_enabled': fx.virtualbass.enabled,
       'virtualbass_cutoff': fx.virtualbass.cutoff,
       'gate_enabled': fx.agate.enabled,
+      'gate_threshold': fx.agate.threshold,
+      'gate_ratio': fx.agate.ratio,
+      'gate_attack': fx.agate.attack,
+      'gate_release': fx.agate.release,
       'deesser_enabled': fx.deesser.enabled,
+      'deesser_i': fx.deesser.i,
+      'deesser_m': fx.deesser.m,
+      'deesser_f': fx.deesser.f,
+      // Echo / delay
+      'echo_enabled': fx.aecho.enabled,
+      'echo_in_gain': fx.aecho.inGain,
+      'echo_out_gain': fx.aecho.outGain,
+      'echo_delays': fx.aecho.delays,
+      'echo_decays': fx.aecho.decays,
+      // Modulation effects
+      'phaser_enabled': fx.aphaser.enabled,
+      'phaser_in_gain': fx.aphaser.inGain,
+      'phaser_out_gain': fx.aphaser.outGain,
+      'phaser_delay': fx.aphaser.delay,
+      'phaser_decay': fx.aphaser.decay,
+      'phaser_speed': fx.aphaser.speed,
+      'flanger_enabled': fx.flanger.enabled,
+      'flanger_delay': fx.flanger.delay,
+      'flanger_depth': fx.flanger.depth,
+      'flanger_regen': fx.flanger.regen,
+      'flanger_width': fx.flanger.width,
+      'flanger_speed': fx.flanger.speed,
+      'chorus_enabled': fx.chorus.enabled,
+      'chorus_in_gain': fx.chorus.inGain,
+      'chorus_out_gain': fx.chorus.outGain,
+      'chorus_delays': fx.chorus.delays,
+      'chorus_decays': fx.chorus.decays,
+      'chorus_speeds': fx.chorus.speeds,
+      'chorus_depths': fx.chorus.depths,
+      'tremolo_enabled': fx.tremolo.enabled,
+      'tremolo_f': fx.tremolo.f,
+      'tremolo_d': fx.tremolo.d,
+      'vibrato_enabled': fx.vibrato.enabled,
+      'vibrato_f': fx.vibrato.f,
+      'vibrato_d': fx.vibrato.d,
+      'crusher_enabled': fx.acrusher.enabled,
+      'crusher_bits': fx.acrusher.bits,
+      'crusher_mix': fx.acrusher.mix,
+      'crusher_samples': fx.acrusher.samples,
     };
     await p.setString(_kAudioEffects, jsonEncode(map));
+  }
+
+  // ── EQ Presets ────────────────────────────────────────────────────────────
+
+  /// Save a named EQ preset (18-band params + bass/treble).
+  static Future<void> saveEqPreset(String name, EqPreset preset) async {
+    final p = await _prefs();
+    final all = loadEqPresets(p);
+    all[name] = preset;
+    final encoded = all.map((k, v) => MapEntry(k, v.toJson()));
+    await p.setString(_kEqPresets, jsonEncode(encoded));
+  }
+
+  /// Delete a named EQ preset.
+  static Future<void> deleteEqPreset(String name) async {
+    final p = await _prefs();
+    final all = loadEqPresets(p);
+    all.remove(name);
+    final encoded = all.map((k, v) => MapEntry(k, v.toJson()));
+    await p.setString(_kEqPresets, jsonEncode(encoded));
+  }
+
+  /// Load all user-saved EQ presets.
+  static Map<String, EqPreset> loadEqPresets(SharedPreferences p) {
+    final json = p.getString(_kEqPresets);
+    if (json == null) return {};
+    try {
+      final raw = jsonDecode(json) as Map<String, dynamic>;
+      return raw.map((k, v) => MapEntry(k, EqPreset.fromJson(v as Map<String, dynamic>)));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Load all user-saved EQ presets (async convenience).
+  static Future<Map<String, EqPreset>> loadEqPresetsAsync() async {
+    final p = await _prefs();
+    return loadEqPresets(p);
+  }
+
+  /// Save the name of the currently active preset (null to clear).
+  static Future<void> saveActivePreset(String? name) async {
+    final p = await _prefs();
+    if (name == null) {
+      await p.remove(_kActivePreset);
+    } else {
+      await p.setString(_kActivePreset, name);
+    }
+  }
+
+  /// Load the name of the currently active preset.
+  static String? loadActivePreset(SharedPreferences p) {
+    return p.getString(_kActivePreset);
   }
 
   /// Restore audio effects from JSON.
@@ -216,9 +321,64 @@ class PlayerSettingsStore {
         ),
         agate: AgateSettings(
           enabled: m['gate_enabled'] as bool? ?? false,
+          threshold: (m['gate_threshold'] as num?)?.toDouble() ?? 0.01,
+          ratio: (m['gate_ratio'] as num?)?.toDouble() ?? 2.0,
+          attack: (m['gate_attack'] as num?)?.toDouble() ?? 20.0,
+          release: (m['gate_release'] as num?)?.toDouble() ?? 250.0,
         ),
         deesser: DeesserSettings(
           enabled: m['deesser_enabled'] as bool? ?? false,
+          i: (m['deesser_i'] as num?)?.toDouble() ?? 0.0,
+          m: (m['deesser_m'] as num?)?.toDouble() ?? 0.5,
+          f: (m['deesser_f'] as num?)?.toDouble() ?? 5500.0,
+        ),
+        aecho: AechoSettings(
+          enabled: m['echo_enabled'] as bool? ?? false,
+          inGain: (m['echo_in_gain'] as num?)?.toDouble() ?? 0.6,
+          outGain: (m['echo_out_gain'] as num?)?.toDouble() ?? 0.3,
+          delays: m['echo_delays'] as String? ?? '500',
+          decays: m['echo_decays'] as String? ?? '0.5',
+        ),
+        aphaser: AphaserSettings(
+          enabled: m['phaser_enabled'] as bool? ?? false,
+          inGain: (m['phaser_in_gain'] as num?)?.toDouble() ?? 0.4,
+          outGain: (m['phaser_out_gain'] as num?)?.toDouble() ?? 0.74,
+          delay: (m['phaser_delay'] as num?)?.toDouble() ?? 3.0,
+          decay: (m['phaser_decay'] as num?)?.toDouble() ?? 0.4,
+          speed: (m['phaser_speed'] as num?)?.toDouble() ?? 0.5,
+        ),
+        flanger: FlangerSettings(
+          enabled: m['flanger_enabled'] as bool? ?? false,
+          delay: (m['flanger_delay'] as num?)?.toDouble() ?? 0.0,
+          depth: (m['flanger_depth'] as num?)?.toDouble() ?? 2.0,
+          regen: (m['flanger_regen'] as num?)?.toDouble() ?? 0.0,
+          width: (m['flanger_width'] as num?)?.toDouble() ?? 71.0,
+          speed: (m['flanger_speed'] as num?)?.toDouble() ?? 0.5,
+        ),
+        chorus: ChorusSettings(
+          enabled: m['chorus_enabled'] as bool? ?? false,
+          inGain: (m['chorus_in_gain'] as num?)?.toDouble() ?? 0.4,
+          outGain: (m['chorus_out_gain'] as num?)?.toDouble() ?? 0.4,
+          delays: m['chorus_delays'] as String? ?? '40|60',
+          decays: m['chorus_decays'] as String? ?? '0.4|0.32',
+          speeds: m['chorus_speeds'] as String? ?? '0.25|0.4',
+          depths: m['chorus_depths'] as String? ?? '2|3',
+        ),
+        tremolo: TremoloSettings(
+          enabled: m['tremolo_enabled'] as bool? ?? false,
+          f: (m['tremolo_f'] as num?)?.toDouble() ?? 5.0,
+          d: (m['tremolo_d'] as num?)?.toDouble() ?? 0.5,
+        ),
+        vibrato: VibratoSettings(
+          enabled: m['vibrato_enabled'] as bool? ?? false,
+          f: (m['vibrato_f'] as num?)?.toDouble() ?? 5.0,
+          d: (m['vibrato_d'] as num?)?.toDouble() ?? 0.5,
+        ),
+        acrusher: AcrusherSettings(
+          enabled: m['crusher_enabled'] as bool? ?? false,
+          bits: (m['crusher_bits'] as num?)?.toDouble() ?? 8.0,
+          mix: (m['crusher_mix'] as num?)?.toDouble() ?? 0.5,
+          samples: (m['crusher_samples'] as num?)?.toDouble() ?? 1.0,
         ),
       );
     } catch (_) {
@@ -327,5 +487,37 @@ class PlayerSettingsStore {
     }
 
     afLog('boot', 'PlayerSettingsStore applied persisted settings');
+  }
+}
+
+/// A named EQ preset containing 18-band params + bass/treble shelves.
+class EqPreset {
+  final Map<String, double> bands;
+  final double bass;
+  final double treble;
+
+  const EqPreset({
+    required this.bands,
+    this.bass = 0.0,
+    this.treble = 0.0,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'bands': bands,
+        'bass': bass,
+        'treble': treble,
+      };
+
+  factory EqPreset.fromJson(Map<String, dynamic> json) {
+    final bandsRaw = json['bands'] as Map<String, dynamic>?;
+    final bands = bandsRaw?.map(
+          (k, v) => MapEntry(k, (v as num).toDouble()),
+        ) ??
+        const <String, double>{};
+    return EqPreset(
+      bands: bands,
+      bass: (json['bass'] as num?)?.toDouble() ?? 0.0,
+      treble: (json['treble'] as num?)?.toDouble() ?? 0.0,
+    );
   }
 }

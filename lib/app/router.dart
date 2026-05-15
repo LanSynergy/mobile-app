@@ -13,6 +13,7 @@ import '../features/home/home_screen.dart';
 import '../features/library/library_screen.dart';
 import '../features/lyrics/lyrics_screen.dart';
 import '../features/now_playing/now_playing_screen.dart';
+import '../features/now_playing/eq_dsp_screen.dart';
 import '../features/onboarding/all_set_screen.dart';
 import '../features/onboarding/library_scope_screen.dart';
 import '../features/onboarding/server_discovery_screen.dart';
@@ -166,6 +167,11 @@ final _router = GoRouter(
       path: '/settings',
       parentNavigatorKey: _rootKey,
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/eq-dsp',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) => const EqDspScreen(),
     ),
     GoRoute(
       path: '/album/:id',
