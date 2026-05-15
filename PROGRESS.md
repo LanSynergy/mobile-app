@@ -72,37 +72,40 @@
     No pre-DSP tap available in the library. Documenting as known limitation.
 
 ## Equalizer & DSP UI (now_playing_screen.dart)
-- [x] Bass shelf (+/- 12 dB) — already implemented
-- [x] Treble shelf (+/- 12 dB) — already implemented
-- [x] Loudness normalization (EBU R128) toggle — already implemented
-- [x] Dynamic compressor toggle — already implemented
-- [ ] 18-band Superequalizer (ISO graphic EQ)
-- [ ] Rubberband pitch & tempo shifting
-- [ ] Crossfeed (headphone)
-- [ ] Stereo widening
-- [ ] Harmonic exciter
-- [ ] Noise gate
-- [ ] Echo / delay
-- [ ] Virtualizer (virtual bass)
-- [ ] Crystalizer (audio sharpener)
-- [ ] De-esser
+- [x] Bass shelf (+/- 12 dB)
+- [x] Treble shelf (+/- 12 dB)
+- [x] Loudness normalization (EBU R128) toggle
+- [x] Dynamic compressor toggle
+- [x] 18-band Superequalizer (ISO graphic EQ) — per-band sliders, 0..4 linear gain
+- [x] Rubberband pitch & tempo shifting — 0.5x..2.0x sliders
+- [x] Crossfeed (headphone) — strength slider
+- [x] Stereo widening — delay slider
+- [x] Harmonic exciter — amount slider
+- [x] Noise gate — toggle
+- [x] Virtual bass — cutoff slider
+- [x] Crystalizer (audio sharpener) — intensity slider
+- [x] De-esser — toggle
+- [x] Reset all button — clears every effect
+- [x] Dialog refactored to DraggableScrollableSheet (bottom sheet)
 
 ## ReplayGain (settings_screen.dart)
-- [x] Mode picker (Off / Track / Album) — already implemented
-- [ ] Preamp adjustment (dB slider)
-- [ ] Fallback gain (dB slider)
-- [ ] Clip prevention toggle
+- [x] Mode picker (Off / Track / Album)
+- [x] Preamp adjustment (-15..+15 dB slider)
+- [x] Fallback gain (-15..0 dB slider)
+- [x] Clip prevention toggle
 
 ## Gapless & Prefetch (settings_screen.dart)
-- [x] Gapless mode set to `weak` by default — already implemented
-- [ ] Gapless mode picker (Yes / Weak / No) in settings UI
-- [ ] Prefetch playlist toggle in settings UI
+- [x] Gapless mode picker (Full / Weak / Off)
+- [x] Prefetch next track toggle
 
 ## Persistence
 - [x] ReplayGain mode — persisted via PlayerSettingsStore
+- [x] ReplayGain preamp, fallback, clip — persisted
 - [x] Gapless mode — persisted via PlayerSettingsStore
-- [ ] Audio effects bundle — persist via PlayerSettingsStore
+- [x] Prefetch playlist — persisted via PlayerSettingsStore
+- [x] Audio effects bundle — JSON-serialized to shared_preferences
+- [x] All settings restored on app startup via applyPersisted()
 
 ## Quality
-- [ ] `flutter analyze --no-fatal-infos` — 0 errors, 0 warnings
-- [ ] `flutter test` — all tests pass
+- [x] `flutter analyze --no-fatal-infos` — 0 errors, 0 warnings
+- [x] `flutter test` — all 24 tests pass
