@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../../utils/log.dart';
-import '../jellyfin/client.dart';
+import '../backend/music_backend.dart';
 import '../jellyfin/models/items.dart';
 import 'player_service.dart';
 
@@ -25,7 +25,7 @@ import 'player_service.dart';
 ///                                          is disposed
 class JellyfinPlaybackReporter {
   final AfPlayerService _player;
-  final JellyfinClient? Function() _clientGetter;
+  final MusicBackend? Function() _clientGetter;
 
   static const _progressInterval = Duration(seconds: 10);
 

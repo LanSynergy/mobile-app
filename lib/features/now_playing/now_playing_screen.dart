@@ -7,7 +7,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart'
     show AcompressorSettings, AudioEffects, BassSettings, Device, LoudnormSettings, Loop, TrebleSettings;
 
 import '../../core/audio/play_actions.dart';
-import '../../core/jellyfin/client.dart';
+import '../../core/backend/music_backend.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../features/sleep_timer/sleep_timer_screen.dart';
@@ -782,8 +782,8 @@ class _UtilityRow extends ConsumerWidget {
   void _showSaveDialog(BuildContext context, WidgetRef ref) {
     final track = ref.read(currentTrackProvider);
     if (track == null) return;
-    final client = ref.read(jellyfinClientProvider);
-    if (client == null) {
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Sign in to save to playlists')),
       );
@@ -799,7 +799,7 @@ class _UtilityRow extends ConsumerWidget {
           constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
           child: _SaveToPlaylistSheet(
             track: track,
-            client: client,
+            client: backend,
             onInvalidate: () => ref.invalidate(allPlaylistsProvider),
             onSaved: () {
               ref.read(savedTrackIdsProvider.notifier).update(
@@ -1442,7 +1442,7 @@ class _OutputDialogContent extends ConsumerWidget {
 
 class _SaveToPlaylistSheet extends StatefulWidget {
   final AfTrack track;
-  final JellyfinClient client;
+  final MusicBackend client;
   final VoidCallback onInvalidate;
   final VoidCallback? onSaved;
 

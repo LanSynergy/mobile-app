@@ -26,11 +26,11 @@ class _LibraryScopeScreenState extends ConsumerState<LibraryScopeScreen> {
   }
 
   Future<void> _load() async {
-    final client = ref.read(jellyfinClientProvider);
+    final backend = ref.read(musicBackendProvider);
     List<LibraryView> views = const [];
-    if (client != null) {
+    if (backend != null) {
       try {
-        views = await client.userViews();
+        views = await backend.userViews();
       } catch (_) {}
     }
     if (views.where((v) => v.hasAudio).length <= 1) {

@@ -184,20 +184,20 @@ void showAlbumContextMenu(
 }
 
 void _playNext(WidgetRef ref, AfTrack track) {
-  final client = ref.read(jellyfinClientProvider);
-  if (client == null) return;
+  final backend = ref.read(musicBackendProvider);
+  if (backend == null) return;
   unawaited(ref.read(playerServiceProvider).playNext(
     track,
-    resolveStreamUrl: (t) => client.trackStreamUrl(t.id, maxBitrateKbps: 320),
+    resolveStreamUrl: (t) => backend.trackStreamUrl(t.id, maxBitrateKbps: 320),
   ));
 }
 
 void _addToQueue(WidgetRef ref, AfTrack track) {
-  final client = ref.read(jellyfinClientProvider);
-  if (client == null) return;
+  final backend = ref.read(musicBackendProvider);
+  if (backend == null) return;
   unawaited(ref.read(playerServiceProvider).addToQueue(
     track,
-    resolveStreamUrl: (t) => client.trackStreamUrl(t.id, maxBitrateKbps: 320),
+    resolveStreamUrl: (t) => backend.trackStreamUrl(t.id, maxBitrateKbps: 320),
   ));
 }
 
