@@ -260,9 +260,13 @@ final playbackSpeedProvider = StreamProvider.autoDispose<double>((ref) {
 });
 
 /// Real-time FFT spectrum from mpv_audio_kit — 64 log-spaced bands in
-/// [0, 1] at ~30 fps, post-DSP (after EQ, volume, compressor).
-/// No RECORD_AUDIO permission needed. Lazy: pipeline starts on first
-/// listener, stops on last cancel. Drives [BeatPulseArtwork].
+/// [0, 1] at ~30 fps. No RECORD_AUDIO permission needed. Lazy: pipeline
+/// starts on first listener, stops on last cancel. Drives [BeatPulseArtwork].
+///
+/// Note: The spectrum is captured post-DSP (`pcm-tap-frame`).
+/// `mpv_audio_kit` 0.1.3 does not expose a pre-DSP tap point.
+/// A future library update may add a bypass option; until then the
+/// visualizer reflects processed audio.
 final fftSpectrumProvider = StreamProvider.autoDispose<FftFrame>((ref) {
   final svc = ref.watch(playerServiceProvider);
   return svc.spectrumStream;

@@ -61,3 +61,51 @@
 - [x] Update CLAUDE.md — multi-backend architecture, Subsonic auth, source-tree, glossary, AI gotchas
 - [x] Update README.md — Navidrome support, dual-backend architecture diagram, requirements
 - [x] Update PRIVACY.md — dual-backend data handling, Subsonic API section
+
+---
+
+# Audio DSP & Effects — Progress
+
+## Visualizer DSP Bypass
+- [ ] Make FFT spectrum ignore audio effects (pre-DSP tap)
+  - Note: `mpv_audio_kit` 0.1.3 spectrum is post-DSP (`pcm-tap-frame`).
+    No pre-DSP tap available in the library. Documenting as known limitation.
+
+## Equalizer & DSP UI (now_playing_screen.dart)
+- [x] Bass shelf (+/- 12 dB)
+- [x] Treble shelf (+/- 12 dB)
+- [x] Loudness normalization (EBU R128) toggle
+- [x] Dynamic compressor toggle
+- [x] 18-band Superequalizer (ISO graphic EQ) — per-band sliders, 0..4 linear gain
+- [x] Rubberband pitch & tempo shifting — 0.5x..2.0x sliders
+- [x] Crossfeed (headphone) — strength slider
+- [x] Stereo widening — delay slider
+- [x] Harmonic exciter — amount slider
+- [x] Noise gate — toggle
+- [x] Virtual bass — cutoff slider
+- [x] Crystalizer (audio sharpener) — intensity slider
+- [x] De-esser — toggle
+- [x] Reset all button — clears every effect
+- [x] Dialog refactored to DraggableScrollableSheet (bottom sheet)
+
+## ReplayGain (settings_screen.dart)
+- [x] Mode picker (Off / Track / Album)
+- [x] Preamp adjustment (-15..+15 dB slider)
+- [x] Fallback gain (-15..0 dB slider)
+- [x] Clip prevention toggle
+
+## Gapless & Prefetch (settings_screen.dart)
+- [x] Gapless mode picker (Full / Weak / Off)
+- [x] Prefetch next track toggle
+
+## Persistence
+- [x] ReplayGain mode — persisted via PlayerSettingsStore
+- [x] ReplayGain preamp, fallback, clip — persisted
+- [x] Gapless mode — persisted via PlayerSettingsStore
+- [x] Prefetch playlist — persisted via PlayerSettingsStore
+- [x] Audio effects bundle — JSON-serialized to shared_preferences
+- [x] All settings restored on app startup via applyPersisted()
+
+## Quality
+- [x] `flutter analyze --no-fatal-infos` — 0 errors, 0 warnings
+- [x] `flutter test` — all 24 tests pass
