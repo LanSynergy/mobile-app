@@ -21,319 +21,246 @@ class SettingsScreen extends ConsumerWidget {
     final showLabels = ref.watch(showNavLabelsProvider);
     final svc = ref.read(playerServiceProvider);
     return Scaffold(
+      backgroundColor: AfColors.surfaceCanvas,
       appBar: AppBar(
+        backgroundColor: AfColors.surfaceCanvas,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
         ),
-        title: Text('Settings', style: AfTypography.titleMedium),
+        title: Text('Settings', style: AfTypography.display),
+        centerTitle: false,
+        titleSpacing: 0,
       ),
       body: SafeArea(
         child: ListView(
-          padding:
-              const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
           children: [
-            _SectionLabel('Server'),
-            ListTile(
-              leading: const Icon(Icons.dns_outlined),
-              title: Text(auth?.server.name ?? 'Not connected'),
-              subtitle: auth == null
-                  ? null
-                  : Text(
-                      auth.server.baseUrl,
-                      style: AfTypography.bodySmall.copyWith(
-                        color: AfColors.textTertiary,
-                      ),
-                    ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              tileColor: AfColors.surfaceBase,
-              shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderMd),
-              onTap: () => context.go('/onboarding/discover'),
+            const SizedBox(height: AfSpacing.s8),
+
+            // ── Server ─────────────────────────────────────────────────
+            _SettingsGroup(
+              children: [
+                _SettingsTile(
+                  icon: Icons.dns_outlined,
+                  iconColor: AfColors.indigo400,
+                  title: auth?.server.name ?? 'Not connected',
+                  subtitle: auth?.server.baseUrl,
+                  trailing: const Icon(Icons.chevron_right_rounded,
+                      color: AfColors.textTertiary, size: 20),
+                  onTap: () => context.go('/onboarding/discover'),
+                ),
+              ],
             ),
-            const SizedBox(height: AfSpacing.s24),
+
+            const SizedBox(height: AfSpacing.s16),
+
+            // ── Appearance ─────────────────────────────────────────────
             _SectionLabel('Appearance'),
-            SwitchListTile.adaptive(
-              value: showLabels,
-              onChanged: (v) =>
-                  ref.read(showNavLabelsProvider.notifier).state = v,
-              title: const Text('Always show tab labels'),
-              subtitle: Text(
-                'Default is icon-only with the active capsule indicator.',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
+            _SettingsGroup(
+              children: [
+                _SettingsSwitchTile(
+                  icon: Icons.label_outline_rounded,
+                  iconColor: AfColors.semanticInfo,
+                  title: 'Always show tab labels',
+                  subtitle: 'Icon-only with capsule indicator by default',
+                  value: showLabels,
+                  onChanged: (v) =>
+                      ref.read(showNavLabelsProvider.notifier).state = v,
                 ),
-              ),
-              activeThumbColor: AfColors.indigo500,
-              tileColor: AfColors.surfaceBase,
-              shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderMd),
+              ],
             ),
-            const SizedBox(height: AfSpacing.s24),
+
+            const SizedBox(height: AfSpacing.s16),
+
+            // ── Audio output ───────────────────────────────────────────
             _SectionLabel('Audio output'),
-            StreamBuilder<AudioParams>(
-              stream: ref.read(playerServiceProvider).audioOutParamsStream,
-              initialData: ref.read(playerServiceProvider).audioOutParams,
-              builder: (context, snap) {
-                final params = snap.data;
-                final rate = params?.sampleRate;
-                final fmt = params?.format;
-                final ch = params?.channelCount;
-                final hasData = rate != null && rate > 0;
-                return ListTile(
-                  leading: const Icon(Icons.graphic_eq_rounded),
-                  title: const Text('Current output'),
-                  subtitle: Text(
-                    hasData
-                        ? '$rate Hz · ${fmt?.name ?? "auto"} · ${ch}ch'
-                        : 'Not active — start playback first',
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textTertiary,
-                    ),
-                  ),
-                  tileColor: AfColors.surfaceBase,
-                  shape: const RoundedRectangleBorder(
-                      borderRadius: AfRadii.borderMd),
-                );
-              },
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            ListTile(
-              leading: const Icon(Icons.speed_rounded),
-              title: const Text('Sample rate'),
-              subtitle: Text(
-                'Force output sample rate for DAC',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
-                ),
-              ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              tileColor: AfColors.surfaceBase,
-              shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderMd),
-              onTap: () => _showSampleRateDialog(context, ref),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            ListTile(
-              leading: const Icon(Icons.memory_rounded),
-              title: const Text('Bit depth'),
-              subtitle: Text(
-                'Force output format',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
-                ),
-              ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              tileColor: AfColors.surfaceBase,
-              shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderMd),
-              onTap: () => _showFormatDialog(context, ref),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            StreamBuilder<bool>(
-              stream: svc.audioExclusiveStream,
-              initialData: svc.audioExclusive,
-              builder: (context, snap) {
-                final enabled = snap.data ?? false;
-                return SwitchListTile.adaptive(
-                  value: enabled,
-                  onChanged: (v) {
-                    unawaited(svc.setAudioExclusive(v));
-                    unawaited(PlayerSettingsStore.saveExclusive(v));
+            _SettingsGroup(
+              children: [
+                StreamBuilder<AudioParams>(
+                  stream: ref.read(playerServiceProvider).audioOutParamsStream,
+                  initialData: ref.read(playerServiceProvider).audioOutParams,
+                  builder: (context, snap) {
+                    final params = snap.data;
+                    final rate = params?.sampleRate;
+                    final fmt = params?.format;
+                    final ch = params?.channelCount;
+                    final hasData = rate != null && rate > 0;
+                    return _SettingsTile(
+                      icon: Icons.graphic_eq_rounded,
+                      iconColor: AfColors.semanticSuccess,
+                      title: 'Current output',
+                      subtitle: hasData
+                          ? '$rate Hz · ${fmt?.name ?? "auto"} · ${ch}ch'
+                          : 'Not active — start playback first',
+                    );
                   },
-                  title: const Text('Exclusive mode'),
-                  subtitle: Text(
-                    'Bypass OS mixer for bit-perfect output. May not work on all devices.',
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textTertiary,
-                    ),
-                  ),
-                  activeThumbColor: AfColors.indigo500,
-                  tileColor: AfColors.surfaceBase,
-                  shape: const RoundedRectangleBorder(
-                      borderRadius: AfRadii.borderMd),
-                );
-              },
+                ),
+                _SettingsTile(
+                  icon: Icons.speed_rounded,
+                  iconColor: AfColors.indigo300,
+                  title: 'Sample rate',
+                  subtitle: 'Force output sample rate for DAC',
+                  onTap: () => _showSampleRateDialog(context, ref),
+                ),
+                _SettingsTile(
+                  icon: Icons.memory_rounded,
+                  iconColor: AfColors.indigo300,
+                  title: 'Bit depth',
+                  subtitle: 'Force output format',
+                  onTap: () => _showFormatDialog(context, ref),
+                ),
+                StreamBuilder<bool>(
+                  stream: svc.audioExclusiveStream,
+                  initialData: svc.audioExclusive,
+                  builder: (context, snap) {
+                    final enabled = snap.data ?? false;
+                    return _SettingsSwitchTile(
+                      icon: Icons.lock_outline_rounded,
+                      iconColor: AfColors.semanticWarning,
+                      title: 'Exclusive mode',
+                      subtitle: 'Bypass OS mixer for bit-perfect output',
+                      value: enabled,
+                      onChanged: (v) {
+                        unawaited(svc.setAudioExclusive(v));
+                        unawaited(PlayerSettingsStore.saveExclusive(v));
+                      },
+                    );
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: AfSpacing.s24),
+
+            const SizedBox(height: AfSpacing.s16),
+
+            // ── Network & cache ────────────────────────────────────────
             _SectionLabel('Network & cache'),
-            ListTile(
-              leading: const Icon(Icons.cached_rounded),
-              title: const Text('Cache duration'),
-              subtitle: Text(
-                'How far ahead to buffer',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
+            _SettingsGroup(
+              children: [
+                _SettingsTile(
+                  icon: Icons.cached_rounded,
+                  iconColor: AfColors.semanticInfo,
+                  title: 'Cache duration',
+                  subtitle: 'How far ahead to buffer',
+                  onTap: () => _showCacheDurationDialog(context, ref),
                 ),
-              ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              tileColor: AfColors.surfaceBase,
-              shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderMd),
-              onTap: () => _showCacheDurationDialog(context, ref),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            ListTile(
-              leading: const Icon(Icons.storage_rounded),
-              title: const Text('Buffer size'),
-              subtitle: Text(
-                'Audio hardware buffer (latency vs stability)',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
+                _SettingsTile(
+                  icon: Icons.storage_rounded,
+                  iconColor: AfColors.semanticInfo,
+                  title: 'Buffer size',
+                  subtitle: 'Audio hardware buffer (latency vs stability)',
+                  onTap: () => _showAudioBufferDialog(context, ref),
                 ),
-              ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              tileColor: AfColors.surfaceBase,
-              shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderMd),
-              onTap: () => _showAudioBufferDialog(context, ref),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            StreamBuilder<bool>(
-              stream: svc.audioStreamSilenceStream,
-              initialData: svc.audioStreamSilence,
-              builder: (context, snap) {
-                final enabled = snap.data ?? false;
-                return SwitchListTile.adaptive(
-                  value: enabled,
-                  onChanged: (v) {
-                    unawaited(svc.setAudioStreamSilence(v));
-                    unawaited(PlayerSettingsStore.saveStreamSilence(v));
+                StreamBuilder<bool>(
+                  stream: svc.audioStreamSilenceStream,
+                  initialData: svc.audioStreamSilence,
+                  builder: (context, snap) {
+                    final enabled = snap.data ?? false;
+                    return _SettingsSwitchTile(
+                      icon: Icons.volume_up_rounded,
+                      iconColor: AfColors.semanticWarning,
+                      title: 'Keep audio active on pause',
+                      subtitle: 'Eliminates click/pop on resume',
+                      value: enabled,
+                      onChanged: (v) {
+                        unawaited(svc.setAudioStreamSilence(v));
+                        unawaited(PlayerSettingsStore.saveStreamSilence(v));
+                      },
+                    );
                   },
-                  title: const Text('Keep audio active on pause'),
-                  subtitle: Text(
-                    'Eliminates click/pop on resume. Uses more battery.',
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textTertiary,
-                    ),
-                  ),
-                  activeThumbColor: AfColors.indigo500,
-                  tileColor: AfColors.surfaceBase,
-                  shape: const RoundedRectangleBorder(
-                      borderRadius: AfRadii.borderMd),
-                );
-              },
+                ),
+              ],
             ),
-            const SizedBox(height: AfSpacing.s24),
+
+            const SizedBox(height: AfSpacing.s16),
+
+            // ── Audio processing ───────────────────────────────────────
             _SectionLabel('Audio processing'),
-            ListTile(
-              leading: const Icon(Icons.equalizer_rounded),
-              title: const Text('ReplayGain'),
-              subtitle: Text(
-                'Volume normalization across tracks',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
+            _SettingsGroup(
+              children: [
+                _SettingsTile(
+                  icon: Icons.equalizer_rounded,
+                  iconColor: AfColors.indigo400,
+                  title: 'ReplayGain',
+                  subtitle: 'Volume normalization across tracks',
+                  onTap: () => _showReplayGainDialog(context, ref),
                 ),
-              ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              tileColor: AfColors.surfaceBase,
-              shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderMd),
-              onTap: () => _showReplayGainDialog(context, ref),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            ListTile(
-              leading: const Icon(Icons.skip_next_rounded),
-              title: const Text('Gapless playback'),
-              subtitle: Text(
-                'Seamless transitions between tracks',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
+                _SettingsTile(
+                  icon: Icons.skip_next_rounded,
+                  iconColor: AfColors.indigo400,
+                  title: 'Gapless playback',
+                  subtitle: 'Seamless transitions between tracks',
+                  onTap: () => _showGaplessDialog(context, ref),
                 ),
-              ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              tileColor: AfColors.surfaceBase,
-              shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderMd),
-              onTap: () => _showGaplessDialog(context, ref),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            StreamBuilder<bool>(
-              stream: Stream<bool>.multi((controller) {
-                controller.add(svc.prefetchPlaylist);
-              }),
-              initialData: svc.prefetchPlaylist,
-              builder: (context, snap) {
-                final enabled = snap.data ?? false;
-                return SwitchListTile.adaptive(
-                  value: enabled,
-                  onChanged: (v) {
-                    unawaited(svc.setPrefetchPlaylist(v));
-                    unawaited(PlayerSettingsStore.savePrefetchPlaylist(v));
+                StreamBuilder<bool>(
+                  stream: Stream<bool>.multi((controller) {
+                    controller.add(svc.prefetchPlaylist);
+                  }),
+                  initialData: svc.prefetchPlaylist,
+                  builder: (context, snap) {
+                    final enabled = snap.data ?? false;
+                    return _SettingsSwitchTile(
+                      icon: Icons.download_rounded,
+                      iconColor: AfColors.semanticSuccess,
+                      title: 'Prefetch next track',
+                      subtitle: 'Pre-load next playlist entry in background',
+                      value: enabled,
+                      onChanged: (v) {
+                        unawaited(svc.setPrefetchPlaylist(v));
+                        unawaited(PlayerSettingsStore.savePrefetchPlaylist(v));
+                      },
+                    );
                   },
-                  title: const Text('Prefetch next track'),
-                  subtitle: Text(
-                    'Pre-load next playlist entry in background',
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textTertiary,
-                    ),
-                  ),
-                  activeThumbColor: AfColors.indigo500,
-                  tileColor: AfColors.surfaceBase,
-                  shape: const RoundedRectangleBorder(
-                      borderRadius: AfRadii.borderMd),
-                );
-              },
+                ),
+              ],
             ),
-            const SizedBox(height: AfSpacing.s24),
+
+            const SizedBox(height: AfSpacing.s16),
+
+            // ── About ──────────────────────────────────────────────────
             _SectionLabel('About'),
-            FutureBuilder<PackageInfo>(
-              future: PackageInfo.fromPlatform(),
-              builder: (context, snap) {
-                final version = snap.data != null
-                    ? 'v${snap.data!.version} (${snap.data!.buildNumber})'
-                    : '...';
-                return ListTile(
-                  leading: const Icon(Icons.info_outline_rounded),
-                  title: Text('Aetherfin $version'),
-                  subtitle: Text(
-                    'Jellyfin-backed music player. FOSS.',
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textTertiary,
-                    ),
+            _SettingsGroup(
+              children: [
+                FutureBuilder<PackageInfo>(
+                  future: PackageInfo.fromPlatform(),
+                  builder: (context, snap) {
+                    final version = snap.data != null
+                        ? 'v${snap.data!.version} (${snap.data!.buildNumber})'
+                        : '...';
+                    return _SettingsTile(
+                      icon: Icons.info_outline_rounded,
+                      iconColor: AfColors.textTertiary,
+                      title: 'Aetherfin $version',
+                      subtitle: 'Jellyfin-backed music player · FOSS',
+                    );
+                  },
+                ),
+                _SettingsTile(
+                  icon: Icons.code_rounded,
+                  iconColor: AfColors.textTertiary,
+                  title: 'Source code',
+                  subtitle: 'github.com/Aetherfin/mobile-app',
+                  trailing: const Icon(Icons.open_in_new_rounded,
+                      color: AfColors.textTertiary, size: 16),
+                  onTap: () =>
+                      _launchUrl('https://github.com/Aetherfin/mobile-app'),
+                ),
+                _SettingsTile(
+                  icon: Icons.description_outlined,
+                  iconColor: AfColors.textTertiary,
+                  title: 'Licenses',
+                  subtitle: 'Open-source licenses',
+                  onTap: () => showLicensePage(
+                    context: context,
+                    applicationName: 'Aetherfin',
+                    applicationLegalese: '© 2025 Aetherfin contributors',
                   ),
-                  tileColor: AfColors.surfaceBase,
-                  shape: const RoundedRectangleBorder(
-                      borderRadius: AfRadii.borderMd),
-                );
-              },
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            ListTile(
-              leading: const Icon(Icons.code_rounded),
-              title: const Text('Source code'),
-              subtitle: Text(
-                'github.com/Aetherfin/mobile-app',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
                 ),
-              ),
-              trailing: const Icon(Icons.open_in_new_rounded, size: 18),
-              tileColor: AfColors.surfaceBase,
-              shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderMd),
-              onTap: () => _launchUrl('https://github.com/Aetherfin/mobile-app'),
+              ],
             ),
-            const SizedBox(height: AfSpacing.s8),
-            ListTile(
-              leading: const Icon(Icons.description_outlined),
-              title: const Text('Licenses'),
-              subtitle: Text(
-                'Open-source licenses',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
-                ),
-              ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              tileColor: AfColors.surfaceBase,
-              shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderMd),
-              onTap: () => showLicensePage(
-                context: context,
-                applicationName: 'Aetherfin',
-                applicationLegalese: '© 2025 Aetherfin contributors',
-              ),
-            ),
+
+            const SizedBox(height: AfSpacing.s24),
           ],
         ),
       ),
@@ -349,11 +276,186 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AfSpacing.s4, AfSpacing.s8, AfSpacing.s4, AfSpacing.s8),
+          AfSpacing.s16, 0, AfSpacing.s4, AfSpacing.s8),
       child: Text(
-        label.toUpperCase(),
-        style: AfTypography.label.copyWith(
+        label,
+        style: AfTypography.bodySmall.copyWith(
           color: AfColors.textTertiary,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+}
+
+/// Samsung One UI–style grouped card container.
+class _SettingsGroup extends StatelessWidget {
+  final List<Widget> children;
+  const _SettingsGroup({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AfColors.surfaceBase,
+        borderRadius: AfRadii.borderLg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (int i = 0; i < children.length; i++) ...[
+            children[i],
+            if (i < children.length - 1)
+              const Divider(
+                height: 0,
+                thickness: 0.5,
+                indent: 64,
+                color: AfColors.surfaceHigh,
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// A single settings row with a colored circular icon.
+class _SettingsTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  const _SettingsTile({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AfSpacing.s16,
+          vertical: AfSpacing.s12,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                // ignore: deprecated_member_use
+                color: iconColor.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 20, color: iconColor),
+            ),
+            const SizedBox(width: AfSpacing.s12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title, style: AfTypography.bodyMedium),
+                  if (subtitle != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        subtitle!,
+                        style: AfTypography.bodySmall.copyWith(
+                          color: AfColors.textTertiary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (trailing != null) ...[
+              const SizedBox(width: AfSpacing.s8),
+              trailing!,
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A settings row with a switch (Samsung style).
+class _SettingsSwitchTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _SettingsSwitchTile({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => onChanged(!value),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AfSpacing.s16,
+          vertical: AfSpacing.s12,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                // ignore: deprecated_member_use
+                color: iconColor.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 20, color: iconColor),
+            ),
+            const SizedBox(width: AfSpacing.s12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title, style: AfTypography.bodyMedium),
+                  if (subtitle != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        subtitle!,
+                        style: AfTypography.bodySmall.copyWith(
+                          color: AfColors.textTertiary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AfSpacing.s8),
+            Switch.adaptive(
+              value: value,
+              onChanged: onChanged,
+              activeTrackColor: AfColors.indigo500,
+            ),
+          ],
         ),
       ),
     );
