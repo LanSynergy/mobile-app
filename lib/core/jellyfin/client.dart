@@ -28,6 +28,8 @@ const _kAetherfinUserAgent = 'Aetherfin/$_kAetherfinVersion (Android)';
 /// Hand-rolled per design spec §11.1 — community Dart SDKs are stale and
 /// the surface we need is small.
 class JellyfinClient implements MusicBackend {
+  static final _genreSplitRe = RegExp(r'[,;]');
+
   final JellyfinServer server;
   final String? accessToken;
   final String? userId;
@@ -623,7 +625,7 @@ class JellyfinClient implements MusicBackend {
     for (final m in items) {
       final raw = (m['Name'] as String?) ?? '';
       if (raw.isEmpty) continue;
-      for (final part in raw.split(RegExp(r'[,;]'))) {
+      for (final part in raw.split(_genreSplitRe)) {
         final token = part.trim();
         if (token.isEmpty) continue;
         final key = token.toLowerCase();
