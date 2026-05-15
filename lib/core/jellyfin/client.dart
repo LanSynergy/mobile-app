@@ -362,11 +362,7 @@ class JellyfinClient implements MusicBackend {
   ///
   /// Uses `/Audio/{id}/stream?Static=true` — the direct-stream endpoint
   /// which serves the original file byte-for-byte (mp3 / flac / m4a /
-  /// ogg / wav / opus). just_audio's ExoPlayer plays these natively.
-  ///
-  /// Build a streaming URL for a given track ID.
-  ///
-  /// Uses `/Audio/{id}/stream?Static=true` — the direct-stream endpoint.
+  /// ogg / wav / opus).
   ///
   /// The access token is embedded as `api_key=<token>` in the URL because
   /// libmpv/FFmpeg's HTTP client (lavf) rejects the `Authorization: MediaBrowser …`
