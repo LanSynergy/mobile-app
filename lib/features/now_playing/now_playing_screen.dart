@@ -23,6 +23,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart'
         VirtualbassSettings;
 
 import '../../core/audio/play_actions.dart';
+import '../../core/audio/player_settings_store.dart';
 import '../../core/backend/music_backend.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
@@ -1079,49 +1080,51 @@ class _EqDialogContentState extends ConsumerState<_EqDialogContent> {
 
   void _apply() {
     final svc = ref.read(playerServiceProvider);
-    unawaited(svc.updateAudioEffects((e) => e.copyWith(
-          bass: BassSettings(enabled: _bass != 0, g: _bass),
-          treble: TrebleSettings(enabled: _treble != 0, g: _treble),
-          loudnorm: LoudnormSettings(enabled: _loudnorm),
-          acompressor: AcompressorSettings(
-            enabled: _compressor,
-            threshold: 0.1,
-            ratio: 4.0,
-            attack: 20.0,
-            release: 250.0,
-          ),
-          superequalizer: SuperequalizerSettings(
-            enabled: _eqEnabled,
-            params: _buildEqParams(),
-          ),
-          rubberband: RubberbandSettings(
-            enabled: _rubberbandEnabled,
-            pitch: _pitch,
-            tempo: _tempo,
-          ),
-          crossfeed: CrossfeedSettings(
-            enabled: _crossfeed,
-            strength: _crossfeedStrength,
-          ),
-          stereowiden: StereowidenSettings(
-            enabled: _stereoWiden,
-            delay: _stereoWidenDelay,
-          ),
-          aexciter: AexciterSettings(
-            enabled: _exciter,
-            amount: _exciterAmount,
-          ),
-          crystalizer: CrystalizerSettings(
-            enabled: _crystalizer,
-            i: _crystalizerIntensity,
-          ),
-          virtualbass: VirtualbassSettings(
-            enabled: _virtualBass,
-            cutoff: _virtualBassCutoff,
-          ),
-          agate: AgateSettings(enabled: _gate),
-          deesser: DeesserSettings(enabled: _deesser),
-        )));
+    final effects = AudioEffects(
+      bass: BassSettings(enabled: _bass != 0, g: _bass),
+      treble: TrebleSettings(enabled: _treble != 0, g: _treble),
+      loudnorm: LoudnormSettings(enabled: _loudnorm),
+      acompressor: AcompressorSettings(
+        enabled: _compressor,
+        threshold: 0.1,
+        ratio: 4.0,
+        attack: 20.0,
+        release: 250.0,
+      ),
+      superequalizer: SuperequalizerSettings(
+        enabled: _eqEnabled,
+        params: _buildEqParams(),
+      ),
+      rubberband: RubberbandSettings(
+        enabled: _rubberbandEnabled,
+        pitch: _pitch,
+        tempo: _tempo,
+      ),
+      crossfeed: CrossfeedSettings(
+        enabled: _crossfeed,
+        strength: _crossfeedStrength,
+      ),
+      stereowiden: StereowidenSettings(
+        enabled: _stereoWiden,
+        delay: _stereoWidenDelay,
+      ),
+      aexciter: AexciterSettings(
+        enabled: _exciter,
+        amount: _exciterAmount,
+      ),
+      crystalizer: CrystalizerSettings(
+        enabled: _crystalizer,
+        i: _crystalizerIntensity,
+      ),
+      virtualbass: VirtualbassSettings(
+        enabled: _virtualBass,
+        cutoff: _virtualBassCutoff,
+      ),
+      agate: AgateSettings(enabled: _gate),
+      deesser: DeesserSettings(enabled: _deesser),
+    );
+    unawaited(svc.setAudioEffects(effects));
+    unawaited(PlayerSettingsStore.saveAudioEffects(effects));
   }
 
   void _resetAll() {

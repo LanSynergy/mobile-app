@@ -1,5 +1,26 @@
+import 'dart:convert';
+
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
-    show Cache, Format, Gapless, ReplayGain, ReplayGainSettings;
+    show
+        AcompressorSettings,
+        AexciterSettings,
+        AgateSettings,
+        AudioEffects,
+        BassSettings,
+        Cache,
+        CrossfeedSettings,
+        CrystalizerSettings,
+        DeesserSettings,
+        Format,
+        Gapless,
+        LoudnormSettings,
+        ReplayGain,
+        ReplayGainSettings,
+        RubberbandSettings,
+        StereowidenSettings,
+        SuperequalizerSettings,
+        TrebleSettings,
+        VirtualbassSettings;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/log.dart';
@@ -99,6 +120,112 @@ class PlayerSettingsStore {
     await p.setString(_kGapless, mode.name);
   }
 
+  /// Serialize the user-visible audio effects to JSON and persist.
+  static Future<void> saveAudioEffects(AudioEffects fx) async {
+    final p = await _prefs();
+    final map = <String, dynamic>{
+      'bass_g': fx.bass.g,
+      'bass_enabled': fx.bass.enabled,
+      'treble_g': fx.treble.g,
+      'treble_enabled': fx.treble.enabled,
+      'loudnorm_enabled': fx.loudnorm.enabled,
+      'compressor_enabled': fx.acompressor.enabled,
+      'compressor_threshold': fx.acompressor.threshold,
+      'compressor_ratio': fx.acompressor.ratio,
+      'compressor_attack': fx.acompressor.attack,
+      'compressor_release': fx.acompressor.release,
+      'eq_enabled': fx.superequalizer.enabled,
+      'eq_params': fx.superequalizer.params,
+      'rubberband_enabled': fx.rubberband.enabled,
+      'rubberband_pitch': fx.rubberband.pitch,
+      'rubberband_tempo': fx.rubberband.tempo,
+      'crossfeed_enabled': fx.crossfeed.enabled,
+      'crossfeed_strength': fx.crossfeed.strength,
+      'stereowiden_enabled': fx.stereowiden.enabled,
+      'stereowiden_delay': fx.stereowiden.delay,
+      'exciter_enabled': fx.aexciter.enabled,
+      'exciter_amount': fx.aexciter.amount,
+      'crystalizer_enabled': fx.crystalizer.enabled,
+      'crystalizer_i': fx.crystalizer.i,
+      'virtualbass_enabled': fx.virtualbass.enabled,
+      'virtualbass_cutoff': fx.virtualbass.cutoff,
+      'gate_enabled': fx.agate.enabled,
+      'deesser_enabled': fx.deesser.enabled,
+    };
+    await p.setString(_kAudioEffects, jsonEncode(map));
+  }
+
+  /// Restore audio effects from JSON.
+  static AudioEffects? loadAudioEffects(SharedPreferences p) {
+    final json = p.getString(_kAudioEffects);
+    if (json == null) return null;
+    try {
+      final m = jsonDecode(json) as Map<String, dynamic>;
+      final eqParamsRaw = m['eq_params'] as Map<String, dynamic>?;
+      final eqParams = eqParamsRaw?.map(
+            (k, v) => MapEntry(k, (v as num).toDouble()),
+          ) ??
+          const <String, double>{};
+      return AudioEffects(
+        bass: BassSettings(
+          enabled: m['bass_enabled'] as bool? ?? false,
+          g: (m['bass_g'] as num?)?.toDouble() ?? 0.0,
+        ),
+        treble: TrebleSettings(
+          enabled: m['treble_enabled'] as bool? ?? false,
+          g: (m['treble_g'] as num?)?.toDouble() ?? 0.0,
+        ),
+        loudnorm: LoudnormSettings(
+          enabled: m['loudnorm_enabled'] as bool? ?? false,
+        ),
+        acompressor: AcompressorSettings(
+          enabled: m['compressor_enabled'] as bool? ?? false,
+          threshold: (m['compressor_threshold'] as num?)?.toDouble() ?? 0.1,
+          ratio: (m['compressor_ratio'] as num?)?.toDouble() ?? 4.0,
+          attack: (m['compressor_attack'] as num?)?.toDouble() ?? 20.0,
+          release: (m['compressor_release'] as num?)?.toDouble() ?? 250.0,
+        ),
+        superequalizer: SuperequalizerSettings(
+          enabled: m['eq_enabled'] as bool? ?? false,
+          params: eqParams,
+        ),
+        rubberband: RubberbandSettings(
+          enabled: m['rubberband_enabled'] as bool? ?? false,
+          pitch: (m['rubberband_pitch'] as num?)?.toDouble() ?? 1.0,
+          tempo: (m['rubberband_tempo'] as num?)?.toDouble() ?? 1.0,
+        ),
+        crossfeed: CrossfeedSettings(
+          enabled: m['crossfeed_enabled'] as bool? ?? false,
+          strength: (m['crossfeed_strength'] as num?)?.toDouble() ?? 0.2,
+        ),
+        stereowiden: StereowidenSettings(
+          enabled: m['stereowiden_enabled'] as bool? ?? false,
+          delay: (m['stereowiden_delay'] as num?)?.toDouble() ?? 20.0,
+        ),
+        aexciter: AexciterSettings(
+          enabled: m['exciter_enabled'] as bool? ?? false,
+          amount: (m['exciter_amount'] as num?)?.toDouble() ?? 1.0,
+        ),
+        crystalizer: CrystalizerSettings(
+          enabled: m['crystalizer_enabled'] as bool? ?? false,
+          i: (m['crystalizer_i'] as num?)?.toDouble() ?? 2.0,
+        ),
+        virtualbass: VirtualbassSettings(
+          enabled: m['virtualbass_enabled'] as bool? ?? false,
+          cutoff: (m['virtualbass_cutoff'] as num?)?.toDouble() ?? 250.0,
+        ),
+        agate: AgateSettings(
+          enabled: m['gate_enabled'] as bool? ?? false,
+        ),
+        deesser: DeesserSettings(
+          enabled: m['deesser_enabled'] as bool? ?? false,
+        ),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ── Apply on startup ──────────────────────────────────────────────────────
 
   /// Reads every persisted key and replays the matching setter on [svc].
@@ -192,6 +319,11 @@ class PlayerSettingsStore {
     if (prefetch != null) {
       await tryApply('prefetchPlaylist=$prefetch',
           () => svc.setPrefetchPlaylist(prefetch));
+    }
+
+    final fx = loadAudioEffects(p);
+    if (fx != null) {
+      await tryApply('audioEffects', () => svc.setAudioEffects(fx));
     }
 
     afLog('boot', 'PlayerSettingsStore applied persisted settings');
