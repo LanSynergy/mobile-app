@@ -3,6 +3,7 @@ import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 
 import '../../utils/log.dart';
+import '../backend/music_backend.dart';
 import 'models/items.dart';
 import 'models/library.dart';
 import 'models/quality.dart';
@@ -25,7 +26,7 @@ const _kAetherfinUserAgent = 'Aetherfin/$_kAetherfinVersion (Android)';
 ///
 /// Hand-rolled per design spec §11.1 — community Dart SDKs are stale and
 /// the surface we need is small.
-class JellyfinClient {
+class JellyfinClient implements MusicBackend {
   final JellyfinServer server;
   final String? accessToken;
   final String? userId;
@@ -132,11 +133,15 @@ class JellyfinClient {
     }
   }
 
+  @override
+  ServerType get serverType => ServerType.jellyfin;
+
   /// Headers callers can use to authenticate ad-hoc requests that bypass
   /// the Dio instance — e.g. the audio source URI given to just_audio, or
   /// a CachedNetworkImage that fetches an artwork-protected endpoint.
   ///
   /// Mirrors what the Dio client sends. Empty map if no token is set.
+  @override
   Map<String, String> get authHeaders {
     final headers = <String, String>{
       'User-Agent': _kAetherfinUserAgent,
