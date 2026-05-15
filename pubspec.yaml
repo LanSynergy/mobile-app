@@ -43,6 +43,9 @@ dependencies:
   google_fonts: ^6.2.1
   cupertino_icons: ^1.0.8
 
+  # Crypto (Subsonic token auth: md5(password + salt))
+  crypto: ^3.0.6
+
   # Misc
   async: ^2.11.0
   collection: ^1.18.0
