@@ -153,6 +153,7 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
   Timer? _silenceTimer;
 
   double _bassAverage = 0.0;
+  double _prevBass    = 0.0;
   int    _cooldown    = 0;
 
   @override
@@ -190,20 +191,34 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
             if (v > rawBass) rawBass = v;
           }
 
-          // Track running bass baseline.
-          _bassAverage += (rawBass - _bassAverage) * 0.05;
+          final delta = rawBass - _prevBass;
+          _prevBass = rawBass;
 
-          // Transient detection: fire only when bass spikes above baseline.
+          // Asymmetric baseline: drops fast (0.12) so quiet passages
+          // lower the floor quickly; rises slow (0.03) so kick peaks
+          // stay well above the running average.
+          _bassAverage += (rawBass - _bassAverage) *
+              (rawBass < _bassAverage ? 0.12 : 0.03);
+
+          // Transient detection — tuned for the wide 140 dB spectrum
+          // range (-105..+35 dB). At that range a perceptually obvious
+          // 10 dB kick only yields ~1.13× in normalised [0,1] space,
+          // so the old 1.5× ratio was unreachable. Fire on either a
+          // ratio spike (1.12×) or a sharp frame-to-frame delta (0.04).
           if (_cooldown > 0) {
             _cooldown--;
-          } else if (rawBass > _bassAverage * 1.5 && rawBass > 0.02) {
+          } else if ((rawBass > _bassAverage * 1.12 || delta > 0.04) &&
+                     rawBass > 0.015) {
             _scale.value = 1.06;  // +6% bump
-            _cooldown    = 15;    // ~250ms lockout prevents chatter
+            _cooldown    = 15;    // ~125ms lockout at 120 fps
             if (!_ticker.isAnimating) _ticker.repeat();
           }
 
           _silenceTimer = Timer(const Duration(milliseconds: 300), () {
-            if (mounted) _bassAverage = 0.0;
+            if (mounted) {
+              _bassAverage = 0.0;
+              _prevBass = 0.0;
+            }
           });
         },
       );
