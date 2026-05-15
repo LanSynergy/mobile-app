@@ -357,6 +357,10 @@ class AfPlayerService extends BaseAudioHandler
   /// Real-time FFT spectrum — 64 log-spaced bands in [0, 1] at ~30 fps.
   /// No RECORD_AUDIO permission needed. Lazy: pipeline starts on first
   /// listener, stops on last cancel.
+  ///
+  /// Captured post-DSP (mpv `pcm-tap-frame`). A pre-DSP tap is not
+  /// available in mpv_audio_kit 0.1.3; the visualizer therefore
+  /// reflects processed audio when effects are active.
   Stream<FftFrame> get spectrumStream => _player.stream.spectrum;
 
   /// Configure the spectrum pipeline for visualizer use.
