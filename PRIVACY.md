@@ -6,8 +6,8 @@
 **Repository:** <https://github.com/Aetherfin/mobile-app>
 
 Short version: **Aetherfin does not collect, transmit, or sell any
-personal data.** It is a client that talks only to the Jellyfin server
-you configure. Everything else stays on your phone.
+personal data.** It is a client that talks only to the Jellyfin or
+Navidrome server you configure. Everything else stays on your phone.
 
 The rest of this document explains what data the App handles, where it
 lives, and what we (the maintainer) do and do not see.
@@ -31,27 +31,30 @@ are out of scope of this policy.
 
 | Data | Where it lives | Who sees it |
 |---|---|---|
-| Jellyfin **server URL** (e.g. `http://omahsangar.local:8097`) | `flutter_secure_storage` on your device | You + your Jellyfin server |
-| Jellyfin **username** | `flutter_secure_storage` on your device | You + your Jellyfin server |
-| Jellyfin **access token** (issued by your server on sign-in) | `flutter_secure_storage` on your device | You + your Jellyfin server |
-| Jellyfin **user ID** | `flutter_secure_storage` on your device | You + your Jellyfin server |
-| **Device ID** — random 16-byte value generated on first launch and used as Jellyfin's `DeviceId` for session bookkeeping | `flutter_secure_storage` on your device | Your Jellyfin server |
+| **Server URL** (e.g. `http://omahsangar.local:8097` for Jellyfin, `http://192.168.1.10:4533` for Navidrome) | `flutter_secure_storage` on your device | You + your server |
+| **Username** | `flutter_secure_storage` on your device | You + your server |
+| **Access token** (Jellyfin) or **password** (Navidrome — stored encrypted, used to compute per-request auth tokens) | `flutter_secure_storage` on your device | You + your server |
+| **User ID** | `flutter_secure_storage` on your device | You + your server |
+| **Server type** (Jellyfin or Navidrome/Subsonic) | `flutter_secure_storage` on your device | Only you |
+| **Device ID** — random 16-byte value generated on first launch and used as Jellyfin's `DeviceId` for session bookkeeping | `flutter_secure_storage` on your device | Your server |
 | **Settings** (audio-quality preference, crossfade, sleep-timer state, sort order, theme overrides) | `shared_preferences` on your device | Only you |
 | **Cover-art image cache** | `cached_network_image` files in the App's private cache directory | Only you |
 | **HTTP cache** of catalog requests | Dio cache files in the App's private cache directory | Only you |
-| **Lyrics (LRC files)** fetched from your Jellyfin server | In-memory only — not persisted | Only you, while playing |
+| **Lyrics (LRC files)** fetched from your server | In-memory only — not persisted | Only you, while playing |
 | **Playback state** (current track, position, queue) | In-memory + lock-screen `MediaSession` | Only you |
 | **Diagnostic logs** (`aetherfin:boot`, `aetherfin:http`, `aetherfin:data`, `aetherfin:audio`, `aetherfin:error`) | Standard Android logcat buffer (volatile, capped by the OS) | Only you, when you run `adb logcat` |
 
 **Aetherfin does not send any of the above to the maintainer or any
 third party.** The only network destination Aetherfin contacts is the
-Jellyfin server URL you provide.
+server URL you provide (Jellyfin or Navidrome).
 
-## 3. What Aetherfin sends to your Jellyfin server
+## 3. What Aetherfin sends to your server
 
-The App is a client for the Jellyfin HTTP API. When you sign in and use
-the App it sends the same requests any Jellyfin client (Finamp, the
-official web client, etc.) would send, including:
+The App is a client for either the Jellyfin HTTP API or the Subsonic
+(Navidrome) API. When you sign in and use the App it sends the same
+requests any compatible client would send, including:
+
+### 3a. Jellyfin servers
 
 - **Authentication:** `POST /Users/AuthenticateByName` (your username
   and password) — sent only once per sign-in to obtain an access token.
@@ -69,10 +72,23 @@ official web client, etc.) would send, including:
     last-played-at timestamps are updated. These can be disabled by
     your Jellyfin server administrator if desired.
 
-Your Jellyfin server logs and stores this data according to its own
+### 3b. Navidrome (Subsonic API) servers
+
+- **Authentication:** Every request carries query parameters `u`
+  (username), `t` (`md5(password + salt)`), and `s` (random salt).
+  The password itself is never sent over the wire — only the hash.
+- **Catalog reads:** `getAlbumList2.view`, `getArtists.view`,
+  `getArtist.view`, `getAlbum.view`, `search3.view`, etc.
+- **Audio streaming:** `GET /rest/stream.view?id=…` — direct
+  byte-for-byte download of the audio file.
+- **Library state writes:**
+  - `star.view` / `unstar.view` when you tap the heart icon.
+  - `scrobble.view` to report playback for play counts.
+
+Your server logs and stores this data according to its own
 configuration, which is **outside the control of the App and its
-maintainer**. Refer to your Jellyfin server administrator for its
-retention and access policy.
+maintainer**. Refer to your server administrator for its retention
+and access policy.
 
 ## 4. What Aetherfin does NOT do
 
@@ -89,13 +105,14 @@ retention and access policy.
 
 You can verify this by reading the source code at
 <https://github.com/Aetherfin/mobile-app>. The full list of network
-endpoints the App touches is enumerated in `lib/core/jellyfin/client.dart`.
+endpoints the App touches is enumerated in `lib/core/jellyfin/client.dart`
+(Jellyfin) and `lib/core/subsonic/client.dart` (Navidrome).
 
 ## 5. Android permissions Aetherfin requests
 
 | Permission | Why |
 |---|---|
-| `INTERNET` | To talk to your Jellyfin server. |
+| `INTERNET` | To talk to your Jellyfin or Navidrome server. |
 | `ACCESS_NETWORK_STATE` | So the App can react to your phone being offline. |
 | `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK` (Android 14+) | So music keeps playing when the App is backgrounded, via Android's standard media session. |
 | `WAKE_LOCK` | So the CPU stays awake long enough to decode the next chunk of audio when the screen is off. |
@@ -133,7 +150,9 @@ behavior — every HTTP call, every storage write — is visible at:
 If you want to verify the claims in this policy, the relevant files are:
 
 - `lib/core/jellyfin/client.dart` — the only file that issues HTTP
-  requests.
+  requests to Jellyfin.
+- `lib/core/subsonic/client.dart` — the only file that issues HTTP
+  requests to Navidrome (Subsonic API).
 - `lib/core/jellyfin/auth_storage.dart` — the secure-storage adapter.
 - `lib/state/providers.dart` — every data fetch the UI watches.
 - `lib/main.dart` — bootstrap and initialization.

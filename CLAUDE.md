@@ -8,27 +8,33 @@ and is updated as we learn more.
 ## 1. What Aetherfin is
 
 A native-feeling Android music player backed by a self-hosted **Jellyfin**
-server. The only first-class platform is Android. iOS may follow but is not
-considered when making trade-offs.
+or **Navidrome** server. The only first-class platform is Android. iOS may
+follow but is not considered when making trade-offs.
 
 > **North star:** Spotify's polish, Apple Music's typography, Soulseek's
 > respect for the listener. Aetherfin must read as a *premium music* app,
-> not "a Jellyfin client."
+> not "a Jellyfin/Navidrome client."
 
 ### 1.1 Mental model — what runs where
 
-Treat Jellyfin as a **file source + library state store**, nothing else.
-**Aetherfin is the player.**
+Treat the server (Jellyfin or Navidrome) as a **file source + library state
+store**, nothing else. **Aetherfin is the player.**
 
-**Jellyfin (server) is responsible for:**
+The app supports two server backends via the `MusicBackend` abstraction
+(`lib/core/backend/music_backend.dart`). `ServerType` (jellyfin | subsonic)
+is persisted in auth storage and determines which client is instantiated.
+
+**Server (Jellyfin or Navidrome) is responsible for:**
 - Storing audio files and serving the original bytes byte-for-byte.
 - Catalog metadata: titles, artists, albums, genres, durations, year, artwork.
-- Search (`/Users/{id}/Items?searchTerm=…` — never `/Search/Hints`).
-- Auth (user accounts + access tokens).
+- Search (Jellyfin: `/Users/{id}/Items?searchTerm=…` — never `/Search/Hints`;
+  Navidrome: `search3.view`).
+- Auth (Jellyfin: user accounts + access tokens; Navidrome: Subsonic token
+  auth — `md5(password + salt)`).
 - Per-user state: favorites, play counts, last-played-at, playlists.
 - LRC lyric files (stored only; the app parses them).
-- "Now Playing" telemetry display — `POST /Sessions/Playing*` exists
-  purely so the Jellyfin Dashboard widget shows who's listening to what.
+- "Now Playing" telemetry display — Jellyfin: `POST /Sessions/Playing*`;
+  Navidrome: `scrobble.view`.
 
 **Aetherfin (app) is responsible for everything else, on-device:**
 - All audio **decoding** (libmpv via `mpv_audio_kit`).
@@ -43,22 +49,28 @@ Treat Jellyfin as a **file source + library state store**, nothing else.
 - Cover-art file cache (`cached_network_image`).
 - Local settings: audio-quality preference, sleep timer, EQ/DSP, ReplayGain.
 
-**Strict consequence:** stream URLs MUST use
+**Strict consequence (Jellyfin):** stream URLs MUST use
 `/Audio/{id}/stream?Static=true` — the direct-stream endpoint. The
 universal endpoint (`/Audio/{id}/universal`) triggers server-side
 transcoding to HLS, which (1) wastes the server's CPU, (2) gives a
 codec that may not decode cleanly, and (3) was the cause of the
 "track plays but position never advances" bug.
 
-**Strict consequence #2:** stream URLs embed `api_key=<token>` as a query
-parameter because FFmpeg/libmpv rejects the `Authorization: MediaBrowser …`
-header (it contains commas, which FFmpeg treats as header-list separators).
-This is the standard approach for mpv-based Jellyfin clients.
+**Strict consequence (Navidrome):** stream URLs use
+`/rest/stream.view?id={id}&u=…&t=…&s=…&v=1.16.1&c=Aetherfin&f=json`.
+Auth is embedded as query parameters (username, token, salt) because
+libmpv/FFmpeg cannot use Subsonic header auth.
+
+**Strict consequence #2:** stream URLs embed auth as query parameters.
+Jellyfin: `api_key=<token>`. Navidrome: `u`, `t` (md5 hash), `s` (salt).
+FFmpeg/libmpv rejects the `Authorization: MediaBrowser …` header
+(commas treated as header-list separators).
 
 **Strict consequence #3:** favorites, play counts, and playlist contents
-are server-owned even though the heart icon flips locally first. The
-client does optimistic UI then `POST/DELETE /Users/{id}/FavoriteItems/
-{itemId}`. On HTTP error, revert. Never store favorite state only on-device.
+are server-owned even though the heart icon flips locally first.
+Jellyfin: `POST/DELETE /Users/{id}/FavoriteItems/{itemId}`.
+Navidrome: `star.view` / `unstar.view`.
+On HTTP error, revert. Never store favorite state only on-device.
 
 ## 2. Tech stack (exact versions)
 
@@ -67,11 +79,12 @@ client does optimistic UI then `POST/DELETE /Users/{id}/FavoriteItems/
 | Framework | Flutter **3.41.9 stable**, Dart **3.11.5** | `flutter --version` must match. CI pins this. |
 | State | `flutter_riverpod` ^2.6 | `FutureProvider.autoDispose`, `StateNotifierProvider`. No `ChangeNotifier` for Riverpod providers. |
 | Routing | `go_router` ^14.7 | Shell route with bottom nav. See `lib/app/router.dart`. |
-| HTTP | `dio` ^5.7 + `dio_cache_interceptor` ^3.5 | One Dio per `JellyfinClient`. Auth header baked into `BaseOptions.headers`. |
+| HTTP | `dio` ^5.7 + `dio_cache_interceptor` ^3.5 | One Dio per client. Jellyfin: auth header in `BaseOptions.headers`. Subsonic: auth as query params. |
+| Crypto | `crypto` ^3.0.6 | Subsonic token auth: `md5(password + salt)`. |
 | Audio | `mpv_audio_kit` ^0.1.3 | libmpv-backed player. Replaces `just_audio` + `audio_session`. |
 | Lock-screen | `audio_service` ^0.18 | `AfPlayerService extends BaseAudioHandler`. |
 | Storage | `flutter_secure_storage` ^9.2 (creds + deviceId), `shared_preferences` ^2.3 (settings) | Never store creds in shared_preferences. |
-| Discovery | `multicast_dns` ^0.3.2 | mDNS scan for `_jellyfin._tcp`. |
+| Discovery | `multicast_dns` ^0.3.2 | mDNS scan for `_jellyfin._tcp`. Navidrome: probed via Subsonic `ping.view`. |
 | Imagery | `cached_network_image` ^3.4, `flutter_svg` ^2.0, `palette_generator_master` ^1.1 | All cover art through `cached_network_image`. |
 | Fonts | `google_fonts` ^6.2, `cupertino_icons` ^1.0.8 | Inter Variable + JetBrains Mono. cupertino_icons satisfies transitive font validator. |
 | UUID | `uuid` ^4.5 | Fallback device ID generation (cryptographically random). |
@@ -195,19 +208,33 @@ lib/
 │  │  │                               Syncs _trackQueue via _player.stream.playlist.first after command.
 │  │  │                               Track-ID guard in playlist listener prevents displayed song change.
 │  │  │                               _originalQueue stores unshuffled order.
-│  │  ├─ play_actions.dart          ← Cross-cutting play entry points
+│  │  ├─ play_actions.dart          ← Cross-cutting play entry points (uses MusicBackend)
 │  │  │                               PlayActions.playQueue shuffles before loading when shuffle is ON.
-│  │  ├─ jellyfin_playback_reporter.dart ← POST /Sessions/Playing* lifecycle
+│  │  ├─ jellyfin_playback_reporter.dart ← Playback reporting lifecycle (uses MusicBackend)
+│  │  │                               Jellyfin: POST /Sessions/Playing*
+│  │  │                               Navidrome: scrobble.view
 │  │  │                               Serialized progress loop (not Timer.periodic), 5s timeouts.
 │  │  ├─ live_update_service.dart   ← Android 16+ Live Update chip (in-flight guard)
 │  │  └─ spectral_extractor.dart    ← palette_generator → Spectral triple (LRU cache)
+│  ├─ backend/
+│  │  └─ music_backend.dart ← Abstract MusicBackend interface. Both JellyfinClient and
+│  │                          SubsonicClient implement this. Defines all server operations:
+│  │                          library browsing, search, favorites, playlists, streaming,
+│  │                          playback reporting, lyrics. ServerType enum exported here.
 │  ├─ battery_opt.dart      ← Dart bridge to BatteryOptPlugin (aetherfin.battery_opt channel)
 │  ├─ demo/                 ← DemoLibrary — bundled albums/artists for onboarding preview
 │  ├─ jellyfin/
-│  │  ├─ client.dart        ← THE ONLY file that speaks HTTP to Jellyfin
-│  │  ├─ auth_storage.dart  ← secure_storage wrappers (token, userId, deviceId)
+│  │  ├─ client.dart        ← THE ONLY file that speaks HTTP to Jellyfin (implements MusicBackend)
+│  │  ├─ auth_storage.dart  ← secure_storage wrappers (token, userId, deviceId, serverType)
 │  │  ├─ discovery.dart     ← mDNS scan + public-info probe
 │  │  └─ models/            ← Plain Dart classes — NO json_serializable codegen
+│  │                          server.dart includes ServerType enum + JellyfinAuth (used by both backends)
+│  ├─ subsonic/
+│  │  └─ client.dart        ← THE ONLY file that speaks HTTP to Navidrome (implements MusicBackend)
+│  │                          Subsonic/OpenSubsonic REST API. Token auth: md5(password + salt).
+│  │                          Random salt per request. All endpoints: albums, artists, tracks,
+│  │                          playlists (CRUD), search, favorites, genres, lyrics, similar songs,
+│  │                          scrobbling. Stream/cover art URLs embed auth as query params.
 │  └─ lyrics/               ← LRC parser (sync + unsynced)
 ├─ features/                ← One folder per top-level screen
 │  ├─ home/        library/  album/      artist/     genre/
@@ -222,6 +249,8 @@ lib/
 │  │                            Go to album, Go to artist) and album tiles (Play album, Go to artist).
 ├─ state/
 │  └─ providers.dart        ← All Riverpod providers in one file (intentional)
+│                             musicBackendProvider creates JellyfinClient or SubsonicClient
+│                             based on auth.serverType. jellyfinClientProvider kept as alias.
 ├─ widgets/                 ← Shared visual atoms
 │  ├─ mini_player.dart      ← 56 dp floating mini-player
 │  ├─ audio_visual_scrubber.dart ← Combined FFT visualizer + progress scrubber.
@@ -352,6 +381,40 @@ Storage IO has a 5s timeout; `AudioService.init` has a 10s timeout.
 `authProvider` changes. The `redirect` callback sends signed-in users
 to `/home` and anonymous users to `/`. Every onboarding route must
 start with `/onboarding/`.
+
+### 5.4 Subsonic (Navidrome) auth
+
+Navidrome uses the Subsonic API authentication scheme. Every request
+carries these query parameters (not headers):
+
+| Param | Value |
+|---|---|
+| `u` | Username |
+| `t` | `md5(password + salt)` — computed fresh per request |
+| `s` | Random salt (unique per request to prevent replay) |
+| `v` | `1.16.1` (Subsonic API version) |
+| `c` | `Aetherfin` (client identifier) |
+| `f` | `json` (response format) |
+
+Rules:
+- **Password is stored in `JellyfinAuth.accessToken`** (encrypted in
+  `flutter_secure_storage`). Needed to compute the per-request token.
+- **Salt is random per request** — never reuse salts.
+- **No Authorization header** — Subsonic auth is purely query-param-based.
+- **Stream and cover art URLs embed auth** — same params as above appended
+  to `/rest/stream.view?id=…` and `/rest/getCoverArt.view?id=…`.
+- The canonical implementation lives in `SubsonicClient._authParams()`
+  at `lib/core/subsonic/client.dart`. **Do not duplicate this logic.**
+
+### 5.5 Server detection during onboarding
+
+The server discovery screen (`server_discovery_screen.dart`) probes
+servers in order:
+1. Try Jellyfin `publicInfo()` — if it responds, server is Jellyfin.
+2. If that fails, try Subsonic `ping.view` — Navidrome responds with a
+   Subsonic API envelope even on bad credentials.
+3. The detected `ServerType` is passed to the sign-in screen via the
+   router's `extra` parameter.
 
 ## 6. Navigation rules
 
@@ -504,11 +567,22 @@ PII (usernames, server URLs) must be redacted in release builds.
 
 ## 13. Data layer conventions
 
-- `JellyfinClient` is the **only** file that speaks HTTP.
-- All endpoints assert `userId` via `_assertUser()`.
+- Two HTTP clients, each the **only** file that speaks to its server:
+  - `JellyfinClient` (`lib/core/jellyfin/client.dart`) — Jellyfin REST API.
+  - `SubsonicClient` (`lib/core/subsonic/client.dart`) — Subsonic/OpenSubsonic API (Navidrome).
+- Both implement `MusicBackend` (`lib/core/backend/music_backend.dart`).
+  All providers and UI code use `musicBackendProvider` which returns the
+  correct client based on `auth.serverType`.
+- `JellyfinClient` endpoints assert `userId` via `_assertUser()`.
+  `SubsonicClient` endpoints embed auth via `_authParams()`.
 - No `json_serializable`. Models are hand-written in `lib/core/jellyfin/models/`.
-- Image URLs embed the `tag` query param for HTTP cacheability.
+  Both clients parse responses into the same `AfTrack`, `AfAlbum`, `AfArtist`,
+  `AfPlaylist` types.
+- Image URLs: Jellyfin embeds the `tag` query param for HTTP cacheability.
+  Navidrome uses `/rest/getCoverArt.view?id=…` with auth params.
 - Search queries are normalized (trim + lowercase) before hitting the provider. Minimum 2 characters.
+- **Subsonic API gaps:** `resumeItems()` returns empty list (no Subsonic
+  equivalent). `movePlaylistItem()` is a no-op (logs warning).
 
 ## 14. PR & CI rules
 
@@ -545,6 +619,11 @@ PII (usernames, server URLs) must be redacted in release builds.
 24. **"Implement shuffle by rebuilding the queue in Dart."** No. Use mpv's native `setShuffle(true/false)` which calls `playlist-shuffle`/`playlist-unshuffle` without interrupting playback. Sync `_trackQueue` by awaiting `_player.stream.playlist.first` after the command. Store `_originalQueue` for unshuffle.
 25. **"The utility row has 6 icons."** No. It's 4: Lyrics, Save, Queue, More. Sleep timer, playback speed, audio output, and EQ are behind the More popup.
 26. **"Apply EQ/DSP via a separate audio pipeline."** No. Use `player.updateAudioEffects(AudioEffects(...))`. The engine handles DSP natively.
+27. **"Build a parallel HTTP client for Navidrome."** Don't build from scratch. Implement the `MusicBackend` interface in `SubsonicClient`. All providers already use `musicBackendProvider`.
+28. **"Use `jellyfinClientProvider` for backend operations."** No. Use `musicBackendProvider` — it returns the correct client (Jellyfin or Subsonic) based on `auth.serverType`. `jellyfinClientProvider` is only for Jellyfin-specific operations like `publicInfo()` and `authenticate()`.
+29. **"Store the Subsonic auth token."** No. Store the **password** in `accessToken` (encrypted in secure storage). The token is `md5(password + salt)` and must be recomputed per request with a fresh random salt.
+30. **"Reuse a Subsonic salt across requests."** No. Each request generates a fresh random salt to prevent replay attacks.
+31. **"Navidrome supports all Jellyfin endpoints."** No. Subsonic API has gaps: no `resumeItems` equivalent (returns empty), no `movePlaylistItem` (no-op), no API key auth (always username + password).
 
 ## 16. Glossary
 
@@ -564,6 +643,12 @@ PII (usernames, server URLs) must be redacted in release builds.
 - **`ReplayGainMode`**: mpv_audio_kit enum for ReplayGain behavior (off, track, album). Set via `setReplayGain`, observed via `replayGainStream`.
 - **`_originalQueue`**: Field in `AfPlayerService` storing the unshuffled track order. Restored when shuffle is toggled off via mpv's `playlist-unshuffle`.
 - **`playNext()` / `addToQueue()`**: `AfPlayerService` methods for inserting tracks relative to the current position. Used by long-press context menus on track rows and album tiles.
+- **`MusicBackend`**: Abstract interface (`lib/core/backend/music_backend.dart`) defining all server operations. `JellyfinClient` and `SubsonicClient` both implement it. Providers use `musicBackendProvider` to get the active backend.
+- **`musicBackendProvider`**: Riverpod provider that creates the correct `MusicBackend` implementation based on `auth.serverType`. Replaced `jellyfinClientProvider` as the primary backend accessor.
+- **`SubsonicClient`**: HTTP client for Navidrome/Subsonic servers (`lib/core/subsonic/client.dart`). Uses token auth (`md5(password + salt)`) with random salt per request. Implements `MusicBackend`.
+- **`ServerType`**: Enum (`jellyfin` | `subsonic`) persisted in auth storage. Determines which client `musicBackendProvider` instantiates. Defined in `lib/core/jellyfin/models/server.dart`, re-exported from `music_backend.dart`.
+- **`SubsonicApiError`**: Exception thrown by `SubsonicClient` when the Subsonic API returns a non-OK status in its response envelope.
+- **Subsonic token auth**: Authentication scheme used by Navidrome. Token = `md5(password + salt)`. Sent as query params `u`, `t`, `s` on every request. Password stored in `JellyfinAuth.accessToken`.
 
 ---
 

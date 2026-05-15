@@ -55,3 +55,9 @@
 - [x] Run `flutter analyze --no-fatal-infos` — 0 errors, 0 warnings
 - [x] Run `flutter test` — all 24 tests pass
 - [x] Push all changes to `navidrome` branch
+
+## Merge & Documentation
+- [x] Merge `navidrome` branch into `main`
+- [x] Update CLAUDE.md — multi-backend architecture, Subsonic auth, source-tree, glossary, AI gotchas
+- [x] Update README.md — Navidrome support, dual-backend architecture diagram, requirements
+- [x] Update PRIVACY.md — dual-backend data handling, Subsonic API section
