@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
     show AudioParams, Cache, Format, Gapless, ReplayGain, ReplayGainSettings;
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/audio/player_settings_store.dart';
 import '../../design_tokens/tokens.dart';
@@ -275,18 +277,62 @@ class SettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: AfSpacing.s24),
             _SectionLabel('About'),
+            FutureBuilder<PackageInfo>(
+              future: PackageInfo.fromPlatform(),
+              builder: (context, snap) {
+                final version = snap.data != null
+                    ? 'v${snap.data!.version} (${snap.data!.buildNumber})'
+                    : '...';
+                return ListTile(
+                  leading: const Icon(Icons.info_outline_rounded),
+                  title: Text('Aetherfin $version'),
+                  subtitle: Text(
+                    'Jellyfin-backed music player. FOSS.',
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                  tileColor: AfColors.surfaceBase,
+                  shape: const RoundedRectangleBorder(
+                      borderRadius: AfRadii.borderMd),
+                );
+              },
+            ),
+            const SizedBox(height: AfSpacing.s8),
             ListTile(
-              leading: const Icon(Icons.info_outline_rounded),
-              title: const Text('Aetherfin v0.1.0'),
+              leading: const Icon(Icons.code_rounded),
+              title: const Text('Source code'),
               subtitle: Text(
-                'Jellyfin-backed music player. FOSS.',
+                'github.com/Aetherfin/mobile-app',
                 style: AfTypography.bodySmall.copyWith(
                   color: AfColors.textTertiary,
                 ),
               ),
+              trailing: const Icon(Icons.open_in_new_rounded, size: 18),
               tileColor: AfColors.surfaceBase,
               shape: const RoundedRectangleBorder(
                   borderRadius: AfRadii.borderMd),
+              onTap: () => _launchUrl('https://github.com/Aetherfin/mobile-app'),
+            ),
+            const SizedBox(height: AfSpacing.s8),
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: const Text('Licenses'),
+              subtitle: Text(
+                'Open-source licenses',
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textTertiary,
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              tileColor: AfColors.surfaceBase,
+              shape: const RoundedRectangleBorder(
+                  borderRadius: AfRadii.borderMd),
+              onTap: () => showLicensePage(
+                context: context,
+                applicationName: 'Aetherfin',
+                applicationLegalese: '© 2025 Aetherfin contributors',
+              ),
             ),
           ],
         ),
@@ -840,4 +886,8 @@ class _ReplayGainDialogContentState
       ),
     );
   }
+}
+
+void _launchUrl(String url) {
+  launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 }
