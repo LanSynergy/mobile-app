@@ -1,5 +1,6 @@
 import 'dart:async' show unawaited;
 
+import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop, FftFrame;
 
@@ -747,9 +748,14 @@ final lyricsProvider =
 final showNavLabelsProvider = StateProvider<bool>((ref) => false);
 
 final reducedMotionProvider = Provider.autoDispose<bool>((ref) {
-  // Re-evaluated whenever MediaQuery changes — UIs read this via
-  // MediaQuery.disableAnimations OR via this provider in non-widget code.
-  return false;
+  // Read the platform accessibility setting so animations can be toned down
+  // for users who prefer reduced motion. WidgetsBinding exposes this without
+  // needing a BuildContext, making it safe to use in non-widget code.
+  try {
+    return WidgetsBinding.instance.accessibilityFeatures.reduceMotion;
+  } catch (_) {
+    return false;
+  }
 });
 
 /// ─────────────────────────────────────────────────────────────────────────
