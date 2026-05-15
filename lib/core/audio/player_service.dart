@@ -401,8 +401,8 @@ class AfPlayerService extends BaseAudioHandler
         maxDb: 35.0,
         emitInterval: Duration(milliseconds: 8),
       ));
-    } catch (_) {
-      // Player not ready yet — spectrum will use defaults.
+    } catch (e) {
+      afLog('audio', 'configureSpectrum failed', error: e);
     }
   }
 
@@ -548,8 +548,8 @@ class AfPlayerService extends BaseAudioHandler
           .timeout(const Duration(seconds: 2));
 
       _syncTrackQueueFromMpv(newPlaylist.items, newPlaylist.index);
-    } catch (_) {
-      // Timeout — try reading state directly as fallback.
+    } catch (e) {
+      afLog('audio', 'shuffle playlist stream timeout, using state fallback', error: e);
       final mpvItems = _player.state.playlist.items;
       final newIdx = _player.state.playlist.index;
       _syncTrackQueueFromMpv(mpvItems, newIdx);
@@ -957,8 +957,8 @@ class AfPlayerService extends BaseAudioHandler
       await File(path).writeAsBytes(raw.bytes);
       _coverPath = path;
       _updateMediaItem();
-    } catch (_) {
-      // Disk full / sandbox — fall back to network URL in _updateMediaItem.
+    } catch (e) {
+      afLog('audio', 'cover art persist failed', error: e);
     }
   }
 }

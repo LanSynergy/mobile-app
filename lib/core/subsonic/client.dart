@@ -188,7 +188,9 @@ class SubsonicClient implements MusicBackend {
       try {
         final detail = await album(a.id);
         if (detail != null) tracks.addAll(detail.tracks);
-      } catch (_) {}
+      } catch (e) {
+        afLog('subsonic', 'recentlyPlayed album fetch failed id=${a.id}', error: e);
+      }
     }
     return tracks.take(limit).toList(growable: false);
   }
@@ -348,7 +350,8 @@ class SubsonicClient implements MusicBackend {
               ?.cast<Map<String, dynamic>>() ??
           const [];
       return songs.map(_parseTrack).toList(growable: false);
-    } catch (_) {
+    } catch (e) {
+      afLog('subsonic', 'getTopSongs failed, falling back to search', error: e);
       // getTopSongs may not be supported; fall back to search
       final root = await _get('search3', {
         'query': artistObj.name,
@@ -510,7 +513,8 @@ class SubsonicClient implements MusicBackend {
               ?.cast<Map<String, dynamic>>() ??
           const [];
       return songs.map(_parseTrack).toList(growable: false);
-    } catch (_) {
+    } catch (e) {
+      afLog('subsonic', 'getSimilarSongs2 failed', error: e);
       // getSimilarSongs2 may not be supported; return empty
       return const [];
     }
@@ -550,7 +554,8 @@ class SubsonicClient implements MusicBackend {
         }
       }
       return buf.toString();
-    } catch (_) {
+    } catch (e) {
+      afLog('subsonic', 'getLyricsBySongId failed', error: e);
       // Fall back to legacy getLyrics (requires artist + title)
       return null;
     }
@@ -600,8 +605,8 @@ class SubsonicClient implements MusicBackend {
         'id': trackId,
         'submission': false,
       });
-    } catch (_) {
-      // Best-effort; don't crash if scrobble isn't supported
+    } catch (e) {
+      afLog('subsonic', 'reportPlaybackStart scrobble failed', error: e);
     }
   }
 
@@ -621,8 +626,8 @@ class SubsonicClient implements MusicBackend {
         'id': trackId,
         'submission': true,
       });
-    } catch (_) {
-      // Best-effort
+    } catch (e) {
+      afLog('subsonic', 'reportPlaybackStop scrobble failed', error: e);
     }
   }
 

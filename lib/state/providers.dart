@@ -357,7 +357,8 @@ final spectralProvider =
     return await ref
         .watch(spectralExtractorProvider)
         .fromImageUrl(track!.imageUrl!, headers: headers);
-  } catch (_) {
+  } catch (e) {
+    afLog('spectral', 'spectral extraction failed', error: e);
     return Spectral.fallback;
   }
 });
@@ -448,8 +449,8 @@ final playlistTrackIdsProvider =
           ids.add(t.id);
         }
       }
-    } catch (_) {
-      // Skip playlists that fail to load.
+    } catch (e) {
+      afLog('data', 'playlist track fetch failed id=${pl.id}', error: e);
     }
   }
   return ids;
