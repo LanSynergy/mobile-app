@@ -611,11 +611,11 @@ class JellyfinClient implements MusicBackend {
         'SortBy': 'SortName',
         'SortOrder': 'Ascending',
         'Limit': limit,
+        'EnableImages': true,
+        'EnableImageTypes': 'Primary',
       },
     );
     final items = _parseItemList(res.data);
-    // Cycle through a small palette so the row reads as colourful without
-    // requiring a custom server-side colour assignment.
     const palette = <String>[
       '#5644C9', '#A89DEC', '#3FD18C', '#FF7A59',
       '#F8C42D', '#FF6FB5', '#3DB6FF', '#FF4D6D',
@@ -625,12 +625,25 @@ class JellyfinClient implements MusicBackend {
     for (final m in items) {
       final raw = (m['Name'] as String?) ?? '';
       if (raw.isEmpty) continue;
+      final id = (m['Id'] as String?) ?? '';
+      // Build image URL from genre's primary image tag
+      final imageTags = m['ImageTags'] as Map<String, dynamic>?;
+      final primaryTag = imageTags?['Primary'] as String?;
+      String? imageUrl;
+      if (id.isNotEmpty && primaryTag != null) {
+        final base = stripTrailingSlash(server.baseUrl);
+        imageUrl = '$base/Items/$id/Images/Primary?tag=$primaryTag&quality=80&maxWidth=480';
+      }
       for (final part in raw.split(_genreSplitRe)) {
         final token = part.trim();
         if (token.isEmpty) continue;
         final key = token.toLowerCase();
         if (seen.add(key)) {
-          result.add(AfGenre(token, palette[result.length % palette.length]));
+          result.add(AfGenre(
+            token,
+            palette[result.length % palette.length],
+            imageUrl: imageUrl,
+          ));
         }
       }
     }

@@ -181,7 +181,7 @@ class LocalDb {
   Future<List<AfGenre>> allGenres() async {
     final d = await db;
     final rows = await d.rawQuery('''
-      SELECT genre, COUNT(*) as count
+      SELECT genre, COUNT(*) as count, MIN(cover_path) as cover_path
       FROM tracks
       WHERE genre != ''
       GROUP BY genre
@@ -194,7 +194,12 @@ class LocalDb {
     return rows.asMap().entries.map((e) {
       final r = e.value;
       final name = (r['genre'] as String?) ?? '';
-      return AfGenre(name, palette[e.key % palette.length]);
+      final coverPath = r['cover_path'] as String?;
+      return AfGenre(
+        name,
+        palette[e.key % palette.length],
+        imageUrl: coverPath != null ? 'file://$coverPath' : null,
+      );
     }).where((g) => g.name.isNotEmpty).toList();
   }
 

@@ -197,9 +197,10 @@ class AfPlaylist {
   });
 }
 
-/// A music genre — used for the Genres row on Home.
+/// A music genre — used for the Genres row on Home and Library.
 class AfGenre {
   final String name;
-  final String tint; // hex, used for the color block
-  const AfGenre(this.name, this.tint);
+  final String tint; // hex, used as fallback color
+  final String? imageUrl; // representative album art for this genre
+  const AfGenre(this.name, this.tint, {this.imageUrl});
 }

@@ -316,6 +316,7 @@ class _SectionBody extends ConsumerWidget {
               return GenreTile(
                 name: g.name,
                 tint: tint,
+                imageUrl: g.imageUrl,
                 width: double.infinity,
                 height: double.infinity,
                 onTap: () => context.push('/genre/${Uri.encodeComponent(g.name)}'),

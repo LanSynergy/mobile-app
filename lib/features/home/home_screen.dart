@@ -220,6 +220,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     return GenreTile(
                       name: g.name,
                       tint: _hex(g.tint),
+                      imageUrl: g.imageUrl,
                       onTap: () => context.push('/genre/${Uri.encodeComponent(g.name)}'),
                     );
                   },

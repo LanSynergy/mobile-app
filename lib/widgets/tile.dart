@@ -85,10 +85,11 @@ class Tile extends StatelessWidget {
   }
 }
 
-/// Genre tile — solid color block, no artwork. Used on Home's Genres row.
+/// Genre tile — artwork background with gradient overlay, or solid color fallback.
 class GenreTile extends StatelessWidget {
   final String name;
   final Color tint;
+  final String? imageUrl;
   final VoidCallback? onTap;
   final double width;
   final double height;
@@ -97,6 +98,7 @@ class GenreTile extends StatelessWidget {
     super.key,
     required this.name,
     required this.tint,
+    this.imageUrl,
     this.onTap,
     this.width = 152,
     this.height = 96,
@@ -110,17 +112,52 @@ class GenreTile extends StatelessWidget {
       child: Container(
         width: width,
         height: height,
-        padding: const EdgeInsets.all(AfSpacing.s12),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: tint,
           borderRadius: AfRadii.borderMd,
         ),
-        alignment: Alignment.bottomLeft,
-        child: Text(
-          name,
-          style: AfTypography.titleSmall.copyWith(
-            color: AfColors.textOnPrimary,
-          ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Artwork background (if available)
+            if (imageUrl != null)
+              Artwork(
+                url: imageUrl,
+                size: width > height ? width : height,
+                radius: BorderRadius.zero,
+                fit: BoxFit.cover,
+              ),
+            // Gradient overlay for text readability
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    tint.withValues(alpha: imageUrl != null ? 0.7 : 0.0),
+                    tint.withValues(alpha: imageUrl != null ? 0.9 : 0.0),
+                  ],
+                  stops: const [0.0, 0.6, 1.0],
+                ),
+              ),
+            ),
+            // Genre name
+            Positioned(
+              left: AfSpacing.s12,
+              right: AfSpacing.s12,
+              bottom: AfSpacing.s12,
+              child: Text(
+                name,
+                style: AfTypography.titleSmall.copyWith(
+                  color: AfColors.textOnPrimary,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ),
     );
