@@ -456,6 +456,7 @@ class _ReactiveTransport extends ConsumerWidget {
       shuffleOn: shuffleOn,
       loopMode: loopMode,
       accent: spectral.energy,
+      abLoopActive: ref.read(playerServiceProvider).abLoopA != null,
       onShuffle: () {
         final svc = ref.read(playerServiceProvider);
         unawaited(
@@ -470,6 +471,38 @@ class _ReactiveTransport extends ConsumerWidget {
           Loop.file     => Loop.off,
         };
         unawaited(svc.setAfLoopMode(next).catchError((_) {}));
+      },
+      onAbLoop: () {
+        final svc = ref.read(playerServiceProvider);
+        if (svc.abLoopA == null) {
+          // First tap: set A marker
+          svc.setAbLoopA(svc.position);
+          ScaffoldMessenger.of(context)
+            ..clearSnackBars()
+            ..showSnackBar(const SnackBar(
+              content: Text('Loop start set — tap again for end'),
+              duration: Duration(seconds: 2),
+            ));
+        } else if (svc.abLoopB == null) {
+          // Second tap: set B marker
+          svc.setAbLoopB(svc.position);
+          ScaffoldMessenger.of(context)
+            ..clearSnackBars()
+            ..showSnackBar(const SnackBar(
+              content: Text('A-B loop active — tap to clear'),
+              duration: Duration(seconds: 2),
+            ));
+        } else {
+          // Third tap: clear both
+          svc.setAbLoopA(null);
+          svc.setAbLoopB(null);
+          ScaffoldMessenger.of(context)
+            ..clearSnackBars()
+            ..showSnackBar(const SnackBar(
+              content: Text('A-B loop cleared'),
+              duration: Duration(seconds: 1),
+            ));
+        }
       },
       onPlayPause: () {
         final svc = ref.read(playerServiceProvider);
@@ -592,6 +625,8 @@ class _TransportRow extends StatelessWidget {
   final VoidCallback onNext;
   final VoidCallback onShuffle;
   final VoidCallback onRepeat;
+  final VoidCallback onAbLoop;
+  final bool abLoopActive;
 
   const _TransportRow({
     required this.isPlaying,
@@ -604,6 +639,8 @@ class _TransportRow extends StatelessWidget {
     required this.onNext,
     required this.onShuffle,
     required this.onRepeat,
+    required this.onAbLoop,
+    this.abLoopActive = false,
   });
 
   @override
@@ -613,7 +650,7 @@ class _TransportRow extends StatelessWidget {
       children: [
         _TransportButton(
           icon: Icons.shuffle_rounded,
-          size: 28,
+          size: 24,
           color: shuffleOn ? accent : AfColors.textPrimary,
           onTap: onShuffle,
         ),
@@ -636,11 +673,17 @@ class _TransportRow extends StatelessWidget {
           icon: loopMode == Loop.file
               ? Icons.repeat_one_rounded
               : Icons.repeat_rounded,
-          size: 28,
+          size: 24,
           color: loopMode == Loop.off
               ? AfColors.textPrimary
               : accent,
           onTap: onRepeat,
+        ),
+        _TransportButton(
+          icon: Icons.replay_rounded,
+          size: 24,
+          color: abLoopActive ? accent : AfColors.textTertiary,
+          onTap: onAbLoop,
         ),
       ],
     );
