@@ -27,6 +27,7 @@ import '../features/search/search_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
 import '../features/smart_playlist/smart_playlist_detail_screen.dart';
+import '../features/smart_playlist/smart_playlist_edit_screen.dart';
 import '../features/smart_playlist/smart_playlist_list_screen.dart';
 import '../widgets/app_shell.dart';
 
@@ -226,9 +227,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/smart-playlist/new',
       parentNavigatorKey: _rootKey,
-      builder: (context, state) => const Scaffold(
-        body: Center(child: Text('Create smart playlist — coming soon')),
-      ),
+      builder: (context, state) => const SmartPlaylistEditScreen(),
     ),
     GoRoute(
       path: '/smart-playlist/:id',
@@ -239,9 +238,8 @@ final _router = GoRouter(
     GoRoute(
       path: '/smart-playlist/:id/edit',
       parentNavigatorKey: _rootKey,
-      builder: (context, state) => const Scaffold(
-        body: Center(child: Text('Edit smart playlist — coming soon')),
-      ),
+      builder: (_, state) => SmartPlaylistEditScreen(
+          playlistId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/genre/:name',
