@@ -68,6 +68,11 @@ class LiveUpdateService {
     }
     if (!_supported) return;
 
+    // Request POST_NOTIFICATIONS permission on Android 13+.
+    // Samsung auto-grants this; stock Android shows a dialog.
+    // Non-blocking: if denied, the live update simply won't post.
+    unawaited(_requestPermission());
+
     _subs.add(_player.currentTrackStream.listen((t) {
       _track = t;
       if (t == null) {
@@ -119,6 +124,21 @@ class LiveUpdateService {
   // -------------------------------------------------------------------------
   // Internals
   // -------------------------------------------------------------------------
+
+  /// Request POST_NOTIFICATIONS permission. On Samsung this is auto-granted;
+  /// on stock Android 13+ it shows a system dialog. If denied, the live
+  /// update notification simply won't appear — playback is unaffected.
+  Future<void> _requestPermission() async {
+    try {
+      final granted =
+          await _channel.invokeMethod<bool>('requestPermission') ?? false;
+      _log('requestPermission result=$granted');
+    } on PlatformException catch (e) {
+      _log('requestPermission failed: $e');
+    } on MissingPluginException {
+      // pass
+    }
+  }
 
   bool _isAndroid() {
     try {

@@ -1,5 +1,6 @@
 package dev.aetherfin.aetherfin.live_update
 
+import android.app.Activity
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -10,13 +11,17 @@ import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Build
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import io.flutter.plugin.common.PluginRegistry
 
 /**
  * Bridge between the Flutter side (`lib/core/audio/live_update_service.dart`)
@@ -45,9 +50,10 @@ import io.flutter.plugin.common.MethodChannel.Result
  *
  * Methods:
  *   - `isSupported() -> Boolean` — true on API 36+, false otherwise.
- *   - `start(args) -> Void` — post the live update for the first time.
- *   - `update(args) -> Void` — refresh the existing notification's
- *     position / playing state. No-op if `start` hasn't been called.
+ *   - `requestPermission() -> Boolean` — requests POST_NOTIFICATIONS on
+ *     Android 13+. Returns true if granted (or pre-13). Samsung auto-grants.
+ *   - `start(args) -> Boolean` — post the live update for the first time.
+ *   - `update(args) -> Boolean` — refresh the existing notification.
  *   - `stop() -> Void` — cancel the notification.
  *
  * `args` shape (Map<String, Object>):
@@ -58,14 +64,17 @@ import io.flutter.plugin.common.MethodChannel.Result
  *   - `isPlaying`: Boolean — whether the track is actively playing
  *   - `shortCriticalText`: String — formatted "M:SS / M:SS", shown on
  *     the status-bar chip when there's room
+ *   - `artworkPath`: String? — local file path to album artwork
  */
-class LiveUpdatePlugin : FlutterPlugin, MethodCallHandler {
+class LiveUpdatePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
+    PluginRegistry.RequestPermissionsResultListener {
 
     companion object {
         private const val CHANNEL_NAME = "aetherfin.live_update"
         private const val NOTIFICATION_CHANNEL_ID = "aetherfin.live_update"
         private const val NOTIFICATION_CHANNEL_NAME = "Now Playing (Live Update)"
         private const val NOTIFICATION_ID = 0x4146_1701 // "AF" + arbitrary
+        private const val PERMISSION_REQUEST_CODE = 20241
 
         /** Android 16. Matches `Build.VERSION_CODES.BAKLAVA` on SDKs that
          *  expose the constant; using the int literal keeps this file
@@ -82,8 +91,10 @@ class LiveUpdatePlugin : FlutterPlugin, MethodCallHandler {
 
     private var channel: MethodChannel? = null
     private var appContext: Context? = null
+    private var activity: Activity? = null
     private var lastPostMs: Long = 0L
     private var isLive: Boolean = false
+    private var pendingPermissionResult: Result? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         appContext = binding.applicationContext
@@ -98,9 +109,67 @@ class LiveUpdatePlugin : FlutterPlugin, MethodCallHandler {
         appContext = null
     }
 
+    // -- ActivityAware --
+
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        activity = binding.activity
+        binding.addRequestPermissionsResultListener(this)
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        activity = null
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        activity = binding.activity
+        binding.addRequestPermissionsResultListener(this)
+    }
+
+    override fun onDetachedFromActivity() {
+        activity = null
+    }
+
+    // -- PermissionsResultListener --
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ): Boolean {
+        if (requestCode != PERMISSION_REQUEST_CODE) return false
+        val granted = grantResults.isNotEmpty() &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED
+        pendingPermissionResult?.success(granted)
+        pendingPermissionResult = null
+        return true
+    }
+
     override fun onMethodCall(call: MethodCall, result: Result) {
         when (call.method) {
             "isSupported" -> result.success(Build.VERSION.SDK_INT >= SDK_LIVE_UPDATES)
+            "requestPermission" -> {
+                if (Build.VERSION.SDK_INT < 33) {
+                    // Pre-Android 13: no runtime permission needed.
+                    result.success(true)
+                    return
+                }
+                if (hasPostNotificationsPermission()) {
+                    result.success(true)
+                    return
+                }
+                val act = activity
+                if (act == null) {
+                    // No activity available — can't show dialog.
+                    result.success(false)
+                    return
+                }
+                pendingPermissionResult = result
+                ActivityCompat.requestPermissions(
+                    act,
+                    arrayOf("android.permission.POST_NOTIFICATIONS"),
+                    PERMISSION_REQUEST_CODE,
+                )
+            }
             "start" -> {
                 if (!isApiSupported()) {
                     result.success(false); return
@@ -110,9 +179,6 @@ class LiveUpdatePlugin : FlutterPlugin, MethodCallHandler {
                     result.error("ARGS", "expected a map argument", null); return
                 }
                 if (!hasPostNotificationsPermission()) {
-                    // Without runtime POST_NOTIFICATIONS, the system silently
-                    // drops the notification. Report it explicitly so the
-                    // Dart side can request the permission and retry.
                     result.success(false); return
                 }
                 ensureNotificationChannel()
@@ -160,9 +226,6 @@ class LiveUpdatePlugin : FlutterPlugin, MethodCallHandler {
         val ctx = appContext ?: return
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (nm.getNotificationChannel(NOTIFICATION_CHANNEL_ID) != null) return
-        // IMPORTANCE_LOW: no sound or pop-up, but the notification still
-        // shows in the shade and is eligible for Live-Update promotion
-        // (IMPORTANCE_MIN would disqualify it per the docs).
         val channel = NotificationChannel(
             NOTIFICATION_CHANNEL_ID,
             NOTIFICATION_CHANNEL_NAME,
@@ -178,7 +241,7 @@ class LiveUpdatePlugin : FlutterPlugin, MethodCallHandler {
      * Build and post the ProgressStyle notification. Idempotent — re-posts
      * are gated by the [MIN_UPDATE_INTERVAL_MS] throttle unless [force].
      */
-    @Suppress("DEPRECATION") // Notification.ProgressStyle is API 36+ only.
+    @Suppress("DEPRECATION")
     private fun postNotification(args: Map<*, *>, force: Boolean) {
         val ctx = appContext ?: return
         if (Build.VERSION.SDK_INT < SDK_LIVE_UPDATES) return
@@ -206,8 +269,6 @@ class LiveUpdatePlugin : FlutterPlugin, MethodCallHandler {
             }
         } else null
 
-        // Reflection-free reference: Notification.ProgressStyle is API 36+;
-        // we already gated on SDK_INT above so the linker won't trip.
         val style = Notification.ProgressStyle()
             .setStyledByProgress(true)
             .setProgress(positionMs.toInt())
@@ -226,26 +287,13 @@ class LiveUpdatePlugin : FlutterPlugin, MethodCallHandler {
             .setShowWhen(false)
             .setStyle(style)
             .setContentIntent(contentIntent)
-            // The chip needs SOMETHING textual to show alongside the
-            // small icon. "M:SS / M:SS" reads naturally and fits within
-            // the chip's 96dp width as long as durations are < 100min.
             .setShortCriticalText(shortCriticalText)
 
-        // Set large icon (artwork) for the chip and notification.
         if (largeIcon != null) {
             builder.setLargeIcon(largeIcon)
         }
 
-        // Promotion request — the system decides whether to honour it based on
-        // Live-Updates settings + OEM policy. We can't call
-        // `builder.setRequestPromotedOngoing(true)` directly because that method
-        // landed in API 36.1 (Notification.Builder diff 36 → 36.1) and Flutter
-        // 3.41.9 pins compileSdk to 36.0. The platform reads the same flag via
-        // the documented Notification.EXTRA_REQUEST_PROMOTED_ONGOING string
-        // ("android.requestPromotedOngoing") on every API 36+ build, so set it
-        // directly on the extras Bundle. The constant value is part of the
-        // Android public API contract; the *Java symbol* exposing it is the
-        // thing that's gated on 36.1+.
+        // Request promotion to Live Update chip.
         builder.extras.putBoolean("android.requestPromotedOngoing", true)
 
         val notification = builder.build()
