@@ -71,6 +71,7 @@ class PlayerSettingsStore {
   static const _kAudioEffects = 'af.audio_effects_json';
   static const _kEqPresets = 'af.eq_presets_json';
   static const _kActivePreset = 'af.active_eq_preset';
+  static const _kDspMasterEnabled = 'af.dsp_master_enabled';
 
   static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
@@ -127,6 +128,18 @@ class PlayerSettingsStore {
   static Future<void> saveGapless(Gapless mode) async {
     final p = await _prefs();
     await p.setString(_kGapless, mode.name);
+  }
+
+  /// Persist the DSP master switch state.
+  static Future<void> saveDspMasterEnabled(bool enabled) async {
+    final p = await _prefs();
+    await p.setBool(_kDspMasterEnabled, enabled);
+  }
+
+  /// Load the DSP master switch state. Defaults to true (effects active).
+  static Future<bool> loadDspMasterEnabled() async {
+    final p = await _prefs();
+    return p.getBool(_kDspMasterEnabled) ?? true;
   }
 
   /// Serialize the user-visible audio effects to JSON and persist.
@@ -483,7 +496,11 @@ class PlayerSettingsStore {
 
     final fx = loadAudioEffects(p);
     if (fx != null) {
-      await tryApply('audioEffects', () => svc.setAudioEffects(fx));
+      // Only apply effects if the master switch was ON when last saved.
+      final masterEnabled = p.getBool(_kDspMasterEnabled) ?? true;
+      if (masterEnabled) {
+        await tryApply('audioEffects', () => svc.setAudioEffects(fx));
+      }
     }
 
     afLog('boot', 'PlayerSettingsStore applied persisted settings');

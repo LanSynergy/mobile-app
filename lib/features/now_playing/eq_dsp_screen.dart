@@ -298,14 +298,17 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     _crusherBits = fx.acrusher.bits;
     _crusherMix = fx.acrusher.mix;
     _crusherSamples = fx.acrusher.samples;
-    // Master toggle — on if any effect is active
-    _masterEnabled = _bass != 0 || _treble != 0 || _loudnorm || _compressor ||
-        _eqEnabled || _rubberbandEnabled || _crossfeed || _stereoWiden ||
-        _exciter || _crystalizer || _virtualBass || _gate || _deesser ||
-        _echoEnabled || _phaser || _flanger || _chorus || _tremolo ||
-        _vibrato || _crusher;
+    // Master toggle — load persisted state
+    _loadMasterState();
     // Load presets
     _loadPresets();
+  }
+
+  Future<void> _loadMasterState() async {
+    final enabled = await PlayerSettingsStore.loadDspMasterEnabled();
+    if (mounted && enabled != _masterEnabled) {
+      setState(() => _masterEnabled = enabled);
+    }
   }
 
   Future<void> _loadPresets() async {
@@ -580,6 +583,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             activeTrackColor: AfColors.indigo500,
             onChanged: (v) {
               setState(() => _masterEnabled = v);
+              unawaited(PlayerSettingsStore.saveDspMasterEnabled(v));
               if (v) {
                 _apply();
               } else {
