@@ -11,11 +11,13 @@ import '../../widgets/track_row.dart';
 
 enum LibrarySection { albums, artists, songs, playlists, genres, liked }
 
-/// Sections available in local mode (no playlists, no liked — those are server concepts).
+/// Sections available in local mode (no server playlists, no liked — those are server concepts).
+/// Smart playlists are accessible from the playlists tab.
 const _localSections = [
   LibrarySection.albums,
   LibrarySection.artists,
   LibrarySection.songs,
+  LibrarySection.playlists,
   LibrarySection.genres,
 ];
 
@@ -253,15 +255,50 @@ class _SectionBody extends ConsumerWidget {
         });
       case LibrarySection.playlists:
         final playlists = ref.watch(allPlaylistsProvider);
+        final smartPlaylists = ref.watch(smartPlaylistsProvider);
+        final smartCount = smartPlaylists.maybeWhen(
+          data: (list) => list.length,
+          orElse: () => 0,
+        );
         return playlists.maybeWhen(
           data: (list) => ListView.separated(
             padding: padding.add(const EdgeInsets.only(
                 bottom: AfSpacing.bottomInsetWithMiniAndNav)),
-            itemCount: list.length,
+            itemCount: list.length + 1, // +1 for smart playlists tile
             separatorBuilder: (context, index) =>
                 const SizedBox(height: AfSpacing.s8),
             itemBuilder: (context, i) {
-              final p = list[i];
+              // First item: Smart Playlists entry
+              if (i == 0) {
+                return ListTile(
+                  leading: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: AfRadii.borderSm,
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AfColors.semanticWarning, AfColors.semanticError],
+                      ),
+                    ),
+                    child: const Icon(Icons.auto_awesome_rounded,
+                        color: Colors.white),
+                  ),
+                  title: Text('Smart Playlists', style: AfTypography.titleSmall),
+                  subtitle: Text(
+                    '$smartCount playlists',
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                  tileColor: AfColors.surfaceBase,
+                  shape: const RoundedRectangleBorder(
+                      borderRadius: AfRadii.borderMd),
+                  onTap: () => context.push('/smart-playlists'),
+                );
+              }
+              final p = list[i - 1];
               return ListTile(
                 leading: Container(
                   width: 48,
