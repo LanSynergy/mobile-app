@@ -57,6 +57,15 @@ class LiveUpdateService {
   /// early return).
   Future<void> attach() async {
     if (!_isAndroid()) return;
+
+    // Samsung One UI already promotes the audio_service MediaStyle
+    // notification to a status-bar chip natively. Posting a second
+    // ProgressStyle notification just creates a duplicate in the shade.
+    if (await _checkIsSamsung()) {
+      _log('Samsung detected — skipping LiveUpdate (One UI handles chip)');
+      return;
+    }
+
     try {
       final ok = await _channel.invokeMethod<bool>('isSupported');
       _supported = ok ?? false;
@@ -69,8 +78,7 @@ class LiveUpdateService {
     if (!_supported) return;
 
     // Request POST_NOTIFICATIONS permission on Android 13+.
-    // Samsung auto-grants this; stock Android shows a dialog.
-    // Non-blocking: if denied, the live update simply won't post.
+    // Stock Android shows a dialog; if denied, the live update won't post.
     unawaited(_requestPermission());
 
     _subs.add(_player.currentTrackStream.listen((t) {
@@ -144,9 +152,20 @@ class LiveUpdateService {
     try {
       return Platform.isAndroid;
     } catch (_) {
-      // Platform throws on web; we don't ship web but this keeps the
-      // class harmless if someone ever runs the app in a Flutter web
-      // shell.
+      return false;
+    }
+  }
+
+  /// Samsung One UI already promotes MediaStyle notifications to a
+  /// status-bar chip. Posting a ProgressStyle duplicate is redundant.
+  /// Checks via MethodChannel since Dart can't read Build.MANUFACTURER.
+  Future<bool> _checkIsSamsung() async {
+    try {
+      final result = await _channel.invokeMethod<bool>('isSamsungDevice');
+      return result ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
       return false;
     }
   }

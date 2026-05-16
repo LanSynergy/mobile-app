@@ -147,6 +147,9 @@ class LiveUpdatePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     override fun onMethodCall(call: MethodCall, result: Result) {
         when (call.method) {
             "isSupported" -> result.success(Build.VERSION.SDK_INT >= SDK_LIVE_UPDATES)
+            "isSamsungDevice" -> result.success(
+                Build.MANUFACTURER.equals("samsung", ignoreCase = true)
+            )
             "requestPermission" -> {
                 if (Build.VERSION.SDK_INT < 33) {
                     // Pre-Android 13: no runtime permission needed.
