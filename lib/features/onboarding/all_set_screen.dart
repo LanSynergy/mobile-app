@@ -50,8 +50,7 @@ class _AllSetScreenState extends ConsumerState<AllSetScreen>
               const SizedBox(height: AfSpacing.s8),
               Text(
                 auth == null
-                    ? 'Demo library loaded. You can connect a Jellyfin '
-                        'server later from Settings.'
+                    ? 'Your library is ready.'
                     : 'Connected to ${auth.server.name}. Your library is '
                         'ready.',
                 style: AfTypography.bodyLarge.copyWith(

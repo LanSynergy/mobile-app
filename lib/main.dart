@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import 'app/app.dart';
 import 'app/router.dart' show notifyAuthChanged, setRouterContainer;
 import 'core/audio/player_service.dart';
+import 'core/local/app_mode_store.dart';
 import 'core/jellyfin/auth_storage.dart';
 import 'core/jellyfin/models/server.dart';
 import 'design_tokens/tokens.dart';
@@ -98,6 +99,10 @@ Future<void> main() async {
       initialAuth = null;
     }
 
+    // Load persisted app mode (server | local | null).
+    final persistedMode = await AppModeStore.load();
+    _boot('appMode=${persistedMode?.name ?? "null"}');
+
     // ── Phase 2: Native media engine ─────────────────────────────────────
     // MPV must be initialized before any Player() is constructed.
     MpvAudioKit.ensureInitialized();
@@ -138,6 +143,8 @@ Future<void> main() async {
       overrides: [
         deviceIdProvider.overrideWithValue(deviceId),
         initialAuthProvider.overrideWithValue(initialAuth),
+        if (persistedMode != null)
+          appModeProvider.overrideWith((ref) => persistedMode),
         playerServiceProvider.overrideWith((ref) {
           wirePlayerService(ref, handler);
           return handler;

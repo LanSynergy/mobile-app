@@ -26,7 +26,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
     final name = auth?.userName ?? 'You';
-    final serverName = auth?.server.name ?? 'Demo library';
+    final serverName = auth?.server.name ?? 'Local library';
 
     final tracksAsync = ref.watch(allTracksProvider);
     final albumsAsync = ref.watch(allAlbumsProvider);
