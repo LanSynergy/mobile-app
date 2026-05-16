@@ -5,13 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../design_tokens/tokens.dart';
 import '../../utils/log.dart';
 
-/// Mockup 01 — Welcome.
-///
-///   Centered brand mark (56dp) over a soft indigo gradient.
-///   Wordmark below the mark.
-///   Tagline "Music. Your way."
-///   Primary CTA "Get started" → Server discovery.
-///   Secondary "Skip — try demo" → Home (uses bundled demo library).
+/// Welcome screen — first screen on fresh install.
+/// "Get started" navigates to mode selection (server vs local).
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
@@ -68,12 +63,7 @@ class WelcomeScreen extends StatelessWidget {
                 const Spacer(),
                 _PrimaryCta(
                   label: 'Get started',
-                  onTap: () => context.go('/onboarding/discover'),
-                ),
-                const SizedBox(height: AfSpacing.s12),
-                TextButton(
-                  onPressed: () => context.go('/home'),
-                  child: const Text('Skip — try with demo library'),
+                  onTap: () => context.go('/onboarding/mode'),
                 ),
                 const SizedBox(height: AfSpacing.s24),
               ],

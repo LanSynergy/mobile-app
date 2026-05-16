@@ -54,17 +54,21 @@ final _router = GoRouter(
     final loc = state.matchedLocation;
     final inOnboarding = loc == '/' || loc.startsWith('/onboarding');
 
+    // Migration: if user has auth but no mode set (pre-local-mode install),
+    // treat as server mode.
+    final effectiveMode = mode ?? (auth != null ? AppMode.server : null);
+
     // Server mode: redirect based on auth state
-    if (mode == AppMode.server) {
+    if (effectiveMode == AppMode.server) {
       if (auth != null && inOnboarding) return '/home';
       if (auth == null && !inOnboarding) return '/onboarding/discover';
     }
 
     // Local mode: redirect to home if onboarding is done
-    if (mode == AppMode.local && inOnboarding) return '/home';
+    if (effectiveMode == AppMode.local && inOnboarding) return '/home';
 
-    // No mode chosen yet: stay on onboarding
-    if (mode == null && !inOnboarding) return '/';
+    // No mode chosen yet and no auth: stay on onboarding
+    if (effectiveMode == null && !inOnboarding) return '/';
 
     return null;
   },
@@ -229,6 +233,11 @@ final _router = GoRouter(
 final routerProvider = Provider<GoRouter>((ref) {
   ref.listen<JellyfinAuth?>(
     authProvider,
+    (prev, next) => _authRefresh._notify(),
+    fireImmediately: false,
+  );
+  ref.listen<AppMode?>(
+    appModeProvider,
     (prev, next) => _authRefresh._notify(),
     fireImmediately: false,
   );
