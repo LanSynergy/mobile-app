@@ -553,9 +553,9 @@ class AfPlayerService extends BaseAudioHandler
         // delay caused by mpv processing hundreds of entries before
         // starting playback.
         //
-        // Suppress playlist sync during queue building — mpv emits
-        // playlist events as items are added, which would incorrectly
-        // update _currentIndex and emit wrong tracks.
+        // Suppress playlist sync during queue building AND for a short
+        // window after — mpv delivers playlist events asynchronously,
+        // so they may arrive after the awaits complete.
         _suppressPlaylistSync = true;
 
         await _player.open(medias[safeIndex], play: true);
@@ -575,7 +575,12 @@ class AfPlayerService extends BaseAudioHandler
         // mpv's playlist is now: [before...] [target=playing] [after...]
         // which matches _trackQueue order. Update _currentIndex to match.
         _currentIndex = safeIndex;
-        _suppressPlaylistSync = false;
+
+        // Keep suppression active for 500ms to catch delayed playlist
+        // events that arrive after the awaits complete.
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _suppressPlaylistSync = false;
+        });
       }
     } catch (e, stack) {
       _suppressPlaylistSync = false;
