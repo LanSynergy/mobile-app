@@ -7,15 +7,28 @@ and is updated as we learn more.
 
 ## 1. What Aetherfin is
 
-A native-feeling Android music player backed by a self-hosted **Jellyfin**
-or **Navidrome** server. The only first-class platform is Android. iOS may
-follow but is not considered when making trade-offs.
+A native-feeling Android music player that operates in one of two modes:
+- **Server mode** — streams from a self-hosted **Jellyfin** or **Navidrome** server.
+- **Local mode** — plays audio files from device storage via SAF (Storage Access Framework).
+
+The only first-class platform is Android. iOS may follow but is not
+considered when making trade-offs.
 
 > **North star:** Spotify's polish, Apple Music's typography, Soulseek's
 > respect for the listener. Aetherfin must read as a *premium music* app,
 > not "a Jellyfin/Navidrome client."
 
-### 1.1 Mental model — what runs where
+### 1.1 App modes
+
+The user picks a mode during onboarding. Only one mode is active at a time.
+Mode is persisted in `shared_preferences` via `AppModeStore`. Switching
+mode returns to onboarding.
+
+```dart
+enum AppMode { server, local }
+```
+
+### 1.2 Mental model — what runs where (Server mode)
 
 Treat the server (Jellyfin or Navidrome) as a **file source + library state
 store**, nothing else. **Aetherfin is the player.**
@@ -36,7 +49,19 @@ is persisted in auth storage and determines which client is instantiated.
 - "Now Playing" telemetry display — Jellyfin: `POST /Sessions/Playing*`;
   Navidrome: `scrobble.view`.
 
-**Aetherfin (app) is responsible for everything else, on-device:**
+### 1.3 Mental model — Local mode
+
+In local mode there is no server. The app scans device folders via SAF,
+extracts metadata using Android's `MediaMetadataRetriever`, caches it in
+a local SQLite database (`sqflite`), and plays files via `content://` URIs.
+
+**Local mode provides:**
+- Albums, Artists, Songs, Genres (parsed from file tags)
+- Cover art (embedded in files, cached to disk)
+- Full playback: queue, shuffle, loop, gapless, visualizer, EQ/DSP
+- No favorites, playlists, or playback reporting (no server state)
+
+**Aetherfin (app) is responsible for everything, on-device:**
 - All audio **decoding** (libmpv via `mpv_audio_kit`).
 - Buffering, gapless transitions, output routing, position tracking.
 - Queue management (order, shuffle, repeat, reorder).
@@ -46,8 +71,9 @@ is persisted in auth storage and determines which client is instantiated.
 - FFT-driven artwork pulse (sub-bass transient detector).
 - Spectral color extraction from artwork (`palette_generator_master`).
 - Lock-screen / notification media-session integration (`audio_service`).
-- Cover-art file cache (`cached_network_image`).
+- Cover-art file cache (`cached_network_image` for server, `Image.file` for local).
 - Local settings: audio-quality preference, sleep timer, EQ/DSP, ReplayGain.
+- **Local mode only:** metadata scanning, SQLite cache, SAF folder management.
 
 **Strict consequence (Jellyfin):** stream URLs MUST use
 `/Audio/{id}/stream?Static=true` — the direct-stream endpoint. The
@@ -83,7 +109,7 @@ On HTTP error, revert. Never store favorite state only on-device.
 | Crypto | `crypto` ^3.0.6 | Subsonic token auth: `md5(password + salt)`. |
 | Audio | `mpv_audio_kit` ^0.1.3 | libmpv-backed player. Replaces `just_audio` + `audio_session`. |
 | Lock-screen | `audio_service` ^0.18 | `AfPlayerService extends BaseAudioHandler`. |
-| Storage | `flutter_secure_storage` ^9.2 (creds + deviceId), `shared_preferences` ^2.3 (settings) | Never store creds in shared_preferences. |
+| Storage | `flutter_secure_storage` ^9.2 (creds + deviceId), `shared_preferences` ^2.3 (settings), `sqflite` ^2.3 (local metadata cache) | Never store creds in shared_preferences. |
 | Discovery | `multicast_dns` ^0.3.2 | mDNS scan for `_jellyfin._tcp`. Navidrome: probed via Subsonic `ping.view`. |
 | Imagery | `cached_network_image` ^3.4, `flutter_svg` ^2.0, `palette_generator_master` ^1.1 | All cover art through `cached_network_image`. |
 | Fonts | `google_fonts` ^6.2, `cupertino_icons` ^1.0.8 | Inter Variable + JetBrains Mono. cupertino_icons satisfies transitive font validator. |
@@ -222,7 +248,12 @@ lib/
 │  │                          library browsing, search, favorites, playlists, streaming,
 │  │                          playback reporting, lyrics. ServerType enum exported here.
 │  ├─ battery_opt.dart      ← Dart bridge to BatteryOptPlugin (aetherfin.battery_opt channel)
-│  ├─ demo/                 ← DemoLibrary — bundled albums/artists for onboarding preview
+│  ├─ local/
+│  │  ├─ app_mode_store.dart    ← Persist/restore AppMode (server|local) via SharedPreferences
+│  │  ├─ local_db.dart          ← SQLite schema (tracks + folders tables) + query methods
+│  │  ├─ local_library.dart     ← High-level interface: scan, query albums/artists/tracks/genres
+│  │  ├─ metadata_scanner.dart  ← Orchestrates SAF scan: list files → read tags → insert DB
+│  │  └─ saf_picker.dart        ← Dart bridge to SafPlugin (aetherfin.saf MethodChannel)
 │  ├─ jellyfin/
 │  │  ├─ client.dart        ← THE ONLY file that speaks HTTP to Jellyfin (implements MusicBackend)
 │  │  ├─ auth_storage.dart  ← secure_storage wrappers (token, userId, deviceId, serverType)
@@ -278,15 +309,22 @@ lib/
 
 ```
 android/app/src/main/kotlin/dev/aetherfin/aetherfin/
-├─ MainActivity.kt            ← Registers LiveUpdatePlugin + BatteryOptPlugin
+├─ MainActivity.kt            ← Registers LiveUpdatePlugin + BatteryOptPlugin + SafPlugin
 ├─ battery/
 │  └─ BatteryOptPlugin.kt     ← MethodChannel: aetherfin.battery_opt
 │                               ActivityAware. Methods:
 │                               isIgnoringBatteryOptimizations() → bool
 │                               requestIgnoreBatteryOptimizations() → bool
-└─ live_update/
-   └─ LiveUpdatePlugin.kt     ← MethodChannel: aetherfin.live_update
-                                Android 16+ ProgressStyle Live Update chip
+├─ live_update/
+│  └─ LiveUpdatePlugin.kt     ← MethodChannel: aetherfin.live_update
+│                               Android 16+ ProgressStyle Live Update chip
+└─ saf/
+   └─ SafPlugin.kt            ← MethodChannel: aetherfin.saf
+                                ActivityAware. Methods:
+                                pickFolder() → String? (tree URI)
+                                listAudioFiles(uri) → List<Map> (recursive scan)
+                                readMetadata(uri) → Map (MediaMetadataRetriever)
+                                readCoverArt(uri) → ByteArray? (embedded art)
 ```
 
 ## 4. Design spec — non-negotiables

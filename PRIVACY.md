@@ -6,8 +6,9 @@
 **Repository:** <https://github.com/Aetherfin/mobile-app>
 
 Short version: **Aetherfin does not collect, transmit, or sell any
-personal data.** It is a client that talks only to the Jellyfin or
-Navidrome server you configure. Everything else stays on your phone.
+personal data.** In server mode, it talks only to the Jellyfin or
+Navidrome server you configure. In local mode, it reads files from
+your device and never contacts any server. Everything stays on your phone.
 
 The rest of this document explains what data the App handles, where it
 lives, and what we (the maintainer) do and do not see.
@@ -37,8 +38,9 @@ are out of scope of this policy.
 | **User ID** | `flutter_secure_storage` on your device | You + your server |
 | **Server type** (Jellyfin or Navidrome/Subsonic) | `flutter_secure_storage` on your device | Only you |
 | **Device ID** — random 16-byte value generated on first launch and used as Jellyfin's `DeviceId` for session bookkeeping | `flutter_secure_storage` on your device | Your server |
-| **Settings** (audio-quality preference, crossfade, sleep-timer state, sort order, theme overrides) | `shared_preferences` on your device | Only you |
-| **Cover-art image cache** | `cached_network_image` files in the App's private cache directory | Only you |
+| **Settings** (audio-quality preference, crossfade, sleep-timer state, sort order, theme overrides, app mode) | `shared_preferences` on your device | Only you |
+| **Local music metadata** (title, artist, album, duration — cached from file tags) | `sqflite` database in the App's private directory | Only you |
+| **Cover-art image cache** | `cached_network_image` files (server) or extracted art files (local) in the App's private cache directory | Only you |
 | **HTTP cache** of catalog requests | Dio cache files in the App's private cache directory | Only you |
 | **Lyrics (LRC files)** fetched from your server | In-memory only — not persisted | Only you, while playing |
 | **Playback state** (current track, position, queue) | In-memory + lock-screen `MediaSession` | Only you |
