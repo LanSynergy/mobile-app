@@ -434,6 +434,8 @@ class AfPlayerService extends BaseAudioHandler
   }
 
   Duration get position => _player.state.position;
+  Duration get duration => _player.state.duration;
+  Stream<Duration> get durationStream => _player.stream.duration;
   List<AfTrack> get currentQueue => List.unmodifiable(_trackQueue);
   AfTrack? get currentTrack =>
       (_currentIndex >= 0 && _currentIndex < _trackQueue.length)
@@ -898,6 +900,14 @@ class AfPlayerService extends BaseAudioHandler
 
     _subs.add(_player.stream.rate.listen((_) => _updatePlaybackState()));
 
+    // When mpv probes the file and reports duration, update the MediaItem
+    // so the OS notification shows the correct seekbar length.
+    _subs.add(_player.stream.duration.listen((dur) {
+      if (dur > Duration.zero) {
+        _updateMediaItem();
+      }
+    }));
+
     // Persist embedded cover art to a temp file for the OS media widget.
     _subs.add(_player.stream.coverArt.listen(_persistCover));
   }
@@ -975,13 +985,17 @@ class AfPlayerService extends BaseAudioHandler
       artUri = Uri.parse(track.imageUrl!);
     }
 
+    // Use mpv's duration as source of truth; fall back to track metadata.
+    final mpvDur = _player.state.duration;
+    final effectiveDuration = mpvDur > Duration.zero ? mpvDur : track.duration;
+
     mediaItem.add(
       MediaItem(
         id: track.id,
         title: track.title,
         artist: track.artistName,
         album: track.albumName,
-        duration: track.duration == Duration.zero ? null : track.duration,
+        duration: effectiveDuration == Duration.zero ? null : effectiveDuration,
         artUri: artUri,
         extras: {
           'albumId': track.albumId,

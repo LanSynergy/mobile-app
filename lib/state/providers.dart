@@ -338,6 +338,12 @@ final playerQueueProvider = StreamProvider.autoDispose<List<AfTrack>>((ref) {
 /// AsyncValue dedup which suppresses identical Duration values.
 final positionStreamProvider = StateProvider<Duration>((ref) => Duration.zero);
 
+/// Live track duration from mpv. Updated alongside position polling.
+/// This is the source of truth — not AfTrack.duration from the API,
+/// which can be 0 if the server doesn't report it or if the track
+/// hasn't been fully probed yet.
+final durationStreamProvider = StateProvider<Duration>((ref) => Duration.zero);
+
 /// Last playback error message. Null when no error. UI watches this to
 /// show error snackbars.
 final playbackErrorProvider = StateProvider<String?>((ref) => null);
@@ -348,11 +354,24 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
   Timer.periodic(const Duration(milliseconds: 100), (_) {
     final pos = svc.position;
     ref.read(positionStreamProvider.notifier).state = pos;
+    // Also poll duration — mpv reports it once the file is probed,
+    // which may be after the track metadata was already emitted.
+    final dur = svc.duration;
+    if (dur > Duration.zero) {
+      ref.read(durationStreamProvider.notifier).state = dur;
+    }
   });
 
   // Also forward reactive stream events for immediate response to seeks.
   svc.positionStream.listen((pos) {
     ref.read(positionStreamProvider.notifier).state = pos;
+  });
+
+  // Forward duration stream for immediate response when mpv probes the file.
+  svc.durationStream.listen((dur) {
+    if (dur > Duration.zero) {
+      ref.read(durationStreamProvider.notifier).state = dur;
+    }
   });
 }
 

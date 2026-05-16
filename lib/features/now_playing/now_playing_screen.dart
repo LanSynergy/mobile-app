@@ -392,7 +392,12 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
   Widget build(BuildContext context) {
     final position = ref.watch(positionStreamProvider);
     final spectral = ref.watch(currentSpectralProvider);
-    final duration = widget.track.duration;
+    final mpvDuration = ref.watch(durationStreamProvider);
+    // Use mpv's reported duration as source of truth. Fall back to
+    // track metadata only if mpv hasn't probed the file yet.
+    final duration = mpvDuration > Duration.zero
+        ? mpvDuration
+        : widget.track.duration;
 
     // Only use engine position if NOT dragging — prevents the playhead
     // from stuttering between the drag position and the engine's real

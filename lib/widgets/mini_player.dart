@@ -37,7 +37,8 @@ class MiniPlayer extends ConsumerWidget {
         );
     final position = ref.watch(positionStreamProvider);
     final spectral = ref.watch(currentSpectralProvider);
-    final duration = track.duration;
+    final mpvDuration = ref.watch(durationStreamProvider);
+    final duration = mpvDuration > Duration.zero ? mpvDuration : track.duration;
     final ringProgress = duration.inMilliseconds == 0
         ? 0.0
         : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
