@@ -43,10 +43,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final albumsAsync = ref.watch(recentlyAddedAlbumsProvider);
-    final recentTracksAsync = ref.watch(recentlyPlayedTracksProvider);
-    final artistsAsync = ref.watch(allArtistsProvider);
-    final genresAsync = ref.watch(allGenresProvider);
+    final mode = ref.watch(appModeProvider);
+    final isLocal = mode == AppMode.local;
+    final albumsAsync = isLocal
+        ? ref.watch(localAlbumsProvider)
+        : ref.watch(recentlyAddedAlbumsProvider);
+    final recentTracksAsync = isLocal
+        ? ref.watch(localTracksProvider)
+        : ref.watch(recentlyPlayedTracksProvider);
+    final artistsAsync = isLocal
+        ? ref.watch(localArtistsProvider)
+        : ref.watch(allArtistsProvider);
+    final genresAsync = isLocal
+        ? ref.watch(localGenresProvider)
+        : ref.watch(allGenresProvider);
 
     return ColoredBox(
       color: AfColors.surfaceCanvas,
