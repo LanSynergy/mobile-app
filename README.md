@@ -45,6 +45,7 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 - Lock-screen and notification controls
 - Sleep timer with presets and end-of-track mode
 - Instant Mix radio (server-generated similar tracks queue)
+- **Local file playback** — play music from device storage via SAF (no server needed)
 
 ### Audio
 - 86-effect DSP rack via mpv's ffmpeg filter pipeline
@@ -82,13 +83,13 @@ Grab the latest APK from [Releases](https://github.com/Aetherfin/mobile-app/rele
 ### Requirements
 
 - Android 7.0+
-- A reachable [Jellyfin 10.8+](https://jellyfin.org/downloads/server) or [Navidrome 0.49+](https://www.navidrome.org/docs/installation/) server
-- At least one music library on the server
+- **Server mode:** A reachable [Jellyfin 10.8+](https://jellyfin.org/downloads/server) or [Navidrome 0.49+](https://www.navidrome.org/docs/installation/) server
+- **Local mode:** Audio files on your device (pick a folder during setup)
 
 ### First run
 
-1. Enter your server URL (or let mDNS find it on your LAN)
-2. Sign in
+1. Choose mode: **Server** (stream from Jellyfin/Navidrome) or **Local** (play files from device)
+2. Server: enter URL + sign in. Local: pick a music folder + scan.
 3. Play something
 
 ---

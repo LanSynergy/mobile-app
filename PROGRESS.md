@@ -153,3 +153,52 @@
 - [x] `flutter test` — 27 tests pass
 - [x] `.gitattributes` for consistent LF line endings
 - [x] `core.autocrlf=input` for cross-platform compatibility
+
+---
+
+# Local Media Player Mode — Progress
+
+## Phase 1: Foundation
+- [x] Add sqflite and path dependencies
+- [x] Create AppMode enum and appModeProvider
+- [x] Persist app mode in shared_preferences (AppModeStore)
+- [x] Create LocalDb — sqflite schema for tracks/folders with query methods
+- [x] Create SafPlugin.kt — Android platform channel (folder picker, file listing, metadata, cover art)
+- [x] Create SafPicker — Dart bridge with typed models
+
+## Phase 2: Metadata Scanning
+- [x] MetadataScanner — SAF file listing + tag extraction + cover art caching
+- [x] LocalLibrary — high-level query interface
+- [x] Cover art extraction (embedded tags → cache dir)
+- [x] Incremental scan (lastModified check)
+- [x] Scan progress reporting via StateProvider
+
+## Phase 3: Onboarding & Mode Selection
+- [x] ModeSelectScreen — server vs local choice
+- [x] LocalSetupScreen — folder picker + scan progress
+- [x] Router routes for /onboarding/mode and /onboarding/local-setup
+- [x] Router redirect respects AppMode
+- [x] Remove demo mode — delete DemoLibrary, replace all fallbacks
+
+## Phase 4: Library Integration
+- [x] Local-mode providers (localAlbums, localArtists, localTracks, localGenres)
+- [x] Library screen uses local providers when appMode == local
+- [x] Home screen uses local providers in local mode
+- [x] Search queries local SQLite DB in local mode
+- [x] Album/artist detail providers handle local:* IDs
+
+## Phase 5: Playback
+- [x] PlayActions handles local mode (content:// URIs, no auth headers)
+- [x] Artwork widget loads file:// cover art from disk
+- [x] Playback reporting disabled in local mode
+- [x] Favorites no-op in local mode (no server state)
+
+## Phase 6: Settings & Polish
+- [x] Music folders section in settings (local mode only)
+- [x] Re-scan library button
+- [x] Switch mode option (returns to onboarding)
+- [x] Docs updated (README, PROGRESS)
+
+## Quality
+- [x] flutter analyze — 0 issues
+- [x] flutter test — 27 tests pass
