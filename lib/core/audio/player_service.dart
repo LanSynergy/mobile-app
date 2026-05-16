@@ -54,6 +54,19 @@ class AfPlayerService extends BaseAudioHandler
   int _coverCounter = 0;
   String? _coverPath;
 
+  /// Path to artwork downloaded from a network URL (when embedded cover
+  /// art is not available). Used to provide a local file:// URI to the
+  /// OS media notification so Samsung One UI can render it as background.
+  String? _networkCoverPath;
+
+  /// Auth headers for downloading artwork from the server.
+  /// Set via [setAuthHeaders] when the player is wired to a backend.
+  Map<String, String> _authHeaders = const {};
+
+  /// Track ID for which _networkCoverPath was downloaded. Prevents
+  /// re-downloading the same artwork on every _updateMediaItem call.
+  String? _networkCoverTrackId;
+
   /// Disposed flag — guards against double-dispose and post-dispose callbacks.
   bool _disposed = false;
 
@@ -435,6 +448,12 @@ class AfPlayerService extends BaseAudioHandler
   // Playback control
   // ---------------------------------------------------------------------------
 
+  /// Set auth headers used for downloading artwork from the server.
+  /// Called by PlayActions or wirePlayerService when the backend is available.
+  void setAuthHeaders(Map<String, String> headers) {
+    _authHeaders = headers;
+  }
+
   /// Replace the queue with [tracks] and start playback at [startIndex].
   ///
   /// [resolveStreamUrl] is called for each track to build the Jellyfin
@@ -448,6 +467,11 @@ class AfPlayerService extends BaseAudioHandler
   }) async {
     if (tracks.isEmpty) return;
     final safeIndex = startIndex.clamp(0, tracks.length - 1);
+
+    // Store auth headers for artwork download.
+    if (streamHeaders.isNotEmpty) {
+      _authHeaders = streamHeaders;
+    }
 
     _trackQueue
       ..clear()
@@ -935,6 +959,22 @@ class AfPlayerService extends BaseAudioHandler
       return;
     }
     final track = _trackQueue[_currentIndex];
+
+    // Determine artUri: prefer embedded cover (local file), then
+    // previously-downloaded network cover, then kick off a download.
+    Uri? artUri;
+    if (_coverPath != null) {
+      artUri = Uri.file(_coverPath!);
+    } else if (_networkCoverPath != null &&
+        _networkCoverTrackId == track.id) {
+      artUri = Uri.file(_networkCoverPath!);
+    } else if (track.imageUrl != null) {
+      // Kick off async download — will call _updateMediaItem again when done.
+      unawaited(_downloadArtworkForNotification(track));
+      // Temporarily use the network URL (some devices handle it).
+      artUri = Uri.parse(track.imageUrl!);
+    }
+
     mediaItem.add(
       MediaItem(
         id: track.id,
@@ -942,15 +982,86 @@ class AfPlayerService extends BaseAudioHandler
         artist: track.artistName,
         album: track.albumName,
         duration: track.duration == Duration.zero ? null : track.duration,
-        artUri: _coverPath != null
-            ? Uri.file(_coverPath!)
-            : (track.imageUrl != null ? Uri.parse(track.imageUrl!) : null),
+        artUri: artUri,
         extras: {
           'albumId': track.albumId,
           'artistId': track.artistId,
         },
       ),
     );
+  }
+
+  /// Downloads artwork from a network URL to a local temp file so the
+  /// OS media notification (Samsung One UI, AOSP, etc.) can render it
+  /// as the notification background without needing auth headers.
+  Future<void> _downloadArtworkForNotification(AfTrack track) async {
+    if (_disposed) return;
+    final imageUrl = track.imageUrl;
+    if (imageUrl == null || imageUrl.isEmpty) return;
+
+    // Skip if already downloaded for this track.
+    if (_networkCoverTrackId == track.id && _networkCoverPath != null) return;
+
+    // Skip local file:// URLs — they're already local.
+    if (imageUrl.startsWith('file://')) {
+      _networkCoverTrackId = track.id;
+      _networkCoverPath = imageUrl.substring('file://'.length);
+      _updateMediaItem();
+      return;
+    }
+
+    try {
+      final uri = Uri.parse(imageUrl);
+      final client = HttpClient();
+      final request = await client.getUrl(uri);
+
+      // Add auth headers so Jellyfin/Subsonic serves the image.
+      _authHeaders.forEach((key, value) {
+        request.headers.set(key, value);
+      });
+
+      final response = await request.close();
+      if (response.statusCode != 200) {
+        client.close(force: true);
+        return;
+      }
+
+      // Determine file extension from content-type or URL.
+      final contentType = response.headers.contentType;
+      String ext = 'jpg';
+      if (contentType != null && contentType.subType.isNotEmpty) {
+        ext = contentType.subType == 'jpeg' ? 'jpg' : contentType.subType;
+      }
+
+      final id = ++_coverCounter;
+      final tmpDir = Directory.systemTemp.path;
+      final path =
+          '$tmpDir${Platform.pathSeparator}aetherfin_notif_$id.$ext';
+
+      // Delete previous network cover file.
+      if (_networkCoverPath != null) {
+        try {
+          final prev = File(_networkCoverPath!);
+          if (await prev.exists()) await prev.delete();
+        } catch (_) {}
+      }
+
+      final file = File(path);
+      final sink = file.openWrite();
+      await response.pipe(sink);
+      client.close(force: true);
+
+      // Guard: track may have changed during download.
+      if (_disposed) return;
+      final currentTrackNow = currentTrack;
+      if (currentTrackNow?.id != track.id) return;
+
+      _networkCoverPath = path;
+      _networkCoverTrackId = track.id;
+      _updateMediaItem();
+    } catch (e) {
+      afLog('audio', 'artwork download for notification failed', error: e);
+    }
   }
 
   Future<void> _persistCover(CoverArt? raw) async {
@@ -978,6 +1089,9 @@ class AfPlayerService extends BaseAudioHandler
       // The OS will flush when it needs to; we don't need durability here.
       await File(path).writeAsBytes(raw.bytes);
       _coverPath = path;
+      // Clear network cover since embedded takes priority.
+      _networkCoverPath = null;
+      _networkCoverTrackId = null;
       _updateMediaItem();
     } catch (e) {
       afLog('audio', 'cover art persist failed', error: e);

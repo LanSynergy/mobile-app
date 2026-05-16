@@ -84,6 +84,12 @@ class LiveUpdateService {
       // changed; flush immediately rather than wait out the 5s window.
       unawaited(_startOrUpdate(force: true));
     }));
+    // When artwork becomes available (async download), refresh the chip.
+    _subs.add(_player.mediaItem.listen((item) {
+      if (item?.artUri != null && item!.artUri!.scheme == 'file') {
+        unawaited(_startOrUpdate(force: true));
+      }
+    }));
   }
 
   /// Tear down listeners and cancel the notification.
@@ -125,6 +131,19 @@ class LiveUpdateService {
     }
   }
 
+  /// Returns the local file path of the current artwork, if available.
+  /// Checks the player's mediaItem artUri for a file:// URI.
+  String? _resolveArtworkPath() {
+    try {
+      final item = _player.mediaItem.value;
+      final uri = item?.artUri;
+      if (uri != null && uri.scheme == 'file') {
+        return uri.toFilePath();
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<void> _startOrUpdate({bool force = false}) async {
     if (!_supported || _disposed) return;
     // Serialize: skip if a previous update is still in flight.
@@ -155,6 +174,7 @@ class LiveUpdateService {
       'positionMs': clampedPos.inMilliseconds,
       'isPlaying': _isPlaying(),
       'shortCriticalText': '${_fmtClock(clampedPos)} / ${_fmtClock(duration)}',
+      'artworkPath': _resolveArtworkPath(),
     };
 
     _updating = true;

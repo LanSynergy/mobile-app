@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Build
 import androidx.core.content.ContextCompat
@@ -192,8 +193,18 @@ class LiveUpdatePlugin : FlutterPlugin, MethodCallHandler {
         val positionMs = (args["positionMs"] as? Number)?.toLong()?.coerceIn(0L, durationMs) ?: 0L
         val isPlaying = (args["isPlaying"] as? Boolean) ?: true
         val shortCriticalText = (args["shortCriticalText"] as? String) ?: ""
+        val artworkPath = args["artworkPath"] as? String
 
         val contentIntent = buildContentIntent(ctx)
+
+        // Load artwork bitmap for the large icon (shown in the chip).
+        val largeIcon = if (artworkPath != null) {
+            try {
+                BitmapFactory.decodeFile(artworkPath)
+            } catch (_: Exception) {
+                null
+            }
+        } else null
 
         // Reflection-free reference: Notification.ProgressStyle is API 36+;
         // we already gated on SDK_INT above so the linker won't trip.
@@ -219,6 +230,11 @@ class LiveUpdatePlugin : FlutterPlugin, MethodCallHandler {
             // small icon. "M:SS / M:SS" reads naturally and fits within
             // the chip's 96dp width as long as durations are < 100min.
             .setShortCriticalText(shortCriticalText)
+
+        // Set large icon (artwork) for the chip and notification.
+        if (largeIcon != null) {
+            builder.setLargeIcon(largeIcon)
+        }
 
         // Promotion request — the system decides whether to honour it based on
         // Live-Updates settings + OEM policy. We can't call
