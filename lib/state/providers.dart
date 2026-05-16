@@ -681,6 +681,28 @@ final allGenresProvider =
 
 final albumDetailProvider = FutureProvider.autoDispose
     .family<({AfAlbum album, List<AfTrack> tracks})?, String>((ref, id) async {
+  // Local mode: parse album name/artist from the ID
+  if (id.startsWith('local:album:')) {
+    final lib = ref.read(localLibraryProvider);
+    final parts = id.substring('local:album:'.length).split(':');
+    if (parts.length >= 2) {
+      final albumName = parts[0];
+      final artistName = parts.sublist(1).join(':');
+      final tracks = await lib.tracksByAlbum(albumName, artistName);
+      if (tracks.isNotEmpty) {
+        final album = AfAlbum(
+          id: id,
+          name: albumName,
+          artistName: artistName,
+          trackCount: tracks.length,
+          imageUrl: tracks.first.imageUrl,
+        );
+        return (album: album, tracks: tracks);
+      }
+    }
+    return null;
+  }
+
   final backend = ref.watch(musicBackendProvider);
   if (backend != null) {
     final res = await backend.album(id);
@@ -695,6 +717,12 @@ final albumDetailProvider = FutureProvider.autoDispose
 
 final artistDetailProvider =
     FutureProvider.autoDispose.family<AfArtist?, String>((ref, id) async {
+  // Local mode: parse artist name from the ID
+  if (id.startsWith('local:artist:')) {
+    final name = id.substring('local:artist:'.length);
+    return AfArtist(id: id, name: name, albumCount: 0);
+  }
+
   final backend = ref.watch(musicBackendProvider);
   if (backend != null) {
     final res = await backend.artist(id);
@@ -709,6 +737,13 @@ final artistDetailProvider =
 /// Albums credited to a given artist.
 final artistAlbumsProvider = FutureProvider.autoDispose
     .family<List<AfAlbum>, String>((ref, artistId) async {
+  // Local mode: filter albums by artist name
+  if (artistId.startsWith('local:artist:')) {
+    final name = artistId.substring('local:artist:'.length);
+    final allAlbums = await ref.read(localLibraryProvider).albums();
+    return allAlbums.where((a) => a.artistName == name).toList();
+  }
+
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
     _logData('artistAlbums', source: 'none', extra: 'artistId=$artistId (no backend)');
@@ -720,11 +755,16 @@ final artistAlbumsProvider = FutureProvider.autoDispose
   return res;
 });
 
-/// Top tracks for an artist (highest play count, falling back to
-/// alphabetical on fresh libraries). Replaces the previous DemoLibrary
-/// `.where(byName).take(5)` filter on the Artist screen.
+/// Top tracks for an artist.
 final artistTopTracksProvider = FutureProvider.autoDispose
     .family<List<AfTrack>, String>((ref, artistId) async {
+  // Local mode: get tracks by artist name
+  if (artistId.startsWith('local:artist:')) {
+    final name = artistId.substring('local:artist:'.length);
+    final tracks = await ref.read(localLibraryProvider).tracksByArtist(name);
+    return tracks.take(10).toList();
+  }
+
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
     _logData('artistTopTracks', source: 'none', extra: 'artistId=$artistId (no backend)');
