@@ -596,14 +596,17 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           ),
         ],
       ),
-      body: IgnorePointer(
-        ignoring: !_masterEnabled,
-        child: AnimatedOpacity(
+      body: AnimatedOpacity(
           opacity: _masterEnabled ? 1.0 : 0.4,
           duration: const Duration(milliseconds: 200),
           child: ListView(
         padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
         children: [
+          IgnorePointer(
+            ignoring: !_masterEnabled,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           // ── EQ Presets ─────────────────────────────────────────────────
           _sectionHeader('EQ Presets'),
           _buildPresetChips(),
@@ -1197,8 +1200,10 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         ],
 
         const SizedBox(height: AfSpacing.s24),
+              ],
+            ),
+          ),
         ],
-      ),
       ),
       ),
     );
