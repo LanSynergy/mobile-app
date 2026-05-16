@@ -11,6 +11,7 @@ import '../core/audio/player_settings_store.dart';
 import '../core/audio/spectral_extractor.dart';
 import '../core/backend/music_backend.dart';
 import '../core/jellyfin/auth_storage.dart';
+import '../core/local/local_library.dart';
 import '../core/jellyfin/client.dart';
 import '../core/jellyfin/models/items.dart';
 import '../core/jellyfin/models/server.dart';
@@ -35,6 +36,41 @@ final appModeProvider = StateProvider<AppMode?>((ref) => null);
 /// Value is (completed, total) tuple.
 final localScanProgressProvider =
     StateProvider<({int completed, int total})?>((ref) => null);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Local library providers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Singleton LocalLibrary instance. Created once, reused across providers.
+final localLibraryProvider = Provider<LocalLibrary>((ref) {
+  final lib = LocalLibrary();
+  ref.onDispose(() => lib.close());
+  return lib;
+});
+
+/// All albums from local SQLite DB.
+final localAlbumsProvider = FutureProvider.autoDispose<List<AfAlbum>>((ref) {
+  final lib = ref.watch(localLibraryProvider);
+  return lib.albums();
+});
+
+/// All artists from local SQLite DB.
+final localArtistsProvider = FutureProvider.autoDispose<List<AfArtist>>((ref) {
+  final lib = ref.watch(localLibraryProvider);
+  return lib.artists();
+});
+
+/// All tracks from local SQLite DB.
+final localTracksProvider = FutureProvider.autoDispose<List<AfTrack>>((ref) {
+  final lib = ref.watch(localLibraryProvider);
+  return lib.tracks();
+});
+
+/// All genres from local SQLite DB.
+final localGenresProvider = FutureProvider.autoDispose<List<AfGenre>>((ref) {
+  final lib = ref.watch(localLibraryProvider);
+  return lib.genres();
+});
 
 /// Compact one-liner for the `aetherfin:data` trace category.
 ///
