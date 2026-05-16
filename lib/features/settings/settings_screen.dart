@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/audio/player_settings_store.dart';
 import '../../core/audio/player_service.dart';
+import '../../core/local/app_mode_store.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 
@@ -21,6 +22,8 @@ class SettingsScreen extends ConsumerWidget {
     final auth = ref.watch(authProvider);
     final showLabels = ref.watch(showNavLabelsProvider);
     final svc = ref.read(playerServiceProvider);
+    final mode = ref.watch(appModeProvider);
+    final isLocal = mode == AppMode.local;
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
       appBar: AppBar(
@@ -40,7 +43,8 @@ class SettingsScreen extends ConsumerWidget {
           children: [
             const SizedBox(height: AfSpacing.s8),
 
-            // ── Server ─────────────────────────────────────────────────
+            // ── Server (server mode) / Music Folders (local mode) ──────
+            if (!isLocal) ...[
             _SettingsGroup(
               children: [
                 _SettingsTile(
@@ -100,6 +104,54 @@ class SettingsScreen extends ConsumerWidget {
                       }
                     },
                   ),
+              ],
+            ),
+            ],
+
+            // ── Music Folders (local mode only) ────────────────────────
+            if (isLocal) ...[
+            _SectionLabel('Music folders'),
+            _MusicFoldersCard(),
+            ],
+
+            const SizedBox(height: AfSpacing.s16),
+
+            // ── Switch mode ────────────────────────────────────────────
+            _SettingsGroup(
+              children: [
+                _SettingsTile(
+                  icon: Icons.swap_horiz_rounded,
+                  iconColor: AfColors.semanticWarning,
+                  title: 'Switch mode',
+                  subtitle: isLocal ? 'Currently: Local files' : 'Currently: Server',
+                  onTap: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: AfColors.surfaceBase,
+                        title: const Text('Switch mode?'),
+                        content: const Text(
+                          'This will return you to the mode selection screen.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Switch'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true && context.mounted) {
+                      await AppModeStore.clear();
+                      ref.read(appModeProvider.notifier).state = null;
+                      if (context.mounted) context.go('/onboarding/mode');
+                    }
+                  },
+                ),
               ],
             ),
 
@@ -1016,6 +1068,97 @@ class _ReplayGainDialogContentState
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Shows the list of registered music folders with add/remove controls.
+class _MusicFoldersCard extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_MusicFoldersCard> createState() => _MusicFoldersCardState();
+}
+
+class _MusicFoldersCardState extends ConsumerState<_MusicFoldersCard> {
+  List<({String uri, String displayPath})> _folders = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFolders();
+  }
+
+  Future<void> _loadFolders() async {
+    final lib = ref.read(localLibraryProvider);
+    final folders = await lib.getFolders();
+    if (mounted) setState(() { _folders = folders; _loading = false; });
+  }
+
+  Future<void> _addFolder() async {
+    final lib = ref.read(localLibraryProvider);
+    final uri = await lib.pickAndAddFolder();
+    if (uri != null) {
+      await _loadFolders();
+      // Trigger a scan of the new folder
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Scanning new folder...')),
+        );
+        await lib.scanFolder(uri);
+        // Invalidate local providers to refresh the library
+        ref.invalidate(localAlbumsProvider);
+        ref.invalidate(localArtistsProvider);
+        ref.invalidate(localTracksProvider);
+        ref.invalidate(localGenresProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Scan complete')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _removeFolder(String uri) async {
+    final lib = ref.read(localLibraryProvider);
+    await lib.removeFolder(uri);
+    await _loadFolders();
+    ref.invalidate(localAlbumsProvider);
+    ref.invalidate(localArtistsProvider);
+    ref.invalidate(localTracksProvider);
+    ref.invalidate(localGenresProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsGroup(
+      children: [
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.all(AfSpacing.s16),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else ...[
+          for (final folder in _folders)
+            _SettingsTile(
+              icon: Icons.folder_rounded,
+              iconColor: AfColors.indigo400,
+              title: folder.displayPath,
+              trailing: IconButton(
+                icon: const Icon(Icons.remove_circle_outline,
+                    color: AfColors.semanticError, size: 20),
+                onPressed: () => _removeFolder(folder.uri),
+              ),
+            ),
+          _SettingsTile(
+            icon: Icons.add_rounded,
+            iconColor: AfColors.semanticSuccess,
+            title: 'Add folder',
+            subtitle: 'Pick another music folder',
+            onTap: _addFolder,
+          ),
+        ],
+      ],
     );
   }
 }
