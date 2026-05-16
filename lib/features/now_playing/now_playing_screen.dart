@@ -298,7 +298,20 @@ class _MetadataRow extends ConsumerWidget {
           tooltip: track.isFavorite
               ? 'Remove from favorites'
               : 'Add to favorites',
-          onPressed: () => ref.read(favoriteToggleProvider)(track),
+          onPressed: () async {
+            try {
+              await ref.read(favoriteToggleProvider)(track);
+            } catch (_) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Could not update favorite'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            }
+          },
         ),
         if (track.quality != null) QualityChip(quality: track.quality!),
       ],
