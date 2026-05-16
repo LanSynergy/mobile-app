@@ -66,8 +66,11 @@ final _router = GoRouter(
       if (auth == null && !inOnboarding) return '/onboarding/discover';
     }
 
-    // Local mode: redirect to home if onboarding is done
-    if (effectiveMode == AppMode.local && inOnboarding) return '/home';
+    // Local mode: redirect to home if onboarding is done.
+    // But allow /onboarding/local-setup to stay (user is picking a folder).
+    if (effectiveMode == AppMode.local) {
+      if (inOnboarding && loc != '/onboarding/local-setup') return '/home';
+    }
 
     // No mode chosen yet and no auth: stay on onboarding
     if (effectiveMode == null && !inOnboarding) return '/';

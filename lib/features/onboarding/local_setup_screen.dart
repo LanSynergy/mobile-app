@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/local/local_library.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 
@@ -15,7 +14,6 @@ class LocalSetupScreen extends ConsumerStatefulWidget {
 }
 
 class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
-  final _library = LocalLibrary();
   String? _folderUri;
   String? _folderDisplay;
   bool _scanning = false;
@@ -23,17 +21,12 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
   int _totalCount = 0;
   String? _error;
 
-  @override
-  void dispose() {
-    _library.close();
-    super.dispose();
-  }
-
   Future<void> _pickFolder() async {
     setState(() => _error = null);
-    final uri = await _library.pickAndAddFolder();
+    final library = ref.read(localLibraryProvider);
+    final uri = await library.pickAndAddFolder();
     if (uri == null) return;
-    final folders = await _library.getFolders();
+    final folders = await ref.read(localLibraryProvider).getFolders();
     final folder = folders.lastOrNull;
     setState(() {
       _folderUri = uri;
@@ -51,7 +44,7 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
     });
 
     try {
-      final count = await _library.scanFolder(
+      final count = await ref.read(localLibraryProvider).scanFolder(
         _folderUri!,
         onProgress: (completed, total) {
           if (mounted) {
@@ -77,6 +70,11 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
       }
 
       setState(() => _scanning = false);
+      // Invalidate local providers so home/library screens pick up the data.
+      ref.invalidate(localAlbumsProvider);
+      ref.invalidate(localArtistsProvider);
+      ref.invalidate(localTracksProvider);
+      ref.invalidate(localGenresProvider);
       if (mounted) context.go('/home');
     } catch (e) {
       if (mounted) {
