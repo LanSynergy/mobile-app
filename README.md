@@ -136,6 +136,14 @@ The server stores files and metadata. Aetherfin does everything else.
 
 No analytics. No ads. No trackers. No Aetherfin servers. The app talks only to the server you configure. Full details in [PRIVACY.md](./PRIVACY.md).
 
+## Community
+
+<p align="center">
+  <a href="https://t.me/azrim_ci">
+    <img src="https://img.shields.io/badge/Telegram-@azrim__ci-2CA5E0?logo=telegram&style=for-the-badge" alt="Telegram">
+  </a>
+</p>
+
 ## Contributing
 
 PRs welcome. Read [CLAUDE.md](./CLAUDE.md) first — it covers auth, architecture, design tokens, and the rules.
