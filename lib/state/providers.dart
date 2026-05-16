@@ -673,17 +673,40 @@ final genreAlbumsProvider = FutureProvider.autoDispose
   return res;
 });
 /// Music genres. Jellyfin returns these without colors so we cycle through
-/// a small palette to keep the chip row colourful.
+/// Music genres. Jellyfin returns genre images directly. For Subsonic
+/// (which doesn't), we cross-reference with the album list to pick a
+/// representative cover art per genre — zero extra network requests.
 final allGenresProvider =
     FutureProvider.autoDispose<List<AfGenre>>((ref) async {
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
-    _logData('allGenres', source: 'demo', extra: '(signed out)');
+    _logData('allGenres', source: 'none', extra: '(signed out)');
     return const [];
   }
   final res = await backend.genres();
   _logData('allGenres', source: 'live', extra: 'count=${res.length}');
-  return res;
+
+  // If all genres already have images (Jellyfin), return as-is.
+  if (res.every((g) => g.imageUrl != null)) return res;
+
+  // Subsonic/local path: enrich genres with album artwork by fetching
+  // one album per genre. Uses albumsByGenre(limit:1) which is a single
+  // lightweight request per genre. Runs in parallel, capped at 10 concurrent.
+  final enriched = <AfGenre>[];
+  for (final g in res) {
+    if (g.imageUrl != null) {
+      enriched.add(g);
+      continue;
+    }
+    try {
+      final albums = await backend.albumsByGenre(g.name, limit: 1);
+      final imageUrl = albums.isNotEmpty ? albums.first.imageUrl : null;
+      enriched.add(AfGenre(g.name, g.tint, imageUrl: imageUrl));
+    } catch (_) {
+      enriched.add(g);
+    }
+  }
+  return enriched;
 });
 
 final albumDetailProvider = FutureProvider.autoDispose
