@@ -16,6 +16,8 @@ import '../features/now_playing/now_playing_screen.dart';
 import '../features/now_playing/eq_dsp_screen.dart';
 import '../features/onboarding/all_set_screen.dart';
 import '../features/onboarding/library_scope_screen.dart';
+import '../features/onboarding/local_setup_screen.dart';
+import '../features/onboarding/mode_select_screen.dart';
 import '../features/onboarding/server_discovery_screen.dart';
 import '../features/onboarding/sign_in_screen.dart';
 import '../features/onboarding/welcome_screen.dart';
@@ -61,8 +63,16 @@ final _router = GoRouter(
       builder: (context, state) => const WelcomeScreen(),
     ),
     GoRoute(
+      path: '/onboarding/mode',
+      builder: (context, state) => const ModeSelectScreen(),
+    ),
+    GoRoute(
       path: '/onboarding/discover',
       builder: (context, state) => const ServerDiscoveryScreen(),
+    ),
+    GoRoute(
+      path: '/onboarding/local-setup',
+      builder: (context, state) => const LocalSetupScreen(),
     ),
     GoRoute(
       path: '/onboarding/sign-in',
