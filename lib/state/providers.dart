@@ -361,28 +361,66 @@ final playbackErrorProvider = StateProvider<String?>((ref) => null);
 final abLoopAProvider = StateProvider<Duration?>((ref) => null);
 final abLoopBProvider = StateProvider<Duration?>((ref) => null);
 
+/// Mutable anchor for position extrapolation.
+class _PositionAnchor {
+  DateTime lastUpdateTime = DateTime.now();
+  Duration lastKnownPos = Duration.zero;
+  bool wasPlaying = false;
+}
+
 /// Starts the position polling timer. Called once during player wiring.
 void _startPositionPolling(Ref ref, AfPlayerService svc) {
-  // Poll at 4 Hz using getRawProperty('time-pos') — this directly queries
-  // mpv's property system via command, bypassing the observe_property
-  // reactive streams which don't fire on some device/driver combinations.
-  // 4 Hz (250ms) is smooth enough for a progress bar while keeping
-  // MethodChannel overhead low.
-  Timer.periodic(const Duration(milliseconds: 250), (_) async {
-    final pos = await svc.getRawPosition();
-    if (pos > Duration.zero) {
-      ref.read(positionStreamProvider.notifier).state = pos;
+  // mpv's observe_property and getRawProperty both fail to report
+  // time-pos on some devices. Use elapsed-time extrapolation instead:
+  // when playing, position = lastKnownPos + (now - lastUpdateTime) * speed.
+  // This matches how Android MediaSession calculates notification progress.
+  final anchor = _PositionAnchor();
+
+  // When playback state changes, anchor the position.
+  svc.playingStream.listen((playing) {
+    if (playing && !anchor.wasPlaying) {
+      // Playback started/resumed — anchor from current provider value.
+      anchor.lastKnownPos = ref.read(positionStreamProvider);
+      anchor.lastUpdateTime = DateTime.now();
     }
-    final dur = await svc.getRawDuration();
-    if (dur > Duration.zero) {
-      ref.read(durationStreamProvider.notifier).state = dur;
-    }
+    anchor.wasPlaying = playing;
   });
 
-  // Also forward reactive streams for immediate seek response.
+  // Forward seeks from the position stream (fires on manual seek).
   svc.positionStream.listen((pos) {
-    if (pos > Duration.zero) {
-      ref.read(positionStreamProvider.notifier).state = pos;
+    anchor.lastKnownPos = pos;
+    anchor.lastUpdateTime = DateTime.now();
+    ref.read(positionStreamProvider.notifier).state = pos;
+  });
+
+  // Try getRawProperty as primary source; fall back to extrapolation.
+  Timer.periodic(const Duration(milliseconds: 250), (_) async {
+    // Try direct property read first.
+    final rawPos = await svc.getRawPosition();
+    if (rawPos > Duration.zero) {
+      // getRawProperty works — use it directly.
+      ref.read(positionStreamProvider.notifier).state = rawPos;
+      anchor.lastKnownPos = rawPos;
+      anchor.lastUpdateTime = DateTime.now();
+    } else if (svc.isPlaying) {
+      // Extrapolate: position = anchor + elapsed * speed.
+      final elapsed = DateTime.now().difference(anchor.lastUpdateTime);
+      final speed = svc.speed;
+      final extrapolated = anchor.lastKnownPos +
+          Duration(milliseconds: (elapsed.inMilliseconds * speed).round());
+      ref.read(positionStreamProvider.notifier).state = extrapolated;
+    }
+
+    // Duration: try raw property, fall back to track metadata.
+    final rawDur = await svc.getRawDuration();
+    if (rawDur > Duration.zero) {
+      ref.read(durationStreamProvider.notifier).state = rawDur;
+    } else {
+      // Fall back to track metadata duration.
+      final track = ref.read(currentTrackProvider);
+      if (track != null && track.duration > Duration.zero) {
+        ref.read(durationStreamProvider.notifier).state = track.duration;
+      }
     }
   });
 
