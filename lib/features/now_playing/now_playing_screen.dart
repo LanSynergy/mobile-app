@@ -800,14 +800,6 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: Icons.equalizer_rounded,
-                label: 'Equalizer & DSP',
-                onTap: () {
-                  Navigator.of(dialogCtx).pop();
-                  _showEqDialog(context, ref);
-                },
-              ),
-              _MoreItem(
                 icon: Icons.volume_up_rounded,
                 label: 'Volume',
                 onTap: () {
