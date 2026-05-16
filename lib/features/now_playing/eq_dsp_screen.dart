@@ -611,24 +611,19 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         children: [
           IgnorePointer(
             ignoring: !_masterEnabled,
-            child: Container(
-              decoration: BoxDecoration(
-                color: AfColors.surfaceBase,
-                borderRadius: AfRadii.borderLg,
-              ),
-              padding: const EdgeInsets.all(AfSpacing.s16),
-              child: Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
           // ── EQ Presets ─────────────────────────────────────────────────
-          _sectionHeader('EQ Presets'),
+          _sectionLabel('EQ Presets'),
+          _card([
           _buildPresetChips(),
-          const SizedBox(height: AfSpacing.s8),
-
-        _divider(),
+          ]),
+          const SizedBox(height: AfSpacing.s16),
 
         // ── Tone shelves ───────────────────────────────────────────────
-        _sectionHeader('Tone'),
+        _sectionLabel('Tone'),
+        _card([
         _sliderRow('Bass', _bass, -12, 12, 24, (v) {
           setState(() {
             _bass = v;
@@ -641,11 +636,12 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             _activePreset = null;
           });
         }, _apply, suffix: 'dB'),
-
-        _divider(),
+        ]),
+        const SizedBox(height: AfSpacing.s16),
 
         // ── 18-band graphic EQ ─────────────────────────────────────────
-        _sectionHeader('18-band Equalizer'),
+        _sectionLabel('18-band Equalizer'),
+        _card([
         SwitchListTile.adaptive(
           value: _eqEnabled,
           onChanged: (v) {
@@ -689,11 +685,12 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
               ),
             ],
           ),
-
-        _divider(),
+        ]),
+        const SizedBox(height: AfSpacing.s16),
 
         // ── Dynamics ───────────────────────────────────────────────────
-        _sectionHeader('Dynamics'),
+        _sectionLabel('Dynamics'),
+        _card([
         _toggleTile('Loudness normalization', 'EBU R128 (-16 LUFS)',
             _loudnorm, (v) {
           setState(() => _loudnorm = v);
@@ -787,10 +784,12 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           }, _apply, precision: 0, suffix: 'Hz'),
         ],
 
-        _divider(),
+        ]),
+        const SizedBox(height: AfSpacing.s16),
 
         // ── Echo / Delay ───────────────────────────────────────────────
-        _sectionHeader('Echo / Delay'),
+        _sectionLabel('Echo / Delay'),
+        _card([
         SwitchListTile.adaptive(
           value: _echoEnabled,
           onChanged: (v) {
@@ -831,10 +830,12 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           ),
         ],
 
-        _divider(),
+        ]),
+        const SizedBox(height: AfSpacing.s16),
 
         // ── Pitch & tempo ──────────────────────────────────────────────
-        _sectionHeader('Pitch & Tempo'),
+        _sectionLabel('Pitch & Tempo'),
+        _card([
         SwitchListTile.adaptive(
           value: _rubberbandEnabled,
           onChanged: (v) {
@@ -876,10 +877,12 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           ),
         ],
 
-        _divider(),
+        ]),
+        const SizedBox(height: AfSpacing.s16),
 
         // ── Spatial ────────────────────────────────────────────────────
-        _sectionHeader('Spatial'),
+        _sectionLabel('Spatial'),
+        _card([
         SwitchListTile.adaptive(
           value: _crossfeed,
           onChanged: (v) {
@@ -934,10 +937,12 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             precision: 0,
           ),
 
-        _divider(),
+        ]),
+        const SizedBox(height: AfSpacing.s16),
 
         // ── Modulation ─────────────────────────────────────────────────
-        _sectionHeader('Modulation'),
+        _sectionLabel('Modulation'),
+        _card([
         // Phaser
         SwitchListTile.adaptive(
           value: _phaser,
@@ -1101,10 +1106,12 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           }, _apply, precision: 2),
         ],
 
-        _divider(),
+        ]),
+        const SizedBox(height: AfSpacing.s16),
 
         // ── Creative ───────────────────────────────────────────────────
-        _sectionHeader('Creative'),
+        _sectionLabel('Creative'),
+        _card([
         SwitchListTile.adaptive(
           value: _exciter,
           onChanged: (v) {
@@ -1212,9 +1219,10 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           }, _apply, precision: 0),
         ],
 
+        ]),
+
         const SizedBox(height: AfSpacing.s24),
               ],
-            ),
             ),
           ),
         ],
@@ -1285,18 +1293,26 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     );
   }
 
-  Widget _sectionHeader(String title) => Padding(
-        padding: const EdgeInsets.only(top: AfSpacing.s16, bottom: AfSpacing.s8),
+  Widget _sectionLabel(String title) => Padding(
+        padding: const EdgeInsets.fromLTRB(AfSpacing.s4, 0, AfSpacing.s4, AfSpacing.s8),
         child: Text(title,
             style: AfTypography.bodySmall.copyWith(
               color: AfColors.textTertiary,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             )),
       );
 
-  Widget _divider() => const Padding(
-        padding: EdgeInsets.symmetric(vertical: AfSpacing.s12),
-        child: Divider(height: 0, thickness: 0.5, color: AfColors.surfaceHigh),
+  Widget _card(List<Widget> children) => Container(
+        decoration: BoxDecoration(
+          color: AfColors.surfaceBase,
+          borderRadius: AfRadii.borderLg,
+        ),
+        padding: const EdgeInsets.all(AfSpacing.s16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: children,
+        ),
       );
 
   Widget _toggleTile(
