@@ -93,6 +93,9 @@ jobs:
           EOF
           echo "Signing config wired. Keystore size: $(wc -c < android/app/aetherfin-release.jks) bytes"
 
+      - name: Generate build ID
+        run: dart run tool/generate_build_id.dart
+
       - name: Build APK
         run: |
           # Stop any lingering Gradle daemon from earlier steps to prevent
@@ -125,6 +128,7 @@ jobs:
             exit 0
           fi
           SHORT_SHA="${GITHUB_SHA:0:7}"
+          BUILD_ID=$(grep "kBuildId" lib/build_id.dart | sed "s/.*'\(.*\)'.*/\1/")
           COMMIT_MSG=$(git log -1 --pretty=format:"%s" | tr -d '_*`[]')
           BRANCH="${GITHUB_REF_NAME}"
           RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
@@ -151,8 +155,8 @@ jobs:
               echo "::error::$apk is $SIZE_HUMAN — over Telegram Bot API's 50 MB sendDocument limit. Re-run with split_per_abi=true."
               exit 1
             fi
-            CAPTION=$(printf '*Aetherfin* · `%s`\n\n`%s`\n%s\n\n`%s` on `%s`\n_%s_\n%s\n\n[View run](%s)' \
-              "$BUILD_MODE" "$apk" "$SIZE_HUMAN" "$SHORT_SHA" "$BRANCH" "$COMMIT_MSG" "$TIMESTAMP" "$RUN_URL")
+            CAPTION=$(printf '*Aetherfin* · `%s`\n\n`%s`\n%s\n\nBuild: `%s`\n`%s` on `%s`\n_%s_\n%s\n\n[View run](%s)' \
+              "$BUILD_MODE" "$apk" "$SIZE_HUMAN" "$BUILD_ID" "$SHORT_SHA" "$BRANCH" "$COMMIT_MSG" "$TIMESTAMP" "$RUN_URL")
             echo "Uploading $apk ($SIZE_HUMAN)..."
             HTTP_CODE=$(curl -sS -o /tmp/tg-resp.json -w "%{http_code}" \
               -F document=@"$apk" \
