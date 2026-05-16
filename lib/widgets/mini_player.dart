@@ -35,11 +35,7 @@ class MiniPlayer extends ConsumerWidget {
           data: (v) => v,
           orElse: () => false,
         );
-    final positionAsync = ref.watch(positionStreamProvider);
-    final position = positionAsync.maybeWhen(
-      data: (p) => p,
-      orElse: () => Duration.zero,
-    );
+    final position = ref.watch(positionStreamProvider);
     final spectral = ref.watch(currentSpectralProvider);
     final duration = track.duration;
     final ringProgress = duration.inMilliseconds == 0

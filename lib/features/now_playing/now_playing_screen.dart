@@ -50,6 +50,8 @@ class NowPlayingScreen extends ConsumerWidget {
     }
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       body: _ReactiveBackground(
         child: SafeArea(
           child: Column(
@@ -349,11 +351,7 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
 
   @override
   Widget build(BuildContext context) {
-    final positionAsync = ref.watch(positionStreamProvider);
-    final position = positionAsync.maybeWhen(
-      data: (p) => p,
-      orElse: () => Duration.zero,
-    );
+    final position = ref.watch(positionStreamProvider);
     final spectral = ref.watch(currentSpectralProvider);
     final duration = widget.track.duration;
 

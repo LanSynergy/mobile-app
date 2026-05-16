@@ -1,4 +1,4 @@
-import 'dart:async' show StreamController, Timer, unawaited;
+import 'dart:async' show Timer, unawaited;
 
 import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -266,6 +266,9 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     ref.read(currentTrackProvider.notifier).state = track;
   };
 
+  // Start position polling (10 Hz timer + reactive stream forwarding).
+  _startPositionPolling(ref, svc);
+
   // Playback reporting only in server mode — local mode has no server.
   final mode = ref.read(appModeProvider);
   JellyfinPlaybackReporter? reporter;
@@ -325,35 +328,24 @@ final playerQueueProvider = StreamProvider.autoDispose<List<AfTrack>>((ref) {
 /// to THIS stream — never a private timer.
 ///
 /// mpv_audio_kit's ReactiveProperty deduplicates by == — when position
-/// Position stream for the mini-player ring and lyrics.
-/// Polls the player's synchronous position at 10 Hz and forwards
-/// reactive stream events. No dedup — every tick emits so the UI
-/// always has the latest value.
-final positionStreamProvider = StreamProvider<Duration>((ref) {
-  final svc = ref.watch(playerServiceProvider);
-  final ctrl = StreamController<Duration>();
+/// Live playback position. Updated at 10 Hz via timer polling.
+/// Uses StateProvider (not StreamProvider) to avoid Riverpod's internal
+/// AsyncValue dedup which suppresses identical Duration values.
+final positionStreamProvider = StateProvider<Duration>((ref) => Duration.zero);
 
-  // Seed immediately.
-  ctrl.add(svc.position);
-
-  // Forward reactive events from mpv (fires when position actually changes).
-  final sub = svc.positionStream.listen((pos) {
-    if (!ctrl.isClosed) ctrl.add(pos);
+/// Starts the position polling timer. Called once during player wiring.
+void _startPositionPolling(Ref ref, AfPlayerService svc) {
+  // Poll at 10 Hz and update the state provider directly.
+  Timer.periodic(const Duration(milliseconds: 100), (_) {
+    final pos = svc.position;
+    ref.read(positionStreamProvider.notifier).state = pos;
   });
 
-  // Heartbeat at 10 Hz — catches cases where the reactive stream is silent.
-  final timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-    if (!ctrl.isClosed) ctrl.add(svc.position);
+  // Also forward reactive stream events for immediate response to seeks.
+  svc.positionStream.listen((pos) {
+    ref.read(positionStreamProvider.notifier).state = pos;
   });
-
-  ref.onDispose(() {
-    timer.cancel();
-    sub.cancel();
-    ctrl.close();
-  });
-
-  return ctrl.stream;
-});
+}
 
 final playingStreamProvider = StreamProvider.autoDispose<bool>((ref) {
   final svc = ref.watch(playerServiceProvider);

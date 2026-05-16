@@ -88,16 +88,14 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
     // every build. Using ref.listen avoids enqueuing a post-frame callback
     // on every position tick (which was growing the callback queue unboundedly).
     ref.listen(positionStreamProvider, (_, next) {
-      final position = next.maybeWhen(data: (p) => p, orElse: () => Duration.zero);
+      final position = next;
       final active = lrc?.activeIndex(position) ?? -1;
       if (lrc != null && lrc.lines.isNotEmpty) {
         _scrollToActive(active, lrc.lines.length);
       }
     });
 
-    final positionAsync = ref.watch(positionStreamProvider);
-    final position =
-        positionAsync.maybeWhen(data: (p) => p, orElse: () => Duration.zero);
+    final position = ref.watch(positionStreamProvider);
     final active = lrc?.activeIndex(position) ?? -1;
 
     return Scaffold(
