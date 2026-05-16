@@ -92,7 +92,7 @@ class Artwork extends ConsumerWidget {
             fit: fit,
             width: wFinite,
             height: hFinite,
-            errorBuilder: (_, __, ___) => placeholder,
+            errorBuilder: (context, error, stack) => placeholder,
             cacheWidth: clampedCachePx(wFinite),
             cacheHeight: clampedCachePx(hFinite),
           ),
