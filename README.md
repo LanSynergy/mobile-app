@@ -23,13 +23,10 @@ No cloud. No telemetry. No transcoding. Just playback.
 
 ## Demo
 
-<p align="center">
-  <a href="https://github.com/Aetherfin/mobile-app/raw/main/docs/assets/screencapture/demo.mp4">
-    <img src="docs/assets/screencapture/demo-poster.jpg" width="300" alt="Watch demo video">
-  </a>
-</p>
+<!-- To make this work: upload demo.mp4 via GitHub's issue/PR editor,
+     then paste the generated URL below on its own line. -->
 
-> *Tap the image to download the demo video.*
+https://github.com/Aetherfin/mobile-app/raw/main/docs/assets/screencapture/demo.mp4
 
 ---
 
