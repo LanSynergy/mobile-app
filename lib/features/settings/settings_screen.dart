@@ -100,6 +100,8 @@ class SettingsScreen extends ConsumerWidget {
                       );
                       if (confirmed == true && context.mounted) {
                         await ref.read(authProvider.notifier).clear();
+                        await AppModeStore.clear();
+                        ref.read(appModeProvider.notifier).state = null;
                         if (context.mounted) context.go('/');
                       }
                     },
