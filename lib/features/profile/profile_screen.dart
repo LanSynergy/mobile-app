@@ -28,10 +28,18 @@ class ProfileScreen extends ConsumerWidget {
     final name = auth?.userName ?? 'You';
     final serverName = auth?.server.name ?? 'Local library';
 
-    final tracksAsync = ref.watch(allTracksProvider);
-    final albumsAsync = ref.watch(allAlbumsProvider);
+    final mode = ref.watch(appModeProvider);
+    final isLocal = mode == AppMode.local;
+    final tracksAsync = isLocal
+        ? ref.watch(localTracksProvider)
+        : ref.watch(allTracksProvider);
+    final albumsAsync = isLocal
+        ? ref.watch(localAlbumsProvider)
+        : ref.watch(allAlbumsProvider);
     final favAlbumsAsync = ref.watch(favoriteAlbumsProvider);
-    final recentAlbumsAsync = ref.watch(recentlyAddedAlbumsProvider);
+    final recentAlbumsAsync = isLocal
+        ? ref.watch(localAlbumsProvider)
+        : ref.watch(recentlyAddedAlbumsProvider);
     final playlistsAsync = ref.watch(allPlaylistsProvider);
 
     String fmtCount<T>(AsyncValue<List<T>> async) => async.maybeWhen(
