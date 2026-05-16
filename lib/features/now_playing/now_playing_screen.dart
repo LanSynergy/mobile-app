@@ -830,10 +830,6 @@ class _UtilityRow extends ConsumerWidget {
     );
   }
 
-  void _showEqDialog(BuildContext context, WidgetRef ref) {
-    context.push('/eq-dsp');
-  }
-
   void _showVolumeDialog(BuildContext context, WidgetRef ref) {
     final svc = ref.read(playerServiceProvider);
     double volume = svc.volume;
