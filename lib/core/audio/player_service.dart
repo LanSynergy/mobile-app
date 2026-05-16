@@ -450,6 +450,33 @@ class AfPlayerService extends BaseAudioHandler
   Duration get position => _player.state.position;
   Duration get duration => _player.state.duration;
   Stream<Duration> get durationStream => _player.stream.duration;
+
+  /// Read time-pos directly from mpv via property query. This bypasses
+  /// the reactive observation system which may not fire on some devices.
+  Future<Duration> getRawPosition() async {
+    try {
+      final raw = await _player.getRawProperty('time-pos');
+      if (raw == null) return Duration.zero;
+      final secs = double.tryParse(raw);
+      if (secs == null || secs < 0) return Duration.zero;
+      return Duration(milliseconds: (secs * 1000).round());
+    } catch (_) {
+      return Duration.zero;
+    }
+  }
+
+  /// Read duration directly from mpv via property query.
+  Future<Duration> getRawDuration() async {
+    try {
+      final raw = await _player.getRawProperty('duration');
+      if (raw == null) return Duration.zero;
+      final secs = double.tryParse(raw);
+      if (secs == null || secs <= 0) return Duration.zero;
+      return Duration(milliseconds: (secs * 1000).round());
+    } catch (_) {
+      return Duration.zero;
+    }
+  }
   List<AfTrack> get currentQueue => List.unmodifiable(_trackQueue);
   AfTrack? get currentTrack =>
       (_currentIndex >= 0 && _currentIndex < _trackQueue.length)
