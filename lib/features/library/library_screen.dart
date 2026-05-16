@@ -98,8 +98,6 @@ class _SegmentedPill extends ConsumerWidget {
         ? _localSections
         : LibrarySection.values;
 
-  @override
-  Widget build(BuildContext context) {
     return SizedBox(
       height: 40,
       child: ListView.separated(
