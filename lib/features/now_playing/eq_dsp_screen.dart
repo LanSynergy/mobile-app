@@ -568,10 +568,12 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AfColors.surfaceBase,
+      backgroundColor: AfColors.surfaceCanvas,
       appBar: AppBar(
-        backgroundColor: AfColors.surfaceBase,
+        backgroundColor: AfColors.surfaceCanvas,
+        surfaceTintColor: Colors.transparent,
         title: const Text('Equalizer & DSP'),
+        centerTitle: false,
         actions: [
           Switch.adaptive(
             value: _masterEnabled,
@@ -600,11 +602,17 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           opacity: _masterEnabled ? 1.0 : 0.4,
           duration: const Duration(milliseconds: 200),
           child: ListView(
-        padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
+        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
         children: [
           IgnorePointer(
             ignoring: !_masterEnabled,
-            child: Column(
+            child: Container(
+              decoration: BoxDecoration(
+                color: AfColors.surfaceBase,
+                borderRadius: AfRadii.borderLg,
+              ),
+              padding: const EdgeInsets.all(AfSpacing.s16),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
           // ── EQ Presets ─────────────────────────────────────────────────
@@ -1202,6 +1210,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         const SizedBox(height: AfSpacing.s24),
               ],
             ),
+            ),
           ),
         ],
       ),
@@ -1272,15 +1281,17 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   }
 
   Widget _sectionHeader(String title) => Padding(
-        padding: const EdgeInsets.only(top: AfSpacing.s8, bottom: AfSpacing.s4),
+        padding: const EdgeInsets.only(top: AfSpacing.s16, bottom: AfSpacing.s8),
         child: Text(title,
-            style: AfTypography.label
-                .copyWith(color: AfColors.textSecondary)),
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textTertiary,
+              fontWeight: FontWeight.w600,
+            )),
       );
 
   Widget _divider() => const Padding(
-        padding: EdgeInsets.symmetric(vertical: AfSpacing.s8),
-        child: Divider(height: 1, color: AfColors.surfaceHigh),
+        padding: EdgeInsets.symmetric(vertical: AfSpacing.s12),
+        child: Divider(height: 0, thickness: 0.5, color: AfColors.surfaceHigh),
       );
 
   Widget _toggleTile(
