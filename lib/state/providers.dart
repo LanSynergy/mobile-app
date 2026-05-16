@@ -329,7 +329,7 @@ final playerQueueProvider = StreamProvider.autoDispose<List<AfTrack>>((ref) {
 /// Polls the player's synchronous position at 10 Hz and forwards
 /// reactive stream events. No dedup — every tick emits so the UI
 /// always has the latest value.
-final positionStreamProvider = StreamProvider.autoDispose<Duration>((ref) {
+final positionStreamProvider = StreamProvider<Duration>((ref) {
   final svc = ref.watch(playerServiceProvider);
   final ctrl = StreamController<Duration>();
 
