@@ -2,7 +2,7 @@ name: aetherfin
 description: "Aetherfin — a Jellyfin-backed music player for Android."
 publish_to: 'none'
 
-version: 0.2.1+2
+version: 0.2.2+3
 
 environment:
   sdk: ^3.11.5
