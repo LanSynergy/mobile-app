@@ -23,10 +23,7 @@ No cloud. No telemetry. No transcoding. Just playback.
 
 ## Demo
 
-<!-- To make this work: upload demo.mp4 via GitHub's issue/PR editor,
-     then paste the generated URL below on its own line. -->
-
-https://github.com/Aetherfin/mobile-app/raw/main/docs/assets/screencapture/demo.mp4
+https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 
 ---
 
