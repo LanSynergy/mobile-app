@@ -59,6 +59,7 @@ class NowPlayingScreen extends ConsumerWidget {
               _TopBar(track: track),
               Expanded(
                 child: CustomScrollView(
+                  clipBehavior: Clip.none,
                   physics: const ClampingScrollPhysics(),
                   slivers: [
                     SliverPadding(
@@ -68,7 +69,10 @@ class NowPlayingScreen extends ConsumerWidget {
                       sliver: SliverList(
                         delegate: SliverChildListDelegate([
                           const SizedBox(height: AfSpacing.s24),
-                          _ReactiveArtwork(track: track),
+                          UnconstrainedBox(
+                            clipBehavior: Clip.none,
+                            child: _ReactiveArtwork(track: track),
+                          ),
                           const SizedBox(height: AfSpacing.s24),
                           _MetadataRow(track: track),
                           const SizedBox(height: AfSpacing.s16),
