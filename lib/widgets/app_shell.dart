@@ -133,7 +133,8 @@ class AppShell extends ConsumerWidget {
           ),
 
           // Floating mini-player overlay.
-          if (hasMini)
+          // Hidden when keyboard is open to avoid overlapping input fields.
+          if (hasMini && MediaQuery.of(context).viewInsets.bottom == 0)
             Positioned(
               left: 0,
               right: 0,
