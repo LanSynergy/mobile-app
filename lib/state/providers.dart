@@ -79,6 +79,11 @@ final localGenresProvider = FutureProvider.autoDispose<List<AfGenre>>((ref) {
 // Smart Playlists
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Selected library IDs (server mode). When set, providers filter content
+/// to only these libraries. Null = all libraries (no filter).
+/// Persisted in shared_preferences as 'af.selected_libraries'.
+final selectedLibraryIdsProvider = StateProvider<Set<String>?>((ref) => null);
+
 /// Singleton SmartPlaylistDb instance.
 final smartPlaylistDbProvider = Provider<SmartPlaylistDb>((ref) {
   final db = SmartPlaylistDb();

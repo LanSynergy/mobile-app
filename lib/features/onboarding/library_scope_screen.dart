@@ -37,7 +37,8 @@ class _LibraryScopeScreenState extends ConsumerState<LibraryScopeScreen> {
       // Auto-skip when there's nothing to choose.
       if (!mounted) return;
       _selected.addAll(views.map((v) => v.id));
-      context.go('/onboarding/done');
+      ref.read(selectedLibraryIdsProvider.notifier).state = _selected.toSet();
+      context.go('/home');
       return;
     }
     if (!mounted) return;
@@ -112,7 +113,12 @@ class _LibraryScopeScreenState extends ConsumerState<LibraryScopeScreen> {
                       ),
                     ),
                     ElevatedButton(
-                      onPressed: () => context.go('/onboarding/done'),
+                      onPressed: () {
+                        // Persist selected library IDs
+                        ref.read(selectedLibraryIdsProvider.notifier).state =
+                            _selected.toSet();
+                        context.go('/home');
+                      },
                       child: const Text('Continue'),
                     ),
                     const SizedBox(height: AfSpacing.s24),

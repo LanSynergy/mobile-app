@@ -62,7 +62,9 @@ final _router = GoRouter(
 
     // Server mode: redirect based on auth state
     if (effectiveMode == AppMode.server) {
-      if (auth != null && inOnboarding) return '/home';
+      if (auth != null && inOnboarding && loc != '/onboarding/scope') {
+        return '/home';
+      }
       if (auth == null && !inOnboarding) return '/onboarding/discover';
     }
 
