@@ -32,6 +32,11 @@ enum AppMode { server, local }
 /// Overridden in main.dart from persisted value.
 final appModeProvider = StateProvider<AppMode?>((ref) => null);
 
+/// Scan progress for local library. Null when not scanning.
+/// Value is (completed, total) tuple.
+final localScanProgressProvider =
+    StateProvider<({int completed, int total})?>((ref) => null);
+
 /// Compact one-liner for the `aetherfin:data` trace category.
 ///
 /// Every place that resolves data the UI will render goes through this
