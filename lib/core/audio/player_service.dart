@@ -517,11 +517,32 @@ class AfPlayerService extends BaseAudioHandler
     }).toList();
 
     try {
-      await _player.openAll(
-        medias,
-        index: safeIndex,
-        play: true,
-      );
+      if (medias.length <= 5) {
+        // Small queue: openAll is fast enough.
+        await _player.openAll(medias, index: safeIndex, play: true);
+      } else {
+        // Large queue: start the target track immediately, then load
+        // the full queue in the background. This avoids the multi-second
+        // delay caused by mpv processing hundreds of entries before
+        // starting playback.
+        await _player.open(medias[safeIndex], play: true);
+
+        // Now append remaining tracks without blocking playback.
+        // After target: append in order (they go after the playing track).
+        for (int i = safeIndex + 1; i < medias.length; i++) {
+          await _player.add(medias[i]);
+        }
+        // Before target: insert at position 0 in reverse order so they
+        // end up in the correct sequence before the playing track.
+        for (int i = safeIndex - 1; i >= 0; i--) {
+          await _player.sendRawCommand([
+            'loadfile', medias[i].uri, 'insert-at', '0',
+          ]);
+        }
+        // mpv's playlist is now: [before...] [target=playing] [after...]
+        // which matches _trackQueue order. Update _currentIndex to match.
+        _currentIndex = safeIndex;
+      }
     } catch (e, stack) {
       afLog('audio', 'playQueue failed', error: e, stackTrace: stack);
       // Revert optimistic state.
