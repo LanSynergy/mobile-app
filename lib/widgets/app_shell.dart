@@ -134,29 +134,44 @@ class AppShell extends ConsumerWidget {
 
           // Floating mini-player overlay.
           // Hidden when keyboard is open to avoid overlapping input fields.
-          if (hasMini && MediaQuery.of(context).viewInsets.bottom == 0)
-            Positioned(
+          Positioned(
               left: 0,
               right: 0,
               bottom: miniBottom,
-              child: MiniPlayer(
-                onTap: () => context.push('/now-playing'),
-                onPlayPause: () {
-                  final svc = ref.read(playerServiceProvider);
-                  if (svc.position == Duration.zero) {
-                    svc.play();
-                  } else {
-                    final playing = ref
-                        .read(playingStreamProvider)
-                        .maybeWhen(data: (v) => v, orElse: () => false);
-                    if (playing) {
-                      svc.pause();
-                    } else {
-                      svc.play();
-                    }
-                  }
-                },
-                onSkipNext: () => ref.read(playerServiceProvider).skipToNext(),
+              child: AnimatedSlide(
+                offset: (hasMini && MediaQuery.of(context).viewInsets.bottom == 0)
+                    ? Offset.zero
+                    : const Offset(0, 2),
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                child: AnimatedOpacity(
+                  opacity: (hasMini && MediaQuery.of(context).viewInsets.bottom == 0)
+                      ? 1.0
+                      : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: IgnorePointer(
+                    ignoring: !hasMini,
+                    child: MiniPlayer(
+                      onTap: () => context.push('/now-playing'),
+                      onPlayPause: () {
+                        final svc = ref.read(playerServiceProvider);
+                        if (svc.position == Duration.zero) {
+                          svc.play();
+                        } else {
+                          final playing = ref
+                              .read(playingStreamProvider)
+                              .maybeWhen(data: (v) => v, orElse: () => false);
+                          if (playing) {
+                            svc.pause();
+                          } else {
+                            svc.play();
+                          }
+                        }
+                      },
+                      onSkipNext: () => ref.read(playerServiceProvider).skipToNext(),
+                    ),
+                  ),
+                ),
               ),
             ),
         ],
