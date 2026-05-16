@@ -235,12 +235,23 @@ final positionStreamProvider = StreamProvider.autoDispose<Duration>((ref) {
     ctrl.add(pos);
   }
 
+  /// Force-emit Duration.zero regardless of dedup — used on track change
+  /// so the progress bar resets immediately instead of appearing frozen.
+  void forceReset() {
+    lastEmitted = const Duration(microseconds: -1);
+    ctrl.add(Duration.zero);
+  }
+
   // Seed with the current synchronous position so the first frame
   // renders without waiting for the next stream tick.
   emit(svc.position);
 
   // Forward high-frequency reactive events.
   final sub = svc.positionStream.listen((pos) => emit(pos));
+
+  // Reset position on track change so the bar doesn't appear stuck at
+  // the previous track's last position while the new track buffers.
+  final trackSub = svc.currentTrackStream.listen((_) => forceReset());
 
   // Heartbeat: catch dedup gaps at ~5 Hz.
   final timer = Timer.periodic(const Duration(milliseconds: 200), (_) {
@@ -250,6 +261,7 @@ final positionStreamProvider = StreamProvider.autoDispose<Duration>((ref) {
   ref.onDispose(() {
     timer.cancel();
     sub.cancel();
+    trackSub.cancel();
     ctrl.close();
   });
 
