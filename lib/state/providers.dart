@@ -754,7 +754,6 @@ final searchProvider = FutureProvider.autoDispose
     .family<SearchResults, String>((ref, raw) async {
   final query = raw.trim();
   if (query.isEmpty) {
-    _logData('search', source: 'live', extra: 'query="" (empty)');
     return (
       tracks: const <AfTrack>[],
       albums: const <AfAlbum>[],
@@ -762,6 +761,21 @@ final searchProvider = FutureProvider.autoDispose
       playlists: const <AfPlaylist>[],
     );
   }
+
+  // Local mode: search the SQLite DB directly.
+  final mode = ref.watch(appModeProvider);
+  if (mode == AppMode.local) {
+    final lib = ref.read(localLibraryProvider);
+    final tracks = await lib.search(query);
+    _logData('search', source: 'local', extra: 'query="$query" tracks=${tracks.length}');
+    return (
+      tracks: tracks,
+      albums: const <AfAlbum>[],
+      artists: const <AfArtist>[],
+      playlists: const <AfPlaylist>[],
+    );
+  }
+
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
     _logData('search', source: 'none', extra: 'query="$query" (no backend)');
