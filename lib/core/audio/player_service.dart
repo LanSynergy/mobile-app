@@ -88,6 +88,11 @@ class AfPlayerService extends BaseAudioHandler
   static const _maxNudgeRetries = 3;
 
   AfPlayerService() : _player = Player() {
+    // Set audio driver BEFORE binding streams. If setAudioDriver is called
+    // after property observation starts (e.g. inside configureSpectrum),
+    // it re-initializes the audio pipeline which can break time-pos
+    // observation until the output is manually re-selected.
+    _player.setAudioDriver('aaudio');
     _bindStreams();
   }
 
@@ -421,11 +426,6 @@ class AfPlayerService extends BaseAudioHandler
       // Enable gapless playback — mpv pre-fetches the next track so
       // transitions are seamless and auto-advance works correctly.
       await _player.setGapless(Gapless.weak);
-      // Use AAudio as the default audio output driver on Android.
-      // AAudio provides lower latency and better compatibility than
-      // OpenSL ES on Android 8.1+ (API 27+). Falls back gracefully
-      // on older devices.
-      await _player.setAudioDriver('aaudio');
       await _player.setSpectrum(const SpectrumSettings(
         fftSize: 2048,
         bandCount: 64,
