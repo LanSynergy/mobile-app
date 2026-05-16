@@ -1,40 +1,16 @@
 # Aetherfin
 
-A native-feeling Android music player backed by your self-hosted
-[Jellyfin](https://jellyfin.org) or [Navidrome](https://www.navidrome.org)
-server. Aetherfin is the player — the server is the file source.
-
-> Spotify's polish. Apple Music's typography. Soulseek's respect for the
-> listener.
+Your music. Your server. No compromises.
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.41.9-02569B?logo=flutter)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart-3.11.5-0175C2?logo=dart)](https://dart.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android)](https://developer.android.com)
 
+Aetherfin is a native Android music player for [Jellyfin](https://jellyfin.org) and [Navidrome](https://www.navidrome.org). It streams your library, decodes everything on-device with libmpv, and stays out of your way.
+
+No cloud. No telemetry. No transcoding. Just playback.
+
 ---
-
-## What it is
-
-Aetherfin streams music from a Jellyfin or Navidrome server you own and
-decodes it fully on-device using **libmpv** via
-[mpv_audio_kit](https://pub.dev/packages/mpv_audio_kit). No
-Aetherfin-operated servers exist. No telemetry. The server is treated as a
-passive file source plus per-user state store (favorites, play counts,
-playlists). Everything else — buffering, decoding, queue management,
-lyrics, lock-screen controls, sleep timer, spectral color extraction,
-real-time FFT visualizer — runs on your phone.
-
-**Why this matters**
-
-- The server's CPU stays cool. Tracks are served as raw bytes
-  (Jellyfin: `/Audio/{id}/stream?Static=true`; Navidrome: `/rest/stream.view`).
-  No HLS transcoding round-trip.
-- You can play lossless FLAC / ALAC / OPUS / WAV files without quality loss.
-- The FFT spectrum visualizer is driven by the actual audio output
-  post-DSP — no `RECORD_AUDIO` permission needed.
-- Aetherfin keeps working as long as your server is reachable.
-  There is no "Aetherfin cloud" to depend on.
 
 ## Screenshots
 
@@ -55,179 +31,128 @@ real-time FFT visualizer — runs on your phone.
 
 > *Video not loading? [Download it directly](docs/assets/screencapture/demo.mp4).*
 
+---
+
+## Why Aetherfin
+
+- **Direct stream** — serves raw bytes from your server. No HLS, no transcoding, no quality loss.
+- **Lossless support** — FLAC, ALAC, OPUS, WAV, whatever your library has.
+- **Real-time visualizer** — 64-band FFT driven by actual audio output. No microphone permission.
+- **Full DSP rack** — 18-band EQ with presets, compressor, echo/delay, phaser, flanger, chorus, pitch shift, and more.
+- **Works offline from Aetherfin's perspective** — there's no "Aetherfin cloud." As long as your server is reachable, you're good.
+
+---
+
 ## Features
 
-- **Library, Albums, Artists, Genres, Playlists** browsing
-- **Search** across tracks, albums, artists, playlists (debounced, normalized)
-- **Queue** with drag-to-reorder, swipe-to-remove, auto-scroll to current track
-- **Long-press context menus** on tracks (Play next, Add to queue, Go to album/artist) and albums (Play album, Go to artist)
-- **Now Playing** with:
-  - Real-time FFT spectrum visualizer (64 bars, engine-driven rendering at 60 fps, path-batched painter)
-  - Artwork pulse driven by sub-bass transient detector (bins 1–6, 250ms cooldown, spring decay)
-  - Progress scrubber with haptic feedback and drag-race-free seeking
-  - Shuffle (native mpv playlist-shuffle, never changes displayed song), loop (off / track / playlist), playback speed (0.5×–2.0×)
-  - Favorite toggle, Instant Mix radio
-- **Equalizer & DSP** (accessible from Now Playing → More):
-  - Bass shelf (-12 to +12 dB)
-  - Treble shelf (-12 to +12 dB)
-  - Loudness normalization (EBU R128, -16 LUFS)
-  - Dynamic compressor (threshold, ratio, attack, release)
-  - Noise gate (threshold, ratio, attack, release)
-  - De-esser (intensity, mix, frequency)
-  - ReplayGain (off / track / album)
-  - 18-band graphic EQ with presets (Rock, Jazz, Classical, Hip-Hop, Electronic, Vocal, Bass/Treble Boost + custom user presets)
-  - Echo / delay (multi-tap with pipe-separated delays/decays)
-  - Pitch & tempo shifting (rubberband engine, 0.5×–2.0×)
-  - Spatial: crossfeed, stereo widening
-  - Modulation: phaser, flanger, chorus, tremolo, vibrato
-  - Creative: harmonic exciter, crystalizer, virtual bass, bit-crusher
-  - Master on/off switch to bypass all effects
-- **Liked songs** section in Library (fetches starred/favorite tracks from server)
-- **Synced lyrics** (LRC parsed on-device, auto-scrolling, displayed on lock-screen)
-- **Lock-screen / notification** media controls (prev, play/pause, next)
-- **Sleep timer** (presets + end-of-track mode)
-- **Audio output routing** (mpv audio device picker)
-- **Audio hardware settings** — sample rate, bit depth, exclusive mode, audio buffer
-- **Network & cache settings** — cache duration, buffer size, keep-audio-active toggle
-- **Settings** — Samsung One UI–style grouped card layout with colored icons
-- **Save to playlist** / create playlist from Now Playing
-- **Playlist management** — reorder, remove, rename, delete
-- **Multi-backend support** — works with both **Jellyfin** and **Navidrome** (Subsonic API)
-- **Auto-detection** of server type during onboarding (Jellyfin publicInfo, then Subsonic ping)
-- **mDNS discovery** of Jellyfin servers on the local network
-- **Spectral-derived UI accents** — palette sampled from current cover art
-- **Gapless playback** — libmpv pre-fetches the next track in the background
-- **Back-to-exit confirmation** — "press back again to exit" on home tab
-- **A-B loop** — repeat a section of a track (API ready, UI pending)
-- **Genre detail screens** — tap any genre to browse its albums
-- **Offline-friendly metadata cache** (cover art via
-  [`cached_network_image`](https://pub.dev/packages/cached_network_image),
-  Dio HTTP cache for catalog requests)
+### Playback
+- Gapless transitions with background prefetch
+- Shuffle, loop (off / track / queue), playback speed (0.5×–2.0×)
+- Lock-screen and notification controls
+- Sleep timer with presets and end-of-track mode
+- Instant Mix radio (server-generated similar tracks queue)
 
-## Requirements
+### Audio
+- 86-effect DSP rack via mpv's ffmpeg filter pipeline
+- 18-band graphic EQ with built-in and custom presets
+- Echo/delay, phaser, flanger, chorus, tremolo, vibrato, bit-crusher
+- Dynamic compressor, noise gate, de-esser with full parameter control
+- Loudness normalization (EBU R128) and ReplayGain (track/album)
+- Pitch and tempo shifting (rubberband engine)
+- Crossfeed, stereo widening, virtual bass, harmonic exciter
+- Master bypass switch
 
-- **Android 7.0 (API 24)** or newer.
-- A reachable music server — either:
-  - [**Jellyfin 10.8+**](https://jellyfin.org/downloads/server), or
-  - [**Navidrome 0.49+**](https://www.navidrome.org/docs/installation/)
-    (or any Subsonic API v1.16.1+ compatible server)
-- At least one music library configured on the server.
-- Network reachability between phone and server (LAN, VPN, or
-  publicly-exposed HTTPS — all work).
+### Library
+- Albums, Artists, Songs, Playlists, Genres, Liked songs
+- Search across tracks, albums, artists, playlists
+- Long-press context menus (play next, add to queue, go to album/artist)
+- Drag-to-reorder queue with swipe-to-remove
 
-## Quick start
+### Now Playing
+- FFT spectrum visualizer (64 bars, 60 fps, engine-driven)
+- Artwork pulse on kick drums (sub-bass transient detection)
+- Synced lyrics (LRC, auto-scrolling)
+- Favorite toggle, quality chip, save to playlist
 
-### Install the APK
+### Settings
+- Audio output: sample rate, bit depth, exclusive mode
+- Network: cache duration, buffer size, keep-audio-active
+- Server: connection info, switch server, sign out
 
-1. Download the most recent `app-release.apk` from
-   [Releases](https://github.com/Aetherfin/mobile-app/releases) or the
-   [latest CI build](https://github.com/Aetherfin/mobile-app/actions/workflows/build-apk.yml).
-2. Enable "Install from unknown sources" for your file manager / browser.
-3. Open the APK, install, launch.
+---
 
-### First-run onboarding
+## Install
 
-1. **Discover or enter your server URL** (e.g. `http://192.168.1.10:8096`
-   for Jellyfin, `http://192.168.1.10:4533` for Navidrome, or
-   `https://music.example.com`). mDNS will list nearby Jellyfin
-   instances; otherwise type the URL manually. The app auto-detects
-   whether it's a Jellyfin or Navidrome server.
-2. **Sign in** with your username and password.
-3. **You're in.** Pick a track. It plays.
+Grab the latest APK from [Releases](https://github.com/Aetherfin/mobile-app/releases) or the [CI build](https://github.com/Aetherfin/mobile-app/actions/workflows/build-apk.yml).
 
-## Building from source
+### Requirements
+
+- Android 7.0+
+- A reachable [Jellyfin 10.8+](https://jellyfin.org/downloads/server) or [Navidrome 0.49+](https://www.navidrome.org/docs/installation/) server
+- At least one music library on the server
+
+### First run
+
+1. Enter your server URL (or let mDNS find it on your LAN)
+2. Sign in
+3. Play something
+
+---
+
+## Build from source
 
 ```bash
-# Prereqs: Flutter 3.41.9 stable, Dart 3.11.5, Java 17, Android SDK
-flutter --version    # must say 3.41.9
-flutter pub get      # also downloads libmpv.so for Android (~20 MB per ABI)
-
-# Run on a connected device / emulator
+flutter pub get
 flutter run --debug
 
-# Release APK
+# Release
 flutter build apk --release
-# → build/app/outputs/flutter-apk/app-release.apk
-
-# Per-ABI APKs (smaller download per device)
 flutter build apk --release --split-per-abi
 ```
 
-### Pre-push checklist
-
 ```bash
-flutter analyze --no-fatal-infos   # 0 errors, 0 warnings
-flutter test                       # all pass
+# Before pushing
+flutter analyze
+flutter test
 ```
 
-CI runs both on every PR. See
-[`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml).
+---
 
-## Architecture (the 30-second version)
+## How it works
 
 ```
-   ┌────────────────────────────────┐         ┌──────────────────────────────┐
-   │   Aetherfin (Android)          │         │   Jellyfin or Navidrome      │
-   │                                │         │                              │
-   │  libmpv (mpv_audio_kit) ◄──────┼─bytes───┤  Jellyfin: /Audio/{id}/stream│
-   │  Queue / shuffle / loop        │         │  Navidrome: /rest/stream.view│
-   │  Gapless prefetch              │◄─meta───┤  Albums, artists, tracks     │
-   │  FFT spectrum (post-DSP)       │         │  Favorites, playlists        │
-   │  Lyrics parse + sync           │◄─image──┤  Cover art                   │
-   │  Lock-screen (audio_service)   │         │                              │
-   │  Cover-art file cache          │         │                              │
-   │                                │         │                              │
-   │  Optimistic favorite UI ───────┼─POST────┤  (server is source of truth) │
-   │  Telemetry (display only) ─────┼─POST────┤  Jellyfin: /Sessions/Playing │
-   │                                │         │  Navidrome: scrobble.view    │
-   └────────────────────────────────┘         └──────────────────────────────┘
+┌─────────────────────────────┐       ┌────────────────────────────┐
+│  Aetherfin (your phone)     │       │  Your server               │
+│                             │       │  (Jellyfin or Navidrome)   │
+│  libmpv decoding            │◄─raw──┤  Audio files               │
+│  Queue, shuffle, gapless    │       │  Metadata, artwork         │
+│  FFT visualizer (post-DSP)  │◄─meta─┤  Favorites, playlists     │
+│  Lyrics parsing + sync      │       │  Play counts               │
+│  Lock-screen controls       │       │                            │
+│  DSP effects chain          │       │                            │
+│  Cover art cache            │       │                            │
+└─────────────────────────────┘       └────────────────────────────┘
 ```
 
-### Visualizer architecture
+The server stores files and metadata. Aetherfin does everything else.
 
-The FFT visualizer uses an **engine-driven rendering** model:
-
-1. **Engine-side DSP** — mpv_audio_kit's C++ pipeline handles all smoothing physics (attack 0.8, release 0.1). Emits 64 log-spaced bands at ~120 fps, already dB-normalized to [0, 1].
-2. **Client-side rendering** — `ingest()` applies a power-8 curve for visual compression and marks data dirty. A vsync-aligned ticker calls `flush()` at 60 fps, guaranteeing frame-aligned repaints regardless of stream event timing.
-3. **Path-batched painter** — 4 `Path` objects (top/reflection × played/unplayed) drawn with 4 `drawPath` calls instead of ~128 individual `drawRRect` calls. Eliminates Skia pipeline thrashing.
-
-The artwork pulse uses a **transient detector** on bins 1–6 (kick/sub-bass region, 22–45 Hz). Running baseline EMA + 1.5× threshold + 250ms cooldown prevents double-kick chatter. Spring decay (0.85× per frame) via `ValueNotifier<double>` + `Transform.scale` — no setState, no parent rebuild.
-
-Full architectural rules live in [`CLAUDE.md`](./CLAUDE.md).
+---
 
 ## Privacy
 
-Aetherfin does not operate any servers. The app talks only to the
-Jellyfin or Navidrome server you configure. Credentials live in Android's
-secure storage on the device. No analytics, no crash-reporting SDK, no ads,
-no third-party trackers. Full statement in [PRIVACY.md](./PRIVACY.md).
-
-## License
-
-Aetherfin is open-source under the **MIT License**. See
-[LICENSE](./LICENSE) for the full text.
-
-Copyright © 2025 Azrim &lt;mirzaspc@gmail.com&gt;.
-
-Jellyfin is © its respective authors and is licensed separately. This
-project is not affiliated with the Jellyfin project.
+No analytics. No ads. No trackers. No Aetherfin servers. The app talks only to the server you configure. Full details in [PRIVACY.md](./PRIVACY.md).
 
 ## Contributing
 
-PRs welcome. Read [CLAUDE.md](./CLAUDE.md) first — it covers the auth
-header format, the data-source split, the design tokens, and the
-non-negotiable rules.
+PRs welcome. Read [CLAUDE.md](./CLAUDE.md) first — it covers auth, architecture, design tokens, and the rules.
+
+## License
+
+MIT. See [LICENSE](./LICENSE).
 
 ## Acknowledgements
 
-- [Jellyfin](https://jellyfin.org) — the free software media system this
-  app is built around.
-- [Navidrome](https://www.navidrome.org) — the lightweight, self-hosted
-  music server with Subsonic API compatibility.
-- [Finamp](https://github.com/jmshrv/finamp) — prior-art Jellyfin music
-  client whose auth-header format we follow.
-- [mpv_audio_kit](https://pub.dev/packages/mpv_audio_kit) — the
-  libmpv-backed audio engine powering playback, gapless transitions,
-  and the real-time FFT spectrum.
-- [audio_service](https://pub.dev/packages/audio_service) — lock-screen
-  and notification media controls.
+- [Jellyfin](https://jellyfin.org) and [Navidrome](https://www.navidrome.org) — the servers
+- [mpv_audio_kit](https://pub.dev/packages/mpv_audio_kit) — libmpv audio engine
+- [audio_service](https://pub.dev/packages/audio_service) — lock-screen controls
+- [Finamp](https://github.com/jmshrv/finamp) — prior art
