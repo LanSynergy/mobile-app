@@ -93,6 +93,10 @@ class AfPlayerService extends BaseAudioHandler
     // it re-initializes the audio pipeline which can break time-pos
     // observation until the output is manually re-selected.
     _player.setAudioDriver('aaudio');
+    // Set a generous audio buffer (200ms) to prevent jittering when the
+    // screen is off and Android throttles the process under Doze.
+    // The default (~50ms) is too tight for background playback.
+    _player.setAudioBuffer(const Duration(milliseconds: 200));
     _bindStreams();
   }
 
