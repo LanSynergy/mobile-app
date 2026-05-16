@@ -549,8 +549,14 @@ class _SettingsSwitchTile extends StatelessWidget {
 
 void _showSampleRateDialog(BuildContext context, WidgetRef ref) {
   const rates = <int>[0, 44100, 48000, 88200, 96000, 192000];
-  const labels = <int, String>{
-    0: 'Auto (default)',
+
+  final svc = ref.read(playerServiceProvider);
+  final actualRate = svc.audioOutParams.sampleRate ?? 0;
+
+  final labels = <int, String>{
+    0: actualRate > 0
+        ? 'Auto (currently ${(actualRate / 1000).toStringAsFixed(1)} kHz)'
+        : 'Auto (default)',
     44100: '44.1 kHz (CD)',
     48000: '48 kHz (DVD)',
     88200: '88.2 kHz (Hi-Res)',
@@ -558,7 +564,10 @@ void _showSampleRateDialog(BuildContext context, WidgetRef ref) {
     192000: '192 kHz (Studio)',
   };
 
-  final currentRate = ref.read(playerServiceProvider).audioOutParams.sampleRate ?? 0;
+  // Determine which option is active: if the actual output matches a
+  // forced rate, highlight that. Otherwise highlight Auto.
+  final isForced = rates.contains(actualRate) && actualRate != 0;
+  final activeRate = isForced ? actualRate : 0;
 
   showDialog<void>(
     context: context,
@@ -580,7 +589,8 @@ void _showSampleRateDialog(BuildContext context, WidgetRef ref) {
             for (final rate in rates)
               _OptionTile(
                 label: labels[rate]!,
-                isActive: rate == currentRate || (rate == 0 && currentRate == 0),
+                subtitle: rate == 0 ? 'Matches the source file' : null,
+                isActive: rate == activeRate,
                 onTap: () {
                   unawaited(
                       ref.read(playerServiceProvider).setAudioSampleRate(rate));
@@ -596,15 +606,25 @@ void _showSampleRateDialog(BuildContext context, WidgetRef ref) {
 }
 
 void _showFormatDialog(BuildContext context, WidgetRef ref) {
-  const formats = <(Format, String)>[
-    (Format.auto, 'Auto (default)'),
+  final svc = ref.read(playerServiceProvider);
+  final currentFormat = svc.audioOutParams.format;
+  final formatName = currentFormat?.name ?? 'auto';
+
+  final formats = <(Format, String)>[
+    (Format.auto, currentFormat != null
+        ? 'Auto (currently $formatName)'
+        : 'Auto (default)'),
     (Format.s16, '16-bit signed'),
     (Format.s32, '32-bit signed'),
     (Format.float32, '32-bit float'),
     (Format.float64, '64-bit float'),
   ];
 
-  final currentFormat = ref.read(playerServiceProvider).audioOutParams.format;
+  // If the actual format matches a forced option, highlight it.
+  // Otherwise highlight Auto.
+  final isForced = currentFormat != null &&
+      formats.any((f) => f.$1 == currentFormat && f.$1 != Format.auto);
+  final activeFormat = isForced ? currentFormat : Format.auto;
 
   showDialog<void>(
     context: context,
@@ -626,8 +646,8 @@ void _showFormatDialog(BuildContext context, WidgetRef ref) {
             for (final (format, label) in formats)
               _OptionTile(
                 label: label,
-                isActive: format == currentFormat ||
-                    (format == Format.auto && currentFormat == null),
+                subtitle: format == Format.auto ? 'Matches the source file' : null,
+                isActive: format == activeFormat,
                 onTap: () {
                   unawaited(
                       ref.read(playerServiceProvider).setAudioFormat(format));
