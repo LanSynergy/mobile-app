@@ -23,6 +23,7 @@ abstract class MusicBackend {
   Future<List<AfTrack>> allTracks({int limit = 1000, int startIndex = 0});
   Future<List<AfGenre>> genres({int limit = 200});
   Future<List<AfAlbum>> favoriteAlbums({int limit = 30});
+  Future<List<AfTrack>> favoriteTracks({int limit = 500});
 
   // ── Detail views ────────────────────────────────────────────────────
 

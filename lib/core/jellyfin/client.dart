@@ -660,6 +660,25 @@ class JellyfinClient implements MusicBackend {
     return _parseItemList(res.data).map(_parseAlbum).toList(growable: false);
   }
 
+  @override
+  Future<List<AfTrack>> favoriteTracks({int limit = 500}) async {
+    _assertUser();
+    final res = await _dio.get<Map<String, dynamic>>(
+      'Users/$userId/Items',
+      queryParameters: <String, dynamic>{
+        'IncludeItemTypes': 'Audio',
+        'Recursive': true,
+        'Filters': 'IsFavorite',
+        'SortBy': 'SortName',
+        'SortOrder': 'Ascending',
+        'Limit': limit,
+        'Fields': _trackFields,
+        'EnableImages': true,
+      },
+    );
+    return _parseItemList(res.data).map(_parseTrack).toList(growable: false);
+  }
+
   /// `GET /Users/{userId}/Items?IncludeItemTypes=MusicAlbum` — *every* album
   /// in the user's library, sorted alphabetically. Used by the Library
   /// tab's Albums grid, which has historically conflated

@@ -358,6 +358,7 @@ final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
       // below all live for the duration of the screen they're watched
       // on; invalidation is a no-op when nothing is listening.
       ref.invalidate(favoriteAlbumsProvider);
+      ref.invalidate(favoriteTracksProvider);
       ref.invalidate(recentlyPlayedTracksProvider);
     } catch (e, stack) {
       afLog(
@@ -516,6 +517,19 @@ final favoriteAlbumsProvider =
   }
   final res = await backend.favoriteAlbums();
   _logData('favoriteAlbums', source: 'live', extra: 'count=${res.length}');
+  return res;
+});
+
+/// All tracks the user has marked as favorite / starred.
+final favoriteTracksProvider =
+    FutureProvider.autoDispose<List<AfTrack>>((ref) async {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend == null) {
+    _logData('favoriteTracks', source: 'demo', extra: '(signed out)');
+    return DemoLibrary.tracks.take(5).toList();
+  }
+  final res = await backend.favoriteTracks();
+  _logData('favoriteTracks', source: 'live', extra: 'count=${res.length}');
   return res;
 });
 

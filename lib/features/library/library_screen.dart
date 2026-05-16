@@ -9,7 +9,7 @@ import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 
-enum LibrarySection { albums, artists, songs, playlists, genres }
+enum LibrarySection { albums, artists, songs, playlists, genres, liked }
 
 class LibraryScreen extends ConsumerStatefulWidget {
   /// When set, the screen opens directly on this tab instead of Albums.
@@ -132,6 +132,7 @@ class _SegmentedPill extends StatelessWidget {
         LibrarySection.songs => 'Songs',
         LibrarySection.playlists => 'Playlists',
         LibrarySection.genres => 'Genres',
+        LibrarySection.liked => 'Liked',
       };
 }
 
@@ -303,6 +304,39 @@ class _SectionBody extends ConsumerWidget {
               );
             },
           ),
+          orElse: () => const Center(child: CircularProgressIndicator()),
+        );
+      case LibrarySection.liked:
+        final likedAsync = ref.watch(favoriteTracksProvider);
+        return likedAsync.maybeWhen(
+          data: (list) => list.isEmpty
+              ? Center(
+                  child: Text(
+                    'No liked songs yet.\nTap the heart on any track.',
+                    textAlign: TextAlign.center,
+                    style: AfTypography.bodyMedium.copyWith(
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                )
+              : ListView.separated(
+                  padding: padding.add(const EdgeInsets.only(
+                      bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+                  itemCount: list.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: AfSpacing.s4),
+                  itemBuilder: (context, i) {
+                    final t = list[i];
+                    return TrackRow(
+                      track: t,
+                      onTap: () => ref
+                          .read(playActionsProvider)
+                          .playQueue(list, startIndex: i),
+                      onLongPress: () =>
+                          showTrackContextMenu(context, ref, t),
+                    );
+                  },
+                ),
           orElse: () => const Center(child: CircularProgressIndicator()),
         );
     }

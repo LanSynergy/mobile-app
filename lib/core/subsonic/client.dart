@@ -297,6 +297,16 @@ class SubsonicClient implements MusicBackend {
     return _parseAlbumList(root['albumList2'] as Map<String, dynamic>?);
   }
 
+  @override
+  Future<List<AfTrack>> favoriteTracks({int limit = 500}) async {
+    final root = await _get('getStarred2', {});
+    final starred = root['starred2'] as Map<String, dynamic>?;
+    if (starred == null) return const [];
+    final songs =
+        (starred['song'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
+    return songs.take(limit).map(_parseTrack).toList(growable: false);
+  }
+
   // ── Detail views ──────────────────────────────────────────────────────
 
   @override
