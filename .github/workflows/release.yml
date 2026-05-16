@@ -96,15 +96,29 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          # If the version already includes a +N build number, write it as-is.
-          # Otherwise default the build number to 1.
+          # Read current version from pubspec.yaml to extract the build number.
+          CURRENT=$(awk '/^version:/ {print $2; exit}' pubspec.yaml)
+          echo "Current pubspec version: $CURRENT"
+
+          # Extract the current build number (the +N part). Default to 0 if none.
+          if [[ "$CURRENT" == *"+"* ]]; then
+            CURRENT_BUILD="${CURRENT##*+}"
+          else
+            CURRENT_BUILD="0"
+          fi
+
+          # Increment the build number.
+          NEXT_BUILD=$((CURRENT_BUILD + 1))
+
+          # If the user provided a +N in the input, use that instead.
           if [[ "$VERSION" == *"+"* ]]; then
             NEW_VERSION="$VERSION"
           else
-            NEW_VERSION="$VERSION+1"
+            NEW_VERSION="${VERSION}+${NEXT_BUILD}"
           fi
 
-          CURRENT=$(awk '/^version:/ {print $2; exit}' pubspec.yaml)
+          echo "New version: $NEW_VERSION (build $CURRENT_BUILD → $NEXT_BUILD)"
+
           if [ "$CURRENT" = "$NEW_VERSION" ]; then
             echo "pubspec.yaml already at $NEW_VERSION — skipping bump."
             echo "PUBSPEC_BUMPED=false" >> "$GITHUB_ENV"
