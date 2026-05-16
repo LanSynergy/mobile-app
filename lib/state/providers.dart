@@ -269,6 +269,11 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
   // Start position polling (10 Hz timer + reactive stream forwarding).
   _startPositionPolling(ref, svc);
 
+  // Forward playback errors to a provider the UI can show as snackbars.
+  svc.errorStream.listen((error) {
+    ref.read(playbackErrorProvider.notifier).state = error.toString();
+  });
+
   // Playback reporting only in server mode — local mode has no server.
   final mode = ref.read(appModeProvider);
   JellyfinPlaybackReporter? reporter;
@@ -332,6 +337,10 @@ final playerQueueProvider = StreamProvider.autoDispose<List<AfTrack>>((ref) {
 /// Uses StateProvider (not StreamProvider) to avoid Riverpod's internal
 /// AsyncValue dedup which suppresses identical Duration values.
 final positionStreamProvider = StateProvider<Duration>((ref) => Duration.zero);
+
+/// Last playback error message. Null when no error. UI watches this to
+/// show error snackbars.
+final playbackErrorProvider = StateProvider<String?>((ref) => null);
 
 /// Starts the position polling timer. Called once during player wiring.
 void _startPositionPolling(Ref ref, AfPlayerService svc) {

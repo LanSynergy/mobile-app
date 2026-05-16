@@ -807,6 +807,30 @@ class _UtilityRow extends ConsumerWidget {
                   _showEqDialog(context, ref);
                 },
               ),
+              _MoreItem(
+                icon: Icons.volume_up_rounded,
+                label: 'Volume',
+                onTap: () {
+                  Navigator.of(dialogCtx).pop();
+                  _showVolumeDialog(context, ref);
+                },
+              ),
+              _MoreItem(
+                icon: Icons.bluetooth_audio_rounded,
+                label: 'Audio delay',
+                onTap: () {
+                  Navigator.of(dialogCtx).pop();
+                  _showAudioDelayDialog(context, ref);
+                },
+              ),
+              _MoreItem(
+                icon: Icons.repeat_one_rounded,
+                label: 'A-B Loop',
+                onTap: () {
+                  Navigator.of(dialogCtx).pop();
+                  _showAbLoopDialog(context, ref);
+                },
+              ),
             ],
           ),
         ),
@@ -816,6 +840,181 @@ class _UtilityRow extends ConsumerWidget {
 
   void _showEqDialog(BuildContext context, WidgetRef ref) {
     context.push('/eq-dsp');
+  }
+
+  void _showVolumeDialog(BuildContext context, WidgetRef ref) {
+    final svc = ref.read(playerServiceProvider);
+    double volume = svc.volume;
+    bool muted = svc.isMuted;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: AfColors.surfaceBase,
+          title: Row(
+            children: [
+              const Text('Volume'),
+              const Spacer(),
+              IconButton(
+                icon: Icon(muted ? Icons.volume_off_rounded : Icons.volume_up_rounded),
+                onPressed: () {
+                  muted = !muted;
+                  svc.setMute(muted);
+                  setDialogState(() {});
+                },
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Slider(
+                value: volume.clamp(0, 150),
+                min: 0,
+                max: 150,
+                divisions: 30,
+                activeColor: AfColors.indigo400,
+                label: '${volume.round()}%',
+                onChanged: (v) {
+                  volume = v;
+                  svc.setVolume(v);
+                  setDialogState(() {});
+                },
+              ),
+              Text(
+                '${volume.round()}%',
+                style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAudioDelayDialog(BuildContext context, WidgetRef ref) {
+    final svc = ref.read(playerServiceProvider);
+    double delayMs = svc.audioDelay.inMilliseconds.toDouble();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: AfColors.surfaceBase,
+          title: const Text('Audio delay'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Shift audio timing for Bluetooth sync',
+                style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
+              ),
+              const SizedBox(height: AfSpacing.s16),
+              Slider(
+                value: delayMs.clamp(-500, 500),
+                min: -500,
+                max: 500,
+                divisions: 20,
+                activeColor: AfColors.indigo400,
+                label: '${delayMs.round()} ms',
+                onChanged: (v) {
+                  delayMs = v;
+                  svc.setAudioDelay(Duration(milliseconds: v.round()));
+                  setDialogState(() {});
+                },
+              ),
+              Text(
+                '${delayMs.round()} ms',
+                style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                delayMs = 0;
+                svc.setAudioDelay(Duration.zero);
+                setDialogState(() {});
+              },
+              child: const Text('Reset'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAbLoopDialog(BuildContext context, WidgetRef ref) {
+    final svc = ref.read(playerServiceProvider);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AfColors.surfaceBase,
+        title: const Text('A-B Loop'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Set markers to loop a section of the track.',
+              style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
+            ),
+            const SizedBox(height: AfSpacing.s16),
+            FilledButton.icon(
+              onPressed: () {
+                svc.setAbLoopA(svc.position);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Loop start: ${_fmtDuration(svc.position)}')),
+                );
+              },
+              icon: const Icon(Icons.flag_rounded, size: 18),
+              label: const Text('Set A (start)'),
+              style: FilledButton.styleFrom(backgroundColor: AfColors.indigo600),
+            ),
+            const SizedBox(height: AfSpacing.s8),
+            FilledButton.icon(
+              onPressed: () {
+                svc.setAbLoopB(svc.position);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Loop end: ${_fmtDuration(svc.position)}')),
+                );
+              },
+              icon: const Icon(Icons.flag_outlined, size: 18),
+              label: const Text('Set B (end)'),
+              style: FilledButton.styleFrom(backgroundColor: AfColors.indigo600),
+            ),
+            const SizedBox(height: AfSpacing.s8),
+            OutlinedButton.icon(
+              onPressed: () {
+                svc.setAbLoopA(null);
+                svc.setAbLoopB(null);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('A-B loop cleared')),
+                );
+              },
+              icon: const Icon(Icons.clear_rounded, size: 18),
+              label: const Text('Clear loop'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AfColors.semanticError,
+                side: const BorderSide(color: AfColors.surfaceHigh),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _fmtDuration(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 
   void _showSaveDialog(BuildContext context, WidgetRef ref) {

@@ -232,6 +232,15 @@ class AfPlayerService extends BaseAudioHandler
     afLog('audio', 'mute=$muted');
   }
 
+  /// Audio delay for Bluetooth sync.
+  Duration get audioDelay => _audioDelay;
+  Duration _audioDelay = Duration.zero;
+  Future<void> setAudioDelay(Duration delay) async {
+    await _player.setAudioDelay(delay);
+    _audioDelay = delay;
+    afLog('audio', 'audioDelay=${delay.inMilliseconds}ms');
+  }
+
   // ---------------------------------------------------------------------------
   // Audio quality info
   // ---------------------------------------------------------------------------
