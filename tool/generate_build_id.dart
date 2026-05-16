@@ -11,5 +11,5 @@ void main() {
       '// Regenerated on every build by tool/generate_build_id.dart\n'
       "const kBuildId = '$id';\n";
   File('lib/build_id.dart').writeAsStringSync(content);
-  print('Generated build ID: $id');
+  stderr.writeln('Generated build ID: $id');
 }
