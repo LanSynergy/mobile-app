@@ -552,6 +552,12 @@ class AfPlayerService extends BaseAudioHandler
         // the full queue in the background. This avoids the multi-second
         // delay caused by mpv processing hundreds of entries before
         // starting playback.
+        //
+        // Suppress playlist sync during queue building — mpv emits
+        // playlist events as items are added, which would incorrectly
+        // update _currentIndex and emit wrong tracks.
+        _suppressPlaylistSync = true;
+
         await _player.open(medias[safeIndex], play: true);
 
         // Now append remaining tracks without blocking playback.
@@ -569,8 +575,10 @@ class AfPlayerService extends BaseAudioHandler
         // mpv's playlist is now: [before...] [target=playing] [after...]
         // which matches _trackQueue order. Update _currentIndex to match.
         _currentIndex = safeIndex;
+        _suppressPlaylistSync = false;
       }
     } catch (e, stack) {
+      _suppressPlaylistSync = false;
       afLog('audio', 'playQueue failed', error: e, stackTrace: stack);
       // Revert optimistic state.
       _trackQueue.clear();
