@@ -337,59 +337,25 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
   // Local scrub preview — updated during drag without seeking.
   double? _scrubPreview;
   bool _isDragging = false;
-  StreamSubscription<Duration>? _positionSub;
-  Timer? _pollTimer;
-  Duration _position = Duration.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    final svc = ref.read(playerServiceProvider);
-    _position = svc.position;
-
-    // Primary: listen to the reactive position stream from mpv.
-    _positionSub = svc.positionStream.listen((pos) {
-      if (!_isDragging && mounted && pos != _position) {
-        setState(() => _position = pos);
-      }
-    });
-
-    // Fallback: poll synchronous position at 10 Hz in case the stream
-    // is silent (e.g. during buffering transitions).
-    _pollTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-      if (!_isDragging && mounted) {
-        final pos = ref.read(playerServiceProvider).position;
-        if (pos != _position) {
-          setState(() => _position = pos);
-        }
-      }
-    });
-  }
 
   @override
   void didUpdateWidget(covariant _ReactiveProgress oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Reset drag lock when track changes — prevents the progress bar from
-    // appearing frozen if a seek was in-flight when the user skipped.
     if (oldWidget.track.id != widget.track.id) {
       _isDragging = false;
       _scrubPreview = null;
-      _position = Duration.zero;
     }
   }
 
   @override
-  void dispose() {
-    _positionSub?.cancel();
-    _pollTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final positionAsync = ref.watch(positionStreamProvider);
+    final position = positionAsync.maybeWhen(
+      data: (p) => p,
+      orElse: () => Duration.zero,
+    );
     final spectral = ref.watch(currentSpectralProvider);
     final duration = widget.track.duration;
-    final position = _position;
 
     // Only use engine position if NOT dragging — prevents the playhead
     // from stuttering between the drag position and the engine's real

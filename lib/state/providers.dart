@@ -325,49 +325,30 @@ final playerQueueProvider = StreamProvider.autoDispose<List<AfTrack>>((ref) {
 /// to THIS stream — never a private timer.
 ///
 /// mpv_audio_kit's ReactiveProperty deduplicates by == — when position
-/// resets to the same Duration (e.g. Duration.zero on track change or
-/// seek-to-start), the reactive stream suppresses the event. A 200 ms
-/// heartbeat polls the synchronous position to guarantee the UI always
-/// has fresh data even when the reactive stream is silent.
+/// Position stream for the mini-player ring and lyrics.
+/// Polls the player's synchronous position at 10 Hz and forwards
+/// reactive stream events. No dedup — every tick emits so the UI
+/// always has the latest value.
 final positionStreamProvider = StreamProvider.autoDispose<Duration>((ref) {
   final svc = ref.watch(playerServiceProvider);
   final ctrl = StreamController<Duration>();
-  Duration lastEmitted = const Duration(microseconds: -1);
 
-  void emit(Duration pos) {
-    if (pos == lastEmitted) return;
-    lastEmitted = pos;
-    ctrl.add(pos);
-  }
+  // Seed immediately.
+  ctrl.add(svc.position);
 
-  /// Force-emit Duration.zero regardless of dedup — used on track change
-  /// so the progress bar resets immediately instead of appearing frozen.
-  void forceReset() {
-    lastEmitted = const Duration(microseconds: -1);
-    ctrl.add(Duration.zero);
-  }
+  // Forward reactive events from mpv (fires when position actually changes).
+  final sub = svc.positionStream.listen((pos) {
+    if (!ctrl.isClosed) ctrl.add(pos);
+  });
 
-  // Seed with the current synchronous position so the first frame
-  // renders without waiting for the next stream tick.
-  emit(svc.position);
-
-  // Forward high-frequency reactive events.
-  final sub = svc.positionStream.listen((pos) => emit(pos));
-
-  // Reset position on track change so the bar doesn't appear stuck at
-  // the previous track's last position while the new track buffers.
-  final trackSub = svc.currentTrackStream.listen((_) => forceReset());
-
-  // Heartbeat: poll at ~10 Hz to keep the progress bar smooth even when
-  // the reactive stream is silent (e.g. during buffering transitions).
+  // Heartbeat at 10 Hz — catches cases where the reactive stream is silent.
   final timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-    emit(svc.position);
+    if (!ctrl.isClosed) ctrl.add(svc.position);
   });
 
   ref.onDispose(() {
     timer.cancel();
     sub.cancel();
-    trackSub.cancel();
     ctrl.close();
   });
 
