@@ -26,6 +26,8 @@ import '../features/queue/queue_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
+import '../features/smart_playlist/smart_playlist_detail_screen.dart';
+import '../features/smart_playlist/smart_playlist_list_screen.dart';
 import '../widgets/app_shell.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -215,6 +217,31 @@ final _router = GoRouter(
       parentNavigatorKey: _rootKey,
       builder: (_, state) =>
           PlaylistScreen(playlistId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/smart-playlists',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) => const SmartPlaylistListScreen(),
+    ),
+    GoRoute(
+      path: '/smart-playlist/new',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) => const Scaffold(
+        body: Center(child: Text('Create smart playlist — coming soon')),
+      ),
+    ),
+    GoRoute(
+      path: '/smart-playlist/:id',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) => SmartPlaylistDetailScreen(
+          playlistId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/smart-playlist/:id/edit',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) => const Scaffold(
+        body: Center(child: Text('Edit smart playlist — coming soon')),
+      ),
     ),
     GoRoute(
       path: '/genre/:name',
