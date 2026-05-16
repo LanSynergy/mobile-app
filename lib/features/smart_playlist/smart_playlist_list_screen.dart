@@ -6,7 +6,7 @@ import '../../core/smart_playlist/smart_playlist_model.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 
-/// Lists all user-created smart playlists.
+/// Lists all user-created smart playlists — Samsung One UI style.
 class SmartPlaylistListScreen extends ConsumerWidget {
   const SmartPlaylistListScreen({super.key});
 
@@ -19,15 +19,18 @@ class SmartPlaylistListScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: AfColors.surfaceCanvas,
         surfaceTintColor: Colors.transparent,
-        title: const Text('Smart Playlists'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => context.pop(),
+        ),
+        title: Text('Smart Playlists', style: AfTypography.display),
         centerTitle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            onPressed: () => context.push('/smart-playlist/new'),
-            tooltip: 'Create smart playlist',
-          ),
-        ],
+        titleSpacing: 0,
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.push('/smart-playlist/new'),
+        backgroundColor: AfColors.indigo600,
+        child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
       body: playlistsAsync.when(
         data: (playlists) => playlists.isEmpty
@@ -35,47 +38,72 @@ class SmartPlaylistListScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.auto_awesome_rounded,
-                        size: 48, color: AfColors.textTertiary),
-                    const SizedBox(height: AfSpacing.s12),
-                    Text(
-                      'No smart playlists yet',
-                      style: AfTypography.bodyMedium.copyWith(
-                        color: AfColors.textTertiary,
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: AfColors.indigo500.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
                       ),
+                      child: const Icon(Icons.auto_awesome_rounded,
+                          size: 36, color: AfColors.indigo400),
                     ),
                     const SizedBox(height: AfSpacing.s16),
-                    FilledButton.icon(
-                      onPressed: () => context.push('/smart-playlist/new'),
-                      icon: const Icon(Icons.add_rounded, size: 18),
-                      label: const Text('Create one'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AfColors.indigo600,
+                    Text(
+                      'No smart playlists yet',
+                      style: AfTypography.titleSmall,
+                    ),
+                    const SizedBox(height: AfSpacing.s4),
+                    Text(
+                      'Create rule-based playlists that update automatically',
+                      style: AfTypography.bodySmall.copyWith(
+                        color: AfColors.textTertiary,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               )
-            : ListView.separated(
+            : ListView(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AfSpacing.s16,
                   vertical: AfSpacing.s8,
                 ),
-                itemCount: playlists.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: AfSpacing.s8),
-                itemBuilder: (context, i) {
-                  final sp = playlists[i];
-                  return _SmartPlaylistTile(
-                    playlist: sp,
-                    onTap: () => context.push('/smart-playlist/${sp.id}'),
-                    onDelete: () async {
-                      final db = ref.read(smartPlaylistDbProvider);
-                      await db.delete(sp.id);
-                      ref.invalidate(smartPlaylistsProvider);
-                    },
-                  );
-                },
+                children: [
+                  // Grouped card container
+                  Container(
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: AfColors.surfaceBase,
+                      borderRadius: AfRadii.borderLg,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (int i = 0; i < playlists.length; i++) ...[
+                          _PlaylistTile(
+                            playlist: playlists[i],
+                            onTap: () => context
+                                .push('/smart-playlist/${playlists[i].id}'),
+                            onDelete: () async {
+                              final db = ref.read(smartPlaylistDbProvider);
+                              await db.delete(playlists[i].id);
+                              ref.invalidate(smartPlaylistsProvider);
+                            },
+                          ),
+                          if (i < playlists.length - 1)
+                            const Divider(
+                              height: 0,
+                              thickness: 0.5,
+                              indent: 64,
+                              color: AfColors.surfaceHigh,
+                            ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AfSpacing.s24),
+                ],
               ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -84,12 +112,12 @@ class SmartPlaylistListScreen extends ConsumerWidget {
   }
 }
 
-class _SmartPlaylistTile extends StatelessWidget {
+class _PlaylistTile extends StatelessWidget {
   final SmartPlaylist playlist;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
-  const _SmartPlaylistTile({
+  const _PlaylistTile({
     required this.playlist,
     required this.onTap,
     required this.onDelete,
@@ -97,35 +125,36 @@ class _SmartPlaylistTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AfColors.surfaceBase,
-      borderRadius: AfRadii.borderLg,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AfRadii.borderLg,
-        onLongPress: () => _showDeleteDialog(context),
-        child: Padding(
-          padding: const EdgeInsets.all(AfSpacing.s16),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AfColors.indigo500.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.auto_awesome_rounded,
-                    color: AfColors.indigo400, size: 22),
+    return InkWell(
+      onTap: onTap,
+      onLongPress: () => _showDeleteDialog(context),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AfSpacing.s16,
+          vertical: AfSpacing.s12,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AfColors.indigo500.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(width: AfSpacing.s12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(playlist.name, style: AfTypography.titleSmall),
-                    const SizedBox(height: 2),
-                    Text(
+              child: const Icon(Icons.auto_awesome_rounded,
+                  size: 20, color: AfColors.indigo400),
+            ),
+            const SizedBox(width: AfSpacing.s12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(playlist.name, style: AfTypography.bodyMedium),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
                       playlist.ruleSummary,
                       style: AfTypography.bodySmall.copyWith(
                         color: AfColors.textTertiary,
@@ -133,13 +162,13 @@ class _SmartPlaylistTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AfColors.textTertiary, size: 20),
-            ],
-          ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                color: AfColors.textTertiary, size: 20),
+          ],
         ),
       ),
     );
@@ -151,6 +180,7 @@ class _SmartPlaylistTile extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: AfColors.surfaceBase,
         title: Text('Delete "${playlist.name}"?'),
+        content: const Text('This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),

@@ -7,7 +7,7 @@ import '../../core/smart_playlist/smart_playlist_model.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 
-/// Create or edit a smart playlist — rule builder UI.
+/// Create or edit a smart playlist — Samsung One UI style rule builder.
 class SmartPlaylistEditScreen extends ConsumerStatefulWidget {
   final String? playlistId; // null = create new
   const SmartPlaylistEditScreen({super.key, this.playlistId});
@@ -108,8 +108,9 @@ class _SmartPlaylistEditScreenState
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: AfColors.surfaceCanvas,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -120,8 +121,14 @@ class _SmartPlaylistEditScreenState
       appBar: AppBar(
         backgroundColor: AfColors.surfaceCanvas,
         surfaceTintColor: Colors.transparent,
-        title: Text(isEdit ? 'Edit Smart Playlist' : 'New Smart Playlist'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => context.pop(),
+        ),
+        title: Text(isEdit ? 'Edit Playlist' : 'New Smart Playlist',
+            style: AfTypography.display),
         centerTitle: false,
+        titleSpacing: 0,
         actions: [
           TextButton(
             onPressed: _save,
@@ -136,148 +143,249 @@ class _SmartPlaylistEditScreenState
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AfSpacing.s16,
-          vertical: AfSpacing.s8,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         children: [
-          // Name
-          TextField(
-            controller: _nameController,
-            style: AfTypography.titleSmall,
-            decoration: InputDecoration(
-              hintText: 'Playlist name',
-              hintStyle: AfTypography.titleSmall.copyWith(
-                color: AfColors.textTertiary,
-              ),
-              filled: true,
-              fillColor: AfColors.surfaceBase,
-              border: OutlineInputBorder(
-                borderRadius: AfRadii.borderMd,
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-          const SizedBox(height: AfSpacing.s16),
+          const SizedBox(height: AfSpacing.s8),
 
-          // Combinator
-          Row(
+          // ── Name ─────────────────────────────────────────────────────
+          _SectionLabel('Name'),
+          _SettingsGroup(
             children: [
-              Text('Match ', style: AfTypography.bodyMedium),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'all', label: Text('All')),
-                  ButtonSegment(value: 'any', label: Text('Any')),
-                ],
-                selected: {_combinator},
-                onSelectionChanged: (v) =>
-                    setState(() => _combinator = v.first),
-                style: SegmentedButton.styleFrom(
-                  backgroundColor: AfColors.surfaceBase,
-                  selectedBackgroundColor: AfColors.indigo600,
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.s16,
+                  vertical: AfSpacing.s12,
                 ),
-              ),
-              Text(' rules', style: AfTypography.bodyMedium),
-            ],
-          ),
-          const SizedBox(height: AfSpacing.s16),
-
-          // Rules
-          for (int i = 0; i < _rules.length; i++) ...[
-            _RuleRow(
-              rule: _rules[i],
-              onChanged: (r) => _updateRule(i, r),
-              onDelete: () => _removeRule(i),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-          ],
-
-          // Add rule button
-          OutlinedButton.icon(
-            onPressed: _addRule,
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('Add rule'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AfColors.indigo400,
-              side: const BorderSide(color: AfColors.surfaceHigh),
-              shape: RoundedRectangleBorder(borderRadius: AfRadii.borderMd),
-            ),
-          ),
-          const SizedBox(height: AfSpacing.s24),
-
-          // Sort
-          Row(
-            children: [
-              Text('Sort by ', style: AfTypography.bodyMedium),
-              const SizedBox(width: 8),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-              initialValue: _sort,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: AfColors.surfaceBase,
-                    border: OutlineInputBorder(
-                      borderRadius: AfRadii.borderMd,
-                      borderSide: BorderSide.none,
-                    ),
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                  ),
-                  dropdownColor: AfColors.surfaceRaised,
-                  items: kSmartSortOptions.entries
-                      .map((e) => DropdownMenuItem(
-                          value: e.key, child: Text(e.value)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _sort = v ?? 'title'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: Icon(
-                  _sortOrder == 'asc'
-                      ? Icons.arrow_upward_rounded
-                      : Icons.arrow_downward_rounded,
-                  color: AfColors.textSecondary,
-                ),
-                onPressed: () => setState(() =>
-                    _sortOrder = _sortOrder == 'asc' ? 'desc' : 'asc'),
-                tooltip: _sortOrder == 'asc' ? 'Ascending' : 'Descending',
-              ),
-            ],
-          ),
-          const SizedBox(height: AfSpacing.s16),
-
-          // Limit
-          Row(
-            children: [
-              Text('Limit to ', style: AfTypography.bodyMedium),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 80,
                 child: TextField(
-                  keyboardType: TextInputType.number,
-                  controller: TextEditingController(
-                      text: _limit?.toString() ?? ''),
+                  controller: _nameController,
+                  style: AfTypography.bodyMedium,
                   decoration: InputDecoration(
-                    hintText: '∞',
-                    filled: true,
-                    fillColor: AfColors.surfaceBase,
-                    border: OutlineInputBorder(
-                      borderRadius: AfRadii.borderMd,
-                      borderSide: BorderSide.none,
+                    hintText: 'Playlist name',
+                    hintStyle: AfTypography.bodyMedium.copyWith(
+                      color: AfColors.textTertiary,
                     ),
+                    border: InputBorder.none,
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
+                    contentPadding: EdgeInsets.zero,
                   ),
-                  onChanged: (v) =>
-                      _limit = int.tryParse(v),
                 ),
               ),
-              Text(' tracks', style: AfTypography.bodyMedium),
             ],
           ),
+
+          const SizedBox(height: AfSpacing.s16),
+
+          // ── Match mode ───────────────────────────────────────────────
+          _SectionLabel('Match mode'),
+          _SettingsGroup(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.s16,
+                  vertical: AfSpacing.s12,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AfColors.semanticInfo.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.filter_list_rounded,
+                          size: 20, color: AfColors.semanticInfo),
+                    ),
+                    const SizedBox(width: AfSpacing.s12),
+                    Text('Match', style: AfTypography.bodyMedium),
+                    const Spacer(),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(value: 'all', label: Text('All')),
+                        ButtonSegment(value: 'any', label: Text('Any')),
+                      ],
+                      selected: {_combinator},
+                      onSelectionChanged: (v) =>
+                          setState(() => _combinator = v.first),
+                      style: SegmentedButton.styleFrom(
+                        backgroundColor: AfColors.surfaceHigh,
+                        selectedBackgroundColor: AfColors.indigo600,
+                        selectedForegroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: AfSpacing.s16),
+
+          // ── Rules ────────────────────────────────────────────────────
+          _SectionLabel('Rules'),
+          if (_rules.isNotEmpty)
+            _SettingsGroup(
+              children: [
+                for (int i = 0; i < _rules.length; i++) ...[
+                  _RuleRow(
+                    rule: _rules[i],
+                    onChanged: (r) => _updateRule(i, r),
+                    onDelete: () => _removeRule(i),
+                  ),
+                  if (i < _rules.length - 1)
+                    const Divider(
+                      height: 0,
+                      thickness: 0.5,
+                      indent: 16,
+                      endIndent: 16,
+                      color: AfColors.surfaceHigh,
+                    ),
+                ],
+              ],
+            ),
+          const SizedBox(height: AfSpacing.s8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s4),
+            child: OutlinedButton.icon(
+              onPressed: _addRule,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Add rule'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AfColors.indigo400,
+                side: const BorderSide(color: AfColors.surfaceHigh),
+                shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+                padding: const EdgeInsets.symmetric(vertical: AfSpacing.s12),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: AfSpacing.s16),
+
+          // ── Sort & Limit ─────────────────────────────────────────────
+          _SectionLabel('Sort & limit'),
+          _SettingsGroup(
+            children: [
+              // Sort row
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.s16,
+                  vertical: AfSpacing.s12,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color:
+                            AfColors.semanticSuccess.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.sort_rounded,
+                          size: 20, color: AfColors.semanticSuccess),
+                    ),
+                    const SizedBox(width: AfSpacing.s12),
+                    Text('Sort by', style: AfTypography.bodyMedium),
+                    const Spacer(),
+                    DropdownButton<String>(
+                      value: _sort,
+                      underline: const SizedBox.shrink(),
+                      dropdownColor: AfColors.surfaceRaised,
+                      style: AfTypography.bodySmall.copyWith(
+                        color: AfColors.indigo300,
+                      ),
+                      items: kSmartSortOptions.entries
+                          .map((e) => DropdownMenuItem(
+                              value: e.key, child: Text(e.value)))
+                          .toList(),
+                      onChanged: (v) =>
+                          setState(() => _sort = v ?? 'title'),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        _sortOrder == 'asc'
+                            ? Icons.arrow_upward_rounded
+                            : Icons.arrow_downward_rounded,
+                        size: 20,
+                        color: AfColors.textSecondary,
+                      ),
+                      onPressed: () => setState(() =>
+                          _sortOrder = _sortOrder == 'asc' ? 'desc' : 'asc'),
+                      tooltip:
+                          _sortOrder == 'asc' ? 'Ascending' : 'Descending',
+                      padding: EdgeInsets.zero,
+                      constraints:
+                          const BoxConstraints(minWidth: 36, minHeight: 36),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(
+                height: 0,
+                thickness: 0.5,
+                indent: 64,
+                color: AfColors.surfaceHigh,
+              ),
+              // Limit row
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.s16,
+                  vertical: AfSpacing.s12,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color:
+                            AfColors.semanticWarning.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.playlist_remove_rounded,
+                          size: 20, color: AfColors.semanticWarning),
+                    ),
+                    const SizedBox(width: AfSpacing.s12),
+                    Text('Limit to', style: AfTypography.bodyMedium),
+                    const Spacer(),
+                    SizedBox(
+                      width: 64,
+                      child: TextField(
+                        keyboardType: TextInputType.number,
+                        controller: TextEditingController(
+                            text: _limit?.toString() ?? ''),
+                        textAlign: TextAlign.center,
+                        style: AfTypography.bodyMedium.copyWith(
+                          color: AfColors.indigo300,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: '∞',
+                          hintStyle: AfTypography.bodyMedium.copyWith(
+                            color: AfColors.textTertiary,
+                          ),
+                          filled: true,
+                          fillColor: AfColors.surfaceHigh,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 8),
+                        ),
+                        onChanged: (v) => _limit = int.tryParse(v),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('tracks',
+                        style: AfTypography.bodySmall
+                            .copyWith(color: AfColors.textTertiary)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
           const SizedBox(height: AfSpacing.s32),
         ],
       ),
@@ -285,7 +393,51 @@ class _SmartPlaylistEditScreenState
   }
 }
 
-/// A single rule row with field, operator, and value inputs.
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared One UI components
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  const _SectionLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AfSpacing.s16, 0, AfSpacing.s4, AfSpacing.s8),
+      child: Text(
+        label,
+        style: AfTypography.bodySmall.copyWith(
+          color: AfColors.textTertiary,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsGroup extends StatelessWidget {
+  final List<Widget> children;
+  const _SettingsGroup({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AfColors.surfaceBase,
+        borderRadius: AfRadii.borderLg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: children,
+      ),
+    );
+  }
+}
+
+/// A single rule row inside the grouped card.
 class _RuleRow extends StatelessWidget {
   final SmartRule rule;
   final ValueChanged<SmartRule> onChanged;
@@ -300,86 +452,103 @@ class _RuleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final operators = operatorsForField(rule.field);
-    // If current operator isn't valid for the new field, reset it
     final effectiveOp =
         operators.contains(rule.operator) ? rule.operator : operators.first;
 
-    return Container(
-      padding: const EdgeInsets.all(AfSpacing.s12),
-      decoration: BoxDecoration(
-        color: AfColors.surfaceBase,
-        borderRadius: AfRadii.borderMd,
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AfSpacing.s16,
+        vertical: AfSpacing.s12,
       ),
-      child: Row(
+      child: Column(
         children: [
-          // Field picker
-          Expanded(
-            flex: 3,
-            child: DropdownButtonFormField<String>(
-              initialValue: rule.field,
-              decoration: const InputDecoration(
-                isDense: true,
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
+          // Field + Operator row
+          Row(
+            children: [
+              // Field
+              Expanded(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AfColors.surfaceHigh,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButton<String>(
+                    value: rule.field,
+                    isExpanded: true,
+                    underline: const SizedBox.shrink(),
+                    isDense: true,
+                    dropdownColor: AfColors.surfaceRaised,
+                    style: AfTypography.bodySmall,
+                    items: kSmartFields.entries
+                        .map((e) => DropdownMenuItem(
+                            value: e.key, child: Text(e.value)))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v == null) return;
+                      final newOps = operatorsForField(v);
+                      onChanged(SmartRule(
+                        field: v,
+                        operator: newOps.first,
+                        value: v == 'isFavorite' ? true : '',
+                      ));
+                    },
+                  ),
+                ),
               ),
-              dropdownColor: AfColors.surfaceRaised,
-              style: AfTypography.bodySmall,
-              items: kSmartFields.entries
-                  .map((e) =>
-                      DropdownMenuItem(value: e.key, child: Text(e.value)))
-                  .toList(),
-              onChanged: (v) {
-                if (v == null) return;
-                final newOps = operatorsForField(v);
-                onChanged(SmartRule(
-                  field: v,
-                  operator: newOps.first,
-                  value: v == 'isFavorite' ? true : '',
-                ));
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Operator picker
-          Expanded(
-            flex: 3,
-            child: DropdownButtonFormField<String>(
-              initialValue: effectiveOp,
-              decoration: const InputDecoration(
-                isDense: true,
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
+              const SizedBox(width: 8),
+              // Operator
+              Expanded(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AfColors.surfaceHigh,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButton<String>(
+                    value: effectiveOp,
+                    isExpanded: true,
+                    underline: const SizedBox.shrink(),
+                    isDense: true,
+                    dropdownColor: AfColors.surfaceRaised,
+                    style: AfTypography.bodySmall,
+                    items: operators
+                        .map((op) => DropdownMenuItem(
+                            value: op, child: Text(_opLabel(op))))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v == null) return;
+                      onChanged(SmartRule(
+                        field: rule.field,
+                        operator: v,
+                        value: rule.value,
+                      ));
+                    },
+                  ),
+                ),
               ),
-              dropdownColor: AfColors.surfaceRaised,
-              style: AfTypography.bodySmall,
-              items: operators
-                  .map((op) => DropdownMenuItem(
-                      value: op, child: Text(_opLabel(op))))
-                  .toList(),
-              onChanged: (v) {
-                if (v == null) return;
-                onChanged(SmartRule(
-                  field: rule.field,
-                  operator: v,
-                  value: rule.value,
-                ));
-              },
-            ),
+              const SizedBox(width: 8),
+              // Delete button
+              GestureDetector(
+                onTap: onDelete,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AfColors.semanticError.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close_rounded,
+                      size: 16, color: AfColors.semanticError),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          // Value input
-          Expanded(
-            flex: 4,
-            child: _buildValueInput(),
-          ),
-          // Delete
-          IconButton(
-            icon: const Icon(Icons.close_rounded, size: 18),
-            color: AfColors.textTertiary,
-            onPressed: onDelete,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          ),
+          const SizedBox(height: 8),
+          // Value row
+          _buildValueInput(),
         ],
       ),
     );
@@ -387,44 +556,60 @@ class _RuleRow extends StatelessWidget {
 
   Widget _buildValueInput() {
     if (rule.field == 'isFavorite') {
-      return Switch.adaptive(
-        value: rule.value == true,
-        onChanged: (v) => onChanged(SmartRule(
-          field: rule.field,
-          operator: rule.operator,
-          value: v,
-        )),
-        activeTrackColor: AfColors.indigo500,
+      return Row(
+        children: [
+          Text('Favorited', style: AfTypography.bodySmall),
+          const Spacer(),
+          Switch.adaptive(
+            value: rule.value == true,
+            onChanged: (v) => onChanged(SmartRule(
+              field: rule.field,
+              operator: rule.operator,
+              value: v,
+            )),
+            activeTrackColor: AfColors.indigo500,
+          ),
+        ],
       );
     }
 
-    return TextField(
-      controller: TextEditingController(text: '${rule.value}'),
-      style: AfTypography.bodySmall,
-      keyboardType: _isNumericField(rule.field)
-          ? TextInputType.number
-          : TextInputType.text,
-      decoration: InputDecoration(
-        hintText: _isNumericField(rule.field) ? '0' : 'value',
-        hintStyle:
-            AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        isDense: true,
-        border: InputBorder.none,
-        contentPadding: EdgeInsets.zero,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AfColors.surfaceHigh,
+        borderRadius: BorderRadius.circular(8),
       ),
-      onChanged: (v) {
-        final parsed = _isNumericField(rule.field) ? (int.tryParse(v) ?? v) : v;
-        onChanged(SmartRule(
-          field: rule.field,
-          operator: rule.operator,
-          value: parsed,
-        ));
-      },
+      child: TextField(
+        controller: TextEditingController(text: '${rule.value}'),
+        style: AfTypography.bodySmall,
+        keyboardType: _isNumericField(rule.field)
+            ? TextInputType.number
+            : TextInputType.text,
+        decoration: InputDecoration(
+          hintText: _isNumericField(rule.field) ? '0' : 'Enter value...',
+          hintStyle:
+              AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
+          isDense: true,
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+        ),
+        onChanged: (v) {
+          final parsed =
+              _isNumericField(rule.field) ? (int.tryParse(v) ?? v) : v;
+          onChanged(SmartRule(
+            field: rule.field,
+            operator: rule.operator,
+            value: parsed,
+          ));
+        },
+      ),
     );
   }
 
   bool _isNumericField(String field) =>
-      field == 'year' || field == 'duration' || field == 'bitrate' ||
+      field == 'year' ||
+      field == 'duration' ||
+      field == 'bitrate' ||
       field == 'dateAdded';
 
   String _opLabel(String op) => switch (op) {
@@ -432,8 +617,8 @@ class _RuleRow extends StatelessWidget {
         'isNot' => 'is not',
         'contains' => 'contains',
         'notContains' => 'not contains',
-        'gt' => '>',
-        'lt' => '<',
+        'gt' => 'greater than',
+        'lt' => 'less than',
         'inTheRange' => 'between',
         'inTheLast' => 'last N days',
         _ => op,
