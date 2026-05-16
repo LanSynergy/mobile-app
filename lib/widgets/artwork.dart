@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -76,6 +78,28 @@ class Artwork extends ConsumerWidget {
 
     final backend = ref.watch(musicBackendProvider);
     final headers = backend?.authHeaders;
+
+    // Local files: load from disk directly.
+    if (url!.startsWith('file://')) {
+      final filePath = url!.substring('file://'.length);
+      return ClipRRect(
+        borderRadius: radius,
+        child: SizedBox(
+          width: wFinite,
+          height: hFinite,
+          child: Image.file(
+            File(filePath),
+            fit: fit,
+            width: wFinite,
+            height: hFinite,
+            errorBuilder: (_, __, ___) => placeholder,
+            cacheWidth: clampedCachePx(wFinite),
+            cacheHeight: clampedCachePx(hFinite),
+          ),
+        ),
+      );
+    }
+
     return ClipRRect(
       borderRadius: radius,
       child: SizedBox(
