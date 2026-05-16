@@ -46,3 +46,30 @@ Support playing audio files directly from the device storage without requiring a
 - Storage access: `file_picker` for folder selection, or `SAF` (Storage Access Framework) for persistent access
 - Database: need local SQLite (via `drift` or `sqflite`) to cache scanned metadata so the library doesn't re-scan on every launch
 - Consider: should local and Jellyfin libraries be merged into one view, or kept separate?
+
+## Crossfade between tracks
+
+Smooth audio crossfade when transitioning between tracks (configurable duration).
+
+- mpv_audio_kit may support this via `--audio-crossfade` or custom filter chain
+- Settings UI: crossfade duration slider (0–12 seconds, 0 = disabled)
+- Should respect gapless mode setting (crossfade overrides gapless when enabled)
+
+## Android Auto / Car mode
+
+- Implement `MediaBrowserService` for Android Auto integration
+- Browse library (albums, artists, playlists) from car head unit
+- Playback controls from steering wheel / head unit
+- Voice search support
+
+## Visualizer pre-DSP tap
+
+- Current FFT spectrum is post-DSP (reflects processed audio)
+- Ideally show the raw signal before EQ/effects are applied
+- Blocked on mpv_audio_kit adding a pre-DSP tap point
+- Document as known limitation until library update
+
+## Widget / Quick Settings tile
+
+- Android home screen widget showing current track + play/pause
+- Quick Settings tile for play/pause toggle

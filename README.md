@@ -71,14 +71,25 @@ real-time FFT visualizer — runs on your phone.
   - Bass shelf (-12 to +12 dB)
   - Treble shelf (-12 to +12 dB)
   - Loudness normalization (EBU R128, -16 LUFS)
-  - Dynamic compressor (threshold 0.1, ratio 4:1)
+  - Dynamic compressor (threshold, ratio, attack, release)
+  - Noise gate (threshold, ratio, attack, release)
+  - De-esser (intensity, mix, frequency)
   - ReplayGain (off / track / album)
+  - 18-band graphic EQ with presets (Rock, Jazz, Classical, Hip-Hop, Electronic, Vocal, Bass/Treble Boost + custom user presets)
+  - Echo / delay (multi-tap with pipe-separated delays/decays)
+  - Pitch & tempo shifting (rubberband engine, 0.5×–2.0×)
+  - Spatial: crossfeed, stereo widening
+  - Modulation: phaser, flanger, chorus, tremolo, vibrato
+  - Creative: harmonic exciter, crystalizer, virtual bass, bit-crusher
+  - Master on/off switch to bypass all effects
+- **Liked songs** section in Library (fetches starred/favorite tracks from server)
 - **Synced lyrics** (LRC parsed on-device, auto-scrolling, displayed on lock-screen)
 - **Lock-screen / notification** media controls (prev, play/pause, next)
 - **Sleep timer** (presets + end-of-track mode)
 - **Audio output routing** (mpv audio device picker)
 - **Audio hardware settings** — sample rate, bit depth, exclusive mode, audio buffer
 - **Network & cache settings** — cache duration, buffer size, keep-audio-active toggle
+- **Settings** — Samsung One UI–style grouped card layout with colored icons
 - **Save to playlist** / create playlist from Now Playing
 - **Playlist management** — reorder, remove, rename, delete
 - **Multi-backend support** — works with both **Jellyfin** and **Navidrome** (Subsonic API)
@@ -86,6 +97,7 @@ real-time FFT visualizer — runs on your phone.
 - **mDNS discovery** of Jellyfin servers on the local network
 - **Spectral-derived UI accents** — palette sampled from current cover art
 - **Gapless playback** — libmpv pre-fetches the next track in the background
+- **Back-to-exit confirmation** — "press back again to exit" on home tab
 - **A-B loop** — repeat a section of a track (API ready, UI pending)
 - **Genre detail screens** — tap any genre to browse its albums
 - **Offline-friendly metadata cache** (cover art via

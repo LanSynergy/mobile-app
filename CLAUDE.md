@@ -240,11 +240,14 @@ lib/
 │  ├─ home/        library/  album/      artist/     genre/
 │  ├─ search/      queue/    now_playing/ lyrics/
 │  ├─ onboarding/  profile/  settings/    cast_picker/  sleep_timer/  playlist/
-│  │                            settings/ sections: Server, Appearance, Audio output
-│  │                            (current output info, sample rate, bit depth, exclusive mode),
+│  │                            now_playing/ contains eq_dsp_screen.dart (full EQ/DSP screen)
+│  │                            settings/ Samsung One UI grouped card layout. Sections:
+│  │                            Server (info, switch, sign out), Appearance,
+│  │                            Audio output (current output, sample rate, bit depth, exclusive),
 │  │                            Network & cache (cache duration, audio buffer, keep audio active),
-│  │                            Audio processing (ReplayGain picker), About.
-│  │                            queue/ auto-scrolls to currently playing track on open.
+│  │                            Audio processing (ReplayGain, gapless, prefetch),
+│  │                            About (dynamic version, source link, licenses).
+│  │                            library/ sections: Albums, Artists, Songs, Playlists, Genres, Liked.
 │  │                            Long-press context menus on track rows (Play next, Add to queue,
 │  │                            Go to album, Go to artist) and album tiles (Play album, Go to artist).
 ├─ state/
@@ -324,17 +327,24 @@ The utility row was reduced from 6 icons to 4. The **"More"** button opens
 a popup dialog containing: Sleep timer, Playback speed, Audio output,
 Equalizer & DSP.
 
-### 4.5 EQ dialog (inline, from More menu)
+### 4.5 EQ/DSP screen (full-screen route)
 
-Accessible via Now Playing → More → Equalizer & DSP. Controls:
-- Bass shelf: -12 dB to +12 dB
-- Treble shelf: -12 dB to +12 dB
-- Loudness normalization toggle (EBU R128, target -16 LUFS)
-- Dynamic compressor toggle
-- Reset all button
+Accessible via Now Playing → More → Equalizer & DSP. Navigates to `/eq-dsp`
+route (full Scaffold with AppBar). Sections:
+- EQ Presets (8 built-in + user-saved custom presets)
+- Tone: Bass/Treble shelves (-12 to +12 dB)
+- 18-band graphic EQ (ISO frequencies, 0–4 linear gain)
+- Dynamics: Loudness normalization, Compressor (with threshold/ratio/attack/release),
+  Noise gate (with fine-tuning), De-esser (intensity/mix/frequency)
+- Echo / Delay (multi-tap, pipe-separated delays/decays)
+- Pitch & Tempo (rubberband engine, 0.5×–2.0×)
+- Spatial: Crossfeed, Stereo widening
+- Modulation: Phaser, Flanger, Chorus, Tremolo, Vibrato
+- Creative: Exciter, Crystalizer, Virtual bass, Bit-crusher
+- Master on/off switch in AppBar (bypasses all effects, dims UI but keeps scrollable)
 
-Uses `player.updateAudioEffects(AudioEffects(...))` API. State is streamed
-via `player.audioEffectsStream`.
+Uses `player.setAudioEffects(AudioEffects(...))` API. State persisted via
+`PlayerSettingsStore.saveAudioEffects()`. File: `lib/features/now_playing/eq_dsp_screen.dart`.
 
 ## 5. Jellyfin auth — battle-tested format
 

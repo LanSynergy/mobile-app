@@ -75,18 +75,28 @@
 - [x] Bass shelf (+/- 12 dB)
 - [x] Treble shelf (+/- 12 dB)
 - [x] Loudness normalization (EBU R128) toggle
-- [x] Dynamic compressor toggle
+- [x] Dynamic compressor with fine-tuning (threshold, ratio, attack, release)
+- [x] Noise gate with fine-tuning (threshold, ratio, attack, release)
+- [x] De-esser with fine-tuning (intensity, mix, frequency)
 - [x] 18-band Superequalizer (ISO graphic EQ) — per-band sliders, 0..4 linear gain
+- [x] EQ presets — 8 built-in (Rock, Jazz, Classical, Hip-Hop, Electronic, Vocal, Bass/Treble Boost) + save/delete custom user presets
+- [x] Echo / delay (AechoSettings) — multi-tap with pipe-separated delays/decays, in/out gain
 - [x] Rubberband pitch & tempo shifting — 0.5x..2.0x sliders
 - [x] Crossfeed (headphone) — strength slider
 - [x] Stereo widening — delay slider
+- [x] Phaser — in/out gain, delay, decay, speed
+- [x] Flanger — delay, depth, regen, width, speed
+- [x] Chorus — multi-voice with pipe-separated delays/decays/speeds/depths
+- [x] Tremolo — frequency, depth
+- [x] Vibrato — frequency, depth
 - [x] Harmonic exciter — amount slider
 - [x] Noise gate — toggle
 - [x] Virtual bass — cutoff slider
 - [x] Crystalizer (audio sharpener) — intensity slider
-- [x] De-esser — toggle
+- [x] Bit-crusher — bits, mix, samples
+- [x] Master on/off switch to bypass all effects
 - [x] Reset all button — clears every effect
-- [x] Dialog refactored to DraggableScrollableSheet (bottom sheet)
+- [x] Extracted to dedicated full-screen route (/eq-dsp) with Scaffold + AppBar
 
 ## ReplayGain (settings_screen.dart)
 - [x] Mode picker (Off / Track / Album)
@@ -109,3 +119,37 @@
 ## Quality
 - [x] `flutter analyze --no-fatal-infos` — 0 errors, 0 warnings
 - [x] `flutter test` — all 24 tests pass
+
+---
+
+# UI & UX Improvements — Progress
+
+## Settings Screen
+- [x] Samsung One UI–style grouped card layout
+- [x] Colored circular icon backgrounds per category
+- [x] Section labels above card groups
+- [x] Dynamic version from PackageInfo
+- [x] Source code link (url_launcher)
+- [x] Licenses page (Flutter built-in showLicensePage)
+- [x] Server section: user info, switch server, sign out with confirmation
+
+## Library
+- [x] Liked songs tab (fetches favorite tracks from Jellyfin/Navidrome)
+- [x] `favoriteTracks` method added to MusicBackend interface
+- [x] Jellyfin: `GET /Users/{id}/Items?Filters=IsFavorite&IncludeItemTypes=Audio`
+- [x] Navidrome: `getStarred2.view` → parse `starred2.song`
+
+## Bug Fixes
+- [x] Navidrome stream uses `format=raw` to skip server-side transcoding
+- [x] Progress bar resets on track change (force-emit Duration.zero on track switch)
+- [x] Lyrics scroll resets on track change (clear _lastScrolledIndex)
+- [x] Like button shows error snackbar on failure
+- [x] Back gesture shows "press again to exit" confirmation on home tab
+- [x] Hero album banner respects long titles (min-height + maxLines: 3)
+- [x] EQ/DSP screen scrollable when master switch is off
+
+## Quality
+- [x] `flutter analyze` — 0 issues
+- [x] `flutter test` — 27 tests pass
+- [x] `.gitattributes` for consistent LF line endings
+- [x] `core.autocrlf=input` for cross-platform compatibility
