@@ -254,6 +254,10 @@ lib/
 │  │  ├─ local_library.dart     ← High-level interface: scan, query albums/artists/tracks/genres
 │  │  ├─ metadata_scanner.dart  ← Orchestrates SAF scan: list files → read tags → insert DB
 │  │  └─ saf_picker.dart        ← Dart bridge to SafPlugin (aetherfin.saf MethodChannel)
+│  ├─ smart_playlist/
+│  │  ├─ smart_playlist_model.dart  ← SmartPlaylist + SmartRule data models
+│  │  ├─ smart_playlist_db.dart     ← SQLite CRUD for smart playlists
+│  │  └─ smart_playlist_engine.dart ← Resolves rules → tracks (SQL for local, filter for server)
 │  ├─ jellyfin/
 │  │  ├─ client.dart        ← THE ONLY file that speaks HTTP to Jellyfin (implements MusicBackend)
 │  │  ├─ auth_storage.dart  ← secure_storage wrappers (token, userId, deviceId, serverType)
@@ -272,6 +276,7 @@ lib/
 │  ├─ search/      queue/    now_playing/ lyrics/
 │  ├─ onboarding/  profile/  settings/    cast_picker/  sleep_timer/  playlist/
 │  │                            now_playing/ contains eq_dsp_screen.dart (full EQ/DSP screen)
+│  │                            smart_playlist/ — list, detail, edit screens (Samsung One UI style)
 │  │                            settings/ Samsung One UI grouped card layout. Sections:
 │  │                            Server (info, switch, sign out), Appearance,
 │  │                            Audio output (current output, sample rate, bit depth, exclusive),
@@ -672,6 +677,9 @@ PII (usernames, server URLs) must be redacted in release builds.
 29. **"Store the Subsonic auth token."** No. Store the **password** in `accessToken` (encrypted in secure storage). The token is `md5(password + salt)` and must be recomputed per request with a fresh random salt.
 30. **"Reuse a Subsonic salt across requests."** No. Each request generates a fresh random salt to prevent replay attacks.
 31. **"Navidrome supports all Jellyfin endpoints."** No. Subsonic API has gaps: no `resumeItems` equivalent (returns empty), no `movePlaylistItem` (no-op), no API key auth (always username + password).
+32. **"Read position from `_player.state.position` or `stream.position`."** No. On some devices, mpv's `observe_property` for `time-pos` never fires. Use elapsed-time extrapolation: anchor position on play/seek, then `pos = anchor + (now - anchorTime) × speed`. Poll `getRawProperty('time-pos')` as primary source; fall back to extrapolation if it returns 0.
+33. **"Use `openAll()` for all queue sizes."** No. For queues > 5 tracks, `openAll` causes a multi-second delay. Use `open(target, play: true)` for instant playback, then `add()` the rest in the background. Suppress `_suppressPlaylistSync` during queue building + 500ms after.
+34. **"Read A-B loop state from `svc.abLoopA`."** No. `_player.state.abLoopA` doesn't update on affected devices. Track loop state in Dart providers (`abLoopAProvider`/`abLoopBProvider`). Use `getRawPosition()` for the actual position when setting markers.
 
 ## 16. Glossary
 
@@ -697,6 +705,10 @@ PII (usernames, server URLs) must be redacted in release builds.
 - **`ServerType`**: Enum (`jellyfin` | `subsonic`) persisted in auth storage. Determines which client `musicBackendProvider` instantiates. Defined in `lib/core/jellyfin/models/server.dart`, re-exported from `music_backend.dart`.
 - **`SubsonicApiError`**: Exception thrown by `SubsonicClient` when the Subsonic API returns a non-OK status in its response envelope.
 - **Subsonic token auth**: Authentication scheme used by Navidrome. Token = `md5(password + salt)`. Sent as query params `u`, `t`, `s` on every request. Password stored in `JellyfinAuth.accessToken`.
+- **`SmartPlaylist`**: Rule-based playlist that resolves dynamically. Stored in SQLite via `SmartPlaylistDb`. Rules define field/operator/value conditions. Resolved via SQL (local mode) or client-side filter (server mode). UI at `/smart-playlists`.
+- **`_PositionAnchor`**: Mutable state holder for elapsed-time extrapolation. Tracks `lastKnownPos`, `lastUpdateTime`, and `wasPlaying`. Used when mpv's property observation doesn't fire.
+- **`getRawPosition()` / `getRawDuration()`**: Direct mpv property queries via `getRawProperty('time-pos')`/`getRawProperty('duration')`. Bypasses the broken `observe_property` reactive system. Returns `Duration.zero` on failure.
+- **`abLoopAProvider` / `abLoopBProvider`**: Dart-side StateProviders tracking A-B loop markers. Necessary because `_player.state.abLoopA` doesn't update on devices with broken property observation.
 
 ---
 

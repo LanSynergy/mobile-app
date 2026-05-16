@@ -42,10 +42,13 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 ### Playback
 - Gapless transitions with background prefetch
 - Shuffle, loop (off / track / queue), playback speed (0.5×–2.0×)
-- Lock-screen and notification controls
+- Lock-screen and notification controls (artwork background on Samsung/Android 16)
 - Sleep timer with presets and end-of-track mode
 - Instant Mix radio (server-generated similar tracks queue)
+- A-B loop (tap to set start/end markers, tap again to clear)
 - **Local file playback** — play music from device storage via SAF (no server needed)
+- Auto-pause on Bluetooth disconnect or headphone unplug
+- Instant playback — selected song starts immediately even with large queues
 
 ### Audio
 - 86-effect DSP rack via mpv's ffmpeg filter pipeline
@@ -59,6 +62,7 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 
 ### Library
 - Albums, Artists, Songs, Playlists, Genres, Liked songs
+- Smart playlists — rule-based auto-updating playlists (works in both server and local mode)
 - Search across tracks, albums, artists, playlists
 - Long-press context menus (play next, add to queue, go to album/artist)
 - Drag-to-reorder queue with swipe-to-remove

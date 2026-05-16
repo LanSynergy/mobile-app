@@ -23,10 +23,6 @@ Cache fully streamed songs to disk so they don't need to be fetched from the ser
 - File naming: use track ID as filename (GUIDs are unique, no collisions)
 - Storage path: `getApplicationSupportDirectory()` / `audio_cache/`
 
-## ~~Local media player mode~~ ✅ DONE
-
-Implemented in Phase 1–6. See PROGRESS.md for details.
-
 ## Crossfade between tracks
 
 Smooth audio crossfade when transitioning between tracks (configurable duration).
@@ -53,3 +49,11 @@ Smooth audio crossfade when transitioning between tracks (configurable duration)
 
 - Android home screen widget showing current track + play/pause
 - Quick Settings tile for play/pause toggle
+
+## mpv_audio_kit position observation
+
+- observe_property for time-pos doesn't fire on some devices
+- Currently using elapsed-time extrapolation as workaround
+- getRawProperty('time-pos') also returns null/0 on affected devices
+- May need to file upstream issue with mpv_audio_kit
+- Investigate if this is related to aaudio driver or spectrum pipeline

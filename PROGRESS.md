@@ -202,3 +202,73 @@
 ## Quality
 - [x] flutter analyze — 0 issues
 - [x] flutter test — 27 tests pass
+
+
+---
+
+# Smart Playlists — Progress
+
+## Core
+- [x] SmartPlaylist model (rules, combinators, sort, limit)
+- [x] SmartPlaylistDb — SQLite CRUD storage
+- [x] SmartPlaylistEngine — resolves via SQL (local) or client-side filter (server)
+- [x] Providers: smartPlaylistDbProvider, smartPlaylistsProvider, smartPlaylistTracksProvider
+
+## UI
+- [x] SmartPlaylistListScreen — Samsung One UI grouped card style
+- [x] SmartPlaylistDetailScreen — header card with play/shuffle + track list
+- [x] SmartPlaylistEditScreen — sectioned form (name, match mode, rules, sort & limit)
+- [x] Navigation entry point in Library > Playlists tab (both server and local mode)
+- [x] Routes: /smart-playlists, /smart-playlist/new, /smart-playlist/:id, /smart-playlist/:id/edit
+
+---
+
+# Playback & UI Fixes (May 2026)
+
+## Progress Bar / Position Tracking
+- [x] Expose getRawProperty('time-pos') and getRawProperty('duration') on AfPlayerService
+- [x] Elapsed-time extrapolation when mpv's observe_property doesn't fire
+- [x] durationStreamProvider — uses mpv's actual duration, falls back to track metadata
+- [x] Reset position/duration to zero on track change (prevents stale value flicker)
+
+## Instant Playback
+- [x] Large queues (>5 tracks): open() target immediately, add() rest in background
+- [x] Suppress playlist sync during queue building (prevents wrong track display)
+- [x] Extended suppression window (500ms) to catch delayed mpv playlist events
+
+## A-B Loop
+- [x] abLoopAProvider / abLoopBProvider StateProviders (bypass broken observe_property)
+- [x] Button uses getRawPosition() for actual position
+- [x] Button rebuilds via ref.watch (orange when A set, accent when A+B active)
+- [x] Reset on track change
+- [x] More sheet dialog also uses getRawPosition()
+
+## Mini Player
+- [x] Hidden when keyboard is open (viewInsets.bottom check)
+- [x] Always mounted with AnimatedSlide/AnimatedOpacity for instant appearance
+- [x] Shows immediately when playback starts from any screen
+
+## Audio
+- [x] 200ms audio buffer default (prevents jittering during background/Doze)
+- [x] Auto-pause on Bluetooth disconnect / headphone unplug (audioDevice stream)
+- [x] setAudioDriver('aaudio') in constructor before _bindStreams()
+
+## Notification
+- [x] Download artwork to local file for notification background (auth-protected URLs)
+- [x] LiveUpdate notification disabled (Android 16 MediaStyle already promoted)
+- [x] POST_NOTIFICATIONS permission request for stock Android 13+
+
+## Local Library
+- [x] Prune deleted files during rescan (pruneDeletedFiles called in scanAll)
+- [x] Playlists tab added to local mode sections (for smart playlists access)
+
+## Settings
+- [x] Sample rate dialog shows actual value when Auto selected
+- [x] Bit depth dialog shows actual value when Auto selected
+- [x] "Matches the source file" subtitle on Auto options
+
+## Misc
+- [x] Removed placeholder ask_sheet.dart (unused AI search mock)
+- [x] Build ID generator uses stderr.writeln (resolves avoid_print lint)
+- [x] Release workflow auto-increments +N build number
+- [x] flutter analyze: No issues found
