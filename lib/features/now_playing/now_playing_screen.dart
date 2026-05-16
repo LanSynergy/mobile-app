@@ -54,41 +54,29 @@ class NowPlayingScreen extends ConsumerWidget {
       extendBodyBehindAppBar: true,
       body: _ReactiveBackground(
         child: SafeArea(
-          child: Column(
-            children: [
-              _TopBar(track: track),
-              Expanded(
-                child: CustomScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous,
+            ),
+            child: Column(
+              children: [
+                _TopBar(track: track),
+                const Spacer(),
+                UnconstrainedBox(
                   clipBehavior: Clip.none,
-                  physics: const ClampingScrollPhysics(),
-                  slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AfSpacing.gutterGenerous,
-                      ),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          const SizedBox(height: AfSpacing.s24),
-                          UnconstrainedBox(
-                            clipBehavior: Clip.none,
-                            child: _ReactiveArtwork(track: track),
-                          ),
-                          const SizedBox(height: AfSpacing.s24),
-                          _MetadataRow(track: track),
-                          const SizedBox(height: AfSpacing.s16),
-                          _ReactiveProgress(track: track),
-                          const SizedBox(height: AfSpacing.s24),
-                          _ReactiveTransport(track: track),
-                          const SizedBox(height: AfSpacing.s32),
-                          const _UtilityRow(),
-                          const SizedBox(height: AfSpacing.s24),
-                        ]),
-                      ),
-                    ),
-                  ],
+                  child: _ReactiveArtwork(track: track),
                 ),
-              ),
-            ],
+                const Spacer(),
+                _MetadataRow(track: track),
+                const SizedBox(height: AfSpacing.s16),
+                _ReactiveProgress(track: track),
+                const SizedBox(height: AfSpacing.s24),
+                _ReactiveTransport(track: track),
+                const SizedBox(height: AfSpacing.s24),
+                const _UtilityRow(),
+                const SizedBox(height: AfSpacing.s16),
+              ],
+            ),
           ),
         ),
       ),
