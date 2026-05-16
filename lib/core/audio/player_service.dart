@@ -582,6 +582,12 @@ class AfPlayerService extends BaseAudioHandler
           _suppressPlaylistSync = false;
         });
       }
+
+      // Re-apply the audio output device after playback starts.
+      // On some devices, mpv's time-pos property observation doesn't fire
+      // until the audio output is (re)selected. Reselecting the current
+      // device kicks the observation pipeline without audible interruption.
+      _nudgeAudioDevice();
     } catch (e, stack) {
       _suppressPlaylistSync = false;
       afLog('audio', 'playQueue failed', error: e, stackTrace: stack);
@@ -843,6 +849,24 @@ class AfPlayerService extends BaseAudioHandler
   // Set to true when the user explicitly calls pause() so the nudge
   // listener knows not to call play() on the next playing=false event.
   bool _userPaused = false;
+
+  /// Re-select the current audio output device to kick mpv's property
+  /// observation pipeline. On some devices/drivers, time-pos observation
+  /// doesn't start firing until the audio output is explicitly set —
+  /// even if it's the same device that's already active.
+  /// Delayed slightly to let playback stabilize first.
+  void _nudgeAudioDevice() {
+    Future.delayed(const Duration(milliseconds: 300), () async {
+      if (_disposed) return;
+      try {
+        final current = _player.state.audioDevice;
+        await _player.setAudioDevice(current);
+        afLog('audio', 'nudged audioDevice: ${current.name}');
+      } catch (e) {
+        afLog('audio', 'nudgeAudioDevice failed', error: e);
+      }
+    });
+  }
 
   /// Jump to [index] and immediately play.
   ///
