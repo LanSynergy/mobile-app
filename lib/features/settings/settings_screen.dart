@@ -1129,6 +1129,24 @@ class _MusicFoldersCardState extends ConsumerState<_MusicFoldersCard> {
     ref.invalidate(localGenresProvider);
   }
 
+  Future<void> _rescan() async {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Scanning all folders...')),
+    );
+    final lib = ref.read(localLibraryProvider);
+    final count = await lib.scanAll();
+    ref.invalidate(localAlbumsProvider);
+    ref.invalidate(localArtistsProvider);
+    ref.invalidate(localTracksProvider);
+    ref.invalidate(localGenresProvider);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Scan complete — $count tracks updated')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return _SettingsGroup(
@@ -1156,6 +1174,13 @@ class _MusicFoldersCardState extends ConsumerState<_MusicFoldersCard> {
             title: 'Add folder',
             subtitle: 'Pick another music folder',
             onTap: _addFolder,
+          ),
+          _SettingsTile(
+            icon: Icons.refresh_rounded,
+            iconColor: AfColors.semanticInfo,
+            title: 'Re-scan library',
+            subtitle: 'Check for new or changed files',
+            onTap: _rescan,
           ),
         ],
       ],
