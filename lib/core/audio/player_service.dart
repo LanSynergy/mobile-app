@@ -29,6 +29,11 @@ class AfPlayerService extends BaseAudioHandler
   /// ON so we can restore it when shuffle is toggled OFF.
   List<AfTrack> _originalQueue = [];
 
+  /// Reverse mapping from stream URL → AfTrack. Built during playQueue()
+  /// so _syncTrackQueueFromMpv can match mpv's playlist items back to
+  /// typed tracks regardless of URL format (Jellyfin, Subsonic, content://).
+  final Map<String, AfTrack> _urlToTrack = {};
+
   /// Dart-managed shuffle state. We don't use mpv's setShuffle because
   /// it physically reorders the playlist and emits index-change events
   /// that race with our state sync.
@@ -463,12 +468,13 @@ class AfPlayerService extends BaseAudioHandler
       'startIndex=$safeIndex first="${startTrack.title}"',
     );
 
-    // Build Media list. Auth is embedded in the URL via api_key= so
-    // libmpv/FFmpeg can authenticate without needing the Authorization
-    // header (which FFmpeg rejects due to its comma separators).
-    final medias = tracks
-        .map((t) => Media(resolveStreamUrl(t)))
-        .toList();
+    // Build Media list and populate the URL→Track reverse mapping.
+    _urlToTrack.clear();
+    final medias = tracks.map((t) {
+      final url = resolveStreamUrl(t);
+      _urlToTrack[url] = t;
+      return Media(url);
+    }).toList();
 
     try {
       await _player.openAll(
@@ -578,12 +584,14 @@ class AfPlayerService extends BaseAudioHandler
         'queueSize=${_trackQueue.length} currentIndex=$_currentIndex');
   }
 
-  /// Syncs _trackQueue to match mpv's playlist order by extracting track
-  /// IDs from Media URIs and looking them up in our known tracks.
+  /// Syncs _trackQueue to match mpv's playlist order using the URL→Track
+  /// mapping built during playQueue(). Falls back to ID extraction for
+  /// tracks added mid-playback (playNext/addToQueue).
   void _syncTrackQueueFromMpv(List<Media> mpvItems, int newIdx) {
     if (mpvItems.isEmpty) return;
 
-    // Build lookup from ALL known tracks.
+    // Primary lookup: URL→Track (populated during playQueue).
+    // Fallback: extract track ID from URL and match by ID.
     final byId = <String, AfTrack>{};
     for (final t in _trackQueue) {
       byId[t.id] = t;
@@ -594,8 +602,13 @@ class AfPlayerService extends BaseAudioHandler
 
     final reordered = <AfTrack>[];
     for (final media in mpvItems) {
-      final id = _extractTrackId(media.uri);
-      final track = id != null ? byId[id] : null;
+      // Try direct URL match first (most reliable).
+      var track = _urlToTrack[media.uri];
+      // Fallback: extract ID from URL.
+      if (track == null) {
+        final id = _extractTrackId(media.uri);
+        track = id != null ? byId[id] : null;
+      }
       if (track != null) {
         reordered.add(track);
       }
