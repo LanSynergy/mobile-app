@@ -245,7 +245,7 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
             ),
             child: Artwork(
               url: widget.track.imageUrl,
-              size: 240,
+              size: 300,
               radius: AfRadii.borderLg,
             ),
           ),
@@ -727,6 +727,11 @@ class _UtilityRow extends ConsumerWidget {
           icon: Icons.lyrics_outlined,
           label: 'Lyrics',
           onTap: () => context.push('/lyrics'),
+        ),
+        _UtilityIcon(
+          icon: Icons.equalizer_rounded,
+          label: 'EQ',
+          onTap: () => context.push('/eq-dsp'),
         ),
         Consumer(builder: (context, ref, _) {
           final track = ref.watch(currentTrackProvider);
