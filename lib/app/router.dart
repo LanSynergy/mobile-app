@@ -50,10 +50,22 @@ final _router = GoRouter(
   refreshListenable: _authRefresh,
   redirect: (context, state) {
     final auth = _container?.read(authProvider);
+    final mode = _container?.read(appModeProvider);
     final loc = state.matchedLocation;
     final inOnboarding = loc == '/' || loc.startsWith('/onboarding');
-    if (auth != null && inOnboarding) return '/home';
-    if (auth == null && !inOnboarding) return '/';
+
+    // Server mode: redirect based on auth state
+    if (mode == AppMode.server) {
+      if (auth != null && inOnboarding) return '/home';
+      if (auth == null && !inOnboarding) return '/onboarding/discover';
+    }
+
+    // Local mode: redirect to home if onboarding is done
+    if (mode == AppMode.local && inOnboarding) return '/home';
+
+    // No mode chosen yet: stay on onboarding
+    if (mode == null && !inOnboarding) return '/';
+
     return null;
   },
   routes: [
