@@ -253,8 +253,9 @@ final positionStreamProvider = StreamProvider.autoDispose<Duration>((ref) {
   // the previous track's last position while the new track buffers.
   final trackSub = svc.currentTrackStream.listen((_) => forceReset());
 
-  // Heartbeat: catch dedup gaps at ~5 Hz.
-  final timer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+  // Heartbeat: poll at ~10 Hz to keep the progress bar smooth even when
+  // the reactive stream is silent (e.g. during buffering transitions).
+  final timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
     emit(svc.position);
   });
 

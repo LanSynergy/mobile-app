@@ -339,6 +339,17 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
   bool _isDragging = false;
 
   @override
+  void didUpdateWidget(covariant _ReactiveProgress oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reset drag lock when track changes — prevents the progress bar from
+    // appearing frozen if a seek was in-flight when the user skipped.
+    if (oldWidget.track.id != widget.track.id) {
+      _isDragging = false;
+      _scrubPreview = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final positionAsync = ref.watch(positionStreamProvider);
     final position = positionAsync.maybeWhen(
@@ -383,8 +394,12 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
               );
               // Hold the drag lock until the seek resolves so the engine's
               // new position matches the scrubber's drop point before we
-              // hand control back to the stream.
-              ref.read(playerServiceProvider).seek(newPos).then((_) {
+              // hand control back to the stream. Timeout after 2s to prevent
+              // permanent lock if seek hangs (e.g. during buffering).
+              ref.read(playerServiceProvider).seek(newPos).timeout(
+                const Duration(seconds: 2),
+                onTimeout: () {},
+              ).then((_) {
                 if (mounted) {
                   setState(() {
                     _isDragging = false;
