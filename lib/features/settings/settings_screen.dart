@@ -9,6 +9,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/audio/player_settings_store.dart';
+import '../../core/audio/player_service.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 
@@ -241,26 +242,7 @@ class SettingsScreen extends ConsumerWidget {
                   subtitle: 'Seamless transitions between tracks',
                   onTap: () => _showGaplessDialog(context, ref),
                 ),
-                StreamBuilder<bool>(
-                  stream: Stream<bool>.multi((controller) {
-                    controller.add(svc.prefetchPlaylist);
-                  }),
-                  initialData: svc.prefetchPlaylist,
-                  builder: (context, snap) {
-                    final enabled = snap.data ?? false;
-                    return _SettingsSwitchTile(
-                      icon: Icons.download_rounded,
-                      iconColor: AfColors.semanticSuccess,
-                      title: 'Prefetch next track',
-                      subtitle: 'Pre-load next playlist entry in background',
-                      value: enabled,
-                      onChanged: (v) {
-                        unawaited(svc.setPrefetchPlaylist(v));
-                        unawaited(PlayerSettingsStore.savePrefetchPlaylist(v));
-                      },
-                    );
-                  },
-                ),
+                _PrefetchToggle(svc: svc),
               ],
             ),
 
@@ -1034,6 +1016,40 @@ class _ReplayGainDialogContentState
           ],
         ],
       ),
+    );
+  }
+}
+
+class _PrefetchToggle extends StatefulWidget {
+  final AfPlayerService svc;
+  const _PrefetchToggle({required this.svc});
+
+  @override
+  State<_PrefetchToggle> createState() => _PrefetchToggleState();
+}
+
+class _PrefetchToggleState extends State<_PrefetchToggle> {
+  late bool _enabled;
+
+  @override
+  void initState() {
+    super.initState();
+    _enabled = widget.svc.prefetchPlaylist;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsSwitchTile(
+      icon: Icons.download_rounded,
+      iconColor: AfColors.semanticSuccess,
+      title: 'Prefetch next track',
+      subtitle: 'Pre-load next playlist entry in background',
+      value: _enabled,
+      onChanged: (v) {
+        setState(() => _enabled = v);
+        unawaited(widget.svc.setPrefetchPlaylist(v));
+        unawaited(PlayerSettingsStore.savePrefetchPlaylist(v));
+      },
     );
   }
 }
