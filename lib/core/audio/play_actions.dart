@@ -20,9 +20,13 @@ class PlayActions {
   }) async {
     if (tracks.isEmpty) return;
     final svc = ref.read(playerServiceProvider);
+    final mode = ref.read(appModeProvider);
     final backend = ref.read(musicBackendProvider);
 
+    // In local mode, the track ID is the content:// URI itself.
+    // In server mode, resolve via the backend.
     String resolveStreamUrl(AfTrack t) {
+      if (mode == AppMode.local) return t.id;
       if (backend != null) {
         return backend.trackStreamUrl(t.id, maxBitrateKbps: 320);
       }
@@ -48,22 +52,23 @@ class PlayActions {
     }
 
     ref.read(currentTrackProvider.notifier).state = finalQueue[finalIndex];
-    if (backend != null) {
-      try {
-        await svc.playQueue(
-          finalQueue,
-          startIndex: finalIndex,
-          resolveStreamUrl: resolveStreamUrl,
-          streamHeaders: backend.authHeaders,
-        );
-      } catch (e, stack) {
-        afLog(
-          'audio',
-          'playQueue failed',
-          error: e,
-          stackTrace: stack,
-        );
-      }
+    try {
+      await svc.playQueue(
+        finalQueue,
+        startIndex: finalIndex,
+        resolveStreamUrl: resolveStreamUrl,
+        // No auth headers needed for local files.
+        streamHeaders: mode == AppMode.local
+            ? const {}
+            : (backend?.authHeaders ?? const {}),
+      );
+    } catch (e, stack) {
+      afLog(
+        'audio',
+        'playQueue failed',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
