@@ -55,17 +55,35 @@ class AppShell extends ConsumerWidget {
   ///
   /// Behaviour we want:
   ///   • Any non-Home tab → switch to Home (don't exit).
-  ///   • Home tab → defer to the OS (exit / minimize as normal).
+  ///   • Home tab → show "press back again to exit" confirmation.
   ///
   /// Implemented via `PopScope(canPop:false)` + `onPopInvokedWithResult`
   /// instead of `WillPopScope` (deprecated in Flutter 3.41).
+  static DateTime? _lastBackPress;
+
   Future<bool> _onBackPressed(BuildContext context) async {
     if (shell.currentIndex != 0) {
       shell.goBranch(0);
       return false;
     }
-    // Let the system handle it — closes / minimises the app.
-    return true;
+    final now = DateTime.now();
+    if (_lastBackPress != null &&
+        now.difference(_lastBackPress!) < const Duration(seconds: 2)) {
+      return true;
+    }
+    _lastBackPress = now;
+    if (context.mounted) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Press back again to exit'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    }
+    return false;
   }
 
   @override
