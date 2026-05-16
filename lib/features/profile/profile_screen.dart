@@ -149,18 +149,6 @@ class ProfileScreen extends ConsumerWidget {
                 borderRadius: AfRadii.borderMd),
             onTap: () => context.push('/settings'),
           ),
-          const SizedBox(height: AfSpacing.s8),
-          ListTile(
-            leading: const Icon(Icons.logout_rounded),
-            title: const Text('Sign out'),
-            tileColor: AfColors.surfaceBase,
-            shape: const RoundedRectangleBorder(
-                borderRadius: AfRadii.borderMd),
-            onTap: () async {
-              await ref.read(authProvider.notifier).clear();
-              if (context.mounted) context.go('/');
-            },
-          ),
           const SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
         ],
       ),
