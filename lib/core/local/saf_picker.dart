@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/services.dart';
 
 /// Dart bridge to the Android SAF (Storage Access Framework) platform channel.
@@ -20,19 +18,19 @@ class SafPicker {
   /// Recursively lists all audio files under a SAF tree URI.
   /// Returns a list of [SafFile] with uri, name, size, lastModified.
   static Future<List<SafFile>> listAudioFiles(String treeUri) async {
-    final result = await _channel.invokeMethod<List>('listAudioFiles', {
+    final result = await _channel.invokeMethod<List<dynamic>>('listAudioFiles', {
       'uri': treeUri,
     });
     if (result == null) return const [];
     return result
-        .cast<Map>()
+        .cast<Map<dynamic, dynamic>>()
         .map((m) => SafFile.fromMap(m.cast<String, dynamic>()))
         .toList(growable: false);
   }
 
   /// Reads metadata tags from a single audio file via MediaMetadataRetriever.
   static Future<SafMetadata> readMetadata(String fileUri) async {
-    final result = await _channel.invokeMethod<Map>('readMetadata', {
+    final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('readMetadata', {
       'uri': fileUri,
     });
     if (result == null) return const SafMetadata();

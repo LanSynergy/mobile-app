@@ -18,6 +18,7 @@ import '../core/jellyfin/models/server.dart';
 import '../core/lyrics/lrc_parser.dart';
 import '../core/subsonic/client.dart';
 import '../design_tokens/colors.dart';
+import '../utils/log.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // App Mode
@@ -30,7 +31,6 @@ enum AppMode { server, local }
 /// Current app mode. Null on first launch (user hasn't chosen yet).
 /// Overridden in main.dart from persisted value.
 final appModeProvider = StateProvider<AppMode?>((ref) => null);
-import '../utils/log.dart';
 
 /// Compact one-liner for the `aetherfin:data` trace category.
 ///
