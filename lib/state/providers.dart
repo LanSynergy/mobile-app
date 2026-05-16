@@ -12,6 +12,9 @@ import '../core/audio/spectral_extractor.dart';
 import '../core/backend/music_backend.dart';
 import '../core/jellyfin/auth_storage.dart';
 import '../core/local/local_library.dart';
+import '../core/smart_playlist/smart_playlist_db.dart';
+import '../core/smart_playlist/smart_playlist_engine.dart';
+import '../core/smart_playlist/smart_playlist_model.dart';
 import '../core/jellyfin/client.dart';
 import '../core/jellyfin/models/items.dart';
 import '../core/jellyfin/models/server.dart';
@@ -70,6 +73,44 @@ final localTracksProvider = FutureProvider.autoDispose<List<AfTrack>>((ref) {
 final localGenresProvider = FutureProvider.autoDispose<List<AfGenre>>((ref) {
   final lib = ref.watch(localLibraryProvider);
   return lib.genres();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Smart Playlists
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Singleton SmartPlaylistDb instance.
+final smartPlaylistDbProvider = Provider<SmartPlaylistDb>((ref) {
+  final db = SmartPlaylistDb();
+  ref.onDispose(() => db.close());
+  return db;
+});
+
+/// All smart playlists (refreshes when invalidated).
+final smartPlaylistsProvider =
+    FutureProvider.autoDispose<List<SmartPlaylist>>((ref) {
+  final db = ref.watch(smartPlaylistDbProvider);
+  return db.getAll();
+});
+
+/// Resolves a smart playlist into tracks by ID.
+final smartPlaylistTracksProvider = FutureProvider.autoDispose
+    .family<List<AfTrack>, String>((ref, playlistId) async {
+  final db = ref.read(smartPlaylistDbProvider);
+  final playlist = await db.getById(playlistId);
+  if (playlist == null) return const [];
+
+  final engine = SmartPlaylistEngine();
+  final mode = ref.read(appModeProvider);
+
+  if (mode == AppMode.local) {
+    final localLib = ref.read(localLibraryProvider);
+    return engine.resolveLocal(playlist, localLib.db);
+  }
+
+  // Server mode: fetch all tracks and filter client-side.
+  final allTracks = await ref.read(allTracksProvider.future);
+  return engine.resolveFromList(playlist, allTracks);
 });
 
 /// Compact one-liner for the `aetherfin:data` trace category.

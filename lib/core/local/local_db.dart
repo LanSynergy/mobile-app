@@ -126,7 +126,7 @@ class LocalDb {
     final d = await db;
     final rows = await d.query('tracks',
         orderBy: 'title COLLATE NOCASE ASC', limit: limit);
-    return rows.map(_rowToTrack).toList();
+    return rows.map(rowToTrack).toList();
   }
 
   Future<List<AfAlbum>> allAlbums() async {
@@ -209,7 +209,7 @@ class LocalDb {
         where: 'album = ? AND (artist = ? OR album_artist = ?)',
         whereArgs: [albumName, artistName, artistName],
         orderBy: 'track_number ASC, title ASC');
-    return rows.map(_rowToTrack).toList();
+    return rows.map(rowToTrack).toList();
   }
 
   Future<List<AfTrack>> tracksByArtist(String artistName) async {
@@ -218,7 +218,7 @@ class LocalDb {
         where: 'artist = ? OR album_artist = ?',
         whereArgs: [artistName, artistName],
         orderBy: 'album ASC, track_number ASC');
-    return rows.map(_rowToTrack).toList();
+    return rows.map(rowToTrack).toList();
   }
 
   Future<List<AfTrack>> tracksByGenre(String genre) async {
@@ -226,7 +226,7 @@ class LocalDb {
     final rows = await d.query('tracks',
         where: 'genre = ?', whereArgs: [genre],
         orderBy: 'title COLLATE NOCASE ASC');
-    return rows.map(_rowToTrack).toList();
+    return rows.map(rowToTrack).toList();
   }
 
   Future<List<AfTrack>> searchTracks(String query) async {
@@ -237,7 +237,7 @@ class LocalDb {
         whereArgs: [like, like, like],
         orderBy: 'title COLLATE NOCASE ASC',
         limit: 50);
-    return rows.map(_rowToTrack).toList();
+    return rows.map(rowToTrack).toList();
   }
 
   Future<int> trackCount() async {
@@ -248,7 +248,7 @@ class LocalDb {
 
   // ── Helpers ─────────────────────────────────────────────────────────────
 
-  AfTrack _rowToTrack(Map<String, dynamic> r) {
+  AfTrack rowToTrack(Map<String, dynamic> r) {
     final codec = (r['codec'] as String?) ?? '';
     final bitrate = r['bitrate'] as int?;
     final sampleRate = r['sample_rate'] as int?;

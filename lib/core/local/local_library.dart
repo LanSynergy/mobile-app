@@ -15,6 +15,9 @@ class LocalLibrary {
     _scanner = MetadataScanner(_db);
   }
 
+  /// Expose the underlying DB for direct queries (e.g. smart playlists).
+  LocalDb get db => _db;
+
   // ── Folder management ───────────────────────────────────────────────────
 
   /// Pick a folder via SAF and persist it. Returns the tree URI or null.
