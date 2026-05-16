@@ -12,7 +12,6 @@ import '../../widgets/artwork.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
-import 'ask_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SearchScreen
@@ -127,9 +126,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               child: ValueListenableBuilder<String>(
                 valueListenable: _queryNotifier,
                 builder: (context, query, _) => query.isEmpty
-                    ? _SearchIdleState(
-                        onAskTap: () => AskSheet.show(context),
-                      )
+                    ? const _SearchIdleState()
                     : _LiveSearchResults(query: query),
               ),
             ),
@@ -242,8 +239,7 @@ class _SkeletonBar extends StatelessWidget {
 /// Idle (empty query) panel — uses CustomScrollView + slivers to avoid
 /// the shrinkWrap GridView-inside-ListView layout penalty.
 class _SearchIdleState extends ConsumerWidget {
-  final VoidCallback onAskTap;
-  const _SearchIdleState({required this.onAskTap});
+  const _SearchIdleState();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -299,42 +295,6 @@ class _SearchIdleState extends ConsumerWidget {
           ),
         ),
         const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s24)),
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-          sliver: SliverToBoxAdapter(
-            child: GestureDetector(
-              onTap: onAskTap,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.s16,
-                  vertical: AfSpacing.s12,
-                ),
-                decoration: BoxDecoration(
-                  color: AfColors.surfaceBase,
-                  borderRadius: AfRadii.borderPill,
-                  border: Border.all(color: AfColors.surfaceHigh, width: 1),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.auto_awesome_rounded,
-                        color: AfColors.indigo300, size: 20),
-                    const SizedBox(width: AfSpacing.s12),
-                    Expanded(
-                      child: Text(
-                        'Ask your library…',
-                        style: AfTypography.bodyMedium.copyWith(
-                          color: AfColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right_rounded,
-                        color: AfColors.textTertiary),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
         const SliverToBoxAdapter(
           child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
         ),
