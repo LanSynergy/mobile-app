@@ -76,6 +76,14 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
       orElse: () => null,
     );
 
+    // Reset scroll tracking when the track changes so lyrics follow from
+    // the start of the new song.
+    ref.listen(currentTrackProvider, (prev, next) {
+      if (prev?.id != next?.id) {
+        _lastScrolledIndex = -1;
+      }
+    });
+
     // Scroll to active line only when position actually changes — not on
     // every build. Using ref.listen avoids enqueuing a post-frame callback
     // on every position tick (which was growing the callback queue unboundedly).
