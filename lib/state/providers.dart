@@ -18,6 +18,18 @@ import '../core/jellyfin/models/server.dart';
 import '../core/lyrics/lrc_parser.dart';
 import '../core/subsonic/client.dart';
 import '../design_tokens/colors.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// App Mode
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The app operates in one of two mutually exclusive modes.
+/// Persisted in shared_preferences as 'af.app_mode'.
+enum AppMode { server, local }
+
+/// Current app mode. Null on first launch (user hasn't chosen yet).
+/// Overridden in main.dart from persisted value.
+final appModeProvider = StateProvider<AppMode?>((ref) => null);
 import '../utils/log.dart';
 
 /// Compact one-liner for the `aetherfin:data` trace category.
