@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/demo/demo_library.dart';
+import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/artwork.dart';
@@ -30,7 +30,7 @@ class _AllSetScreenState extends ConsumerState<AllSetScreen>
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    final library = DemoLibrary.albums.take(9).toList();
+    final library = const <AfAlbum>[];
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -62,8 +62,10 @@ class _AllSetScreenState extends ConsumerState<AllSetScreen>
               _StatRow(),
               const SizedBox(height: AfSpacing.s24),
               Expanded(
-                child: GridView.builder(
-                  itemCount: 9,
+                child: library.isEmpty
+                    ? const SizedBox.shrink()
+                    : GridView.builder(
+                  itemCount: library.length,
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate:
                       const SliverGridDelegateWithFixedCrossAxisCount(
@@ -112,10 +114,9 @@ class _AllSetScreenState extends ConsumerState<AllSetScreen>
 class _StatRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final tracks = DemoLibrary.tracks.length;
-    final albums = DemoLibrary.albums.length;
-    final hours = (DemoLibrary.tracks.fold<int>(
-                0, (sum, t) => sum + t.duration.inMinutes) /
+    final tracks = 0;
+    final albums = 0;
+    final hours = (0 /
             60)
         .round();
     return Row(

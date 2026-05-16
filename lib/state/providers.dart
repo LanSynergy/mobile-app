@@ -10,7 +10,6 @@ import '../core/audio/player_service.dart';
 import '../core/audio/player_settings_store.dart';
 import '../core/audio/spectral_extractor.dart';
 import '../core/backend/music_backend.dart';
-import '../core/demo/demo_library.dart';
 import '../core/jellyfin/auth_storage.dart';
 import '../core/jellyfin/client.dart';
 import '../core/jellyfin/models/items.dart';
@@ -448,7 +447,7 @@ final recentlyAddedAlbumsProvider =
   if (backend == null) {
     _logData('recentlyAddedAlbums',
         source: 'demo', extra: '(signed out)');
-    return DemoLibrary.albums;
+    return const [];
   }
   final res = await backend.recentlyAddedAlbums();
   _logData('recentlyAddedAlbums', source: 'live', extra: 'count=${res.length}');
@@ -461,7 +460,7 @@ final recentlyPlayedTracksProvider =
   if (backend == null) {
     _logData('recentlyPlayedTracks',
         source: 'demo', extra: '(signed out)');
-    return DemoLibrary.tracks.take(10).toList();
+    return const [];
   }
   final res = await backend.recentlyPlayed();
   _logData('recentlyPlayedTracks',
@@ -474,7 +473,7 @@ final allArtistsProvider =
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
     _logData('allArtists', source: 'demo', extra: '(signed out)');
-    return DemoLibrary.artists;
+    return const [];
   }
   final res = await backend.artists();
   _logData('allArtists', source: 'live', extra: 'count=${res.length}');
@@ -486,7 +485,7 @@ final allPlaylistsProvider =
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
     _logData('allPlaylists', source: 'demo', extra: '(signed out)');
-    return DemoLibrary.playlists;
+    return const [];
   }
   final res = await backend.playlists();
   _logData('allPlaylists', source: 'live', extra: 'count=${res.length}');
@@ -531,7 +530,7 @@ final favoriteAlbumsProvider =
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
     _logData('favoriteAlbums', source: 'demo', extra: '(signed out)');
-    return DemoLibrary.albums.take(4).toList();
+    return const [];
   }
   final res = await backend.favoriteAlbums();
   _logData('favoriteAlbums', source: 'live', extra: 'count=${res.length}');
@@ -544,7 +543,7 @@ final favoriteTracksProvider =
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
     _logData('favoriteTracks', source: 'demo', extra: '(signed out)');
-    return DemoLibrary.tracks.take(5).toList();
+    return const [];
   }
   final res = await backend.favoriteTracks();
   _logData('favoriteTracks', source: 'live', extra: 'count=${res.length}');
@@ -560,7 +559,7 @@ final allAlbumsProvider =
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
     _logData('allAlbums', source: 'demo', extra: '(signed out)');
-    return DemoLibrary.albums;
+    return const [];
   }
   final res = await backend.allAlbums();
   _logData('allAlbums', source: 'live', extra: 'count=${res.length}');
@@ -576,7 +575,7 @@ final allTracksProvider =
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
     _logData('allTracks', source: 'demo', extra: '(signed out)');
-    return DemoLibrary.tracks;
+    return const [];
   }
   final res = await backend.allTracks();
   _logData('allTracks', source: 'live', extra: 'count=${res.length}');
@@ -624,7 +623,7 @@ final genreAlbumsProvider = FutureProvider.autoDispose
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
     _logData('genreAlbums', source: 'demo', extra: 'genre=$genre (signed out)');
-    return DemoLibrary.albums;
+    return const [];
   }
   final res = await backend.albumsByGenre(genre);
   _logData('genreAlbums', source: 'live', extra: 'genre=$genre count=${res.length}');
@@ -637,7 +636,7 @@ final allGenresProvider =
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
     _logData('allGenres', source: 'demo', extra: '(signed out)');
-    return DemoLibrary.genres;
+    return const [];
   }
   final res = await backend.genres();
   _logData('allGenres', source: 'live', extra: 'count=${res.length}');
@@ -654,16 +653,8 @@ final albumDetailProvider = FutureProvider.autoDispose
         extra: 'id=$id tracks=${res?.tracks.length ?? 0}');
     return res;
   }
-  final album = DemoLibrary.albumById(id);
-  if (album == null) {
-    _logData('albumDetail',
-        source: 'demo', extra: 'id=$id (not found)');
-    return null;
-  }
-  _logData('albumDetail',
-      source: 'demo',
-      extra: 'id=$id tracks=${DemoLibrary.tracksByAlbum(id).length}');
-  return (album: album, tracks: DemoLibrary.tracksByAlbum(id));
+  _logData('albumDetail', source: 'none', extra: 'id=$id (no backend)');
+  return null;
 });
 
 final artistDetailProvider =
@@ -675,26 +666,17 @@ final artistDetailProvider =
         source: 'live', extra: 'id=$id found=${res != null}');
     return res;
   }
-  final res = DemoLibrary.artistById(id);
-  _logData('artistDetail',
-      source: 'demo', extra: 'id=$id found=${res != null}');
-  return res;
+  _logData('artistDetail', source: 'none', extra: 'id=$id (no backend)');
+  return null;
 });
 
-/// Albums credited to a given artist. Used by the Artist screen's albums
-/// rail — replaces the previous DemoLibrary `.where(byName)` filter
-/// (which only ever showed demo albums even when signed in).
+/// Albums credited to a given artist.
 final artistAlbumsProvider = FutureProvider.autoDispose
     .family<List<AfAlbum>, String>((ref, artistId) async {
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
-    final artist = DemoLibrary.artistById(artistId);
-    final res = artist == null
-        ? const <AfAlbum>[]
-        : DemoLibrary.albums.where((a) => a.artistName == artist.name).toList();
-    _logData('artistAlbums',
-        source: 'demo', extra: 'artistId=$artistId count=${res.length}');
-    return res;
+    _logData('artistAlbums', source: 'none', extra: 'artistId=$artistId (no backend)');
+    return const [];
   }
   final res = await backend.artistAlbums(artistId);
   _logData('artistAlbums',
@@ -709,16 +691,8 @@ final artistTopTracksProvider = FutureProvider.autoDispose
     .family<List<AfTrack>, String>((ref, artistId) async {
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
-    final artist = DemoLibrary.artistById(artistId);
-    final res = artist == null
-        ? const <AfTrack>[]
-        : DemoLibrary.tracks
-            .where((t) => t.artistName == artist.name)
-            .take(5)
-            .toList();
-    _logData('artistTopTracks',
-        source: 'demo', extra: 'artistId=$artistId count=${res.length}');
-    return res;
+    _logData('artistTopTracks', source: 'none', extra: 'artistId=$artistId (no backend)');
+    return const [];
   }
   final res = await backend.artistTopTracks(artistId, limit: 5);
   _logData('artistTopTracks',
@@ -754,28 +728,11 @@ final searchProvider = FutureProvider.autoDispose
   }
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
-    final tracks = DemoLibrary.tracks
-        .where((t) =>
-            t.title.toLowerCase().contains(query.toLowerCase()) ||
-            t.artistName.toLowerCase().contains(query.toLowerCase()) ||
-            t.albumName.toLowerCase().contains(query.toLowerCase()))
-        .toList(growable: false);
-    final albums = DemoLibrary.albums
-        .where((a) =>
-            a.name.toLowerCase().contains(query.toLowerCase()) ||
-            a.artistName.toLowerCase().contains(query.toLowerCase()))
-        .toList(growable: false);
-    final artists = DemoLibrary.artists
-        .where((a) => a.name.toLowerCase().contains(query.toLowerCase()))
-        .toList(growable: false);
-    _logData('search',
-        source: 'demo',
-        extra: 'query="$query" tracks=${tracks.length} '
-            'albums=${albums.length} artists=${artists.length}');
+    _logData('search', source: 'none', extra: 'query="$query" (no backend)');
     return (
-      tracks: tracks,
-      albums: albums,
-      artists: artists,
+      tracks: const <AfTrack>[],
+      albums: const <AfAlbum>[],
+      artists: const <AfArtist>[],
       playlists: const <AfPlaylist>[],
     );
   }
