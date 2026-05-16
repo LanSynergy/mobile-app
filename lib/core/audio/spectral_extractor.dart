@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'dart:ui' show Color;
 
 import 'package:cached_network_image/cached_network_image.dart'
     show CachedNetworkImageProvider;
+import 'package:flutter/painting.dart' show FileImage, ImageProvider;
 import 'package:palette_generator_master/palette_generator_master.dart';
 
 import '../../design_tokens/colors.dart';
@@ -42,17 +44,20 @@ class SpectralExtractor {
     String imageUrl, {
     Map<String, String>? headers,
   }) async {
-    // LRU promotion: remove and re-insert so the most-recently-used entry
-    // is always at the tail of the LinkedHashMap. FIFO eviction (removing
-    // keys.first) would evict frequently-reused artwork.
     final cached = _cache.remove(imageUrl);
     if (cached != null) {
-      _cache[imageUrl] = cached; // re-insert at tail = mark as recently used
+      _cache[imageUrl] = cached;
       return cached;
     }
     try {
+      final ImageProvider provider;
+      if (imageUrl.startsWith('file://')) {
+        provider = FileImage(File(imageUrl.substring('file://'.length)));
+      } else {
+        provider = CachedNetworkImageProvider(imageUrl, headers: headers);
+      }
       final palette = await PaletteGeneratorMaster.fromImageProvider(
-        CachedNetworkImageProvider(imageUrl, headers: headers),
+        provider,
         maximumColorCount: 16,
       );
       final samples = palette.colors.toList(growable: false);

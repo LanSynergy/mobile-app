@@ -479,30 +479,27 @@ final hasActivePlaybackProvider = Provider<bool>((ref) {
 final spectralExtractorProvider =
     Provider<SpectralExtractor>((ref) => SpectralExtractor());
 
-final spectralProvider =
-    FutureProvider.autoDispose.family<Spectral, AfTrack?>((ref, track) async {
-  if (track?.imageUrl == null) return Spectral.fallback;
-  // Hand the same Authorization header to PaletteGenerator that the
-  // CachedNetworkImage widgets use — once the token moved out of the
-  // URL query string (review S2), unauthed artwork fetches would 401
-  // and the player UI would flicker back to fallback indigo.
+/// Currently-resolved spectral triple for the currently-playing track.
+final currentSpectralProvider = Provider<Spectral>((ref) {
+  final track = ref.watch(currentTrackProvider);
+  final imageUrl = track?.imageUrl;
+  final async = ref.watch(spectralFromUrlProvider(imageUrl));
+  return async.maybeWhen(data: (s) => s, orElse: () => Spectral.fallback);
+});
+
+final spectralFromUrlProvider =
+    FutureProvider.autoDispose.family<Spectral, String?>((ref, imageUrl) async {
+  if (imageUrl == null) return Spectral.fallback;
   final backend = ref.watch(musicBackendProvider);
   final headers = backend?.authHeaders;
   try {
     return await ref
         .watch(spectralExtractorProvider)
-        .fromImageUrl(track!.imageUrl!, headers: headers);
+        .fromImageUrl(imageUrl, headers: headers);
   } catch (e) {
     afLog('spectral', 'spectral extraction failed', error: e);
     return Spectral.fallback;
   }
-});
-
-/// Currently-resolved spectral triple for the currently-playing track.
-final currentSpectralProvider = Provider<Spectral>((ref) {
-  final track = ref.watch(currentTrackProvider);
-  final async = ref.watch(spectralProvider(track));
-  return async.maybeWhen(data: (s) => s, orElse: () => Spectral.fallback);
 });
 
 /// ─────────────────────────────────────────────────────────────────────────
