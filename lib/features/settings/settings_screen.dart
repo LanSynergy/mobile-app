@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/audio/player_settings_store.dart';
 import '../../core/audio/player_service.dart';
 import '../../core/local/app_mode_store.dart';
+import '../../build_id.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 
@@ -310,7 +311,7 @@ class SettingsScreen extends ConsumerWidget {
                   future: PackageInfo.fromPlatform(),
                   builder: (context, snap) {
                     final version = snap.data != null
-                        ? 'v${snap.data!.version} (${snap.data!.buildNumber})'
+                        ? 'v${snap.data!.version}+${snap.data!.buildNumber} ($kBuildId)'
                         : '...';
                     return _SettingsTile(
                       icon: Icons.info_outline_rounded,
