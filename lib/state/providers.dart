@@ -219,10 +219,17 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
   svc.onTrackChanged = (track) {
     ref.read(currentTrackProvider.notifier).state = track;
   };
-  final reporter = JellyfinPlaybackReporter(
-    svc,
-    () => ref.read(musicBackendProvider),
-  );
+
+  // Playback reporting only in server mode — local mode has no server.
+  final mode = ref.read(appModeProvider);
+  JellyfinPlaybackReporter? reporter;
+  if (mode != AppMode.local) {
+    reporter = JellyfinPlaybackReporter(
+      svc,
+      () => ref.read(musicBackendProvider),
+    );
+  }
+
   final liveUpdate = LiveUpdateService(svc);
   unawaited(liveUpdate.attach());
   unawaited(svc.configureSpectrum().then((_) {
@@ -236,13 +243,13 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
   // requestStopOnDispose() must be called before dispose() fires.
   ref.listen<JellyfinAuth?>(authProvider, (prev, next) {
     if (prev != null && next == null) {
-      reporter.requestStopOnDispose();
+      reporter?.requestStopOnDispose();
     }
   });
 
   ref.onDispose(() async {
     await liveUpdate.dispose();
-    await reporter.dispose();
+    await reporter?.dispose();
     await svc.dispose();
   });
 }
