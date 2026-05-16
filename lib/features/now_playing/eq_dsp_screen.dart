@@ -606,6 +606,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           opacity: _masterEnabled ? 1.0 : 0.4,
           duration: const Duration(milliseconds: 200),
           child: ListView(
+        physics: const ClampingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
         children: [
           IgnorePointer(
