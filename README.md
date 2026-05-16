@@ -24,12 +24,12 @@ No cloud. No telemetry. No transcoding. Just playback.
 ## Demo
 
 <p align="center">
-  <video src="https://github.com/Aetherfin/mobile-app/raw/main/docs/assets/screencapture/demo.mp4" width="300" autoplay loop muted playsinline>
-    Your browser does not support the video tag.
-  </video>
+  <a href="https://github.com/Aetherfin/mobile-app/raw/main/docs/assets/screencapture/demo.mp4">
+    <img src="docs/assets/screencapture/demo-poster.jpg" width="300" alt="Watch demo video">
+  </a>
 </p>
 
-> *Video not loading? [Download it directly](docs/assets/screencapture/demo.mp4).*
+> *Tap the image to download the demo video.*
 
 ---
 
