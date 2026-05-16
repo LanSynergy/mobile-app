@@ -11,6 +11,14 @@ import '../../widgets/track_row.dart';
 
 enum LibrarySection { albums, artists, songs, playlists, genres, liked }
 
+/// Sections available in local mode (no playlists, no liked — those are server concepts).
+const _localSections = [
+  LibrarySection.albums,
+  LibrarySection.artists,
+  LibrarySection.songs,
+  LibrarySection.genres,
+];
+
 class LibraryScreen extends ConsumerStatefulWidget {
   /// When set, the screen opens directly on this tab instead of Albums.
   /// Used by deep-links from Home (genre tiles → Genres, artists → Artists).
@@ -78,10 +86,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 }
 
-class _SegmentedPill extends StatelessWidget {
+class _SegmentedPill extends ConsumerWidget {
   final LibrarySection value;
   final ValueChanged<LibrarySection> onChanged;
   const _SegmentedPill({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(appModeProvider);
+    final sections = mode == AppMode.local
+        ? _localSections
+        : LibrarySection.values;
 
   @override
   Widget build(BuildContext context) {
@@ -90,11 +105,11 @@ class _SegmentedPill extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-        itemCount: LibrarySection.values.length,
+        itemCount: sections.length,
         separatorBuilder: (context, index) =>
             const SizedBox(width: AfSpacing.s8),
         itemBuilder: (context, i) {
-          final s = LibrarySection.values[i];
+          final s = sections[i];
           final selected = s == value;
           return GestureDetector(
             onTap: () => onChanged(s),
@@ -143,12 +158,14 @@ class _SectionBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final padding = const EdgeInsets.symmetric(horizontal: AfSpacing.s16);
+    final mode = ref.watch(appModeProvider);
+    final isLocal = mode == AppMode.local;
+
     switch (section) {
       case LibrarySection.albums:
-        // Use the *full* library album list — not `recentlyAddedAlbums`,
-        // which is capped at 20 and made the grid look truncated even on
-        // libraries with hundreds of albums.
-        final albums = ref.watch(allAlbumsProvider);
+        final albums = isLocal
+            ? ref.watch(localAlbumsProvider)
+            : ref.watch(allAlbumsProvider);
         return albums.maybeWhen(
           data: (list) => GridView.builder(
             padding: padding.add(const EdgeInsets.only(
@@ -178,7 +195,9 @@ class _SectionBody extends ConsumerWidget {
           orElse: () => const Center(child: CircularProgressIndicator()),
         );
       case LibrarySection.artists:
-        final artists = ref.watch(allArtistsProvider);
+        final artists = isLocal
+            ? ref.watch(localArtistsProvider)
+            : ref.watch(allArtistsProvider);
         return artists.maybeWhen(
           data: (list) => GridView.builder(
             padding: padding.add(const EdgeInsets.only(
@@ -207,10 +226,9 @@ class _SectionBody extends ConsumerWidget {
         );
       case LibrarySection.songs:
         return Consumer(builder: (context, ref, _) {
-          // Full library — was previously wired to `recentlyPlayed`
-          // (filter=IsPlayed, limit=20) which made unplayed libraries
-          // look empty.
-          final tracks = ref.watch(allTracksProvider);
+          final tracks = isLocal
+              ? ref.watch(localTracksProvider)
+              : ref.watch(allTracksProvider);
           return tracks.maybeWhen(
             data: (list) => ListView.separated(
               padding: padding.add(const EdgeInsets.only(
@@ -278,7 +296,9 @@ class _SectionBody extends ConsumerWidget {
           orElse: () => const Center(child: CircularProgressIndicator()),
         );
       case LibrarySection.genres:
-        final genresAsync = ref.watch(allGenresProvider);
+        final genresAsync = isLocal
+            ? ref.watch(localGenresProvider)
+            : ref.watch(allGenresProvider);
         return genresAsync.maybeWhen(
           data: (genres) => GridView.builder(
             padding: padding.add(const EdgeInsets.only(
