@@ -924,6 +924,19 @@ class AfPlayerService extends BaseAudioHandler
 
     // Persist embedded cover art to a temp file for the OS media widget.
     _subs.add(_player.stream.coverArt.listen(_persistCover));
+
+    // Pause on audio route change (Bluetooth disconnect, headphones unplug).
+    // When the output device changes while playing, pause to prevent audio
+    // from blasting through the phone speaker unexpectedly.
+    _subs.add(_player.stream.audioDevice.listen((newDevice) {
+      if (!_player.state.playing) return;
+      // If the new device is the default/auto (phone speaker), it means
+      // the previous device (BT/headphones) was disconnected.
+      if (newDevice.name == 'auto' || newDevice.name == 'default') {
+        pause();
+        afLog('audio', 'paused: audio device changed to ${newDevice.name} (BT/headphone disconnect)');
+      }
+    }));
   }
 
   /// Throttled wrapper for position-stream updates.
