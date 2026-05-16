@@ -59,6 +59,8 @@ class LocalLibrary {
     int totalInserted = 0;
     for (final folder in folders) {
       final uri = folder['uri'] as String;
+      // Remove tracks that no longer exist on disk before scanning.
+      await _scanner.pruneDeletedFiles(uri);
       totalInserted += await _scanner.scanFolder(
         uri,
         onProgress: onProgress,
