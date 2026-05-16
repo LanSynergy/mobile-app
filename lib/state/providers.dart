@@ -268,6 +268,9 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     // doesn't show stale values from the previous track.
     ref.read(positionStreamProvider.notifier).state = Duration.zero;
     ref.read(durationStreamProvider.notifier).state = Duration.zero;
+    // Clear A-B loop on track change.
+    ref.read(abLoopAProvider.notifier).state = null;
+    ref.read(abLoopBProvider.notifier).state = null;
   };
 
   // Start position polling (10 Hz timer + reactive stream forwarding).
@@ -351,6 +354,12 @@ final durationStreamProvider = StateProvider<Duration>((ref) => Duration.zero);
 /// Last playback error message. Null when no error. UI watches this to
 /// show error snackbars.
 final playbackErrorProvider = StateProvider<String?>((ref) => null);
+
+/// A-B loop markers. Tracked in Dart state because mpv's observe_property
+/// doesn't fire reliably on all devices. The actual mpv loop is set via
+/// setAbLoopA/B commands which work regardless of observation.
+final abLoopAProvider = StateProvider<Duration?>((ref) => null);
+final abLoopBProvider = StateProvider<Duration?>((ref) => null);
 
 /// Starts the position polling timer. Called once during player wiring.
 void _startPositionPolling(Ref ref, AfPlayerService svc) {

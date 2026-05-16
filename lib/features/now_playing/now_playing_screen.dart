@@ -317,43 +317,64 @@ class _MetadataRow extends ConsumerWidget {
 class _AbLoopButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final svc = ref.read(playerServiceProvider);
-    final active = svc.abLoopA != null;
+    final loopA = ref.watch(abLoopAProvider);
+    final loopB = ref.watch(abLoopBProvider);
+    final active = loopA != null;
+    final fullyActive = loopA != null && loopB != null;
+
     return IconButton(
       icon: Icon(
         Icons.replay_rounded,
-        color: active
+        color: fullyActive
             ? ref.watch(currentSpectralProvider).energy
-            : AfColors.textTertiary,
+            : active
+                ? AfColors.semanticWarning
+                : AfColors.textTertiary,
         size: 22,
       ),
       tooltip: 'A-B Loop',
-      onPressed: () {
-        if (svc.abLoopA == null) {
-          svc.setAbLoopA(svc.position);
-          ScaffoldMessenger.of(context)
-            ..clearSnackBars()
-            ..showSnackBar(const SnackBar(
-              content: Text('Loop start set — tap again for end'),
-              duration: Duration(seconds: 2),
-            ));
-        } else if (svc.abLoopB == null) {
-          svc.setAbLoopB(svc.position);
-          ScaffoldMessenger.of(context)
-            ..clearSnackBars()
-            ..showSnackBar(const SnackBar(
-              content: Text('A-B loop active — tap to clear'),
-              duration: Duration(seconds: 2),
-            ));
+      onPressed: () async {
+        final svc = ref.read(playerServiceProvider);
+        final pos = await svc.getRawPosition();
+
+        if (loopA == null) {
+          // Set A marker
+          await svc.setAbLoopA(pos);
+          ref.read(abLoopAProvider.notifier).state = pos;
+          if (context.mounted) {
+            ScaffoldMessenger.of(context)
+              ..clearSnackBars()
+              ..showSnackBar(const SnackBar(
+                content: Text('Loop start set — tap again for end'),
+                duration: Duration(seconds: 2),
+              ));
+          }
+        } else if (loopB == null) {
+          // Set B marker
+          await svc.setAbLoopB(pos);
+          ref.read(abLoopBProvider.notifier).state = pos;
+          if (context.mounted) {
+            ScaffoldMessenger.of(context)
+              ..clearSnackBars()
+              ..showSnackBar(const SnackBar(
+                content: Text('A-B loop active — tap to clear'),
+                duration: Duration(seconds: 2),
+              ));
+          }
         } else {
-          svc.setAbLoopA(null);
-          svc.setAbLoopB(null);
-          ScaffoldMessenger.of(context)
-            ..clearSnackBars()
-            ..showSnackBar(const SnackBar(
-              content: Text('A-B loop cleared'),
-              duration: Duration(seconds: 1),
-            ));
+          // Clear both
+          await svc.setAbLoopA(null);
+          await svc.setAbLoopB(null);
+          ref.read(abLoopAProvider.notifier).state = null;
+          ref.read(abLoopBProvider.notifier).state = null;
+          if (context.mounted) {
+            ScaffoldMessenger.of(context)
+              ..clearSnackBars()
+              ..showSnackBar(const SnackBar(
+                content: Text('A-B loop cleared'),
+                duration: Duration(seconds: 1),
+              ));
+          }
         }
       },
     );
@@ -996,12 +1017,16 @@ class _UtilityRow extends ConsumerWidget {
             ),
             const SizedBox(height: AfSpacing.s16),
             FilledButton.icon(
-              onPressed: () {
-                svc.setAbLoopA(svc.position);
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Loop start: ${_fmtDuration(svc.position)}')),
-                );
+              onPressed: () async {
+                final pos = await svc.getRawPosition();
+                await svc.setAbLoopA(pos);
+                ref.read(abLoopAProvider.notifier).state = pos;
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Loop start: ${_fmtDuration(pos)}')),
+                  );
+                }
               },
               icon: const Icon(Icons.flag_rounded, size: 18),
               label: const Text('Set A (start)'),
@@ -1009,12 +1034,16 @@ class _UtilityRow extends ConsumerWidget {
             ),
             const SizedBox(height: AfSpacing.s8),
             FilledButton.icon(
-              onPressed: () {
-                svc.setAbLoopB(svc.position);
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Loop end: ${_fmtDuration(svc.position)}')),
-                );
+              onPressed: () async {
+                final pos = await svc.getRawPosition();
+                await svc.setAbLoopB(pos);
+                ref.read(abLoopBProvider.notifier).state = pos;
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Loop end: ${_fmtDuration(pos)}')),
+                  );
+                }
               },
               icon: const Icon(Icons.flag_outlined, size: 18),
               label: const Text('Set B (end)'),
@@ -1022,13 +1051,17 @@ class _UtilityRow extends ConsumerWidget {
             ),
             const SizedBox(height: AfSpacing.s8),
             OutlinedButton.icon(
-              onPressed: () {
-                svc.setAbLoopA(null);
-                svc.setAbLoopB(null);
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('A-B loop cleared')),
-                );
+              onPressed: () async {
+                await svc.setAbLoopA(null);
+                await svc.setAbLoopB(null);
+                ref.read(abLoopAProvider.notifier).state = null;
+                ref.read(abLoopBProvider.notifier).state = null;
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('A-B loop cleared')),
+                  );
+                }
               },
               icon: const Icon(Icons.clear_rounded, size: 18),
               label: const Text('Clear loop'),
