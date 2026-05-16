@@ -337,18 +337,25 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
   // Local scrub preview — updated during drag without seeking.
   double? _scrubPreview;
   bool _isDragging = false;
+  StreamSubscription<Duration>? _positionSub;
   Timer? _pollTimer;
   Duration _position = Duration.zero;
 
   @override
   void initState() {
     super.initState();
-    _position = ref.read(playerServiceProvider).position;
-    _startPolling();
-  }
+    final svc = ref.read(playerServiceProvider);
+    _position = svc.position;
 
-  void _startPolling() {
-    _pollTimer?.cancel();
+    // Primary: listen to the reactive position stream from mpv.
+    _positionSub = svc.positionStream.listen((pos) {
+      if (!_isDragging && mounted && pos != _position) {
+        setState(() => _position = pos);
+      }
+    });
+
+    // Fallback: poll synchronous position at 10 Hz in case the stream
+    // is silent (e.g. during buffering transitions).
     _pollTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
       if (!_isDragging && mounted) {
         final pos = ref.read(playerServiceProvider).position;
@@ -373,6 +380,7 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
 
   @override
   void dispose() {
+    _positionSub?.cancel();
     _pollTimer?.cancel();
     super.dispose();
   }

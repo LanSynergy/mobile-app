@@ -315,7 +315,7 @@ class AfPlayerService extends BaseAudioHandler
       ),
       // Bypass 18-band graphic EQ if all active bands are flat
       superequalizer: fx.superequalizer.copyWith(
-        enabled: fx.superequalizer.enabled && 
+        enabled: fx.superequalizer.enabled &&
                  fx.superequalizer.params.values.any((gain) => gain != 0.0),
       ),
     );
@@ -780,6 +780,11 @@ class AfPlayerService extends BaseAudioHandler
         _nudgeRetries = 0;
         // Mark that we expect mpv to start playing this index.
         _pendingPlayNudgeIdx = idx;
+
+        // Force position to reset — mpv's state.position can remain at
+        // the previous track's end position until the new file's demuxer
+        // opens. A seek(0) kicks the position reporting back to life.
+        unawaited(_player.seek(Duration.zero).catchError((_) {}));
 
         // Race-condition guard: if mpv already fired playing=false before
         // this playlist event arrived (can happen under Doze load), the
