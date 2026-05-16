@@ -350,27 +350,67 @@ final playbackErrorProvider = StateProvider<String?>((ref) => null);
 
 /// Starts the position polling timer. Called once during player wiring.
 void _startPositionPolling(Ref ref, AfPlayerService svc) {
-  // Poll at 10 Hz and update the state provider directly.
+  // Primary source: audioPts stream — advances per audio frame, more
+  // granular and reliable than position (which depends on mpv's fixed
+  // observe_property schedule for time-pos). If time-pos observation
+  // is broken (e.g. due to audio driver config), audioPts still fires
+  // because it's derived from the audio frame pipeline.
+  svc.audioPtsStream.listen((pts) {
+    if (pts > Duration.zero) {
+      ref.read(positionStreamProvider.notifier).state = pts;
+    }
+  });
+
+  // Secondary: forward the standard position stream for seek responses.
+  svc.positionStream.listen((pos) {
+    ref.read(positionStreamProvider.notifier).state = pos;
+  });
+
+  // Tertiary: poll at 10 Hz as a safety net. If neither stream fires,
+  // this ensures the UI still updates (albeit with state.position which
+  // may lag behind audioPts).
   Timer.periodic(const Duration(milliseconds: 100), (_) {
     final pos = svc.position;
-    ref.read(positionStreamProvider.notifier).state = pos;
-    // Also poll duration — mpv reports it once the file is probed,
-    // which may be after the track metadata was already emitted.
+    if (pos > Duration.zero) {
+      ref.read(positionStreamProvider.notifier).state = pos;
+    } else {
+      // Last resort: derive position from percentPos * duration.
+      // percentPos (0–100) is a separate mpv property that may update
+      // even when time-pos doesn't.
+      final pct = svc.percentPos;
+      final dur = svc.duration;
+      if (pct > 0 && dur > Duration.zero) {
+        final derived = Duration(
+          milliseconds: (pct / 100.0 * dur.inMilliseconds).round(),
+        );
+        ref.read(positionStreamProvider.notifier).state = derived;
+      }
+    }
+    // Also poll duration — mpv reports it once the file is probed.
     final dur = svc.duration;
     if (dur > Duration.zero) {
       ref.read(durationStreamProvider.notifier).state = dur;
     }
   });
 
-  // Also forward reactive stream events for immediate response to seeks.
-  svc.positionStream.listen((pos) {
-    ref.read(positionStreamProvider.notifier).state = pos;
-  });
-
   // Forward duration stream for immediate response when mpv probes the file.
   svc.durationStream.listen((dur) {
     if (dur > Duration.zero) {
       ref.read(durationStreamProvider.notifier).state = dur;
+    }
+  });
+
+  // percentPos stream (0–100) — yet another fallback. Some mpv builds
+  // fire percent-pos even when time-pos observation is broken.
+  svc.percentPosStream.listen((pct) {
+    if (pct > 0) {
+      final dur = ref.read(durationStreamProvider);
+      if (dur > Duration.zero) {
+        final derived = Duration(
+          milliseconds: (pct / 100.0 * dur.inMilliseconds).round(),
+        );
+        ref.read(positionStreamProvider.notifier).state = derived;
+      }
     }
   });
 }

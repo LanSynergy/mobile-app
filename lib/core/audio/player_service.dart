@@ -98,6 +98,16 @@ class AfPlayerService extends BaseAudioHandler
 
   Stream<Duration> get positionStream => _player.stream.position;
   Stream<bool> get playingStream => _player.stream.playing;
+
+  /// Audio frame timestamp — advances per decoded audio frame, more
+  /// granular and reliable than positionStream (which depends on mpv's
+  /// observe_property schedule for time-pos).
+  Stream<Duration> get audioPtsStream => _player.stream.audioPts;
+
+  /// Playback position as percentage (0–100). Derived from mpv's
+  /// percent-pos property. Used as fallback when time-pos doesn't fire.
+  Stream<double> get percentPosStream => _player.stream.percentPos;
+  double get percentPos => _player.state.percentPos;
   Stream<AfTrack?> get currentTrackStream => _trackController.stream;
   Stream<List<AfTrack>> get queueStream => _queueController.stream;
   Stream<bool> get shuffleModeStream => _shuffleController.stream;
