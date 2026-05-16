@@ -17,7 +17,6 @@ import '../features/now_playing/eq_dsp_screen.dart';
 import '../features/onboarding/all_set_screen.dart';
 import '../features/onboarding/library_scope_screen.dart';
 import '../features/onboarding/local_setup_screen.dart';
-import '../features/onboarding/mode_select_screen.dart';
 import '../features/onboarding/server_discovery_screen.dart';
 import '../features/onboarding/sign_in_screen.dart';
 import '../features/onboarding/welcome_screen.dart';
@@ -80,7 +79,7 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/onboarding/mode',
-      builder: (context, state) => const ModeSelectScreen(),
+      redirect: (_, state) => '/',
     ),
     GoRoute(
       path: '/onboarding/discover',
