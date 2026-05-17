@@ -826,3 +826,9 @@ final reducedMotionProvider = Provider.autoDispose<bool>((ref) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 final discoveredServersProvider = StateProvider<List<JellyfinServer>>((ref) => const <JellyfinServer>[]);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Appearance
+// ─────────────────────────────────────────────────────────────────────────────
+
+final artworkPulseEnabledProvider = StateProvider<bool>((ref) => true);

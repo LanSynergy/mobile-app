@@ -103,6 +103,11 @@ Future<void> main() async {
     final persistedMode = await AppModeStore.load();
     _boot('appMode=${persistedMode?.name ?? "null"}');
 
+    // Load persisted artwork pulse setting.
+    final prefs = await SharedPreferences.getInstance();
+    final artworkPulse = prefs.getBool('af.artwork_pulse_enabled') ?? true;
+    _boot('artworkPulse=$artworkPulse');
+
     // ── Phase 2: Native media engine ─────────────────────────────────────
     // MPV must be initialized before any Player() is constructed.
     MpvAudioKit.ensureInitialized();
@@ -146,6 +151,7 @@ Future<void> main() async {
         initialAuthProvider.overrideWithValue(initialAuth),
         if (persistedMode != null)
           appModeProvider.overrideWith((ref) => persistedMode),
+        artworkPulseEnabledProvider.overrideWith((ref) => artworkPulse),
         playerServiceProvider.overrideWith((ref) {
           wirePlayerService(ref, handler);
           return handler;

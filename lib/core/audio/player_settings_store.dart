@@ -72,6 +72,7 @@ class PlayerSettingsStore {
   static const _kEqPresets = 'af.eq_presets_json';
   static const _kActivePreset = 'af.active_eq_preset';
   static const _kDspMasterEnabled = 'af.dsp_master_enabled';
+  static const _kArtworkPulse = 'af.artwork_pulse_enabled';
 
   static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
@@ -140,6 +141,18 @@ class PlayerSettingsStore {
   static Future<bool> loadDspMasterEnabled() async {
     final p = await _prefs();
     return p.getBool(_kDspMasterEnabled) ?? true;
+  }
+
+  /// Persist the artwork pulse animation toggle.
+  static Future<void> saveArtworkPulse(bool enabled) async {
+    final p = await _prefs();
+    await p.setBool(_kArtworkPulse, enabled);
+  }
+
+  /// Load the artwork pulse animation toggle. Defaults to true (pulse on).
+  static Future<bool> loadArtworkPulse() async {
+    final p = await _prefs();
+    return p.getBool(_kArtworkPulse) ?? true;
   }
 
   /// Serialize the user-visible audio effects to JSON and persist.

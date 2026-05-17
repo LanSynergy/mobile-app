@@ -178,6 +178,7 @@ class SettingsScreen extends ConsumerWidget {
                   onChanged: (v) =>
                       ref.read(showNavLabelsProvider.notifier).state = v,
                 ),
+                _ArtworkPulseSwitch(),
               ],
             ),
 
@@ -1317,4 +1318,24 @@ class _PrefetchToggleState extends State<_PrefetchToggle> {
 
 void _launchUrl(String url) {
   launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+}
+
+class _ArtworkPulseSwitch extends ConsumerWidget {
+  const _ArtworkPulseSwitch();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(artworkPulseEnabledProvider);
+    return _SettingsSwitchTile(
+      icon: Icons.animation_rounded,
+      iconColor: AfColors.semanticWarning,
+      title: 'Artwork pulse',
+      subtitle: 'Scale artwork on kick drums',
+      value: enabled,
+      onChanged: (v) {
+        ref.read(artworkPulseEnabledProvider.notifier).state = v;
+        unawaited(PlayerSettingsStore.saveArtworkPulse(v));
+      },
+    );
+  }
 }

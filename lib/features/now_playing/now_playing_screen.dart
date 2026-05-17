@@ -153,6 +153,10 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Don't subscribe to FFT if pulse animation is disabled.
+      final pulseEnabled = ref.read(artworkPulseEnabledProvider);
+      if (!pulseEnabled) return;
+
       _fftSub = ref.read(playerServiceProvider).spectrumStream.listen(
         (frame) {
           if (frame.bands.isEmpty) return;
@@ -216,6 +220,33 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
   @override
   Widget build(BuildContext context) {
     final spectral = ref.watch(currentSpectralProvider);
+    final pulseEnabled = ref.watch(artworkPulseEnabledProvider);
+
+    final artworkWidget = Center(
+      child: Hero(
+        tag: 'now-playing-artwork',
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: AfRadii.borderLg,
+            boxShadow: [
+              BoxShadow(
+                color: spectral.glow.withValues(alpha: 0.30),
+                blurRadius: 40,
+                spreadRadius: 4,
+              ),
+            ],
+          ),
+          child: Artwork(
+            url: widget.track.imageUrl,
+            size: 300,
+            radius: AfRadii.borderLg,
+          ),
+        ),
+      ),
+    );
+
+    if (!pulseEnabled) return artworkWidget;
+
     return ValueListenableBuilder<double>(
       valueListenable: _scale,
       builder: (context, scaleVal, child) => Transform.scale(
@@ -223,28 +254,7 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
         alignment: Alignment.center,
         child: child,
       ),
-      child: Center(
-        child: Hero(
-          tag: 'now-playing-artwork',
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: AfRadii.borderLg,
-              boxShadow: [
-                BoxShadow(
-                  color: spectral.glow.withValues(alpha: 0.30),
-                  blurRadius: 40,
-                  spreadRadius: 4,
-                ),
-              ],
-            ),
-            child: Artwork(
-              url: widget.track.imageUrl,
-              size: 300,
-              radius: AfRadii.borderLg,
-            ),
-          ),
-        ),
-      ),
+      child: artworkWidget,
     );
   }
 }
