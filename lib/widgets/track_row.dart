@@ -86,7 +86,7 @@ class TrackRow extends StatelessWidget {
     }
 
     return PressScale(
-      ensureHitTarget: false,
+      ensureHitTarget: true,
       onTap: onTap,
       onLongPress: onLongPress,
       child: Container(

@@ -162,6 +162,12 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                             density: TrackRowDensity.compact,
                             isActive: active,
                             showHeart: false,
+                            onTap: () {
+                              // Jump to and play the selected track
+                              final svc = ref.read(playerServiceProvider);
+                              svc.skipToQueueItem(i);
+                              svc.play();
+                            },
                           ),
                         ),
                         ReorderableDragStartListener(
