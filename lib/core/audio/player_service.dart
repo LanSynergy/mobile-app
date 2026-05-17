@@ -1083,13 +1083,18 @@ class AfPlayerService extends BaseAudioHandler
     final track = _trackQueue[_currentIndex];
 
     // Determine artUri: prefer embedded cover (local file), then
-    // previously-downloaded network cover, then kick off a download.
+    // previously-downloaded network cover, then local file URL, then
+    // kick off a network download.
     Uri? artUri;
     if (_coverPath != null) {
       artUri = Uri.file(_coverPath!);
     } else if (_networkCoverPath != null &&
         _networkCoverTrackId == track.id) {
       artUri = Uri.file(_networkCoverPath!);
+    } else if (track.imageUrl != null &&
+        track.imageUrl!.startsWith('file://')) {
+      // Local mode: cover cached on disk by SAF scanner.
+      artUri = Uri.parse(track.imageUrl!);
     } else if (track.imageUrl != null) {
       // Kick off async download — will call _updateMediaItem again when done.
       unawaited(_downloadArtworkForNotification(track));
