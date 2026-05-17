@@ -124,6 +124,14 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   // ── Master toggle ──
   bool _masterEnabled = true;
 
+  /// True while the user's finger is in an active scroll gesture.
+  /// Used to IgnorePointer all list items during scroll so that Slider/Switch/
+  /// ChoiceChip widgets don't receive phantom touch events when the list is
+  /// held at its top or bottom boundary (ClampingScrollPhysics releases the
+  /// gesture recognizer at the boundary, causing pointer events to fall
+  /// through to children and trigger spurious active states).
+  bool _isScrollActive = false;
+
   // ── Tone ──
   double _bass = 0.0;
   double _treble = 0.0;
@@ -602,25 +610,54 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           ),
         ],
       ),
-        body: AnimatedOpacity(
-        opacity: _masterEnabled ? 1.0 : 0.4,
-        duration: const Duration(milliseconds: 200),
-        child: NotificationListener<OverscrollIndicatorNotification>(
-          onNotification: (notification) {
-            notification.disallowIndicator();
-            return true;
-          },
-          child: ListView(
-            physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
-            children: _buildSections()
-                .map((child) => IgnorePointer(
-                      ignoring: !_masterEnabled,
-                      child: child,
-                    ))
-                .toList(),
+      body: AnimatedOpacity(
+          opacity: _masterEnabled ? 1.0 : 0.4,
+          duration: const Duration(milliseconds: 200),
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              // Track whether the user's finger is actively in a scroll gesture.
+              // ScrollStartNotification → finger down + moving.
+              // ScrollEndNotification → finger lifted or fling settled.
+              // Only call setState on transitions to avoid spurious rebuilds.
+              if (notification is ScrollStartNotification &&
+                  !_isScrollActive) {
+                setState(() => _isScrollActive = true);
+              } else if (notification is ScrollEndNotification &&
+                  _isScrollActive) {
+                setState(() => _isScrollActive = false);
+              }
+              return false; // let the notification keep bubbling
+            },
+            child: NotificationListener<OverscrollIndicatorNotification>(
+              onNotification: (notification) {
+                // Prevent Android 16's StretchingOverscrollIndicator from
+                // activating. The stretch effect distorts touch coordinates
+                // at the platform level, causing Slider/Switch/ChoiceChip
+                // widgets to receive phantom pointer events even with
+                // ClampingScrollPhysics. Disallowing the indicator removes
+                // the stretch entirely.
+                notification.disallowIndicator();
+                return true;
+              },
+              child: ListView(
+                physics: const ClampingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
+                children: _buildSections()
+                    .map((child) => IgnorePointer(
+                          // Block child interactions when:
+                          // 1. Master DSP is disabled (!_masterEnabled).
+                          // 2. User is mid-scroll (_isScrollActive) — prevents
+                          //    Slider/Switch/ChoiceChip from receiving pointer
+                          //    events that fall through when the list is held
+                          //    at its top/bottom boundary.
+                          ignoring: !_masterEnabled || _isScrollActive,
+                          child: child,
+                        ))
+                    .toList(),
+              ),
+            ),
           ),
-        ),
       ),
     );
   }
