@@ -58,6 +58,7 @@ class AfPlayerService extends BaseAudioHandler
   final _positionAnchor = _PositionAnchor();
   Timer? _positionPollTimer;
   bool _isSeeking = false;
+  bool _isPolling = false;
 
   /// Called whenever the active track changes. Wired by
   /// `playerServiceProvider` to keep `currentTrackProvider` in sync.
@@ -1157,24 +1158,29 @@ class AfPlayerService extends BaseAudioHandler
   /// Polls mpv for current position. Falls back to elapsed-time
   /// extrapolation when mpv returns 0 (broken observe_property).
   Future<void> _pollAndEmitPosition() async {
-    if (_isSeeking) return;
-    final rawPos = await getRawPosition();
-    final now = DateTime.now();
-    final playing = _player.state.playing;
+    if (_isSeeking || _isPolling) return;
+    _isPolling = true;
+    try {
+      final rawPos = await getRawPosition();
+      final now = DateTime.now();
+      final playing = _player.state.playing;
 
-    if (rawPos > Duration.zero) {
-      // mpv is responding normally — anchor and emit.
-      _positionAnchor.lastKnownPos = rawPos;
-      _positionAnchor.lastUpdateTime = now;
-      _positionAnchor.wasPlaying = playing;
-      _positionController.add(rawPos);
-    } else if (playing) {
-      // mpv stuck (returns 0) but we're playing — extrapolate.
-      final elapsed = now.difference(_positionAnchor.lastUpdateTime);
-      final speed = _player.state.rate;
-      final extrapolated = _positionAnchor.lastKnownPos +
-          Duration(milliseconds: (elapsed.inMilliseconds * speed).round());
-      _positionController.add(extrapolated);
+      if (rawPos > Duration.zero) {
+        // mpv is responding normally — anchor and emit.
+        _positionAnchor.lastKnownPos = rawPos;
+        _positionAnchor.lastUpdateTime = now;
+        _positionAnchor.wasPlaying = playing;
+        _positionController.add(rawPos);
+      } else if (playing) {
+        // mpv stuck (returns 0) but we're playing — extrapolate.
+        final elapsed = now.difference(_positionAnchor.lastUpdateTime);
+        final speed = _player.state.rate;
+        final extrapolated = _positionAnchor.lastKnownPos +
+            Duration(milliseconds: (elapsed.inMilliseconds * speed).round());
+        _positionController.add(extrapolated);
+      }
+    } finally {
+      _isPolling = false;
     }
   }
 
