@@ -57,8 +57,11 @@ class AfPlayerService extends BaseAudioHandler
   /// Anchor for elapsed-time extrapolation fallback.
   final _positionAnchor = _PositionAnchor();
   Timer? _positionPollTimer;
-  bool _isSeeking = false;
   bool _isPolling = false;
+
+  /// Variabel mandiri untuk memutus konflik data dengan MPV engine
+  Duration _currentExtrapolatedPos = Duration.zero;
+  DateTime _lastSeekTime = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// Called whenever the active track changes. Wired by
   /// `playerServiceProvider` to keep `currentTrackProvider` in sync.
@@ -621,7 +624,6 @@ class AfPlayerService extends BaseAudioHandler
   Future<void> play() async {
     _userPaused = false;
     _positionAnchor.wasPlaying = true;
-    _positionAnchor.lastKnownPos = _player.state.position;
     _positionAnchor.lastUpdateTime = DateTime.now();
     await _player.play();
   }
@@ -631,7 +633,7 @@ class AfPlayerService extends BaseAudioHandler
     _userPaused = true;
     _pendingPlayNudgeIdx = null; // cancel any pending nudge
     _positionAnchor.wasPlaying = false;
-    _positionAnchor.lastKnownPos = _player.state.position;
+    _positionAnchor.lastKnownPos = _currentExtrapolatedPos;
     _positionAnchor.lastUpdateTime = DateTime.now();
     await _player.pause();
   }
@@ -644,17 +646,13 @@ class AfPlayerService extends BaseAudioHandler
 
   @override
   Future<void> seek(Duration position) async {
-    _isSeeking = true;
+    _lastSeekTime = DateTime.now();
     _positionAnchor.lastKnownPos = position;
     _positionAnchor.lastUpdateTime = DateTime.now();
+    _currentExtrapolatedPos = position;
     _positionController.add(position);
-    try {
-      await _player.seek(position);
-    } finally {
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (!_disposed) _isSeeking = false;
-      });
-    }
+    _updatePlaybackState(); // Immediately update UI
+    await _player.seek(position);
   }
 
   @override
@@ -1019,8 +1017,10 @@ class AfPlayerService extends BaseAudioHandler
         if (track.id == previousTrackId) return;
 
         // Reset anchor for the new track so progress starts at 00:00.
+        _lastSeekTime = DateTime.now(); // Anggap ganti lagu sebagai "seek" agar timer dibekukan sementara
         _positionAnchor.lastKnownPos = Duration.zero;
         _positionAnchor.lastUpdateTime = DateTime.now();
+        _currentExtrapolatedPos = Duration.zero;
         _positionController.add(Duration.zero);
 
         _trackController.add(track);
@@ -1158,27 +1158,34 @@ class AfPlayerService extends BaseAudioHandler
   /// Polls mpv for current position. Falls back to elapsed-time
   /// extrapolation when mpv returns 0 (broken observe_property).
   Future<void> _pollAndEmitPosition() async {
-    if (_isSeeking || _isPolling) return;
+    if (_isPolling) return;
     _isPolling = true;
     try {
-      final rawPos = await getRawPosition();
       final now = DateTime.now();
       final playing = _player.state.playing;
 
-      if (rawPos > Duration.zero) {
-        // mpv is responding normally — anchor and emit.
-        _positionAnchor.lastKnownPos = rawPos;
-        _positionAnchor.lastUpdateTime = now;
-        _positionAnchor.wasPlaying = playing;
-        _positionController.add(rawPos);
-      } else if (playing) {
-        // mpv stuck (returns 0) but we're playing — extrapolate.
-        final elapsed = now.difference(_positionAnchor.lastUpdateTime);
-        final speed = _player.state.rate;
-        final extrapolated = _positionAnchor.lastKnownPos +
-            Duration(milliseconds: (elapsed.inMilliseconds * speed).round());
-        _positionController.add(extrapolated);
+      // Jangan tanya FFI ke mesin selama 1.5 detik setelah seek/ganti track
+      final isRecoveringFromSeek = now.difference(_lastSeekTime).inMilliseconds < 1500;
+
+      if (!isRecoveringFromSeek) {
+        final rawPos = await getRawPosition();
+        if (rawPos > Duration.zero) {
+          _positionAnchor.lastKnownPos = rawPos;
+          _positionAnchor.lastUpdateTime = now;
+        }
       }
+
+      Duration posToEmit;
+      if (playing) {
+        final elapsed = now.difference(_positionAnchor.lastUpdateTime);
+        final extraMs = (elapsed.inMilliseconds * speed).round();
+        posToEmit = _positionAnchor.lastKnownPos + Duration(milliseconds: extraMs);
+      } else {
+        posToEmit = _positionAnchor.lastKnownPos;
+      }
+
+      _currentExtrapolatedPos = posToEmit;
+      _positionController.add(posToEmit);
     } finally {
       _isPolling = false;
     }
@@ -1227,7 +1234,7 @@ class AfPlayerService extends BaseAudioHandler
                 ? AudioProcessingState.completed
                 : AudioProcessingState.ready,
         playing: s.playing,
-        updatePosition: s.position,
+        updatePosition: _currentExtrapolatedPos, // <--- KUNCI PERBAIKAN: Gunakan hasil tebakan stabil
         bufferedPosition: s.buffer,
         speed: s.rate,
         queueIndex: _currentIndex >= 0 ? _currentIndex : null,
