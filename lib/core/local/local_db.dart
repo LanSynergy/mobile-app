@@ -1,137 +1,106 @@
-import 'package:path/path.dart' as p;
-import 'package:sqflite/sqflite.dart';
+import 'package:drift/drift.dart';
 
 import '../jellyfin/models/items.dart';
 import '../jellyfin/models/quality.dart';
+import 'app_database.dart';
 
-/// Local SQLite database for caching scanned music metadata.
-///
-/// Schema stores tracks with their tags, plus a folders table tracking
-/// which SAF tree URIs the user has granted access to.
+/// Local database for caching scanned music metadata.
+/// Refactored to wrap Drift's [AppDatabase].
 class LocalDb {
-  static const _dbName = 'aetherfin_local.db';
-  static const _dbVersion = 1;
+  final AppDatabase db;
 
-  Database? _db;
-
-  Future<Database> get db async {
-    _db ??= await _open();
-    return _db!;
-  }
-
-  Future<Database> _open() async {
-    final dbPath = await getDatabasesPath();
-    final path = p.join(dbPath, _dbName);
-    return openDatabase(
-      path,
-      version: _dbVersion,
-      onCreate: _onCreate,
-    );
-  }
-
-  Future<void> _onCreate(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE tracks (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        artist TEXT NOT NULL DEFAULT '',
-        album TEXT NOT NULL DEFAULT '',
-        album_artist TEXT DEFAULT '',
-        track_number INTEGER,
-        duration_ms INTEGER NOT NULL DEFAULT 0,
-        year INTEGER,
-        genre TEXT DEFAULT '',
-        file_path TEXT NOT NULL,
-        file_size INTEGER,
-        last_modified INTEGER,
-        cover_path TEXT,
-        codec TEXT DEFAULT '',
-        bitrate INTEGER,
-        sample_rate INTEGER
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE folders (
-        uri TEXT PRIMARY KEY,
-        display_path TEXT NOT NULL,
-        added_at INTEGER NOT NULL
-      )
-    ''');
-    await db.execute('CREATE INDEX idx_tracks_album ON tracks(album)');
-    await db.execute('CREATE INDEX idx_tracks_artist ON tracks(artist)');
-    await db.execute('CREATE INDEX idx_tracks_genre ON tracks(genre)');
-  }
+  LocalDb({AppDatabase? database}) : db = database ?? AppDatabase();
 
   // ── Folders ─────────────────────────────────────────────────────────────
 
   Future<void> addFolder(String uri, String displayPath) async {
-    final d = await db;
-    await d.insert('folders', {
-      'uri': uri,
-      'display_path': displayPath,
-      'added_at': DateTime.now().millisecondsSinceEpoch,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.into(db.folders).insert(
+        FoldersCompanion.insert(
+          uri: uri,
+          displayPath: displayPath,
+          addedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+        mode: InsertMode.replace);
   }
 
   Future<void> removeFolder(String uri) async {
-    final d = await db;
-    await d.delete('folders', where: 'uri = ?', whereArgs: [uri]);
-    // Also remove tracks from that folder
-    await d.delete('tracks', where: 'id LIKE ?', whereArgs: ['$uri%']);
+    await (db.delete(db.folders)..where((f) => f.uri.equals(uri))).go();
+    await (db.delete(db.tracks)..where((t) => t.id.like('$uri%'))).go();
   }
 
   Future<List<Map<String, dynamic>>> getFolders() async {
-    final d = await db;
-    return d.query('folders', orderBy: 'added_at ASC');
+    final folders = await (db.select(db.folders)..orderBy([(t) => OrderingTerm.asc(t.addedAt)])).get();
+    return folders.map((f) => {
+      'uri': f.uri,
+      'display_path': f.displayPath,
+      'added_at': f.addedAt,
+    }).toList();
   }
 
   // ── Tracks CRUD ─────────────────────────────────────────────────────────
 
   Future<void> upsertTrack(Map<String, dynamic> track) async {
-    final d = await db;
-    await d.insert('tracks', track, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.into(db.tracks).insert(
+        _trackMapToCompanion(track),
+        mode: InsertMode.replace);
   }
 
   Future<void> upsertTracks(List<Map<String, dynamic>> tracks) async {
-    final d = await db;
-    final batch = d.batch();
-    for (final t in tracks) {
-      batch.insert('tracks', t, conflictAlgorithm: ConflictAlgorithm.replace);
-    }
-    await batch.commit(noResult: true);
+    await db.batch((batch) {
+      batch.insertAll(
+          db.tracks,
+          tracks.map(_trackMapToCompanion),
+          mode: InsertMode.replace);
+    });
+  }
+
+  TracksCompanion _trackMapToCompanion(Map<String, dynamic> track) {
+    return TracksCompanion.insert(
+      id: track['id'],
+      title: track['title'],
+      artist: Value(track['artist'] ?? ''),
+      album: Value(track['album'] ?? ''),
+      albumArtist: Value(track['album_artist'] ?? ''),
+      trackNumber: Value(track['track_number']),
+      durationMs: Value(track['duration_ms'] ?? 0),
+      year: Value(track['year']),
+      genre: Value(track['genre'] ?? ''),
+      filePath: track['file_path'],
+      fileSize: Value(track['file_size']),
+      lastModified: Value(track['last_modified']),
+      coverPath: Value(track['cover_path']),
+      codec: Value(track['codec'] ?? ''),
+      bitrate: Value(track['bitrate']),
+      sampleRate: Value(track['sample_rate']),
+    );
   }
 
   Future<void> deleteTrack(String id) async {
-    final d = await db;
-    await d.delete('tracks', where: 'id = ?', whereArgs: [id]);
+    await (db.delete(db.tracks)..where((t) => t.id.equals(id))).go();
   }
 
   Future<void> deleteAllTracks() async {
-    final d = await db;
-    await d.delete('tracks');
+    await db.delete(db.tracks).go();
   }
 
-  /// Get the lastModified timestamp for a track (for incremental scan).
   Future<int?> getTrackLastModified(String id) async {
-    final d = await db;
-    final rows = await d.query('tracks',
-        columns: ['last_modified'], where: 'id = ?', whereArgs: [id]);
-    if (rows.isEmpty) return null;
-    return rows.first['last_modified'] as int?;
+    final query = db.select(db.tracks)..where((t) => t.id.equals(id));
+    final result = await query.getSingleOrNull();
+    return result?.lastModified;
   }
 
   // ── Query ───────────────────────────────────────────────────────────────
 
   Future<List<AfTrack>> allTracks({int limit = 5000}) async {
-    final d = await db;
-    final rows = await d.query('tracks',
-        orderBy: 'title COLLATE NOCASE ASC', limit: limit);
+    final rows = await (db.select(db.tracks)
+          ..orderBy([(t) => OrderingTerm(expression: t.title.collate(Collate.noCase), mode: OrderingMode.asc)])
+          ..limit(limit))
+        .get();
     return rows.map(rowToTrack).toList();
   }
 
   Future<List<AfAlbum>> allAlbums() async {
-    final d = await db;
-    final rows = await d.rawQuery('''
+    final rows = await db.customSelect('''
       SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
              COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
              MIN(year) as year
@@ -139,141 +108,149 @@ class LocalDb {
       WHERE album != ''
       GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
       ORDER BY album COLLATE NOCASE ASC
-    ''');
+    ''').get();
     return rows.map((r) {
-      final albumName = (r['album'] as String?) ?? 'Unknown';
-      final artistName = (r['album_artist'] as String?)?.isNotEmpty == true
-          ? r['album_artist'] as String
-          : (r['artist'] as String?) ?? '';
+      final albumName = r.read<String?>('album') ?? 'Unknown';
+      final artistName = (r.read<String?>('album_artist'))?.isNotEmpty == true
+          ? r.read<String>('album_artist')
+          : (r.read<String?>('artist') ?? '');
       return AfAlbum(
         id: 'local:album:$albumName:$artistName',
         name: albumName,
         artistName: artistName,
-        trackCount: (r['track_count'] as int?) ?? 0,
-        year: r['year'] as int?,
-        totalDuration: Duration(milliseconds: (r['total_duration_ms'] as int?) ?? 0),
-        imageUrl: r['cover_path'] != null ? 'file://${r['cover_path']}' : null,
+        trackCount: r.read<int?>('track_count') ?? 0,
+        year: r.read<int?>('year'),
+        totalDuration: Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+        imageUrl: r.read<String?>('cover_path') != null ? 'file://${r.read<String>('cover_path')}' : null,
       );
     }).toList();
   }
 
   Future<List<AfArtist>> allArtists() async {
-    final d = await db;
-    final rows = await d.rawQuery('''
+    final rows = await db.customSelect('''
       SELECT artist, COUNT(DISTINCT album) as album_count,
              MIN(cover_path) as cover_path
       FROM tracks
       WHERE artist != ''
       GROUP BY artist
       ORDER BY artist COLLATE NOCASE ASC
-    ''');
+    ''').get();
     return rows.map((r) {
-      final name = (r['artist'] as String?) ?? 'Unknown';
+      final name = r.read<String?>('artist') ?? 'Unknown';
       return AfArtist(
         id: 'local:artist:$name',
         name: name,
-        albumCount: (r['album_count'] as int?) ?? 0,
-        imageUrl: r['cover_path'] != null ? 'file://${r['cover_path']}' : null,
+        albumCount: r.read<int?>('album_count') ?? 0,
+        imageUrl: r.read<String?>('cover_path') != null ? 'file://${r.read<String>('cover_path')}' : null,
       );
     }).toList();
   }
 
   Future<List<AfGenre>> allGenres() async {
-    final d = await db;
-    final rows = await d.rawQuery('''
+    final rows = await db.customSelect('''
       SELECT genre, COUNT(*) as count, MIN(cover_path) as cover_path
       FROM tracks
       WHERE genre != ''
       GROUP BY genre
       ORDER BY genre COLLATE NOCASE ASC
-    ''');
+    ''').get();
     const palette = <String>[
       '#5644C9', '#A89DEC', '#3FD18C', '#FF7A59',
       '#F8C42D', '#FF6FB5', '#3DB6FF', '#FF4D6D',
     ];
-    return rows.asMap().entries.map((e) {
-      final r = e.value;
-      final name = (r['genre'] as String?) ?? '';
-      final coverPath = r['cover_path'] as String?;
-      return AfGenre(
+    int index = 0;
+    final results = <AfGenre>[];
+    for (final r in rows) {
+      final name = r.read<String?>('genre') ?? '';
+      if (name.isEmpty) continue;
+      results.add(AfGenre(
         name,
-        palette[e.key % palette.length],
-        imageUrl: coverPath != null ? 'file://$coverPath' : null,
-      );
-    }).where((g) => g.name.isNotEmpty).toList();
+        palette[index % palette.length],
+        imageUrl: r.read<String?>('cover_path') != null ? 'file://${r.read<String>('cover_path')}' : null,
+      ));
+      index++;
+    }
+    return results;
   }
 
   Future<List<AfTrack>> tracksByAlbum(String albumName, String artistName) async {
-    final d = await db;
-    final rows = await d.query('tracks',
-        where: 'album = ? AND (artist = ? OR album_artist = ?)',
-        whereArgs: [albumName, artistName, artistName],
-        orderBy: 'track_number ASC, title ASC');
+    final rows = await (db.select(db.tracks)
+          ..where((t) => t.album.equals(albumName) & (t.artist.equals(artistName) | t.albumArtist.equals(artistName)))
+          ..orderBy([
+            (t) => OrderingTerm.asc(t.trackNumber),
+            (t) => OrderingTerm.asc(t.title),
+          ]))
+        .get();
     return rows.map(rowToTrack).toList();
   }
 
   Future<List<AfTrack>> tracksByArtist(String artistName) async {
-    final d = await db;
-    final rows = await d.query('tracks',
-        where: 'artist = ? OR album_artist = ?',
-        whereArgs: [artistName, artistName],
-        orderBy: 'album ASC, track_number ASC');
+    final rows = await (db.select(db.tracks)
+          ..where((t) => t.artist.equals(artistName) | t.albumArtist.equals(artistName))
+          ..orderBy([
+            (t) => OrderingTerm.asc(t.album),
+            (t) => OrderingTerm.asc(t.trackNumber),
+          ]))
+        .get();
     return rows.map(rowToTrack).toList();
   }
 
   Future<List<AfTrack>> tracksByGenre(String genre) async {
-    final d = await db;
-    final rows = await d.query('tracks',
-        where: 'genre = ?', whereArgs: [genre],
-        orderBy: 'title COLLATE NOCASE ASC');
+    final rows = await (db.select(db.tracks)
+          ..where((t) => t.genre.equals(genre))
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.title.collate(Collate.noCase), mode: OrderingMode.asc)
+          ]))
+        .get();
     return rows.map(rowToTrack).toList();
   }
 
   Future<List<AfTrack>> searchTracks(String query) async {
-    final d = await db;
     final like = '%$query%';
-    final rows = await d.query('tracks',
-        where: 'title LIKE ? OR artist LIKE ? OR album LIKE ?',
-        whereArgs: [like, like, like],
-        orderBy: 'title COLLATE NOCASE ASC',
-        limit: 50);
+    final rows = await (db.select(db.tracks)
+          ..where((t) => t.title.like(like) | t.artist.like(like) | t.album.like(like))
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.title.collate(Collate.noCase), mode: OrderingMode.asc)
+          ])
+          ..limit(50))
+        .get();
     return rows.map(rowToTrack).toList();
   }
 
   Future<int> trackCount() async {
-    final d = await db;
-    final result = await d.rawQuery('SELECT COUNT(*) as c FROM tracks');
-    return (result.first['c'] as int?) ?? 0;
+    final countExp = db.tracks.id.count();
+    final query = db.selectOnly(db.tracks)..addColumns([countExp]);
+    final result = await query.getSingle();
+    return result.read(countExp) ?? 0;
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────
 
-  AfTrack rowToTrack(Map<String, dynamic> r) {
-    final codec = (r['codec'] as String?) ?? '';
-    final bitrate = r['bitrate'] as int?;
-    final sampleRate = r['sample_rate'] as int?;
+  AfTrack rowToTrack(TrackEntity r) {
+    final codec = r.codec;
+    final bitrate = r.bitrate;
+    final sampleRate = r.sampleRate;
     final isLossless = codec == 'flac' || codec == 'alac' || codec == 'wav';
     return AfTrack(
-      id: (r['id'] as String?) ?? '',
-      title: (r['title'] as String?) ?? 'Unknown',
-      artistName: (r['artist'] as String?) ?? '',
-      albumName: (r['album'] as String?) ?? '',
+      id: r.id,
+      title: r.title,
+      artistName: r.artist,
+      albumName: r.album,
       albumId: null,
       artistId: null,
-      trackNumber: r['track_number'] as int?,
-      duration: Duration(milliseconds: (r['duration_ms'] as int?) ?? 0),
+      trackNumber: r.trackNumber,
+      duration: Duration(milliseconds: r.durationMs),
       quality: TrackQuality(
         sourceCodec: codec,
         bitrateKbps: !isLossless ? bitrate : null,
         bitDepth: null,
         sampleRateKhz: sampleRate != null ? sampleRate ~/ 1000 : null,
       ),
-      imageUrl: r['cover_path'] != null ? 'file://${r['cover_path']}' : null,
+      imageUrl: r.coverPath != null ? 'file://${r.coverPath}' : null,
     );
   }
 
   Future<void> close() async {
-    await _db?.close();
-    _db = null;
+    await db.close();
   }
 }

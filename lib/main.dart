@@ -121,7 +121,7 @@ Future<void> main() async {
           androidNotificationChannelName: 'Aetherfin playback',
           androidNotificationOngoing: true,
           androidStopForegroundOnPause: true,
-          androidNotificationIcon: 'mipmap/ic_launcher',
+          androidNotificationIcon: 'drawable/ic_launcher_foreground',
           notificationColor: const Color(0xFF332C7A),
         ),
       ).timeout(

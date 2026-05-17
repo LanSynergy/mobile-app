@@ -57,6 +57,7 @@ class AfPlayerService extends BaseAudioHandler
   /// Anchor for elapsed-time extrapolation fallback.
   final _positionAnchor = _PositionAnchor();
   Timer? _positionPollTimer;
+  bool _isSeeking = false;
 
   /// Called whenever the active track changes. Wired by
   /// `playerServiceProvider` to keep `currentTrackProvider` in sync.
@@ -642,10 +643,17 @@ class AfPlayerService extends BaseAudioHandler
 
   @override
   Future<void> seek(Duration position) async {
+    _isSeeking = true;
     _positionAnchor.lastKnownPos = position;
     _positionAnchor.lastUpdateTime = DateTime.now();
     _positionController.add(position);
-    await _player.seek(position);
+    try {
+      await _player.seek(position);
+    } finally {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (!_disposed) _isSeeking = false;
+      });
+    }
   }
 
   @override
@@ -887,7 +895,21 @@ class AfPlayerService extends BaseAudioHandler
     Future.delayed(const Duration(milliseconds: 300), () async {
       if (_disposed) return;
       try {
-        final current = _player.state.audioDevice;
+        var current = _player.state.audioDevice;
+        
+        // Android "Autoselect devices" (usually named 'auto') often fails
+        // to attach time-pos observers correctly on some OEM ROMs (like One UI).
+        // If we're on 'auto', try to find an explicit driver like 'aaudio' 
+        // or 'audiotrack' to force the pipeline to construct properly.
+        if (current.name == 'auto') {
+          final devices = _player.state.audioDevices;
+          final preferred = devices.where((d) => d.name != 'auto').toList();
+          if (preferred.isNotEmpty) {
+            current = preferred.firstWhere((d) => d.name == 'aaudio', 
+                orElse: () => preferred.first);
+          }
+        }
+        
         await _player.setAudioDevice(current);
         afLog('audio', 'nudged audioDevice: ${current.name}');
       } catch (e) {
@@ -994,6 +1016,11 @@ class AfPlayerService extends BaseAudioHandler
         // the playlist and emits a new index, but the audio keeps playing
         // the same file.
         if (track.id == previousTrackId) return;
+
+        // Reset anchor for the new track so progress starts at 00:00.
+        _positionAnchor.lastKnownPos = Duration.zero;
+        _positionAnchor.lastUpdateTime = DateTime.now();
+        _positionController.add(Duration.zero);
 
         _trackController.add(track);
         afLog(
@@ -1119,9 +1146,9 @@ class AfPlayerService extends BaseAudioHandler
     // Position polling with extrapolation fallback.
     // mpv's observe_property for time-pos often stops firing after track
     // changes on some Android devices. This timer polls getRawPosition()
-    // every 40ms (~25 Hz). If mpv returns 0 while playing, falls back to
+    // every 200ms (~5 Hz). If mpv returns 0 while playing, falls back to
     // elapsed-time extrapolation from the last known anchor.
-    _positionPollTimer = Timer.periodic(const Duration(milliseconds: 40), (_) {
+    _positionPollTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
       if (_disposed) return;
       _pollAndEmitPosition();
     });
@@ -1130,6 +1157,7 @@ class AfPlayerService extends BaseAudioHandler
   /// Polls mpv for current position. Falls back to elapsed-time
   /// extrapolation when mpv returns 0 (broken observe_property).
   Future<void> _pollAndEmitPosition() async {
+    if (_isSeeking) return;
     final rawPos = await getRawPosition();
     final now = DateTime.now();
     final playing = _player.state.playing;
@@ -1354,6 +1382,10 @@ class AfPlayerService extends BaseAudioHandler
       _updateMediaItem();
     } catch (e) {
       afLog('audio', 'cover art persist failed', error: e);
+    }
+  }
+}
+', error: e);
     }
   }
 }

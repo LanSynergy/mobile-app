@@ -209,7 +209,7 @@ ThemeData buildNocturneTheme() {
     ),
 
     sliderTheme: const SliderThemeData(
-      overlayColor: Colors.transparent,
+      overlayColor: WidgetStatePropertyAll(Colors.transparent),
     ),
   );
 }

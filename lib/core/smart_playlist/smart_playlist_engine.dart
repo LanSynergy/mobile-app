@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:drift/drift.dart' show Variable;
+
 import '../jellyfin/models/items.dart';
 import '../local/local_db.dart';
 import 'smart_playlist_model.dart';
@@ -15,18 +17,29 @@ class SmartPlaylistEngine {
     SmartPlaylist playlist,
     LocalDb db,
   ) async {
-    final d = await db.db;
+    final d = db.db;
     final where = _buildSqlWhere(playlist);
     final orderBy = _buildSqlOrderBy(playlist);
-    final rows = await d.query(
-      'tracks',
-      where: where.clause.isNotEmpty ? where.clause : null,
-      whereArgs: where.args.isNotEmpty ? where.args : null,
-      orderBy: orderBy,
-      limit: playlist.limit,
-    );
-    // Reuse LocalDb's row parser
-    return rows.map((r) => db.rowToTrack(r)).toList();
+    
+    var sql = 'SELECT * FROM tracks';
+    if (where.clause.isNotEmpty) {
+      sql += ' WHERE ${where.clause}';
+    }
+    sql += ' ORDER BY $orderBy';
+    if (playlist.limit != null) {
+      sql += ' LIMIT ${playlist.limit}';
+    }
+
+    final rows = await d.customSelect(
+      sql,
+      variables: where.args.map((a) => Variable(a)).toList(),
+    ).get();
+
+    // Parse back to drift's TrackEntity, then to AfTrack
+    return rows.map((r) {
+      final entity = d.tracks.map(r.data);
+      return db.rowToTrack(entity);
+    }).toList();
   }
 
   /// Resolve against a pre-fetched list of tracks (server mode).
