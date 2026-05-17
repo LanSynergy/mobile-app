@@ -602,19 +602,25 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           ),
         ],
       ),
-      body: AnimatedOpacity(
-          opacity: _masterEnabled ? 1.0 : 0.4,
-          duration: const Duration(milliseconds: 200),
+        body: AnimatedOpacity(
+        opacity: _masterEnabled ? 1.0 : 0.4,
+        duration: const Duration(milliseconds: 200),
+        child: NotificationListener<OverscrollIndicatorNotification>(
+          onNotification: (notification) {
+            notification.disallowIndicator();
+            return true;
+          },
           child: ListView(
-        physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
-        children: _buildSections()
-            .map((child) => IgnorePointer(
-                  ignoring: !_masterEnabled,
-                  child: child,
-                ))
-            .toList(),
-      ),
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
+            children: _buildSections()
+                .map((child) => IgnorePointer(
+                      ignoring: !_masterEnabled,
+                      child: child,
+                    ))
+                .toList(),
+          ),
+        ),
       ),
     );
   }
