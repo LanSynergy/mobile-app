@@ -7,6 +7,20 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/track_row.dart';
 
+/// Sort options for the queue.
+enum QueueSortOption {
+  defaultOrder('Default'),
+  titleAsc('A-Z'),
+  titleDesc('Z-A'),
+  artistAsc('Artist A-Z'),
+  artistDesc('Artist Z-A'),
+  albumAsc('Album A-Z'),
+  albumDesc('Album Z-A');
+
+  final String label;
+  const QueueSortOption(this.label);
+}
+
 /// Live queue mirror. Watches `playerQueueProvider` (a broadcast stream
 /// on top of `AfPlayerService.queueStream`) so the list reflects the
 /// actual player state — reorder / skip / play-new-album shows up the
@@ -26,6 +40,9 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
   List<AfTrack> _items = const [];
   List<String> _lastQueueIds = const [];
 
+  /// Current sort option for the queue display.
+  QueueSortOption _sortOption = QueueSortOption.defaultOrder;
+
   /// Key for the currently playing item — used to scroll to it on open.
   final _scrollController = ScrollController();
   bool _hasScrolledToActive = false;
@@ -34,6 +51,43 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Original queue order before sorting - needed to restore "Default" sort.
+  List<AfTrack> _originalItems = const [];
+
+  /// Apply the current sort option to _items.
+  void _applySort() {
+    if (_sortOption == QueueSortOption.defaultOrder) {
+      // Restore original order
+      _items = List<AfTrack>.from(_originalItems);
+      return;
+    }
+
+    final sorted = List<AfTrack>.from(_items);
+    switch (_sortOption) {
+      case QueueSortOption.titleAsc:
+        sorted.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        break;
+      case QueueSortOption.titleDesc:
+        sorted.sort((a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
+        break;
+      case QueueSortOption.artistAsc:
+        sorted.sort((a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()));
+        break;
+      case QueueSortOption.artistDesc:
+        sorted.sort((a, b) => b.artist.toLowerCase().compareTo(a.artist.toLowerCase()));
+        break;
+      case QueueSortOption.albumAsc:
+        sorted.sort((a, b) => (a.album ?? '').toLowerCase().compareTo((b.album ?? '').toLowerCase()));
+        break;
+      case QueueSortOption.albumDesc:
+        sorted.sort((a, b) => (b.album ?? '').toLowerCase().compareTo((a.album ?? '').toLowerCase()));
+        break;
+      default:
+        break;
+    }
+    _items = sorted;
   }
 
   @override
@@ -52,9 +106,14 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     // order back at us).
     final liveIds = liveQueue.map((t) => t.id).toList(growable: false);
     if (!_listsMatch(liveIds, _lastQueueIds)) {
+      _originalItems = List<AfTrack>.from(liveQueue);
       _items = List<AfTrack>.from(liveQueue);
       _lastQueueIds = liveIds;
       _hasScrolledToActive = false; // re-scroll on queue change
+      // Re-apply sort if not default
+      if (_sortOption != QueueSortOption.defaultOrder) {
+        _applySort();
+      }
     }
 
     // Scroll to the active track after the first frame.
@@ -108,6 +167,32 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
             onPressed: () => context.push('/lyrics'),
             tooltip: 'Lyrics',
           ),
+          PopupMenuButton<QueueSortOption>(
+            icon: const Icon(Icons.sort_rounded),
+            tooltip: 'Sort queue',
+            initialValue: _sortOption,
+            onSelected: (option) {
+              setState(() {
+                _sortOption = option;
+                _applySort();
+              });
+            },
+            itemBuilder: (context) => QueueSortOption.values
+                .map((option) => PopupMenuItem<QueueSortOption>(
+                      value: option,
+                      child: Row(
+                        children: [
+                          if (_sortOption == option)
+                            const Icon(Icons.check, size: 18, color: AfColors.indigo400)
+                          else
+                            const SizedBox(width: 18),
+                          const SizedBox(width: 8),
+                          Text(option.label, style: AfTypography.bodyMedium),
+                        ],
+                      ),
+                    ))
+                .toList(),
+          ),
         ],
       ),
       body: SafeArea(
@@ -131,23 +216,27 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
                 itemCount: _items.length,
-                buildDefaultDragHandles: false,
-                onReorder: (oldIndex, newIndex) {
-                  // Apply the standard ReorderableListView adjustment
-                  // before touching either the local mirror or the player.
-                  if (newIndex > oldIndex) newIndex -= 1;
-                  setState(() {
-                    final item = _items.removeAt(oldIndex);
-                    _items.insert(newIndex, item);
-                  });
-                  // Sync the player's ConcatenatingAudioSource so
-                  // skip-next/prev honour the new order. The adjusted
-                  // indices are passed directly — reorderQueue expects
-                  // the post-adjustment values.
-                  ref
-                      .read(playerServiceProvider)
-                      .reorderQueue(oldIndex, newIndex);
-                },
+                buildDefaultDragHandles: _sortOption == QueueSortOption.defaultOrder,
+                onReorder: _sortOption == QueueSortOption.defaultOrder
+                    ? (oldIndex, newIndex) {
+                        // Apply the standard ReorderableListView adjustment
+                        // before touching either the local mirror or the player.
+                        if (newIndex > oldIndex) newIndex -= 1;
+                        setState(() {
+                          final item = _items.removeAt(oldIndex);
+                          _items.insert(newIndex, item);
+                        });
+                        // Update original items to match
+                        _originalItems = List<AfTrack>.from(_items);
+                        // Sync the player's ConcatenatingAudioSource so
+                        // skip-next/prev honour the new order. The adjusted
+                        // indices are passed directly — reorderQueue expects
+                        // the post-adjustment values.
+                        ref
+                            .read(playerServiceProvider)
+                            .reorderQueue(oldIndex, newIndex);
+                      }
+                    : null,
                 itemBuilder: (context, i) {
                   final t = _items[i];
                   final active = current?.id == t.id;
