@@ -47,3 +47,5 @@ app.*.map.json
 # personal files
 .kiro/
 .aider*
+.env
+tool/build_local.sh
