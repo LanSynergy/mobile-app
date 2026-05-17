@@ -79,6 +79,22 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     // 200 ms keeps background playback stable under Android Doze.
     _player.setAudioBuffer(const Duration(milliseconds: 200));
     _bindStreams();
+
+    // Default to 'auto' (Autoselect devices) after streams are bound.
+    // mpv starts on a specific device; we switch to 'auto' so the UI
+    // shows "Autoselect devices" on first launch. setAudioDevice() no
+    // longer calls _nudgeAudioDevice(), so the selection won't bounce back.
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (_disposed) return;
+      try {
+        final devices = _player.state.audioDevices;
+        final auto = devices.firstWhere(
+          (d) => d.name == 'auto',
+          orElse: () => _player.state.audioDevice,
+        );
+        _player.setAudioDevice(auto);
+      } catch (_) {}
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -104,7 +120,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Future<void> setAudioDevice(Device device) async {
     await _player.setAudioDevice(device);
     afLog('audio', 'audioDevice set to ${device.name}');
-    _nudgeAudioDevice();
   }
 
   // ---------------------------------------------------------------------------
@@ -449,6 +464,15 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     }).toList();
 
     try {
+      // Reset position before opening new tracks. The playlist listener
+      // won't fire indexChanged when the new index equals the old one
+      // (e.g. tapping a different album at index 0), so we must reset here.
+      _positionAnchor.lastKnownPos = Duration.zero;
+      _positionAnchor.lastUpdateTime = DateTime.now();
+      _positionAnchor.wasPlaying = true;
+      _positionController.add(Duration.zero);
+      _resetRawPositionStaleDetector(Duration.zero);
+
       if (medias.length <= 5) {
         await _player.openAll(medias, index: safeIndex, play: true);
       } else {
@@ -493,6 +517,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     _positionAnchor.lastKnownPos = _player.state.position;
     _positionAnchor.lastUpdateTime = DateTime.now();
     await _player.play();
+    _nudgeAudioDevice();
   }
 
   @override
@@ -906,14 +931,9 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     _subs.add(_player.stream.coverArt.listen(_persistCover));
 
     _subs.add(_player.stream.audioDevice.listen((newDevice) {
-      if (!_player.state.playing) return;
-
-      if (newDevice.name == 'auto' || newDevice.name == 'default') {
-        pause();
-        afLog('audio',
-            'paused: audio device changed to ${newDevice.name} (BT/headphone disconnect)');
-      }
-
+      // Re-apply effects after a device change — on some devices the audio
+      // filter chain (af) doesn't properly attach to the output pipeline on
+      // first init. Re-applying after device change re-wires the filters.
       unawaited(_reapplyPersistedEffects());
     }));
 
