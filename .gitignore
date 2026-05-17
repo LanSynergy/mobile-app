@@ -32,6 +32,9 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+*.g.dart
+*.freezed.dart
+*.gr.dart
 
 # Symbolication related
 app.*.symbols
