@@ -1,11 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
     show AudioParams, Cache, Format, Gapless, ReplayGain, ReplayGainSettings;
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/audio/player_settings_store.dart';
@@ -298,6 +303,71 @@ class SettingsScreen extends ConsumerWidget {
                   onTap: () => _showGaplessDialog(context, ref),
                 ),
                 _PrefetchToggle(svc: svc),
+              ],
+            ),
+
+            const SizedBox(height: AfSpacing.s16),
+
+            // ── Advanced ───────────────────────────────────────────────
+            _SectionLabel('Advanced'),
+            _SettingsGroup(
+              children: [
+                _SettingsTile(
+                  icon: Icons.delete_forever_rounded,
+                  iconColor: AfColors.semanticError,
+                  title: 'Clear app data',
+                  subtitle: 'Reset app to initial state',
+                  onTap: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: AfColors.surfaceBase,
+                        title: const Text('Clear app data?'),
+                        content: const Text(
+                          'This will wipe all local data, settings, and downloaded metadata. You will need to set up the app again.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: Text(
+                              'Clear data',
+                              style: TextStyle(color: AfColors.semanticError),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true && context.mounted) {
+                      // 1. Clear SharedPreferences
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.clear();
+
+                      // 2. Clear Secure Storage
+                      const secureStorage = FlutterSecureStorage();
+                      await secureStorage.deleteAll();
+
+                      // 3. Clear Drift database
+                      final dbFolder = await getApplicationDocumentsDirectory();
+                      final dbFile = File(p.join(dbFolder.path, 'aetherfin_drift.db'));
+                      if (dbFile.existsSync()) {
+                        await dbFile.delete();
+                      }
+
+                      // 4. Reset Providers & Navigate
+                      await AppModeStore.clear();
+                      ref.read(appModeProvider.notifier).state = null;
+                      await ref.read(authProvider.notifier).clear();
+                      
+                      if (context.mounted) {
+                        context.go('/');
+                      }
+                    }
+                  },
+                ),
               ],
             ),
 
