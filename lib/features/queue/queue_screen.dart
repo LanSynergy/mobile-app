@@ -79,10 +79,10 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         sorted.sort((a, b) => b.artistName.toLowerCase().compareTo(a.artistName.toLowerCase()));
         break;
       case QueueSortOption.albumAsc:
-        sorted.sort((a, b) => (a.albumName ?? '').toLowerCase().compareTo((b.albumName ?? '').toLowerCase()));
+        sorted.sort((a, b) => a.albumName.toLowerCase().compareTo(b.albumName.toLowerCase()));
         break;
       case QueueSortOption.albumDesc:
-        sorted.sort((a, b) => (b.albumName ?? '').toLowerCase().compareTo((a.albumName ?? '').toLowerCase()));
+        sorted.sort((a, b) => b.albumName.toLowerCase().compareTo(a.albumName.toLowerCase()));
         break;
       default:
         break;
