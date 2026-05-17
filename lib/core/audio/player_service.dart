@@ -892,6 +892,35 @@ class AfPlayerService extends BaseAudioHandler
     }
   }
 
+  /// Re-configure the spectrum/FFT pipeline after a track change.
+  /// When libmpv loads a new file, it resets the audio filter chain
+  /// and PCM tap, causing the spectrum stream to go flat (zero energy).
+  /// Re-configuring the spectrum forces the PCM tap to re-attach to
+  /// the new audio pipeline.
+  Future<void> _reconfigureSpectrumOnTrackChange() async {
+    if (_disposed) return;
+    try {
+      // Brief delay to let mpv finish probing the new file and
+      // re-initialize the audio output pipeline.
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      if (_disposed) return;
+      await _player.setSpectrum(const SpectrumSettings(
+        fftSize: 2048,
+        bandCount: 64,
+        bandLowHz: 20.0,
+        bandHighHz: 20000.0,
+        attackSmoothing: 0.8,
+        releaseSmoothing: 0.1,
+        minDb: -105.0,
+        maxDb: 35.0,
+        emitInterval: Duration(milliseconds: 8),
+      ));
+      afLog('audio', 'spectrum re-configured after track change');
+    } catch (e) {
+      afLog('audio', 'reconfigureSpectrumOnTrackChange failed', error: e);
+    }
+  }
+
   static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
   /// Jump to [index] and immediately play.
@@ -948,6 +977,13 @@ class AfPlayerService extends BaseAudioHandler
         );
         onTrackChanged?.call(track);
         _updateMediaItem();
+
+        // Re-configure the spectrum pipeline after a track change.
+        // libmpv resets the audio filter chain and PCM tap when loading
+        // a new file, which breaks the FFT spectrum stream (goes flat).
+        // Re-configuring the spectrum re-attaches the PCM tap to the
+        // new audio pipeline.
+        unawaited(_reconfigureSpectrumOnTrackChange());
 
         // Reset nudge retry counter for the new track.
         _nudgeRetries = 0;
