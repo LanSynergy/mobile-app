@@ -1083,8 +1083,12 @@ class AfPlayerService extends BaseAudioHandler
     final track = _trackQueue[_currentIndex];
 
     // Determine artUri: prefer embedded cover (local file), then
-    // previously-downloaded network cover, then local file URL, then
-    // kick off a network download.
+    // previously-downloaded network cover, then local file URL.
+    // Never pass a network URL as artUri — audio_service fetches it
+    // without auth headers, which fails for Jellyfin (MediaBrowser
+    // header required) and suppresses the notification entirely.
+    // Kick off async download instead; _updateMediaItem fires again
+    // when the local file is ready.
     Uri? artUri;
     if (_coverPath != null) {
       artUri = Uri.file(_coverPath!);
@@ -1096,10 +1100,8 @@ class AfPlayerService extends BaseAudioHandler
       // Local mode: cover cached on disk by SAF scanner.
       artUri = Uri.parse(track.imageUrl!);
     } else if (track.imageUrl != null) {
-      // Kick off async download — will call _updateMediaItem again when done.
+      // Server mode: download artwork with auth headers first.
       unawaited(_downloadArtworkForNotification(track));
-      // Temporarily use the network URL (some devices handle it).
-      artUri = Uri.parse(track.imageUrl!);
     }
 
     // Use mpv's duration as source of truth; fall back to track metadata.
