@@ -3,8 +3,10 @@ import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
+import 'player_settings_store.dart';
 
 /// Bridges [Player] (mpv_audio_kit) with [audio_service] so the OS
 /// lock-screen / notification controls drive playback.
@@ -868,6 +870,30 @@ class AfPlayerService extends BaseAudioHandler
     });
   }
 
+  /// Re-apply persisted audio effects after an audio device change.
+  /// On some devices (Samsung One UI, certain AAudio/OpenSL ES drivers),
+  /// the audio filter chain (af) doesn't properly attach to the output
+  /// pipeline on first init. Re-applying after device change re-wires
+  /// the filters correctly.
+  Future<void> _reapplyPersistedEffects() async {
+    if (_disposed) return;
+    try {
+      final prefs = await _prefs();
+      final fx = PlayerSettingsStore.loadAudioEffects(prefs);
+      if (fx != null) {
+        final masterEnabled = prefs.getBool('af.dsp_master_enabled') ?? true;
+        if (masterEnabled) {
+          await setAudioEffects(fx);
+          afLog('audio', 're-applied audio effects after device change');
+        }
+      }
+    } catch (e) {
+      afLog('audio', 'reapplyPersistedEffects failed', error: e);
+    }
+  }
+
+  static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
+
   /// Jump to [index] and immediately play.
   ///
   /// Uses async/await rather than .then() chaining — under Android Doze
@@ -1021,6 +1047,11 @@ class AfPlayerService extends BaseAudioHandler
         pause();
         afLog('audio', 'paused: audio device changed to ${newDevice.name} (BT/headphone disconnect)');
       }
+      // On some devices (Samsung One UI, certain AAudio/OpenSL ES
+      // implementations), the audio filter chain (af) doesn't properly
+      // attach to the output pipeline on first init. Re-applying effects
+      // after a device change re-wires the filter chain correctly.
+      unawaited(_reapplyPersistedEffects());
     }));
   }
 
