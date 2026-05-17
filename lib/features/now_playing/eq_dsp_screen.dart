@@ -1369,7 +1369,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           max: max,
           divisions: divisions,
           activeColor: AfColors.indigo400,
-          overlayColor: WidgetStateProperty.all(Colors.transparent),
+          overlayColor: Colors.transparent,
           onChanged: onChanged,
           onChangeEnd: (_) => onChangeEnd(),
         ),
@@ -1459,7 +1459,6 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                       const RoundSliderThumbShape(enabledThumbRadius: 6),
                   overlayShape:
                       const RoundSliderOverlayShape(overlayRadius: 12),
-                  overlayColor: WidgetStateProperty.all(Colors.transparent),
                 ),
                 child: Slider(
                   value: gain.clamp(0.0, 4.0),
@@ -1467,7 +1466,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                   max: 4,
                   divisions: 40,
                   activeColor: AfColors.indigo400,
-                  overlayColor: WidgetStateProperty.all(Colors.transparent),
+                  overlayColor: Colors.transparent,
                   onChanged: (v) {
                     setState(() {
                       _eqBands[bandKey] = v;

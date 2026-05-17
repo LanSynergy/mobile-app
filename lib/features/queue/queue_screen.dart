@@ -73,21 +73,40 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         sorted.sort((a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
         break;
       case QueueSortOption.artistAsc:
-        sorted.sort((a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()));
+        sorted.sort((a, b) => a.artistName.toLowerCase().compareTo(b.artistName.toLowerCase()));
         break;
       case QueueSortOption.artistDesc:
-        sorted.sort((a, b) => b.artist.toLowerCase().compareTo(a.artist.toLowerCase()));
+        sorted.sort((a, b) => b.artistName.toLowerCase().compareTo(a.artistName.toLowerCase()));
         break;
       case QueueSortOption.albumAsc:
-        sorted.sort((a, b) => (a.album ?? '').toLowerCase().compareTo((b.album ?? '').toLowerCase()));
+        sorted.sort((a, b) => (a.albumName ?? '').toLowerCase().compareTo((b.albumName ?? '').toLowerCase()));
         break;
       case QueueSortOption.albumDesc:
-        sorted.sort((a, b) => (b.album ?? '').toLowerCase().compareTo((a.album ?? '').toLowerCase()));
+        sorted.sort((a, b) => (b.albumName ?? '').toLowerCase().compareTo((a.albumName ?? '').toLowerCase()));
         break;
       default:
         break;
     }
     _items = sorted;
+  }
+
+  /// Handle reorder callback - only works when not sorted.
+  void _onReorder(int oldIndex, int newIndex) {
+    if (_sortOption != QueueSortOption.defaultOrder) return;
+    // Apply the standard ReorderableListView adjustment
+    // before touching either the local mirror or the player.
+    if (newIndex > oldIndex) newIndex -= 1;
+    setState(() {
+      final item = _items.removeAt(oldIndex);
+      _items.insert(newIndex, item);
+    });
+    // Update original items to match
+    _originalItems = List<AfTrack>.from(_items);
+    // Sync the player's ConcatenatingAudioSource so
+    // skip-next/prev honour the new order. The adjusted
+    // indices are passed directly — reorderQueue expects
+    // the post-adjustment values.
+    ref.read(playerServiceProvider).reorderQueue(oldIndex, newIndex);
   }
 
   @override
@@ -217,26 +236,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                     horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
                 itemCount: _items.length,
                 buildDefaultDragHandles: _sortOption == QueueSortOption.defaultOrder,
-                onReorder: _sortOption == QueueSortOption.defaultOrder
-                    ? (oldIndex, newIndex) {
-                        // Apply the standard ReorderableListView adjustment
-                        // before touching either the local mirror or the player.
-                        if (newIndex > oldIndex) newIndex -= 1;
-                        setState(() {
-                          final item = _items.removeAt(oldIndex);
-                          _items.insert(newIndex, item);
-                        });
-                        // Update original items to match
-                        _originalItems = List<AfTrack>.from(_items);
-                        // Sync the player's ConcatenatingAudioSource so
-                        // skip-next/prev honour the new order. The adjusted
-                        // indices are passed directly — reorderQueue expects
-                        // the post-adjustment values.
-                        ref
-                            .read(playerServiceProvider)
-                            .reorderQueue(oldIndex, newIndex);
-                      }
-                    : null,
+                onReorder: _onReorder,
                 itemBuilder: (context, i) {
                   final t = _items[i];
                   final active = current?.id == t.id;
