@@ -608,630 +608,616 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           child: ListView(
         physics: const ClampingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
-        children: [
-          IgnorePointer(
-            ignoring: !_masterEnabled,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-          // ── EQ Presets ─────────────────────────────────────────────────
-          _sectionLabel('EQ Presets'),
-          _card([
-          _buildPresetChips(),
-          ]),
-          const SizedBox(height: AfSpacing.s16),
-
-        // ── Tone shelves ───────────────────────────────────────────────
-        _sectionLabel('Tone'),
-        _card([
-        _sliderRow('Bass', _bass, -12, 12, 24, (v) {
-          setState(() {
-            _bass = v;
-            _activePreset = null;
-          });
-        }, _apply, suffix: 'dB'),
-        _sliderRow('Treble', _treble, -12, 12, 24, (v) {
-          setState(() {
-            _treble = v;
-            _activePreset = null;
-          });
-        }, _apply, suffix: 'dB'),
-        ]),
-        const SizedBox(height: AfSpacing.s16),
-
-        // ── 18-band graphic EQ ─────────────────────────────────────────
-        _sectionLabel('18-band Equalizer'),
-        _card([
-        SwitchListTile.adaptive(
-          value: _eqEnabled,
-          onChanged: (v) {
-            setState(() => _eqEnabled = v);
-            _apply();
-          },
-          title: Text('Enable graphic EQ', style: AfTypography.bodyMedium),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_eqEnabled) ..._buildEqBands(),
-        if (_eqEnabled)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    for (final k in _eqBands.keys) {
-                      _eqBands[k] = 1.0;
-                    }
-                    _activePreset = null;
-                  });
-                  _apply();
-                },
-                child: Text(
-                  'Flatten EQ',
-                  style: AfTypography.bodySmall
-                      .copyWith(color: AfColors.textTertiary),
-                ),
-              ),
-              const SizedBox(width: 8),
-              TextButton.icon(
-                onPressed: _saveCurrentAsPreset,
-                icon: const Icon(Icons.save_outlined, size: 16),
-                label: Text(
-                  'Save preset',
-                  style: AfTypography.bodySmall
-                      .copyWith(color: AfColors.indigo400),
-                ),
-              ),
-            ],
-          ),
-        ]),
-        const SizedBox(height: AfSpacing.s16),
-
-        // ── Dynamics ───────────────────────────────────────────────────
-        _sectionLabel('Dynamics'),
-        _card([
-        _toggleTile('Loudness normalization', 'EBU R128 (-16 LUFS)',
-            _loudnorm, (v) {
-          setState(() => _loudnorm = v);
-          _apply();
-        }),
-        // Compressor with fine-tuning
-        SwitchListTile.adaptive(
-          value: _compressor,
-          onChanged: (v) {
-            setState(() => _compressor = v);
-            _apply();
-          },
-          title: Text('Dynamic compressor', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Reduces volume spikes',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_compressor) ...[
-          _sliderRow('Threshold', _compThreshold, 0.001, 1.0, 100, (v) {
-            setState(() => _compThreshold = v);
-          }, _apply, precision: 3),
-          _sliderRow('Ratio', _compRatio, 1.0, 20.0, 38, (v) {
-            setState(() => _compRatio = v);
-          }, _apply, precision: 1, suffix: ':1'),
-          _sliderRow('Attack', _compAttack, 0.01, 200.0, 100, (v) {
-            setState(() => _compAttack = v);
-          }, _apply, precision: 1, suffix: 'ms'),
-          _sliderRow('Release', _compRelease, 5.0, 2000.0, 100, (v) {
-            setState(() => _compRelease = v);
-          }, _apply, precision: 0, suffix: 'ms'),
-        ],
-        // Gate with fine-tuning
-        SwitchListTile.adaptive(
-          value: _gate,
-          onChanged: (v) {
-            setState(() => _gate = v);
-            _apply();
-          },
-          title: Text('Noise gate', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Silences signal below threshold',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_gate) ...[
-          _sliderRow('Threshold', _gateThreshold, 0.001, 1.0, 100, (v) {
-            setState(() => _gateThreshold = v);
-          }, _apply, precision: 3),
-          _sliderRow('Ratio', _gateRatio, 1.0, 20.0, 38, (v) {
-            setState(() => _gateRatio = v);
-          }, _apply, precision: 1, suffix: ':1'),
-          _sliderRow('Attack', _gateAttack, 0.01, 200.0, 100, (v) {
-            setState(() => _gateAttack = v);
-          }, _apply, precision: 1, suffix: 'ms'),
-          _sliderRow('Release', _gateRelease, 5.0, 2000.0, 100, (v) {
-            setState(() => _gateRelease = v);
-          }, _apply, precision: 0, suffix: 'ms'),
-        ],
-        // De-esser with fine-tuning
-        SwitchListTile.adaptive(
-          value: _deesser,
-          onChanged: (v) {
-            setState(() => _deesser = v);
-            _apply();
-          },
-          title: Text('De-esser', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Reduces sibilance',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_deesser) ...[
-          _sliderRow('Intensity', _deesserIntensity, 0.0, 1.0, 20, (v) {
-            setState(() => _deesserIntensity = v);
-          }, _apply, precision: 2),
-          _sliderRow('Mix', _deesserMix, 0.0, 1.0, 20, (v) {
-            setState(() => _deesserMix = v);
-          }, _apply, precision: 2),
-          _sliderRow('Frequency', _deesserFreq, 2000.0, 12000.0, 100, (v) {
-            setState(() => _deesserFreq = v);
-          }, _apply, precision: 0, suffix: 'Hz'),
-        ],
-
-        ]),
-        const SizedBox(height: AfSpacing.s16),
-
-        // ── Echo / Delay ───────────────────────────────────────────────
-        _sectionLabel('Echo / Delay'),
-        _card([
-        SwitchListTile.adaptive(
-          value: _echoEnabled,
-          onChanged: (v) {
-            setState(() => _echoEnabled = v);
-            _apply();
-          },
-          title: Text('Echo', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Multi-tap delay effect',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_echoEnabled) ...[
-          _sliderRow('In gain', _echoInGain, 0.0, 1.0, 20, (v) {
-            setState(() => _echoInGain = v);
-          }, _apply, precision: 2),
-          _sliderRow('Out gain', _echoOutGain, 0.0, 1.0, 20, (v) {
-            setState(() => _echoOutGain = v);
-          }, _apply, precision: 2),
-          _textFieldRow('Delays (ms)', _echoDelays, 'e.g. 500|250', (v) {
-            setState(() => _echoDelays = v);
-            _apply();
-          }),
-          _textFieldRow('Decays (0-1)', _echoDecays, 'e.g. 0.5|0.3', (v) {
-            setState(() => _echoDecays = v);
-            _apply();
-          }),
-          Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 8),
-            child: Text(
-              'Separate multiple taps with | (pipe)',
-              style: AfTypography.bodySmall
-                  .copyWith(color: AfColors.textTertiary, fontSize: 11),
-            ),
-          ),
-        ],
-
-        ]),
-        const SizedBox(height: AfSpacing.s16),
-
-        // ── Pitch & tempo ──────────────────────────────────────────────
-        _sectionLabel('Pitch & Tempo'),
-        _card([
-        SwitchListTile.adaptive(
-          value: _rubberbandEnabled,
-          onChanged: (v) {
-            setState(() => _rubberbandEnabled = v);
-            _apply();
-          },
-          title:
-              Text('Enable pitch/tempo shift', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'High-quality rubberband engine',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_rubberbandEnabled) ...[
-          _sliderRow(
-            'Pitch',
-            _pitch,
-            0.5,
-            2.0,
-            30,
-            (v) => setState(() => _pitch = v),
-            _apply,
-            suffix: '×',
-            precision: 2,
-          ),
-          _sliderRow(
-            'Tempo',
-            _tempo,
-            0.5,
-            2.0,
-            30,
-            (v) => setState(() => _tempo = v),
-            _apply,
-            suffix: '×',
-            precision: 2,
-          ),
-        ],
-
-        ]),
-        const SizedBox(height: AfSpacing.s16),
-
-        // ── Spatial ────────────────────────────────────────────────────
-        _sectionLabel('Spatial'),
-        _card([
-        SwitchListTile.adaptive(
-          value: _crossfeed,
-          onChanged: (v) {
-            setState(() => _crossfeed = v);
-            _apply();
-          },
-          title: Text('Crossfeed', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Headphone crossfeed for natural imaging',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_crossfeed)
-          _sliderRow(
-            'Strength',
-            _crossfeedStrength,
-            0.0,
-            1.0,
-            20,
-            (v) => setState(() => _crossfeedStrength = v),
-            _apply,
-            precision: 2,
-          ),
-        SwitchListTile.adaptive(
-          value: _stereoWiden,
-          onChanged: (v) {
-            setState(() => _stereoWiden = v);
-            _apply();
-          },
-          title: Text('Stereo widening', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Expands stereo image',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_stereoWiden)
-          _sliderRow(
-            'Delay',
-            _stereoWidenDelay,
-            1.0,
-            100.0,
-            99,
-            (v) => setState(() => _stereoWidenDelay = v),
-            _apply,
-            suffix: 'ms',
-            precision: 0,
-          ),
-
-        ]),
-        const SizedBox(height: AfSpacing.s16),
-
-        // ── Modulation ─────────────────────────────────────────────────
-        _sectionLabel('Modulation'),
-        _card([
-        // Phaser
-        SwitchListTile.adaptive(
-          value: _phaser,
-          onChanged: (v) {
-            setState(() => _phaser = v);
-            _apply();
-          },
-          title: Text('Phaser', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Phase-shifting sweep effect',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_phaser) ...[
-          _sliderRow('In gain', _phaserInGain, 0.0, 1.0, 20, (v) {
-            setState(() => _phaserInGain = v);
-          }, _apply, precision: 2),
-          _sliderRow('Out gain', _phaserOutGain, 0.0, 1.0, 20, (v) {
-            setState(() => _phaserOutGain = v);
-          }, _apply, precision: 2),
-          _sliderRow('Delay', _phaserDelay, 0.0, 5.0, 50, (v) {
-            setState(() => _phaserDelay = v);
-          }, _apply, precision: 1, suffix: 'ms'),
-          _sliderRow('Decay', _phaserDecay, 0.0, 0.99, 99, (v) {
-            setState(() => _phaserDecay = v);
-          }, _apply, precision: 2),
-          _sliderRow('Speed', _phaserSpeed, 0.1, 2.0, 19, (v) {
-            setState(() => _phaserSpeed = v);
-          }, _apply, precision: 2, suffix: 'Hz'),
-        ],
-        // Flanger
-        SwitchListTile.adaptive(
-          value: _flanger,
-          onChanged: (v) {
-            setState(() => _flanger = v);
-            _apply();
-          },
-          title: Text('Flanger', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Flanging with feedback',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_flanger) ...[
-          _sliderRow('Delay', _flangerDelay, 0.0, 30.0, 60, (v) {
-            setState(() => _flangerDelay = v);
-          }, _apply, precision: 1, suffix: 'ms'),
-          _sliderRow('Depth', _flangerDepth, 0.0, 10.0, 20, (v) {
-            setState(() => _flangerDepth = v);
-          }, _apply, precision: 1),
-          _sliderRow('Regen', _flangerRegen, -95.0, 95.0, 38, (v) {
-            setState(() => _flangerRegen = v);
-          }, _apply, precision: 0, suffix: '%'),
-          _sliderRow('Width', _flangerWidth, 0.0, 100.0, 20, (v) {
-            setState(() => _flangerWidth = v);
-          }, _apply, precision: 0, suffix: '%'),
-          _sliderRow('Speed', _flangerSpeed, 0.1, 10.0, 99, (v) {
-            setState(() => _flangerSpeed = v);
-          }, _apply, precision: 1, suffix: 'Hz'),
-        ],
-        // Chorus
-        SwitchListTile.adaptive(
-          value: _chorus,
-          onChanged: (v) {
-            setState(() => _chorus = v);
-            _apply();
-          },
-          title: Text('Chorus', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Multi-voice chorus effect',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_chorus) ...[
-          _sliderRow('In gain', _chorusInGain, 0.0, 1.0, 20, (v) {
-            setState(() => _chorusInGain = v);
-          }, _apply, precision: 2),
-          _sliderRow('Out gain', _chorusOutGain, 0.0, 1.0, 20, (v) {
-            setState(() => _chorusOutGain = v);
-          }, _apply, precision: 2),
-          _textFieldRow('Delays (ms)', _chorusDelays, 'e.g. 40|60', (v) {
-            setState(() => _chorusDelays = v);
-            _apply();
-          }),
-          _textFieldRow('Decays', _chorusDecays, 'e.g. 0.4|0.32', (v) {
-            setState(() => _chorusDecays = v);
-            _apply();
-          }),
-          _textFieldRow('Speeds (Hz)', _chorusSpeeds, 'e.g. 0.25|0.4', (v) {
-            setState(() => _chorusSpeeds = v);
-            _apply();
-          }),
-          _textFieldRow('Depths', _chorusDepths, 'e.g. 2|3', (v) {
-            setState(() => _chorusDepths = v);
-            _apply();
-          }),
-          Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 8),
-            child: Text(
-              'Separate multiple voices with | (pipe)',
-              style: AfTypography.bodySmall
-                  .copyWith(color: AfColors.textTertiary, fontSize: 11),
-            ),
-          ),
-        ],
-        // Tremolo
-        SwitchListTile.adaptive(
-          value: _tremolo,
-          onChanged: (v) {
-            setState(() => _tremolo = v);
-            _apply();
-          },
-          title: Text('Tremolo', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Amplitude modulation',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_tremolo) ...[
-          _sliderRow('Frequency', _tremoloFreq, 0.1, 20.0, 40, (v) {
-            setState(() => _tremoloFreq = v);
-          }, _apply, precision: 1, suffix: 'Hz'),
-          _sliderRow('Depth', _tremoloDepth, 0.0, 1.0, 20, (v) {
-            setState(() => _tremoloDepth = v);
-          }, _apply, precision: 2),
-        ],
-        // Vibrato
-        SwitchListTile.adaptive(
-          value: _vibrato,
-          onChanged: (v) {
-            setState(() => _vibrato = v);
-            _apply();
-          },
-          title: Text('Vibrato', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Pitch modulation',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_vibrato) ...[
-          _sliderRow('Frequency', _vibratoFreq, 0.1, 20.0, 40, (v) {
-            setState(() => _vibratoFreq = v);
-          }, _apply, precision: 1, suffix: 'Hz'),
-          _sliderRow('Depth', _vibratoDepth, 0.0, 1.0, 20, (v) {
-            setState(() => _vibratoDepth = v);
-          }, _apply, precision: 2),
-        ],
-
-        ]),
-        const SizedBox(height: AfSpacing.s16),
-
-        // ── Creative ───────────────────────────────────────────────────
-        _sectionLabel('Creative'),
-        _card([
-        SwitchListTile.adaptive(
-          value: _exciter,
-          onChanged: (v) {
-            setState(() => _exciter = v);
-            _apply();
-          },
-          title: Text('Harmonic exciter', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Adds harmonic overtones',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_exciter)
-          _sliderRow(
-            'Amount',
-            _exciterAmount,
-            0.0,
-            10.0,
-            20,
-            (v) => setState(() => _exciterAmount = v),
-            _apply,
-            precision: 1,
-          ),
-        SwitchListTile.adaptive(
-          value: _crystalizer,
-          onChanged: (v) {
-            setState(() => _crystalizer = v);
-            _apply();
-          },
-          title: Text('Crystalizer', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Audio sharpener / brightener',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_crystalizer)
-          _sliderRow(
-            'Intensity',
-            _crystalizerIntensity,
-            -10.0,
-            10.0,
-            40,
-            (v) => setState(() => _crystalizerIntensity = v),
-            _apply,
-            precision: 1,
-          ),
-        SwitchListTile.adaptive(
-          value: _virtualBass,
-          onChanged: (v) {
-            setState(() => _virtualBass = v);
-            _apply();
-          },
-          title: Text('Virtual bass', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Psychoacoustic bass enhancement',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_virtualBass)
-          _sliderRow(
-            'Cutoff',
-            _virtualBassCutoff,
-            100.0,
-            500.0,
-            40,
-            (v) => setState(() => _virtualBassCutoff = v),
-            _apply,
-            suffix: 'Hz',
-            precision: 0,
-          ),
-        // Bit-crusher
-        SwitchListTile.adaptive(
-          value: _crusher,
-          onChanged: (v) {
-            setState(() => _crusher = v);
-            _apply();
-          },
-          title: Text('Bit-crusher', style: AfTypography.bodyMedium),
-          subtitle: Text(
-            'Lo-fi resolution and rate reduction',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
-          ),
-          activeThumbColor: AfColors.indigo500,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (_crusher) ...[
-          _sliderRow('Bits', _crusherBits, 1.0, 16.0, 15, (v) {
-            setState(() => _crusherBits = v);
-          }, _apply, precision: 0),
-          _sliderRow('Mix', _crusherMix, 0.0, 1.0, 20, (v) {
-            setState(() => _crusherMix = v);
-          }, _apply, precision: 2),
-          _sliderRow('Samples', _crusherSamples, 1.0, 250.0, 50, (v) {
-            setState(() => _crusherSamples = v);
-          }, _apply, precision: 0),
-        ],
-
-        ]),
-
-        const SizedBox(height: AfSpacing.s24),
-              ],
-            ),
-          ),
-        ],
+        children: _buildSections()
+            .map((child) => IgnorePointer(
+                  ignoring: !_masterEnabled,
+                  child: child,
+                ))
+            .toList(),
       ),
       ),
     );
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
+
+  /// Build the flat list of section widgets for the ListView.
+  /// Each item is a section label or a card — no wrapping Column.
+  /// This lets ListView properly cull off-screen items and gives
+  /// Slider/Switch their own Material canvas for correct rendering.
+  List<Widget> _buildSections() => [
+        // ── EQ Presets ─────────────────────────────────────────────────
+        _sectionLabel('EQ Presets'),
+        _card([_buildPresetChips()]),
+        const SizedBox(height: AfSpacing.s16),
+
+        // ── Tone shelves ───────────────────────────────────────────────
+        _sectionLabel('Tone'),
+        _card([
+          _sliderRow('Bass', _bass, -12, 12, 24, (v) {
+            setState(() {
+              _bass = v;
+              _activePreset = null;
+            });
+          }, _apply, suffix: 'dB'),
+          _sliderRow('Treble', _treble, -12, 12, 24, (v) {
+            setState(() {
+              _treble = v;
+              _activePreset = null;
+            });
+          }, _apply, suffix: 'dB'),
+        ]),
+        const SizedBox(height: AfSpacing.s16),
+
+        // ── 18-band graphic EQ ─────────────────────────────────────────
+        _sectionLabel('18-band Equalizer'),
+        _card([
+          SwitchListTile.adaptive(
+            value: _eqEnabled,
+            onChanged: (v) {
+              setState(() => _eqEnabled = v);
+              _apply();
+            },
+            title: Text('Enable graphic EQ', style: AfTypography.bodyMedium),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_eqEnabled) ..._buildEqBands(),
+          if (_eqEnabled)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      for (final k in _eqBands.keys) {
+                        _eqBands[k] = 1.0;
+                      }
+                      _activePreset = null;
+                    });
+                    _apply();
+                  },
+                  child: Text(
+                    'Flatten EQ',
+                    style: AfTypography.bodySmall
+                        .copyWith(color: AfColors.textTertiary),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: _saveCurrentAsPreset,
+                  icon: const Icon(Icons.save_outlined, size: 16),
+                  label: Text(
+                    'Save preset',
+                    style: AfTypography.bodySmall
+                        .copyWith(color: AfColors.indigo400),
+                  ),
+                ),
+              ],
+            ),
+        ]),
+        const SizedBox(height: AfSpacing.s16),
+
+        // ── Dynamics ───────────────────────────────────────────────────
+        _sectionLabel('Dynamics'),
+        _card([
+          _toggleTile('Loudness normalization', 'EBU R128 (-16 LUFS)',
+              _loudnorm, (v) {
+            setState(() => _loudnorm = v);
+            _apply();
+          }),
+          SwitchListTile.adaptive(
+            value: _compressor,
+            onChanged: (v) {
+              setState(() => _compressor = v);
+              _apply();
+            },
+            title: Text('Dynamic compressor', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Reduces volume spikes',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_compressor) ...[
+            _sliderRow('Threshold', _compThreshold, 0.001, 1.0, 100, (v) {
+              setState(() => _compThreshold = v);
+            }, _apply, precision: 3),
+            _sliderRow('Ratio', _compRatio, 1.0, 20.0, 38, (v) {
+              setState(() => _compRatio = v);
+            }, _apply, precision: 1, suffix: ':1'),
+            _sliderRow('Attack', _compAttack, 0.01, 200.0, 100, (v) {
+              setState(() => _compAttack = v);
+            }, _apply, precision: 1, suffix: 'ms'),
+            _sliderRow('Release', _compRelease, 5.0, 2000.0, 100, (v) {
+              setState(() => _compRelease = v);
+            }, _apply, precision: 0, suffix: 'ms'),
+          ],
+          SwitchListTile.adaptive(
+            value: _gate,
+            onChanged: (v) {
+              setState(() => _gate = v);
+              _apply();
+            },
+            title: Text('Noise gate', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Silences signal below threshold',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_gate) ...[
+            _sliderRow('Threshold', _gateThreshold, 0.001, 1.0, 100, (v) {
+              setState(() => _gateThreshold = v);
+            }, _apply, precision: 3),
+            _sliderRow('Ratio', _gateRatio, 1.0, 20.0, 38, (v) {
+              setState(() => _gateRatio = v);
+            }, _apply, precision: 1, suffix: ':1'),
+            _sliderRow('Attack', _gateAttack, 0.01, 200.0, 100, (v) {
+              setState(() => _gateAttack = v);
+            }, _apply, precision: 1, suffix: 'ms'),
+            _sliderRow('Release', _gateRelease, 5.0, 2000.0, 100, (v) {
+              setState(() => _gateRelease = v);
+            }, _apply, precision: 0, suffix: 'ms'),
+          ],
+          SwitchListTile.adaptive(
+            value: _deesser,
+            onChanged: (v) {
+              setState(() => _deesser = v);
+              _apply();
+            },
+            title: Text('De-esser', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Reduces sibilance',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_deesser) ...[
+            _sliderRow('Intensity', _deesserIntensity, 0.0, 1.0, 20, (v) {
+              setState(() => _deesserIntensity = v);
+            }, _apply, precision: 2),
+            _sliderRow('Mix', _deesserMix, 0.0, 1.0, 20, (v) {
+              setState(() => _deesserMix = v);
+            }, _apply, precision: 2),
+            _sliderRow('Frequency', _deesserFreq, 2000.0, 12000.0, 100, (v) {
+              setState(() => _deesserFreq = v);
+            }, _apply, precision: 0, suffix: 'Hz'),
+          ],
+        ]),
+        const SizedBox(height: AfSpacing.s16),
+
+        // ── Echo / Delay ───────────────────────────────────────────────
+        _sectionLabel('Echo / Delay'),
+        _card([
+          SwitchListTile.adaptive(
+            value: _echoEnabled,
+            onChanged: (v) {
+              setState(() => _echoEnabled = v);
+              _apply();
+            },
+            title: Text('Echo', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Multi-tap delay effect',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_echoEnabled) ...[
+            _sliderRow('In gain', _echoInGain, 0.0, 1.0, 20, (v) {
+              setState(() => _echoInGain = v);
+            }, _apply, precision: 2),
+            _sliderRow('Out gain', _echoOutGain, 0.0, 1.0, 20, (v) {
+              setState(() => _echoOutGain = v);
+            }, _apply, precision: 2),
+            _textFieldRow('Delays (ms)', _echoDelays, 'e.g. 500|250', (v) {
+              setState(() => _echoDelays = v);
+              _apply();
+            }),
+            _textFieldRow('Decays (0-1)', _echoDecays, 'e.g. 0.5|0.3', (v) {
+              setState(() => _echoDecays = v);
+              _apply();
+            }),
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 8),
+              child: Text(
+                'Separate multiple taps with | (pipe)',
+                style: AfTypography.bodySmall
+                    .copyWith(color: AfColors.textTertiary, fontSize: 11),
+              ),
+            ),
+          ],
+        ]),
+        const SizedBox(height: AfSpacing.s16),
+
+        // ── Pitch & Tempo ──────────────────────────────────────────────
+        _sectionLabel('Pitch & Tempo'),
+        _card([
+          SwitchListTile.adaptive(
+            value: _rubberbandEnabled,
+            onChanged: (v) {
+              setState(() => _rubberbandEnabled = v);
+              _apply();
+            },
+            title:
+                Text('Enable pitch/tempo shift', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'High-quality rubberband engine',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_rubberbandEnabled) ...[
+            _sliderRow(
+              'Pitch',
+              _pitch,
+              0.5,
+              2.0,
+              30,
+              (v) => setState(() => _pitch = v),
+              _apply,
+              suffix: '×',
+              precision: 2,
+            ),
+            _sliderRow(
+              'Tempo',
+              _tempo,
+              0.5,
+              2.0,
+              30,
+              (v) => setState(() => _tempo = v),
+              _apply,
+              suffix: '×',
+              precision: 2,
+            ),
+          ],
+        ]),
+        const SizedBox(height: AfSpacing.s16),
+
+        // ── Spatial ────────────────────────────────────────────────────
+        _sectionLabel('Spatial'),
+        _card([
+          SwitchListTile.adaptive(
+            value: _crossfeed,
+            onChanged: (v) {
+              setState(() => _crossfeed = v);
+              _apply();
+            },
+            title: Text('Crossfeed', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Headphone crossfeed for natural imaging',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_crossfeed)
+            _sliderRow(
+              'Strength',
+              _crossfeedStrength,
+              0.0,
+              1.0,
+              20,
+              (v) => setState(() => _crossfeedStrength = v),
+              _apply,
+              precision: 2,
+            ),
+          SwitchListTile.adaptive(
+            value: _stereoWiden,
+            onChanged: (v) {
+              setState(() => _stereoWiden = v);
+              _apply();
+            },
+            title: Text('Stereo widening', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Expands stereo image',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_stereoWiden)
+            _sliderRow(
+              'Delay',
+              _stereoWidenDelay,
+              1.0,
+              100.0,
+              99,
+              (v) => setState(() => _stereoWidenDelay = v),
+              _apply,
+              suffix: 'ms',
+              precision: 0,
+            ),
+        ]),
+        const SizedBox(height: AfSpacing.s16),
+
+        // ── Modulation ─────────────────────────────────────────────────
+        _sectionLabel('Modulation'),
+        _card([
+          SwitchListTile.adaptive(
+            value: _phaser,
+            onChanged: (v) {
+              setState(() => _phaser = v);
+              _apply();
+            },
+            title: Text('Phaser', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Phase-shifting sweep effect',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_phaser) ...[
+            _sliderRow('In gain', _phaserInGain, 0.0, 1.0, 20, (v) {
+              setState(() => _phaserInGain = v);
+            }, _apply, precision: 2),
+            _sliderRow('Out gain', _phaserOutGain, 0.0, 1.0, 20, (v) {
+              setState(() => _phaserOutGain = v);
+            }, _apply, precision: 2),
+            _sliderRow('Delay', _phaserDelay, 0.0, 5.0, 50, (v) {
+              setState(() => _phaserDelay = v);
+            }, _apply, precision: 1, suffix: 'ms'),
+            _sliderRow('Decay', _phaserDecay, 0.0, 0.99, 99, (v) {
+              setState(() => _phaserDecay = v);
+            }, _apply, precision: 2),
+            _sliderRow('Speed', _phaserSpeed, 0.1, 2.0, 19, (v) {
+              setState(() => _phaserSpeed = v);
+            }, _apply, precision: 2, suffix: 'Hz'),
+          ],
+          SwitchListTile.adaptive(
+            value: _flanger,
+            onChanged: (v) {
+              setState(() => _flanger = v);
+              _apply();
+            },
+            title: Text('Flanger', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Flanging with feedback',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_flanger) ...[
+            _sliderRow('Delay', _flangerDelay, 0.0, 30.0, 60, (v) {
+              setState(() => _flangerDelay = v);
+            }, _apply, precision: 1, suffix: 'ms'),
+            _sliderRow('Depth', _flangerDepth, 0.0, 10.0, 20, (v) {
+              setState(() => _flangerDepth = v);
+            }, _apply, precision: 1),
+            _sliderRow('Regen', _flangerRegen, -95.0, 95.0, 38, (v) {
+              setState(() => _flangerRegen = v);
+            }, _apply, precision: 0, suffix: '%'),
+            _sliderRow('Width', _flangerWidth, 0.0, 100.0, 20, (v) {
+              setState(() => _flangerWidth = v);
+            }, _apply, precision: 0, suffix: '%'),
+            _sliderRow('Speed', _flangerSpeed, 0.1, 10.0, 99, (v) {
+              setState(() => _flangerSpeed = v);
+            }, _apply, precision: 1, suffix: 'Hz'),
+          ],
+          SwitchListTile.adaptive(
+            value: _chorus,
+            onChanged: (v) {
+              setState(() => _chorus = v);
+              _apply();
+            },
+            title: Text('Chorus', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Multi-voice chorus effect',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_chorus) ...[
+            _sliderRow('In gain', _chorusInGain, 0.0, 1.0, 20, (v) {
+              setState(() => _chorusInGain = v);
+            }, _apply, precision: 2),
+            _sliderRow('Out gain', _chorusOutGain, 0.0, 1.0, 20, (v) {
+              setState(() => _chorusOutGain = v);
+            }, _apply, precision: 2),
+            _textFieldRow('Delays (ms)', _chorusDelays, 'e.g. 40|60', (v) {
+              setState(() => _chorusDelays = v);
+              _apply();
+            }),
+            _textFieldRow('Decays', _chorusDecays, 'e.g. 0.4|0.32', (v) {
+              setState(() => _chorusDecays = v);
+              _apply();
+            }),
+            _textFieldRow('Speeds (Hz)', _chorusSpeeds, 'e.g. 0.25|0.4', (v) {
+              setState(() => _chorusSpeeds = v);
+              _apply();
+            }),
+            _textFieldRow('Depths', _chorusDepths, 'e.g. 2|3', (v) {
+              setState(() => _chorusDepths = v);
+              _apply();
+            }),
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 8),
+              child: Text(
+                'Separate multiple voices with | (pipe)',
+                style: AfTypography.bodySmall
+                    .copyWith(color: AfColors.textTertiary, fontSize: 11),
+              ),
+            ),
+          ],
+          SwitchListTile.adaptive(
+            value: _tremolo,
+            onChanged: (v) {
+              setState(() => _tremolo = v);
+              _apply();
+            },
+            title: Text('Tremolo', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Amplitude modulation',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_tremolo) ...[
+            _sliderRow('Frequency', _tremoloFreq, 0.1, 20.0, 40, (v) {
+              setState(() => _tremoloFreq = v);
+            }, _apply, precision: 1, suffix: 'Hz'),
+            _sliderRow('Depth', _tremoloDepth, 0.0, 1.0, 20, (v) {
+              setState(() => _tremoloDepth = v);
+            }, _apply, precision: 2),
+          ],
+          SwitchListTile.adaptive(
+            value: _vibrato,
+            onChanged: (v) {
+              setState(() => _vibrato = v);
+              _apply();
+            },
+            title: Text('Vibrato', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Pitch modulation',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_vibrato) ...[
+            _sliderRow('Frequency', _vibratoFreq, 0.1, 20.0, 40, (v) {
+              setState(() => _vibratoFreq = v);
+            }, _apply, precision: 1, suffix: 'Hz'),
+            _sliderRow('Depth', _vibratoDepth, 0.0, 1.0, 20, (v) {
+              setState(() => _vibratoDepth = v);
+            }, _apply, precision: 2),
+          ],
+        ]),
+        const SizedBox(height: AfSpacing.s16),
+
+        // ── Creative ───────────────────────────────────────────────────
+        _sectionLabel('Creative'),
+        _card([
+          SwitchListTile.adaptive(
+            value: _exciter,
+            onChanged: (v) {
+              setState(() => _exciter = v);
+              _apply();
+            },
+            title: Text('Harmonic exciter', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Adds harmonic overtones',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_exciter)
+            _sliderRow(
+              'Amount',
+              _exciterAmount,
+              0.0,
+              10.0,
+              20,
+              (v) => setState(() => _exciterAmount = v),
+              _apply,
+              precision: 1,
+            ),
+          SwitchListTile.adaptive(
+            value: _crystalizer,
+            onChanged: (v) {
+              setState(() => _crystalizer = v);
+              _apply();
+            },
+            title: Text('Crystalizer', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Audio sharpener / brightener',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_crystalizer)
+            _sliderRow(
+              'Intensity',
+              _crystalizerIntensity,
+              -10.0,
+              10.0,
+              40,
+              (v) => setState(() => _crystalizerIntensity = v),
+              _apply,
+              precision: 1,
+            ),
+          SwitchListTile.adaptive(
+            value: _virtualBass,
+            onChanged: (v) {
+              setState(() => _virtualBass = v);
+              _apply();
+            },
+            title: Text('Virtual bass', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Psychoacoustic bass enhancement',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_virtualBass)
+            _sliderRow(
+              'Cutoff',
+              _virtualBassCutoff,
+              100.0,
+              500.0,
+              40,
+              (v) => setState(() => _virtualBassCutoff = v),
+              _apply,
+              suffix: 'Hz',
+              precision: 0,
+            ),
+          SwitchListTile.adaptive(
+            value: _crusher,
+            onChanged: (v) {
+              setState(() => _crusher = v);
+              _apply();
+            },
+            title: Text('Bit-crusher', style: AfTypography.bodyMedium),
+            subtitle: Text(
+              'Lo-fi resolution and rate reduction',
+              style: AfTypography.bodySmall
+                  .copyWith(color: AfColors.textTertiary),
+            ),
+            activeThumbColor: AfColors.indigo500,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_crusher) ...[
+            _sliderRow('Bits', _crusherBits, 1.0, 16.0, 15, (v) {
+              setState(() => _crusherBits = v);
+            }, _apply, precision: 0),
+            _sliderRow('Mix', _crusherMix, 0.0, 1.0, 20, (v) {
+              setState(() => _crusherMix = v);
+            }, _apply, precision: 2),
+            _sliderRow('Samples', _crusherSamples, 1.0, 250.0, 50, (v) {
+              setState(() => _crusherSamples = v);
+            }, _apply, precision: 0),
+          ],
+        ]),
+
+        const SizedBox(height: AfSpacing.s24),
+      ];
 
   Widget _buildPresetChips() {
     final allPresets = <String, EqPreset>{
@@ -1302,16 +1288,17 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             )),
       );
 
-  Widget _card(List<Widget> children) => Container(
-        decoration: BoxDecoration(
-          color: AfColors.surfaceBase,
-          borderRadius: AfRadii.borderLg,
-        ),
-        padding: const EdgeInsets.all(AfSpacing.s16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: children,
+  Widget _card(List<Widget> children) => Material(
+        color: AfColors.surfaceBase,
+        borderRadius: AfRadii.borderLg,
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.all(AfSpacing.s16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: children,
+          ),
         ),
       );
 
@@ -1460,6 +1447,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                       const RoundSliderOverlayShape(overlayRadius: 12),
                 ),
                 child: Slider(
+                  key: ValueKey(bandKey),
                   value: gain.clamp(0.0, 4.0),
                   min: 0,
                   max: 4,
