@@ -104,6 +104,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Future<void> setAudioDevice(Device device) async {
     await _player.setAudioDevice(device);
     afLog('audio', 'audioDevice set to ${device.name}');
+    _nudgeAudioDevice();
   }
 
   // ---------------------------------------------------------------------------
@@ -118,6 +119,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Future<void> setAudioExclusive(bool enabled) async {
     await _player.setAudioExclusive(enabled);
     afLog('audio', 'audioExclusive=$enabled');
+    _nudgeAudioDevice();
   }
 
   Future<void> setAudioSampleRate(int rate) async {
@@ -745,19 +747,15 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
       await _player.setAudioDevice(current);
       afLog('audio', 'nudged audioDevice: ${current.name} (attempt $attempt)');
-
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (_disposed) return;
-
-      final pos = await getRawPosition();
-      if (pos == Duration.zero && !_userPaused) {
-        afLog('audio', 'time-pos still 0 after nudge attempt $attempt, retrying...');
-        unawaited(_nudgeAudioDeviceWithRetry(attempt + 1));
-      }
     } catch (e) {
       afLog('audio', 'nudgeAudioDevice attempt $attempt failed', error: e);
-      unawaited(_nudgeAudioDeviceWithRetry(attempt + 1));
     }
+
+    // Always run all attempts — each setAudioDevice call forces a pipeline
+    // reset. The pos == 0 check was wrong: after a seek, pos equals the seek
+    // target (not zero), so the gate prevented retries even when the pipeline
+    // was still stuck. Just run the full schedule unconditionally.
+    unawaited(_nudgeAudioDeviceWithRetry(attempt + 1));
   }
 
   Future<void> _reapplyPersistedEffects() async {
