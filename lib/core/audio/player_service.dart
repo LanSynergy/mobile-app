@@ -87,7 +87,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   Stream<Duration> get positionStream => _positionController.stream;
   Stream<bool> get playingStream => _player.stream.playing;
-  Stream get audioPtsStream => _player.stream.audioPts;
+  Stream<Duration> get audioPtsStream => _player.stream.audioPts;
   Stream<double> get percentPosStream => _player.stream.percentPos;
   double get percentPos => _player.state.percentPos;
   Stream<AfTrack?> get currentTrackStream => _trackController.stream;
