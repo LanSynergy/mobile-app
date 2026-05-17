@@ -96,12 +96,12 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Stream<Loop> get loopModeStream => _player.stream.loop;
   Stream<double> get speedStream => _player.stream.rate;
 
-  Stream get audioDevicesStream => _player.stream.audioDevices;
-  Stream get audioDeviceStream => _player.stream.audioDevice;
-  List get audioDevices => _player.state.audioDevices;
-  dynamic get audioDevice => _player.state.audioDevice;
+  Stream<List<Device>> get audioDevicesStream => _player.stream.audioDevices;
+  Stream<Device> get audioDeviceStream => _player.stream.audioDevice;
+  List<Device> get audioDevices => _player.state.audioDevices;
+  Device get audioDevice => _player.state.audioDevice;
 
-  Future<void> setAudioDevice(dynamic device) async {
+  Future<void> setAudioDevice(Device device) async {
     await _player.setAudioDevice(device);
     afLog('audio', 'audioDevice set to ${device.name}');
   }
@@ -125,35 +125,35 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     afLog('audio', 'audioSampleRate=$rate');
   }
 
-  Future<void> setAudioFormat(dynamic format) async {
+  Future<void> setAudioFormat(Format format) async {
     await _player.setAudioFormat(format);
     afLog('audio', 'audioFormat=$format');
   }
 
-  Future<void> setAudioChannels(dynamic channels) async {
+  Future<void> setAudioChannels(Channels channels) async {
     await _player.setAudioChannels(channels);
     afLog('audio', 'audioChannels=$channels');
   }
 
-  Future<void> setAudioSpdif(dynamic codecs) async {
+  Future<void> setAudioSpdif(Set<Spdif> codecs) async {
     await _player.setAudioSpdif(codecs);
     afLog('audio', 'audioSpdif=$codecs');
   }
 
-  Stream get audioOutParamsStream => _player.stream.audioOutParams;
-  dynamic get audioOutParams => _player.state.audioOutParams;
+  Stream<AudioParams> get audioOutParamsStream => _player.stream.audioOutParams;
+  AudioParams get audioOutParams => _player.state.audioOutParams;
 
   // ---------------------------------------------------------------------------
   // Network & caching
   // ---------------------------------------------------------------------------
 
-  Future<void> setCache(dynamic settings) async {
+  Future<void> setCache(CacheSettings settings) async {
     await _player.setCache(settings);
     afLog('audio', 'cache set: mode=${settings.mode} secs=${settings.secs}');
   }
 
-  dynamic get cacheSettings => _player.state.cache;
-  Stream get cacheStream => _player.stream.cache;
+  CacheSettings get cacheSettings => _player.state.cache;
+  Stream<CacheSettings> get cacheStream => _player.stream.cache;
 
   Future<void> setDemuxerMaxBytes(int bytes) async {
     await _player.setDemuxerMaxBytes(bytes);
@@ -196,7 +196,8 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   // Playback state & buffering
   // ---------------------------------------------------------------------------
 
-  Stream get mpvPlaybackStateStream => _player.stream.playbackState;
+  Stream<MpvPlaybackState> get mpvPlaybackStateStream =>
+      _player.stream.playbackState;
   Stream<bool> get bufferingStream => _player.stream.buffering;
   bool get isBuffering => _player.state.buffering;
   Stream<double> get bufferingPercentageStream => _player.stream.bufferingPercentage;
@@ -233,10 +234,11 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   Stream<double?> get audioBitrateStream => _player.stream.audioBitrate;
   double? get audioBitrate => _player.state.audioBitrate;
-  Stream get audioParamsStream => _player.stream.audioParams;
-  dynamic get audioParams => _player.state.audioParams;
-  Stream get prefetchStateStream => _player.stream.prefetchState;
-  Stream get errorStream => _player.stream.error;
+  Stream<AudioParams> get audioParamsStream => _player.stream.audioParams;
+  AudioParams get audioParams => _player.state.audioParams;
+  Stream<MpvPrefetchState> get prefetchStateStream =>
+      _player.stream.prefetchState;
+  Stream<MpvPlayerError> get errorStream => _player.stream.error;
 
   // ---------------------------------------------------------------------------
   // A-B Loop
@@ -326,7 +328,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   bool get prefetchPlaylist => _player.state.prefetchPlaylist;
 
-  Stream get spectrumStream => _player.stream.spectrum;
+  Stream<FftFrame> get spectrumStream => _player.stream.spectrum;
 
   Future<void> configureSpectrum() async {
     try {
@@ -587,7 +589,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         'queueSize=${_trackQueue.length} currentIndex=$_currentIndex');
   }
 
-  void _syncTrackQueueFromMpv(List<dynamic> mpvItems, int newIdx) {
+  void _syncTrackQueueFromMpv(List<Media> mpvItems, int newIdx) {
     if (mpvItems.isEmpty) return;
 
     final byId = <String, AfTrack>{};

@@ -825,4 +825,4 @@ final reducedMotionProvider = Provider.autoDispose<bool>((ref) {
 // Server discovery results (used by the onboarding flow)
 // ─────────────────────────────────────────────────────────────────────────────
 
-final discoveredServersProvider = StateProvider<List<DiscoveredServer>>((ref) => const <DiscoveredServer>[]);
+final discoveredServersProvider = StateProvider<List<JellyfinServer>>((ref) => const <JellyfinServer>[]);
