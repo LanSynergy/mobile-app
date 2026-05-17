@@ -201,6 +201,16 @@ ThemeData buildNocturneTheme() {
         TargetPlatform.fuchsia: _AfHorizontalSlideTransition(),
       },
     ),
+
+    // M3 Switch/Slider ignore global splashColor — force overlay off.
+    switchTheme: const SwitchThemeData(
+      overlayColor: WidgetStatePropertyAll(Colors.transparent),
+      splashRadius: 0,
+    ),
+
+    sliderTheme: const SliderThemeData(
+      overlayColor: WidgetStatePropertyAll(Colors.transparent),
+    ),
   );
 }
 

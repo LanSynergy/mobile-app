@@ -8,6 +8,14 @@ import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
 import 'player_settings_store.dart';
 
+/// Stores a snapshot of playback position for elapsed-time extrapolation.
+/// Used when mpv's observe_property for time-pos stops firing.
+class _PositionAnchor {
+  Duration lastKnownPos = Duration.zero;
+  DateTime lastUpdateTime = DateTime.now();
+  bool wasPlaying = false;
+}
+
 /// Bridges [Player] (mpv_audio_kit) with [audio_service] so the OS
 /// lock-screen / notification controls drive playback.
 ///
@@ -44,6 +52,11 @@ class AfPlayerService extends BaseAudioHandler
 
   final _trackController = StreamController<AfTrack?>.broadcast();
   final _queueController = StreamController<List<AfTrack>>.broadcast();
+  final _positionController = StreamController<Duration>.broadcast();
+
+  /// Anchor for elapsed-time extrapolation fallback.
+  final _positionAnchor = _PositionAnchor();
+  Timer? _positionPollTimer;
 
   /// Called whenever the active track changes. Wired by
   /// `playerServiceProvider` to keep `currentTrackProvider` in sync.
@@ -107,7 +120,7 @@ class AfPlayerService extends BaseAudioHandler
   // of the codebase needs minimal changes.
   // ---------------------------------------------------------------------------
 
-  Stream<Duration> get positionStream => _player.stream.position;
+  Stream<Duration> get positionStream => _positionController.stream;
   Stream<bool> get playingStream => _player.stream.playing;
 
   /// Audio frame timestamp — advances per decoded audio frame, more
