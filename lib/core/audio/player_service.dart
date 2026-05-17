@@ -618,6 +618,9 @@ class AfPlayerService extends BaseAudioHandler
   @override
   Future<void> play() async {
     _userPaused = false;
+    _positionAnchor.wasPlaying = true;
+    _positionAnchor.lastKnownPos = _player.state.position;
+    _positionAnchor.lastUpdateTime = DateTime.now();
     await _player.play();
   }
 
@@ -625,6 +628,9 @@ class AfPlayerService extends BaseAudioHandler
   Future<void> pause() async {
     _userPaused = true;
     _pendingPlayNudgeIdx = null; // cancel any pending nudge
+    _positionAnchor.wasPlaying = false;
+    _positionAnchor.lastKnownPos = _player.state.position;
+    _positionAnchor.lastUpdateTime = DateTime.now();
     await _player.pause();
   }
 
@@ -635,7 +641,12 @@ class AfPlayerService extends BaseAudioHandler
   }
 
   @override
-  Future<void> seek(Duration position) => _player.seek(position);
+  Future<void> seek(Duration position) async {
+    _positionAnchor.lastKnownPos = position;
+    _positionAnchor.lastUpdateTime = DateTime.now();
+    _positionController.add(position);
+    await _player.seek(position);
+  }
 
   @override
   Future<void> skipToNext() => _player.next();
@@ -848,11 +859,13 @@ class AfPlayerService extends BaseAudioHandler
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _positionPollTimer?.cancel();
     for (final s in _subs) {
       await s.cancel();
     }
     await _trackController.close();
     await _queueController.close();
+    await _positionController.close();
     await _shuffleController.close();
     await _player.dispose();
   }
@@ -1102,6 +1115,39 @@ class AfPlayerService extends BaseAudioHandler
       // after a device change re-wires the filter chain correctly.
       unawaited(_reapplyPersistedEffects());
     }));
+
+    // Position polling with extrapolation fallback.
+    // mpv's observe_property for time-pos often stops firing after track
+    // changes on some Android devices. This timer polls getRawPosition()
+    // every 40ms (~25 Hz). If mpv returns 0 while playing, falls back to
+    // elapsed-time extrapolation from the last known anchor.
+    _positionPollTimer = Timer.periodic(const Duration(milliseconds: 40), (_) {
+      if (_disposed) return;
+      _pollAndEmitPosition();
+    });
+  }
+
+  /// Polls mpv for current position. Falls back to elapsed-time
+  /// extrapolation when mpv returns 0 (broken observe_property).
+  Future<void> _pollAndEmitPosition() async {
+    final rawPos = await getRawPosition();
+    final now = DateTime.now();
+    final playing = _player.state.playing;
+
+    if (rawPos > Duration.zero) {
+      // mpv is responding normally — anchor and emit.
+      _positionAnchor.lastKnownPos = rawPos;
+      _positionAnchor.lastUpdateTime = now;
+      _positionAnchor.wasPlaying = playing;
+      _positionController.add(rawPos);
+    } else if (playing) {
+      // mpv stuck (returns 0) but we're playing — extrapolate.
+      final elapsed = now.difference(_positionAnchor.lastUpdateTime);
+      final speed = _player.state.rate;
+      final extrapolated = _positionAnchor.lastKnownPos +
+          Duration(milliseconds: (elapsed.inMilliseconds * speed).round());
+      _positionController.add(extrapolated);
+    }
   }
 
   /// Throttled wrapper for position-stream updates.
