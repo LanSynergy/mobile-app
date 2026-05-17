@@ -1385,7 +1385,3 @@ class AfPlayerService extends BaseAudioHandler
     }
   }
 }
-', error: e);
-    }
-  }
-}
