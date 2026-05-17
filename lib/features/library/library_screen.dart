@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/audio/play_actions.dart';
+import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/tile.dart';
@@ -10,6 +11,19 @@ import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 
 enum LibrarySection { albums, artists, songs, playlists, genres, liked }
+
+/// Sort options for library items.
+enum LibrarySortOption {
+  nameAsc('Name (A-Z)'),
+  nameDesc('Name (Z-A)'),
+  artistAsc('Artist (A-Z)'),
+  artistDesc('Artist (Z-A)'),
+  yearDesc('Year (Newest)'),
+  yearAsc('Year (Oldest)');
+
+  final String label;
+  const LibrarySortOption(this.label);
+}
 
 /// Sections available in local mode (no server playlists, no liked — those are server concepts).
 /// Smart playlists are accessible from the playlists tab.
@@ -34,11 +48,84 @@ class LibraryScreen extends ConsumerStatefulWidget {
 
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   late LibrarySection _section;
+  LibrarySortOption _sortOption = LibrarySortOption.nameAsc;
 
   @override
   void initState() {
     super.initState();
     _section = widget.initialSection ?? LibrarySection.albums;
+  }
+
+  /// Sort a list of albums.
+  List<AfAlbum> _sortAlbums(List<AfAlbum> list) {
+    final sorted = List<AfAlbum>.from(list);
+    switch (_sortOption) {
+      case LibrarySortOption.nameAsc:
+        sorted.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
+      case LibrarySortOption.nameDesc:
+        sorted.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+        break;
+      case LibrarySortOption.artistAsc:
+        sorted.sort((a, b) => a.artistName.toLowerCase().compareTo(b.artistName.toLowerCase()));
+        break;
+      case LibrarySortOption.artistDesc:
+        sorted.sort((a, b) => b.artistName.toLowerCase().compareTo(a.artistName.toLowerCase()));
+        break;
+      case LibrarySortOption.yearDesc:
+        sorted.sort((a, b) => (b.year ?? 0).compareTo(a.year ?? 0));
+        break;
+      case LibrarySortOption.yearAsc:
+        sorted.sort((a, b) => (a.year ?? 0).compareTo(b.year ?? 0));
+        break;
+    }
+    return sorted;
+  }
+
+  /// Sort a list of artists.
+  List<AfArtist> _sortArtists(List<AfArtist> list) {
+    final sorted = List<AfArtist>.from(list);
+    switch (_sortOption) {
+      case LibrarySortOption.nameAsc:
+        sorted.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
+      case LibrarySortOption.nameDesc:
+        sorted.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+        break;
+      case LibrarySortOption.artistAsc:
+      case LibrarySortOption.artistDesc:
+        // Artists are already sorted by name, no secondary sort by artist
+        break;
+      case LibrarySortOption.yearDesc:
+      case LibrarySortOption.yearAsc:
+        // Artists don't have year
+        break;
+    }
+    return sorted;
+  }
+
+  /// Sort a list of tracks.
+  List<AfTrack> _sortTracks(List<AfTrack> list) {
+    final sorted = List<AfTrack>.from(list);
+    switch (_sortOption) {
+      case LibrarySortOption.nameAsc:
+        sorted.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        break;
+      case LibrarySortOption.nameDesc:
+        sorted.sort((a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
+        break;
+      case LibrarySortOption.artistAsc:
+        sorted.sort((a, b) => a.artistName.toLowerCase().compareTo(b.artistName.toLowerCase()));
+        break;
+      case LibrarySortOption.artistDesc:
+        sorted.sort((a, b) => b.artistName.toLowerCase().compareTo(a.artistName.toLowerCase()));
+        break;
+      case LibrarySortOption.yearDesc:
+      case LibrarySortOption.yearAsc:
+        // Tracks don't have year in the same way
+        break;
+    }
+    return sorted;
   }
 
   @override
@@ -60,15 +147,28 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 children: [
                   Text('Library', style: AfTypography.titleLarge),
                   const Spacer(),
-                  IconButton(
+                  PopupMenuButton<LibrarySortOption>(
                     icon: const Icon(Icons.sort_rounded),
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Sort coming soon'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    ),
                     tooltip: 'Sort',
+                    initialValue: _sortOption,
+                    onSelected: (option) {
+                      setState(() => _sortOption = option);
+                    },
+                    itemBuilder: (context) => LibrarySortOption.values
+                        .map((option) => PopupMenuItem<LibrarySortOption>(
+                              value: option,
+                              child: Row(
+                                children: [
+                                  if (_sortOption == option)
+                                    const Icon(Icons.check, size: 18, color: AfColors.indigo400)
+                                  else
+                                    const SizedBox(width: 18),
+                                  const SizedBox(width: 8),
+                                  Text(option.label, style: AfTypography.bodyMedium),
+                                ],
+                              ),
+                            ))
+                        .toList(),
                   ),
                 ],
               ),
@@ -79,7 +179,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             ),
             const SizedBox(height: AfSpacing.s16),
             Expanded(
-              child: _SectionBody(section: _section),
+              child: _SectionBody(
+                section: _section,
+                sortOption: _sortOption,
+                sortAlbums: _sortAlbums,
+                sortArtists: _sortArtists,
+                sortTracks: _sortTracks,
+              ),
             ),
           ],
         ),
@@ -153,7 +259,18 @@ class _SegmentedPill extends ConsumerWidget {
 
 class _SectionBody extends ConsumerWidget {
   final LibrarySection section;
-  const _SectionBody({required this.section});
+  final LibrarySortOption sortOption;
+  final List<AfAlbum> Function(List<AfAlbum>)? sortAlbums;
+  final List<AfArtist> Function(List<AfArtist>)? sortArtists;
+  final List<AfTrack> Function(List<AfTrack>)? sortTracks;
+
+  const _SectionBody({
+    required this.section,
+    required this.sortOption,
+    this.sortAlbums,
+    this.sortArtists,
+    this.sortTracks,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -167,31 +284,34 @@ class _SectionBody extends ConsumerWidget {
             ? ref.watch(localAlbumsProvider)
             : ref.watch(allAlbumsProvider);
         return albums.maybeWhen(
-          data: (list) => GridView.builder(
-            padding: padding.add(const EdgeInsets.only(
-                bottom: AfSpacing.bottomInsetWithMiniAndNav)),
-            itemCount: list.length,
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisExtent: 220,
-              crossAxisSpacing: AfSpacing.s16,
-              mainAxisSpacing: AfSpacing.s16,
-            ),
-            itemBuilder: (context, i) {
-              final a = list[i];
-              return Tile(
-                title: a.name,
-                subtitle: a.artistName,
-                variant: TileVariant.album,
-                imageUrl: a.imageUrl,
-                size: double.infinity,
-                onTap: () => context.push('/album/${a.id}'),
-                onLongPress: () =>
-                    showAlbumContextMenu(context, ref, a),
-              );
-            },
-          ),
+          data: (list) {
+            final sorted = sortAlbums != null ? sortAlbums!(list) : list;
+            return GridView.builder(
+              padding: padding.add(const EdgeInsets.only(
+                  bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+              itemCount: sorted.length,
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisExtent: 220,
+                crossAxisSpacing: AfSpacing.s16,
+                mainAxisSpacing: AfSpacing.s16,
+              ),
+              itemBuilder: (context, i) {
+                final a = sorted[i];
+                return Tile(
+                  title: a.name,
+                  subtitle: a.artistName,
+                  variant: TileVariant.album,
+                  imageUrl: a.imageUrl,
+                  size: double.infinity,
+                  onTap: () => context.push('/album/${a.id}'),
+                  onLongPress: () =>
+                      showAlbumContextMenu(context, ref, a),
+                );
+              },
+            );
+          },
           orElse: () => const Center(child: CircularProgressIndicator()),
         );
       case LibrarySection.artists:
@@ -199,29 +319,32 @@ class _SectionBody extends ConsumerWidget {
             ? ref.watch(localArtistsProvider)
             : ref.watch(allArtistsProvider);
         return artists.maybeWhen(
-          data: (list) => GridView.builder(
-            padding: padding.add(const EdgeInsets.only(
-                bottom: AfSpacing.bottomInsetWithMiniAndNav)),
-            itemCount: list.length,
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisExtent: 180,
-              crossAxisSpacing: AfSpacing.s12,
-              mainAxisSpacing: AfSpacing.s12,
-            ),
-            itemBuilder: (context, i) {
-              final a = list[i];
-              return Tile(
-                title: a.name,
-                subtitle: a.statLine,
-                variant: TileVariant.artist,
-                imageUrl: a.imageUrl,
-                size: double.infinity,
-                onTap: () => context.push('/artist/${a.id}'),
-              );
-            },
-          ),
+          data: (list) {
+            final sorted = sortArtists != null ? sortArtists!(list) : list;
+            return GridView.builder(
+              padding: padding.add(const EdgeInsets.only(
+                  bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+              itemCount: sorted.length,
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisExtent: 180,
+                crossAxisSpacing: AfSpacing.s12,
+                mainAxisSpacing: AfSpacing.s12,
+              ),
+              itemBuilder: (context, i) {
+                final a = sorted[i];
+                return Tile(
+                  title: a.name,
+                  subtitle: a.statLine,
+                  variant: TileVariant.artist,
+                  imageUrl: a.imageUrl,
+                  size: double.infinity,
+                  onTap: () => context.push('/artist/${a.id}'),
+                );
+              },
+            );
+          },
           orElse: () => const Center(child: CircularProgressIndicator()),
         );
       case LibrarySection.songs:
@@ -230,26 +353,29 @@ class _SectionBody extends ConsumerWidget {
               ? ref.watch(localTracksProvider)
               : ref.watch(allTracksProvider);
           return tracks.maybeWhen(
-            data: (list) => ListView.separated(
-              padding: padding.add(const EdgeInsets.only(
-                  bottom: AfSpacing.bottomInsetWithMiniAndNav)),
-              itemCount: list.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: AfSpacing.s4),
-              itemBuilder: (context, i) {
-                final t = list[i];
-                // Tap any row to play that track — previously this row
-                // had no onTap so songs were unplayable from Library.
-                return TrackRow(
-                  track: t,
-                  onTap: () => ref
-                      .read(playActionsProvider)
-                      .playQueue(list, startIndex: i),
-                  onLongPress: () =>
-                      showTrackContextMenu(context, ref, t),
-                );
-              },
-            ),
+            data: (list) {
+              final sorted = sortTracks != null ? sortTracks!(list) : list;
+              return ListView.separated(
+                padding: padding.add(const EdgeInsets.only(
+                    bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+                itemCount: sorted.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: AfSpacing.s4),
+                itemBuilder: (context, i) {
+                  final t = sorted[i];
+                  // Tap any row to play that track — previously this row
+                  // had no onTap so songs were unplayable from Library.
+                  return TrackRow(
+                    track: t,
+                    onTap: () => ref
+                        .read(playActionsProvider)
+                        .playQueue(sorted, startIndex: i),
+                    onLongPress: () =>
+                        showTrackContextMenu(context, ref, t),
+                  );
+                },
+              );
+            },
             orElse: () => const Center(child: CircularProgressIndicator()),
           );
         });
