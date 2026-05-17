@@ -56,22 +56,22 @@ class LocalDb {
 
   TracksCompanion _trackMapToCompanion(Map<String, dynamic> track) {
     return TracksCompanion.insert(
-      id: track['id'],
-      title: track['title'],
-      artist: Value(track['artist'] ?? ''),
-      album: Value(track['album'] ?? ''),
-      albumArtist: Value(track['album_artist'] ?? ''),
-      trackNumber: Value(track['track_number']),
-      durationMs: Value(track['duration_ms'] ?? 0),
-      year: Value(track['year']),
-      genre: Value(track['genre'] ?? ''),
-      filePath: track['file_path'],
-      fileSize: Value(track['file_size']),
-      lastModified: Value(track['last_modified']),
-      coverPath: Value(track['cover_path']),
-      codec: Value(track['codec'] ?? ''),
-      bitrate: Value(track['bitrate']),
-      sampleRate: Value(track['sample_rate']),
+      id: track['id'] as String,
+      title: track['title'] as String,
+      artist: Value((track['artist'] as String?) ?? ''),
+      album: Value((track['album'] as String?) ?? ''),
+      albumArtist: Value((track['album_artist'] as String?) ?? ''),
+      trackNumber: Value(track['track_number'] as int?),
+      durationMs: Value((track['duration_ms'] as int?) ?? 0),
+      year: Value(track['year'] as int?),
+      genre: Value((track['genre'] as String?) ?? ''),
+      filePath: track['file_path'] as String,
+      fileSize: Value(track['file_size'] as int?),
+      lastModified: Value(track['last_modified'] as int?),
+      coverPath: Value(track['cover_path'] as String?),
+      codec: Value((track['codec'] as String?) ?? ''),
+      bitrate: Value(track['bitrate'] as int?),
+      sampleRate: Value(track['sample_rate'] as int?),
     );
   }
 
