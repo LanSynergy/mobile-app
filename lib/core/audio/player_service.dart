@@ -57,11 +57,8 @@ class AfPlayerService extends BaseAudioHandler
   /// Anchor for elapsed-time extrapolation fallback.
   final _positionAnchor = _PositionAnchor();
   Timer? _positionPollTimer;
+  bool _isSeeking = false;
   bool _isPolling = false;
-
-  /// Variabel mandiri untuk memutus konflik data dengan MPV engine
-  Duration _currentExtrapolatedPos = Duration.zero;
-  DateTime _lastSeekTime = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// Called whenever the active track changes. Wired by
   /// `playerServiceProvider` to keep `currentTrackProvider` in sync.
@@ -624,6 +621,7 @@ class AfPlayerService extends BaseAudioHandler
   Future<void> play() async {
     _userPaused = false;
     _positionAnchor.wasPlaying = true;
+    _positionAnchor.lastKnownPos = _player.state.position;
     _positionAnchor.lastUpdateTime = DateTime.now();
     await _player.play();
   }
@@ -633,7 +631,7 @@ class AfPlayerService extends BaseAudioHandler
     _userPaused = true;
     _pendingPlayNudgeIdx = null; // cancel any pending nudge
     _positionAnchor.wasPlaying = false;
-    _positionAnchor.lastKnownPos = _currentExtrapolatedPos;
+    _positionAnchor.lastKnownPos = _player.state.position;
     _positionAnchor.lastUpdateTime = DateTime.now();
     await _player.pause();
   }
@@ -646,13 +644,17 @@ class AfPlayerService extends BaseAudioHandler
 
   @override
   Future<void> seek(Duration position) async {
-    _lastSeekTime = DateTime.now();
+    _isSeeking = true;
     _positionAnchor.lastKnownPos = position;
     _positionAnchor.lastUpdateTime = DateTime.now();
-    _currentExtrapolatedPos = position;
     _positionController.add(position);
-    _updatePlaybackState(); // Immediately update UI
-    await _player.seek(position);
+    try {
+      await _player.seek(position);
+    } finally {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (!_disposed) _isSeeking = false;
+      });
+    }
   }
 
   @override
@@ -886,35 +888,68 @@ class AfPlayerService extends BaseAudioHandler
   bool _userPaused = false;
 
   /// Re-select the current audio output device to kick mpv's property
-  /// observation pipeline. On some devices/drivers, time-pos observation
-  /// doesn't start firing until the audio output is explicitly set —
-  /// even if it's the same device that's already active.
-  /// Delayed slightly to let playback stabilize first.
-  void _nudgeAudioDevice() {
-    Future.delayed(const Duration(milliseconds: 300), () async {
-      if (_disposed) return;
-      try {
-        var current = _player.state.audioDevice;
-        
-        // Android "Autoselect devices" (usually named 'auto') often fails
-        // to attach time-pos observers correctly on some OEM ROMs (like One UI).
-        // If we're on 'auto', try to find an explicit driver like 'aaudio' 
-        // or 'audiotrack' to force the pipeline to construct properly.
-        if (current.name == 'auto') {
-          final devices = _player.state.audioDevices;
-          final preferred = devices.where((d) => d.name != 'auto').toList();
-          if (preferred.isNotEmpty) {
-            current = preferred.firstWhere((d) => d.name == 'aaudio', 
-                orElse: () => preferred.first);
-          }
+  /// observation pipeline. On some devices/drivers (notably Samsung One UI),
+  /// time-pos observation doesn't start firing until the audio output is
+  /// explicitly set — even if it's the same device that's already active.
+  ///
+  /// One UI has additional audio routing layers (DualAudio, per-app policy,
+  /// Samsung AudioEffect Service) that delay pipeline initialization well
+  /// beyond 300ms. This method retries up to [_maxNudgeAttempts] times
+  /// with increasing delays, verifying each attempt via getRawPosition().
+  void _nudgeAudioDevice() => unawaited(_nudgeAudioDeviceWithRetry(0));
+
+  static const _nudgeDelaysMs = [300, 1000, 2500];
+
+  Future<void> _nudgeAudioDeviceWithRetry(int attempt) async {
+    if (attempt >= _nudgeDelaysMs.length || _disposed) return;
+
+    await Future<void>.delayed(
+        Duration(milliseconds: _nudgeDelaysMs[attempt]));
+    if (_disposed) return;
+
+    try {
+      var current = _player.state.audioDevice;
+
+      // Android "Autoselect devices" (usually named 'auto') often fails
+      // to attach time-pos observers correctly on some OEM ROMs (like One UI).
+      // If we're on 'auto', try to find an explicit driver like 'aaudio'
+      // or 'audiotrack' to force the pipeline to construct properly.
+      // On earlier attempts the device list may not be enumerated yet —
+      // the retry loop gives mpv time to enumerate before we switch.
+      if (current.name == 'auto') {
+        final devices = _player.state.audioDevices;
+        final preferred =
+            devices.where((d) => d.name != 'auto').toList();
+        if (preferred.isNotEmpty) {
+          current = preferred.firstWhere(
+            (d) => d.name == 'aaudio',
+            orElse: () => preferred.first,
+          );
         }
-        
-        await _player.setAudioDevice(current);
-        afLog('audio', 'nudged audioDevice: ${current.name}');
-      } catch (e) {
-        afLog('audio', 'nudgeAudioDevice failed', error: e);
+        // If preferred is still empty, current stays 'auto'.
+        // Setting 'auto' → 'auto' is a no-op on Pixel but still queues a
+        // pipeline reset on some OEM ROMs, so we let it through.
       }
-    });
+
+      await _player.setAudioDevice(current);
+      afLog('audio',
+          'nudged audioDevice: ${current.name} (attempt $attempt)');
+
+      // Verify the nudge worked: wait briefly and check if time-pos is
+      // now reporting. If still 0 while we should be playing, retry.
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      if (_disposed) return;
+      final pos = await getRawPosition();
+      if (pos == Duration.zero && !_userPaused) {
+        afLog('audio',
+            'time-pos still 0 after nudge attempt $attempt, retrying...');
+        unawaited(_nudgeAudioDeviceWithRetry(attempt + 1));
+      }
+    } catch (e) {
+      afLog('audio', 'nudgeAudioDevice attempt $attempt failed', error: e);
+      // Retry even on error — the pipeline may not be ready yet.
+      unawaited(_nudgeAudioDeviceWithRetry(attempt + 1));
+    }
   }
 
   /// Re-apply persisted audio effects after an audio device change.
@@ -1017,10 +1052,8 @@ class AfPlayerService extends BaseAudioHandler
         if (track.id == previousTrackId) return;
 
         // Reset anchor for the new track so progress starts at 00:00.
-        _lastSeekTime = DateTime.now(); // Anggap ganti lagu sebagai "seek" agar timer dibekukan sementara
         _positionAnchor.lastKnownPos = Duration.zero;
         _positionAnchor.lastUpdateTime = DateTime.now();
-        _currentExtrapolatedPos = Duration.zero;
         _positionController.add(Duration.zero);
 
         _trackController.add(track);
@@ -1157,35 +1190,39 @@ class AfPlayerService extends BaseAudioHandler
 
   /// Polls mpv for current position. Falls back to elapsed-time
   /// extrapolation when mpv returns 0 (broken observe_property).
+  ///
+  /// On Samsung One UI, both `getRawProperty('time-pos')` and
+  /// `_player.state.playing` can be stuck at 0/false until the audio
+  /// pipeline is properly initialized (see _nudgeAudioDeviceWithRetry).
+  /// In that case, `!_userPaused` acts as a secondary "should be playing"
+  /// gate so the progress bar still advances via extrapolation instead of
+  /// freezing at 0:00.
   Future<void> _pollAndEmitPosition() async {
-    if (_isPolling) return;
+    if (_isSeeking || _isPolling) return;
     _isPolling = true;
     try {
+      final rawPos = await getRawPosition();
       final now = DateTime.now();
       final playing = _player.state.playing;
+      // On One UI, _player.state.playing may be stuck at false even while
+      // audio is audibly playing. Use !_userPaused as a secondary indicator
+      // that playback is intended to be active.
+      final shouldBePlaying = !_userPaused && _pendingPlayNudgeIdx == null;
 
-      // Jangan tanya FFI ke mesin selama 1.5 detik setelah seek/ganti track
-      final isRecoveringFromSeek = now.difference(_lastSeekTime).inMilliseconds < 1500;
-
-      if (!isRecoveringFromSeek) {
-        final rawPos = await getRawPosition();
-        if (rawPos > Duration.zero) {
-          _positionAnchor.lastKnownPos = rawPos;
-          _positionAnchor.lastUpdateTime = now;
-        }
-      }
-
-      Duration posToEmit;
-      if (playing) {
+      if (rawPos > Duration.zero) {
+        // mpv is responding normally — anchor and emit.
+        _positionAnchor.lastKnownPos = rawPos;
+        _positionAnchor.lastUpdateTime = now;
+        _positionAnchor.wasPlaying = playing;
+        _positionController.add(rawPos);
+      } else if (playing || shouldBePlaying) {
+        // mpv stuck (returns 0) but we're playing (or should be) — extrapolate.
         final elapsed = now.difference(_positionAnchor.lastUpdateTime);
-        final extraMs = (elapsed.inMilliseconds * speed).round();
-        posToEmit = _positionAnchor.lastKnownPos + Duration(milliseconds: extraMs);
-      } else {
-        posToEmit = _positionAnchor.lastKnownPos;
+        final speed = _player.state.rate;
+        final extrapolated = _positionAnchor.lastKnownPos +
+            Duration(milliseconds: (elapsed.inMilliseconds * speed).round());
+        _positionController.add(extrapolated);
       }
-
-      _currentExtrapolatedPos = posToEmit;
-      _positionController.add(posToEmit);
     } finally {
       _isPolling = false;
     }
@@ -1234,7 +1271,7 @@ class AfPlayerService extends BaseAudioHandler
                 ? AudioProcessingState.completed
                 : AudioProcessingState.ready,
         playing: s.playing,
-        updatePosition: _currentExtrapolatedPos, // <--- KUNCI PERBAIKAN: Gunakan hasil tebakan stabil
+        updatePosition: s.position,
         bufferedPosition: s.buffer,
         speed: s.rate,
         queueIndex: _currentIndex >= 0 ? _currentIndex : null,
