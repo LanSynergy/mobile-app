@@ -394,9 +394,9 @@ Uses `player.setAudioEffects(AudioEffects(...))` API. State persisted via
 Every Jellyfin request carries:
 
 ```
-Authorization: MediaBrowser UserId="…", Token="…", Client="Aetherfin", Device="Android", DeviceId="…", Version="0.1.0"
+Authorization: MediaBrowser UserId="…", Token="…", Client="Aetherfin", Device="Android", DeviceId="…", Version="0.2.3"
 Content-Type: application/json
-User-Agent: Aetherfin/0.1.0 (Android)
+User-Agent: Aetherfin/0.2.3 (Android)
 Accept: application/json
 ```
 
