@@ -197,6 +197,12 @@ class AfPlaylist {
     this.mosaicImageUrls,
     this.isPublic = false,
   });
+
+  /// Singular/plural-aware subtitle ("1 track" / "12 tracks"). Used wherever
+  /// playlists appear in lists so the labels stay grammatical for one-track
+  /// playlists.
+  String get trackCountLabel =>
+      trackCount == 1 ? '1 track' : '$trackCount tracks';
 }
 
 /// A music genre — used for the Genres row on Home and Library.

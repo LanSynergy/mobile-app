@@ -1755,7 +1755,7 @@ class _SaveToPlaylistSheetState extends State<_SaveToPlaylistSheet> {
                   return ListTile(
                     leading: const Icon(Icons.playlist_play_rounded, color: AfColors.indigo300),
                     title: Text(p.name, style: AfTypography.bodyMedium),
-                    subtitle: Text('${p.trackCount} tracks',
+                    subtitle: Text(p.trackCountLabel,
                         style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary)),
                     onTap: _saving ? null : () => _addTo(p),
                   );
