@@ -488,11 +488,33 @@ class SubsonicClient implements MusicBackend {
   @override
   Future<void> removeFromPlaylist(
       String playlistId, List<String> entryIds) async {
-    // Subsonic uses 0-based songIndexToRemove. The entryIds here are
-    // track indices as strings.
+    // The MusicBackend contract (mirroring JellyfinClient + the only
+    // caller, playlist_screen._removeTrack) is `entryIds = list of track
+    // IDs to remove`. Subsonic's `updatePlaylist`, however, takes 0-based
+    // `songIndexToRemove` *positions*, not IDs — so we need to look up
+    // each track ID's current position in the playlist and pass those.
+    //
+    // The previous implementation called `entryIds.map(int.parse)` which
+    // (a) threw on any non-numeric track ID (OpenSubsonic servers may use
+    // opaque string IDs) and (b) when track IDs happened to be numeric,
+    // silently removed the wrong tracks — interpreting an ID like "42" as
+    // "remove the track at position 42 of the playlist."
+    if (entryIds.isEmpty) return;
+    final detail = await playlist(playlistId);
+    if (detail == null) return;
+    final wanted = entryIds.toSet();
+    final indices = <int>[];
+    for (var i = 0; i < detail.tracks.length; i++) {
+      if (wanted.contains(detail.tracks[i].id)) indices.add(i);
+    }
+    if (indices.isEmpty) return;
+    // Sort descending so the call is robust regardless of whether the
+    // server reindexes after each removal or applies all removals against
+    // the original positions in one shot.
+    indices.sort((a, b) => b.compareTo(a));
     final params = <String, dynamic>{
       'playlistId': playlistId,
-      'songIndexToRemove': entryIds.map(int.parse).toList(),
+      'songIndexToRemove': indices,
     };
     await _get('updatePlaylist', params);
   }
