@@ -1,6 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aetherfin/core/lyrics/lrc_parser.dart';
+import 'package:aetherfin/utils/display_error.dart';
 import 'package:aetherfin/utils/time_format.dart';
 import 'package:aetherfin/utils/url.dart';
 
@@ -176,6 +178,65 @@ random non-LRC line
     test('passes through plain strings without query params', () {
       expect(redactSensitiveQueryParams('https://example/path'),
           'https://example/path');
+    });
+  });
+
+  group('displayError', () {
+    test('redacts sensitive query params on DioException with response', () {
+      final dio = DioException(
+        requestOptions: RequestOptions(
+          path: '/rest/ping.view',
+          baseUrl: 'https://nav.example',
+          queryParameters: {
+            'u': 'alice',
+            't': 'deadbeef',
+            's': 'cafe',
+            'v': '1.16.1',
+            'c': 'Aetherfin',
+          },
+        ),
+        type: DioExceptionType.badResponse,
+        response: Response(
+          requestOptions: RequestOptions(path: '/rest/ping.view'),
+          statusCode: 500,
+        ),
+      );
+      final out = displayError(dio, prefix: 'Search failed');
+      expect(out, startsWith('Search failed: HTTP 500 from '));
+      // None of the redacted token characters should remain.
+      expect(out, isNot(contains('alice')));
+      expect(out, isNot(contains('deadbeef')));
+      expect(out, isNot(contains('cafe')));
+      // Non-sensitive params still visible for debugging.
+      expect(out, contains('c=Aetherfin'));
+    });
+
+    test('redacts api_key on Jellyfin DioException without response', () {
+      final dio = DioException(
+        requestOptions: RequestOptions(
+          path: '/Users/u/Items',
+          baseUrl: 'https://jelly.example',
+          queryParameters: {
+            'api_key': 'secret-token',
+            'searchTerm': 'radiohead',
+          },
+        ),
+        type: DioExceptionType.connectionError,
+        message: 'Connection refused',
+      );
+      final out = displayError(dio);
+      expect(out, isNot(contains('secret-token')));
+      expect(out, contains('searchTerm=radiohead'));
+      expect(out, contains('connectionError'));
+      expect(out, contains('Connection refused'));
+    });
+
+    test('non-Dio errors pass through unchanged', () {
+      expect(displayError(const FormatException('bad number'),
+              prefix: 'Could not parse'),
+          'Could not parse: FormatException: bad number');
+      expect(
+          displayError(StateError('nope')), 'Bad state: nope');
     });
   });
 }

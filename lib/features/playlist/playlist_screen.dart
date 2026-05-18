@@ -7,6 +7,7 @@ import '../../core/backend/music_backend.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../utils/display_error.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
@@ -76,7 +77,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(AfSpacing.s24),
-            child: Text('Could not load playlist: $e',
+            child: Text(displayError(e, prefix: 'Could not load playlist'),
                 style: AfTypography.bodySmall
                     .copyWith(color: AfColors.semanticError)),
           ),
@@ -214,12 +215,12 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
 
     // Fire-and-forget server sync — uses playlist entry ID (item.id is the
     // track ID here; movePlaylistItem uses it as the entry identifier).
-    client.movePlaylistItem(playlistId, item.id, newIndex).catchError((e) {
+    client.movePlaylistItem(playlistId, item.id, newIndex).catchError((Object e) {
       // Revert on failure.
       if (mounted) {
         setState(() => _localTracks = tracks);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not reorder: $e')),
+          SnackBar(content: Text(displayError(e, prefix: 'Could not reorder'))),
         );
       }
     });
@@ -273,7 +274,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
       if (mounted) {
         setState(() => _localTracks = tracks);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not remove: $e')),
+          SnackBar(content: Text(displayError(e, prefix: 'Could not remove'))),
         );
       }
     }
@@ -298,7 +299,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         } catch (e) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Could not rename: $e')),
+              SnackBar(content: Text(displayError(e, prefix: 'Could not rename'))),
             );
           }
         }
@@ -332,7 +333,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         } catch (e) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Could not delete: $e')),
+              SnackBar(content: Text(displayError(e, prefix: 'Could not delete'))),
             );
           }
         }

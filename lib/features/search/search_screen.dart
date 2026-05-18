@@ -8,6 +8,7 @@ import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../utils/display_error.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/track_context_menu.dart';
@@ -157,7 +158,10 @@ class _LiveSearchResults extends ConsumerWidget {
           vertical: AfSpacing.s24,
         ),
         child: Text(
-          'Search failed: $e',
+          // displayError redacts the api_key / `t` / `s` / `u` query
+          // params Dio includes in `DioException.toString()` — those
+          // would otherwise land on screen verbatim on a search failure.
+          displayError(e, prefix: 'Search failed'),
           style: AfTypography.bodySmall.copyWith(
             color: AfColors.semanticError,
           ),

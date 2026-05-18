@@ -6,6 +6,7 @@ import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../utils/display_error.dart';
 import '../../utils/log.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/press_scale.dart';
@@ -313,7 +314,7 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
       setState(() => _isFavorite = !_isFavorite);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not update favorite: $e')),
+          SnackBar(content: Text(displayError(e, prefix: 'Could not update favorite'))),
         );
       }
     } finally {

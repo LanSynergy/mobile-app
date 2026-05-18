@@ -14,6 +14,7 @@ import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../features/sleep_timer/sleep_timer_screen.dart';
 import '../../state/providers.dart';
+import '../../utils/display_error.dart';
 import '../../utils/time_format.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/audio_visual_scrubber.dart';
@@ -1649,7 +1650,7 @@ class _SaveToPlaylistSheetState extends State<_SaveToPlaylistSheet> {
       if (mounted) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
+          SnackBar(content: Text(displayError(e, prefix: 'Failed'))),
         );
       }
     }
@@ -1675,7 +1676,7 @@ class _SaveToPlaylistSheetState extends State<_SaveToPlaylistSheet> {
       if (mounted) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
+          SnackBar(content: Text(displayError(e, prefix: 'Failed'))),
         );
       }
     }
