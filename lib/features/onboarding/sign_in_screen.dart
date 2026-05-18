@@ -10,6 +10,7 @@ import '../../core/subsonic/client.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/log.dart';
+import '../../utils/url.dart';
 import '../../widgets/server_pill.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
@@ -75,7 +76,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     } catch (e, stack) {
       afLog('error', 'sign-in failed', error: e, stackTrace: stack);
       if (e is DioException) {
-        afLog('error', 'url: ${e.requestOptions.uri}');
+        // Redact `t`, `s`, `api_key`, etc. before emitting the URL — for
+        // Subsonic the request URI includes the salted MD5 token as a
+        // query param, and we don't want it in a logcat capture or a
+        // user-submitted bug report.
+        afLog('error',
+            'url: ${redactSensitiveQueryParams(e.requestOptions.uri)}');
         afLog('error', 'status: ${e.response?.statusCode}');
         // Body + response headers can include cookies, server-side error
         // messages, and full HTML 500 pages — only emit them in debug
@@ -123,7 +129,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   String _humanizeError(Object e) {
     if (e is DioException) {
       final status = e.response?.statusCode;
-      final url = e.requestOptions.uri.toString();
+      // Use the redacted URL in the visible error message — Subsonic
+      // ping URLs carry the user's salted MD5 token (`t`) and salt
+      // (`s`) as query params, and the message ends up on screen.
+      final url = redactSensitiveQueryParams(e.requestOptions.uri);
       if (status == 401 || status == 403) {
         return 'Wrong username or password (HTTP $status from $url).';
       }

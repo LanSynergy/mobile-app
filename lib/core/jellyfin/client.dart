@@ -394,10 +394,10 @@ class JellyfinClient implements MusicBackend {
       // ignore: use_null_aware_elements — map is Map<String,String>, value is String?
       if (deviceProfileId != null) 'DeviceProfileId': deviceProfileId,
     };
-    final base = stripTrailingSlash(server.baseUrl);
-    return Uri.parse(base)
+    final baseUri = Uri.parse(stripTrailingSlash(server.baseUrl));
+    return baseUri
         .replace(
-          path: '${Uri.parse(base).path}/Audio/$trackId/stream',
+          path: '${baseUri.path}/Audio/$trackId/stream',
           queryParameters: qp,
         )
         .toString();
@@ -1287,10 +1287,10 @@ class JellyfinClient implements MusicBackend {
       'quality': '$quality',
       'tag': tag,
     };
-    final base = stripTrailingSlash(server.baseUrl);
-    return Uri.parse(base)
+    final baseUri = Uri.parse(stripTrailingSlash(server.baseUrl));
+    return baseUri
         .replace(
-          path: '${Uri.parse(base).path}/Items/$itemId/Images/$imageType',
+          path: '${baseUri.path}/Items/$itemId/Images/$imageType',
           queryParameters: qp,
         )
         .toString();

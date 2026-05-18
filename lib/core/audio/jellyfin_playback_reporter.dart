@@ -124,16 +124,27 @@ class JellyfinPlaybackReporter {
     // network calls. Timer.periodic does NOT await the callback — if the
     // server is slow, multiple in-flight requests pile up and stale progress
     // can arrive after newer progress, regressing backend state.
+    //
+    // The generation counter is what isolates restarts: a rapid
+    // pause/resume within the 10s interval used to leave the previous
+    // loop's `Future.delayed` still pending. When `_stopProgressTimer`
+    // flips `_progressRunning` to false the old loop is sleeping, and by
+    // the time it wakes a new `_startProgressTimer` has already flipped
+    // it back to true — so the old loop kept ticking alongside the new
+    // one. Bumping `_loopGeneration` per start lets every loop notice it
+    // is no longer the active one regardless of the shared bool's value.
+    _loopGeneration++;
     _progressRunning = true;
-    _runProgressLoop();
+    _runProgressLoop(_loopGeneration);
   }
 
   bool _progressRunning = false;
+  int _loopGeneration = 0;
 
-  Future<void> _runProgressLoop() async {
-    while (_progressRunning) {
+  Future<void> _runProgressLoop(int generation) async {
+    while (_progressRunning && generation == _loopGeneration) {
       await Future.delayed(_progressInterval);
-      if (!_progressRunning) break;
+      if (!_progressRunning || generation != _loopGeneration) break;
       final trackId = _lastReportedTrackId;
       if (trackId == null) break;
       final client = _clientGetter();

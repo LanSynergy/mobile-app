@@ -1,3 +1,4 @@
+import '../../../utils/time_format.dart';
 import 'quality.dart';
 
 /// A music album.
@@ -58,7 +59,7 @@ class AfAlbum {
   String get metadataLine {
     final parts = <String>[];
     if (year != null) parts.add('$year');
-    parts.add('$trackCount tracks');
+    parts.add(trackCount == 1 ? '1 track' : '$trackCount tracks');
     final mins = totalDuration.inMinutes;
     if (mins > 0) parts.add('$mins min');
     if (quality != null) parts.add(quality!.chipLabel);
@@ -166,11 +167,12 @@ class AfTrack {
       );
 
   /// "Artist · Album · 3:42" — the standard subtitle for a track row.
+  /// For tracks longer than an hour (live sets, mixes) [formatTrackDuration]
+  /// kicks in and renders the duration as `hh:mm:ss` instead of running
+  /// the minutes count off the edge of a row (e.g. `83:12` → `1:23:12`).
   String subtitle({bool withDuration = true}) {
-    final mm = duration.inMinutes;
-    final ss = (duration.inSeconds % 60).toString().padLeft(2, '0');
     if (withDuration && duration > Duration.zero) {
-      return '$artistName · $albumName · $mm:$ss';
+      return '$artistName · $albumName · ${formatTrackDuration(duration)}';
     }
     return '$artistName · $albumName';
   }
@@ -195,6 +197,12 @@ class AfPlaylist {
     this.mosaicImageUrls,
     this.isPublic = false,
   });
+
+  /// Singular/plural-aware subtitle ("1 track" / "12 tracks"). Used wherever
+  /// playlists appear in lists so the labels stay grammatical for one-track
+  /// playlists.
+  String get trackCountLabel =>
+      trackCount == 1 ? '1 track' : '$trackCount tracks';
 }
 
 /// A music genre — used for the Genres row on Home and Library.

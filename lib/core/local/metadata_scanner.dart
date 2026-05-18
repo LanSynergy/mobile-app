@@ -1,5 +1,7 @@
+import 'dart:convert' show utf8;
 import 'dart:io';
 
+import 'package:crypto/crypto.dart' show sha1;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -131,16 +133,22 @@ class MetadataScanner {
   Future<String> _coverCacheDir() async {
     final appDir = await getApplicationCacheDirectory();
     final dir = Directory(p.join(appDir.path, 'local_covers'));
-    if (!dir.existsSync()) {
-      await dir.create(recursive: true);
-    }
+    // create(recursive: true) is idempotent — no need for an existsSync
+    // pre-check, which is also racy against a concurrent scan.
+    await dir.create(recursive: true);
     return dir.path;
   }
 
   /// Generate a stable filename for cover art cache from the file URI.
+  ///
+  /// Dart's `String.hashCode` is a 32-bit value, so by the birthday
+  /// paradox two distinct URIs collide with ~50% probability around
+  /// 65k tracks — well within "a serious music library" territory.
+  /// SHA-1 truncated to 16 hex chars (64 bits) pushes the 50% collision
+  /// threshold past 2 ^ 32 entries, which we will never hit.
   String _coverFilename(String uri) {
-    final hash = uri.hashCode.toUnsigned(32).toRadixString(16).padLeft(8, '0');
-    return '$hash.jpg';
+    final digest = sha1.convert(utf8.encode(uri)).toString();
+    return '${digest.substring(0, 16)}.jpg';
   }
 
   /// Derive a title from the filename (strip extension, replace underscores).

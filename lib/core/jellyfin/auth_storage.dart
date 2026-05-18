@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../utils/log.dart';
 import 'models/server.dart';
 
 /// Persists the active [JellyfinAuth] in flutter_secure_storage so the
@@ -55,24 +56,53 @@ class AuthStorage {
   Future<JellyfinAuth?> load() async {
     final raw = await _storage.read(key: _key);
     if (raw == null) return null;
-    final m = jsonDecode(raw) as Map<String, dynamic>;
-    final typeStr = m['serverType'] as String?;
-    final serverType = typeStr == 'subsonic'
-        ? ServerType.subsonic
-        : ServerType.jellyfin;
-    return JellyfinAuth(
-      server: JellyfinServer(
-        baseUrl: m['baseUrl'] as String,
-        name: m['name'] as String? ?? (serverType == ServerType.subsonic ? 'Navidrome' : 'Jellyfin'),
-        version: m['version'] as String?,
-        id: m['id'] as String?,
-        isLocal: m['isLocal'] as bool? ?? false,
-      ),
-      userId: m['userId'] as String,
-      userName: m['userName'] as String,
-      accessToken: m['accessToken'] as String,
-      serverType: serverType,
-    );
+    // Decode defensively: a corrupt blob (partial write, mismatched schema
+    // from an older build) used to throw and bubble all the way up to
+    // main.dart, which then dropped the user into the fallback-device-id
+    // path even when only the auth payload was bad. Return null instead so
+    // the boot path treats it the same as "no auth stored" — user signs in
+    // again — without losing the persistent device ID.
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        afLog('error', 'auth blob has unexpected top-level type; discarding');
+        return null;
+      }
+      final m = decoded;
+      final typeStr = m['serverType'] as String?;
+      final serverType = typeStr == 'subsonic'
+          ? ServerType.subsonic
+          : ServerType.jellyfin;
+      final baseUrl = m['baseUrl'] as String?;
+      final userId = m['userId'] as String?;
+      final userName = m['userName'] as String?;
+      final accessToken = m['accessToken'] as String?;
+      if (baseUrl == null ||
+          userId == null ||
+          userName == null ||
+          accessToken == null) {
+        afLog('error', 'auth blob missing required field; discarding');
+        return null;
+      }
+      return JellyfinAuth(
+        server: JellyfinServer(
+          baseUrl: baseUrl,
+          name: m['name'] as String? ??
+              (serverType == ServerType.subsonic ? 'Navidrome' : 'Jellyfin'),
+          version: m['version'] as String?,
+          id: m['id'] as String?,
+          isLocal: m['isLocal'] as bool? ?? false,
+        ),
+        userId: userId,
+        userName: userName,
+        accessToken: accessToken,
+        serverType: serverType,
+      );
+    } catch (e, stack) {
+      afLog('error', 'auth blob deserialization failed; discarding',
+          error: e, stackTrace: stack);
+      return null;
+    }
   }
 
   Future<void> clear() async {

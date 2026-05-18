@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aetherfin/core/lyrics/lrc_parser.dart';
 import 'package:aetherfin/utils/time_format.dart';
+import 'package:aetherfin/utils/url.dart';
 
 void main() {
   group('formatTrackDuration', () {
@@ -135,6 +136,46 @@ random non-LRC line
       expect(lrc.activeIndex(const Duration(seconds: 9)), 1);
       expect(lrc.activeIndex(const Duration(seconds: 10)), 2);
       expect(lrc.activeIndex(const Duration(seconds: 999)), 2);
+    });
+  });
+
+  group('redactSensitiveQueryParams', () {
+    test('redacts Subsonic auth token, salt and username', () {
+      final raw = Uri.parse(
+        'https://navi.example/rest/ping.view'
+        '?u=alice&t=deadbeef&s=cafe&c=Aetherfin&v=1.16.1&f=json',
+      );
+      final redacted = redactSensitiveQueryParams(raw);
+      expect(redacted, contains('u=%5BREDACTED%5D'));
+      expect(redacted, contains('t=%5BREDACTED%5D'));
+      expect(redacted, contains('s=%5BREDACTED%5D'));
+      expect(redacted, contains('c=Aetherfin'));
+      expect(redacted, contains('v=1.16.1'));
+      expect(redacted, isNot(contains('alice')));
+      expect(redacted, isNot(contains('deadbeef')));
+      expect(redacted, isNot(contains('cafe')));
+    });
+
+    test('redacts Jellyfin api_key', () {
+      final raw = Uri.parse(
+        'https://jelly.example/Audio/abc/stream'
+        '?Static=true&api_key=secret123&UserId=u',
+      );
+      final redacted = redactSensitiveQueryParams(raw);
+      expect(redacted, contains('api_key=%5BREDACTED%5D'));
+      expect(redacted, contains('Static=true'));
+      expect(redacted, contains('UserId=u'));
+      expect(redacted, isNot(contains('secret123')));
+    });
+
+    test('passes through URIs without sensitive params untouched', () {
+      final raw = 'https://example/path?foo=bar';
+      expect(redactSensitiveQueryParams(raw), raw);
+    });
+
+    test('passes through plain strings without query params', () {
+      expect(redactSensitiveQueryParams('https://example/path'),
+          'https://example/path');
     });
   });
 }

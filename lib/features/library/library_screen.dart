@@ -442,7 +442,7 @@ class _SectionBody extends ConsumerWidget {
                 ),
                 title: Text(p.name, style: AfTypography.titleSmall),
                 subtitle: Text(
-                  '${p.trackCount} tracks',
+                  p.trackCountLabel,
                   style: AfTypography.bodySmall.copyWith(
                     color: AfColors.textTertiary,
                   ),

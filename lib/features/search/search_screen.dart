@@ -425,7 +425,7 @@ class _SearchResults extends ConsumerWidget {
               ),
               title: Text(p.name, style: AfTypography.bodyMedium),
               subtitle: Text(
-                '${p.trackCount} tracks',
+                p.trackCountLabel,
                 style: AfTypography.bodySmall.copyWith(
                   color: AfColors.textTertiary,
                 ),

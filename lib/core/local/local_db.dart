@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../utils/sql.dart';
 import '../jellyfin/models/items.dart';
 import '../jellyfin/models/quality.dart';
 import 'app_database.dart';
@@ -25,7 +26,15 @@ class LocalDb {
 
   Future<void> removeFolder(String uri) async {
     await (db.delete(db.folders)..where((f) => f.uri.equals(uri))).go();
-    await (db.delete(db.tracks)..where((t) => t.id.like('$uri%'))).go();
+    // Substring match via raw SQL so we can attach an ESCAPE clause —
+    // drift's expression-level `like()` has no escape parameter.
+    // SAF tree URIs are unlikely to contain `%` or `_`, but a folder
+    // whose name does would otherwise delete unrelated tracks whose IDs
+    // happen to share a prefix.
+    await db.customStatement(
+      r"DELETE FROM tracks WHERE id LIKE ? ESCAPE '\'",
+      ['${escapeSqlLike(uri)}%'],
+    );
   }
 
   Future<List<Map<String, dynamic>>> getFolders() async {
@@ -206,16 +215,30 @@ class LocalDb {
   }
 
   Future<List<AfTrack>> searchTracks(String query) async {
-    final like = '%$query%';
-    final rows = await (db.select(db.tracks)
-          ..where((t) => t.title.like(like) | t.artist.like(like) | t.album.like(like))
-          ..orderBy([
-            (t) => OrderingTerm(expression: t.title.collate(Collate.noCase), mode: OrderingMode.asc)
-          ])
-          ..limit(50))
-        .get();
-    return rows.map(rowToTrack).toList();
+    // Escape `%`, `_`, and `\` so a query like `100%` is matched
+    // literally instead of acting as a wildcard. Use customSelect so
+    // we can attach the ESCAPE clause — drift's column-level `.like()`
+    // has no escape parameter.
+    final like = '%${escapeSqlLike(query)}%';
+    final rows = await db.customSelect(
+      r'''
+        SELECT * FROM tracks
+        WHERE title  LIKE ?1 ESCAPE '\'
+           OR artist LIKE ?1 ESCAPE '\'
+           OR album  LIKE ?1 ESCAPE '\'
+        ORDER BY title COLLATE NOCASE ASC
+        LIMIT 50
+      ''',
+      variables: [Variable<String>(like)],
+      readsFrom: {db.tracks},
+    ).get();
+    return rows.map((r) {
+      final entity = db.tracks.map(r.data);
+      return rowToTrack(entity);
+    }).toList();
   }
+
+
 
   Future<int> trackCount() async {
     final countExp = db.tracks.id.count();
