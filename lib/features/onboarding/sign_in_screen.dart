@@ -55,6 +55,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         final client = JellyfinClient(
           server: widget.server,
           deviceId: ref.read(deviceIdProvider),
+          clientVersion: ref.read(aetherfinVersionProvider),
         );
         auth = await client.authenticateWithApiKey(
           username: _user.text.trim(),
@@ -64,6 +65,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         final client = JellyfinClient(
           server: widget.server,
           deviceId: ref.read(deviceIdProvider),
+          clientVersion: ref.read(aetherfinVersionProvider),
         );
         auth = await client.authenticate(
           username: _user.text.trim(),
@@ -107,6 +109,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       server: widget.server,
       username: username,
       password: password,
+      clientVersion: ref.read(aetherfinVersionProvider),
     );
     try {
       // ping verifies the credentials are valid

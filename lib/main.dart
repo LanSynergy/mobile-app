@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show MpvAudioKit;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -112,6 +113,17 @@ Future<void> main() async {
     final artworkPulse = prefs.getBool('af.artwork_pulse_enabled') ?? true;
     _boot('artworkPulse=$artworkPulse');
 
+    // Resolve the app version once at boot so every HTTP client can stamp
+    // its `User-Agent` and Jellyfin `Version="…"` header from a single
+    // source of truth (pubspec.yaml → platform manifest → PackageInfo).
+    // `package_info_plus` is async (platform-channel lookup), but we're
+    // already awaiting four async reads above in this phase, so adding
+    // one more keeps boot ordering unchanged. The fallback string keeps
+    // boot moving on the rare platforms where the channel times out
+    // — it's preferable to ship a generic version than to crash startup.
+    final aetherfinVersion = await _loadAetherfinVersion();
+    _boot('aetherfinVersion=$aetherfinVersion');
+
     // ── Phase 2: Native media engine ─────────────────────────────────────
     // MPV must be initialized before any Player() is constructed.
     MpvAudioKit.ensureInitialized();
@@ -153,6 +165,7 @@ Future<void> main() async {
       overrides: [
         deviceIdProvider.overrideWithValue(deviceId),
         initialAuthProvider.overrideWithValue(initialAuth),
+        aetherfinVersionProvider.overrideWithValue(aetherfinVersion),
         if (persistedMode != null)
           appModeProvider.overrideWith((ref) => persistedMode),
         artworkPulseEnabledProvider.overrideWith((ref) => artworkPulse),
@@ -194,6 +207,39 @@ Future<void> main() async {
   }, (error, stack) {
     afLog('error', 'zoned uncaught', error: error, stackTrace: stack);
   });
+}
+
+/// Resolve the running app version from the platform manifest.
+///
+/// Returns the value `package_info_plus` reads out of the Android
+/// `versionName` (which Flutter wires from pubspec.yaml `version:`). The
+/// `+buildNumber` suffix is stripped because the Jellyfin / Subsonic
+/// `Version` field is meant for the semver triple, not the CI build
+/// counter — a server-side log line of `Version="0.2.3"` is far more
+/// useful than `Version="0.2.3+4"`.
+///
+/// On any failure (channel timeout, missing platform manifest, test mode)
+/// returns a sentinel `'unknown'` rather than throwing, so a hung
+/// PackageInfo doesn't take down boot. The provider override happens
+/// before `runApp`, so by the time any HTTP client is constructed the
+/// real value (or `'unknown'`) is already in the container.
+Future<String> _loadAetherfinVersion() async {
+  try {
+    final info = await PackageInfo.fromPlatform().timeout(
+      const Duration(seconds: 3),
+      onTimeout: () => throw TimeoutException('PackageInfo timeout'),
+    );
+    final raw = info.version;
+    if (raw.isEmpty) return 'unknown';
+    // Strip a trailing `+buildNumber` if PackageInfo ever surfaces it.
+    final plusIdx = raw.indexOf('+');
+    return plusIdx < 0 ? raw : raw.substring(0, plusIdx);
+  } catch (e, stack) {
+    afLog('error',
+        'PackageInfo.fromPlatform failed; using fallback version string',
+        error: e, stackTrace: stack);
+    return 'unknown';
+  }
 }
 
 /// Read or generate the persistent fallback device ID.

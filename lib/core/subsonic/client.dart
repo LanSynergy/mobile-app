@@ -17,14 +17,6 @@ import '../jellyfin/models/server.dart';
 const _kSubsonicApiVersion = '1.16.1';
 const _kClientName = 'Aetherfin';
 
-/// Aetherfin app version, sent in `User-Agent`. Single source of truth so a
-/// version bump only needs to change this constant (and pubspec.yaml).
-///
-/// Mirrors the rationale in [JellyfinClient]: PackageInfo is async and would
-/// require reordering boot, while the value changes rarely.
-const _kAetherfinVersion = '0.2.3';
-const _kAetherfinUserAgent = 'Aetherfin/$_kAetherfinVersion (Android)';
-
 /// Subsonic/OpenSubsonic REST client for Navidrome (and compatible servers).
 ///
 /// This is the Subsonic counterpart of [JellyfinClient]. It implements
@@ -39,6 +31,13 @@ class SubsonicClient implements MusicBackend {
   /// The plaintext password — stored in encrypted secure storage. Needed
   /// to compute the per-request `md5(password + salt)` token.
   final String password;
+
+  /// Aetherfin's running app version (e.g. `0.2.3`). Sent in `User-Agent`.
+  /// Loaded from `package_info_plus` in `main()` and injected through
+  /// [aetherfinVersionProvider] — never hardcoded here so a `pubspec.yaml`
+  /// bump can't leave stale strings in scrobbles or session logs.
+  final String clientVersion;
+
   final Dio _dio;
   final MemCacheStore _cacheStore;
   final Random _rng = Random.secure();
@@ -47,6 +46,7 @@ class SubsonicClient implements MusicBackend {
     required this.server,
     required this.username,
     required this.password,
+    required this.clientVersion,
   })  : _cacheStore = MemCacheStore(
             maxSize: 20 * 1024 * 1024, maxEntrySize: 1 * 1024 * 1024),
         _dio = Dio(BaseOptions(
@@ -55,7 +55,7 @@ class SubsonicClient implements MusicBackend {
           sendTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 15),
           headers: {
-            'User-Agent': _kAetherfinUserAgent,
+            'User-Agent': 'Aetherfin/$clientVersion (Android)',
             'Accept': 'application/json',
           },
         )) {

@@ -394,11 +394,17 @@ Uses `player.setAudioEffects(AudioEffects(...))` API. State persisted via
 Every Jellyfin request carries:
 
 ```
-Authorization: MediaBrowser UserId="…", Token="…", Client="Aetherfin", Device="Android", DeviceId="…", Version="0.2.3"
+Authorization: MediaBrowser UserId="…", Token="…", Client="Aetherfin", Device="Android", DeviceId="…", Version="<app-version>"
 Content-Type: application/json
-User-Agent: Aetherfin/0.2.3 (Android)
+User-Agent: Aetherfin/<app-version> (Android)
 Accept: application/json
 ```
+
+`<app-version>` is loaded from `package_info_plus` in `main()` (Phase 1) and
+injected into the HTTP clients through `aetherfinVersionProvider`. **Never
+hardcode this value inside the clients** — a prior bug shipped `Aetherfin/0.1.0`
+long after the app moved to `0.2.3` because two `_kAetherfinVersion` constants
+drifted out of sync with pubspec.yaml.
 
 Rules:
 - **`UserId` and `Token` are OMITTED entirely before login.**

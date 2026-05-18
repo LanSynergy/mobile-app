@@ -17,6 +17,15 @@ class JellyfinDiscovery {
   static const _httpService = '_jellyfin._tcp.local';
   static const _serverService = '_jellyfin-server._tcp.local';
 
+  /// Aetherfin app version sent on the discovery probe `User-Agent`. The
+  /// probe never authenticates so this is purely cosmetic in server access
+  /// logs, but threading the real version through keeps every outbound
+  /// HTTP byte stamped consistently and prevents a `Aetherfin/0.0.0` from
+  /// leaking into an admin's nginx logs.
+  final String clientVersion;
+
+  JellyfinDiscovery({required this.clientVersion});
+
   /// Yields servers as they are resolved. The stream completes after
   /// [timeout] elapses; cancel the subscription early to stop scanning.
   Stream<JellyfinServer> scan({
@@ -69,7 +78,7 @@ class JellyfinDiscovery {
               // same host. Probe HTTPS first (no cost when it 404s
               // fast) so encrypted servers don't get downgraded to
               // HTTP just because mDNS advertises the bare port.
-              final url = await _resolveBaseUrl(addr, port);
+              final url = await _resolveBaseUrl(addr, port, clientVersion);
               if (seen.add(url)) {
                 yield JellyfinServer(
                   baseUrl: url,
@@ -98,11 +107,13 @@ class JellyfinDiscovery {
   /// count) means the port speaks TLS, so we keep https. On any TLS
   /// handshake failure, refusal, or timeout we fall back to plain http
   /// which is what mDNS advertises by default.
-  static Future<String> _resolveBaseUrl(String addr, int port) async {
+  static Future<String> _resolveBaseUrl(
+      String addr, int port, String clientVersion) async {
     final https = 'https://$addr:$port';
     try {
       final probe = JellyfinClient(
         server: JellyfinServer(baseUrl: https, name: addr, isLocal: true),
+        clientVersion: clientVersion,
         // CLAUDE.md §5 forbids reusing static DeviceId values — Jellyfin
         // keys session/device records on this string and a probe sharing
         // an ID with another install (or with our own persisted ID) can
