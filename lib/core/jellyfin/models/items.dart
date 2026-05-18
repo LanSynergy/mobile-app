@@ -58,7 +58,7 @@ class AfAlbum {
   String get metadataLine {
     final parts = <String>[];
     if (year != null) parts.add('$year');
-    parts.add('$trackCount tracks');
+    parts.add(trackCount == 1 ? '1 track' : '$trackCount tracks');
     final mins = totalDuration.inMinutes;
     if (mins > 0) parts.add('$mins min');
     if (quality != null) parts.add(quality!.chipLabel);
