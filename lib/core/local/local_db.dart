@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../utils/sql.dart';
 import '../jellyfin/models/items.dart';
 import '../jellyfin/models/quality.dart';
 import 'app_database.dart';
@@ -32,7 +33,7 @@ class LocalDb {
     // happen to share a prefix.
     await db.customStatement(
       r"DELETE FROM tracks WHERE id LIKE ? ESCAPE '\'",
-      ['${_escapeLike(uri)}%'],
+      ['${escapeSqlLike(uri)}%'],
     );
   }
 
@@ -218,7 +219,7 @@ class LocalDb {
     // literally instead of acting as a wildcard. Use customSelect so
     // we can attach the ESCAPE clause — drift's column-level `.like()`
     // has no escape parameter.
-    final like = '%${_escapeLike(query)}%';
+    final like = '%${escapeSqlLike(query)}%';
     final rows = await db.customSelect(
       r'''
         SELECT * FROM tracks
@@ -237,19 +238,7 @@ class LocalDb {
     }).toList();
   }
 
-  /// Escape SQL LIKE metacharacters (`%`, `_`, `\`) so a user-typed
-  /// query is matched literally. Pair with a LIKE expression that
-  /// declares `ESCAPE '\'`.
-  static String _escapeLike(String s) {
-    final buf = StringBuffer();
-    for (final r in s.runes) {
-      if (r == 0x5C /* \ */ || r == 0x25 /* % */ || r == 0x5F /* _ */) {
-        buf.write(r'\');
-      }
-      buf.writeCharCode(r);
-    }
-    return buf.toString();
-  }
+
 
   Future<int> trackCount() async {
     final countExp = db.tracks.id.count();

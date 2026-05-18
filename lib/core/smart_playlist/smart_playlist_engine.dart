@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:drift/drift.dart' show Variable;
 
+import '../../utils/sql.dart';
 import '../jellyfin/models/items.dart';
 import '../local/local_db.dart';
 import 'smart_playlist_model.dart';
@@ -191,11 +192,14 @@ class SmartPlaylistEngine {
           clauses.add('$col != ? COLLATE NOCASE');
           args.add(rule.value);
         case 'contains':
-          clauses.add('$col LIKE ? COLLATE NOCASE');
-          args.add('%${rule.value}%');
+          // Escape `%`, `_`, `\` so a rule value of `100%` matches that
+          // exact substring instead of acting as a wildcard. The
+          // `ESCAPE '\'` clause must be declared on the SQL side.
+          clauses.add("$col LIKE ? COLLATE NOCASE ESCAPE '\\'");
+          args.add('%${escapeSqlLike('${rule.value}')}%');
         case 'notContains':
-          clauses.add('$col NOT LIKE ? COLLATE NOCASE');
-          args.add('%${rule.value}%');
+          clauses.add("$col NOT LIKE ? COLLATE NOCASE ESCAPE '\\'");
+          args.add('%${escapeSqlLike('${rule.value}')}%');
         case 'gt':
           clauses.add('$col > ?');
           args.add(rule.value);
