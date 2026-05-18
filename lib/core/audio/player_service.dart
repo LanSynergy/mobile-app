@@ -1174,7 +1174,13 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       return;
     }
 
-    final ext = raw.mimeType.split('/').last;
+    // Use mpv_audio_kit's mime → extension mapping so we agree with
+    // `_downloadArtworkForNotification` (which already maps image/jpeg
+    // → .jpg) and so unknown mime types fall back to `.jpg` instead of
+    // a literal `.octet-stream` or empty extension. The bytes are
+    // played-back/decoded by path on Android's MediaSession so a sane
+    // extension matters for MediaStore / Notification panel previewers.
+    final ext = raw.extension.isNotEmpty ? raw.extension : 'jpg';
     final id = ++_coverCounter;
     final tmpDir = Directory.systemTemp.path;
     final path = '$tmpDir${Platform.pathSeparator}aetherfin_cover_$id.$ext';
