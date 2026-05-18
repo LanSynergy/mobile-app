@@ -119,6 +119,26 @@ final deviceIdProvider = Provider<String>((ref) {
   );
 });
 
+/// Aetherfin's running app version (pubspec `version:` minor minus build tag,
+/// e.g. `0.2.3`). Used in `User-Agent`, the Jellyfin `MediaBrowser` auth
+/// header's `Version` field, and the Subsonic `c=Aetherfin` client name.
+///
+/// Override pattern is identical to [deviceIdProvider]: `main()` loads the
+/// value via `package_info_plus` during the boot phase and injects it into
+/// the [ProviderContainer], so every [JellyfinClient] / [SubsonicClient]
+/// built from [musicBackendProvider] picks it up automatically.
+///
+/// Reading this before `main()` overrides it is a programmer error — throw
+/// loudly so a forgotten override surfaces in widget tests instead of
+/// silently shipping a phantom version string to the server.
+final aetherfinVersionProvider = Provider<String>((ref) {
+  throw StateError(
+    'aetherfinVersionProvider was read before being overridden in main(). '
+    'This is a bug — ProviderScope must override it with the value '
+    'returned by PackageInfo.fromPlatform().version.',
+  );
+});
+
 final initialAuthProvider = Provider<JellyfinAuth?>((ref) {
   throw StateError(
     'initialAuthProvider was read before being overridden in main(). '
@@ -168,6 +188,8 @@ final musicBackendProvider = Provider<MusicBackend?>((ref) {
         'server=${auth.server.baseUrl} user=${auth.userName}',
   );
 
+  final clientVersion = ref.watch(aetherfinVersionProvider);
+
   final MusicBackend client;
   switch (auth.serverType) {
     case ServerType.subsonic:
@@ -175,6 +197,7 @@ final musicBackendProvider = Provider<MusicBackend?>((ref) {
         server: auth.server,
         username: auth.userName,
         password: auth.accessToken,
+        clientVersion: clientVersion,
       );
     case ServerType.jellyfin:
       client = JellyfinClient(
@@ -182,6 +205,7 @@ final musicBackendProvider = Provider<MusicBackend?>((ref) {
         deviceId: ref.watch(deviceIdProvider),
         accessToken: auth.accessToken,
         userId: auth.userId,
+        clientVersion: clientVersion,
       );
   }
 

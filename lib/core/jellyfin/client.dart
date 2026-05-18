@@ -10,19 +10,6 @@ import 'models/library.dart';
 import 'models/quality.dart';
 import 'models/server.dart';
 
-/// The Aetherfin client version sent in `User-Agent` and the `MediaBrowser
-/// Authorization` header's `Version` field. Single source of truth so a
-/// version bump only needs to change two places (this constant + pubspec.yaml).
-///
-/// We intentionally don't pull this from `package_info_plus` at runtime: the
-/// auth header builder is synchronous (called from constructors and re-built
-/// per request) and PackageInfo is an async platform-channel lookup, so
-/// adopting it would require either caching a static after first-frame or
-/// reordering boot to await it before `runApp`. A two-line manual bump is
-/// less risk than the async plumbing for a value that changes ~once a month.
-const _kAetherfinVersion = '0.2.3';
-const _kAetherfinUserAgent = 'Aetherfin/$_kAetherfinVersion (Android)';
-
 /// Thin Dio-backed Jellyfin REST client.
 ///
 /// Hand-rolled per design spec §11.1 — community Dart SDKs are stale and
@@ -34,12 +21,21 @@ class JellyfinClient implements MusicBackend {
   final String? accessToken;
   final String? userId;
   final String deviceId;
+
+  /// Aetherfin's running app version (e.g. `0.2.3`). Sent verbatim in the
+  /// `MediaBrowser` Authorization `Version="…"` field and in the
+  /// `User-Agent` header. Loaded from `package_info_plus` in `main()` and
+  /// injected through [aetherfinVersionProvider] — never hardcoded here so
+  /// a `pubspec.yaml` bump can't leave stale strings in HTTP traffic.
+  final String clientVersion;
+
   final Dio _dio;
   final MemCacheStore _cacheStore;
 
   JellyfinClient({
     required this.server,
     required this.deviceId,
+    required this.clientVersion,
     this.accessToken,
     this.userId,
   })  : _cacheStore = MemCacheStore(maxSize: 20 * 1024 * 1024, maxEntrySize: 1 * 1024 * 1024),
@@ -76,9 +72,10 @@ class JellyfinClient implements MusicBackend {
               deviceId: deviceId,
               token: accessToken,
               userId: userId,
+              clientVersion: clientVersion,
             ),
             'Content-Type': 'application/json',
-            'User-Agent': _kAetherfinUserAgent,
+            'User-Agent': _userAgentFor(clientVersion),
             'Accept': 'application/json',
           },
         )) {
@@ -147,7 +144,7 @@ class JellyfinClient implements MusicBackend {
   @override
   Map<String, String> get authHeaders {
     final headers = <String, String>{
-      'User-Agent': _kAetherfinUserAgent,
+      'User-Agent': _userAgentFor(clientVersion),
       'Accept': '*/*',
     };
     if (accessToken != null) {
@@ -155,6 +152,7 @@ class JellyfinClient implements MusicBackend {
         deviceId: deviceId,
         token: accessToken,
         userId: userId,
+        clientVersion: clientVersion,
       );
     }
     return headers;
@@ -209,6 +207,7 @@ class JellyfinClient implements MusicBackend {
   ///     ROMs can contain emoji that break Jellyfin's header parser.
   static String _buildAuthHeader({
     required String deviceId,
+    required String clientVersion,
     String? token,
     String? userId,
   }) {
@@ -232,9 +231,15 @@ class JellyfinClient implements MusicBackend {
     // a microsecond timestamp). Strip non-ASCII here only so Jellyfin's
     // strict 7-bit header parser never sees an emoji-bearing device name.
     parts.add('DeviceId="${_asciiClean(_escapeHeaderValue(deviceId))}"');
-    parts.add('Version="$_kAetherfinVersion"');
+    parts.add('Version="${_escapeHeaderValue(clientVersion)}"');
     return 'MediaBrowser ${parts.join(", ")}';
   }
+
+  /// Build the `User-Agent` header value for a given app version. Kept as a
+  /// helper so the same string shape is used by both the main `_dio` and the
+  /// transient probe `Dio` in [authenticateWithApiKey].
+  static String _userAgentFor(String version) =>
+      'Aetherfin/$version (Android)';
 
   /// Escape characters that would break Jellyfin's quoted-string parser
   /// in the Authorization header. Specifically `"` and `\\` get escaped,
@@ -313,9 +318,10 @@ class JellyfinClient implements MusicBackend {
         'Authorization': _buildAuthHeader(
           deviceId: deviceId,
           token: apiKey,
+          clientVersion: clientVersion,
         ),
         'Content-Type': 'application/json',
-        'User-Agent': _kAetherfinUserAgent,
+        'User-Agent': _userAgentFor(clientVersion),
         'Accept': 'application/json',
       },
     ));

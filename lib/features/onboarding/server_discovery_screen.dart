@@ -43,7 +43,9 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
     setState(() => _scanning = true);
     ref.read(discoveredServersProvider.notifier).state = const [];
     _sub?.cancel();
-    _sub = JellyfinDiscovery().scan().listen(
+    _sub = JellyfinDiscovery(
+      clientVersion: ref.read(aetherfinVersionProvider),
+    ).scan().listen(
       (s) {
         final current = ref.read(discoveredServersProvider);
         if (!current.contains(s)) {
@@ -84,6 +86,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
     final jellyfinClient = JellyfinClient(
       server: server,
       deviceId: ref.read(deviceIdProvider),
+      clientVersion: ref.read(aetherfinVersionProvider),
     );
     try {
       final resolved = await jellyfinClient.publicInfo();
@@ -102,6 +105,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
         server: server,
         username: '',
         password: '',
+        clientVersion: ref.read(aetherfinVersionProvider),
       );
       try {
         await testClient.ping();

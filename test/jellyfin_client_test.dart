@@ -7,10 +7,12 @@ JellyfinClient _client({
   String baseUrl = 'http://srv:8096',
   String? token,
   String? userId,
+  String clientVersion = '9.9.9-test',
 }) {
   return JellyfinClient(
     server: JellyfinServer(baseUrl: baseUrl, name: 'srv'),
     deviceId: 'dev-1',
+    clientVersion: clientVersion,
     accessToken: token,
     userId: userId,
   );
@@ -71,10 +73,12 @@ void main() {
       expect(auth.contains('Client="Aetherfin"'), isTrue);
       expect(auth.contains('Device="Android"'), isTrue);
       expect(auth.contains('DeviceId="dev-1"'), isTrue);
-      // Version pinned to the constant tracked in pubspec.yaml. If pubspec
-      // bumps, update `_kAetherfinVersion` in jellyfin/client.dart and the
-      // matching constant in subsonic/client.dart, then update this expect.
-      expect(auth.contains('Version="0.2.3"'), isTrue);
+      // Version flows in via the `clientVersion` constructor param, which
+      // in production is loaded from `package_info_plus` in `main()` and
+      // injected through `aetherfinVersionProvider`. We pin a sentinel
+      // value in `_client()` so this assertion stays stable as pubspec
+      // bumps — the test guards the wiring, not the literal version.
+      expect(auth.contains('Version="9.9.9-test"'), isTrue);
     });
 
     test('omits Authorization entirely when no token', () {
