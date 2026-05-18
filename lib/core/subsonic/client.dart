@@ -671,7 +671,7 @@ class SubsonicClient implements MusicBackend {
 
   AfAlbum _parseAlbumDetail(Map<String, dynamic> m) {
     final id = (m['id'] ?? '').toString();
-    final duration = (m['duration'] as int?) ?? 0;
+    final duration = _asInt(m['duration']) ?? 0;
     final created = m['created'] as String?;
     final starred = m['starred'] as String?;
     return AfAlbum(
@@ -682,8 +682,8 @@ class SubsonicClient implements MusicBackend {
           'Unknown',
       artistName: (m['artist'] as String?) ?? '',
       artistId: m['artistId']?.toString(),
-      trackCount: (m['songCount'] as int?) ?? 0,
-      year: m['year'] as int?,
+      trackCount: _asInt(m['songCount']) ?? 0,
+      year: _asInt(m['year']),
       totalDuration: Duration(seconds: duration),
       imageUrl: coverArtUrl(m['coverArt']?.toString()),
       dateAdded: created != null ? DateTime.tryParse(created) : null,
@@ -695,7 +695,7 @@ class SubsonicClient implements MusicBackend {
     return AfArtist(
       id: (m['id'] ?? '').toString(),
       name: (m['name'] as String?) ?? 'Unknown',
-      albumCount: (m['albumCount'] as int?) ?? 0,
+      albumCount: _asInt(m['albumCount']) ?? 0,
       imageUrl: coverArtUrl(m['coverArt']?.toString() ?? m['artistImageUrl']?.toString()),
     );
   }
@@ -712,12 +712,13 @@ class SubsonicClient implements MusicBackend {
   }
 
   AfTrack _parseTrack(Map<String, dynamic> m) {
-    final duration = (m['duration'] as int?) ?? 0;
+    final duration = _asInt(m['duration']) ?? 0;
     final starred = m['starred'] as String?;
     final created = m['created'] as String?;
-    final bitRate = m['bitRate'] as int?;
+    final bitRate = _asInt(m['bitRate']);
     final suffix = (m['suffix'] as String?)?.toLowerCase() ?? '';
     final isLossless = suffix == 'flac' || suffix == 'alac' || suffix == 'wav';
+    final samplingRate = _asInt(m['samplingRate']);
     return AfTrack(
       id: (m['id'] ?? '').toString(),
       title: (m['title'] as String?) ?? 'Unknown',
@@ -725,14 +726,14 @@ class SubsonicClient implements MusicBackend {
       albumName: (m['album'] as String?) ?? '',
       albumId: m['albumId']?.toString(),
       artistId: m['artistId']?.toString(),
-      trackNumber: m['track'] as int?,
+      trackNumber: _asInt(m['track']),
       duration: Duration(seconds: duration),
       quality: TrackQuality(
         sourceCodec: suffix,
         bitrateKbps: !isLossless ? bitRate : null,
-        bitDepth: isLossless ? (m['bitDepth'] as int?) : null,
-        sampleRateKhz: isLossless && m['samplingRate'] != null
-            ? (m['samplingRate'] as int) ~/ 1000
+        bitDepth: isLossless ? _asInt(m['bitDepth']) : null,
+        sampleRateKhz: isLossless && samplingRate != null
+            ? samplingRate ~/ 1000
             : null,
       ),
       imageUrl: coverArtUrl(m['coverArt']?.toString()),
@@ -742,15 +743,30 @@ class SubsonicClient implements MusicBackend {
   }
 
   AfPlaylist _parsePlaylist(Map<String, dynamic> m) {
-    final duration = (m['duration'] as int?) ?? 0;
+    final duration = _asInt(m['duration']) ?? 0;
     return AfPlaylist(
       id: (m['id'] ?? '').toString(),
       name: (m['name'] as String?) ?? 'Unknown',
-      trackCount: (m['songCount'] as int?) ?? 0,
+      trackCount: _asInt(m['songCount']) ?? 0,
       duration: Duration(seconds: duration),
       imageUrl: coverArtUrl(m['coverArt']?.toString()),
       isPublic: (m['public'] as bool?) ?? false,
     );
+  }
+
+  /// Coerce a JSON numeric to int regardless of whether the upstream
+  /// emitted it as int or double. Subsonic-compatible servers vary in
+  /// their JSON encoders — Navidrome consistently emits ints, but some
+  /// OpenSubsonic implementations encode integer-valued doubles like
+  /// `123.0` for durations / bitrates. A blunt \`as int?\` cast then
+  /// throws TypeError and tears the parse down. Also accepts numeric
+  /// strings like \`"123"\` defensively.
+  static int? _asInt(Object? v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    if (v is String) return int.tryParse(v);
+    return null;
   }
 }
 
