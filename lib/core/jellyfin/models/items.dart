@@ -1,3 +1,4 @@
+import '../../../utils/time_format.dart';
 import 'quality.dart';
 
 /// A music album.
@@ -166,11 +167,12 @@ class AfTrack {
       );
 
   /// "Artist · Album · 3:42" — the standard subtitle for a track row.
+  /// For tracks longer than an hour (live sets, mixes) [formatTrackDuration]
+  /// kicks in and renders the duration as `hh:mm:ss` instead of running
+  /// the minutes count off the edge of a row (e.g. `83:12` → `1:23:12`).
   String subtitle({bool withDuration = true}) {
-    final mm = duration.inMinutes;
-    final ss = (duration.inSeconds % 60).toString().padLeft(2, '0');
     if (withDuration && duration > Duration.zero) {
-      return '$artistName · $albumName · $mm:$ss';
+      return '$artistName · $albumName · ${formatTrackDuration(duration)}';
     }
     return '$artistName · $albumName';
   }
