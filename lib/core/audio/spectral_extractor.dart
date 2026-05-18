@@ -9,6 +9,7 @@ import 'package:palette_generator_master/palette_generator_master.dart';
 import '../../design_tokens/colors.dart';
 import '../../utils/log.dart';
 import '../../utils/oklch.dart';
+import '../../utils/url.dart';
 
 /// Extracts the spectral accent triple from an artwork URL.
 ///
@@ -84,7 +85,14 @@ class SpectralExtractor {
       }
       return result;
     } catch (e) {
-      afLog('spectral', 'palette extraction failed for $imageUrl', error: e);
+      // Redact `api_key`/`t`/`s`/`u` etc. — Subsonic cover-art URLs
+      // embed the user's auth token as query params (same as stream
+      // URLs), and Jellyfin image URLs may carry `api_key` too. Without
+      // this, a logcat capture from a server-side image failure would
+      // emit the token verbatim.
+      afLog('spectral',
+          'palette extraction failed for ${redactSensitiveQueryParams(imageUrl)}',
+          error: e);
       return Spectral.fallback;
     }
   }
