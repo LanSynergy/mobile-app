@@ -19,13 +19,23 @@ class Lrc {
 
   /// Index of the active line for the given playback position. Returns -1
   /// when no line is active yet (e.g. before the first lyric).
+  ///
+  /// Binary search: this is invoked on every position tick (4 Hz) and a
+  /// long lyric file can hold a few hundred lines. Keeping it O(log n)
+  /// instead of O(n) shaves real work off the highlight loop on lower-end
+  /// devices.
   int activeIndex(Duration position) {
+    if (lines.isEmpty) return -1;
+    var lo = 0;
+    var hi = lines.length - 1;
     var idx = -1;
-    for (var i = 0; i < lines.length; i++) {
-      if (lines[i].start <= position) {
-        idx = i;
+    while (lo <= hi) {
+      final mid = (lo + hi) >> 1;
+      if (lines[mid].start <= position) {
+        idx = mid;
+        lo = mid + 1;
       } else {
-        break;
+        hi = mid - 1;
       }
     }
     return idx;
@@ -58,10 +68,16 @@ Lrc parseLrc(String src) {
 
     final text = raw.replaceAll(tagRegex, '').trim();
     for (final tag in tags) {
-      final mm = int.parse(tag.group(1)!);
-      final ss = int.parse(tag.group(2)!);
+      // tryParse keeps a malformed-but-regex-matching LRC (e.g. a tag with
+      // a stray non-ASCII digit slipping past the engine's NFD/NFC pass)
+      // from crashing the whole parser. We simply drop the offending tag.
+      final mm = int.tryParse(tag.group(1) ?? '');
+      final ss = int.tryParse(tag.group(2) ?? '');
+      if (mm == null || ss == null) continue;
       final fragRaw = tag.group(3) ?? '0';
-      final ms = (int.parse(fragRaw) *
+      final fragInt = int.tryParse(fragRaw);
+      if (fragInt == null) continue;
+      final ms = (fragInt *
               (fragRaw.length == 3
                   ? 1
                   : fragRaw.length == 2
