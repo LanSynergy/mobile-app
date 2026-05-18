@@ -110,14 +110,25 @@ class MetadataScanner {
   }
 
   /// Remove tracks from DB that no longer exist on disk for a given folder.
+  ///
+  /// Membership test: SAF document URIs for files inside [treeUri] always
+  /// take the form `<treeUri>/document/<encodedDocId>`, so we test for the
+  /// `<treeUri>/` boundary instead of a raw `startsWith(treeUri)`.
+  ///
+  /// Without the trailing slash, two sibling folders whose tree URIs share
+  /// a prefix — e.g. `…/tree/primary%3AMusic` and
+  /// `…/tree/primary%3AMusic2` — would alias: pruning Music would treat
+  /// all of Music2's documents as candidates, never find them in
+  /// Music's directory listing, and silently delete them from the DB.
   Future<int> pruneDeletedFiles(String treeUri) async {
     final files = await SafPicker.listAudioFiles(treeUri);
     final existingUris = files.map((f) => f.uri).toSet();
+    final prefix = treeUri.endsWith('/') ? treeUri : '$treeUri/';
 
     final dbTracks = await db.allTracks();
     int pruned = 0;
     for (final track in dbTracks) {
-      if (track.id.startsWith(treeUri) && !existingUris.contains(track.id)) {
+      if (track.id.startsWith(prefix) && !existingUris.contains(track.id)) {
         await db.deleteTrack(track.id);
         pruned++;
       }
