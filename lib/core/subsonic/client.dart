@@ -585,10 +585,10 @@ class SubsonicClient implements MusicBackend {
       // which adds latency and CPU load on the server.
       'format': 'raw',
     };
-    final base = stripTrailingSlash(server.baseUrl);
-    return Uri.parse(base)
+    final baseUri = Uri.parse(stripTrailingSlash(server.baseUrl));
+    return baseUri
         .replace(
-          path: '${Uri.parse(base).path}/rest/stream.view',
+          path: '${baseUri.path}/rest/stream.view',
           queryParameters: params,
         )
         .toString();
@@ -602,10 +602,10 @@ class SubsonicClient implements MusicBackend {
       'id': coverArtId,
       'size': '$size',
     };
-    final base = stripTrailingSlash(server.baseUrl);
-    return Uri.parse(base)
+    final baseUri = Uri.parse(stripTrailingSlash(server.baseUrl));
+    return baseUri
         .replace(
-          path: '${Uri.parse(base).path}/rest/getCoverArt.view',
+          path: '${baseUri.path}/rest/getCoverArt.view',
           queryParameters: params,
         )
         .toString();
