@@ -80,15 +80,19 @@ Future<void> main() async {
     String deviceId;
     JellyfinAuth? initialAuth;
     try {
-      final results = await Future.wait([
+      // Run the two storage reads concurrently. `Future.wait` collapses
+      // to `List<Object>` for heterogeneous result types — we sequence
+      // the device-id load first so the index→type mapping below is
+      // unambiguous (no records here; the previous "Dart 3 destructuring"
+      // comment was stale, the call site was list-based all along).
+      final results = await Future.wait<Object?>([
         storage.loadOrCreateDeviceId(),
         storage.load(),
       ]).timeout(
         const Duration(seconds: 5),
         onTimeout: () => throw TimeoutException('storage timeout'),
       );
-      // Dart 3 record destructuring avoids the unsafe `as` casts.
-      deviceId = results[0] as String;
+      deviceId = results[0]! as String;
       initialAuth = results[1] as JellyfinAuth?;
       // Redact username in release builds — logs may be shared in bug reports.
       _boot('device id loaded (len=${deviceId.length}); '
