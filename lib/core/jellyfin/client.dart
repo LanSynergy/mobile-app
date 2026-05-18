@@ -20,7 +20,7 @@ import 'models/server.dart';
 /// adopting it would require either caching a static after first-frame or
 /// reordering boot to await it before `runApp`. A two-line manual bump is
 /// less risk than the async plumbing for a value that changes ~once a month.
-const _kAetherfinVersion = '0.1.0';
+const _kAetherfinVersion = '0.2.3';
 const _kAetherfinUserAgent = 'Aetherfin/$_kAetherfinVersion (Android)';
 
 /// Thin Dio-backed Jellyfin REST client.

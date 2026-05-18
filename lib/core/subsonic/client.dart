@@ -17,6 +17,14 @@ import '../jellyfin/models/server.dart';
 const _kSubsonicApiVersion = '1.16.1';
 const _kClientName = 'Aetherfin';
 
+/// Aetherfin app version, sent in `User-Agent`. Single source of truth so a
+/// version bump only needs to change this constant (and pubspec.yaml).
+///
+/// Mirrors the rationale in [JellyfinClient]: PackageInfo is async and would
+/// require reordering boot, while the value changes rarely.
+const _kAetherfinVersion = '0.2.3';
+const _kAetherfinUserAgent = 'Aetherfin/$_kAetherfinVersion (Android)';
+
 /// Subsonic/OpenSubsonic REST client for Navidrome (and compatible servers).
 ///
 /// This is the Subsonic counterpart of [JellyfinClient]. It implements
@@ -47,7 +55,7 @@ class SubsonicClient implements MusicBackend {
           sendTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 15),
           headers: {
-            'User-Agent': 'Aetherfin/0.1.0 (Android)',
+            'User-Agent': _kAetherfinUserAgent,
             'Accept': 'application/json',
           },
         )) {

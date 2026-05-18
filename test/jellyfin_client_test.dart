@@ -71,7 +71,10 @@ void main() {
       expect(auth.contains('Client="Aetherfin"'), isTrue);
       expect(auth.contains('Device="Android"'), isTrue);
       expect(auth.contains('DeviceId="dev-1"'), isTrue);
-      expect(auth.contains('Version="0.1.0"'), isTrue);
+      // Version pinned to the constant tracked in pubspec.yaml. If pubspec
+      // bumps, update `_kAetherfinVersion` in jellyfin/client.dart and the
+      // matching constant in subsonic/client.dart, then update this expect.
+      expect(auth.contains('Version="0.2.3"'), isTrue);
     });
 
     test('omits Authorization entirely when no token', () {
