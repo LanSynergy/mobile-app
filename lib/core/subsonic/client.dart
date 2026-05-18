@@ -277,15 +277,17 @@ class SubsonicClient implements MusicBackend {
       '#5644C9', '#A89DEC', '#3FD18C', '#FF7A59',
       '#F8C42D', '#FF6FB5', '#3DB6FF', '#FF4D6D',
     ];
-    return list
-        .take(limit)
-        .map((g) {
-          final name = (g['value'] as String?) ?? '';
-          return AfGenre(
-              name, palette[list.indexOf(g) % palette.length]);
-        })
-        .where((g) => g.name.isNotEmpty)
-        .toList(growable: false);
+    // Walk the input once and assign palette colours by output index so
+    // the colour sequence matches the Jellyfin backend (which also keys
+    // off result.length). Avoids the O(n²) `list.indexOf(g)` lookup and
+    // the identity-equality footgun (Map doesn't override ==).
+    final result = <AfGenre>[];
+    for (final g in list.take(limit)) {
+      final name = (g['value'] as String?) ?? '';
+      if (name.isEmpty) continue;
+      result.add(AfGenre(name, palette[result.length % palette.length]));
+    }
+    return result;
   }
 
   @override
