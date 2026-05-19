@@ -100,16 +100,20 @@ class LocalDb {
 
   // ── Query ───────────────────────────────────────────────────────────────
 
-  Future<List<AfTrack>> allTracks({int limit = 5000}) async {
+  Future<List<AfTrack>> allTracks({int limit = 5000, int offset = 0}) async {
     final rows = await (db.select(db.tracks)
           ..orderBy([(t) => OrderingTerm(expression: t.title.collate(Collate.noCase), mode: OrderingMode.asc)])
-          ..limit(limit))
+          ..limit(limit, offset: offset > 0 ? offset : null))
         .get();
     return rows.map(rowToTrack).toList();
   }
 
-  Future<List<AfAlbum>> allAlbums() async {
-    final rows = await db.customSelect('''
+  /// [limit] is optional — when null, returns every album. Callers
+  /// that paginate (Library → Albums, Profile fallback) pass
+  /// limit/offset so SQLite only aggregates the requested page.
+  Future<List<AfAlbum>> allAlbums({int? limit, int offset = 0}) async {
+    final paginated = limit != null;
+    final sql = StringBuffer('''
       SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
              COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
              MIN(year) as year
@@ -117,7 +121,16 @@ class LocalDb {
       WHERE album != ''
       GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
       ORDER BY album COLLATE NOCASE ASC
-    ''').get();
+    ''');
+    final vars = <Variable>[];
+    if (paginated) {
+      sql.write(' LIMIT ?1 OFFSET ?2');
+      vars.add(Variable<int>(limit));
+      vars.add(Variable<int>(offset));
+    }
+    final rows = await db
+        .customSelect(sql.toString(), variables: vars, readsFrom: {db.tracks})
+        .get();
     return rows.map((r) {
       final albumName = r.read<String?>('album') ?? 'Unknown';
       final artistName = (r.read<String?>('album_artist'))?.isNotEmpty == true

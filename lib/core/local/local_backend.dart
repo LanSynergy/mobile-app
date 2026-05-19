@@ -79,20 +79,17 @@ class LocalBackend implements MusicBackend {
 
   @override
   Future<List<AfAlbum>> allAlbums(
-      {int limit = 500, int startIndex = 0}) async {
-    final albums = await library.albums();
-    if (startIndex >= albums.length) return const [];
-    final end = (startIndex + limit).clamp(0, albums.length);
-    return albums.sublist(startIndex, end);
-  }
+          {int limit = 500, int startIndex = 0}) =>
+      // Paginate at the SQL layer instead of returning every album
+      // and slicing in Dart.
+      db.allAlbums(limit: limit, offset: startIndex);
 
   @override
   Future<List<AfTrack>> allTracks(
       {int limit = 1000, int startIndex = 0}) async {
-    final tracks = await library.tracks(limit: limit + startIndex);
-    if (startIndex >= tracks.length) return const [];
-    final end = (startIndex + limit).clamp(0, tracks.length);
-    final slice = tracks.sublist(startIndex, end);
+    // SQL OFFSET; the previous (limit + startIndex) + sublist pattern
+    // grew the loaded row count with the scroll position.
+    final slice = await db.allTracks(limit: limit, offset: startIndex);
     return _hydrateFavorites(slice);
   }
 
