@@ -10,6 +10,7 @@ import '../../utils/display_error.dart';
 import '../../utils/log.dart';
 import '../../widgets/album_more_sheet.dart';
 import '../../widgets/artwork.dart';
+import '../../widgets/async_error_view.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
@@ -53,7 +54,11 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
       backgroundColor: AfColors.surfaceCanvas,
       body: detailAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, stack) => const Center(child: Icon(Icons.error_outline)),
+        error: (e, _) => AsyncErrorView(
+          label: 'Could not load album',
+          error: e,
+          onRetry: () => ref.invalidate(albumDetailProvider(widget.albumId)),
+        ),
         data: (detail) {
           if (detail == null) {
             return const Center(child: Text('Album not found'));

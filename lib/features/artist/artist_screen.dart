@@ -7,6 +7,7 @@ import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/artwork.dart';
+import '../../widgets/async_error_view.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
@@ -23,7 +24,11 @@ class ArtistScreen extends ConsumerWidget {
     return Scaffold(
       body: artistAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, stack) => const Center(child: Icon(Icons.error_outline)),
+        error: (e, _) => AsyncErrorView(
+          label: 'Could not load artist',
+          error: e,
+          onRetry: () => ref.invalidate(artistDetailProvider(artistId)),
+        ),
         data: (artist) {
           if (artist == null) return const Center(child: Text('Not found'));
           final albumsAsync = ref.watch(artistAlbumsProvider(artistId));
