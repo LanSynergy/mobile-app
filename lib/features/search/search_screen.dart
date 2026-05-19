@@ -80,7 +80,28 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       if (!mounted) return;
       if (_queryNotifier.value == normalized) return;
       _queryNotifier.value = normalized;
+      // Persist the committed query as a recent search. We push on
+      // debounce-commit (not every keystroke) so the history only
+      // captures queries the user actually waited on a result for.
+      unawaited(
+        ref.read(searchHistoryProvider.notifier).push(normalized),
+      );
     });
+  }
+
+  /// Re-run a recent search from the chip row — sets the field text,
+  /// commits the query immediately (no debounce — the chip tap is
+  /// already a deliberate commit), and re-promotes the entry to the
+  /// head of the history.
+  void _runRecent(String query) {
+    _debounceTimer?.cancel();
+    _controller.text = query;
+    _controller.selection =
+        TextSelection.collapsed(offset: query.length);
+    _queryNotifier.value = query;
+    unawaited(
+      ref.read(searchHistoryProvider.notifier).push(query),
+    );
   }
 
   @override
@@ -117,6 +138,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   final normalized = _controller.text.trim().toLowerCase();
                   if (normalized.length >= _kMinQueryLength) {
                     _queryNotifier.value = normalized;
+                    unawaited(
+                      ref
+                          .read(searchHistoryProvider.notifier)
+                          .push(normalized),
+                    );
                   }
                 },
               ),
@@ -127,7 +153,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               child: ValueListenableBuilder<String>(
                 valueListenable: _queryNotifier,
                 builder: (context, query, _) => query.isEmpty
-                    ? const _SearchIdleState()
+                    ? _SearchIdleState(onRecent: _runRecent)
                     : _LiveSearchResults(query: query),
               ),
             ),
@@ -243,7 +269,8 @@ class _SkeletonBar extends StatelessWidget {
 /// Idle (empty query) panel — uses CustomScrollView + slivers to avoid
 /// the shrinkWrap GridView-inside-ListView layout penalty.
 class _SearchIdleState extends ConsumerWidget {
-  const _SearchIdleState();
+  final void Function(String query) onRecent;
+  const _SearchIdleState({required this.onRecent});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -252,10 +279,73 @@ class _SearchIdleState extends ConsumerWidget {
       data: (g) => g,
       orElse: () => const <AfGenre>[],
     );
+    final recent = ref.watch(searchHistoryProvider);
 
     return CustomScrollView(
       physics: const ClampingScrollPhysics(),
       slivers: [
+        if (recent.isNotEmpty) ...[
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AfSpacing.s16,
+              0,
+              AfSpacing.s16,
+              0,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SectionHeader(
+                      title: 'Recent',
+                      uppercase: true,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        ref.read(searchHistoryProvider.notifier).clear(),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AfColors.textTertiary,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: const Text('Clear'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AfSpacing.s16,
+              0,
+              AfSpacing.s16,
+              AfSpacing.s16,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: Wrap(
+                spacing: AfSpacing.s8,
+                runSpacing: AfSpacing.s8,
+                children: [
+                  for (final q in recent)
+                    InputChip(
+                      label: Text(q),
+                      backgroundColor: AfColors.surfaceRaised,
+                      side: BorderSide(color: AfColors.surfaceHigh),
+                      labelStyle: AfTypography.bodySmall.copyWith(
+                        color: AfColors.textPrimary,
+                      ),
+                      deleteIcon: const Icon(Icons.close_rounded, size: 16),
+                      deleteIconColor: AfColors.textTertiary,
+                      onPressed: () => onRecent(q),
+                      onDeleted: () => ref
+                          .read(searchHistoryProvider.notifier)
+                          .remove(q),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
           sliver: SliverToBoxAdapter(
