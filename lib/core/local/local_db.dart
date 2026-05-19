@@ -330,6 +330,38 @@ class LocalDb {
     }).toList();
   }
 
+  /// Same aggregation shape as [allArtists] but for a single artist.
+  /// Returns null if no track lists that artist. The albumCount uses
+  /// COUNT(DISTINCT album) (matching [allArtists]), not the
+  /// COALESCE-resolved key — keep this in mind if/when album-artist
+  /// counting semantics change.
+  Future<AfArtist?> artistByName(String name) async {
+    final rows = await db.customSelect(
+      r'''
+      SELECT artist, COUNT(DISTINCT album) as album_count,
+             MIN(cover_path) as cover_path
+      FROM tracks
+      WHERE artist != ''
+        AND artist = ?1
+      GROUP BY artist
+      LIMIT 1
+      ''',
+      variables: [Variable<String>(name)],
+      readsFrom: {db.tracks},
+    ).get();
+    if (rows.isEmpty) return null;
+    final r = rows.first;
+    final resolved = r.read<String?>('artist') ?? 'Unknown';
+    return AfArtist(
+      id: 'local:artist:$resolved',
+      name: resolved,
+      albumCount: r.read<int?>('album_count') ?? 0,
+      imageUrl: r.read<String?>('cover_path') != null
+          ? 'file://${r.read<String>('cover_path')}'
+          : null,
+    );
+  }
+
   /// Albums the user has favorited. Reconstructs the synthetic album
   /// id (`local:album:<name>:<artist>`) at the SQL level and matches
   /// it against the favorites table in a single query — keeps the

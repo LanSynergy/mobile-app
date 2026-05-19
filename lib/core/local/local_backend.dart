@@ -162,18 +162,9 @@ class LocalBackend implements MusicBackend {
   Future<AfArtist?> artist(String id) async {
     final name = _parseArtistId(id);
     if (name == null) return null;
-    final artists = await library.artists();
-    for (final a in artists) {
-      if (a.id == id) return a;
-    }
-    final tracks = await library.tracksByArtist(name);
-    if (tracks.isEmpty) return null;
-    return AfArtist(
-      id: id,
-      name: name,
-      albumCount: tracks.map((t) => t.albumName).toSet().length,
-      trackCount: tracks.length,
-    );
+    // Single-row aggregation instead of GROUP BYing every artist in
+    // the library to find one row.
+    return db.artistByName(name);
   }
 
   @override
