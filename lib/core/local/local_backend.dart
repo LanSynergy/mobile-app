@@ -185,11 +185,9 @@ class LocalBackend implements MusicBackend {
       {int limit = 100}) async {
     final name = _parseArtistId(artistId);
     if (name == null) return const [];
-    final albums = await library.albums();
-    return albums
-        .where((a) => a.artistName == name)
-        .take(limit)
-        .toList();
+    // Push the artist filter down to SQL instead of GROUP BYing every
+    // album in the library and filtering in Dart.
+    return db.albumsByArtist(name, limit: limit);
   }
 
   @override
