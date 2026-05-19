@@ -330,6 +330,50 @@ class LocalDb {
     }).toList();
   }
 
+  /// Albums the user has favorited. Reconstructs the synthetic album
+  /// id (`local:album:<name>:<artist>`) at the SQL level and matches
+  /// it against the favorites table in a single query — keeps the
+  /// aggregation contract of [allAlbums] (and stable ids) while
+  /// avoiding the load-everything-and-filter-in-Dart pattern.
+  Future<List<AfAlbum>> favoriteAlbums({int limit = 30}) async {
+    final rows = await db.customSelect(
+      '''
+      SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
+             COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
+             MIN(year) as year
+      FROM tracks
+      WHERE album != ''
+        AND ('local:album:' || album || ':'
+             || COALESCE(NULLIF(album_artist, ''), artist))
+            IN (SELECT item_id FROM favorites)
+      GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
+      ORDER BY album COLLATE NOCASE ASC
+      LIMIT ?1
+      ''',
+      variables: [Variable<int>(limit)],
+      readsFrom: {db.tracks, db.favorites},
+    ).get();
+    return rows.map((r) {
+      final albumName = r.read<String?>('album') ?? 'Unknown';
+      final albumArtist = (r.read<String?>('album_artist'))?.isNotEmpty == true
+          ? r.read<String>('album_artist')
+          : (r.read<String?>('artist') ?? '');
+      return AfAlbum(
+        id: 'local:album:$albumName:$albumArtist',
+        name: albumName,
+        artistName: albumArtist,
+        trackCount: r.read<int?>('track_count') ?? 0,
+        year: r.read<int?>('year'),
+        totalDuration:
+            Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+        imageUrl: r.read<String?>('cover_path') != null
+            ? 'file://${r.read<String>('cover_path')}'
+            : null,
+        isFavorite: true,
+      );
+    }).toList();
+  }
+
   /// Albums whose effective album-artist (the same
   /// `COALESCE(NULLIF(album_artist,''), artist)` key the rest of the
   /// app keys on) matches [artistName]. Same per-album aggregation as

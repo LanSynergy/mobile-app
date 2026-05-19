@@ -103,16 +103,12 @@ class LocalBackend implements MusicBackend {
   }
 
   @override
-  Future<List<AfAlbum>> favoriteAlbums({int limit = 30}) async {
-    final favIds = await db.favoriteIds();
-    if (favIds.isEmpty) return const [];
-    final albums = await library.albums();
-    return albums
-        .where((a) => favIds.contains(a.id))
-        .take(limit)
-        .map((a) => a.copyWith(isFavorite: true))
-        .toList();
-  }
+  Future<List<AfAlbum>> favoriteAlbums({int limit = 30}) =>
+      // One SQL with an `IN (SELECT item_id FROM favorites)` subquery
+      // — only the favorited albums are aggregated, instead of
+      // GROUP BYing every album in the library and then keeping the
+      // 30 that match.
+      db.favoriteAlbums(limit: limit);
 
   @override
   Future<List<AfTrack>> favoriteTracks({int limit = 500}) =>
