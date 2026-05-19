@@ -139,6 +139,16 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                   setState(() {
                     final item = _items.removeAt(oldIndex);
                     _items.insert(newIndex, item);
+                    // Keep `_lastQueueIds` in lockstep with the local
+                    // mirror so the player's echoed queue (same order,
+                    // arrives ~one frame later) doesn't trip the
+                    // "identity changed" branch above — which would
+                    // overwrite `_items` and re-fire the scroll-to-
+                    // active animation, yanking the viewport away from
+                    // whatever the user just dropped.
+                    _lastQueueIds = _items
+                        .map((t) => t.id)
+                        .toList(growable: false);
                   });
                   // Sync the player's ConcatenatingAudioSource so
                   // skip-next/prev honour the new order. The adjusted
