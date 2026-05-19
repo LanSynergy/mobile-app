@@ -183,21 +183,39 @@ void showAlbumContextMenu(
   );
 }
 
-void _playNext(WidgetRef ref, AfTrack track) {
+/// Build the stream-URL resolver for queue mutations.
+///
+/// In server mode the backend resolves track id → authenticated stream
+/// URL. In local mode (no backend) the track id IS a `content://` URI
+/// that mpv can open directly — matching the pattern used by
+/// `PlayActions.playQueue`. The previous implementation early-returned
+/// when `backend == null`, so "Play next" and "Add to queue" silently
+/// did nothing in local mode while the snackbar still claimed success.
+String Function(AfTrack)? _streamResolver(WidgetRef ref) {
+  final mode = ref.read(appModeProvider);
+  if (mode == AppMode.local) {
+    return (t) => t.id;
+  }
   final backend = ref.read(musicBackendProvider);
-  if (backend == null) return;
+  if (backend == null) return null;
+  return (t) => backend.trackStreamUrl(t.id, maxBitrateKbps: 320);
+}
+
+void _playNext(WidgetRef ref, AfTrack track) {
+  final resolve = _streamResolver(ref);
+  if (resolve == null) return;
   unawaited(ref.read(playerServiceProvider).playNext(
     track,
-    resolveStreamUrl: (t) => backend.trackStreamUrl(t.id, maxBitrateKbps: 320),
+    resolveStreamUrl: resolve,
   ));
 }
 
 void _addToQueue(WidgetRef ref, AfTrack track) {
-  final backend = ref.read(musicBackendProvider);
-  if (backend == null) return;
+  final resolve = _streamResolver(ref);
+  if (resolve == null) return;
   unawaited(ref.read(playerServiceProvider).addToQueue(
     track,
-    resolveStreamUrl: (t) => backend.trackStreamUrl(t.id, maxBitrateKbps: 320),
+    resolveStreamUrl: resolve,
   ));
 }
 
