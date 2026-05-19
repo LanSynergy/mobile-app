@@ -72,20 +72,10 @@ class LocalBackend implements MusicBackend {
   }
 
   @override
-  Future<List<AfPlaylist>> playlists({int limit = 200}) async {
-    final rows = await db.allPlaylists();
-    final result = <AfPlaylist>[];
-    for (final p in rows.take(limit)) {
-      final stats = await db.playlistStats(p.id);
-      result.add(AfPlaylist(
-        id: p.id,
-        name: p.name,
-        trackCount: stats.count,
-        duration: Duration(milliseconds: stats.durationMs),
-      ));
-    }
-    return result;
-  }
+  Future<List<AfPlaylist>> playlists({int limit = 200}) =>
+      // One SQL with LEFT JOIN to compute track count + duration per
+      // playlist, instead of allPlaylists() + N+1 playlistStats().
+      db.allPlaylistsWithStats(limit: limit);
 
   @override
   Future<List<AfAlbum>> allAlbums(

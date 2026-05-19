@@ -405,6 +405,37 @@ class LocalDb {
     }).toList();
   }
 
+  /// Single SQL: list every playlist with track count + total duration
+  /// joined in one pass. Replaces `allPlaylists()` + per-row
+  /// `playlistStats()` (N+1) at the playlists-list call site.
+  Future<List<AfPlaylist>> allPlaylistsWithStats({int limit = 200}) async {
+    final rows = await db.customSelect(
+      r'''
+      SELECT p.id   AS id,
+             p.name AS name,
+             COUNT(pe.entry_id)              AS track_count,
+             COALESCE(SUM(t.duration_ms), 0) AS total_duration_ms
+      FROM playlists p
+      LEFT JOIN playlist_entries pe ON pe.playlist_id = p.id
+      LEFT JOIN tracks t            ON t.id           = pe.track_id
+      GROUP BY p.id
+      ORDER BY p.name COLLATE NOCASE ASC
+      LIMIT ?1
+      ''',
+      variables: [Variable<int>(limit)],
+      readsFrom: {db.playlists, db.playlistEntries, db.tracks},
+    ).get();
+    return rows.map((r) {
+      return AfPlaylist(
+        id: r.read<String>('id'),
+        name: r.read<String>('name'),
+        trackCount: r.read<int?>('track_count') ?? 0,
+        duration: Duration(
+            milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+      );
+    }).toList();
+  }
+
   /// Single SQL: name LIKE, plus left-join to compute track count and
   /// total duration in one pass. Replaces the N+1 `playlistStats`
   /// pattern at the call site.
