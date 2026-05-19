@@ -106,6 +106,10 @@ class PlaylistEntries extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  /// Test-only constructor that lets us inject an in-memory executor
+  /// (`NativeDatabase.memory()`) without going through path_provider.
+  AppDatabase.forTesting(super.executor);
+
   @override
   int get schemaVersion => 2;
 

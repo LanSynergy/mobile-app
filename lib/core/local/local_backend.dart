@@ -199,25 +199,12 @@ class LocalBackend implements MusicBackend {
 
   @override
   Future<List<AfAlbum>> albumsByGenre(String genre,
-      {int limit = 200}) async {
-    final albums = await library.albums();
-    // Genre is per-track in local mode; surface every album that has
-    // at least one matching track. Cheap because albums() is already
-    // an in-memory list.
-    final result = <AfAlbum>[];
-    for (final a in albums) {
-      final tracks =
-          await library.tracksByAlbum(a.name, a.artistName);
-      if (tracks.any((t) =>
-          t.albumName.isNotEmpty &&
-          t.albumName == a.name &&
-          (t.artistName == a.artistName))) {
-        result.add(a);
-        if (result.length >= limit) break;
-      }
-    }
-    return result;
-  }
+          {int limit = 200}) =>
+      // Genre is per-track in local mode; the SQL aggregation in
+      // [LocalDb.albumsByGenre] groups by the same (album, album-artist
+      // ?? artist) key as [LocalDb.allAlbums] so trackCount / totalDuration
+      // / cover-art match what the rest of the app expects.
+      db.albumsByGenre(genre, limit: limit);
 
   @override
   Future<({AfPlaylist playlist, List<AfTrack> tracks})?> playlist(

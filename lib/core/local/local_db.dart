@@ -214,6 +214,44 @@ class LocalDb {
     return rows.map(rowToTrack).toList();
   }
 
+  /// Albums whose tracks tag the given genre. Mirrors [allAlbums]'s
+  /// aggregation (album-artist falls back to track artist; `MIN(cover_path)`
+  /// picks a representative cover; `SUM(duration_ms)` totals runtime) but
+  /// filters by `genre` in SQL so we never load tracks we don't need.
+  Future<List<AfAlbum>> albumsByGenre(String genre, {int limit = 200}) async {
+    final rows = await db.customSelect(
+      '''
+      SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
+             COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
+             MIN(year) as year
+      FROM tracks
+      WHERE album != '' AND genre = ?
+      GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
+      ORDER BY album COLLATE NOCASE ASC
+      LIMIT ?
+      ''',
+      variables: [Variable<String>(genre), Variable<int>(limit)],
+    ).get();
+    return rows.map((r) {
+      final albumName = r.read<String?>('album') ?? 'Unknown';
+      final artistName = (r.read<String?>('album_artist'))?.isNotEmpty == true
+          ? r.read<String>('album_artist')
+          : (r.read<String?>('artist') ?? '');
+      return AfAlbum(
+        id: 'local:album:$albumName:$artistName',
+        name: albumName,
+        artistName: artistName,
+        trackCount: r.read<int?>('track_count') ?? 0,
+        year: r.read<int?>('year'),
+        totalDuration:
+            Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+        imageUrl: r.read<String?>('cover_path') != null
+            ? 'file://${r.read<String>('cover_path')}'
+            : null,
+      );
+    }).toList();
+  }
+
   Future<List<AfTrack>> searchTracks(String query) async {
     // Escape `%`, `_`, and `\` so a query like `100%` is matched
     // literally instead of acting as a wildcard. Use customSelect so
