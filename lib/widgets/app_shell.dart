@@ -168,6 +168,8 @@ class AppShell extends ConsumerWidget {
                         }
                       },
                       onSkipNext: () => ref.read(playerServiceProvider).skipToNext(),
+                      onSkipPrevious: () =>
+                          ref.read(playerServiceProvider).skipToPrevious(),
                     ),
                   ),
                 ),

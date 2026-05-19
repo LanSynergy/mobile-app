@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design_tokens/tokens.dart';
@@ -14,17 +17,27 @@ import 'press_scale.dart';
 ///     16dp gap above the bottom nav.
 ///   - Progress is a **circular ring around the play glyph**, NOT a
 ///     linear bar.
-///   - Mini-player is NEVER swipe-to-dismiss.
+///   - Mini-player is NEVER swipe-to-dismiss. Horizontal swipes are
+///     instead repurposed as skip-next / skip-previous shortcuts —
+///     matching Spotify / Apple Music / YouTube Music conventions —
+///     while vertical drags are ignored entirely.
 class MiniPlayer extends ConsumerWidget {
   final VoidCallback? onTap;
   final VoidCallback? onPlayPause;
   final VoidCallback? onSkipNext;
+  final VoidCallback? onSkipPrevious;
+
+  /// Velocity threshold (logical px/s) above which a horizontal drag
+  /// commits to a skip. Below this, the gesture is treated as a stray
+  /// slide and ignored so the tap-to-open behaviour stays crisp.
+  static const double _swipeVelocityThreshold = 600;
 
   const MiniPlayer({
     super.key,
     this.onTap,
     this.onPlayPause,
     this.onSkipNext,
+    this.onSkipPrevious,
   });
 
   @override
@@ -50,10 +63,26 @@ class MiniPlayer extends ConsumerWidget {
       child: Semantics(
         label: 'Mini player. Now playing ${track.title} by ${track.artistName}.',
         button: true,
-        child: PressScale(
-          ensureHitTarget: false,
-          onTap: onTap,
-          child: Container(
+        child: GestureDetector(
+          // Horizontal-only drag detector. Vertical drags propagate to
+          // the surrounding scroll views; horizontal drags are caught
+          // here so the swipe-to-skip gesture wins over any ambient
+          // horizontal page scroll.
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragEnd: (details) {
+            final vx = details.primaryVelocity ?? 0;
+            if (vx.abs() < _swipeVelocityThreshold) return;
+            unawaited(HapticFeedback.selectionClick());
+            if (vx < 0) {
+              onSkipNext?.call();
+            } else {
+              onSkipPrevious?.call();
+            }
+          },
+          child: PressScale(
+            ensureHitTarget: false,
+            onTap: onTap,
+            child: Container(
             height: AfSpacing.miniPlayerHeight,
             decoration: BoxDecoration(
               color: AfColors.surfaceRaised,
@@ -115,6 +144,7 @@ class MiniPlayer extends ConsumerWidget {
                 ),
               ],
             ),
+          ),
           ),
         ),
       ),
