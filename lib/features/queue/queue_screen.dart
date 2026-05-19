@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 
 /// Live queue mirror. Watches `playerQueueProvider` (a broadcast stream
@@ -161,35 +165,90 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                 itemBuilder: (context, i) {
                   final t = _items[i];
                   final active = current?.id == t.id;
-                  return Padding(
-                    key: ValueKey(t.id),
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TrackRow(
-                            track: t,
-                            density: TrackRowDensity.compact,
-                            isActive: active,
-                            showHeart: false,
-                            onTap: () {
-                              // Jump to and play the selected track
-                              final svc = ref.read(playerServiceProvider);
-                              svc.skipToQueueItem(i);
-                              svc.play();
-                            },
+                  // Dismissible handles horizontal swipe; the
+                  // ReorderableDragStartListener handles vertical drag —
+                  // they never compete because the gestures are on
+                  // perpendicular axes.
+                  return Dismissible(
+                    key: ValueKey('q-${t.id}-$i'),
+                    direction: active
+                        ? DismissDirection.none
+                        : DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AfSpacing.s24),
+                      color: AfColors.semanticError.withValues(alpha: 0.18),
+                      child: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: AfColors.semanticError,
+                      ),
+                    ),
+                    confirmDismiss: (_) async {
+                      if (active) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                                'Skip to remove the currently playing track.'),
+                            duration: Duration(seconds: 2),
                           ),
+                        );
+                        return false;
+                      }
+                      unawaited(HapticFeedback.lightImpact());
+                      return true;
+                    },
+                    onDismissed: (_) {
+                      final removed = t;
+                      // Optimistic local update so the swipe animation
+                      // completes without the row springing back.
+                      setState(() {
+                        _items.removeAt(i);
+                        _lastQueueIds = _items
+                            .map((t) => t.id)
+                            .toList(growable: false);
+                      });
+                      unawaited(
+                        ref.read(playerServiceProvider).removeFromQueue(i),
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Removed "${removed.title}"'),
+                          duration: const Duration(seconds: 2),
                         ),
-                        ReorderableDragStartListener(
-                          index: i,
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: AfSpacing.s8),
-                            child: Icon(Icons.drag_indicator_rounded,
-                                color: AfColors.textTertiary),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TrackRow(
+                              track: t,
+                              density: TrackRowDensity.compact,
+                              isActive: active,
+                              showHeart: false,
+                              onTap: () {
+                                // Jump to and play the selected track
+                                final svc = ref.read(playerServiceProvider);
+                                svc.skipToQueueItem(i);
+                                svc.play();
+                              },
+                              onLongPress: () =>
+                                  showTrackContextMenu(context, ref, t),
+                            ),
                           ),
-                        ),
-                      ],
+                          ReorderableDragStartListener(
+                            index: i,
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: AfSpacing.s8),
+                              child: Icon(Icons.drag_indicator_rounded,
+                                  color: AfColors.textTertiary),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
