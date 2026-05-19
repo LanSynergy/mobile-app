@@ -311,20 +311,10 @@ class LocalBackend implements MusicBackend {
 
   @override
   Future<List<AfTrack>> instantMix(String seedId, {int limit = 50}) async {
-    final seedTracks = await library.tracks(limit: 5000);
-    final seed = seedTracks.firstWhere(
-      (t) => t.id == seedId,
-      orElse: () => seedTracks.isEmpty
-          ? const AfTrack(
-              id: '',
-              title: '',
-              artistName: '',
-              albumName: '',
-              duration: Duration.zero,
-            )
-          : seedTracks.first,
-    );
-    if (seed.id.isEmpty) return const [];
+    // Primary-key lookup instead of allTracks(limit: 5000).firstWhere —
+    // the old path decoded thousands of rows per "Start radio" tap.
+    final seed = await db.trackById(seedId);
+    if (seed == null) return const [];
     final byArtist = await library.tracksByArtist(seed.artistName);
     final shuffled = List<AfTrack>.of(byArtist)..shuffle();
     return _hydrateFavorites(shuffled.take(limit).toList());

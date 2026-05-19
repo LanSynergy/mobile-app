@@ -204,6 +204,17 @@ class LocalDb {
     return rows.map(rowToTrack).toList();
   }
 
+  /// Single-row lookup by primary key. Returns `null` if the id is
+  /// unknown (e.g. the track was just deleted by a rescan). Lets
+  /// callers avoid the `allTracks(limit: 5000).firstWhere(...)`
+  /// anti-pattern when they only need one row.
+  Future<AfTrack?> trackById(String id) async {
+    final row = await (db.select(db.tracks)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null) return null;
+    return rowToTrack(row);
+  }
+
   Future<List<AfTrack>> tracksByGenre(String genre) async {
     final rows = await (db.select(db.tracks)
           ..where((t) => t.genre.equals(genre))
