@@ -8,6 +8,7 @@ import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/display_error.dart';
+import '../../widgets/async_error_view.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
@@ -74,13 +75,11 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
       ),
       body: detailAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AfSpacing.s24),
-            child: Text(displayError(e, prefix: 'Could not load playlist'),
-                style: AfTypography.bodySmall
-                    .copyWith(color: AfColors.semanticError)),
-          ),
+        error: (e, _) => AsyncErrorView(
+          label: 'Could not load playlist',
+          error: e,
+          onRetry: () =>
+              ref.invalidate(playlistDetailProvider(widget.playlistId)),
         ),
         data: (detail) {
           if (detail == null) {

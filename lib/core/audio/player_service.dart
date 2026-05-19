@@ -700,6 +700,73 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     );
   }
 
+  /// Remove a track from the queue at [index]. Refuses to remove the
+  /// currently-playing item — callers should disable the affordance for
+  /// the active row rather than rely on a silent no-op (so the user
+  /// understands why the swipe was rejected). Returns `true` when the
+  /// removal actually took effect.
+  Future<bool> removeFromQueue(int index) async {
+    if (_disposed) return false;
+    if (index < 0 || index >= _trackQueue.length) return false;
+    if (index == _currentIndex) {
+      afLog('audio', 'removeFromQueue refused index=$index (currently playing)');
+      return false;
+    }
+
+    _trackQueue.removeAt(index);
+    await _player.sendRawCommand(['playlist-remove', '$index']);
+
+    // Removing an entry before the playhead shifts _currentIndex down by
+    // one so the active track is still pointed at after mpv collapses
+    // the playlist. Removing an entry after the playhead leaves
+    // _currentIndex untouched.
+    if (index < _currentIndex) {
+      _currentIndex -= 1;
+    }
+
+    _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
+    afLog(
+      'audio',
+      'removeFromQueue index=$index currentIndex=$_currentIndex '
+          'queueSize=${_trackQueue.length}',
+    );
+    return true;
+  }
+
+  /// Insert [track] at an arbitrary [index] in the queue. Used to
+  /// recover from a swipe-to-remove undo — the caller already knows
+  /// the exact index the track came from, so we don't have to fall
+  /// back to "play next" semantics.
+  ///
+  /// Indices outside `[0, _trackQueue.length]` are clamped. If the
+  /// insertion lands at or before the currently playing index,
+  /// `_currentIndex` shifts by one so the active track keeps pointing
+  /// at the same audio entry after mpv expands the playlist.
+  Future<void> insertIntoQueue(
+    int index,
+    AfTrack track, {
+    required String Function(AfTrack) resolveStreamUrl,
+  }) async {
+    if (_disposed) return;
+    final clamped = index.clamp(0, _trackQueue.length);
+    _trackQueue.insert(clamped, track);
+    await _player.sendRawCommand([
+      'loadfile',
+      resolveStreamUrl(track),
+      'insert-at',
+      '$clamped',
+    ]);
+    if (clamped <= _currentIndex) {
+      _currentIndex += 1;
+    }
+    _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
+    afLog(
+      'audio',
+      'insertIntoQueue "${track.title}" at index=$clamped '
+          'currentIndex=$_currentIndex',
+    );
+  }
+
   Future<void> playNext(
     AfTrack track, {
     required String Function(AfTrack) resolveStreamUrl,

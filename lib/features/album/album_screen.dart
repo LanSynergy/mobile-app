@@ -8,7 +8,9 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/display_error.dart';
 import '../../utils/log.dart';
+import '../../widgets/album_more_sheet.dart';
 import '../../widgets/artwork.dart';
+import '../../widgets/async_error_view.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
@@ -52,7 +54,11 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
       backgroundColor: AfColors.surfaceCanvas,
       body: detailAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, stack) => const Center(child: Icon(Icons.error_outline)),
+        error: (e, _) => AsyncErrorView(
+          label: 'Could not load album',
+          error: e,
+          onRetry: () => ref.invalidate(albumDetailProvider(widget.albumId)),
+        ),
         data: (detail) {
           if (detail == null) {
             return const Center(child: Text('Album not found'));
@@ -108,6 +114,8 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                     threshold: heroHeight - kToolbarHeight,
                     title: album.name,
                     onBack: () => context.pop(),
+                    onMore: () =>
+                        showAlbumMoreSheet(context, ref, album, tracks),
                   ),
                 ),
               ),
@@ -156,6 +164,8 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                             onPlay: () => ref
                                 .read(playActionsProvider)
                                 .playAlbum(tracks),
+                            onMore: () => showAlbumMoreSheet(
+                                context, ref, album, tracks),
                           ),
                         ],
                       ),
@@ -200,12 +210,14 @@ class _OpacityAppBar extends StatelessWidget {
   final double threshold;
   final String title;
   final VoidCallback onBack;
+  final VoidCallback onMore;
 
   const _OpacityAppBar({
     required this.scrollOffset,
     required this.threshold,
     required this.title,
     required this.onBack,
+    required this.onMore,
   });
 
   @override
@@ -240,12 +252,7 @@ class _OpacityAppBar extends StatelessWidget {
             ),
             IconButton(
               icon: const Icon(Icons.more_vert_rounded),
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('More options coming soon'),
-                  duration: Duration(seconds: 2),
-                ),
-              ),
+              onPressed: onMore,
             ),
           ],
         ),
@@ -256,8 +263,13 @@ class _OpacityAppBar extends StatelessWidget {
 
 class _ActionRow extends ConsumerStatefulWidget {
   final VoidCallback onPlay;
+  final VoidCallback onMore;
   final AfAlbum album;
-  const _ActionRow({required this.onPlay, required this.album});
+  const _ActionRow({
+    required this.onPlay,
+    required this.onMore,
+    required this.album,
+  });
 
   @override
   ConsumerState<_ActionRow> createState() => _ActionRowState();
@@ -352,12 +364,7 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
         const SizedBox(width: AfSpacing.s8),
         _IconCircle(
           icon: Icons.more_horiz_rounded,
-          onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('More options coming soon'),
-              duration: Duration(seconds: 2),
-            ),
-          ),
+          onTap: widget.onMore,
         ),
       ],
     );

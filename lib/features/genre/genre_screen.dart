@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/async_error_view.dart';
 import '../../widgets/tile.dart';
+import '../../widgets/track_context_menu.dart';
 
 /// Albums filtered by genre. Uses Jellyfin's `Genres=` query parameter
 /// via [genreAlbumsProvider] so only albums actually tagged with this
@@ -27,7 +29,11 @@ class GenreScreen extends ConsumerWidget {
       ),
       body: albumsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, stack) => const Center(child: Icon(Icons.error_outline)),
+        error: (e, _) => AsyncErrorView(
+          label: 'Could not load "$genreName"',
+          error: e,
+          onRetry: () => ref.invalidate(genreAlbumsProvider(genreName)),
+        ),
         data: (albums) {
           if (albums.isEmpty) {
             return Center(
@@ -68,6 +74,7 @@ class GenreScreen extends ConsumerWidget {
                 imageUrl: a.imageUrl,
                 size: double.infinity,
                 onTap: () => context.push('/album/${a.id}'),
+                onLongPress: () => showAlbumContextMenu(context, ref, a),
               );
             },
           );

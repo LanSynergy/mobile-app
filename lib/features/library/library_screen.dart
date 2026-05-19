@@ -287,30 +287,33 @@ class _SectionBody extends ConsumerWidget {
         return albums.when(
           data: (list) {
             final sorted = sortAlbums != null ? sortAlbums!(list) : list;
-            return GridView.builder(
-              padding: padding.add(const EdgeInsets.only(
-                  bottom: AfSpacing.bottomInsetWithMiniAndNav)),
-              itemCount: sorted.length,
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisExtent: 220,
-                crossAxisSpacing: AfSpacing.s16,
-                mainAxisSpacing: AfSpacing.s16,
+            return _RefreshWrap(
+              onRefresh: () => _refreshFuture(ref, albumsProvider),
+              child: GridView.builder(
+                padding: padding.add(const EdgeInsets.only(
+                    bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+                itemCount: sorted.length,
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisExtent: 220,
+                  crossAxisSpacing: AfSpacing.s16,
+                  mainAxisSpacing: AfSpacing.s16,
+                ),
+                itemBuilder: (context, i) {
+                  final a = sorted[i];
+                  return Tile(
+                    title: a.name,
+                    subtitle: a.artistName,
+                    variant: TileVariant.album,
+                    imageUrl: a.imageUrl,
+                    size: double.infinity,
+                    onTap: () => context.push('/album/${a.id}'),
+                    onLongPress: () =>
+                        showAlbumContextMenu(context, ref, a),
+                  );
+                },
               ),
-              itemBuilder: (context, i) {
-                final a = sorted[i];
-                return Tile(
-                  title: a.name,
-                  subtitle: a.artistName,
-                  variant: TileVariant.album,
-                  imageUrl: a.imageUrl,
-                  size: double.infinity,
-                  onTap: () => context.push('/album/${a.id}'),
-                  onLongPress: () =>
-                      showAlbumContextMenu(context, ref, a),
-                );
-              },
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -327,28 +330,31 @@ class _SectionBody extends ConsumerWidget {
         return artists.when(
           data: (list) {
             final sorted = sortArtists != null ? sortArtists!(list) : list;
-            return GridView.builder(
-              padding: padding.add(const EdgeInsets.only(
-                  bottom: AfSpacing.bottomInsetWithMiniAndNav)),
-              itemCount: sorted.length,
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisExtent: 180,
-                crossAxisSpacing: AfSpacing.s12,
-                mainAxisSpacing: AfSpacing.s12,
+            return _RefreshWrap(
+              onRefresh: () => _refreshFuture(ref, artistsProvider),
+              child: GridView.builder(
+                padding: padding.add(const EdgeInsets.only(
+                    bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+                itemCount: sorted.length,
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisExtent: 180,
+                  crossAxisSpacing: AfSpacing.s12,
+                  mainAxisSpacing: AfSpacing.s12,
+                ),
+                itemBuilder: (context, i) {
+                  final a = sorted[i];
+                  return Tile(
+                    title: a.name,
+                    subtitle: a.statLine,
+                    variant: TileVariant.artist,
+                    imageUrl: a.imageUrl,
+                    size: double.infinity,
+                    onTap: () => context.push('/artist/${a.id}'),
+                  );
+                },
               ),
-              itemBuilder: (context, i) {
-                final a = sorted[i];
-                return Tile(
-                  title: a.name,
-                  subtitle: a.statLine,
-                  variant: TileVariant.artist,
-                  imageUrl: a.imageUrl,
-                  size: double.infinity,
-                  onTap: () => context.push('/artist/${a.id}'),
-                );
-              },
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -366,25 +372,26 @@ class _SectionBody extends ConsumerWidget {
           return tracks.when(
             data: (list) {
               final sorted = sortTracks != null ? sortTracks!(list) : list;
-              return ListView.separated(
-                padding: padding.add(const EdgeInsets.only(
-                    bottom: AfSpacing.bottomInsetWithMiniAndNav)),
-                itemCount: sorted.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: AfSpacing.s4),
-                itemBuilder: (context, i) {
-                  final t = sorted[i];
-                  // Tap any row to play that track — previously this row
-                  // had no onTap so songs were unplayable from Library.
-                  return TrackRow(
-                    track: t,
-                    onTap: () => ref
-                        .read(playActionsProvider)
-                        .playQueue(sorted, startIndex: i),
-                    onLongPress: () =>
-                        showTrackContextMenu(context, ref, t),
-                  );
-                },
+              return _RefreshWrap(
+                onRefresh: () => _refreshFuture(ref, tracksProvider),
+                child: ListView.separated(
+                  padding: padding.add(const EdgeInsets.only(
+                      bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+                  itemCount: sorted.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: AfSpacing.s4),
+                  itemBuilder: (context, i) {
+                    final t = sorted[i];
+                    return TrackRow(
+                      track: t,
+                      onTap: () => ref
+                          .read(playActionsProvider)
+                          .playQueue(sorted, startIndex: i),
+                      onLongPress: () =>
+                          showTrackContextMenu(context, ref, t),
+                    );
+                  },
+                ),
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -403,7 +410,9 @@ class _SectionBody extends ConsumerWidget {
           orElse: () => 0,
         );
         return playlists.when(
-          data: (list) => ListView.separated(
+          data: (list) => _RefreshWrap(
+            onRefresh: () => _refreshFuture(ref, allPlaylistsProvider),
+            child: ListView.separated(
             padding: padding.add(const EdgeInsets.only(
                 bottom: AfSpacing.bottomInsetWithMiniAndNav)),
             itemCount: list.length + 1, // +1 for smart playlists tile
@@ -470,6 +479,7 @@ class _SectionBody extends ConsumerWidget {
               );
             },
           ),
+          ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => AsyncErrorView(
             label: 'Couldn\u2019t load playlists',
@@ -482,7 +492,9 @@ class _SectionBody extends ConsumerWidget {
             isLocal ? localGenresProvider : allGenresProvider;
         final genresAsync = ref.watch(genresProvider);
         return genresAsync.when(
-          data: (genres) => GridView.builder(
+          data: (genres) => _RefreshWrap(
+            onRefresh: () => _refreshFuture(ref, genresProvider),
+            child: GridView.builder(
             padding: padding.add(const EdgeInsets.only(
                 bottom: AfSpacing.bottomInsetWithMiniAndNav)),
             itemCount: genres.length,
@@ -507,6 +519,7 @@ class _SectionBody extends ConsumerWidget {
               );
             },
           ),
+          ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => AsyncErrorView(
             label: 'Couldn\u2019t load genres',
@@ -517,34 +530,45 @@ class _SectionBody extends ConsumerWidget {
       case LibrarySection.liked:
         final likedAsync = ref.watch(favoriteTracksProvider);
         return likedAsync.when(
-          data: (list) => list.isEmpty
-              ? Center(
-                  child: Text(
-                    'No liked songs yet.\nTap the heart on any track.',
-                    textAlign: TextAlign.center,
-                    style: AfTypography.bodyMedium.copyWith(
-                      color: AfColors.textTertiary,
-                    ),
+          data: (list) => _RefreshWrap(
+            onRefresh: () => _refreshFuture(ref, favoriteTracksProvider),
+            child: list.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.4,
+                        child: Center(
+                          child: Text(
+                            'No liked songs yet.\nTap the heart on any track.',
+                            textAlign: TextAlign.center,
+                            style: AfTypography.bodyMedium.copyWith(
+                              color: AfColors.textTertiary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.separated(
+                    padding: padding.add(const EdgeInsets.only(
+                        bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+                    itemCount: list.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: AfSpacing.s4),
+                    itemBuilder: (context, i) {
+                      final t = list[i];
+                      return TrackRow(
+                        track: t,
+                        onTap: () => ref
+                            .read(playActionsProvider)
+                            .playQueue(list, startIndex: i),
+                        onLongPress: () =>
+                            showTrackContextMenu(context, ref, t),
+                      );
+                    },
                   ),
-                )
-              : ListView.separated(
-                  padding: padding.add(const EdgeInsets.only(
-                      bottom: AfSpacing.bottomInsetWithMiniAndNav)),
-                  itemCount: list.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: AfSpacing.s4),
-                  itemBuilder: (context, i) {
-                    final t = list[i];
-                    return TrackRow(
-                      track: t,
-                      onTap: () => ref
-                          .read(playActionsProvider)
-                          .playQueue(list, startIndex: i),
-                      onLongPress: () =>
-                          showTrackContextMenu(context, ref, t),
-                    );
-                  },
-                ),
+          ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => AsyncErrorView(
             label: 'Couldn\u2019t load liked songs',
@@ -553,5 +577,38 @@ class _SectionBody extends ConsumerWidget {
           ),
         );
     }
+  }
+}
+
+/// Tiny RefreshIndicator wrapper with brand-consistent styling. Used
+/// by every section body so the pull-to-refresh gesture works on any
+/// Library tab and stays themed identically.
+class _RefreshWrap extends StatelessWidget {
+  final Widget child;
+  final Future<void> Function() onRefresh;
+  const _RefreshWrap({required this.child, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) => RefreshIndicator(
+        onRefresh: onRefresh,
+        color: AfColors.indigo300,
+        backgroundColor: AfColors.surfaceBase,
+        child: child,
+      );
+}
+
+/// Invalidate [provider] and await the resulting next future so the
+/// `RefreshIndicator` spinner stays visible until the actual refetch
+/// completes (rather than dismissing immediately).
+Future<void> _refreshFuture<T>(
+  WidgetRef ref,
+  AutoDisposeFutureProvider<T> provider,
+) async {
+  ref.invalidate(provider);
+  try {
+    await ref.read(provider.future);
+  } catch (_) {
+    // Surfacing the error here would just close the spinner; the
+    // when() builder already renders an `AsyncErrorView` with retry.
   }
 }

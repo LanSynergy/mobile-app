@@ -307,12 +307,24 @@ class _SleepTimerWatcherState extends ConsumerState<SleepTimerWatcher> {
       if (target == null) {
         _timer?.cancel();
         _endOfTrackAnchorId = null;
+        // Defensive: clear stale remaining if the provider was already
+        // null but the timer somehow ticked one last time.
+        if (ref.read(sleepTimerRemainingProvider) != null) {
+          ref.read(sleepTimerRemainingProvider.notifier).state = null;
+        }
         return;
       }
 
       final isEndOfTrack = target.difference(DateTime.now()).inHours > 12;
 
       if (isEndOfTrack) {
+        // "End of track" timers have no numeric countdown — surface
+        // the special-case null so the badge can render the bedtime
+        // icon without a label.
+        if (ref.read(sleepTimerRemainingProvider) != null) {
+          ref.read(sleepTimerRemainingProvider.notifier).state = null;
+        }
+
         final svc = ref.read(playerServiceProvider);
         final current = svc.currentTrack;
 
@@ -329,8 +341,19 @@ class _SleepTimerWatcherState extends ConsumerState<SleepTimerWatcher> {
           _fire();
           return;
         }
-      } else if (DateTime.now().isAfter(target)) {
-        _fire();
+      } else {
+        // Numeric timer — publish the remaining duration on every tick
+        // so any surface watching `sleepTimerRemainingProvider` can
+        // render a live countdown regardless of whether the sleep
+        // timer sheet is open. Previously this only happened while the
+        // sheet was visible, so the badge in Now Playing would freeze
+        // the moment the user backed out.
+        final remaining = target.difference(DateTime.now());
+        if (remaining.isNegative || remaining.inSeconds <= 0) {
+          _fire();
+          return;
+        }
+        ref.read(sleepTimerRemainingProvider.notifier).state = remaining;
       }
     });
   }

@@ -17,6 +17,7 @@ import '../core/jellyfin/models/server.dart';
 import '../core/local/local_backend.dart';
 import '../core/local/local_library.dart';
 import '../core/lyrics/lrc_parser.dart';
+import '../core/search/search_history_store.dart';
 import '../core/smart_playlist/smart_playlist_db.dart';
 import '../core/smart_playlist/smart_playlist_engine.dart';
 import '../core/smart_playlist/smart_playlist_model.dart';
@@ -577,6 +578,47 @@ final allPlaylistsProvider =
 });
 
 final savedTrackIdsProvider = StateProvider<Set<String>>((ref) => <String>{});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Search history
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Most-recently-used list of search queries, persisted across runs.
+///
+/// The notifier auto-loads from disk on first read and writes through
+/// on every mutation. The in-memory state is the source of truth for
+/// the UI, so reads after a mutation are synchronous — no extra
+/// awaitable hop between "committed query" and "chip on screen."
+class SearchHistoryNotifier extends StateNotifier<List<String>> {
+  SearchHistoryNotifier() : super(const <String>[]) {
+    _hydrate();
+  }
+
+  Future<void> _hydrate() async {
+    final saved = await SearchHistoryStore.load();
+    if (mounted) state = saved;
+  }
+
+  Future<void> push(String query) async {
+    final updated = await SearchHistoryStore.push(query);
+    if (mounted) state = updated;
+  }
+
+  Future<void> remove(String query) async {
+    final updated = await SearchHistoryStore.remove(query);
+    if (mounted) state = updated;
+  }
+
+  Future<void> clear() async {
+    await SearchHistoryStore.clear();
+    if (mounted) state = const <String>[];
+  }
+}
+
+final searchHistoryProvider =
+    StateNotifierProvider<SearchHistoryNotifier, List<String>>(
+  (ref) => SearchHistoryNotifier(),
+);
 
 final playlistTrackIdsProvider =
     FutureProvider.autoDispose<Set<String>>((ref) async {

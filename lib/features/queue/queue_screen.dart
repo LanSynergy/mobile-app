@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../utils/display_error.dart';
+import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 
 /// Live queue mirror. Watches `playerQueueProvider` (a broadcast stream
@@ -104,6 +109,11 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
             );
           }),
           IconButton(
+            icon: const Icon(Icons.playlist_add_rounded),
+            onPressed: _items.isEmpty ? null : _saveQueueAsPlaylist,
+            tooltip: 'Save queue as playlist',
+          ),
+          IconButton(
             icon: const Icon(Icons.lyrics_outlined),
             onPressed: () => context.push('/lyrics'),
             tooltip: 'Lyrics',
@@ -161,35 +171,100 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                 itemBuilder: (context, i) {
                   final t = _items[i];
                   final active = current?.id == t.id;
-                  return Padding(
-                    key: ValueKey(t.id),
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TrackRow(
-                            track: t,
-                            density: TrackRowDensity.compact,
-                            isActive: active,
-                            showHeart: false,
-                            onTap: () {
-                              // Jump to and play the selected track
-                              final svc = ref.read(playerServiceProvider);
-                              svc.skipToQueueItem(i);
-                              svc.play();
-                            },
+                  // Dismissible handles horizontal swipe; the
+                  // ReorderableDragStartListener handles vertical drag —
+                  // they never compete because the gestures are on
+                  // perpendicular axes.
+                  return Dismissible(
+                    key: ValueKey('q-${t.id}-$i'),
+                    direction: active
+                        ? DismissDirection.none
+                        : DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AfSpacing.s24),
+                      color: AfColors.semanticError.withValues(alpha: 0.18),
+                      child: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: AfColors.semanticError,
+                      ),
+                    ),
+                    confirmDismiss: (_) async {
+                      if (active) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                                'Skip to remove the currently playing track.'),
+                            duration: Duration(seconds: 2),
                           ),
-                        ),
-                        ReorderableDragStartListener(
-                          index: i,
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: AfSpacing.s8),
-                            child: Icon(Icons.drag_indicator_rounded,
-                                color: AfColors.textTertiary),
+                        );
+                        return false;
+                      }
+                      unawaited(HapticFeedback.lightImpact());
+                      return true;
+                    },
+                    onDismissed: (_) {
+                      final removed = t;
+                      final removedIndex = i;
+                      // Optimistic local update so the swipe animation
+                      // completes without the row springing back.
+                      setState(() {
+                        _items.removeAt(i);
+                        _lastQueueIds = _items
+                            .map((t) => t.id)
+                            .toList(growable: false);
+                      });
+                      unawaited(
+                        ref
+                            .read(playerServiceProvider)
+                            .removeFromQueue(removedIndex),
+                      );
+                      ScaffoldMessenger.of(context)
+                        ..clearSnackBars()
+                        ..showSnackBar(
+                          SnackBar(
+                            content: Text('Removed "${removed.title}"'),
+                            duration: const Duration(seconds: 4),
+                            action: SnackBarAction(
+                              label: 'Undo',
+                              onPressed: () =>
+                                  _undoRemove(removedIndex, removed),
+                            ),
                           ),
-                        ),
-                      ],
+                        );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TrackRow(
+                              track: t,
+                              density: TrackRowDensity.compact,
+                              isActive: active,
+                              showHeart: false,
+                              onTap: () {
+                                // Jump to and play the selected track
+                                final svc = ref.read(playerServiceProvider);
+                                svc.skipToQueueItem(i);
+                                svc.play();
+                              },
+                              onLongPress: () =>
+                                  showTrackContextMenu(context, ref, t),
+                            ),
+                          ),
+                          ReorderableDragStartListener(
+                            index: i,
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: AfSpacing.s8),
+                              child: Icon(Icons.drag_indicator_rounded,
+                                  color: AfColors.textTertiary),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -204,5 +279,107 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
       if (a[i] != b[i]) return false;
     }
     return true;
+  }
+
+  /// Re-insert a track at [index] after a swipe-to-remove.
+  ///
+  /// Resolves the stream URL the same way [PlayActions.playQueue]
+  /// does — backend.trackStreamUrl in server mode, the AfTrack.id
+  /// itself (a content:// URI) in local mode. The player's
+  /// `insertIntoQueue` keeps `_currentIndex` correct.
+  void _undoRemove(int index, AfTrack track) {
+    final mode = ref.read(appModeProvider);
+    final backend = ref.read(musicBackendProvider);
+    String resolve(AfTrack t) {
+      if (mode == AppMode.local) return t.id;
+      if (backend != null) {
+        return backend.trackStreamUrl(t.id, maxBitrateKbps: 320);
+      }
+      return 'about:blank';
+    }
+
+    unawaited(
+      ref.read(playerServiceProvider).insertIntoQueue(
+            index,
+            track,
+            resolveStreamUrl: resolve,
+          ),
+    );
+  }
+
+  /// Prompts for a name and creates a new playlist containing every
+  /// track currently in the queue. The default name is "Queue ·
+  /// YYYY-MM-DD HH:mm" so distinct saves never collide visually.
+  ///
+  /// Works in both local and server modes — both backends implement
+  /// `MusicBackend.createPlaylist`. Returns silently when the queue
+  /// is empty (the AppBar button is also disabled in that case).
+  Future<void> _saveQueueAsPlaylist() async {
+    if (_items.isEmpty) return;
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in to save playlists')),
+      );
+      return;
+    }
+
+    final now = DateTime.now();
+    String two(int n) => n.toString().padLeft(2, '0');
+    final defaultName =
+        'Queue · ${now.year}-${two(now.month)}-${two(now.day)} '
+        '${two(now.hour)}:${two(now.minute)}';
+    final controller = TextEditingController(text: defaultName);
+
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AfColors.surfaceBase,
+        title: const Text('Save queue as playlist'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            hintText: 'Playlist name',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (name == null || name.isEmpty || !mounted) return;
+
+    final snapshot = List<String>.from(_items.map((t) => t.id));
+    try {
+      await backend.createPlaylist(name, snapshot);
+      ref.invalidate(allPlaylistsProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Saved as "$name" · ${snapshot.length} tracks'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(displayError(e, prefix: 'Failed to save queue')),
+        ),
+      );
+    }
   }
 }

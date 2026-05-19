@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/lyrics/lrc_parser.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/async_error_view.dart';
 
 class LyricsScreen extends ConsumerStatefulWidget {
   const LyricsScreen({super.key});
@@ -144,19 +148,13 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
         child: SafeArea(
           child: lrcAsync.maybeWhen(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous,
-                ),
-                child: Text(
-                  'Could not load lyrics: $e',
-                  style: AfTypography.bodySmall.copyWith(
-                    color: AfColors.semanticError,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+            error: (e, _) => AsyncErrorView(
+              label: 'Could not load lyrics',
+              error: e,
+              onRetry: () {
+                final t = ref.read(currentTrackProvider);
+                if (t != null) ref.invalidate(lyricsProvider(t.id));
+              },
             ),
             orElse: () {
               if (lrc == null || lrc.isEmpty) {
@@ -177,6 +175,13 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                   ),
                 );
               }
+              // Tap-to-seek only makes sense for synced lyrics. An
+              // unsynced LRC parses every line at Duration.zero, so all
+              // taps would yank playback back to 0:00 — noise, not
+              // navigation. Detect once and use it to disable the
+              // gesture entirely for unsynced payloads.
+              final isSynced =
+                  lrc.lines.any((l) => l.start > Duration.zero);
               return ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.symmetric(
@@ -186,27 +191,40 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                 itemCount: lrc.lines.length,
                 itemBuilder: (context, i) {
                   final isActive = i == active;
-                  return AnimatedContainer(
-                    duration: AfDurations.quick,
-                    curve: AfCurves.easeOut,
-                    // Fixed vertical padding matches _rowHeight assumption.
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: AnimatedScale(
-                      scale: isActive ? 1.04 : 1.0,
+                  final line = lrc.lines[i];
+                  return InkWell(
+                    borderRadius: AfRadii.borderSm,
+                    onTap: isSynced
+                        ? () {
+                            unawaited(
+                                HapticFeedback.selectionClick());
+                            ref
+                                .read(playerServiceProvider)
+                                .seek(line.start);
+                          }
+                        : null,
+                    child: AnimatedContainer(
                       duration: AfDurations.quick,
                       curve: AfCurves.easeOut,
-                      alignment: Alignment.centerLeft,
-                      child: AnimatedDefaultTextStyle(
+                      // Fixed vertical padding matches _rowHeight assumption.
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: AnimatedScale(
+                        scale: isActive ? 1.04 : 1.0,
                         duration: AfDurations.quick,
-                        style: AfTypography.titleMedium.copyWith(
-                          color: isActive
-                              ? spectral.energy
-                              : AfColors.textSecondary,
-                          fontWeight: isActive
-                              ? FontWeight.w600
-                              : FontWeight.w400,
+                        curve: AfCurves.easeOut,
+                        alignment: Alignment.centerLeft,
+                        child: AnimatedDefaultTextStyle(
+                          duration: AfDurations.quick,
+                          style: AfTypography.titleMedium.copyWith(
+                            color: isActive
+                                ? spectral.energy
+                                : AfColors.textSecondary,
+                            fontWeight: isActive
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                          child: Text(line.text),
                         ),
-                        child: Text(lrc.lines[i].text),
                       ),
                     ),
                   );

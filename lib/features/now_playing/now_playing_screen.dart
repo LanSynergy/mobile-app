@@ -282,12 +282,26 @@ class _MetadataRow extends ConsumerWidget {
                 style: AfTypography.titleLarge,
               ),
               const SizedBox(height: 2),
-              Text(
-                track.artistName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AfTypography.bodyMedium.copyWith(
-                  color: AfColors.textSecondary,
+              // Tap the artist name to jump to the artist. Mirrors the
+              // album-label affordance in the top bar.
+              InkWell(
+                borderRadius: AfRadii.borderSm,
+                onTap: track.artistId == null
+                    ? null
+                    : () => context.push('/artist/${track.artistId}'),
+                child: Semantics(
+                  label: track.artistId == null
+                      ? null
+                      : 'Go to artist ${track.artistName}',
+                  button: track.artistId != null,
+                  child: Text(
+                    track.artistName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AfTypography.bodyMedium.copyWith(
+                      color: AfColors.textSecondary,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -575,23 +589,37 @@ class _TopBar extends ConsumerWidget {
             onPressed: () => Navigator.maybePop(context),
           ),
           Expanded(
-            child: Column(
-              children: [
-                Text(
-                  'Playing from album',
-                  style: AfTypography.caption.copyWith(
-                    color: AfColors.textTertiary,
-                  ),
+            // Tap the album label to jump to the album. Faster than
+            // ⋯ → Go to album. The popup menu still offers the same
+            // action for users who go looking for it there.
+            child: InkWell(
+              borderRadius: AfRadii.borderSm,
+              onTap: track.albumId == null
+                  ? null
+                  : () => context.push('/album/${track.albumId}'),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Column(
+                  children: [
+                    Text(
+                      'Playing from album',
+                      style: AfTypography.caption.copyWith(
+                        color: AfColors.textTertiary,
+                      ),
+                    ),
+                    Text(
+                      track.albumName,
+                      style: AfTypography.titleSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-                Text(
-                  track.albumName,
-                  style: AfTypography.titleSmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+              ),
             ),
           ),
+          const _SleepTimerBadge(),
           PopupMenuButton<_NowPlayingAction>(
             icon: const Icon(Icons.more_horiz_rounded),
             onSelected: (action) async {
@@ -656,6 +684,87 @@ class _TopBar extends ConsumerWidget {
 }
 
 enum _NowPlayingAction { startRadio, goToAlbum, goToArtist }
+
+/// Compact chip rendered next to the Now Playing popup menu when a
+/// sleep timer is armed. Two visual modes:
+///   • Numeric timer: bedtime icon + MM:SS (or H:MM if > 1 h remaining).
+///   • End-of-track timer: bedtime icon only (no numeric countdown).
+///
+/// Tapping the chip opens the sleep timer dialog directly so the user
+/// can cancel or change the duration without diving into the ⋯ menu.
+class _SleepTimerBadge extends ConsumerWidget {
+  const _SleepTimerBadge();
+
+  static String _formatRemaining(Duration d) {
+    // Round up so the user never sees 0:00 while the timer is still
+    // technically running.
+    final totalSeconds = d.inSeconds + (d.inMilliseconds % 1000 > 0 ? 1 : 0);
+    if (totalSeconds >= 3600) {
+      final h = totalSeconds ~/ 3600;
+      final m = ((totalSeconds % 3600) / 60).ceil();
+      return '$h:${m.toString().padLeft(2, '0')}';
+    }
+    final m = totalSeconds ~/ 60;
+    final s = totalSeconds % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = ref.watch(sleepTimerProvider);
+    if (active == null) return const SizedBox.shrink();
+
+    final remaining = ref.watch(sleepTimerRemainingProvider);
+
+    return Padding(
+      padding: const EdgeInsets.only(right: AfSpacing.s4),
+      child: Material(
+        color: AfColors.surfaceRaised,
+        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderSm),
+        child: InkWell(
+          borderRadius: AfRadii.borderSm,
+          onTap: () {
+            showDialog<void>(
+              context: context,
+              builder: (_) => Dialog(
+                backgroundColor: AfColors.surfaceBase,
+                shape:
+                    RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+                child: const _SleepTimerDialogContent(),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.s8,
+              vertical: AfSpacing.s4,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.bedtime_rounded,
+                  size: 16,
+                  color: AfColors.indigo300,
+                ),
+                if (remaining != null) ...[
+                  const SizedBox(width: AfSpacing.s4),
+                  Text(
+                    _formatRemaining(remaining),
+                    style: AfTypography.mono.copyWith(
+                      fontSize: 12,
+                      color: AfColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _TransportRow extends StatelessWidget {
   final bool isPlaying;
