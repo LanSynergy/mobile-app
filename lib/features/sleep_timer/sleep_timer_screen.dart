@@ -260,6 +260,18 @@ class SleepTimerWatcher extends ConsumerStatefulWidget {
 class _SleepTimerWatcherState extends ConsumerState<SleepTimerWatcher> {
   Timer? _timer;
 
+  /// ID of the track that was playing when an "end of track" timer
+  /// was armed. Cleared when the timer is cancelled or fires.
+  ///
+  /// The watcher fires when the current track no longer matches this
+  /// ID — that is the only signal that reliably catches both the
+  /// auto-advance case (mpv jumps to the next track, `isPlaying`
+  /// stays true) and the queue-end case (mpv stops, `isPlaying`
+  /// flips false). The previous implementation only checked the
+  /// queue-end case, so the timer silently failed for users with
+  /// more than one track queued — the most common scenario.
+  String? _endOfTrackAnchorId;
+
   @override
   void initState() {
     super.initState();
@@ -278,11 +290,23 @@ class _SleepTimerWatcherState extends ConsumerState<SleepTimerWatcher> {
 
   void _scheduleCheck() {
     _timer?.cancel();
+
+    // Capture the track that's active when an "end of track" timer is
+    // armed so we can detect when mpv moves on (auto-advance OR stop).
+    final target = ref.read(sleepTimerProvider);
+    if (target != null && target.difference(DateTime.now()).inHours > 12) {
+      _endOfTrackAnchorId =
+          ref.read(playerServiceProvider).currentTrack?.id;
+    } else {
+      _endOfTrackAnchorId = null;
+    }
+
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       final target = ref.read(sleepTimerProvider);
       if (target == null) {
         _timer?.cancel();
+        _endOfTrackAnchorId = null;
         return;
       }
 
@@ -290,13 +314,20 @@ class _SleepTimerWatcherState extends ConsumerState<SleepTimerWatcher> {
 
       if (isEndOfTrack) {
         final svc = ref.read(playerServiceProvider);
-        final pos = svc.position;
         final current = svc.currentTrack;
-        if (current != null &&
-            current.duration > Duration.zero &&
-            (current.duration - pos).inSeconds <= 2 &&
-            !svc.isPlaying) {
+
+        // Late-arming: timer was set with no active track. Adopt the
+        // first track that starts as the anchor and wait for it to end.
+        if (_endOfTrackAnchorId == null) {
+          if (current != null) _endOfTrackAnchorId = current.id;
+          return;
+        }
+
+        // Anchor changed (auto-advanced to next, queue ended, or user
+        // skipped) — the song the user was listening to has finished.
+        if (current == null || current.id != _endOfTrackAnchorId) {
           _fire();
+          return;
         }
       } else if (DateTime.now().isAfter(target)) {
         _fire();
@@ -306,6 +337,7 @@ class _SleepTimerWatcherState extends ConsumerState<SleepTimerWatcher> {
 
   void _fire() {
     _timer?.cancel();
+    _endOfTrackAnchorId = null;
     ref.read(sleepTimerProvider.notifier).state = null;
     ref.read(sleepTimerRemainingProvider.notifier).state = null;
     ref.read(playerServiceProvider).pause();
@@ -320,6 +352,7 @@ class _SleepTimerWatcherState extends ConsumerState<SleepTimerWatcher> {
         _scheduleCheck();
       } else {
         _timer?.cancel();
+        _endOfTrackAnchorId = null;
       }
     });
     return const SizedBox.shrink();
