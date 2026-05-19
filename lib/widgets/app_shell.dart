@@ -154,18 +154,17 @@ class AppShell extends ConsumerWidget {
                     child: MiniPlayer(
                       onTap: () => context.push('/now-playing'),
                       onPlayPause: () {
+                        // Toggle off mpv's own `playing` state — the only
+                        // signal that stays correct in the first ~250 ms
+                        // of a freshly-started track. The previous check
+                        // (`position == Duration.zero`) would silently
+                        // upgrade a tap-to-pause into a redundant play()
+                        // whenever the user caught the track at 0:00.
                         final svc = ref.read(playerServiceProvider);
-                        if (svc.position == Duration.zero) {
-                          svc.play();
+                        if (svc.isPlaying) {
+                          svc.pause();
                         } else {
-                          final playing = ref
-                              .read(playingStreamProvider)
-                              .maybeWhen(data: (v) => v, orElse: () => false);
-                          if (playing) {
-                            svc.pause();
-                          } else {
-                            svc.play();
-                          }
+                          svc.play();
                         }
                       },
                       onSkipNext: () => ref.read(playerServiceProvider).skipToNext(),
