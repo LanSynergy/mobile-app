@@ -324,6 +324,10 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
 
   @override
   Widget build(BuildContext context) {
+    // Favorites are server-owned (CLAUDE.md §1.3). In local mode the
+    // heart had no backend to call — the tap handler early-returned
+    // and the icon stayed empty forever — so hide it entirely.
+    final isLocalMode = ref.watch(appModeProvider) == AppMode.local;
     return Row(
       children: [
         Expanded(
@@ -333,12 +337,14 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
             label: const Text('Play'),
           ),
         ),
-        const SizedBox(width: AfSpacing.s12),
-        _IconCircle(
-          icon: _isFavorite ? Icons.favorite : Icons.favorite_border,
-          color: _isFavorite ? AfColors.semanticError : null,
-          onTap: _toggleFavorite,
-        ),
+        if (!isLocalMode) ...[
+          const SizedBox(width: AfSpacing.s12),
+          _IconCircle(
+            icon: _isFavorite ? Icons.favorite : Icons.favorite_border,
+            color: _isFavorite ? AfColors.semanticError : null,
+            onTap: _toggleFavorite,
+          ),
+        ],
         const SizedBox(width: AfSpacing.s8),
         _IconCircle(
           icon: Icons.download_outlined,
