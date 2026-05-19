@@ -2,12 +2,11 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
-import 'player_settings_store.dart';
 
 /// Stores a snapshot of playback position for elapsed-time extrapolation.
 /// Used when mpv's observe_property/getRawProperty for time-pos stalls.
@@ -66,6 +65,13 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   int _nudgeRetries = 0;
   static const _maxNudgeRetries = 3;
+
+  /// Last `audio-device` name observed from mpv. Used by the
+  /// `_player.stream.audioDevice` listener to skip duplicate
+  /// emissions (mpv re-emits the same device on some property
+  /// polls), so we only re-apply the filter chain on *real*
+  /// device transitions. `null` until the first emission.
+  String? _lastObservedAudioDevice;
 
   int? _pendingPlayNudgeIdx;
   bool _userPaused = false;
@@ -300,20 +306,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     afLog('audio', 'audioEffects updated');
   }
 
-  AudioEffects _autoBypassFlat(AudioEffects fx) {
-    return fx.copyWith(
-      bass: fx.bass.copyWith(
-        enabled: fx.bass.enabled && fx.bass.g != 0,
-      ),
-      treble: fx.treble.copyWith(
-        enabled: fx.treble.enabled && fx.treble.g != 0,
-      ),
-      superequalizer: fx.superequalizer.copyWith(
-        enabled: fx.superequalizer.enabled &&
-            fx.superequalizer.params.values.any((gain) => gain != 0.0),
-      ),
-    );
-  }
+  AudioEffects _autoBypassFlat(AudioEffects fx) => autoBypassFlat(fx);
 
   Stream<AudioEffects> get audioEffectsStream => _player.stream.audioEffects;
   AudioEffects get audioEffects => _player.state.audioEffects;
@@ -850,18 +843,32 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     unawaited(_nudgeAudioDeviceWithRetry(attempt + 1));
   }
 
+  /// Re-apply the *current* in-memory audio effects to mpv after an
+  /// output-device change.
+  ///
+  /// On some Android audio outputs (USB DAC, certain Bluetooth
+  /// codecs) the `af` filter chain detaches from the output pipeline
+  /// when mpv rebuilds it, leaving the user with un-filtered audio
+  /// even though `_player.state.audioEffects` still reports the
+  /// filters as enabled. Re-issuing `setAudioEffects(current)`
+  /// re-attaches the chain.
+  ///
+  /// This used to load from `SharedPreferences` instead of the live
+  /// player state, which raced with `_apply()` in the EQ screen —
+  /// `_apply()` issues `setAudioEffects(newFx)` + `saveAudioEffects(newFx)`
+  /// as two unawaited futures, so any audioDevice event firing in
+  /// between (e.g. from `_nudgeAudioDevice` after `play()`/`seek()`)
+  /// would read the *previous* persisted state and clobber the
+  /// user's just-applied slider change. Using `_player.state` makes
+  /// the operation a pure no-op when nothing has actually changed,
+  /// and preserves any pending UI update that's already been pushed
+  /// to mpv.
   Future<void> _reapplyPersistedEffects() async {
     if (_disposed) return;
     try {
-      final prefs = await _prefs();
-      final fx = PlayerSettingsStore.loadAudioEffects(prefs);
-      if (fx != null) {
-        final masterEnabled = prefs.getBool('af.dsp_master_enabled') ?? true;
-        if (masterEnabled) {
-          await setAudioEffects(fx);
-          afLog('audio', 're-applied audio effects after device change');
-        }
-      }
+      final current = _player.state.audioEffects;
+      await _player.setAudioEffects(current);
+      afLog('audio', 're-applied audio effects after device change');
     } catch (e) {
       afLog('audio', 'reapplyPersistedEffects failed', error: e);
     }
@@ -888,8 +895,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       afLog('audio', 'reconfigureSpectrumOnTrackChange failed', error: e);
     }
   }
-
-  static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
   Future<void> _jumpAndPlay(int index) async {
     try {
@@ -998,9 +1003,17 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     _subs.add(_player.stream.coverArt.listen(_persistCover));
 
     _subs.add(_player.stream.audioDevice.listen((newDevice) {
-      // Re-apply effects after a device change — on some devices the audio
-      // filter chain (af) doesn't properly attach to the output pipeline on
-      // first init. Re-applying after device change re-wires the filters.
+      // Re-apply effects after a *real* device change — on some
+      // devices the audio filter chain (af) doesn't properly attach
+      // to the output pipeline on first init. Re-issuing the chain
+      // after device change re-wires the filters.
+      //
+      // Skip when the stream re-emits the same device (mpv re-emits
+      // on every property poll on some platforms). Without this
+      // guard, every position tick can fire `_reapplyPersistedEffects`,
+      // which competes with in-flight UI changes from the EQ screen.
+      if (newDevice.name == _lastObservedAudioDevice) return;
+      _lastObservedAudioDevice = newDevice.name;
       unawaited(_reapplyPersistedEffects());
     }));
 
@@ -1269,4 +1282,67 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       afLog('audio', 'cover art persist failed', error: e);
     }
   }
+}
+
+/// Sanitise an [AudioEffects] bundle before it goes into libmpv's
+/// `af` filter chain.
+///
+/// Two things happen here:
+///
+/// 1. **Bypass flat filters.** libmpv keeps every entry in `af`
+///    even when its parameters are neutral, which costs CPU on the
+///    audio thread *and* causes the FFT spectrum (which taps the
+///    chain post-DSP) to smear when a shelf or EQ band is set to
+///    0/flat. Stripping no-op filters keeps the chain minimal.
+///
+///    Notes per filter:
+///      * `bass` / `treble` shelves: neutral gain is `0` dB.
+///        Disable when the user has cut the slider all the way
+///        back to 0.
+///      * `superequalizer`: neutral gain is `1.0` (a multiplier,
+///        not a dB value). `_buildEqParams()` in the EQ screen
+///        already strips bands at `1.0`, so by the time the bundle
+///        reaches here, `params` is either empty (every band flat
+///        — nothing to do) or contains at least one user-adjusted
+///        band that we must keep. The previous check used
+///        `gain != 0.0`, which also disabled the EQ when a user
+///        explicitly cut a band to 0 (full mute), defeating
+///        "muted band" presets entirely.
+///
+/// 2. **Clamp out-of-range filter params to libmpv's accepted
+///    domain.** If *any* filter in an `af` chain has an
+///    out-of-range parameter, libmpv rejects the entire chain and
+///    audio flows through un-filtered (with no error surfaced to
+///    the user). That makes one bad value silently disable every
+///    other DSP filter, which is exactly the de-esser regression
+///    that prompted this sanitiser: the EQ/DSP screen used to send
+///    `deesser.f` as a 5500 Hz cutoff while libmpv expects a
+///    0..1 ratio, kicking the chain out as soon as the user
+///    enabled the de-esser.
+///
+/// Exposed as a top-level function so it can be unit-tested
+/// without constructing an [AfPlayerService] (which requires
+/// libmpv).
+@visibleForTesting
+AudioEffects autoBypassFlat(AudioEffects fx) {
+  return fx.copyWith(
+    bass: fx.bass.copyWith(
+      enabled: fx.bass.enabled && fx.bass.g != 0,
+    ),
+    treble: fx.treble.copyWith(
+      enabled: fx.treble.enabled && fx.treble.g != 0,
+    ),
+    superequalizer: fx.superequalizer.copyWith(
+      enabled:
+          fx.superequalizer.enabled && fx.superequalizer.params.isNotEmpty,
+    ),
+    deesser: fx.deesser.copyWith(
+      // Every deesser knob is a 0..1 ratio in libmpv. Clamp on the
+      // way out so a value persisted by an older build (or one set
+      // by a future buggy UI) can never poison the chain again.
+      f: fx.deesser.f.clamp(0.0, 1.0),
+      i: fx.deesser.i.clamp(0.0, 1.0),
+      m: fx.deesser.m.clamp(0.0, 1.0),
+    ),
+  );
 }

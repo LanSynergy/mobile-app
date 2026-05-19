@@ -10,6 +10,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart'
 
 import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/models/items.dart';
+import '../../core/jellyfin/models/quality.dart';
 import '../../design_tokens/tokens.dart';
 import '../../features/sleep_timer/sleep_timer_screen.dart';
 import '../../state/providers.dart';
@@ -333,7 +334,7 @@ class _MetadataRow extends ConsumerWidget {
           },
         ),
         _AbLoopButton(),
-        if (track.quality != null) QualityChip(quality: track.quality!),
+        _NowPlayingMetaChip(quality: track.quality),
       ],
     );
   }
@@ -619,7 +620,6 @@ class _TopBar extends ConsumerWidget {
               ),
             ),
           ),
-          const _SleepTimerBadge(),
           PopupMenuButton<_NowPlayingAction>(
             icon: const Icon(Icons.more_horiz_rounded),
             onSelected: (action) async {
@@ -685,15 +685,22 @@ class _TopBar extends ConsumerWidget {
 
 enum _NowPlayingAction { startRadio, goToAlbum, goToArtist }
 
-/// Compact chip rendered next to the Now Playing popup menu when a
-/// sleep timer is armed. Two visual modes:
-///   • Numeric timer: bedtime icon + MM:SS (or H:MM if > 1 h remaining).
-///   • End-of-track timer: bedtime icon only (no numeric countdown).
+/// Combined chip rendered in the Now Playing metadata row (right of the
+/// favorite + A-B-loop buttons). Replaces the old _SleepTimerBadge that
+/// lived next to the ⋯ menu in the top bar — the chip slot is unified so
+/// the header stays compact and the metadata row only ever shows one chip.
 ///
-/// Tapping the chip opens the sleep timer dialog directly so the user
-/// can cancel or change the duration without diving into the ⋯ menu.
-class _SleepTimerBadge extends ConsumerWidget {
-  const _SleepTimerBadge();
+/// Visual modes:
+///   • Sleep timer armed → bedtime icon + remaining time (or just the icon
+///     for end-of-track timers). Tapping opens the sleep timer dialog so
+///     the user can adjust or cancel without diving into the More sheet.
+///   • Sleep timer off → [QualityChip] for the current track (FLAC, bit
+///     depth, sample rate). The chip's warning border still surfaces
+///     transcode / degradation.
+///   • Neither (no timer + no quality info) → empty.
+class _NowPlayingMetaChip extends ConsumerWidget {
+  final TrackQuality? quality;
+  const _NowPlayingMetaChip({required this.quality});
 
   static String _formatRemaining(Duration d) {
     // Round up so the user never sees 0:00 while the timer is still
@@ -712,17 +719,13 @@ class _SleepTimerBadge extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final active = ref.watch(sleepTimerProvider);
-    if (active == null) return const SizedBox.shrink();
-
-    final remaining = ref.watch(sleepTimerRemainingProvider);
-
-    return Padding(
-      padding: const EdgeInsets.only(right: AfSpacing.s4),
-      child: Material(
-        color: AfColors.surfaceRaised,
-        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderSm),
+    if (active != null) {
+      final remaining = ref.watch(sleepTimerRemainingProvider);
+      return Material(
+        color: AfColors.surfaceHigh,
+        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderPill),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
-          borderRadius: AfRadii.borderSm,
           onTap: () {
             showDialog<void>(
               context: context,
@@ -736,15 +739,15 @@ class _SleepTimerBadge extends ConsumerWidget {
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.s8,
-              vertical: AfSpacing.s4,
+              horizontal: AfSpacing.s12,
+              vertical: 6,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                const Icon(
                   Icons.bedtime_rounded,
-                  size: 16,
+                  size: 13,
                   color: AfColors.indigo300,
                 ),
                 if (remaining != null) ...[
@@ -752,8 +755,8 @@ class _SleepTimerBadge extends ConsumerWidget {
                   Text(
                     _formatRemaining(remaining),
                     style: AfTypography.mono.copyWith(
-                      fontSize: 12,
-                      color: AfColors.textPrimary,
+                      fontSize: 11,
+                      color: AfColors.textSecondary,
                     ),
                   ),
                 ],
@@ -761,8 +764,12 @@ class _SleepTimerBadge extends ConsumerWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
+    }
+    if (quality != null) {
+      return QualityChip(quality: quality!);
+    }
+    return const SizedBox.shrink();
   }
 }
 
