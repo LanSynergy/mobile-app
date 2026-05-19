@@ -42,6 +42,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  /// Pull-to-refresh handler. Invalidates every provider the Home
+  /// screen reads, then awaits each one's next value so the spinner
+  /// stays visible until the refetch actually completes.
+  Future<void> _onRefresh() async {
+    final isLocal = ref.read(appModeProvider) == AppMode.local;
+    ref.invalidate(recentlyAddedAlbumsProvider);
+    if (isLocal) {
+      ref.invalidate(localTracksProvider);
+      ref.invalidate(localArtistsProvider);
+      ref.invalidate(localGenresProvider);
+    } else {
+      ref.invalidate(recentlyPlayedTracksProvider);
+      ref.invalidate(allArtistsProvider);
+      ref.invalidate(allGenresProvider);
+    }
+    await Future.wait<Object?>([
+      ref.read(recentlyAddedAlbumsProvider.future),
+      ref.read(
+          (isLocal ? localTracksProvider : recentlyPlayedTracksProvider)
+              .future),
+      ref.read(
+          (isLocal ? localArtistsProvider : allArtistsProvider).future),
+      ref.read(
+          (isLocal ? localGenresProvider : allGenresProvider).future),
+    ]).catchError((_) => const <Object?>[]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(appModeProvider);
@@ -65,8 +92,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return ColoredBox(
       color: AfColors.surfaceCanvas,
       child: SafeArea(
-      child: CustomScrollView(
-        physics: const ClampingScrollPhysics(),
+      child: RefreshIndicator(
+        onRefresh: _onRefresh,
+        color: AfColors.indigo300,
+        backgroundColor: AfColors.surfaceBase,
+        child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: ClampingScrollPhysics(),
+        ),
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
@@ -270,6 +303,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
         ],
+      ),
       ),
     ),
     );
