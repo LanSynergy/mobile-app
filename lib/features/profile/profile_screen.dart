@@ -37,9 +37,10 @@ class ProfileScreen extends ConsumerWidget {
         ? ref.watch(localAlbumsProvider)
         : ref.watch(allAlbumsProvider);
     final favAlbumsAsync = ref.watch(favoriteAlbumsProvider);
-    final recentAlbumsAsync = isLocal
-        ? ref.watch(localAlbumsProvider)
-        : ref.watch(recentlyAddedAlbumsProvider);
+    // Same provider in both modes — LocalBackend.recentlyAddedAlbums
+    // sorts by MAX(last_modified) so this fallback actually surfaces
+    // newly-imported music instead of the alphabetically-first album.
+    final recentAlbumsAsync = ref.watch(recentlyAddedAlbumsProvider);
     final playlistsAsync = ref.watch(allPlaylistsProvider);
 
     String fmtCount<T>(AsyncValue<List<T>> async) => async.maybeWhen(
