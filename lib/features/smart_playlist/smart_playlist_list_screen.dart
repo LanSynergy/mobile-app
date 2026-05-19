@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/smart_playlist/smart_playlist_model.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/async_error_view.dart';
 
 /// Lists all user-created smart playlists — Samsung One UI style.
 class SmartPlaylistListScreen extends ConsumerWidget {
@@ -106,7 +107,11 @@ class SmartPlaylistListScreen extends ConsumerWidget {
                 ],
               ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => AsyncErrorView(
+          label: 'Could not load smart playlists',
+          error: e,
+          onRetry: () => ref.invalidate(smartPlaylistsProvider),
+        ),
       ),
     );
   }

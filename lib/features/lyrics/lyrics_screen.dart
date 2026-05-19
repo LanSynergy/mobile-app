@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/lyrics/lrc_parser.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/async_error_view.dart';
 
 class LyricsScreen extends ConsumerStatefulWidget {
   const LyricsScreen({super.key});
@@ -144,19 +145,13 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
         child: SafeArea(
           child: lrcAsync.maybeWhen(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous,
-                ),
-                child: Text(
-                  'Could not load lyrics: $e',
-                  style: AfTypography.bodySmall.copyWith(
-                    color: AfColors.semanticError,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+            error: (e, _) => AsyncErrorView(
+              label: 'Could not load lyrics',
+              error: e,
+              onRetry: () {
+                final t = ref.read(currentTrackProvider);
+                if (t != null) ref.invalidate(lyricsProvider(t.id));
+              },
             ),
             orElse: () {
               if (lrc == null || lrc.isEmpty) {

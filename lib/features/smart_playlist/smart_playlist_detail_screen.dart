@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/audio/play_actions.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/async_error_view.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 
@@ -183,7 +184,12 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => AsyncErrorView(
+          label: 'Could not resolve smart playlist',
+          error: e,
+          onRetry: () =>
+              ref.invalidate(smartPlaylistTracksProvider(playlistId)),
+        ),
       ),
     );
   }
