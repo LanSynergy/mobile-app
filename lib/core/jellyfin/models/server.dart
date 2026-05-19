@@ -94,4 +94,10 @@ class JellyfinAuth {
 ///
 /// Re-exported from `backend/music_backend.dart` so existing imports
 /// of `models/server.dart` pick it up without an extra import.
-enum ServerType { jellyfin, subsonic }
+///
+/// `local` is a sentinel for the on-device LocalBackend — it has no
+/// real "server" but it does implement [MusicBackend] so favorites and
+/// playlists work the same as in server mode. Callers that branch on
+/// server type should treat `local` like a third backend, not as a
+/// "missing" server.
+enum ServerType { jellyfin, subsonic, local }

@@ -14,6 +14,7 @@ import '../core/jellyfin/auth_storage.dart';
 import '../core/jellyfin/client.dart';
 import '../core/jellyfin/models/items.dart';
 import '../core/jellyfin/models/server.dart';
+import '../core/local/local_backend.dart';
 import '../core/local/local_library.dart';
 import '../core/lyrics/lrc_parser.dart';
 import '../core/smart_playlist/smart_playlist_db.dart';
@@ -177,6 +178,16 @@ class AuthNotifier extends StateNotifier<JellyfinAuth?> {
 final musicBackendProvider = Provider<MusicBackend?>((ref) {
   final auth = ref.watch(authProvider);
   if (auth == null) {
+    // Local mode is no longer a degraded sub-mode — it has its own
+    // backend that implements the same MusicBackend contract over
+    // the on-device SQLite store. This lets favorites, playlists and
+    // "Save to playlist" work in either mode without per-call
+    // “if (backend == null)” branches scattered through the UI.
+    if (ref.watch(appModeProvider) == AppMode.local) {
+      final lib = ref.watch(localLibraryProvider);
+      _logData('musicBackend', source: 'live', extra: 'type=local');
+      return LocalBackend(library: lib, db: lib.db);
+    }
     _logData('musicBackend', source: 'demo', extra: '(signed out)');
     return null;
   }
@@ -207,6 +218,13 @@ final musicBackendProvider = Provider<MusicBackend?>((ref) {
         userId: auth.userId,
         clientVersion: clientVersion,
       );
+    case ServerType.local:
+      // Local mode normally arrives via the `auth == null` branch
+      // above. Persisted auth shouldn't be tagged as local, but if
+      // some future migration ever stores one, fall back to the
+      // on-device backend instead of throwing.
+      final lib = ref.watch(localLibraryProvider);
+      return LocalBackend(library: lib, db: lib.db);
   }
 
   ref.onDispose(client.close);
