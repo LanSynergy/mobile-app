@@ -49,10 +49,12 @@ class LocalBackend implements MusicBackend {
   // it. Favorites are populated from the new local favorites table.
 
   @override
-  Future<List<AfAlbum>> recentlyAddedAlbums({int limit = 20}) async {
-    final albums = await library.albums();
-    return albums.take(limit).toList();
-  }
+  Future<List<AfAlbum>> recentlyAddedAlbums({int limit = 20}) =>
+      // Sort by MAX(tracks.last_modified) per album in SQL. There's no
+      // `added_at` column on tracks (would need a schema bump), but file
+      // mtime is a workable proxy and matches the "albums I downloaded
+      // recently" intuition that the Home hero is selling.
+      db.recentlyAddedAlbums(limit: limit);
 
   @override
   Future<List<AfTrack>> recentlyPlayed({int limit = 20}) async {
@@ -70,37 +72,24 @@ class LocalBackend implements MusicBackend {
   }
 
   @override
-  Future<List<AfPlaylist>> playlists({int limit = 200}) async {
-    final rows = await db.allPlaylists();
-    final result = <AfPlaylist>[];
-    for (final p in rows.take(limit)) {
-      final stats = await db.playlistStats(p.id);
-      result.add(AfPlaylist(
-        id: p.id,
-        name: p.name,
-        trackCount: stats.count,
-        duration: Duration(milliseconds: stats.durationMs),
-      ));
-    }
-    return result;
-  }
+  Future<List<AfPlaylist>> playlists({int limit = 200}) =>
+      // One SQL with LEFT JOIN to compute track count + duration per
+      // playlist, instead of allPlaylists() + N+1 playlistStats().
+      db.allPlaylistsWithStats(limit: limit);
 
   @override
   Future<List<AfAlbum>> allAlbums(
-      {int limit = 500, int startIndex = 0}) async {
-    final albums = await library.albums();
-    if (startIndex >= albums.length) return const [];
-    final end = (startIndex + limit).clamp(0, albums.length);
-    return albums.sublist(startIndex, end);
-  }
+          {int limit = 500, int startIndex = 0}) =>
+      // Paginate at the SQL layer instead of returning every album
+      // and slicing in Dart.
+      db.allAlbums(limit: limit, offset: startIndex);
 
   @override
   Future<List<AfTrack>> allTracks(
       {int limit = 1000, int startIndex = 0}) async {
-    final tracks = await library.tracks(limit: limit + startIndex);
-    if (startIndex >= tracks.length) return const [];
-    final end = (startIndex + limit).clamp(0, tracks.length);
-    final slice = tracks.sublist(startIndex, end);
+    // SQL OFFSET; the previous (limit + startIndex) + sublist pattern
+    // grew the loaded row count with the scroll position.
+    final slice = await db.allTracks(limit: limit, offset: startIndex);
     return _hydrateFavorites(slice);
   }
 
@@ -111,16 +100,12 @@ class LocalBackend implements MusicBackend {
   }
 
   @override
-  Future<List<AfAlbum>> favoriteAlbums({int limit = 30}) async {
-    final favIds = await db.favoriteIds();
-    if (favIds.isEmpty) return const [];
-    final albums = await library.albums();
-    return albums
-        .where((a) => favIds.contains(a.id))
-        .take(limit)
-        .map((a) => a.copyWith(isFavorite: true))
-        .toList();
-  }
+  Future<List<AfAlbum>> favoriteAlbums({int limit = 30}) =>
+      // One SQL with an `IN (SELECT item_id FROM favorites)` subquery
+      // — only the favorited albums are aggregated, instead of
+      // GROUP BYing every album in the library and then keeping the
+      // 30 that match.
+      db.favoriteAlbums(limit: limit);
 
   @override
   Future<List<AfTrack>> favoriteTracks({int limit = 500}) =>
@@ -136,22 +121,34 @@ class LocalBackend implements MusicBackend {
   Future<({AfAlbum album, List<AfTrack> tracks})?> album(String id) async {
     final parsed = _parseAlbumId(id);
     if (parsed == null) return null;
-    final tracks = await library.tracksByAlbum(parsed.name, parsed.artist);
+    // Look the album up directly instead of GROUP BYing every album in
+    // the library to find one row. Tracks are loaded in parallel; one
+    // favoriteIds() query is shared between the album row's
+    // isFavorite flag and the per-track hydration below.
+    final results = await Future.wait([
+      db.albumByKey(parsed.name, parsed.artist),
+      library.tracksByAlbum(parsed.name, parsed.artist),
+      db.favoriteIds(),
+    ]);
+    final albumMeta = results[0] as AfAlbum?;
+    final tracks = results[1] as List<AfTrack>;
+    final favIds = results[2] as Set<String>;
     if (tracks.isEmpty) return null;
-    final hydrated = await _hydrateFavorites(tracks);
-    final favIds = await db.favoriteIds();
-    final albums = await library.albums();
-    final album = albums.firstWhere(
-      (a) => a.id == id,
-      orElse: () => AfAlbum(
-        id: id,
-        name: parsed.name,
-        artistName: parsed.artist,
-        trackCount: tracks.length,
-        totalDuration: tracks.fold<Duration>(
-            Duration.zero, (acc, t) => acc + t.duration),
-      ),
-    );
+    final album = albumMeta ??
+        AfAlbum(
+          id: id,
+          name: parsed.name,
+          artistName: parsed.artist,
+          trackCount: tracks.length,
+          totalDuration: tracks.fold<Duration>(
+              Duration.zero, (acc, t) => acc + t.duration),
+        );
+    final hydrated = favIds.isEmpty
+        ? tracks
+        : tracks
+            .map((t) =>
+                favIds.contains(t.id) ? t.copyWith(isFavorite: true) : t)
+            .toList();
     return (
       album: album.copyWith(isFavorite: favIds.contains(id)),
       tracks: hydrated,
@@ -162,18 +159,9 @@ class LocalBackend implements MusicBackend {
   Future<AfArtist?> artist(String id) async {
     final name = _parseArtistId(id);
     if (name == null) return null;
-    final artists = await library.artists();
-    for (final a in artists) {
-      if (a.id == id) return a;
-    }
-    final tracks = await library.tracksByArtist(name);
-    if (tracks.isEmpty) return null;
-    return AfArtist(
-      id: id,
-      name: name,
-      albumCount: tracks.map((t) => t.albumName).toSet().length,
-      trackCount: tracks.length,
-    );
+    // Single-row aggregation instead of GROUP BYing every artist in
+    // the library to find one row.
+    return db.artistByName(name);
   }
 
   @override
@@ -181,11 +169,9 @@ class LocalBackend implements MusicBackend {
       {int limit = 100}) async {
     final name = _parseArtistId(artistId);
     if (name == null) return const [];
-    final albums = await library.albums();
-    return albums
-        .where((a) => a.artistName == name)
-        .take(limit)
-        .toList();
+    // Push the artist filter down to SQL instead of GROUP BYing every
+    // album in the library and filtering in Dart.
+    return db.albumsByArtist(name, limit: limit);
   }
 
   @override
@@ -199,25 +185,12 @@ class LocalBackend implements MusicBackend {
 
   @override
   Future<List<AfAlbum>> albumsByGenre(String genre,
-      {int limit = 200}) async {
-    final albums = await library.albums();
-    // Genre is per-track in local mode; surface every album that has
-    // at least one matching track. Cheap because albums() is already
-    // an in-memory list.
-    final result = <AfAlbum>[];
-    for (final a in albums) {
-      final tracks =
-          await library.tracksByAlbum(a.name, a.artistName);
-      if (tracks.any((t) =>
-          t.albumName.isNotEmpty &&
-          t.albumName == a.name &&
-          (t.artistName == a.artistName))) {
-        result.add(a);
-        if (result.length >= limit) break;
-      }
-    }
-    return result;
-  }
+          {int limit = 200}) =>
+      // Genre is per-track in local mode; the SQL aggregation in
+      // [LocalDb.albumsByGenre] groups by the same (album, album-artist
+      // ?? artist) key as [LocalDb.allAlbums] so trackCount / totalDuration
+      // / cover-art match what the rest of the app expects.
+      db.albumsByGenre(genre, limit: limit);
 
   @override
   Future<({AfPlaylist playlist, List<AfTrack> tracks})?> playlist(
@@ -257,20 +230,21 @@ class LocalBackend implements MusicBackend {
         playlists: <AfPlaylist>[],
       );
     }
+    // Push the filter down to SQL for each result type so we don't
+    // load the entire local library on every keystroke. tracks already
+    // do this via library.search() / searchTracks(). The album / artist
+    // / playlist branches used to pull `allAlbums()`, `allArtists()`,
+    // and `allPlaylists()` + N+1 `playlistStats()` for every search.
     final tracks = await library.search(query);
     final hydratedTracks = await _hydrateFavorites(tracks);
-    final allAlbumsList = await library.albums();
-    final allArtistsList = await library.artists();
-    final allPlaylistsList = await playlists(limit: 1000);
-    bool matches(String? s) => s != null && s.toLowerCase().contains(q);
+    final albums = await db.searchAlbums(q);
+    final artists = await db.searchArtists(q);
+    final playlistMatches = await db.searchPlaylists(q);
     return (
       tracks: hydratedTracks,
-      albums: allAlbumsList
-          .where((a) => matches(a.name) || matches(a.artistName))
-          .toList(),
-      artists: allArtistsList.where((a) => matches(a.name)).toList(),
-      playlists:
-          allPlaylistsList.where((p) => matches(p.name)).toList(),
+      albums: albums,
+      artists: artists,
+      playlists: playlistMatches,
     );
   }
 
@@ -322,20 +296,10 @@ class LocalBackend implements MusicBackend {
 
   @override
   Future<List<AfTrack>> instantMix(String seedId, {int limit = 50}) async {
-    final seedTracks = await library.tracks(limit: 5000);
-    final seed = seedTracks.firstWhere(
-      (t) => t.id == seedId,
-      orElse: () => seedTracks.isEmpty
-          ? const AfTrack(
-              id: '',
-              title: '',
-              artistName: '',
-              albumName: '',
-              duration: Duration.zero,
-            )
-          : seedTracks.first,
-    );
-    if (seed.id.isEmpty) return const [];
+    // Primary-key lookup instead of allTracks(limit: 5000).firstWhere —
+    // the old path decoded thousands of rows per "Start radio" tap.
+    final seed = await db.trackById(seedId);
+    if (seed == null) return const [];
     final byArtist = await library.tracksByArtist(seed.artistName);
     final shuffled = List<AfTrack>.of(byArtist)..shuffle();
     return _hydrateFavorites(shuffled.take(limit).toList());

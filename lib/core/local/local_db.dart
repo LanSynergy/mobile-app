@@ -100,16 +100,20 @@ class LocalDb {
 
   // ── Query ───────────────────────────────────────────────────────────────
 
-  Future<List<AfTrack>> allTracks({int limit = 5000}) async {
+  Future<List<AfTrack>> allTracks({int limit = 5000, int offset = 0}) async {
     final rows = await (db.select(db.tracks)
           ..orderBy([(t) => OrderingTerm(expression: t.title.collate(Collate.noCase), mode: OrderingMode.asc)])
-          ..limit(limit))
+          ..limit(limit, offset: offset > 0 ? offset : null))
         .get();
     return rows.map(rowToTrack).toList();
   }
 
-  Future<List<AfAlbum>> allAlbums() async {
-    final rows = await db.customSelect('''
+  /// [limit] is optional — when null, returns every album. Callers
+  /// that paginate (Library → Albums, Profile fallback) pass
+  /// limit/offset so SQLite only aggregates the requested page.
+  Future<List<AfAlbum>> allAlbums({int? limit, int offset = 0}) async {
+    final paginated = limit != null;
+    final sql = StringBuffer('''
       SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
              COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
              MIN(year) as year
@@ -117,7 +121,16 @@ class LocalDb {
       WHERE album != ''
       GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
       ORDER BY album COLLATE NOCASE ASC
-    ''').get();
+    ''');
+    final vars = <Variable>[];
+    if (paginated) {
+      sql.write(' LIMIT ?1 OFFSET ?2');
+      vars.add(Variable<int>(limit));
+      vars.add(Variable<int>(offset));
+    }
+    final rows = await db
+        .customSelect(sql.toString(), variables: vars, readsFrom: {db.tracks})
+        .get();
     return rows.map((r) {
       final albumName = r.read<String?>('album') ?? 'Unknown';
       final artistName = (r.read<String?>('album_artist'))?.isNotEmpty == true
@@ -204,6 +217,17 @@ class LocalDb {
     return rows.map(rowToTrack).toList();
   }
 
+  /// Single-row lookup by primary key. Returns `null` if the id is
+  /// unknown (e.g. the track was just deleted by a rescan). Lets
+  /// callers avoid the `allTracks(limit: 5000).firstWhere(...)`
+  /// anti-pattern when they only need one row.
+  Future<AfTrack?> trackById(String id) async {
+    final row = await (db.select(db.tracks)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null) return null;
+    return rowToTrack(row);
+  }
+
   Future<List<AfTrack>> tracksByGenre(String genre) async {
     final rows = await (db.select(db.tracks)
           ..where((t) => t.genre.equals(genre))
@@ -212,6 +236,87 @@ class LocalDb {
           ]))
         .get();
     return rows.map(rowToTrack).toList();
+  }
+
+  /// Albums ordered by most-recently-modified track, descending.
+  ///
+  /// Mirrors [allAlbums]'s aggregation key (album + COALESCE(album_artist,
+  /// artist)) so AfAlbum.id matches across queries. We use
+  /// `MAX(last_modified) DESC` per group as the best proxy for "recently
+  /// added" without a schema migration — newly-downloaded files have
+  /// recent mtimes; restored backups keep their original mtime, which is
+  /// also a reasonable signal for "when did this enter my library".
+  Future<List<AfAlbum>> recentlyAddedAlbums({int limit = 20}) async {
+    final rows = await db.customSelect(
+      '''
+      SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
+             COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
+             MIN(year) as year,
+             MAX(COALESCE(last_modified, 0)) as max_last_modified
+      FROM tracks
+      WHERE album != ''
+      GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
+      ORDER BY max_last_modified DESC, album COLLATE NOCASE ASC
+      LIMIT ?
+      ''',
+      variables: [Variable<int>(limit)],
+    ).get();
+    return rows.map((r) {
+      final albumName = r.read<String?>('album') ?? 'Unknown';
+      final artistName = (r.read<String?>('album_artist'))?.isNotEmpty == true
+          ? r.read<String>('album_artist')
+          : (r.read<String?>('artist') ?? '');
+      return AfAlbum(
+        id: 'local:album:$albumName:$artistName',
+        name: albumName,
+        artistName: artistName,
+        trackCount: r.read<int?>('track_count') ?? 0,
+        year: r.read<int?>('year'),
+        totalDuration:
+            Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+        imageUrl: r.read<String?>('cover_path') != null
+            ? 'file://${r.read<String>('cover_path')}'
+            : null,
+      );
+    }).toList();
+  }
+
+  /// Albums whose tracks tag the given genre. Mirrors [allAlbums]'s
+  /// aggregation (album-artist falls back to track artist; `MIN(cover_path)`
+  /// picks a representative cover; `SUM(duration_ms)` totals runtime) but
+  /// filters by `genre` in SQL so we never load tracks we don't need.
+  Future<List<AfAlbum>> albumsByGenre(String genre, {int limit = 200}) async {
+    final rows = await db.customSelect(
+      '''
+      SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
+             COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
+             MIN(year) as year
+      FROM tracks
+      WHERE album != '' AND genre = ?
+      GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
+      ORDER BY album COLLATE NOCASE ASC
+      LIMIT ?
+      ''',
+      variables: [Variable<String>(genre), Variable<int>(limit)],
+    ).get();
+    return rows.map((r) {
+      final albumName = r.read<String?>('album') ?? 'Unknown';
+      final artistName = (r.read<String?>('album_artist'))?.isNotEmpty == true
+          ? r.read<String>('album_artist')
+          : (r.read<String?>('artist') ?? '');
+      return AfAlbum(
+        id: 'local:album:$albumName:$artistName',
+        name: albumName,
+        artistName: artistName,
+        trackCount: r.read<int?>('track_count') ?? 0,
+        year: r.read<int?>('year'),
+        totalDuration:
+            Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+        imageUrl: r.read<String?>('cover_path') != null
+            ? 'file://${r.read<String>('cover_path')}'
+            : null,
+      );
+    }).toList();
   }
 
   Future<List<AfTrack>> searchTracks(String query) async {
@@ -238,6 +343,305 @@ class LocalDb {
     }).toList();
   }
 
+  /// Same aggregation shape as [allArtists] but for a single artist.
+  /// Returns null if no track lists that artist. The albumCount uses
+  /// COUNT(DISTINCT album) (matching [allArtists]), not the
+  /// COALESCE-resolved key — keep this in mind if/when album-artist
+  /// counting semantics change.
+  Future<AfArtist?> artistByName(String name) async {
+    final rows = await db.customSelect(
+      r'''
+      SELECT artist, COUNT(DISTINCT album) as album_count,
+             MIN(cover_path) as cover_path
+      FROM tracks
+      WHERE artist != ''
+        AND artist = ?1
+      GROUP BY artist
+      LIMIT 1
+      ''',
+      variables: [Variable<String>(name)],
+      readsFrom: {db.tracks},
+    ).get();
+    if (rows.isEmpty) return null;
+    final r = rows.first;
+    final resolved = r.read<String?>('artist') ?? 'Unknown';
+    return AfArtist(
+      id: 'local:artist:$resolved',
+      name: resolved,
+      albumCount: r.read<int?>('album_count') ?? 0,
+      imageUrl: r.read<String?>('cover_path') != null
+          ? 'file://${r.read<String>('cover_path')}'
+          : null,
+    );
+  }
+
+  /// Albums the user has favorited. Reconstructs the synthetic album
+  /// id (`local:album:<name>:<artist>`) at the SQL level and matches
+  /// it against the favorites table in a single query — keeps the
+  /// aggregation contract of [allAlbums] (and stable ids) while
+  /// avoiding the load-everything-and-filter-in-Dart pattern.
+  Future<List<AfAlbum>> favoriteAlbums({int limit = 30}) async {
+    final rows = await db.customSelect(
+      '''
+      SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
+             COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
+             MIN(year) as year
+      FROM tracks
+      WHERE album != ''
+        AND ('local:album:' || album || ':'
+             || COALESCE(NULLIF(album_artist, ''), artist))
+            IN (SELECT item_id FROM favorites)
+      GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
+      ORDER BY album COLLATE NOCASE ASC
+      LIMIT ?1
+      ''',
+      variables: [Variable<int>(limit)],
+      readsFrom: {db.tracks, db.favorites},
+    ).get();
+    return rows.map((r) {
+      final albumName = r.read<String?>('album') ?? 'Unknown';
+      final albumArtist = (r.read<String?>('album_artist'))?.isNotEmpty == true
+          ? r.read<String>('album_artist')
+          : (r.read<String?>('artist') ?? '');
+      return AfAlbum(
+        id: 'local:album:$albumName:$albumArtist',
+        name: albumName,
+        artistName: albumArtist,
+        trackCount: r.read<int?>('track_count') ?? 0,
+        year: r.read<int?>('year'),
+        totalDuration:
+            Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+        imageUrl: r.read<String?>('cover_path') != null
+            ? 'file://${r.read<String>('cover_path')}'
+            : null,
+        isFavorite: true,
+      );
+    }).toList();
+  }
+
+  /// Albums whose effective album-artist (the same
+  /// `COALESCE(NULLIF(album_artist,''), artist)` key the rest of the
+  /// app keys on) matches [artistName]. Same per-album aggregation as
+  /// [allAlbums] / [albumByKey] — ids are stable across queries.
+  Future<List<AfAlbum>> albumsByArtist(String artistName,
+      {int limit = 200}) async {
+    final rows = await db.customSelect(
+      '''
+      SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
+             COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
+             MIN(year) as year
+      FROM tracks
+      WHERE album != ''
+        AND COALESCE(NULLIF(album_artist, ''), artist) = ?1
+      GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
+      ORDER BY year ASC, album COLLATE NOCASE ASC
+      LIMIT ?2
+      ''',
+      variables: [Variable<String>(artistName), Variable<int>(limit)],
+      readsFrom: {db.tracks},
+    ).get();
+    return rows.map((r) {
+      final albumName = r.read<String?>('album') ?? 'Unknown';
+      final albumArtist = (r.read<String?>('album_artist'))?.isNotEmpty == true
+          ? r.read<String>('album_artist')
+          : (r.read<String?>('artist') ?? '');
+      return AfAlbum(
+        id: 'local:album:$albumName:$albumArtist',
+        name: albumName,
+        artistName: albumArtist,
+        trackCount: r.read<int?>('track_count') ?? 0,
+        year: r.read<int?>('year'),
+        totalDuration:
+            Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+        imageUrl: r.read<String?>('cover_path') != null
+            ? 'file://${r.read<String>('cover_path')}'
+            : null,
+      );
+    }).toList();
+  }
+
+  /// Same aggregation shape as [allAlbums] but for a single album.
+  /// Returns null if the album doesn't exist. ids are stable with
+  /// [allAlbums] / [recentlyAddedAlbums] / [albumsByGenre] /
+  /// [searchAlbums] (same `COALESCE(NULLIF(album_artist,''), artist)`
+  /// key).
+  Future<AfAlbum?> albumByKey(String name, String artistName) async {
+    final rows = await db.customSelect(
+      '''
+      SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
+             COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
+             MIN(year) as year
+      FROM tracks
+      WHERE album = ?1
+        AND COALESCE(NULLIF(album_artist, ''), artist) = ?2
+      GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
+      LIMIT 1
+      ''',
+      variables: [
+        Variable<String>(name),
+        Variable<String>(artistName),
+      ],
+      readsFrom: {db.tracks},
+    ).get();
+    if (rows.isEmpty) return null;
+    final r = rows.first;
+    final albumName = r.read<String?>('album') ?? 'Unknown';
+    final albumArtist = (r.read<String?>('album_artist'))?.isNotEmpty == true
+        ? r.read<String>('album_artist')
+        : (r.read<String?>('artist') ?? '');
+    return AfAlbum(
+      id: 'local:album:$albumName:$albumArtist',
+      name: albumName,
+      artistName: albumArtist,
+      trackCount: r.read<int?>('track_count') ?? 0,
+      year: r.read<int?>('year'),
+      totalDuration:
+          Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+      imageUrl: r.read<String?>('cover_path') != null
+          ? 'file://${r.read<String>('cover_path')}'
+          : null,
+    );
+  }
+
+  /// Same aggregation contract as [allAlbums] but with a `WHERE` LIKE
+  /// on `album`, `artist`, or `album_artist`. Returns AfAlbums whose
+  /// id is stable across queries (same `COALESCE(NULLIF(album_artist,''),
+  /// artist)` key as [allAlbums] / [recentlyAddedAlbums] /
+  /// [albumsByGenre]).
+  Future<List<AfAlbum>> searchAlbums(String query, {int limit = 50}) async {
+    final like = '%${escapeSqlLike(query)}%';
+    final rows = await db.customSelect(
+      r'''
+      SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
+             COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
+             MIN(year) as year
+      FROM tracks
+      WHERE album != ''
+        AND (album        LIKE ?1 ESCAPE '\'
+          OR artist       LIKE ?1 ESCAPE '\'
+          OR album_artist LIKE ?1 ESCAPE '\')
+      GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
+      ORDER BY album COLLATE NOCASE ASC
+      LIMIT ?2
+      ''',
+      variables: [Variable<String>(like), Variable<int>(limit)],
+      readsFrom: {db.tracks},
+    ).get();
+    return rows.map((r) {
+      final albumName = r.read<String?>('album') ?? 'Unknown';
+      final artistName = (r.read<String?>('album_artist'))?.isNotEmpty == true
+          ? r.read<String>('album_artist')
+          : (r.read<String?>('artist') ?? '');
+      return AfAlbum(
+        id: 'local:album:$albumName:$artistName',
+        name: albumName,
+        artistName: artistName,
+        trackCount: r.read<int?>('track_count') ?? 0,
+        year: r.read<int?>('year'),
+        totalDuration:
+            Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+        imageUrl: r.read<String?>('cover_path') != null
+            ? 'file://${r.read<String>('cover_path')}'
+            : null,
+      );
+    }).toList();
+  }
+
+  /// Same aggregation contract as [allArtists] but with a `WHERE` LIKE
+  /// on `artist`. ids are stable with [allArtists].
+  Future<List<AfArtist>> searchArtists(String query, {int limit = 50}) async {
+    final like = '%${escapeSqlLike(query)}%';
+    final rows = await db.customSelect(
+      r'''
+      SELECT artist, COUNT(DISTINCT album) as album_count,
+             MIN(cover_path) as cover_path
+      FROM tracks
+      WHERE artist != ''
+        AND artist LIKE ?1 ESCAPE '\'
+      GROUP BY artist
+      ORDER BY artist COLLATE NOCASE ASC
+      LIMIT ?2
+      ''',
+      variables: [Variable<String>(like), Variable<int>(limit)],
+      readsFrom: {db.tracks},
+    ).get();
+    return rows.map((r) {
+      final name = r.read<String?>('artist') ?? 'Unknown';
+      return AfArtist(
+        id: 'local:artist:$name',
+        name: name,
+        albumCount: r.read<int?>('album_count') ?? 0,
+        imageUrl: r.read<String?>('cover_path') != null
+            ? 'file://${r.read<String>('cover_path')}'
+            : null,
+      );
+    }).toList();
+  }
+
+  /// Single SQL: list every playlist with track count + total duration
+  /// joined in one pass. Replaces `allPlaylists()` + per-row
+  /// `playlistStats()` (N+1) at the playlists-list call site.
+  Future<List<AfPlaylist>> allPlaylistsWithStats({int limit = 200}) async {
+    final rows = await db.customSelect(
+      r'''
+      SELECT p.id   AS id,
+             p.name AS name,
+             COUNT(pe.entry_id)              AS track_count,
+             COALESCE(SUM(t.duration_ms), 0) AS total_duration_ms
+      FROM playlists p
+      LEFT JOIN playlist_entries pe ON pe.playlist_id = p.id
+      LEFT JOIN tracks t            ON t.id           = pe.track_id
+      GROUP BY p.id
+      ORDER BY p.name COLLATE NOCASE ASC
+      LIMIT ?1
+      ''',
+      variables: [Variable<int>(limit)],
+      readsFrom: {db.playlists, db.playlistEntries, db.tracks},
+    ).get();
+    return rows.map((r) {
+      return AfPlaylist(
+        id: r.read<String>('id'),
+        name: r.read<String>('name'),
+        trackCount: r.read<int?>('track_count') ?? 0,
+        duration: Duration(
+            milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+      );
+    }).toList();
+  }
+
+  /// Single SQL: name LIKE, plus left-join to compute track count and
+  /// total duration in one pass. Replaces the N+1 `playlistStats`
+  /// pattern at the call site.
+  Future<List<AfPlaylist>> searchPlaylists(String query,
+      {int limit = 50}) async {
+    final like = '%${escapeSqlLike(query)}%';
+    final rows = await db.customSelect(
+      r'''
+      SELECT p.id   AS id,
+             p.name AS name,
+             COUNT(pe.entry_id)                 AS track_count,
+             COALESCE(SUM(t.duration_ms), 0)    AS total_duration_ms
+      FROM playlists p
+      LEFT JOIN playlist_entries pe ON pe.playlist_id = p.id
+      LEFT JOIN tracks t            ON t.id         = pe.track_id
+      WHERE p.name LIKE ?1 ESCAPE '\'
+      GROUP BY p.id
+      ORDER BY p.name COLLATE NOCASE ASC
+      LIMIT ?2
+      ''',
+      variables: [Variable<String>(like), Variable<int>(limit)],
+      readsFrom: {db.playlists, db.playlistEntries, db.tracks},
+    ).get();
+    return rows.map((r) {
+      return AfPlaylist(
+        id: r.read<String>('id'),
+        name: r.read<String>('name'),
+        trackCount: r.read<int?>('track_count') ?? 0,
+        duration: Duration(
+            milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+      );
+    }).toList();
+  }
 
 
   Future<int> trackCount() async {
