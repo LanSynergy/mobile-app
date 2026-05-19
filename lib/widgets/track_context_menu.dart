@@ -9,6 +9,7 @@ import '../core/audio/play_actions.dart';
 import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
+import 'track_details_sheet.dart';
 
 /// Shows a track context menu as a popup dialog.
 ///
@@ -103,6 +104,14 @@ void showTrackContextMenu(
                   context.push('/artist/${track.artistId}');
                 },
               ),
+            _MenuItem(
+              icon: Icons.info_outline_rounded,
+              label: 'Show details',
+              onTap: () {
+                Navigator.of(dialogCtx).pop();
+                showTrackDetailsSheet(context, ref, track);
+              },
+            ),
           ],
         ),
       ),

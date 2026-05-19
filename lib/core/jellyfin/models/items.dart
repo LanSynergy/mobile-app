@@ -212,3 +212,99 @@ class AfGenre {
   final String? imageUrl; // representative album art for this genre
   const AfGenre(this.name, this.tint, {this.imageUrl});
 }
+
+/// Full song-level metadata + file details — backs the "Show details"
+/// context-menu sheet on track rows and the equivalent affordance on
+/// the Now Playing screen.
+///
+/// Wraps an [AfTrack] (so existing UI primitives can still be reused)
+/// and carries the extra fields the rest of the app doesn't need on
+/// every list row: container, file size, channels, playcount, full
+/// path, genres, etc.
+class AfTrackDetails {
+  /// Basic track surface (title, artist, album, duration, quality,
+  /// favorite, etc.) — already populated everywhere else.
+  final AfTrack track;
+
+  /// Source-file container format ("flac", "mp3", "m4a", …).
+  /// Distinct from the audio codec (e.g. m4a container, AAC codec).
+  final String? container;
+
+  /// Original file size in bytes on the server / device.
+  final int? sizeBytes;
+
+  /// Audio channel count (1 = mono, 2 = stereo, 6 = 5.1, …).
+  final int? channels;
+
+  /// Sample rate in Hz — preserved with full precision (the
+  /// `TrackQuality.sampleRateKhz` field is rounded to kHz for the
+  /// chip label).
+  final int? sampleRateHz;
+
+  /// Bit depth in bits — preserved even for lossy formats where the
+  /// quality chip omits it.
+  final int? bitDepth;
+
+  /// Encoded bitrate in bits-per-second (full precision; the chip
+  /// only carries kbps).
+  final int? bitrateBps;
+
+  /// On-server / on-device absolute file path. Surfaced for sanity
+  /// checking that the right file is being played; redacted in the
+  /// future if remote-server admins object.
+  final String? path;
+
+  /// Genres tagged on the track.
+  final List<String> genres;
+
+  /// Number of times the user has played this track. Server-owned;
+  /// Jellyfin populates `UserData.PlayCount`, Subsonic uses
+  /// `playCount`.
+  final int? playCount;
+
+  /// Last played time. Server-owned.
+  final DateTime? lastPlayedAt;
+
+  const AfTrackDetails({
+    required this.track,
+    this.container,
+    this.sizeBytes,
+    this.channels,
+    this.sampleRateHz,
+    this.bitDepth,
+    this.bitrateBps,
+    this.path,
+    this.genres = const [],
+    this.playCount,
+    this.lastPlayedAt,
+  });
+
+  /// `1.23 MB` / `512 KB` / `1.5 GB` formatting for [sizeBytes]. Uses
+  /// 1024-based units (KiB/MiB) but renders the friendlier `MB` suffix
+  /// for parity with Android's file pickers.
+  String? get formattedSize {
+    final s = sizeBytes;
+    if (s == null || s <= 0) return null;
+    const kb = 1024;
+    const mb = kb * 1024;
+    const gb = mb * 1024;
+    if (s >= gb) return '${(s / gb).toStringAsFixed(2)} GB';
+    if (s >= mb) return '${(s / mb).toStringAsFixed(2)} MB';
+    if (s >= kb) return '${(s / kb).toStringAsFixed(0)} KB';
+    return '$s B';
+  }
+
+  /// "2" → "Stereo", "1" → "Mono", "6" → "5.1 Surround", otherwise the
+  /// raw count with " channels" suffix.
+  String? get formattedChannels {
+    final c = channels;
+    if (c == null) return null;
+    return switch (c) {
+      1 => 'Mono',
+      2 => 'Stereo',
+      6 => '5.1 Surround',
+      8 => '7.1 Surround',
+      _ => '$c channels',
+    };
+  }
+}

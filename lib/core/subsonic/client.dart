@@ -340,6 +340,42 @@ class SubsonicClient implements MusicBackend {
     return _parseArtistDetail(data);
   }
 
+  /// `GET /rest/getSong.view?id={id}` — full per-track detail for the
+  /// "Show details" sheet. Subsonic's `getSong` response contains
+  /// `size`, `suffix`, `bitRate`, `duration`, `path`, `genre`,
+  /// `playCount`, `channelCount`, `samplingRate`, `bitDepth`.
+  @override
+  Future<AfTrackDetails?> trackDetails(String id) async {
+    try {
+      final root = await _get('getSong', {'id': id});
+      final data = (root['song'] as Map?)?.cast<String, dynamic>();
+      if (data == null) return null;
+      final track = _parseTrack(data);
+      final suffix = (data['suffix'] as String?)?.toLowerCase();
+      final bitRate = _asInt(data['bitRate']);
+      final samplingRate = _asInt(data['samplingRate']);
+      final genre = data['genre'] as String?;
+      final lastPlayed = data['played'] as String?;
+      return AfTrackDetails(
+        track: track,
+        container: suffix,
+        sizeBytes: _asInt(data['size']),
+        channels: _asInt(data['channelCount']),
+        sampleRateHz: samplingRate,
+        bitDepth: _asInt(data['bitDepth']),
+        bitrateBps: bitRate != null ? bitRate * 1000 : null,
+        path: data['path'] as String?,
+        genres: genre != null ? [genre] : const [],
+        playCount: _asInt(data['playCount']),
+        lastPlayedAt:
+            lastPlayed != null ? DateTime.tryParse(lastPlayed) : null,
+      );
+    } catch (e) {
+      afLog('subsonic', 'getSong failed for $id', error: e);
+      return null;
+    }
+  }
+
   @override
   Future<List<AfAlbum>> artistAlbums(String artistId,
       {int limit = 100}) async {

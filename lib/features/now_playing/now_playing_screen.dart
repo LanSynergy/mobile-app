@@ -20,6 +20,7 @@ import '../../widgets/artwork.dart';
 import '../../widgets/audio_visual_scrubber.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/quality_chip.dart';
+import '../../widgets/track_details_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NowPlayingScreen — Reactive Islands architecture
@@ -1006,6 +1007,17 @@ class _UtilityRow extends ConsumerWidget {
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
                   _showAbLoopDialog(context, ref);
+                },
+              ),
+              _MoreItem(
+                icon: Icons.info_outline_rounded,
+                label: 'Show details',
+                onTap: () {
+                  Navigator.of(dialogCtx).pop();
+                  final track = ref.read(currentTrackProvider);
+                  if (track != null) {
+                    showTrackDetailsSheet(context, ref, track);
+                  }
                 },
               ),
             ],

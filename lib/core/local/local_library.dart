@@ -100,6 +100,11 @@ class LocalLibrary {
 
   Future<int> trackCount() => _db.trackCount();
 
+  /// Full per-track detail for a local file — container, file size,
+  /// bitrate, sample rate, path, genre. Used by the "Show details"
+  /// sheet in local mode.
+  Future<AfTrackDetails?> trackDetails(String id) => _db.trackDetailsById(id);
+
   // ── Lifecycle ───────────────────────────────────────────────────────────
 
   Future<void> close() => _db.close();

@@ -228,6 +228,33 @@ class LocalDb {
     return rowToTrack(row);
   }
 
+  /// Full per-track detail for local files — codec, bitrate, sample
+  /// rate, file size, path, genre, year, all surfaced from the cached
+  /// tag scan. Returns `null` if the track id is unknown.
+  Future<AfTrackDetails?> trackDetailsById(String id) async {
+    final row = await (db.select(db.tracks)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null) return null;
+    final track = rowToTrack(row);
+    final codec = row.codec;
+    // [bitrate] column is stored in kbps by the metadata scanner —
+    // multiply back up to bps for the [AfTrackDetails] surface so the
+    // details sheet can do its own kbps formatting.
+    return AfTrackDetails(
+      track: track,
+      container: codec.isNotEmpty ? codec : null,
+      sizeBytes: row.fileSize,
+      channels: null,
+      sampleRateHz: row.sampleRate,
+      bitDepth: null,
+      bitrateBps: row.bitrate != null ? row.bitrate! * 1000 : null,
+      path: row.filePath,
+      genres: row.genre.isNotEmpty ? [row.genre] : const [],
+      playCount: null,
+      lastPlayedAt: null,
+    );
+  }
+
   Future<List<AfTrack>> tracksByGenre(String genre) async {
     final rows = await (db.select(db.tracks)
           ..where((t) => t.genre.equals(genre))
