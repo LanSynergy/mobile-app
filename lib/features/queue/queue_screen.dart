@@ -206,6 +206,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                     },
                     onDismissed: (_) {
                       final removed = t;
+                      final removedIndex = i;
                       // Optimistic local update so the swipe animation
                       // completes without the row springing back.
                       setState(() {
@@ -215,14 +216,23 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                             .toList(growable: false);
                       });
                       unawaited(
-                        ref.read(playerServiceProvider).removeFromQueue(i),
+                        ref
+                            .read(playerServiceProvider)
+                            .removeFromQueue(removedIndex),
                       );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Removed "${removed.title}"'),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
+                      ScaffoldMessenger.of(context)
+                        ..clearSnackBars()
+                        ..showSnackBar(
+                          SnackBar(
+                            content: Text('Removed "${removed.title}"'),
+                            duration: const Duration(seconds: 4),
+                            action: SnackBarAction(
+                              label: 'Undo',
+                              onPressed: () =>
+                                  _undoRemove(removedIndex, removed),
+                            ),
+                          ),
+                        );
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -269,6 +279,32 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
       if (a[i] != b[i]) return false;
     }
     return true;
+  }
+
+  /// Re-insert a track at [index] after a swipe-to-remove.
+  ///
+  /// Resolves the stream URL the same way [PlayActions.playQueue]
+  /// does — backend.trackStreamUrl in server mode, the AfTrack.id
+  /// itself (a content:// URI) in local mode. The player's
+  /// `insertIntoQueue` keeps `_currentIndex` correct.
+  void _undoRemove(int index, AfTrack track) {
+    final mode = ref.read(appModeProvider);
+    final backend = ref.read(musicBackendProvider);
+    String resolve(AfTrack t) {
+      if (mode == AppMode.local) return t.id;
+      if (backend != null) {
+        return backend.trackStreamUrl(t.id, maxBitrateKbps: 320);
+      }
+      return 'about:blank';
+    }
+
+    unawaited(
+      ref.read(playerServiceProvider).insertIntoQueue(
+            index,
+            track,
+            resolveStreamUrl: resolve,
+          ),
+    );
   }
 
   /// Prompts for a name and creates a new playlist containing every

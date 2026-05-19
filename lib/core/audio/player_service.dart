@@ -733,6 +733,40 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     return true;
   }
 
+  /// Insert [track] at an arbitrary [index] in the queue. Used to
+  /// recover from a swipe-to-remove undo — the caller already knows
+  /// the exact index the track came from, so we don't have to fall
+  /// back to "play next" semantics.
+  ///
+  /// Indices outside `[0, _trackQueue.length]` are clamped. If the
+  /// insertion lands at or before the currently playing index,
+  /// `_currentIndex` shifts by one so the active track keeps pointing
+  /// at the same audio entry after mpv expands the playlist.
+  Future<void> insertIntoQueue(
+    int index,
+    AfTrack track, {
+    required String Function(AfTrack) resolveStreamUrl,
+  }) async {
+    if (_disposed) return;
+    final clamped = index.clamp(0, _trackQueue.length);
+    _trackQueue.insert(clamped, track);
+    await _player.sendRawCommand([
+      'loadfile',
+      resolveStreamUrl(track),
+      'insert-at',
+      '$clamped',
+    ]);
+    if (clamped <= _currentIndex) {
+      _currentIndex += 1;
+    }
+    _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
+    afLog(
+      'audio',
+      'insertIntoQueue "${track.title}" at index=$clamped '
+          'currentIndex=$_currentIndex',
+    );
+  }
+
   Future<void> playNext(
     AfTrack track, {
     required String Function(AfTrack) resolveStreamUrl,
