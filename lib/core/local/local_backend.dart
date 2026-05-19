@@ -246,20 +246,21 @@ class LocalBackend implements MusicBackend {
         playlists: <AfPlaylist>[],
       );
     }
+    // Push the filter down to SQL for each result type so we don't
+    // load the entire local library on every keystroke. tracks already
+    // do this via library.search() / searchTracks(). The album / artist
+    // / playlist branches used to pull `allAlbums()`, `allArtists()`,
+    // and `allPlaylists()` + N+1 `playlistStats()` for every search.
     final tracks = await library.search(query);
     final hydratedTracks = await _hydrateFavorites(tracks);
-    final allAlbumsList = await library.albums();
-    final allArtistsList = await library.artists();
-    final allPlaylistsList = await playlists(limit: 1000);
-    bool matches(String? s) => s != null && s.toLowerCase().contains(q);
+    final albums = await db.searchAlbums(q);
+    final artists = await db.searchArtists(q);
+    final playlistMatches = await db.searchPlaylists(q);
     return (
       tracks: hydratedTracks,
-      albums: allAlbumsList
-          .where((a) => matches(a.name) || matches(a.artistName))
-          .toList(),
-      artists: allArtistsList.where((a) => matches(a.name)).toList(),
-      playlists:
-          allPlaylistsList.where((p) => matches(p.name)).toList(),
+      albums: albums,
+      artists: artists,
+      playlists: playlistMatches,
     );
   }
 

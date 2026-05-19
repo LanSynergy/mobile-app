@@ -330,6 +330,114 @@ class LocalDb {
     }).toList();
   }
 
+  /// Same aggregation contract as [allAlbums] but with a `WHERE` LIKE
+  /// on `album`, `artist`, or `album_artist`. Returns AfAlbums whose
+  /// id is stable across queries (same `COALESCE(NULLIF(album_artist,''),
+  /// artist)` key as [allAlbums] / [recentlyAddedAlbums] /
+  /// [albumsByGenre]).
+  Future<List<AfAlbum>> searchAlbums(String query, {int limit = 50}) async {
+    final like = '%${escapeSqlLike(query)}%';
+    final rows = await db.customSelect(
+      r'''
+      SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
+             COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
+             MIN(year) as year
+      FROM tracks
+      WHERE album != ''
+        AND (album        LIKE ?1 ESCAPE '\'
+          OR artist       LIKE ?1 ESCAPE '\'
+          OR album_artist LIKE ?1 ESCAPE '\')
+      GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
+      ORDER BY album COLLATE NOCASE ASC
+      LIMIT ?2
+      ''',
+      variables: [Variable<String>(like), Variable<int>(limit)],
+      readsFrom: {db.tracks},
+    ).get();
+    return rows.map((r) {
+      final albumName = r.read<String?>('album') ?? 'Unknown';
+      final artistName = (r.read<String?>('album_artist'))?.isNotEmpty == true
+          ? r.read<String>('album_artist')
+          : (r.read<String?>('artist') ?? '');
+      return AfAlbum(
+        id: 'local:album:$albumName:$artistName',
+        name: albumName,
+        artistName: artistName,
+        trackCount: r.read<int?>('track_count') ?? 0,
+        year: r.read<int?>('year'),
+        totalDuration:
+            Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+        imageUrl: r.read<String?>('cover_path') != null
+            ? 'file://${r.read<String>('cover_path')}'
+            : null,
+      );
+    }).toList();
+  }
+
+  /// Same aggregation contract as [allArtists] but with a `WHERE` LIKE
+  /// on `artist`. ids are stable with [allArtists].
+  Future<List<AfArtist>> searchArtists(String query, {int limit = 50}) async {
+    final like = '%${escapeSqlLike(query)}%';
+    final rows = await db.customSelect(
+      r'''
+      SELECT artist, COUNT(DISTINCT album) as album_count,
+             MIN(cover_path) as cover_path
+      FROM tracks
+      WHERE artist != ''
+        AND artist LIKE ?1 ESCAPE '\'
+      GROUP BY artist
+      ORDER BY artist COLLATE NOCASE ASC
+      LIMIT ?2
+      ''',
+      variables: [Variable<String>(like), Variable<int>(limit)],
+      readsFrom: {db.tracks},
+    ).get();
+    return rows.map((r) {
+      final name = r.read<String?>('artist') ?? 'Unknown';
+      return AfArtist(
+        id: 'local:artist:$name',
+        name: name,
+        albumCount: r.read<int?>('album_count') ?? 0,
+        imageUrl: r.read<String?>('cover_path') != null
+            ? 'file://${r.read<String>('cover_path')}'
+            : null,
+      );
+    }).toList();
+  }
+
+  /// Single SQL: name LIKE, plus left-join to compute track count and
+  /// total duration in one pass. Replaces the N+1 `playlistStats`
+  /// pattern at the call site.
+  Future<List<AfPlaylist>> searchPlaylists(String query,
+      {int limit = 50}) async {
+    final like = '%${escapeSqlLike(query)}%';
+    final rows = await db.customSelect(
+      r'''
+      SELECT p.id   AS id,
+             p.name AS name,
+             COUNT(pe.entry_id)                 AS track_count,
+             COALESCE(SUM(t.duration_ms), 0)    AS total_duration_ms
+      FROM playlists p
+      LEFT JOIN playlist_entries pe ON pe.playlist_id = p.id
+      LEFT JOIN tracks t            ON t.id         = pe.track_id
+      WHERE p.name LIKE ?1 ESCAPE '\'
+      GROUP BY p.id
+      ORDER BY p.name COLLATE NOCASE ASC
+      LIMIT ?2
+      ''',
+      variables: [Variable<String>(like), Variable<int>(limit)],
+      readsFrom: {db.playlists, db.playlistEntries, db.tracks},
+    ).get();
+    return rows.map((r) {
+      return AfPlaylist(
+        id: r.read<String>('id'),
+        name: r.read<String>('name'),
+        trackCount: r.read<int?>('track_count') ?? 0,
+        duration: Duration(
+            milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+      );
+    }).toList();
+  }
 
 
   Future<int> trackCount() async {
