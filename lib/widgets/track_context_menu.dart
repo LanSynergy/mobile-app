@@ -9,15 +9,20 @@ import '../core/audio/play_actions.dart';
 import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
+import '../utils/display_error.dart';
+import 'save_to_playlist_sheet.dart';
 import 'track_details_sheet.dart';
 
 /// Shows a track context menu as a popup dialog.
 ///
 /// Actions:
+///   - Like / Unlike (favorite toggle)
 ///   - Play next
 ///   - Add to queue
+///   - Save to playlist
 ///   - Go to album
 ///   - Go to artist
+///   - Show details
 void showTrackContextMenu(
   BuildContext context,
   WidgetRef ref,
@@ -26,95 +31,146 @@ void showTrackContextMenu(
   HapticFeedback.mediumImpact();
   showDialog<void>(
     context: context,
-    builder: (dialogCtx) => Dialog(
-      backgroundColor: AfColors.surfaceBase,
-      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Track info header.
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AfSpacing.gutterGenerous,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    track.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AfTypography.titleSmall,
+    builder: (dialogCtx) => Consumer(
+      builder: (ctx, innerRef, _) {
+        // Use the override map as the source of truth so the heart row
+        // reflects the latest toggle even after the model itself becomes
+        // stale (e.g. the track came from a cached list).
+        final overrides = innerRef.watch(trackFavoriteOverridesProvider);
+        final isFavorite = overrides[track.id] ?? track.isFavorite;
+        return Dialog(
+          backgroundColor: AfColors.surfaceBase,
+          shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AfSpacing.s12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Track info header.
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AfSpacing.gutterGenerous,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    track.artistName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textSecondary,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        track.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AfTypography.titleSmall,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        track.artistName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AfTypography.bodySmall.copyWith(
+                          color: AfColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: AfSpacing.s8),
+                const Divider(height: 1, color: AfColors.surfaceHigh),
+                _MenuItem(
+                  icon: isFavorite
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  iconColor: isFavorite ? AfColors.indigo300 : null,
+                  label: isFavorite ? 'Remove from liked' : 'Add to liked',
+                  onTap: () async {
+                    Navigator.of(dialogCtx).pop();
+                    try {
+                      await innerRef.read(favoriteToggleProvider)(track);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(isFavorite
+                                ? 'Removed from liked songs'
+                                : 'Added to liked songs'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content:
+                                Text(displayError(e, prefix: 'Failed')),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+                _MenuItem(
+                  icon: Icons.playlist_play_rounded,
+                  label: 'Play next',
+                  onTap: () {
+                    _playNext(innerRef, track);
+                    Navigator.of(dialogCtx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content:
+                              Text('"${track.title}" will play next')),
+                    );
+                  },
+                ),
+                _MenuItem(
+                  icon: Icons.queue_music_rounded,
+                  label: 'Add to queue',
+                  onTap: () {
+                    _addToQueue(innerRef, track);
+                    Navigator.of(dialogCtx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content:
+                              Text('"${track.title}" added to queue')),
+                    );
+                  },
+                ),
+                _MenuItem(
+                  icon: Icons.playlist_add_rounded,
+                  label: 'Save to playlist',
+                  onTap: () {
+                    Navigator.of(dialogCtx).pop();
+                    showSaveToPlaylistSheet(context, innerRef, track);
+                  },
+                ),
+                if (track.albumId != null)
+                  _MenuItem(
+                    icon: Icons.album_outlined,
+                    label: 'Go to album',
+                    onTap: () {
+                      Navigator.of(dialogCtx).pop();
+                      context.push('/album/${track.albumId}');
+                    },
+                  ),
+                if (track.artistId != null)
+                  _MenuItem(
+                    icon: Icons.person_outline_rounded,
+                    label: 'Go to artist',
+                    onTap: () {
+                      Navigator.of(dialogCtx).pop();
+                      context.push('/artist/${track.artistId}');
+                    },
+                  ),
+                _MenuItem(
+                  icon: Icons.info_outline_rounded,
+                  label: 'Show details',
+                  onTap: () {
+                    Navigator.of(dialogCtx).pop();
+                    showTrackDetailsSheet(context, innerRef, track);
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: AfSpacing.s8),
-            const Divider(height: 1, color: AfColors.surfaceHigh),
-            _MenuItem(
-              icon: Icons.playlist_play_rounded,
-              label: 'Play next',
-              onTap: () {
-                _playNext(ref, track);
-                Navigator.of(dialogCtx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('"${track.title}" will play next')),
-                );
-              },
-            ),
-            _MenuItem(
-              icon: Icons.queue_music_rounded,
-              label: 'Add to queue',
-              onTap: () {
-                _addToQueue(ref, track);
-                Navigator.of(dialogCtx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text('"${track.title}" added to queue')),
-                );
-              },
-            ),
-            if (track.albumId != null)
-              _MenuItem(
-                icon: Icons.album_outlined,
-                label: 'Go to album',
-                onTap: () {
-                  Navigator.of(dialogCtx).pop();
-                  context.push('/album/${track.albumId}');
-                },
-              ),
-            if (track.artistId != null)
-              _MenuItem(
-                icon: Icons.person_outline_rounded,
-                label: 'Go to artist',
-                onTap: () {
-                  Navigator.of(dialogCtx).pop();
-                  context.push('/artist/${track.artistId}');
-                },
-              ),
-            _MenuItem(
-              icon: Icons.info_outline_rounded,
-              label: 'Show details',
-              onTap: () {
-                Navigator.of(dialogCtx).pop();
-                showTrackDetailsSheet(context, ref, track);
-              },
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     ),
   );
 }
@@ -232,17 +288,19 @@ class _MenuItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final Color? iconColor;
 
   const _MenuItem({
     required this.icon,
     required this.label,
     required this.onTap,
+    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: AfColors.textSecondary, size: 22),
+      leading: Icon(icon, color: iconColor ?? AfColors.textSecondary, size: 22),
       title: Text(label, style: AfTypography.bodyMedium),
       onTap: onTap,
       dense: true,
