@@ -46,9 +46,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final mode = ref.watch(appModeProvider);
     final isLocal = mode == AppMode.local;
-    final albumsAsync = isLocal
-        ? ref.watch(localAlbumsProvider)
-        : ref.watch(recentlyAddedAlbumsProvider);
+    // Both modes route through the MusicBackend abstraction here.
+    // LocalBackend.recentlyAddedAlbums sorts by MAX(last_modified)
+    // so the hero card reflects newly-imported music. (The Library
+    // screen still uses localAlbumsProvider for its alphabetical
+    // "Albums" listing.)
+    final albumsAsync = ref.watch(recentlyAddedAlbumsProvider);
     final recentTracksAsync = isLocal
         ? ref.watch(localTracksProvider)
         : ref.watch(recentlyPlayedTracksProvider);
@@ -110,9 +113,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 label: 'Couldn\u2019t load recent albums',
                 error: e,
                 height: 168,
-                onRetry: () => ref.invalidate(
-                  isLocal ? localAlbumsProvider : recentlyAddedAlbumsProvider,
-                ),
+                onRetry: () => ref.invalidate(recentlyAddedAlbumsProvider),
               ),
             ),
           ),

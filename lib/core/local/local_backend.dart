@@ -49,10 +49,12 @@ class LocalBackend implements MusicBackend {
   // it. Favorites are populated from the new local favorites table.
 
   @override
-  Future<List<AfAlbum>> recentlyAddedAlbums({int limit = 20}) async {
-    final albums = await library.albums();
-    return albums.take(limit).toList();
-  }
+  Future<List<AfAlbum>> recentlyAddedAlbums({int limit = 20}) =>
+      // Sort by MAX(tracks.last_modified) per album in SQL. There's no
+      // `added_at` column on tracks (would need a schema bump), but file
+      // mtime is a workable proxy and matches the "albums I downloaded
+      // recently" intuition that the Home hero is selling.
+      db.recentlyAddedAlbums(limit: limit);
 
   @override
   Future<List<AfTrack>> recentlyPlayed({int limit = 20}) async {

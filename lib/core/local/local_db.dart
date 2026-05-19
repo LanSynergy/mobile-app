@@ -214,6 +214,49 @@ class LocalDb {
     return rows.map(rowToTrack).toList();
   }
 
+  /// Albums ordered by most-recently-modified track, descending.
+  ///
+  /// Mirrors [allAlbums]'s aggregation key (album + COALESCE(album_artist,
+  /// artist)) so AfAlbum.id matches across queries. We use
+  /// `MAX(last_modified) DESC` per group as the best proxy for "recently
+  /// added" without a schema migration — newly-downloaded files have
+  /// recent mtimes; restored backups keep their original mtime, which is
+  /// also a reasonable signal for "when did this enter my library".
+  Future<List<AfAlbum>> recentlyAddedAlbums({int limit = 20}) async {
+    final rows = await db.customSelect(
+      '''
+      SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
+             COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
+             MIN(year) as year,
+             MAX(COALESCE(last_modified, 0)) as max_last_modified
+      FROM tracks
+      WHERE album != ''
+      GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
+      ORDER BY max_last_modified DESC, album COLLATE NOCASE ASC
+      LIMIT ?
+      ''',
+      variables: [Variable<int>(limit)],
+    ).get();
+    return rows.map((r) {
+      final albumName = r.read<String?>('album') ?? 'Unknown';
+      final artistName = (r.read<String?>('album_artist'))?.isNotEmpty == true
+          ? r.read<String>('album_artist')
+          : (r.read<String?>('artist') ?? '');
+      return AfAlbum(
+        id: 'local:album:$albumName:$artistName',
+        name: albumName,
+        artistName: artistName,
+        trackCount: r.read<int?>('track_count') ?? 0,
+        year: r.read<int?>('year'),
+        totalDuration:
+            Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+        imageUrl: r.read<String?>('cover_path') != null
+            ? 'file://${r.read<String>('cover_path')}'
+            : null,
+      );
+    }).toList();
+  }
+
   /// Albums whose tracks tag the given genre. Mirrors [allAlbums]'s
   /// aggregation (album-artist falls back to track artist; `MIN(cover_path)`
   /// picks a representative cover; `SUM(duration_ms)` totals runtime) but
