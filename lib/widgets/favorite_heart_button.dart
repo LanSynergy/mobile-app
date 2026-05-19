@@ -129,14 +129,6 @@ class _FavoriteHeartButtonState extends ConsumerState<FavoriteHeartButton> {
 
   @override
   Widget build(BuildContext context) {
-    // Favorites are server-owned (see CLAUDE.md §1.3). In local mode
-    // there is no backend to persist the flag, so any tap would be
-    // dropped on the floor below (`backend == null` early return).
-    // Hide the button entirely rather than presenting an icon that
-    // appears interactive but does nothing.
-    final isLocalMode = ref.watch(appModeProvider) == AppMode.local;
-    if (isLocalMode) return const SizedBox.shrink();
-
     final overrides = ref.watch(trackFavoriteOverridesProvider);
     final isFavorite = _isFavoriteFromOverrides(overrides);
     return IconButton(
