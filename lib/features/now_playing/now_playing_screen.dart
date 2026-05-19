@@ -813,6 +813,13 @@ class _UtilityRow extends ConsumerWidget {
           onTap: () => context.push('/eq-dsp'),
         ),
         Consumer(builder: (context, ref, _) {
+          // Playlists are server state (CLAUDE.md §1.3) — don't even
+          // offer "Save" in local mode. The dialog used to fall through
+          // to a confusing "Sign in to save to playlists" snackbar even
+          // though local mode has no sign-in concept.
+          final isLocalMode =
+              ref.watch(appModeProvider) == AppMode.local;
+          if (isLocalMode) return const SizedBox.shrink();
           final track = ref.watch(currentTrackProvider);
           final savedIds = ref.watch(savedTrackIdsProvider);
           final serverIds = ref.watch(playlistTrackIdsProvider).maybeWhen(
