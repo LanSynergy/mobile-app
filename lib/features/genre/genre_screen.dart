@@ -6,6 +6,7 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/async_error_view.dart';
 import '../../widgets/tile.dart';
+import '../../widgets/track_context_menu.dart';
 
 /// Albums filtered by genre. Uses Jellyfin's `Genres=` query parameter
 /// via [genreAlbumsProvider] so only albums actually tagged with this
@@ -73,6 +74,7 @@ class GenreScreen extends ConsumerWidget {
                 imageUrl: a.imageUrl,
                 size: double.infinity,
                 onTap: () => context.push('/album/${a.id}'),
+                onLongPress: () => showAlbumContextMenu(context, ref, a),
               );
             },
           );

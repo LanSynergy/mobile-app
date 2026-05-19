@@ -168,6 +168,8 @@ class ArtistScreen extends ConsumerWidget {
                         imageUrl: a.imageUrl,
                         size: 152,
                         onTap: () => context.push('/album/${a.id}'),
+                        onLongPress: () =>
+                            showAlbumContextMenu(context, ref, a),
                       );
                     },
                   ),
