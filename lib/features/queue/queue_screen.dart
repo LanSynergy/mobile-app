@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../utils/display_error.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 
@@ -107,6 +108,11 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
               },
             );
           }),
+          IconButton(
+            icon: const Icon(Icons.playlist_add_rounded),
+            onPressed: _items.isEmpty ? null : _saveQueueAsPlaylist,
+            tooltip: 'Save queue as playlist',
+          ),
           IconButton(
             icon: const Icon(Icons.lyrics_outlined),
             onPressed: () => context.push('/lyrics'),
@@ -263,5 +269,81 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
       if (a[i] != b[i]) return false;
     }
     return true;
+  }
+
+  /// Prompts for a name and creates a new playlist containing every
+  /// track currently in the queue. The default name is "Queue ·
+  /// YYYY-MM-DD HH:mm" so distinct saves never collide visually.
+  ///
+  /// Works in both local and server modes — both backends implement
+  /// `MusicBackend.createPlaylist`. Returns silently when the queue
+  /// is empty (the AppBar button is also disabled in that case).
+  Future<void> _saveQueueAsPlaylist() async {
+    if (_items.isEmpty) return;
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in to save playlists')),
+      );
+      return;
+    }
+
+    final now = DateTime.now();
+    String two(int n) => n.toString().padLeft(2, '0');
+    final defaultName =
+        'Queue · ${now.year}-${two(now.month)}-${two(now.day)} '
+        '${two(now.hour)}:${two(now.minute)}';
+    final controller = TextEditingController(text: defaultName);
+
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AfColors.surfaceBase,
+        title: const Text('Save queue as playlist'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            hintText: 'Playlist name',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (name == null || name.isEmpty || !mounted) return;
+
+    final snapshot = List<String>.from(_items.map((t) => t.id));
+    try {
+      await backend.createPlaylist(name, snapshot);
+      ref.invalidate(allPlaylistsProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Saved as "$name" · ${snapshot.length} tracks'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(displayError(e, prefix: 'Failed to save queue')),
+        ),
+      );
+    }
   }
 }
