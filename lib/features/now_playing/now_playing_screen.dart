@@ -267,6 +267,10 @@ class _MetadataRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Favorites live on the server. Local mode has no server, so the
+    // heart cannot persist anywhere — hide it instead of showing a
+    // button whose state is wiped on the next launch.
+    final isLocalMode = ref.watch(appModeProvider) == AppMode.local;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -293,31 +297,32 @@ class _MetadataRow extends ConsumerWidget {
             ],
           ),
         ),
-        IconButton(
-          icon: Icon(
-            track.isFavorite ? Icons.favorite : Icons.favorite_border,
-            color: track.isFavorite
-                ? AfColors.semanticError
-                : AfColors.textPrimary,
-          ),
-          tooltip: track.isFavorite
-              ? 'Remove from favorites'
-              : 'Add to favorites',
-          onPressed: () async {
-            try {
-              await ref.read(favoriteToggleProvider)(track);
-            } catch (_) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Could not update favorite'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
+        if (!isLocalMode)
+          IconButton(
+            icon: Icon(
+              track.isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: track.isFavorite
+                  ? AfColors.semanticError
+                  : AfColors.textPrimary,
+            ),
+            tooltip: track.isFavorite
+                ? 'Remove from favorites'
+                : 'Add to favorites',
+            onPressed: () async {
+              try {
+                await ref.read(favoriteToggleProvider)(track);
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Could not update favorite'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
               }
-            }
-          },
-        ),
+            },
+          ),
         _AbLoopButton(),
         if (track.quality != null) QualityChip(quality: track.quality!),
       ],
