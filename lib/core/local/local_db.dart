@@ -330,6 +330,49 @@ class LocalDb {
     }).toList();
   }
 
+  /// Same aggregation shape as [allAlbums] but for a single album.
+  /// Returns null if the album doesn't exist. ids are stable with
+  /// [allAlbums] / [recentlyAddedAlbums] / [albumsByGenre] /
+  /// [searchAlbums] (same `COALESCE(NULLIF(album_artist,''), artist)`
+  /// key).
+  Future<AfAlbum?> albumByKey(String name, String artistName) async {
+    final rows = await db.customSelect(
+      '''
+      SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
+             COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
+             MIN(year) as year
+      FROM tracks
+      WHERE album = ?1
+        AND COALESCE(NULLIF(album_artist, ''), artist) = ?2
+      GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
+      LIMIT 1
+      ''',
+      variables: [
+        Variable<String>(name),
+        Variable<String>(artistName),
+      ],
+      readsFrom: {db.tracks},
+    ).get();
+    if (rows.isEmpty) return null;
+    final r = rows.first;
+    final albumName = r.read<String?>('album') ?? 'Unknown';
+    final albumArtist = (r.read<String?>('album_artist'))?.isNotEmpty == true
+        ? r.read<String>('album_artist')
+        : (r.read<String?>('artist') ?? '');
+    return AfAlbum(
+      id: 'local:album:$albumName:$albumArtist',
+      name: albumName,
+      artistName: albumArtist,
+      trackCount: r.read<int?>('track_count') ?? 0,
+      year: r.read<int?>('year'),
+      totalDuration:
+          Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+      imageUrl: r.read<String?>('cover_path') != null
+          ? 'file://${r.read<String>('cover_path')}'
+          : null,
+    );
+  }
+
   /// Same aggregation contract as [allAlbums] but with a `WHERE` LIKE
   /// on `album`, `artist`, or `album_artist`. Returns AfAlbums whose
   /// id is stable across queries (same `COALESCE(NULLIF(album_artist,''),

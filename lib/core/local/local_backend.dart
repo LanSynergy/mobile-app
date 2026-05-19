@@ -128,22 +128,34 @@ class LocalBackend implements MusicBackend {
   Future<({AfAlbum album, List<AfTrack> tracks})?> album(String id) async {
     final parsed = _parseAlbumId(id);
     if (parsed == null) return null;
-    final tracks = await library.tracksByAlbum(parsed.name, parsed.artist);
+    // Look the album up directly instead of GROUP BYing every album in
+    // the library to find one row. Tracks are loaded in parallel; one
+    // favoriteIds() query is shared between the album row's
+    // isFavorite flag and the per-track hydration below.
+    final results = await Future.wait([
+      db.albumByKey(parsed.name, parsed.artist),
+      library.tracksByAlbum(parsed.name, parsed.artist),
+      db.favoriteIds(),
+    ]);
+    final albumMeta = results[0] as AfAlbum?;
+    final tracks = results[1] as List<AfTrack>;
+    final favIds = results[2] as Set<String>;
     if (tracks.isEmpty) return null;
-    final hydrated = await _hydrateFavorites(tracks);
-    final favIds = await db.favoriteIds();
-    final albums = await library.albums();
-    final album = albums.firstWhere(
-      (a) => a.id == id,
-      orElse: () => AfAlbum(
-        id: id,
-        name: parsed.name,
-        artistName: parsed.artist,
-        trackCount: tracks.length,
-        totalDuration: tracks.fold<Duration>(
-            Duration.zero, (acc, t) => acc + t.duration),
-      ),
-    );
+    final album = albumMeta ??
+        AfAlbum(
+          id: id,
+          name: parsed.name,
+          artistName: parsed.artist,
+          trackCount: tracks.length,
+          totalDuration: tracks.fold<Duration>(
+              Duration.zero, (acc, t) => acc + t.duration),
+        );
+    final hydrated = favIds.isEmpty
+        ? tracks
+        : tracks
+            .map((t) =>
+                favIds.contains(t.id) ? t.copyWith(isFavorite: true) : t)
+            .toList();
     return (
       album: album.copyWith(isFavorite: favIds.contains(id)),
       tracks: hydrated,
