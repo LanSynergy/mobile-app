@@ -935,6 +935,58 @@ class JellyfinClient implements MusicBackend {
     return _parseArtist(data);
   }
 
+  /// `GET /Users/{userId}/Items/{id}` with MediaSources + Genres +
+  /// Path — full per-track detail used by the "Show details" sheet.
+  /// Returns `null` when Jellyfin returns an empty / 404 body.
+  @override
+  Future<AfTrackDetails?> trackDetails(String id) async {
+    _assertUser();
+    final res = await _dio.get<Map<String, dynamic>>(
+      'Users/$userId/Items/$id',
+      queryParameters: <String, dynamic>{
+        'Fields':
+            'MediaSources,Genres,Path,DateCreated,ProductionYear,UserData,PrimaryImageAspectRatio,IndexNumber,ParentIndexNumber,RunTimeTicks',
+      },
+    );
+    final data = res.data;
+    if (data == null || data.isEmpty) return null;
+
+    final track = _parseTrack(data);
+    final sources = data['MediaSources'] as List?;
+    Map<String, dynamic>? src;
+    Map<String, dynamic>? audio;
+    if (sources != null && sources.isNotEmpty) {
+      src = (sources.first as Map).cast<String, dynamic>();
+      final streams = (src['MediaStreams'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map((s) => s.cast<String, dynamic>())
+          .where((s) => (s['Type'] as String?) == 'Audio')
+          .toList();
+      if (streams.isNotEmpty) audio = streams.first;
+    }
+
+    final genres = (data['Genres'] as List?)
+            ?.whereType<String>()
+            .toList(growable: false) ??
+        const <String>[];
+    final userData = (data['UserData'] as Map?)?.cast<String, dynamic>();
+    final lastPlayed = userData?['LastPlayedDate'] as String?;
+
+    return AfTrackDetails(
+      track: track,
+      container: (src?['Container'] as String?)?.toLowerCase(),
+      sizeBytes: src?['Size'] as int?,
+      channels: audio?['Channels'] as int?,
+      sampleRateHz: audio?['SampleRate'] as int?,
+      bitDepth: audio?['BitDepth'] as int?,
+      bitrateBps: (audio?['BitRate'] as int?) ?? (src?['Bitrate'] as int?),
+      path: src?['Path'] as String?,
+      genres: genres,
+      playCount: userData?['PlayCount'] as int?,
+      lastPlayedAt: lastPlayed != null ? DateTime.tryParse(lastPlayed) : null,
+    );
+  }
+
   /// `GET /Items?AlbumArtistIds=…` — albums credited to this artist.
   @override
   Future<List<AfAlbum>> artistAlbums(String artistId, {int limit = 100}) async {

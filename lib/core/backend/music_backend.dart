@@ -29,6 +29,14 @@ abstract class MusicBackend {
 
   Future<({AfAlbum album, List<AfTrack> tracks})?> album(String id);
   Future<AfArtist?> artist(String id);
+
+  /// Full per-track detail (container, file size, channels, codec,
+  /// bitrate, sample rate, bit depth, path, genres, play count). Used
+  /// by the "Show details" sheet — the basic [AfTrack] returned from
+  /// list endpoints only carries display fields.
+  Future<AfTrackDetails?> trackDetails(String id);
+
+
   Future<List<AfAlbum>> artistAlbums(String artistId, {int limit = 100});
   Future<List<AfTrack>> artistTopTracks(String artistId, {int limit = 5});
   Future<List<AfAlbum>> albumsByGenre(String genre, {int limit = 200});

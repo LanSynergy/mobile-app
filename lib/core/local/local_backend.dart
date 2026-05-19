@@ -165,6 +165,9 @@ class LocalBackend implements MusicBackend {
   }
 
   @override
+  Future<AfTrackDetails?> trackDetails(String id) => db.trackDetailsById(id);
+
+  @override
   Future<List<AfAlbum>> artistAlbums(String artistId,
       {int limit = 100}) async {
     final name = _parseArtistId(artistId);

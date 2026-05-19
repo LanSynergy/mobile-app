@@ -35,6 +35,21 @@ import '../../widgets/track_row.dart';
 /// Minimum query length before a server request is fired.
 const _kMinQueryLength = 2;
 
+/// Filter chips at the top of the results panel. Lets the user scope
+/// to a single result type — when active, the per-type cap is lifted
+/// so the full list is browsable (matches Spotify/Apple Music behavior).
+enum SearchFilter { all, tracks, albums, artists, playlists }
+
+extension on SearchFilter {
+  String get label => switch (this) {
+        SearchFilter.all => 'All',
+        SearchFilter.tracks => 'Tracks',
+        SearchFilter.albums => 'Albums',
+        SearchFilter.artists => 'Artists',
+        SearchFilter.playlists => 'Playlists',
+      };
+}
+
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
 
@@ -46,6 +61,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
   // ValueNotifier so only the results panel rebuilds on query change.
   final _queryNotifier = ValueNotifier<String>('');
+  // Filter chip selection — independent ValueNotifier so toggling
+  // chips doesn't force the search field or recent-history widget
+  // to rebuild.
+  final _filterNotifier = ValueNotifier<SearchFilter>(SearchFilter.all);
 
   static const _debounce = Duration(milliseconds: 250);
   Timer? _debounceTimer;
@@ -55,6 +74,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     _debounceTimer?.cancel();
     _controller.dispose();
     _queryNotifier.dispose();
+    _filterNotifier.dispose();
     super.dispose();
   }
 
@@ -147,18 +167,84 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 },
               ),
             ),
-            const SizedBox(height: AfSpacing.s16),
+            const SizedBox(height: AfSpacing.s12),
+            // Filter chips — only visible once a query is committed.
+            ValueListenableBuilder<String>(
+              valueListenable: _queryNotifier,
+              builder: (context, query, _) {
+                if (query.isEmpty) return const SizedBox.shrink();
+                return ValueListenableBuilder<SearchFilter>(
+                  valueListenable: _filterNotifier,
+                  builder: (context, filter, _) => _SearchFilterChips(
+                    selected: filter,
+                    onChanged: (next) => _filterNotifier.value = next,
+                  ),
+                );
+              },
+            ),
             Expanded(
               // ValueListenableBuilder: only this subtree rebuilds on query change.
               child: ValueListenableBuilder<String>(
                 valueListenable: _queryNotifier,
                 builder: (context, query, _) => query.isEmpty
                     ? _SearchIdleState(onRecent: _runRecent)
-                    : _LiveSearchResults(query: query),
+                    : ValueListenableBuilder<SearchFilter>(
+                        valueListenable: _filterNotifier,
+                        builder: (context, filter, _) =>
+                            _LiveSearchResults(query: query, filter: filter),
+                      ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Horizontal filter chip row. Renders once a query is committed and
+/// scopes the results to a single category (lifting the per-type cap).
+class _SearchFilterChips extends StatelessWidget {
+  final SearchFilter selected;
+  final ValueChanged<SearchFilter> onChanged;
+  const _SearchFilterChips({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+        itemCount: SearchFilter.values.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AfSpacing.s8),
+        itemBuilder: (context, i) {
+          final f = SearchFilter.values[i];
+          final active = f == selected;
+          return ChoiceChip(
+            label: Text(f.label),
+            selected: active,
+            onSelected: (_) => onChanged(f),
+            backgroundColor: AfColors.surfaceBase,
+            selectedColor: AfColors.indigo700,
+            labelStyle: AfTypography.bodySmall.copyWith(
+              color: active ? AfColors.indigo300 : AfColors.textSecondary,
+              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(
+                color: active ? AfColors.indigo300 : AfColors.surfaceHigh,
+              ),
+            ),
+            showCheckmark: false,
+            padding: const EdgeInsets.symmetric(
+                horizontal: AfSpacing.s8, vertical: 0),
+          );
+        },
       ),
     );
   }
@@ -171,7 +257,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 /// when the query key changes, preventing stale-result races.
 class _LiveSearchResults extends ConsumerWidget {
   final String query;
-  const _LiveSearchResults({required this.query});
+  final SearchFilter filter;
+  const _LiveSearchResults({required this.query, required this.filter});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -194,10 +281,29 @@ class _LiveSearchResults extends ConsumerWidget {
         ),
       ),
       data: (res) {
-        final empty = res.tracks.isEmpty &&
-            res.albums.isEmpty &&
-            res.artists.isEmpty &&
-            res.playlists.isEmpty;
+        // Scope the buckets to the active filter so the list view
+        // only renders the requested category. SearchFilter.all keeps
+        // the original top-N preview layout.
+        final tracks = filter == SearchFilter.all ||
+                filter == SearchFilter.tracks
+            ? res.tracks
+            : const <AfTrack>[];
+        final albums = filter == SearchFilter.all ||
+                filter == SearchFilter.albums
+            ? res.albums
+            : const <AfAlbum>[];
+        final artists = filter == SearchFilter.all ||
+                filter == SearchFilter.artists
+            ? res.artists
+            : const <AfArtist>[];
+        final playlists = filter == SearchFilter.all ||
+                filter == SearchFilter.playlists
+            ? res.playlists
+            : const <AfPlaylist>[];
+        final empty = tracks.isEmpty &&
+            albums.isEmpty &&
+            artists.isEmpty &&
+            playlists.isEmpty;
         if (empty) {
           return Padding(
             padding: const EdgeInsets.symmetric(
@@ -205,7 +311,9 @@ class _LiveSearchResults extends ConsumerWidget {
               vertical: AfSpacing.s24,
             ),
             child: Text(
-              'No results for "$query".',
+              filter == SearchFilter.all
+                  ? 'No results for "$query".'
+                  : 'No ${filter.label.toLowerCase()} found for "$query".',
               style: AfTypography.bodyMedium.copyWith(
                 color: AfColors.textTertiary,
               ),
@@ -213,10 +321,12 @@ class _LiveSearchResults extends ConsumerWidget {
           );
         }
         return _SearchResults(
-          tracks: res.tracks,
-          albums: res.albums,
-          artists: res.artists,
-          playlists: res.playlists,
+          tracks: tracks,
+          albums: albums,
+          artists: artists,
+          playlists: playlists,
+          // When a single-type filter is active, drop the preview caps.
+          unbounded: filter != SearchFilter.all,
         );
       },
     );
@@ -417,12 +527,16 @@ class _SearchResults extends ConsumerWidget {
   final List<AfAlbum> albums;
   final List<AfArtist> artists;
   final List<AfPlaylist> playlists;
+  /// When true, render every result of each type (no preview cap).
+  /// Set when a single-type filter chip is active.
+  final bool unbounded;
 
   const _SearchResults({
     required this.tracks,
     required this.albums,
     required this.artists,
     required this.playlists,
+    this.unbounded = false,
   });
 
   @override
@@ -438,7 +552,9 @@ class _SearchResults extends ConsumerWidget {
         if (tracks.isNotEmpty) ...[
           SectionHeader(title: 'Tracks', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
-          for (var i = 0; i < tracks.length && i < 20; i++)
+          for (var i = 0;
+              i < tracks.length && (unbounded || i < 20);
+              i++)
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: TrackRow(
@@ -455,7 +571,7 @@ class _SearchResults extends ConsumerWidget {
         if (albums.isNotEmpty) ...[
           SectionHeader(title: 'Albums', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
-          for (final a in albums.take(10))
+          for (final a in unbounded ? albums : albums.take(10))
             ListTile(
               leading: SizedBox(
                 width: 44,
@@ -478,7 +594,7 @@ class _SearchResults extends ConsumerWidget {
         if (artists.isNotEmpty) ...[
           SectionHeader(title: 'Artists', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
-          for (final a in artists.take(10))
+          for (final a in unbounded ? artists : artists.take(10))
             ListTile(
               // Use Artwork widget (cached_network_image) instead of raw
               // NetworkImage to avoid repeated fetches and memory spikes.
@@ -503,7 +619,7 @@ class _SearchResults extends ConsumerWidget {
         if (playlists.isNotEmpty) ...[
           SectionHeader(title: 'Playlists', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
-          for (final p in playlists.take(10))
+          for (final p in unbounded ? playlists : playlists.take(10))
             ListTile(
               leading: Container(
                 width: 44,

@@ -1,0 +1,258 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../core/backend/music_backend.dart';
+import '../core/jellyfin/models/items.dart';
+import '../design_tokens/tokens.dart';
+import '../state/providers.dart';
+import '../utils/display_error.dart';
+
+/// Shows the "Save to playlist" sheet for an arbitrary [AfTrack].
+///
+/// Lists the user's existing playlists, lets them add the track to one
+/// in a single tap, or create-and-add a new playlist inline. Used by
+/// the Now Playing utility row AND the long-press track context menu
+/// so the user can save a song without having to play it first.
+void showSaveToPlaylistSheet(
+  BuildContext context,
+  WidgetRef ref,
+  AfTrack track,
+) {
+  final backend = ref.read(musicBackendProvider);
+  if (backend == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Sign in to save to playlists')),
+    );
+    return;
+  }
+  HapticFeedback.mediumImpact();
+  showDialog<void>(
+    context: context,
+    builder: (dialogCtx) => Dialog(
+      backgroundColor: AfColors.surfaceBase,
+      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
+        child: SaveToPlaylistSheet(
+          track: track,
+          backend: backend,
+          onInvalidate: () => ref.invalidate(allPlaylistsProvider),
+          onSaved: () {
+            ref.read(savedTrackIdsProvider.notifier).update(
+                  (ids) => {...ids, track.id},
+                );
+            ref.invalidate(playlistTrackIdsProvider);
+          },
+        ),
+      ),
+    ),
+  );
+}
+
+/// Inline list of existing playlists with an optional "New playlist"
+/// row at the top. Pure widget — no provider reads — so it can be
+/// embedded in any dialog / sheet / page.
+class SaveToPlaylistSheet extends StatefulWidget {
+  final AfTrack track;
+  final MusicBackend backend;
+  final VoidCallback onInvalidate;
+  final VoidCallback? onSaved;
+
+  const SaveToPlaylistSheet({
+    super.key,
+    required this.track,
+    required this.backend,
+    required this.onInvalidate,
+    this.onSaved,
+  });
+
+  @override
+  State<SaveToPlaylistSheet> createState() => _SaveToPlaylistSheetState();
+}
+
+class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
+  List<AfPlaylist>? _playlists;
+  bool _loading = true;
+  bool _saving = false;
+  String? _error;
+  final _newNameCtl = TextEditingController();
+  bool _showNewPlaylist = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _newNameCtl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final playlists = await widget.backend.playlists();
+      if (mounted) setState(() { _playlists = playlists; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  Future<void> _addTo(AfPlaylist playlist) async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await widget.backend.addToPlaylist(playlist.id, [widget.track.id]);
+      widget.onInvalidate();
+      widget.onSaved?.call();
+      if (mounted) {
+        unawaited(Navigator.maybePop(context));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Added to ${playlist.name}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(displayError(e, prefix: 'Failed'))),
+        );
+      }
+    }
+  }
+
+  Future<void> _createAndAdd() async {
+    if (_saving) return;
+    final name = _newNameCtl.text.trim();
+    if (name.isEmpty) return;
+    setState(() => _saving = true);
+    try {
+      await widget.backend.createPlaylist(name, [widget.track.id]);
+      widget.onInvalidate();
+      widget.onSaved?.call();
+      if (mounted) {
+        unawaited(Navigator.maybePop(context));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Created "$name" and added track')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(displayError(e, prefix: 'Failed'))),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: AfSpacing.s12),
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AfColors.textTertiary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: AfSpacing.s12),
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
+            child: Text('Save to playlist', style: AfTypography.titleSmall),
+          ),
+          const SizedBox(height: AfSpacing.s8),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.all(AfSpacing.s24),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_error != null)
+            Padding(
+              padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
+              child: Text(
+                _error!,
+                style: AfTypography.bodySmall
+                    .copyWith(color: AfColors.semanticError),
+              ),
+            )
+          else ...[
+            if (_showNewPlaylist)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AfSpacing.gutterGenerous,
+                    0,
+                    AfSpacing.gutterGenerous,
+                    AfSpacing.s8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _newNameCtl,
+                        autofocus: true,
+                        decoration:
+                            const InputDecoration(hintText: 'Playlist name'),
+                        onSubmitted: (_) => _createAndAdd(),
+                      ),
+                    ),
+                    const SizedBox(width: AfSpacing.s8),
+                    TextButton(
+                      onPressed: _saving ? null : _createAndAdd,
+                      child: const Text('Create'),
+                    ),
+                  ],
+                ),
+              )
+            else
+              ListTile(
+                leading: const Icon(Icons.add_rounded, color: AfColors.indigo300),
+                title: Text(
+                  'New playlist',
+                  style: AfTypography.bodyMedium
+                      .copyWith(color: AfColors.indigo300),
+                ),
+                onTap: () => setState(() => _showNewPlaylist = true),
+              ),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 300),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _playlists?.length ?? 0,
+                itemBuilder: (context, i) {
+                  final p = _playlists![i];
+                  return ListTile(
+                    leading: const Icon(
+                      Icons.playlist_play_rounded,
+                      color: AfColors.indigo300,
+                    ),
+                    title: Text(p.name, style: AfTypography.bodyMedium),
+                    subtitle: Text(
+                      p.trackCountLabel,
+                      style: AfTypography.bodySmall
+                          .copyWith(color: AfColors.textTertiary),
+                    ),
+                    onTap: _saving ? null : () => _addTo(p),
+                  );
+                },
+              ),
+            ),
+          ],
+          const SizedBox(height: AfSpacing.s12),
+        ],
+      ),
+    );
+  }
+}

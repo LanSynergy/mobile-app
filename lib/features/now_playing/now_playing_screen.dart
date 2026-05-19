@@ -9,17 +9,17 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart'
         Loop;
 
 import '../../core/audio/play_actions.dart';
-import '../../core/backend/music_backend.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../features/sleep_timer/sleep_timer_screen.dart';
 import '../../state/providers.dart';
-import '../../utils/display_error.dart';
 import '../../utils/time_format.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/audio_visual_scrubber.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/quality_chip.dart';
+import '../../widgets/save_to_playlist_sheet.dart';
+import '../../widgets/track_details_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NowPlayingScreen — Reactive Islands architecture
@@ -1008,6 +1008,17 @@ class _UtilityRow extends ConsumerWidget {
                   _showAbLoopDialog(context, ref);
                 },
               ),
+              _MoreItem(
+                icon: Icons.info_outline_rounded,
+                label: 'Show details',
+                onTap: () {
+                  Navigator.of(dialogCtx).pop();
+                  final track = ref.read(currentTrackProvider);
+                  if (track != null) {
+                    showTrackDetailsSheet(context, ref, track);
+                  }
+                },
+              ),
             ],
           ),
         ),
@@ -1205,35 +1216,7 @@ class _UtilityRow extends ConsumerWidget {
   void _showSaveDialog(BuildContext context, WidgetRef ref) {
     final track = ref.read(currentTrackProvider);
     if (track == null) return;
-    final backend = ref.read(musicBackendProvider);
-    if (backend == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign in to save to playlists')),
-      );
-      return;
-    }
-
-    showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => Dialog(
-        backgroundColor: AfColors.surfaceBase,
-        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
-          child: _SaveToPlaylistSheet(
-            track: track,
-            client: backend,
-            onInvalidate: () => ref.invalidate(allPlaylistsProvider),
-            onSaved: () {
-              ref.read(savedTrackIdsProvider.notifier).update(
-                    (ids) => {...ids, track.id},
-                  );
-              ref.invalidate(playlistTrackIdsProvider);
-            },
-          ),
-        ),
-      ),
-    );
+    showSaveToPlaylistSheet(context, ref, track);
   }
 
   void _showSpeedDialog(BuildContext context, WidgetRef ref) {
@@ -1691,191 +1674,3 @@ class _OutputDialogContent extends ConsumerWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Save to playlist sheet
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SaveToPlaylistSheet extends StatefulWidget {
-  final AfTrack track;
-  final MusicBackend client;
-  final VoidCallback onInvalidate;
-  final VoidCallback? onSaved;
-
-  const _SaveToPlaylistSheet({
-    required this.track,
-    required this.client,
-    required this.onInvalidate,
-    this.onSaved,
-  });
-
-  @override
-  State<_SaveToPlaylistSheet> createState() => _SaveToPlaylistSheetState();
-}
-
-class _SaveToPlaylistSheetState extends State<_SaveToPlaylistSheet> {
-  List<AfPlaylist>? _playlists;
-  bool _loading = true;
-  bool _saving = false;
-  String? _error;
-  final _newNameCtl = TextEditingController();
-  bool _showNewPlaylist = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  @override
-  void dispose() {
-    _newNameCtl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    try {
-      final playlists = await widget.client.playlists();
-      if (mounted) setState(() { _playlists = playlists; _loading = false; });
-    } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
-    }
-  }
-
-  Future<void> _addTo(AfPlaylist playlist) async {
-    // Guard against concurrent taps.
-    if (_saving) return;
-    setState(() => _saving = true);
-    try {
-      await widget.client.addToPlaylist(playlist.id, [widget.track.id]);
-      widget.onInvalidate();
-      widget.onSaved?.call();
-      if (mounted) {
-        unawaited(Navigator.maybePop(context));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Added to ${playlist.name}')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(displayError(e, prefix: 'Failed'))),
-        );
-      }
-    }
-  }
-
-  Future<void> _createAndAdd() async {
-    // Guard against concurrent taps.
-    if (_saving) return;
-    final name = _newNameCtl.text.trim();
-    if (name.isEmpty) return;
-    setState(() => _saving = true);
-    try {
-      await widget.client.createPlaylist(name, [widget.track.id]);
-      widget.onInvalidate();
-      widget.onSaved?.call();
-      if (mounted) {
-        unawaited(Navigator.maybePop(context));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Created "$name" and added track')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(displayError(e, prefix: 'Failed'))),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: AfSpacing.s12),
-          Center(
-            child: Container(
-              width: 36, height: 4,
-              decoration: BoxDecoration(
-                color: AfColors.textTertiary,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: AfSpacing.s12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
-            child: Text('Save to playlist', style: AfTypography.titleSmall),
-          ),
-          const SizedBox(height: AfSpacing.s8),
-          if (_loading)
-            const Padding(
-              padding: EdgeInsets.all(AfSpacing.s24),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (_error != null)
-            Padding(
-              padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
-              child: Text(_error!, style: AfTypography.bodySmall.copyWith(color: AfColors.semanticError)),
-            )
-          else ...[
-            // New playlist row.
-            if (_showNewPlaylist)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AfSpacing.gutterGenerous, 0, AfSpacing.gutterGenerous, AfSpacing.s8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _newNameCtl,
-                        autofocus: true,
-                        decoration: const InputDecoration(hintText: 'Playlist name'),
-                        onSubmitted: (_) => _createAndAdd(),
-                      ),
-                    ),
-                    const SizedBox(width: AfSpacing.s8),
-                    TextButton(
-                      onPressed: _saving ? null : _createAndAdd,
-                      child: const Text('Create'),
-                    ),
-                  ],
-                ),
-              )
-            else
-              ListTile(
-                leading: const Icon(Icons.add_rounded, color: AfColors.indigo300),
-                title: Text('New playlist', style: AfTypography.bodyMedium.copyWith(color: AfColors.indigo300)),
-                onTap: () => setState(() => _showNewPlaylist = true),
-              ),
-            // Existing playlists.
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 300),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: _playlists?.length ?? 0,
-                itemBuilder: (context, i) {
-                  final p = _playlists![i];
-                  return ListTile(
-                    leading: const Icon(Icons.playlist_play_rounded, color: AfColors.indigo300),
-                    title: Text(p.name, style: AfTypography.bodyMedium),
-                    subtitle: Text(p.trackCountLabel,
-                        style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary)),
-                    onTap: _saving ? null : () => _addTo(p),
-                  );
-                },
-              ),
-            ),
-          ],
-          const SizedBox(height: AfSpacing.s12),
-        ],
-      ),
-    );
-  }
-}

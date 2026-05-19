@@ -792,6 +792,37 @@ final albumDetailProvider = FutureProvider.autoDispose
   return null;
 });
 
+/// Full per-track details (file size, container, channels, sample rate,
+/// bit depth, bitrate, path, genres, play count). Used by the "Show
+/// details" bottom sheet on track rows and the Now Playing "More" menu.
+///
+/// Source selection mirrors the rest of the data layer:
+/// `content://` / `local:` ids resolve through [localLibraryProvider]
+/// (SQLite tag cache); everything else hits the active server backend.
+final trackDetailsProvider =
+    FutureProvider.autoDispose.family<AfTrackDetails?, String>((ref, id) async {
+  if (id.startsWith('local:') || id.startsWith('content://')) {
+    final lib = ref.read(localLibraryProvider);
+    final res = await lib.trackDetails(id);
+    _logData('trackDetails',
+        source: 'local',
+        extra: 'id=$id container=${res?.container} size=${res?.sizeBytes}');
+    return res;
+  }
+
+  final backend = ref.watch(musicBackendProvider);
+  if (backend != null) {
+    final res = await backend.trackDetails(id);
+    _logData('trackDetails',
+        source: 'live',
+        extra: 'id=$id container=${res?.container} size=${res?.sizeBytes}');
+    return res;
+  }
+
+  _logData('trackDetails', source: 'none', extra: 'id=$id (no backend)');
+  return null;
+});
+
 final artistDetailProvider =
     FutureProvider.autoDispose.family<AfArtist?, String>((ref, id) async {
   if (id.startsWith('local:artist:')) {
