@@ -152,10 +152,18 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   double _gateRelease = 250.0;
 
   // ── De-esser (fine-tuning) ──
+  //
+  // mpv's `lavfi-deesser` accepts three normalised 0..1 parameters
+  // (intensity, mix, "frequency content kept"). The "freq" param is
+  // NOT a Hz value — it's a 0..1 ratio. Previously this screen
+  // exposed it as a Hz slider 2000..12000 and forwarded the raw
+  // value to mpv, which made mpv reject the *entire* af chain when
+  // de-esser was enabled (kicking the user back to dry audio and
+  // silently disabling Bass/Treble/EQ at the same time).
   bool _deesser = false;
   double _deesserIntensity = 0.0;
   double _deesserMix = 0.5;
-  double _deesserFreq = 5500.0;
+  double _deesserFreq = 0.5;
 
   // ── 18-band EQ (linear gain; 1.0 = flat, range 0–4) ──
   bool _eqEnabled = false;
@@ -267,9 +275,13 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     _gateAttack = fx.agate.attack;
     _gateRelease = fx.agate.release;
     _deesser = fx.deesser.enabled;
-    _deesserIntensity = fx.deesser.i;
-    _deesserMix = fx.deesser.m;
-    _deesserFreq = fx.deesser.f;
+    // mpv's deesser params are all clamped 0..1. Clamp on load so a
+    // value persisted by an earlier build (when the "Frequency"
+    // slider was 2000..12000 Hz) doesn't blow up libmpv's filter
+    // parser the next time the user enables de-esser.
+    _deesserIntensity = fx.deesser.i.clamp(0.0, 1.0);
+    _deesserMix = fx.deesser.m.clamp(0.0, 1.0);
+    _deesserFreq = fx.deesser.f.clamp(0.0, 1.0);
     // Echo
     _echoEnabled = fx.aecho.enabled;
     _echoInGain = fx.aecho.in_gain;
@@ -472,7 +484,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
       _deesser = false;
       _deesserIntensity = 0.0;
       _deesserMix = 0.5;
-      _deesserFreq = 5500.0;
+      _deesserFreq = 0.5;
       _echoEnabled = false;
       _echoInGain = 0.6;
       _echoOutGain = 0.3;
@@ -829,9 +841,13 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             _sliderRow('Mix', _deesserMix, 0.0, 1.0, 20, (v) {
               setState(() => _deesserMix = v);
             }, _apply, precision: 2),
-            _sliderRow('Frequency', _deesserFreq, 2000.0, 12000.0, 100, (v) {
+            // mpv's `lavfi-deesser` "f" parameter is a 0..1 ratio
+            // ("how much of original frequency content to keep"),
+            // not a Hz value. Treating it as Hz makes libmpv reject
+            // the entire `af` chain — see field comment above.
+            _sliderRow('Frequency keep', _deesserFreq, 0.0, 1.0, 20, (v) {
               setState(() => _deesserFreq = v);
-            }, _apply, precision: 0, suffix: 'Hz'),
+            }, _apply, precision: 2),
           ],
         ]),
         const SizedBox(height: AfSpacing.s16),
