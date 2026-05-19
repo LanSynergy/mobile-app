@@ -282,12 +282,26 @@ class _MetadataRow extends ConsumerWidget {
                 style: AfTypography.titleLarge,
               ),
               const SizedBox(height: 2),
-              Text(
-                track.artistName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AfTypography.bodyMedium.copyWith(
-                  color: AfColors.textSecondary,
+              // Tap the artist name to jump to the artist. Mirrors the
+              // album-label affordance in the top bar.
+              InkWell(
+                borderRadius: AfRadii.borderSm,
+                onTap: track.artistId == null
+                    ? null
+                    : () => context.push('/artist/${track.artistId}'),
+                child: Semantics(
+                  label: track.artistId == null
+                      ? null
+                      : 'Go to artist ${track.artistName}',
+                  button: track.artistId != null,
+                  child: Text(
+                    track.artistName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AfTypography.bodyMedium.copyWith(
+                      color: AfColors.textSecondary,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -575,21 +589,34 @@ class _TopBar extends ConsumerWidget {
             onPressed: () => Navigator.maybePop(context),
           ),
           Expanded(
-            child: Column(
-              children: [
-                Text(
-                  'Playing from album',
-                  style: AfTypography.caption.copyWith(
-                    color: AfColors.textTertiary,
-                  ),
+            // Tap the album label to jump to the album. Faster than
+            // ⋯ → Go to album. The popup menu still offers the same
+            // action for users who go looking for it there.
+            child: InkWell(
+              borderRadius: AfRadii.borderSm,
+              onTap: track.albumId == null
+                  ? null
+                  : () => context.push('/album/${track.albumId}'),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Column(
+                  children: [
+                    Text(
+                      'Playing from album',
+                      style: AfTypography.caption.copyWith(
+                        color: AfColors.textTertiary,
+                      ),
+                    ),
+                    Text(
+                      track.albumName,
+                      style: AfTypography.titleSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-                Text(
-                  track.albumName,
-                  style: AfTypography.titleSmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+              ),
             ),
           ),
           const _SleepTimerBadge(),
