@@ -344,7 +344,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   Future<void> configureSpectrum() async {
     try {
-      await _player.setGapless(Gapless.weak);
       await _player.setSpectrum(const SpectrumSettings(
         fftSize: 2048,
         bandCount: 64,
