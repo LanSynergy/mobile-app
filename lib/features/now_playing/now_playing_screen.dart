@@ -313,8 +313,10 @@ class _MetadataRow extends ConsumerWidget {
           ),
         ),
         IconButton(
-          icon: FaIcon(
-            FontAwesomeIcons.heart,
+          icon: Icon(
+            track.isFavorite
+                ? Icons.favorite
+                : Icons.favorite_border,
             color: track.isFavorite
                 ? AfColors.semanticError
                 : AfColors.textPrimary,
@@ -965,7 +967,7 @@ class _UtilityRow extends ConsumerWidget {
       children: [
         _UtilityIcon(
           icon: FaIcon(
-            FontAwesomeIcons.quoteLeft,
+            FontAwesomeIcons.alignLeft,
             size: 22,
             color: AfColors.textSecondary,
           ),
@@ -974,7 +976,7 @@ class _UtilityRow extends ConsumerWidget {
         ),
         _UtilityIcon(
           icon: FaIcon(
-            FontAwesomeIcons.sliders,
+            FontAwesomeIcons.chartSimple,
             size: 22,
             color: AfColors.textSecondary,
           ),
