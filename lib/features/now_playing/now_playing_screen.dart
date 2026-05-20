@@ -604,7 +604,7 @@ class _TopBar extends ConsumerWidget {
             children: [
               IconButton(
                 icon: FaIcon(
-                  FontAwesomeIcons.shuffle,
+                  FontAwesomeIcons.angleDown,
                   color: AfColors.textPrimary,
                   size: 24,
                 ),
