@@ -639,6 +639,13 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         ..clear()
         ..addAll(reordered);
       _currentIndex = newIdx.clamp(0, _trackQueue.length - 1);
+    } else {
+      afLog(
+        'audio',
+        '_syncTrackQueueFromMpv partial sync: '
+            'resolved ${reordered.length}/${mpvItems.length} tracks, '
+            'keeping stale queue',
+      );
     }
   }
 
