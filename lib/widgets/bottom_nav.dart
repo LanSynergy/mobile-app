@@ -1,9 +1,13 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import 'press_scale.dart';
+
+const _navBg = Color(0xCC0B0B14);
 
 /// Google-style bottom navigation bar.
 ///
@@ -78,15 +82,18 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav>
     final showLabels = ref.watch(showNavLabelsProvider);
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: AfColors.surfaceCanvas,
-        border: Border(
-          top: BorderSide(color: AfColors.surfaceLow, width: 1),
-        ),
-      ),
-      padding: EdgeInsets.only(bottom: bottomInset),
-      child: SizedBox(
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: _navBg,
+            border: Border(
+              top: BorderSide(color: AfColors.surfaceLow, width: 1),
+            ),
+          ),
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: SizedBox(
         height: AfSpacing.bottomNavHeight,
         child: LayoutBuilder(
           builder: (context, c) {
@@ -132,6 +139,8 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav>
             );
           },
         ),
+      ),
+      ),
       ),
     );
   }

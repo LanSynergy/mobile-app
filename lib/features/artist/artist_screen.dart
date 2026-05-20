@@ -71,8 +71,8 @@ class ArtistScreen extends ConsumerWidget {
                               colors: [
                                 Colors.transparent,
                                 // ignore: deprecated_member_use
+                                AfColors.surfaceCanvas.withValues(alpha: 0.6),
                                 AfColors.surfaceCanvas.withValues(alpha: 0.9),
-                                AfColors.surfaceCanvas,
                               ],
                               stops: const [0.3, 0.8, 1.0],
                             ),

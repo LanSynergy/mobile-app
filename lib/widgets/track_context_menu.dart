@@ -39,7 +39,7 @@ void showTrackContextMenu(
         final overrides = innerRef.watch(trackFavoriteOverridesProvider);
         final isFavorite = overrides[track.id] ?? track.isFavorite;
         return Dialog(
-          backgroundColor: AfColors.surfaceBase,
+          backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
           shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: AfSpacing.s12),

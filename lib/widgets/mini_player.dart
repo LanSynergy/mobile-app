@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -82,18 +83,22 @@ class MiniPlayer extends ConsumerWidget {
           child: PressScale(
             ensureHitTarget: false,
             onTap: onTap,
-            child: Container(
-            height: AfSpacing.miniPlayerHeight,
-            decoration: BoxDecoration(
-              color: AfColors.surfaceRaised,
-              borderRadius: AfRadii.borderMd,
-              border: Border.all(color: AfColors.surfaceHigh, width: 1),
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.s8,
-              vertical: 4,
-            ),
-            child: Row(
+            child: ClipRRect(
+            borderRadius: AfRadii.borderMd,
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              child: Container(
+              height: AfSpacing.miniPlayerHeight,
+              decoration: BoxDecoration(
+                color: AfColors.surfaceRaised.withValues(alpha: 0.80),
+                borderRadius: AfRadii.borderMd,
+                border: Border.all(color: AfColors.surfaceHigh.withValues(alpha: 0.5), width: 1),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AfSpacing.s8,
+                vertical: 4,
+              ),
+              child: Row(
               children: [
                 Hero(
                   tag: 'now-playing-artwork',
@@ -143,6 +148,8 @@ class MiniPlayer extends ConsumerWidget {
                   tooltip: 'Skip next',
                 ),
               ],
+            ),
+            ),
             ),
           ),
           ),

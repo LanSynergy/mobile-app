@@ -79,12 +79,12 @@ ThemeData buildNocturneTheme() {
       centerTitle: true,
     ),
 
-    bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: AfColors.surfaceHigh,
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: AfColors.surfaceHigh.withValues(alpha: 0.90),
       surfaceTintColor: Colors.transparent,
-      modalBackgroundColor: AfColors.surfaceHigh,
+      modalBackgroundColor: AfColors.surfaceHigh.withValues(alpha: 0.90),
       modalBarrierColor: AfColors.surfaceScrim,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
           topLeft: AfRadii.rXl,
           topRight: AfRadii.rXl,
@@ -92,7 +92,7 @@ ThemeData buildNocturneTheme() {
       ),
       showDragHandle: true,
       dragHandleColor: AfColors.surfaceMax,
-      dragHandleSize: Size(32, 4),
+      dragHandleSize: const Size(32, 4),
     ),
 
     snackBarTheme: SnackBarThemeData(

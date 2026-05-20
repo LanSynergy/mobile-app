@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -223,41 +225,79 @@ class _OpacityAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = (scrollOffset / threshold).clamp(0.0, 1.0);
-    return Container(
-      color: Color.lerp(
-        Colors.transparent,
-        AfColors.surfaceCanvas,
-        t,
-      ),
-      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
-      child: SizedBox(
-        height: kToolbarHeight,
-        child: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back_rounded),
-              onPressed: onBack,
-            ),
-            Expanded(
-              child: Opacity(
-                opacity: t,
-                child: Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: AfTypography.titleSmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+    final bg = Color.lerp(
+      Colors.transparent,
+      AfColors.surfaceCanvas.withValues(alpha: 0.85),
+      t,
+    )!;
+    return t > 0.01
+        ? ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                color: bg,
+                padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+                child: SizedBox(
+                  height: kToolbarHeight,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        onPressed: onBack,
+                      ),
+                      Expanded(
+                        child: Opacity(
+                          opacity: t,
+                          child: Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            style: AfTypography.titleSmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.more_vert_rounded),
+                        onPressed: onMore,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.more_vert_rounded),
-              onPressed: onMore,
+          )
+        : Container(
+            color: bg,
+            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+            child: SizedBox(
+              height: kToolbarHeight,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    onPressed: onBack,
+                  ),
+                  Expanded(
+                    child: Opacity(
+                      opacity: t,
+                      child: Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: AfTypography.titleSmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.more_vert_rounded),
+                    onPressed: onMore,
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
-    );
+          );
   }
 }
 

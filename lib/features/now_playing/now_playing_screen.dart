@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -578,106 +579,113 @@ class _TopBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AfSpacing.s8,
-        vertical: 4,
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.keyboard_arrow_down_rounded),
-            onPressed: () => Navigator.maybePop(context),
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AfColors.surfaceCanvas.withValues(alpha: 0.30),
+            borderRadius: AfRadii.borderPill,
           ),
-          Expanded(
-            // Tap the album label to jump to the album. Faster than
-            // ⋯ → Go to album. The popup menu still offers the same
-            // action for users who go looking for it there.
-            child: InkWell(
-              borderRadius: AfRadii.borderSm,
-              onTap: track.albumId == null
-                  ? null
-                  : () => context.push('/album/${track.albumId}'),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Column(
-                  children: [
-                    Text(
-                      'Playing from album',
-                      style: AfTypography.caption.copyWith(
-                        color: AfColors.textTertiary,
+          margin: const EdgeInsets.symmetric(horizontal: AfSpacing.s8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s8, vertical: 4),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                onPressed: () => Navigator.maybePop(context),
+              ),
+              Expanded(
+                // Tap the album label to jump to the album. Faster than
+                // ⋯ → Go to album. The popup menu still offers the same
+                // action for users who go looking for it there.
+                child: InkWell(
+                  borderRadius: AfRadii.borderSm,
+                  onTap: track.albumId == null
+                      ? null
+                      : () => context.push('/album/${track.albumId}'),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Playing from album',
+                          style: AfTypography.caption.copyWith(
+                            color: AfColors.textTertiary,
+                          ),
+                        ),
+                        Text(
+                          track.albumName,
+                          style: AfTypography.titleSmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              PopupMenuButton<_NowPlayingAction>(
+                icon: const Icon(Icons.more_horiz_rounded),
+                onSelected: (action) async {
+                  switch (action) {
+                    case _NowPlayingAction.startRadio:
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Starting Instant Mix…'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                      await ref.read(playActionsProvider).playInstantMix(track);
+                      // Guard navigation after async gap.
+                      if (!context.mounted) return;
+                      break;
+                    case _NowPlayingAction.goToAlbum:
+                      if (track.albumId != null) {
+                        unawaited(context.push('/album/${track.albumId}'));
+                      }
+                      break;
+                    case _NowPlayingAction.goToArtist:
+                      if (track.artistId != null) {
+                        unawaited(context.push('/artist/${track.artistId}'));
+                      }
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: _NowPlayingAction.startRadio,
+                    child: ListTile(
+                      leading: Icon(Icons.radio_rounded),
+                      title: Text('Start radio'),
+                      subtitle: Text('Similar songs from your library'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  if (track.albumId != null)
+                    const PopupMenuItem(
+                      value: _NowPlayingAction.goToAlbum,
+                      child: ListTile(
+                        leading: Icon(Icons.album_outlined),
+                        title: Text('Go to album'),
+                        contentPadding: EdgeInsets.zero,
                       ),
                     ),
-                    Text(
-                      track.albumName,
-                      style: AfTypography.titleSmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
+                  if (track.artistId != null)
+                    const PopupMenuItem(
+                      value: _NowPlayingAction.goToArtist,
+                      child: ListTile(
+                        leading: Icon(Icons.person_outline_rounded),
+                        title: Text('Go to artist'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
                     ),
-                  ],
-                ),
+                ],
               ),
-            ),
-          ),
-          PopupMenuButton<_NowPlayingAction>(
-            icon: const Icon(Icons.more_horiz_rounded),
-            onSelected: (action) async {
-              switch (action) {
-                case _NowPlayingAction.startRadio:
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Starting Instant Mix…'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                  await ref.read(playActionsProvider).playInstantMix(track);
-                  // Guard navigation after async gap.
-                  if (!context.mounted) return;
-                  break;
-                case _NowPlayingAction.goToAlbum:
-                  if (track.albumId != null) {
-                    unawaited(context.push('/album/${track.albumId}'));
-                  }
-                  break;
-                case _NowPlayingAction.goToArtist:
-                  if (track.artistId != null) {
-                    unawaited(context.push('/artist/${track.artistId}'));
-                  }
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: _NowPlayingAction.startRadio,
-                child: ListTile(
-                  leading: Icon(Icons.radio_rounded),
-                  title: Text('Start radio'),
-                  subtitle: Text('Similar songs from your library'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              if (track.albumId != null)
-                const PopupMenuItem(
-                  value: _NowPlayingAction.goToAlbum,
-                  child: ListTile(
-                    leading: Icon(Icons.album_outlined),
-                    title: Text('Go to album'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              if (track.artistId != null)
-                const PopupMenuItem(
-                  value: _NowPlayingAction.goToArtist,
-                  child: ListTile(
-                    leading: Icon(Icons.person_outline_rounded),
-                    title: Text('Go to artist'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -730,7 +738,7 @@ class _NowPlayingMetaChip extends ConsumerWidget {
             showDialog<void>(
               context: context,
               builder: (_) => Dialog(
-                backgroundColor: AfColors.surfaceBase,
+                backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
                 shape:
                     RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
                 child: const _SleepTimerDialogContent(),
@@ -959,7 +967,7 @@ class _UtilityRow extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
-        backgroundColor: AfColors.surfaceBase,
+        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
         shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
@@ -1041,7 +1049,7 @@ class _UtilityRow extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AfColors.surfaceBase,
+          backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
           title: Row(
             children: [
               const Text('Volume'),
@@ -1090,7 +1098,7 @@ class _UtilityRow extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AfColors.surfaceBase,
+          backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
           title: const Text('Audio delay'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1143,7 +1151,7 @@ class _UtilityRow extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AfColors.surfaceBase,
+        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
         title: const Text('A-B Loop'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1232,7 +1240,7 @@ class _UtilityRow extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
-        backgroundColor: AfColors.surfaceBase,
+        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
         shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
@@ -1272,7 +1280,7 @@ class _UtilityRow extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
-        backgroundColor: AfColors.surfaceBase,
+        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
         shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
         child: const _SleepTimerDialogContent(),
       ),
@@ -1283,7 +1291,7 @@ class _UtilityRow extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
-        backgroundColor: AfColors.surfaceBase,
+        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
         shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
