@@ -353,8 +353,12 @@ class _AbLoopButton extends ConsumerWidget {
     final fullyActive = loopA != null && loopB != null;
 
     return IconButton(
-      icon: Icon(
-        Icons.replay_rounded,
+      icon: FaIcon(
+        loopA == null
+            ? FontAwesomeIcons.arrowsTurnToDots
+            : loopB == null
+                ? FontAwesomeIcons.a
+                : FontAwesomeIcons.b,
         color: fullyActive
             ? ref.watch(currentSpectralProvider).energy
             : active
