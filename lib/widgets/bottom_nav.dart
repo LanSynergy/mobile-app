@@ -43,39 +43,7 @@ class AfBottomNav extends ConsumerStatefulWidget {
   ConsumerState<AfBottomNav> createState() => _AfBottomNavState();
 }
 
-class _AfBottomNavState extends ConsumerState<AfBottomNav>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(
-    vsync: this,
-    duration: AfDurations.standard,
-    value: widget.currentIndex.toDouble(),
-    lowerBound: 0,
-    upperBound: (widget.items.length - 1).toDouble(),
-  );
-
-  @override
-  void didUpdateWidget(AfBottomNav old) {
-    super.didUpdateWidget(old);
-    if (old.currentIndex != widget.currentIndex) {
-      final reduced = MediaQuery.of(context).disableAnimations;
-      if (reduced) {
-        _ctrl.value = widget.currentIndex.toDouble();
-      } else {
-        _ctrl.animateTo(
-          widget.currentIndex.toDouble(),
-          duration: AfDurations.standard,
-          curve: AfCurves.easeStandard,
-        );
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
+class _AfBottomNavState extends ConsumerState<AfBottomNav> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
@@ -95,44 +63,31 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav>
           child: SizedBox(
             height: AfSpacing.bottomNavHeight,
             child: LayoutBuilder(
-              builder: (context, c) {
-                final tabWidth = c.maxWidth / widget.items.length;
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                final alignLeft =
+                    widget.currentIndex < widget.items.length ~/ 2;
+                final pillLeft = alignLeft ? 0.0 : width - 120;
+
                 return Stack(
                   children: [
                     // Sliding pill background for active tab.
-                    AnimatedBuilder(
-                      animation: _ctrl,
-                      builder: (context, _) {
-                        final pillWidth = 120.0;
-                        final centerX = tabWidth * (_ctrl.value + 0.5);
-                        return Positioned(
-                          left: centerX - pillWidth / 2,
-                          top: 12,
-                          width: pillWidth,
-                          height: 48,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: AfColors.indigo900,
-                              borderRadius: AfRadii.borderPill,
-                            ),
-                          ),
-                        );
-                      },
+                    AnimatedPositioned(
+                      duration: AfDurations.standard,
+                      curve: AfCurves.easeStandard,
+                      left: pillLeft,
+                      top: 12,
+                      width: 120,
+                      height: 48,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AfColors.indigo900,
+                          borderRadius: AfRadii.borderPill,
+                        ),
+                      ),
                     ),
-                    // Tab buttons.
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        for (var i = 0; i < widget.items.length; i++)
-                          Expanded(
-                            child: _Tab(
-                              item: widget.items[i],
-                              isActive: i == widget.currentIndex,
-                              onTap: () => widget.onSelect(i),
-                            ),
-                          ),
-                      ],
-                    ),
+                    // Tab buttons: active tab shifts to edge, others cluster.
+                    _buildDynamicLayout(context),
                   ],
                 );
               },
@@ -142,53 +97,87 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav>
       ),
     );
   }
-}
 
-class _Tab extends StatelessWidget {
-  final AfBottomNavItem item;
-  final bool isActive;
-  final VoidCallback onTap;
+  Widget _buildDynamicLayout(BuildContext context) {
+    final activeIdx = widget.currentIndex;
+    final activeItem = widget.items[activeIdx];
+    final inactiveItems = <(int, AfBottomNavItem)>[];
+    for (var i = 0; i < widget.items.length; i++) {
+      if (i != activeIdx) {
+        inactiveItems.add((i, widget.items[i]));
+      }
+    }
 
-  const _Tab({
-    required this.item,
-    required this.isActive,
-    required this.onTap,
-  });
+    final alignLeft = activeIdx < widget.items.length ~/ 2;
 
-  @override
-  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment:
+          alignLeft ? MainAxisAlignment.start : MainAxisAlignment.end,
+      children: [
+        if (!alignLeft)
+          ...inactiveItems.map((e) => _buildInactiveTab(e.$1, e.$2)),
+        _buildActiveTab(activeIdx, activeItem),
+        if (alignLeft)
+          ...inactiveItems.map((e) => _buildInactiveTab(e.$1, e.$2)),
+      ],
+    );
+  }
+
+  Widget _buildActiveTab(int index, AfBottomNavItem item) {
     return PressScale(
       ensureHitTarget: false,
-      onTap: onTap,
+      onTap: () => widget.onSelect(index),
       child: SizedBox(
         height: AfSpacing.bottomNavHeight,
+        width: 120,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AnimatedSwitcher(
               duration: AfDurations.instant,
               child: Icon(
-                isActive ? item.filledIcon : item.icon,
-                key: ValueKey(isActive),
+                item.filledIcon,
+                key: const ValueKey('filled'),
                 size: 24,
-                color: isActive ? AfColors.textPrimary : AfColors.textTertiary,
+                color: AfColors.textPrimary,
                 semanticLabel: null,
               ),
             ),
-            if (isActive) ...[
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AfTypography.caption.copyWith(
-                    color: AfColors.textPrimary,
-                  ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AfTypography.caption.copyWith(
+                  color: AfColors.textPrimary,
                 ),
               ),
-            ],
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInactiveTab(int index, AfBottomNavItem item) {
+    return PressScale(
+      ensureHitTarget: false,
+      onTap: () => widget.onSelect(index),
+      child: SizedBox(
+        height: AfSpacing.bottomNavHeight,
+        width: 72,
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: AfDurations.instant,
+            child: Icon(
+              item.icon,
+              key: const ValueKey('outline'),
+              size: 24,
+              color: AfColors.textTertiary,
+              semanticLabel: null,
+            ),
+          ),
         ),
       ),
     );
