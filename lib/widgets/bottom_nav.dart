@@ -78,65 +78,63 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav>
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    final topRadius = 24.0;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(topRadius)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: _navBg,
-            border: Border(
-              top: BorderSide(color: AfColors.surfaceLow, width: 1),
+    return SafeArea(
+      minimum: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(100),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: _navBg,
+              border: Border.all(color: AfColors.surfaceLow, width: 1),
+              borderRadius: BorderRadius.circular(100),
             ),
-          ),
-          padding: EdgeInsets.only(bottom: bottomInset),
-          child: SizedBox(
-            height: AfSpacing.bottomNavHeight,
-            child: LayoutBuilder(
-              builder: (context, c) {
-                final tabWidth = c.maxWidth / widget.items.length;
-                return Stack(
-                  children: [
-                    // Sliding pill background for active tab.
-                    AnimatedBuilder(
-                      animation: _ctrl,
-                      builder: (context, _) {
-                        final pillWidth = 96.0; // Wider to fit label
-                        final centerX = tabWidth * (_ctrl.value + 0.5);
-                        return Positioned(
-                          left: centerX - pillWidth / 2,
-                          top: 12,
-                          width: pillWidth,
-                          height: 48,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: AfColors.indigo900,
-                              borderRadius: AfRadii.borderPill,
+            child: SizedBox(
+              height: AfSpacing.bottomNavHeight,
+              child: LayoutBuilder(
+                builder: (context, c) {
+                  final tabWidth = c.maxWidth / widget.items.length;
+                  return Stack(
+                    children: [
+                      // Sliding pill background for active tab.
+                      AnimatedBuilder(
+                        animation: _ctrl,
+                        builder: (context, _) {
+                          final pillWidth = 120.0;
+                          final centerX = tabWidth * (_ctrl.value + 0.5);
+                          return Positioned(
+                            left: centerX - pillWidth / 2,
+                            top: 12,
+                            width: pillWidth,
+                            height: 48,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AfColors.indigo900,
+                                borderRadius: AfRadii.borderPill,
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-                    // Tab buttons.
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        for (var i = 0; i < widget.items.length; i++)
-                          Expanded(
-                            child: _Tab(
-                              item: widget.items[i],
-                              isActive: i == widget.currentIndex,
-                              onTap: () => widget.onSelect(i),
+                          );
+                        },
+                      ),
+                      // Tab buttons.
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          for (var i = 0; i < widget.items.length; i++)
+                            Expanded(
+                              child: _Tab(
+                                item: widget.items[i],
+                                isActive: i == widget.currentIndex,
+                                onTap: () => widget.onSelect(i),
+                              ),
                             ),
-                          ),
-                      ],
-                    ),
-                  ],
-                );
-              },
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -163,7 +161,7 @@ class _Tab extends StatelessWidget {
       onTap: onTap,
       child: SizedBox(
         height: AfSpacing.bottomNavHeight,
-        child: Column(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AnimatedSwitcher(
@@ -177,17 +175,18 @@ class _Tab extends StatelessWidget {
               ),
             ),
             if (isActive) ...[
-              const SizedBox(height: 4),
-              Text(
-                item.label,
-                style: AfTypography.caption.copyWith(
-                  color: isActive
-                      ? AfColors.textPrimary
-                      : AfColors.textTertiary,
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AfTypography.caption.copyWith(
+                    color: AfColors.textPrimary,
+                  ),
                 ),
               ),
-            ] else
-              const SizedBox(height: 4),
+            ],
           ],
         ),
       ),
