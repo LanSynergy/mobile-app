@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import '../design_tokens/tokens.dart';
+
 /// A reusable function to show a blurred, transparent bottom sheet.
 Future<T?> showBlurBottomSheet<T>({
   required BuildContext context,
@@ -45,11 +47,6 @@ class BlurBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceAlpha = isDark ? 0.15 : 0.08;
-    final borderAlpha = isDark ? 0.3 : 0.15;
-    final handleAlpha = isDark ? 0.5 : 0.3;
-
     return SafeArea(
       top: false,
       child: ClipRRect(
@@ -58,13 +55,8 @@ class BlurBottomSheet extends StatelessWidget {
           filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: surfaceAlpha),
+              color: AfColors.surfaceRaised.withValues(alpha: 0.85),
               borderRadius: BorderRadius.vertical(top: Radius.circular(topRadius)),
-              border: Border(
-                top: BorderSide(color: Colors.white.withValues(alpha: borderAlpha), width: 1.5),
-                left: BorderSide(color: Colors.white.withValues(alpha: borderAlpha), width: 1.5),
-                right: BorderSide(color: Colors.white.withValues(alpha: borderAlpha), width: 1.5),
-              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -74,7 +66,7 @@ class BlurBottomSheet extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: handleAlpha),
+                    color: AfColors.textTertiary.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),

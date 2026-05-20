@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import '../design_tokens/tokens.dart';
+
 /// A reusable function to show a blurred, transparent dialog.
 Future<T?> showBlurDialog<T>({
   required BuildContext context,
@@ -10,7 +12,7 @@ Future<T?> showBlurDialog<T>({
   return showDialog<T>(
     context: context,
     barrierDismissible: barrierDismissible,
-    barrierColor: Colors.black.withValues(alpha: 0.2),
+    barrierColor: AfColors.surfaceScrim,
     builder: (BuildContext context) {
       return _BlurDialog(child: child);
     },
@@ -37,12 +39,8 @@ class _BlurDialog extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
+              color: AfColors.surfaceRaised.withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(borderRadius),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
             ),
             child: child,
           ),
