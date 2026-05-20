@@ -88,6 +88,18 @@ class LocalDb {
     await (db.delete(db.tracks)..where((t) => t.id.equals(id))).go();
   }
 
+  /// Return all track IDs whose id starts with [prefix].
+  /// Used by the scanner to prune deleted files without loading full
+  /// track rows or hitting the `allTracks` limit.
+  Future<List<String>> trackIdsByPrefix(String prefix) async {
+    final rows = await db.customSelect(
+      'SELECT id FROM tracks WHERE id LIKE ?1 ESCAPE \'\\\'',
+      variables: [Variable<String>('${escapeSqlLike(prefix)}%')],
+      readsFrom: {db.tracks},
+    ).get();
+    return rows.map((r) => r.read<String>('id')).toList();
+  }
+
   Future<void> deleteAllTracks() async {
     await db.delete(db.tracks).go();
   }

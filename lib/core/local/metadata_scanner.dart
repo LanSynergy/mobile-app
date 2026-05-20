@@ -125,11 +125,11 @@ class MetadataScanner {
     final existingUris = files.map((f) => f.uri).toSet();
     final prefix = treeUri.endsWith('/') ? treeUri : '$treeUri/';
 
-    final dbTracks = await db.allTracks();
+    final trackIds = await db.trackIdsByPrefix(prefix);
     int pruned = 0;
-    for (final track in dbTracks) {
-      if (track.id.startsWith(prefix) && !existingUris.contains(track.id)) {
-        await db.deleteTrack(track.id);
+    for (final id in trackIds) {
+      if (!existingUris.contains(id)) {
+        await db.deleteTrack(id);
         pruned++;
       }
     }
