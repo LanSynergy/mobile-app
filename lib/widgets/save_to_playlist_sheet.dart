@@ -32,7 +32,7 @@ void showSaveToPlaylistSheet(
   showDialog<void>(
     context: context,
     builder: (dialogCtx) => Dialog(
-      backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
+      backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
       shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),

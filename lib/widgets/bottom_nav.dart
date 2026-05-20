@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../design_tokens/tokens.dart';
 import 'press_scale.dart';
 
-const _navBg = Color(0xCC0B0B14);
+const _navBg = Color(0xB30B0B14);
 
 /// Google-style bottom navigation bar.
 ///

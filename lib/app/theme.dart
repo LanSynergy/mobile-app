@@ -80,9 +80,9 @@ ThemeData buildNocturneTheme() {
     ),
 
     bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: AfColors.surfaceHigh.withValues(alpha: 0.90),
+      backgroundColor: AfColors.surfaceHigh.withValues(alpha: 0.80),
       surfaceTintColor: Colors.transparent,
-      modalBackgroundColor: AfColors.surfaceHigh.withValues(alpha: 0.90),
+      modalBackgroundColor: AfColors.surfaceHigh.withValues(alpha: 0.80),
       modalBarrierColor: AfColors.surfaceScrim,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(

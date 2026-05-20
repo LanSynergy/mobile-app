@@ -584,7 +584,7 @@ class _TopBar extends ConsumerWidget {
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
           decoration: BoxDecoration(
-            color: AfColors.surfaceCanvas.withValues(alpha: 0.30),
+            color: AfColors.surfaceCanvas.withValues(alpha: 0.20),
             borderRadius: AfRadii.borderPill,
           ),
           margin: const EdgeInsets.symmetric(horizontal: AfSpacing.s8, vertical: 4),
@@ -738,7 +738,7 @@ class _NowPlayingMetaChip extends ConsumerWidget {
             showDialog<void>(
               context: context,
               builder: (_) => Dialog(
-                backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
+                backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
                 shape:
                     RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
                 child: const _SleepTimerDialogContent(),
@@ -967,7 +967,7 @@ class _UtilityRow extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
-        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
+        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
         shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
@@ -1049,7 +1049,7 @@ class _UtilityRow extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
+          backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
           title: Row(
             children: [
               const Text('Volume'),
@@ -1098,7 +1098,7 @@ class _UtilityRow extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
+          backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
           title: const Text('Audio delay'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1151,7 +1151,7 @@ class _UtilityRow extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
+        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
         title: const Text('A-B Loop'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1240,7 +1240,7 @@ class _UtilityRow extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
-        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
+        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
         shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
@@ -1280,7 +1280,7 @@ class _UtilityRow extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
-        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
+        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
         shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
         child: const _SleepTimerDialogContent(),
       ),
@@ -1291,7 +1291,7 @@ class _UtilityRow extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
-        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
+        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
         shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),

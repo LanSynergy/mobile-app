@@ -90,7 +90,7 @@ class MiniPlayer extends ConsumerWidget {
               child: Container(
               height: AfSpacing.miniPlayerHeight,
               decoration: BoxDecoration(
-                color: AfColors.surfaceRaised.withValues(alpha: 0.80),
+                color: AfColors.surfaceRaised.withValues(alpha: 0.70),
                 borderRadius: AfRadii.borderMd,
                 border: Border.all(color: AfColors.surfaceHigh.withValues(alpha: 0.5), width: 1),
               ),
