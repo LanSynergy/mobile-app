@@ -26,7 +26,6 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
-    final showLabels = ref.watch(showNavLabelsProvider);
     final svc = ref.read(playerServiceProvider);
     final mode = ref.watch(appModeProvider);
     final isLocal = mode == AppMode.local;
@@ -169,15 +168,6 @@ class SettingsScreen extends ConsumerWidget {
             _SectionLabel('Appearance'),
             _SettingsGroup(
               children: [
-                _SettingsSwitchTile(
-                  icon: Icons.label_outline_rounded,
-                  iconColor: AfColors.semanticInfo,
-                  title: 'Always show tab labels',
-                  subtitle: 'Icon-only with capsule indicator by default',
-                  value: showLabels,
-                  onChanged: (v) =>
-                      ref.read(showNavLabelsProvider.notifier).state = v,
-                ),
                 _ArtworkPulseSwitch(),
               ],
             ),

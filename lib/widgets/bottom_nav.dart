@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design_tokens/tokens.dart';
-import '../state/providers.dart';
 import 'press_scale.dart';
 
 const _navBg = Color(0xCC0B0B14);
@@ -16,7 +15,7 @@ const _navBg = Color(0xCC0B0B14);
 ///   - 72dp height (excluding gesture inset).
 ///   - Active tab shows a colored pill background behind icon + label.
 ///   - Pill slides between tabs with 240ms `easeStandard` animation.
-///   - Inactive tabs show icon only; label appears when active.
+///   - Inactive tabs show icon only; label appears only on the active tab.
 class AfBottomNavItem {
   final IconData icon;
   final IconData filledIcon;
@@ -79,7 +78,6 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav>
 
   @override
   Widget build(BuildContext context) {
-    final showLabels = ref.watch(showNavLabelsProvider);
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
     return ClipRect(
@@ -130,7 +128,6 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav>
                           item: widget.items[i],
                           isActive: i == widget.currentIndex,
                           onTap: () => widget.onSelect(i),
-                          showLabel: showLabels,
                         ),
                       ),
                   ],
@@ -149,14 +146,12 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav>
 class _Tab extends StatelessWidget {
   final AfBottomNavItem item;
   final bool isActive;
-  final bool showLabel;
   final VoidCallback onTap;
 
   const _Tab({
     required this.item,
     required this.isActive,
     required this.onTap,
-    required this.showLabel,
   });
 
   @override
@@ -176,10 +171,10 @@ class _Tab extends StatelessWidget {
                 key: ValueKey(isActive),
                 size: 24,
                 color: isActive ? AfColors.textPrimary : AfColors.textTertiary,
-                semanticLabel: showLabel ? null : item.label,
+                semanticLabel: null,
               ),
             ),
-            if (showLabel || isActive) ...[
+            if (isActive) ...[
               const SizedBox(height: 4),
               Text(
                 item.label,

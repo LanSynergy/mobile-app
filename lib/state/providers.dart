@@ -968,8 +968,6 @@ final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((ref, tra
 // Settings
 // ─────────────────────────────────────────────────────────────────────────────
 
-final showNavLabelsProvider = StateProvider<bool>((ref) => false);
-
 final reducedMotionProvider = Provider.autoDispose<bool>((ref) {
   try {
     return WidgetsBinding.instance.accessibilityFeatures.reduceMotion;
