@@ -962,6 +962,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       if (playing) {
         _pendingPlayNudgeIdx = null;
         _userPaused = false;
+        _nudgeRetries = 0;
       } else if (!_userPaused &&
           _pendingPlayNudgeIdx != null &&
           _pendingPlayNudgeIdx == _currentIndex) {
