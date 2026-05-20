@@ -1228,7 +1228,10 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         });
 
         final response = await request.close();
-        if (response.statusCode != 200) return;
+        if (response.statusCode != 200) {
+          await response.drain<int>(0);
+          return;
+        }
 
         final contentType = response.headers.contentType;
         var ext = 'jpg';
