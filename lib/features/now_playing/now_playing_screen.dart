@@ -487,14 +487,17 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
               final newPos = Duration(
                 milliseconds: (p * duration.inMilliseconds).round(),
               );
-              // Hold the drag lock until the seek resolves so the engine's
-              // new position matches the scrubber's drop point before we
-              // hand control back to the stream. Timeout after 2s to prevent
-              // permanent lock if seek hangs (e.g. during buffering).
               ref.read(playerServiceProvider).seek(newPos).timeout(
                 const Duration(seconds: 2),
                 onTimeout: () {},
               ).then((_) {
+                if (mounted) {
+                  setState(() {
+                    _isDragging = false;
+                    _scrubPreview = null;
+                  });
+                }
+              }).catchError((_) {
                 if (mounted) {
                   setState(() {
                     _isDragging = false;
