@@ -364,19 +364,22 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
     final rawDur = await svc.getRawDuration();
     if (disposed) return;
 
+    // When track completes and playback stops, reset duration & position to zero.
+    // mpv keeps reporting the old duration/position after EOF, so we must
+    // explicitly clear them based on completion state.
+    if (svc.isCompleted && !svc.isPlaying) {
+      ref.read(durationStreamProvider.notifier).state = Duration.zero;
+      ref.read(positionStreamProvider.notifier).state = Duration.zero;
+      return;
+    }
+
     if (rawDur > Duration.zero) {
       ref.read(durationStreamProvider.notifier).state = rawDur;
     } else {
       final track = ref.read(currentTrackProvider);
       if (track != null && track.duration > Duration.zero) {
         ref.read(durationStreamProvider.notifier).state = track.duration;
-      } else if (!svc.isPlaying && !svc.shouldAdvancePosition) {
-        // Player stopped (not paused mid-song): reset duration to zero.
-        // This fixes duration persisting after song ends.
-        ref.read(durationStreamProvider.notifier).state = Duration.zero;
       }
-      // If player is paused mid-song and both rawDur and track.duration
-      // are zero, retain the last known duration to prevent "00:00 on pause".
     }
   });
 
