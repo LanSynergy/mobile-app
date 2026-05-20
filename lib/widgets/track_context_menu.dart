@@ -75,7 +75,7 @@ void showTrackContextMenu(
                 const Divider(height: 1, color: AfColors.surfaceHigh),
                 _MenuItem(
                   icon: isFavorite
-                      ? CupertinoIcons.heart_fill
+                      ? CupertinoIcons.heart
                       : CupertinoIcons.heart,
                   iconColor: isFavorite ? AfColors.indigo300 : null,
                   label: isFavorite ? 'Remove from liked' : 'Add to liked',

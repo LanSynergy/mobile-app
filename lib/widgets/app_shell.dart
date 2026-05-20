@@ -23,7 +23,7 @@ class AppShell extends ConsumerWidget {
   static const _items = [
     AfBottomNavItem(
       icon: CupertinoIcons.house,
-      filledIcon: CupertinoIcons.house_fill,
+      filledIcon: CupertinoIcons.house,
       label: 'Home',
     ),
     AfBottomNavItem(
@@ -33,12 +33,12 @@ class AppShell extends ConsumerWidget {
     ),
     AfBottomNavItem(
       icon: CupertinoIcons.music_albums,
-      filledIcon: CupertinoIcons.music_albums_fill,
+      filledIcon: CupertinoIcons.music_albums,
       label: 'Library',
     ),
     AfBottomNavItem(
       icon: CupertinoIcons.person,
-      filledIcon: CupertinoIcons.person_fill,
+      filledIcon: CupertinoIcons.person,
       label: 'Profile',
     ),
   ];

@@ -382,13 +382,13 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: widget.onPlay,
-            icon: const Icon(CupertinoIcons.play_fill),
+            icon: const Icon(CupertinoIcons.play),
             label: const Text('Play'),
           ),
         ),
         const SizedBox(width: AfSpacing.s12),
         _IconCircle(
-          icon: _isFavorite ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+          icon: _isFavorite ? CupertinoIcons.heart : CupertinoIcons.heart,
           color: _isFavorite ? AfColors.semanticError : null,
           onTap: _toggleFavorite,
         ),

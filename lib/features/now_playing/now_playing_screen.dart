@@ -1,7 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -313,7 +313,7 @@ class _MetadataRow extends ConsumerWidget {
         ),
         IconButton(
           icon: Icon(
-            track.isFavorite ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+            track.isFavorite ? CupertinoIcons.heart : CupertinoIcons.heart,
             color: track.isFavorite
                 ? AfColors.semanticError
                 : AfColors.textPrimary,
@@ -755,7 +755,7 @@ class _NowPlayingMetaChip extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(
-                  CupertinoIcons.moon_fill,
+                  CupertinoIcons.moon,
                   size: 13,
                   color: AfColors.indigo300,
                 ),
@@ -905,7 +905,7 @@ class _PlayButton extends StatelessWidget {
           ],
         ),
         child: Icon(
-          isPlaying ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill,
+          isPlaying ? CupertinoIcons.pause : CupertinoIcons.play,
           color: AfColors.textOnPrimary,
           size: 32,
         ),
@@ -1468,7 +1468,7 @@ class _SleepTimerDialogContentState
               ),
               child: Row(
                 children: [
-                  const Icon(CupertinoIcons.moon_fill,
+                  const Icon(CupertinoIcons.moon,
                       color: AfColors.indigo300, size: 18),
                   const SizedBox(width: AfSpacing.s8),
                   Expanded(
