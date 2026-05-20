@@ -96,7 +96,7 @@ ThemeData buildNocturneTheme() {
     ),
 
     dialogTheme: DialogThemeData(
-      backgroundColor: Colors.transparent,
+      backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       shape: const RoundedRectangleBorder(
