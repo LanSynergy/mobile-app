@@ -46,8 +46,7 @@ class HeroAlbumCard extends StatelessWidget {
           ),
           borderRadius: AfRadii.borderLg,
         ),
-        child: IntrinsicHeight(
-          child: Stack(
+        child: Stack(
           clipBehavior: Clip.none,
           children: [
             // Artwork — bleeds 8dp past the right edge.
@@ -67,7 +66,7 @@ class HeroAlbumCard extends StatelessWidget {
                 AfSpacing.s16,
                 AfSpacing.s16,
                 160, // leave room for the artwork
-                AfSpacing.s16 + 36, // + play pill height
+                AfSpacing.s16,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,36 +89,38 @@ class HeroAlbumCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AfSpacing.s12),
-                  Text(
-                    album.name,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: AfTypography.titleLarge.copyWith(
-                      color: AfColors.textOnPrimary,
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          album.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AfTypography.titleLarge.copyWith(
+                            color: AfColors.textOnPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          album.artistName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AfTypography.bodyMedium.copyWith(
+                            // ignore: deprecated_member_use
+                            color: AfColors.textOnPrimary.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    album.artistName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AfTypography.bodyMedium.copyWith(
-                      // ignore: deprecated_member_use
-                      color: AfColors.textOnPrimary.withValues(alpha: 0.8),
-                    ),
-                  ),
+                  const SizedBox(height: AfSpacing.s12),
+                  _PlayPill(onTap: onPlay),
                 ],
               ),
             ),
-
-            // Play pill — anchored to bottom-left so it never overflows.
-            Positioned(
-              left: AfSpacing.s16,
-              bottom: AfSpacing.s16,
-              child: _PlayPill(onTap: onPlay),
-            ),
           ],
-        ),
         ),
       ),
     );
