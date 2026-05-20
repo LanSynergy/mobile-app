@@ -6,7 +6,7 @@ Your music. Your server. No compromises.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android)](https://developer.android.com)
 
-Aetherfin is a native Android music player for [Jellyfin](https://jellyfin.org) and [Navidrome](https://www.navidrome.org). It streams your library, decodes everything on-device with libmpv, and stays out of your way.
+Aetherfin is a native Android music player for [Jellyfin](https://jellyfin.org), [Navidrome](https://www.navidrome.org), or your local files. It streams your library, decodes everything on-device with libmpv, and stays out of your way.
 
 No cloud. No telemetry. No transcoding. Just playback.
 
@@ -135,6 +135,8 @@ flutter test
 │  DSP effects chain          │       │                            │
 │  Cover art cache            │       │                            │
 └─────────────────────────────┘       └────────────────────────────┘
+
+  Or: local files on your device → direct playback, no server needed.
 ```
 
 The server stores files and metadata. Aetherfin does everything else.
@@ -143,7 +145,7 @@ The server stores files and metadata. Aetherfin does everything else.
 
 ## Privacy
 
-No analytics. No ads. No trackers. No Aetherfin servers. The app talks only to the server you configure. Full details in [PRIVACY.md](./PRIVACY.md).
+No analytics. No ads. No trackers. No Aetherfin servers. The app talks only to the server you configure — or plays local files without any network at all. Full details in [PRIVACY.md](./PRIVACY.md).
 
 ## Community
 
