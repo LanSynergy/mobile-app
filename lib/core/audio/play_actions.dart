@@ -51,7 +51,6 @@ class PlayActions {
       finalIndex = safeIndex;
     }
 
-    ref.read(currentTrackProvider.notifier).state = finalQueue[finalIndex];
     try {
       await svc.playQueue(
         finalQueue,
@@ -62,6 +61,7 @@ class PlayActions {
             ? const {}
             : (backend?.authHeaders ?? const {}),
       );
+      ref.read(currentTrackProvider.notifier).state = finalQueue[finalIndex];
     } catch (e, stack) {
       afLog(
         'audio',
@@ -69,6 +69,7 @@ class PlayActions {
         error: e,
         stackTrace: stack,
       );
+      rethrow;
     }
   }
 

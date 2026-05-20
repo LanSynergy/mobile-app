@@ -293,7 +293,7 @@ lib/
 ├─ widgets/                 ← Shared visual atoms
 │  ├─ mini_player.dart      ← 56 dp floating mini-player
 │  ├─ audio_visual_scrubber.dart ← Combined FFT visualizer + progress scrubber.
-│  │                          _BlockNotifier: power-8 curve, vsync-aligned flush.
+│  │                          _BlockNotifier: power-10 curve, vsync-aligned flush.
 │  │                          Engine-driven rendering: ingest() updates data only (no
 │  │                          notifyListeners). Ticker runs at vsync, calls flush() which
 │  │                          fires notifyListeners when dirty.
@@ -519,7 +519,7 @@ Player.stream.spectrum (64 bands, ~120 fps, engine-smoothed)
     ▼  ingest() — data update only, no notifyListeners
 for each band i:
   raw = bands[i].clamp(0, 1)
-  smoothed[i] = pow(raw, 8.0)    ← power-8 compression
+  smoothed[i] = pow(raw, 10.0)    ← power-10 compression
 totalEnergy = mean(smoothed)
 _dirty = true
     │
@@ -571,7 +571,7 @@ real position. The lock holds until `seek()` resolves.
 ### 9.4 Key invariants
 
 - The engine handles ALL smoothing/physics in C++. The client applies only
-  a power-8 curve for visual compression — no lerp, no AGC, no treble boost.
+   a power-10 curve for visual compression — no lerp, no AGC, no treble boost.
 - `bandCount: 64` in `SpectrumSettings` must match `_BlockNotifier.bins = 64`.
 - `ingest()` never calls `notifyListeners()`. Only `flush()` does (on vsync).
 - No shaders are allocated per bar. Path batching keeps GPU state changes to 4.
@@ -670,7 +670,7 @@ PII (usernames, server URLs) must be redacted in release builds.
 16. **"Use `.then()` chaining for jump+play."** No. Doze can defer `.then()` callbacks. Use `async/await` in a named method (`_jumpAndPlay`).
 17. **"Set `androidStopForegroundOnPause: false`."** No. Samsung One UI hides the notification when the service is demoted. Keep it `true`.
 18. **"Use `AudioMotionVisualizer` or `Waveform` widgets."** These were deleted. The combined widget is `AudioVisualScrubber`.
-19. **"The visualizer should apply its own client-side DSP (log, treble boost, AGC, lerp)."** No. The engine's native C++ EMA handles all bounce physics. The client applies only a power-8 curve for visual compression and renders via vsync-aligned ticker. Adding client-side smoothing fights the engine and causes lag.
+19. **"The visualizer should apply its own client-side DSP (log, treble boost, AGC, lerp)."** No. The engine's native C++ EMA handles all bounce physics. The client applies only a power-10 curve for visual compression and renders via vsync-aligned ticker. Adding client-side smoothing fights the engine and causes lag.
 20. **"Create a shader per bar inside `paint()`."** No. That's 64 allocations/frame at 60fps — causes raster-thread GC lag. Pre-compute shaders once per `paint()` call.
 21. **"Subscribe to `spectrumStream` in `didChangeDependencies`."** No. It fires on every ancestor dependency change and causes stream churn. Subscribe once in `initState` via `addPostFrameCallback`.
 22. **"The battery channel is `dev.aetherfin.aetherfin/battery`."** No. It's `aetherfin.battery_opt` (matches `BatteryOptPlugin.CHANNEL_NAME`).
@@ -696,7 +696,7 @@ PII (usernames, server URLs) must be redacted in release builds.
 - **`AfPlayerService`**: The app's audio handler. Extends `BaseAudioHandler` (audio_service) and wraps `Player` (mpv_audio_kit).
 - **`_pendingPlayNudgeIdx`**: State machine field in `AfPlayerService`. Set when playlist index changes; cleared when `playing=true` fires. Prevents `Future.delayed` for auto-advance.
 - **`AudioVisualScrubber`**: Combined FFT visualizer + progress scrubber widget. Owns `_BlockNotifier` (signal DSP) and `_ScrubNotifier` (drag state). Two `RepaintBoundary` layers.
-- **`_BlockNotifier`**: `ChangeNotifier` inside `AudioVisualScrubber`. Applies power-8 curve to engine bands. `ingest()` updates data only; `flush()` fires `notifyListeners()` on vsync via ticker. 300ms silence timer triggers fade-out (0.85× decay per frame).
+- **`_BlockNotifier`**: `ChangeNotifier` inside `AudioVisualScrubber`. Applies power-10 curve to engine bands. `ingest()` updates data only; `flush()` fires `notifyListeners()` on vsync via ticker. 300ms silence timer triggers fade-out (0.85× decay per frame).
 - **`_ScrubNotifier`**: `ChangeNotifier` inside `AudioVisualScrubber`. Owns drag state and display progress.
 - **`Spectral`**: Runtime color triple (`energy`, `shadow`, `glow`) extracted from current artwork. Lives in `currentSpectralProvider`. Never hardcode these values.
 - **`BatteryOptPlugin`**: Kotlin `ActivityAware` plugin on channel `aetherfin.battery_opt`. Fires `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` on first HomeScreen visit.

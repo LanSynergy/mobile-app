@@ -256,20 +256,13 @@ final _router = GoRouter(
   ],
 );
 
-/// Provides the singleton [GoRouter]. The provider itself never rebuilds
-/// the router — it only wires the auth listener that notifies [_authRefresh]
-/// so [_router.redirect] re-runs when auth state changes.
+/// Provides the singleton [GoRouter].
+///
+/// Auth-change and mode-change notifications are wired in [main.dart] via
+/// a [ProviderContainer] listener that calls [notifyAuthChanged]. This
+/// provider exists only for tests that need to read the router through
+/// Riverpod.
 final routerProvider = Provider<GoRouter>((ref) {
-  ref.listen<JellyfinAuth?>(
-    authProvider,
-    (prev, next) => _authRefresh._notify(),
-    fireImmediately: false,
-  );
-  ref.listen<AppMode?>(
-    appModeProvider,
-    (prev, next) => _authRefresh._notify(),
-    fireImmediately: false,
-  );
   return _router;
 });
 

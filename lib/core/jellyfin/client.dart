@@ -341,13 +341,10 @@ class JellyfinClient implements MusicBackend {
           );
         }
       }
-      // Intentionally generic — echoing the full user list would let an
-      // attacker who possesses only the API key enumerate every account
-      // on the server by typing arbitrary usernames into the sign-in
-      // screen. The user knows their own username; a typo is on them.
-      throw StateError(
-        'No user named "$username" on this server.',
-      );
+      // Intentionally generic — echoing the attempted username or the
+      // full user list would let an attacker who possesses only the API
+      // key enumerate accounts on the server.
+      throw StateError('Authentication failed. Check your credentials.');
     } finally {
       probe.close(force: true);
     }

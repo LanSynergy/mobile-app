@@ -41,6 +41,11 @@ class SpectralExtractor {
   static const int _cacheLimit = 64;
   final Map<String, Spectral> _cache = <String, Spectral>{};
 
+  /// In-flight deduplication: when multiple callers request the same key
+  /// before the first extraction completes, they all await the same
+  /// Future instead of each spawning a redundant palette decode.
+  final Map<String, Future<Spectral>> _inFlight = {};
+
   Future<Spectral> fromImageUrl(
     String imageUrl, {
     Map<String, String>? headers,
@@ -56,6 +61,26 @@ class SpectralExtractor {
       _cache[key] = cached;
       return cached;
     }
+
+    // Deduplicate concurrent requests for the same key.
+    final pending = _inFlight[key];
+    if (pending != null) return pending;
+
+    final future = _extract(key, imageUrl, headers);
+    _inFlight[key] = future;
+    try {
+      return await future;
+    } finally {
+      // ignore: unawaited_futures
+      _inFlight.remove(key);
+    }
+  }
+
+  Future<Spectral> _extract(
+    String key,
+    String imageUrl,
+    Map<String, String>? headers,
+  ) async {
     try {
       final ImageProvider provider;
       if (imageUrl.startsWith('file://')) {
