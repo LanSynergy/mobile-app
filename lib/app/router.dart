@@ -86,10 +86,6 @@ final _router = GoRouter(
       builder: (context, state) => const WelcomeScreen(),
     ),
     GoRoute(
-      path: '/onboarding/mode',
-      redirect: (_, state) => '/',
-    ),
-    GoRoute(
       path: '/onboarding/discover',
       builder: (context, state) => const ServerDiscoveryScreen(),
     ),
