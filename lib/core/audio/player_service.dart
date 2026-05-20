@@ -1204,46 +1204,46 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     try {
       final uri = Uri.parse(imageUrl);
       final client = HttpClient();
-      final request = await client.getUrl(uri);
-      _authHeaders.forEach((key, value) {
-        request.headers.set(key, value);
-      });
+      String? path;
+      try {
+        final request = await client.getUrl(uri);
+        _authHeaders.forEach((key, value) {
+          request.headers.set(key, value);
+        });
 
-      final response = await request.close();
-      if (response.statusCode != 200) {
+        final response = await request.close();
+        if (response.statusCode != 200) return;
+
+        final contentType = response.headers.contentType;
+        var ext = 'jpg';
+        if (contentType != null && contentType.subType.isNotEmpty) {
+          ext = contentType.subType == 'jpeg' ? 'jpg' : contentType.subType;
+        }
+
+        final id = ++_coverCounter;
+        final tmpDir = Directory.systemTemp.path;
+        path = '$tmpDir${Platform.pathSeparator}aetherfin_notif_$id.$ext';
+
+        if (_networkCoverPath != null) {
+          try {
+            final prev = File(_networkCoverPath!);
+            if (await prev.exists()) await prev.delete();
+          } catch (_) {}
+        }
+
+        if (_coverPath != null) {
+          try {
+            final prev = File(_coverPath!);
+            if (await prev.exists()) await prev.delete();
+          } catch (_) {}
+        }
+
+        final file = File(path);
+        final sink = file.openWrite();
+        await response.pipe(sink);
+      } finally {
         client.close(force: true);
-        return;
       }
-
-      final contentType = response.headers.contentType;
-      var ext = 'jpg';
-      if (contentType != null && contentType.subType.isNotEmpty) {
-        ext = contentType.subType == 'jpeg' ? 'jpg' : contentType.subType;
-      }
-
-      final id = ++_coverCounter;
-      final tmpDir = Directory.systemTemp.path;
-      final path = '$tmpDir${Platform.pathSeparator}aetherfin_notif_$id.$ext';
-
-      if (_networkCoverPath != null) {
-        try {
-          final prev = File(_networkCoverPath!);
-          if (await prev.exists()) await prev.delete();
-        } catch (_) {}
-      }
-
-      // Clean up any mpv-persisted cover from the previous track.
-      if (_coverPath != null) {
-        try {
-          final prev = File(_coverPath!);
-          if (await prev.exists()) await prev.delete();
-        } catch (_) {}
-      }
-
-      final file = File(path);
-      final sink = file.openWrite();
-      await response.pipe(sink);
-      client.close(force: true);
 
       if (_disposed) return;
       final currentTrackNow = currentTrack;
