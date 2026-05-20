@@ -863,9 +863,11 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       afLog('audio', 'nudged audioDevice: ${current.name} (attempt $attempt)');
 
       // After the first successful nudge, check if the pipeline recovered.
-      // If position is advancing, the freeze is resolved — skip remaining
-      // attempts to avoid unnecessary audio pipeline rebuilds.
-      if (attempt == 0 && _player.state.playing && _player.state.position > Duration.zero) {
+      // If the player is actively playing, the freeze is resolved — skip
+      // remaining attempts to avoid unnecessary audio pipeline rebuilds.
+      // Position may still be zero on a fresh track, so we rely on the
+      // playing flag (which tracks mpv's core-idle inverted).
+      if (attempt == 0 && _player.state.playing) {
         afLog('audio', 'nudge succeeded on first attempt, skipping retries');
         return;
       }
