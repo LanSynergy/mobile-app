@@ -57,19 +57,6 @@ class _TrackDetailsBody extends ConsumerWidget {
         vertical: AfSpacing.s12,
       ),
       children: [
-        // Grab handle
-        Center(
-          child: Container(
-            width: 36,
-            height: 4,
-            margin: const EdgeInsets.only(bottom: AfSpacing.s16),
-            decoration: BoxDecoration(
-              color: AfColors.textTertiary.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        ),
-
         // Header
         Text(
           track.title,

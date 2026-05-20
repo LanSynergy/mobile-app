@@ -39,18 +39,6 @@ void showAlbumMoreSheet(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Grab handle so the sheet reads as draggable / dismissible.
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: AfSpacing.s12),
-                decoration: BoxDecoration(
-                  color: AfColors.textTertiary.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AfSpacing.gutterGenerous,
