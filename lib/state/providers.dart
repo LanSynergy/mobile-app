@@ -1,5 +1,6 @@
 import 'dart:async' show Timer, unawaited;
 
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop, FftFrame, MpvPlayerError;
@@ -197,7 +198,8 @@ final musicBackendProvider = Provider.autoDispose<MusicBackend?>((ref) {
     'musicBackend',
     source: 'live',
     extra: 'type=${auth.serverType.name} '
-        'server=${auth.server.baseUrl} user=${auth.userName}',
+        'server=${kReleaseMode ? '<redacted>' : auth.server.baseUrl} '
+        'user=${kReleaseMode ? '<redacted>' : auth.userName}',
   );
 
   final clientVersion = ref.watch(aetherfinVersionProvider);
