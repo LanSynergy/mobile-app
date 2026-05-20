@@ -29,7 +29,6 @@ void showAlbumMoreSheet(
   HapticFeedback.mediumImpact();
   showModalBottomSheet<void>(
     context: context,
-    backgroundColor: AfColors.surfaceBase,
     isScrollControlled: true,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(AfRadii.lg)),
