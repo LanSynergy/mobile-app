@@ -2,7 +2,7 @@ import 'dart:async' show Timer, unawaited;
 
 import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop, FftFrame;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop, FftFrame, MpvPlayerError;
 
 import '../core/audio/jellyfin_playback_reporter.dart';
 import '../core/audio/live_update_service.dart';
@@ -258,7 +258,7 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
   _startPositionPolling(ref, svc);
 
   svc.errorStream.listen((error) {
-    ref.read(playbackErrorProvider.notifier).state = error.toString();
+    ref.read(playbackErrorProvider.notifier).state = error;
   });
 
   final mode = ref.read(appModeProvider);
@@ -306,7 +306,7 @@ final playerQueueProvider = StreamProvider.autoDispose<List<AfTrack>>((ref) {
 
 final positionStreamProvider = StateProvider<Duration>((ref) => Duration.zero);
 final durationStreamProvider = StateProvider<Duration>((ref) => Duration.zero);
-final playbackErrorProvider = StateProvider<String?>((ref) => null);
+final playbackErrorProvider = StateProvider<MpvPlayerError?>((ref) => null);
 final abLoopAProvider = StateProvider<Duration?>((ref) => null);
 final abLoopBProvider = StateProvider<Duration?>((ref) => null);
 
