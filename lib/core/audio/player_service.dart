@@ -534,8 +534,8 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     _positionAnchor.lastKnownPos = Duration.zero;
     _positionAnchor.lastUpdateTime = DateTime.now();
     _resetRawPositionStaleDetector(Duration.zero);
-    await _player.pause();
-    await _player.seek(Duration.zero);
+    _positionController.add(Duration.zero);
+    await _player.stop();
   }
 
   @override
