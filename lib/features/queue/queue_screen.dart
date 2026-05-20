@@ -207,7 +207,16 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                     },
                     onDismissed: (_) {
                       final removed = t;
-                      final removedIndex = i;
+                      // Resolve the actual index from the player's
+                      // current queue — the closure index `i` may be
+                      // stale if the queue changed between build and
+                      // dismiss (e.g. track advanced, reorder).
+                      final svc = ref.read(playerServiceProvider);
+                      final actualIndex = svc.currentQueue.indexWhere(
+                        (q) => q.id == removed.id,
+                      );
+                      if (actualIndex < 0) return;
+
                       // Optimistic local update so the swipe animation
                       // completes without the row springing back.
                       setState(() {
@@ -216,11 +225,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                             .map((t) => t.id)
                             .toList(growable: false);
                       });
-                      unawaited(
-                        ref
-                            .read(playerServiceProvider)
-                            .removeFromQueue(removedIndex),
-                      );
+                      unawaited(svc.removeFromQueue(actualIndex));
                       ScaffoldMessenger.of(context)
                         ..clearSnackBars()
                         ..showSnackBar(
@@ -230,7 +235,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                             action: SnackBarAction(
                               label: 'Undo',
                               onPressed: () =>
-                                  _undoRemove(removedIndex, removed),
+                                  _undoRemove(actualIndex, removed),
                             ),
                           ),
                         );
