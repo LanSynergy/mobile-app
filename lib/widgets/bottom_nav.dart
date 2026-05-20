@@ -63,35 +63,12 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
           padding: EdgeInsets.only(bottom: bottomInset),
           child: SizedBox(
             height: AfSpacing.bottomNavHeight,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final width = constraints.maxWidth;
-                final alignLeft =
-                    widget.currentIndex < widget.items.length ~/ 2;
-                final pillLeft = alignLeft ? AfSpacing.s12 : width - 120 - AfSpacing.s12;
-
-                return Stack(
-                  children: [
-                    // Sliding pill background for active tab.
-                    AnimatedPositioned(
-                      duration: AfDurations.standard,
-                      curve: AfCurves.easeStandard,
-                      left: pillLeft,
-                      top: 12,
-                      width: 120,
-                      height: 48,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: AfColors.indigo900,
-                          borderRadius: AfRadii.borderPill,
-                        ),
-                      ),
-                    ),
-                    // Tab buttons: active tab shifts to edge, others cluster.
-                    _buildDynamicLayout(context),
-                  ],
-                );
-              },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: List.generate(
+                widget.items.length,
+                (i) => _buildTab(i, widget.items[i], i == widget.currentIndex),
+              ),
             ),
           ),
         ),
@@ -99,87 +76,50 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
     );
   }
 
-  Widget _buildDynamicLayout(BuildContext context) {
-    final activeIdx = widget.currentIndex;
-    final activeItem = widget.items[activeIdx];
-    final inactiveItems = <(int, AfBottomNavItem)>[];
-    for (var i = 0; i < widget.items.length; i++) {
-      if (i != activeIdx) {
-        inactiveItems.add((i, widget.items[i]));
-      }
-    }
-
-    final alignLeft = activeIdx < widget.items.length ~/ 2;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s12),
-      child: Row(
-        mainAxisAlignment:
-            alignLeft ? MainAxisAlignment.start : MainAxisAlignment.end,
-        children: [
-          if (!alignLeft)
-            ...inactiveItems.map((e) => _buildInactiveTab(e.$1, e.$2)),
-          _buildActiveTab(activeIdx, activeItem),
-          if (alignLeft)
-            ...inactiveItems.map((e) => _buildInactiveTab(e.$1, e.$2)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActiveTab(int index, AfBottomNavItem item) {
+  Widget _buildTab(int index, AfBottomNavItem item, bool active) {
     return PressScale(
       ensureHitTarget: false,
       onTap: () => widget.onSelect(index),
-      child: SizedBox(
-        height: AfSpacing.bottomNavHeight,
-        width: 120,
+      child: AnimatedContainer(
+        duration: AfDurations.standard,
+        curve: AfCurves.easeStandard,
+        height: 48,
+        padding: EdgeInsets.symmetric(horizontal: active ? 16 : 12),
+        decoration: BoxDecoration(
+          color: active ? AfColors.indigo900 : Colors.transparent,
+          borderRadius: AfRadii.borderPill,
+        ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedSwitcher(
               duration: AfDurations.instant,
               child: HugeIcon(
-                icon: item.filledIcon,
-                key: const ValueKey('filled'),
+                icon: active ? item.filledIcon : item.icon,
+                key: ValueKey(active),
                 size: 24,
-                color: AfColors.textPrimary,
+                color: active ? AfColors.textPrimary : AfColors.textTertiary,
               ),
             ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AfTypography.caption.copyWith(
-                  color: AfColors.textPrimary,
+            ClipRect(
+              child: AnimatedAlign(
+                duration: AfDurations.standard,
+                curve: AfCurves.easeStandard,
+                alignment: Alignment.centerLeft,
+                widthFactor: active ? 1.0 : 0.0,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    style: AfTypography.caption.copyWith(
+                      color: AfColors.textPrimary,
+                    ),
+                  ),
                 ),
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInactiveTab(int index, AfBottomNavItem item) {
-    return PressScale(
-      ensureHitTarget: false,
-      onTap: () => widget.onSelect(index),
-      child: SizedBox(
-        height: AfSpacing.bottomNavHeight,
-        width: 72,
-        child: Center(
-          child: AnimatedSwitcher(
-            duration: AfDurations.instant,
-            child: HugeIcon(
-              icon: item.icon,
-              key: const ValueKey('outline'),
-              size: 24,
-              color: AfColors.textTertiary,
-            ),
-          ),
         ),
       ),
     );
