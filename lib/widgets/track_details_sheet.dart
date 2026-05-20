@@ -29,9 +29,12 @@ void showTrackDetailsSheet(BuildContext context, WidgetRef ref, AfTrack track) {
       minChildSize: 0.3,
       maxChildSize: 0.85,
       expand: false,
-      builder: (_, scrollController) => _TrackDetailsBody(
-        track: track,
-        scrollController: scrollController,
+      builder: (_, scrollController) => SafeArea(
+        top: false,
+        child: _TrackDetailsBody(
+          track: track,
+          scrollController: scrollController,
+        ),
       ),
     ),
   );

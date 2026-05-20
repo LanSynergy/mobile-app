@@ -29,13 +29,21 @@ void showAlbumMoreSheet(
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: AfColors.surfaceBase,
+    isScrollControlled: true,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(AfRadii.lg)),
     ),
     builder: (sheetCtx) => SafeArea(
+      top: false,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s12),
-        child: Column(
+        padding: const EdgeInsets.fromLTRB(
+          0,
+          AfSpacing.s12,
+          0,
+          AfSpacing.s12,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -118,6 +126,7 @@ void showAlbumMoreSheet(
                 },
               ),
           ],
+        ),
         ),
       ),
     ),
