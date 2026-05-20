@@ -51,16 +51,3 @@ class _BlurDialog extends StatelessWidget {
     );
   }
 }
-
-/// Backward-compatible alias for [showBlurDialog].
-Future<T?> showAfDialog<T>({
-  required BuildContext context,
-  required WidgetBuilder builder,
-  bool barrierDismissible = true,
-}) {
-  return showBlurDialog<T>(
-    context: context,
-    child: Builder(builder: builder),
-    barrierDismissible: barrierDismissible,
-  );
-}

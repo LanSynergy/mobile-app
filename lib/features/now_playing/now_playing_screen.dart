@@ -1026,94 +1026,94 @@ class _UtilityRow extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-              _MoreItem(
-                icon: FaIcon(
-                  FontAwesomeIcons.moon,
-                  size: 22,
-                  color: AfColors.textSecondary,
-                ),
-                label: 'Sleep timer',
-                onTap: () {
-                  Navigator.of(dialogCtx).pop();
-                  _showSleepDialog(context, ref);
-                },
-              ),
-              _MoreItem(
-                icon: FaIcon(
-                  FontAwesomeIcons.gaugeHigh,
-                  size: 22,
-                  color: AfColors.textSecondary,
-                ),
-                label: 'Playback speed',
-                onTap: () {
-                  Navigator.of(dialogCtx).pop();
-                  _showSpeedDialog(context, ref);
-                },
-              ),
-              _MoreItem(
-                icon: Icon(
-                  Icons.cast_outlined,
-                  size: 22,
-                  color: AfColors.textSecondary,
-                ),
-                label: 'Audio output',
-                onTap: () {
-                  Navigator.of(dialogCtx).pop();
-                  _showOutputDialog(context, ref);
-                },
-              ),
-              _MoreItem(
-                icon: FaIcon(
-                  FontAwesomeIcons.volumeHigh,
-                  size: 22,
-                  color: AfColors.textSecondary,
-                ),
-                label: 'Volume',
-                onTap: () {
-                  Navigator.of(dialogCtx).pop();
-                  _showVolumeDialog(context, ref);
-                },
-              ),
-              _MoreItem(
-                icon: FaIcon(
-                  FontAwesomeIcons.bluetooth,
-                  size: 22,
-                  color: AfColors.textSecondary,
-                ),
-                label: 'Audio delay',
-                onTap: () {
-                  Navigator.of(dialogCtx).pop();
-                  _showAudioDelayDialog(context, ref);
-                },
-              ),
-              _MoreItem(
-                icon: FaIcon(
-                  FontAwesomeIcons.repeat,
-                  size: 22,
-                  color: AfColors.textSecondary,
-                ),
-                label: 'A-B Loop',
-                onTap: () {
-                  Navigator.of(dialogCtx).pop();
-                  _showAbLoopDialog(context, ref);
-                },
-              ),
-              _MoreItem(
-                icon: FaIcon(
-                  FontAwesomeIcons.circleInfo,
-                  size: 22,
-                  color: AfColors.textSecondary,
-                ),
-                label: 'Show details',
-                onTap: () {
-                  Navigator.of(dialogCtx).pop();
-                  final track = ref.read(currentTrackProvider);
-                  if (track != null) {
-                    showTrackDetailsSheet(context, ref, track);
-                  }
-                },
-              ),
-            ],
+          _MoreItem(
+            icon: FaIcon(
+              FontAwesomeIcons.moon,
+              size: 22,
+              color: AfColors.textSecondary,
+            ),
+            label: 'Sleep timer',
+            onTap: () {
+              Navigator.of(dialogCtx).pop();
+              _showSleepDialog(context, ref);
+            },
+          ),
+          _MoreItem(
+            icon: FaIcon(
+              FontAwesomeIcons.gaugeHigh,
+              size: 22,
+              color: AfColors.textSecondary,
+            ),
+            label: 'Playback speed',
+            onTap: () {
+              Navigator.of(dialogCtx).pop();
+              _showSpeedDialog(context, ref);
+            },
+          ),
+          _MoreItem(
+            icon: Icon(
+              Icons.cast_outlined,
+              size: 22,
+              color: AfColors.textSecondary,
+            ),
+            label: 'Audio output',
+            onTap: () {
+              Navigator.of(dialogCtx).pop();
+              _showOutputDialog(context, ref);
+            },
+          ),
+          _MoreItem(
+            icon: FaIcon(
+              FontAwesomeIcons.volumeHigh,
+              size: 22,
+              color: AfColors.textSecondary,
+            ),
+            label: 'Volume',
+            onTap: () {
+              Navigator.of(dialogCtx).pop();
+              _showVolumeDialog(context, ref);
+            },
+          ),
+          _MoreItem(
+            icon: FaIcon(
+              FontAwesomeIcons.bluetooth,
+              size: 22,
+              color: AfColors.textSecondary,
+            ),
+            label: 'Audio delay',
+            onTap: () {
+              Navigator.of(dialogCtx).pop();
+              _showAudioDelayDialog(context, ref);
+            },
+          ),
+          _MoreItem(
+            icon: FaIcon(
+              FontAwesomeIcons.repeat,
+              size: 22,
+              color: AfColors.textSecondary,
+            ),
+            label: 'A-B Loop',
+            onTap: () {
+              Navigator.of(dialogCtx).pop();
+              _showAbLoopDialog(context, ref);
+            },
+          ),
+          _MoreItem(
+            icon: FaIcon(
+              FontAwesomeIcons.circleInfo,
+              size: 22,
+              color: AfColors.textSecondary,
+            ),
+            label: 'Show details',
+            onTap: () {
+              Navigator.of(dialogCtx).pop();
+              final track = ref.read(currentTrackProvider);
+              if (track != null) {
+                showTrackDetailsSheet(context, ref, track);
+              }
+            },
+          ),
+        ],
       ),
     );
   }
