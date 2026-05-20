@@ -1297,6 +1297,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   }
 
   Future<void> _persistCover(CoverArt? raw) async {
+    if (_disposed) return;
     if (raw == null) {
       _coverPath = null;
       _updateMediaItem();
