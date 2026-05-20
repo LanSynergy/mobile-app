@@ -997,6 +997,9 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
           _jumpAndPlay(nextIdx);
           afLog('audio', 'completed fallback: jump+play to index=$nextIdx');
         }
+      } else if (_player.state.loop == Loop.off) {
+        pause();
+        afLog('audio', 'queue end reached, auto-stop (loop=off)');
       }
     }));
 
