@@ -104,24 +104,6 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                 ),
               ),
 
-              // App bar — opacity 0→1 as artwork leaves viewport.
-              ValueListenableBuilder<double>(
-                valueListenable: _scrollOffset,
-                builder: (context, offset, _) => Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: _OpacityAppBar(
-                    scrollOffset: offset,
-                    threshold: heroHeight - kToolbarHeight,
-                    title: album.name,
-                    onBack: () => context.pop(),
-                    onMore: () =>
-                        showAlbumMoreSheet(context, ref, album, tracks),
-                  ),
-                ),
-              ),
-
               CustomScrollView(
                 controller: _scroll,
                 physics: const ClampingScrollPhysics(),
@@ -198,6 +180,24 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                         height: AfSpacing.bottomInsetWithMiniAndNav),
                   ),
                 ],
+              ),
+
+              // App bar — rendered on top of scroll content.
+              ValueListenableBuilder<double>(
+                valueListenable: _scrollOffset,
+                builder: (context, offset, _) => Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: _OpacityAppBar(
+                    scrollOffset: offset,
+                    threshold: heroHeight - kToolbarHeight,
+                    title: album.name,
+                    onBack: () => context.pop(),
+                    onMore: () =>
+                        showAlbumMoreSheet(context, ref, album, tracks),
+                  ),
+                ),
               ),
             ],
           );
