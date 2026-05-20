@@ -179,12 +179,14 @@ final _router = GoRouter(
     GoRoute(
       path: '/lyrics',
       parentNavigatorKey: _rootKey,
-      builder: (context, state) => const LyricsScreen(),
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: LyricsScreen()),
     ),
     GoRoute(
       path: '/queue',
       parentNavigatorKey: _rootKey,
-      builder: (context, state) => const QueueScreen(),
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: QueueScreen()),
     ),
     GoRoute(
       path: '/sleep',
