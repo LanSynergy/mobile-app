@@ -149,11 +149,10 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
@@ -246,10 +245,9 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
                       },
                     ),
             ),
-          ],
-          const SizedBox(height: AfSpacing.s12),
-        ],
-      ),
-    );
+      ],
+      const SizedBox(height: AfSpacing.s12),
+    ],
+  );
   }
 }
