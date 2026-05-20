@@ -486,28 +486,23 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
               _isDragging = true;
               _scrubPreview = p;
             }),
-            onScrubEnd: (p) {
+            onScrubEnd: (p) async {
               final newPos = Duration(
                 milliseconds: (p * duration.inMilliseconds).round(),
               );
-              ref.read(playerServiceProvider).seek(newPos).timeout(
-                const Duration(seconds: 2),
-                onTimeout: () {},
-              ).then((_) {
-                if (mounted) {
-                  setState(() {
-                    _isDragging = false;
-                    _scrubPreview = null;
-                  });
-                }
-              }).catchError((_) {
-                if (mounted) {
-                  setState(() {
-                    _isDragging = false;
-                    _scrubPreview = null;
-                  });
-                }
-              });
+              try {
+                await ref.read(playerServiceProvider).seek(newPos).timeout(
+                  const Duration(seconds: 2),
+                );
+              } catch (_) {
+                // Timeout or seek error — still release the drag lock.
+              }
+              if (mounted) {
+                setState(() {
+                  _isDragging = false;
+                  _scrubPreview = null;
+                });
+              }
             },
           ),
           const SizedBox(height: AfSpacing.s4),

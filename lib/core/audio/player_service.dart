@@ -477,9 +477,15 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         _activePlaylistSyncGen = _suppressPlaylistSyncGen;
         await _player.open(medias[safeIndex], play: true);
 
+        // Await all append adds so the playlist sync gen isn't reset
+        // until mpv's playlist matches our Dart queue. If we reset
+        // early, the playlist listener could see a partial mpv
+        // playlist and corrupt _trackQueue.
+        final addFutures = <Future<void>>[];
         for (var i = safeIndex + 1; i < medias.length; i++) {
-          unawaited(_player.add(medias[i]));
+          addFutures.add(_player.add(medias[i]));
         }
+        await Future.wait(addFutures);
 
         for (var i = safeIndex - 1; i >= 0; i--) {
           await _player.sendRawCommand([
@@ -1283,7 +1289,11 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
         final file = File(path);
         final sink = file.openWrite();
-        await response.pipe(sink);
+        try {
+          await response.pipe(sink);
+        } finally {
+          await sink.close();
+        }
       } finally {
         client.close(force: true);
       }
@@ -1330,12 +1340,10 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       await File(path).writeAsBytes(raw.bytes);
       _coverPath = path;
 
-      if (_networkCoverPath != null) {
-        try {
-          final prev = File(_networkCoverPath!);
-          if (await prev.exists()) await prev.delete();
-        } catch (_) {}
-      }
+      // Don't delete _networkCoverPath here — it may still be in use by
+      // an in-flight _downloadArtworkForNotification. The temp file will
+      // be cleaned up by the OS eventually, and the next notification
+      // cover download will overwrite it anyway.
       _networkCoverPath = null;
       _networkCoverTrackId = null;
       _updateMediaItem();

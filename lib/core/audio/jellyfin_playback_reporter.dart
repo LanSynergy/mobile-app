@@ -50,6 +50,11 @@ class JellyfinPlaybackReporter {
     final client = _clientGetter();
     final previousId = _lastReportedTrackId;
 
+    // Stop the progress timer before sending playbackStop to prevent
+    // the old loop from reporting progress for the previous track
+    // after the stop has been sent.
+    _stopProgressTimer();
+
     if (previousId != null && previousId != track?.id) {
       final position = _player.position;
       if (client != null) {
@@ -70,7 +75,6 @@ class JellyfinPlaybackReporter {
 
     if (track == null) {
       _lastReportedTrackId = null;
-      _stopProgressTimer();
       return;
     }
     if (track.id == previousId) return;
@@ -78,7 +82,6 @@ class JellyfinPlaybackReporter {
     _lastReportedTrackId = track.id;
     if (client == null) {
       afLog('data', 'playbackStart source=demo track=${track.id} (signed out)');
-      _stopProgressTimer();
       return;
     }
     try {

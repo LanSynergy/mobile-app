@@ -168,8 +168,8 @@ class AuthNotifier extends StateNotifier<JellyfinAuth?> {
   }
 
   Future<void> clear() async {
-    state = null;
     await _storage.clear();
+    state = null;
   }
 }
 

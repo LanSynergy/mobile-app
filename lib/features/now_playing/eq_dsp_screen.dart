@@ -339,7 +339,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     }
   }
 
-  void _apply() {
+  Future<void> _apply() async {
     if (!_masterEnabled) return;
     final svc = ref.read(playerServiceProvider);
     final effects = AudioEffects(
@@ -444,8 +444,8 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         samples: _crusherSamples,
       ),
     );
-    unawaited(svc.setAudioEffects(effects));
-    unawaited(PlayerSettingsStore.saveAudioEffects(effects));
+    await svc.setAudioEffects(effects);
+    await PlayerSettingsStore.saveAudioEffects(effects);
   }
 
   void _resetAll() {
@@ -537,7 +537,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         _eqBands[k] = preset.bands[k] ?? 1.0;
       }
     });
-    _apply();
+    unawaited(_apply());
     unawaited(PlayerSettingsStore.saveActivePreset(name));
   }
 
@@ -605,7 +605,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
               setState(() => _masterEnabled = v);
               unawaited(PlayerSettingsStore.saveDspMasterEnabled(v));
               if (v) {
-                _apply();
+                unawaited(_apply());
               } else {
                 final svc = ref.read(playerServiceProvider);
                 unawaited(svc.setAudioEffects(const AudioEffects()));
@@ -711,7 +711,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _eqEnabled,
             onChanged: (v) {
               setState(() => _eqEnabled = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Enable graphic EQ', style: AfTypography.bodyMedium),
             activeThumbColor: AfColors.indigo500,
@@ -730,7 +730,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                       }
                       _activePreset = null;
                     });
-                    _apply();
+                    unawaited(_apply());
                   },
                   child: Text(
                     'Flatten EQ',
@@ -759,13 +759,13 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           _toggleTile('Loudness normalization', 'EBU R128 (-16 LUFS)',
               _loudnorm, (v) {
             setState(() => _loudnorm = v);
-            _apply();
+            unawaited(_apply());
           }),
           SwitchListTile.adaptive(
             value: _compressor,
             onChanged: (v) {
               setState(() => _compressor = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Dynamic compressor', style: AfTypography.bodyMedium),
             subtitle: Text(
@@ -794,7 +794,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _gate,
             onChanged: (v) {
               setState(() => _gate = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Noise gate', style: AfTypography.bodyMedium),
             subtitle: Text(
@@ -823,7 +823,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _deesser,
             onChanged: (v) {
               setState(() => _deesser = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('De-esser', style: AfTypography.bodyMedium),
             subtitle: Text(
@@ -859,7 +859,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _echoEnabled,
             onChanged: (v) {
               setState(() => _echoEnabled = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Echo', style: AfTypography.bodyMedium),
             subtitle: Text(
@@ -879,11 +879,11 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             }, _apply, precision: 2),
             _textFieldRow('Delays (ms)', _echoDelays, 'e.g. 500|250', (v) {
               setState(() => _echoDelays = v);
-              _apply();
+              unawaited(_apply());
             }),
             _textFieldRow('Decays (0-1)', _echoDecays, 'e.g. 0.5|0.3', (v) {
               setState(() => _echoDecays = v);
-              _apply();
+              unawaited(_apply());
             }),
             Padding(
               padding: const EdgeInsets.only(top: 4, bottom: 8),
@@ -904,7 +904,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _rubberbandEnabled,
             onChanged: (v) {
               setState(() => _rubberbandEnabled = v);
-              _apply();
+              unawaited(_apply());
             },
             title:
                 Text('Enable pitch/tempo shift', style: AfTypography.bodyMedium),
@@ -950,7 +950,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _crossfeed,
             onChanged: (v) {
               setState(() => _crossfeed = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Crossfeed', style: AfTypography.bodyMedium),
             subtitle: Text(
@@ -976,7 +976,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _stereoWiden,
             onChanged: (v) {
               setState(() => _stereoWiden = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Stereo widening', style: AfTypography.bodyMedium),
             subtitle: Text(
@@ -1009,7 +1009,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _phaser,
             onChanged: (v) {
               setState(() => _phaser = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Phaser', style: AfTypography.bodyMedium),
             subtitle: Text(
@@ -1041,7 +1041,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _flanger,
             onChanged: (v) {
               setState(() => _flanger = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Flanger', style: AfTypography.bodyMedium),
             subtitle: Text(
@@ -1073,7 +1073,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _chorus,
             onChanged: (v) {
               setState(() => _chorus = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Chorus', style: AfTypography.bodyMedium),
             subtitle: Text(
@@ -1093,19 +1093,19 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             }, _apply, precision: 2),
             _textFieldRow('Delays (ms)', _chorusDelays, 'e.g. 40|60', (v) {
               setState(() => _chorusDelays = v);
-              _apply();
+              unawaited(_apply());
             }),
             _textFieldRow('Decays', _chorusDecays, 'e.g. 0.4|0.32', (v) {
               setState(() => _chorusDecays = v);
-              _apply();
+              unawaited(_apply());
             }),
             _textFieldRow('Speeds (Hz)', _chorusSpeeds, 'e.g. 0.25|0.4', (v) {
               setState(() => _chorusSpeeds = v);
-              _apply();
+              unawaited(_apply());
             }),
             _textFieldRow('Depths', _chorusDepths, 'e.g. 2|3', (v) {
               setState(() => _chorusDepths = v);
-              _apply();
+              unawaited(_apply());
             }),
             Padding(
               padding: const EdgeInsets.only(top: 4, bottom: 8),
@@ -1120,7 +1120,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _tremolo,
             onChanged: (v) {
               setState(() => _tremolo = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Tremolo', style: AfTypography.bodyMedium),
             subtitle: Text(
@@ -1143,7 +1143,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _vibrato,
             onChanged: (v) {
               setState(() => _vibrato = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Vibrato', style: AfTypography.bodyMedium),
             subtitle: Text(
@@ -1172,7 +1172,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _exciter,
             onChanged: (v) {
               setState(() => _exciter = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Harmonic exciter', style: AfTypography.bodyMedium),
             subtitle: Text(
@@ -1198,7 +1198,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _crystalizer,
             onChanged: (v) {
               setState(() => _crystalizer = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Crystalizer', style: AfTypography.bodyMedium),
             subtitle: Text(
@@ -1224,7 +1224,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _virtualBass,
             onChanged: (v) {
               setState(() => _virtualBass = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Virtual bass', style: AfTypography.bodyMedium),
             subtitle: Text(
@@ -1251,7 +1251,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             value: _crusher,
             onChanged: (v) {
               setState(() => _crusher = v);
-              _apply();
+              unawaited(_apply());
             },
             title: Text('Bit-crusher', style: AfTypography.bodyMedium),
             subtitle: Text(

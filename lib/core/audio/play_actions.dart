@@ -37,31 +37,20 @@ class PlayActions {
         ? 0
         : (startIndex >= tracks.length ? tracks.length - 1 : startIndex);
 
-    // If shuffle is ON, put the selected track first and shuffle the rest.
-    List<AfTrack> finalQueue;
-    int finalIndex;
-    if (svc.isShuffleEnabled) {
-      final selected = tracks[safeIndex];
-      final rest = List.of(tracks)..removeAt(safeIndex);
-      rest.shuffle();
-      finalQueue = [selected, ...rest];
-      finalIndex = 0;
-    } else {
-      finalQueue = tracks;
-      finalIndex = safeIndex;
-    }
-
+    // Don't pre-shuffle here — let mpv's shuffle mode handle randomization.
+    // Pre-shuffling corrupts _originalQueue so that toggling shuffle off
+    // later restores to the shuffled order instead of the original.
     try {
       await svc.playQueue(
-        finalQueue,
-        startIndex: finalIndex,
+        tracks,
+        startIndex: safeIndex,
         resolveStreamUrl: resolveStreamUrl,
         // No auth headers needed for local files.
         streamHeaders: mode == AppMode.local
             ? const {}
             : (backend?.authHeaders ?? const {}),
       );
-      ref.read(currentTrackProvider.notifier).state = finalQueue[finalIndex];
+      ref.read(currentTrackProvider.notifier).state = tracks[safeIndex];
     } catch (e, stack) {
       afLog(
         'audio',

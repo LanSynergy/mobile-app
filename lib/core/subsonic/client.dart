@@ -646,11 +646,19 @@ class SubsonicClient implements MusicBackend {
     final params = <String, String>{
       ..._authParams(),
       'id': trackId,
+    };
+    if (maxBitrateKbps != null) {
+      // Request transcoding at the specified max bitrate.
+      // 'format=mp3' tells Navidrome to transcode; without it the
+      // server may serve the original file regardless of maxBitRate.
+      params['maxBitRate'] = '$maxBitrateKbps';
+      params['format'] = 'mp3';
+    } else {
       // 'raw' tells Navidrome to serve the original file without
       // transcoding. Without this, Navidrome may transcode on-the-fly
       // which adds latency and CPU load on the server.
-      'format': 'raw',
-    };
+      params['format'] = 'raw';
+    }
     final baseUri = Uri.parse(stripTrailingSlash(server.baseUrl));
     return baseUri
         .replace(
