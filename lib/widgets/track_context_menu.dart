@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../core/audio/play_actions.dart';
 import '../core/jellyfin/models/items.dart';
@@ -74,7 +74,7 @@ void showTrackContextMenu(
                 const SizedBox(height: AfSpacing.s8),
                 const Divider(height: 1, color: AfColors.surfaceHigh),
                 _MenuItem(
-                  icon: HugeIcons.strokeRoundedHeartAdd,
+                  icon: FontAwesomeIcons.heart,
                   iconColor: isFavorite ? AfColors.indigo300 : null,
                   label: isFavorite ? 'Remove from liked' : 'Add to liked',
                   onTap: () async {
@@ -103,7 +103,7 @@ void showTrackContextMenu(
                   },
                 ),
                 _MenuItem(
-                  icon: HugeIcons.strokeRoundedPlay,
+                  icon: FontAwesomeIcons.play,
                   label: 'Play next',
                   onTap: () {
                     _playNext(innerRef, track);
@@ -116,7 +116,7 @@ void showTrackContextMenu(
                   },
                 ),
                 _MenuItem(
-                  icon: HugeIcons.strokeRoundedListMusic,
+                  icon: FontAwesomeIcons.listUl,
                   label: 'Add to queue',
                   onTap: () {
                     _addToQueue(innerRef, track);
@@ -129,7 +129,7 @@ void showTrackContextMenu(
                   },
                 ),
                 _MenuItem(
-                  icon: HugeIcons.strokeRoundedPlusSign,
+                  icon: FontAwesomeIcons.plus,
                   label: 'Save to playlist',
                   onTap: () {
                     Navigator.of(dialogCtx).pop();
@@ -138,7 +138,7 @@ void showTrackContextMenu(
                 ),
                 if (track.albumId != null)
                   _MenuItem(
-                    icon: HugeIcons.strokeRoundedAlbum,
+                    icon: FontAwesomeIcons.compactDisc,
                     label: 'Go to album',
                     onTap: () {
                       Navigator.of(dialogCtx).pop();
@@ -147,7 +147,7 @@ void showTrackContextMenu(
                   ),
                 if (track.artistId != null)
                   _MenuItem(
-                    icon: HugeIcons.strokeRoundedUser,
+                    icon: FontAwesomeIcons.user,
                     label: 'Go to artist',
                     onTap: () {
                       Navigator.of(dialogCtx).pop();
@@ -155,7 +155,7 @@ void showTrackContextMenu(
                     },
                   ),
                 _MenuItem(
-                  icon: HugeIcons.strokeRoundedInformationCircle,
+                  icon: FontAwesomeIcons.circleInfo,
                   label: 'Show details',
                   onTap: () {
                     Navigator.of(dialogCtx).pop();
@@ -216,7 +216,7 @@ void showAlbumContextMenu(
             const SizedBox(height: AfSpacing.s8),
             const Divider(height: 1, color: AfColors.surfaceHigh),
             _MenuItem(
-              icon: HugeIcons.strokeRoundedPlay,
+              icon: FontAwesomeIcons.play,
               label: 'Play album',
               onTap: () async {
                 Navigator.of(dialogCtx).pop();
@@ -229,7 +229,7 @@ void showAlbumContextMenu(
             ),
             if (album.artistId != null)
               _MenuItem(
-                icon: HugeIcons.strokeRoundedUser,
+                icon: FontAwesomeIcons.user,
                 label: 'Go to artist',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -280,7 +280,7 @@ void _addToQueue(WidgetRef ref, AfTrack track) {
 }
 
 class _MenuItem extends StatelessWidget {
-  final List<List<dynamic>> icon;
+  final FaIconData icon;
   final String label;
   final VoidCallback onTap;
   final Color? iconColor;
@@ -295,7 +295,7 @@ class _MenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: HugeIcon(icon: icon, color: iconColor ?? AfColors.textSecondary, size: 22),
+      leading: FaIcon(icon, color: iconColor ?? AfColors.textSecondary, size: 22),
       title: Text(label, style: AfTypography.bodyMedium),
       onTap: onTap,
       dense: true,

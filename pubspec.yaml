@@ -1,6 +1,6 @@
 name: aetherfin
 description: "Aetherfin — a Jellyfin-backed music player for Android."
-publish_to: 'none'
+publish_to: "none"
 
 version: 0.2.4+5
 
@@ -41,7 +41,7 @@ dependencies:
 
   # Fonts
   google_fonts: ^6.2.1
-  hugeicons: ^1.1.7
+  font_awesome_flutter: ^11.0.0
 
   # Crypto (Subsonic token auth: md5(password + salt))
   crypto: ^3.0.6

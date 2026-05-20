@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/models/items.dart';
@@ -176,7 +176,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   Text('Library', style: AfTypography.titleLarge),
                   const Spacer(),
                   PopupMenuButton<LibrarySortOption>(
-                    icon: HugeIcon(icon: HugeIcons.strokeRoundedSortByDown01, color: AfColors.textPrimary, size: 22),
+                    icon: FaIcon(FontAwesomeIcons.arrowDownShortWide, color: AfColors.textPrimary, size: 22),
                     tooltip: 'Sort',
                     initialValue: _sortOption,
                     onSelected: (option) {

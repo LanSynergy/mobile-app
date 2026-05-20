@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
     show AudioParams, Cache, Format, Gapless, ReplayGain, ReplayGainSettings;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -37,7 +37,7 @@ class SettingsScreen extends ConsumerWidget {
         backgroundColor: AfColors.surfaceCanvas,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: AfColors.textPrimary, size: 24),
+          icon: FaIcon(FontAwesomeIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
           onPressed: () => context.pop(),
         ),
         title: Text('Settings', style: AfTypography.display),

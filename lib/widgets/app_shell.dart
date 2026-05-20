@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../design_tokens/tokens.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
@@ -20,25 +20,25 @@ class AppShell extends ConsumerWidget {
   final StatefulNavigationShell shell;
   const AppShell({super.key, required this.shell});
 
-  static const _items = [
+  static final _items = [
     AfBottomNavItem(
-      icon: HugeIcons.strokeRoundedHome01,
-      filledIcon: HugeIcons.strokeRoundedHome01,
+      icon: FontAwesomeIcons.house,
+      filledIcon: FontAwesomeIcons.house,
       label: 'Home',
     ),
     AfBottomNavItem(
-      icon: HugeIcons.strokeRoundedSearch01,
-      filledIcon: HugeIcons.strokeRoundedSearch01,
+      icon: FontAwesomeIcons.magnifyingGlass,
+      filledIcon: FontAwesomeIcons.magnifyingGlass,
       label: 'Search',
     ),
     AfBottomNavItem(
-      icon: HugeIcons.strokeRoundedAlbum,
-      filledIcon: HugeIcons.strokeRoundedAlbum,
+      icon: FontAwesomeIcons.compactDisc,
+      filledIcon: FontAwesomeIcons.compactDisc,
       label: 'Library',
     ),
     AfBottomNavItem(
-      icon: HugeIcons.strokeRoundedUser,
-      filledIcon: HugeIcons.strokeRoundedUser,
+      icon: FontAwesomeIcons.user,
+      filledIcon: FontAwesomeIcons.user,
       label: 'Profile',
     ),
   ];

@@ -1,8 +1,8 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 import '../design_tokens/tokens.dart';
 import 'press_scale.dart';
@@ -18,8 +18,8 @@ const _navBg = Color(0xB30B0B14);
 ///   - Pill slides between tabs with 240ms `easeStandard` animation.
 ///   - Inactive tabs show icon only; label appears only on the active tab.
 class AfBottomNavItem {
-  final List<List<dynamic>> icon;
-  final List<List<dynamic>> filledIcon;
+  final FaIconData icon;
+  final FaIconData filledIcon;
   final String label;
   const AfBottomNavItem({
     required this.icon,
@@ -94,8 +94,8 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
           children: [
             AnimatedSwitcher(
               duration: AfDurations.instant,
-              child: HugeIcon(
-                icon: active ? item.filledIcon : item.icon,
+              child: FaIcon(
+                active ? item.filledIcon : item.icon,
                 key: ValueKey(active),
                 size: 24,
                 color: active ? AfColors.textPrimary : AfColors.textTertiary,

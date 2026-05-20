@@ -4,7 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
     show
         Device,
@@ -312,10 +312,8 @@ class _MetadataRow extends ConsumerWidget {
           ),
         ),
         IconButton(
-          icon: HugeIcon(
-            icon: track.isFavorite
-                ? HugeIcons.strokeRoundedHeartAdd
-                : HugeIcons.strokeRoundedHeartAdd,
+          icon: FaIcon(
+            FontAwesomeIcons.heart,
             color: track.isFavorite
                 ? AfColors.semanticError
                 : AfColors.textPrimary,
@@ -597,8 +595,8 @@ class _TopBar extends ConsumerWidget {
           child: Row(
             children: [
               IconButton(
-                icon: const HugeIcon(
-                  icon: HugeIcons.strokeRoundedChevronsDownUp,
+                icon: FaIcon(
+                  FontAwesomeIcons.shuffle,
                   color: AfColors.textPrimary,
                   size: 24,
                 ),
@@ -636,8 +634,8 @@ class _TopBar extends ConsumerWidget {
                 ),
               ),
               PopupMenuButton<_NowPlayingAction>(
-                icon: const HugeIcon(
-                  icon: HugeIcons.strokeRoundedMoreHorizontal,
+                icon: const FaIcon(
+                  FontAwesomeIcons.ellipsis,
                   color: AfColors.textPrimary,
                   size: 24,
                 ),
@@ -670,8 +668,8 @@ class _TopBar extends ConsumerWidget {
                   const PopupMenuItem(
                     value: _NowPlayingAction.startRadio,
                     child: ListTile(
-                      leading: HugeIcon(
-                        icon: HugeIcons.strokeRoundedAntenna,
+                      leading: FaIcon(
+                        FontAwesomeIcons.wifi,
                         color: AfColors.textSecondary,
                         size: 24,
                       ),
@@ -684,8 +682,8 @@ class _TopBar extends ConsumerWidget {
                     const PopupMenuItem(
                       value: _NowPlayingAction.goToAlbum,
                       child: ListTile(
-                        leading: HugeIcon(
-                          icon: HugeIcons.strokeRoundedAlbum,
+                        leading: FaIcon(
+                          FontAwesomeIcons.compactDisc,
                           color: AfColors.textSecondary,
                           size: 24,
                         ),
@@ -697,8 +695,8 @@ class _TopBar extends ConsumerWidget {
                     const PopupMenuItem(
                       value: _NowPlayingAction.goToArtist,
                       child: ListTile(
-                        leading: HugeIcon(
-                          icon: HugeIcons.strokeRoundedUser,
+                        leading: FaIcon(
+                          FontAwesomeIcons.user,
                           color: AfColors.textSecondary,
                           size: 24,
                         ),
@@ -777,8 +775,8 @@ class _NowPlayingMetaChip extends ConsumerWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const HugeIcon(
-                  icon: HugeIcons.strokeRoundedMoon,
+                const FaIcon(
+                  FontAwesomeIcons.moon,
                   size: 13,
                   color: AfColors.indigo300,
                 ),
@@ -836,8 +834,8 @@ class _TransportRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _TransportButton(
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedShuffle,
+          icon: FaIcon(
+            FontAwesomeIcons.shuffle,
             size: 28,
             color: shuffleOn ? accent : AfColors.textPrimary,
           ),
@@ -845,8 +843,8 @@ class _TransportRow extends StatelessWidget {
           onTap: onShuffle,
         ),
         _TransportButton(
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedBackward01,
+          icon: FaIcon(
+            FontAwesomeIcons.backwardStep,
             size: 40,
             color: AfColors.textPrimary,
           ),
@@ -859,8 +857,8 @@ class _TransportRow extends StatelessWidget {
           onTap: onPlayPause,
         ),
         _TransportButton(
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedForward01,
+          icon: FaIcon(
+            FontAwesomeIcons.forwardStep,
             size: 40,
             color: AfColors.textPrimary,
           ),
@@ -868,10 +866,8 @@ class _TransportRow extends StatelessWidget {
           onTap: onNext,
         ),
         _TransportButton(
-          icon: HugeIcon(
-            icon: loopMode == Loop.file
-                ? HugeIcons.strokeRoundedRepeatOne01
-                : HugeIcons.strokeRoundedRepeat,
+          icon: FaIcon(
+            FontAwesomeIcons.repeat,
             size: 28,
             color: loopMode == Loop.off
                 ? AfColors.textPrimary
@@ -939,10 +935,10 @@ class _PlayButton extends StatelessWidget {
             ),
           ],
         ),
-        child: HugeIcon(
-          icon: isPlaying
-              ? HugeIcons.strokeRoundedPause
-              : HugeIcons.strokeRoundedPlay,
+        child: FaIcon(
+          isPlaying
+              ? FontAwesomeIcons.pause
+              : FontAwesomeIcons.play,
           color: AfColors.textOnPrimary,
           size: 32,
         ),
@@ -960,8 +956,8 @@ class _UtilityRow extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _UtilityIcon(
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedQuoteDown,
+          icon: FaIcon(
+            FontAwesomeIcons.quoteLeft,
             size: 22,
             color: AfColors.textSecondary,
           ),
@@ -969,8 +965,8 @@ class _UtilityRow extends ConsumerWidget {
           onTap: () => context.push('/lyrics'),
         ),
         _UtilityIcon(
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedSlidersHorizontal,
+          icon: FaIcon(
+            FontAwesomeIcons.sliders,
             size: 22,
             color: AfColors.textSecondary,
           ),
@@ -987,8 +983,8 @@ class _UtilityRow extends ConsumerWidget {
           final isSaved = track != null &&
               (savedIds.contains(track.id) || serverIds.contains(track.id));
           return _UtilityIcon(
-            icon: HugeIcon(
-              icon: HugeIcons.strokeRoundedPlusSign,
+            icon: FaIcon(
+              FontAwesomeIcons.plus,
               size: 22,
               color: isSaved ? AfColors.indigo300 : AfColors.textSecondary,
             ),
@@ -998,8 +994,8 @@ class _UtilityRow extends ConsumerWidget {
           );
         }),
         _UtilityIcon(
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedListMusic,
+          icon: FaIcon(
+            FontAwesomeIcons.listUl,
             size: 22,
             color: AfColors.textSecondary,
           ),
@@ -1007,8 +1003,8 @@ class _UtilityRow extends ConsumerWidget {
           onTap: () => context.push('/queue'),
         ),
         _UtilityIcon(
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedMoreHorizontal,
+          icon: FaIcon(
+            FontAwesomeIcons.ellipsis,
             size: 22,
             color: AfColors.textSecondary,
           ),
@@ -1031,8 +1027,8 @@ class _UtilityRow extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _MoreItem(
-                icon: HugeIcon(
-                  icon: HugeIcons.strokeRoundedMoon,
+                icon: FaIcon(
+                  FontAwesomeIcons.moon,
                   size: 22,
                   color: AfColors.textSecondary,
                 ),
@@ -1043,8 +1039,8 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: HugeIcon(
-                  icon: HugeIcons.strokeRoundedDashboardSpeed01,
+                icon: FaIcon(
+                  FontAwesomeIcons.gaugeHigh,
                   size: 22,
                   color: AfColors.textSecondary,
                 ),
@@ -1067,8 +1063,8 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: HugeIcon(
-                  icon: HugeIcons.strokeRoundedSpeaker,
+                icon: FaIcon(
+                  FontAwesomeIcons.volumeHigh,
                   size: 22,
                   color: AfColors.textSecondary,
                 ),
@@ -1079,8 +1075,8 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: HugeIcon(
-                  icon: HugeIcons.strokeRoundedBluetooth,
+                icon: FaIcon(
+                  FontAwesomeIcons.bluetooth,
                   size: 22,
                   color: AfColors.textSecondary,
                 ),
@@ -1091,8 +1087,8 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: HugeIcon(
-                  icon: HugeIcons.strokeRoundedRepeatOne01,
+                icon: FaIcon(
+                  FontAwesomeIcons.repeat,
                   size: 22,
                   color: AfColors.textSecondary,
                 ),
@@ -1103,8 +1099,8 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: HugeIcon(
-                  icon: HugeIcons.strokeRoundedInformationCircle,
+                icon: FaIcon(
+                  FontAwesomeIcons.circleInfo,
                   size: 22,
                   color: AfColors.textSecondary,
                 ),
@@ -1137,10 +1133,10 @@ class _UtilityRow extends ConsumerWidget {
               const Text('Volume'),
               const Spacer(),
               IconButton(
-                icon: HugeIcon(
-                  icon: muted
-                      ? HugeIcons.strokeRoundedSpeaker
-                      : HugeIcons.strokeRoundedSpeaker,
+                icon: FaIcon(
+                  muted
+                      ? FontAwesomeIcons.volumeXmark
+                      : FontAwesomeIcons.volumeHigh,
                   color: AfColors.textPrimary,
                   size: 24,
                 ),
@@ -1556,8 +1552,8 @@ class _SleepTimerDialogContentState
               ),
               child: Row(
                 children: [
-                  const HugeIcon(
-                      icon: HugeIcons.strokeRoundedMoon,
+                  const FaIcon(
+                      FontAwesomeIcons.moon,
                       color: AfColors.indigo300,
                       size: 18),
                   const SizedBox(width: AfSpacing.s8),
@@ -1759,7 +1755,7 @@ class _OutputDialogContent extends ConsumerWidget {
   Widget _iconForDevice(String name, {required Color color}) {
     final n = name.toLowerCase();
     if (n.contains('bluetooth') || n.contains('bt')) {
-      return HugeIcon(icon: HugeIcons.strokeRoundedBluetooth, color: color, size: 22);
+      return FaIcon(FontAwesomeIcons.bluetooth, color: color, size: 22);
     }
     if (n.contains('headphone') || n.contains('headset') ||
         n.contains('earphone') || n.contains('airpod')) {

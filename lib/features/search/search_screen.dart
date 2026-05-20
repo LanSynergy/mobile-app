@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/models/items.dart';
@@ -156,7 +156,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 textInputAction: TextInputAction.search,
                 decoration: const InputDecoration(
                   hintText: 'Artists, albums, tracks…',
-                  prefixIcon: HugeIcon(icon: HugeIcons.strokeRoundedSearch01, color: AfColors.textTertiary, size: 22),
+                  prefixIcon: FaIcon(FontAwesomeIcons.magnifyingGlass, color: AfColors.textTertiary, size: 22),
                 ),
                 onChanged: _onChanged,
                 onSubmitted: (_) {
