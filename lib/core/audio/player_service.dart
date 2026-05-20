@@ -59,6 +59,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   bool _disposed = false;
   int _suppressPlaylistSyncGen = 0;
   int _activePlaylistSyncGen = 0;
+  int _nudgeGen = 0;
 
   DateTime _lastPlaybackStatePush = DateTime.fromMillisecondsSinceEpoch(0);
   bool _lastPushedPlaying = false;
@@ -807,15 +808,18 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     await _player.dispose();
   }
 
-  void _nudgeAudioDevice() => unawaited(_nudgeAudioDeviceWithRetry(0));
+  void _nudgeAudioDevice() {
+    _nudgeGen++;
+    unawaited(_nudgeAudioDeviceWithRetry(0, _nudgeGen));
+  }
 
   static const _nudgeDelaysMs = [300, 1000, 2500];
 
-  Future<void> _nudgeAudioDeviceWithRetry(int attempt) async {
+  Future<void> _nudgeAudioDeviceWithRetry(int attempt, int gen) async {
     if (attempt >= _nudgeDelaysMs.length || _disposed) return;
 
     await Future.delayed(Duration(milliseconds: _nudgeDelaysMs[attempt]));
-    if (_disposed) return;
+    if (_disposed || gen != _nudgeGen) return;
 
     try {
       var current = _player.state.audioDevice;
@@ -841,7 +845,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     // reset. The pos == 0 check was wrong: after a seek, pos equals the seek
     // target (not zero), so the gate prevented retries even when the pipeline
     // was still stuck. Just run the full schedule unconditionally.
-    unawaited(_nudgeAudioDeviceWithRetry(attempt + 1));
+    unawaited(_nudgeAudioDeviceWithRetry(attempt + 1, gen));
   }
 
   /// Re-apply the *current* in-memory audio effects to mpv after an
