@@ -238,7 +238,7 @@ class LocalBackend implements MusicBackend {
     // do this via library.search() / searchTracks(). The album / artist
     // / playlist branches used to pull `allAlbums()`, `allArtists()`,
     // and `allPlaylists()` + N+1 `playlistStats()` for every search.
-    final tracks = await library.search(query);
+    final tracks = await library.search(q);
     final hydratedTracks = await _hydrateFavorites(tracks);
     final albums = await db.searchAlbums(q);
     final artists = await db.searchArtists(q);
