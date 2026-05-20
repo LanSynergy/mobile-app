@@ -246,10 +246,11 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
   svc.onTrackChanged = (track) {
     ref.read(currentTrackProvider.notifier).state = track;
     ref.read(positionStreamProvider.notifier).state = Duration.zero;
-    // Don't reset duration here — the polling timer / durationStream
-    // will populate it within 250 ms. Resetting to zero caused the
-    // "00:00 on pause" bug when the playlist listener fired spuriously
-    // during a pause-induced mpv state transition.
+    // Reset duration to track's known duration or zero.
+    // This fixes: (1) duration persisting after song ends, (2) duration
+    // starting from previous song's length when queue advances.
+    ref.read(durationStreamProvider.notifier).state =
+        track.duration > Duration.zero ? track.duration : Duration.zero;
     ref.read(abLoopAProvider.notifier).state = null;
     ref.read(abLoopBProvider.notifier).state = null;
   };
@@ -369,11 +370,13 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
       final track = ref.read(currentTrackProvider);
       if (track != null && track.duration > Duration.zero) {
         ref.read(durationStreamProvider.notifier).state = track.duration;
+      } else if (!svc.isPlaying && !svc.shouldAdvancePosition) {
+        // Player stopped (not paused mid-song): reset duration to zero.
+        // This fixes duration persisting after song ends.
+        ref.read(durationStreamProvider.notifier).state = Duration.zero;
       }
-      // If both rawDur and track.duration are zero, retain the last
-      // known duration instead of overwriting with Duration.zero.
-      // This prevents the "00:00 on pause" bug where mpv temporarily
-      // reports zero duration while paused.
+      // If player is paused mid-song and both rawDur and track.duration
+      // are zero, retain the last known duration to prevent "00:00 on pause".
     }
   });
 
