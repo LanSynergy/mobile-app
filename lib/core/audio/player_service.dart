@@ -672,20 +672,23 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     if (oldIndex < 0 ||
         oldIndex >= _trackQueue.length ||
         newIndex < 0 ||
-        newIndex >= _trackQueue.length ||
+        newIndex > _trackQueue.length ||
         oldIndex == newIndex) {
       return;
     }
 
     final track = _trackQueue.removeAt(oldIndex);
-    _trackQueue.insert(newIndex, track);
-    await _player.sendRawCommand(['playlist-move', '$oldIndex', '$newIndex']);
+    // After removal the list shrank by one. If the target was after the
+    // removed item, shift the insertion index down.
+    final insertIdx = newIndex > oldIndex ? newIndex - 1 : newIndex;
+    _trackQueue.insert(insertIdx, track);
+    await _player.sendRawCommand(['playlist-move', '$oldIndex', '$insertIdx']);
 
     if (_currentIndex == oldIndex) {
-      _currentIndex = newIndex;
-    } else if (oldIndex < _currentIndex && newIndex >= _currentIndex) {
+      _currentIndex = insertIdx;
+    } else if (oldIndex < _currentIndex && insertIdx >= _currentIndex) {
       _currentIndex -= 1;
-    } else if (oldIndex > _currentIndex && newIndex <= _currentIndex) {
+    } else if (oldIndex > _currentIndex && insertIdx <= _currentIndex) {
       _currentIndex += 1;
     }
 
