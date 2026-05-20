@@ -57,3 +57,22 @@ Smooth audio crossfade when transitioning between tracks (configurable duration)
 - getRawProperty('time-pos') also returns null/0 on affected devices
 - May need to file upstream issue with mpv_audio_kit
 - Investigate if this is related to aaudio driver or spectrum pipeline
+
+---
+
+# Completed
+
+## UI/UX
+- [x] Hero album carousel — swipeable PageView with dot indicator
+- [x] Bottom nav restyled — Google-style sliding pill background
+- [x] Queue/Lyrics routes — NoTransitionPage to fix out-of-frame rendering
+- [x] Bottom sheet drag handles — removed duplicates (theme provides one)
+
+## Bug fixes
+- [x] musicBackendProvider autoDispose — releases HTTP client on sign-out
+- [x] HttpClient leak in artwork download — try/finally ensures close
+- [x] Nudge stacking — generation counter cancels stale chains
+- [x] pruneDeletedFiles limit — SQL prefix query replaces allTracks()
+- [x] Album ID parsing — lastIndexOf(':') supports colons in names
+- [x] Nudge retries never reset — reset on playing=true
+- [x] Playlist sync race — generation counter replaces Future.delayed

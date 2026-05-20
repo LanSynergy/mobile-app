@@ -59,7 +59,8 @@ a local SQLite database (`sqflite`), and plays files via `content://` URIs.
 - Albums, Artists, Songs, Genres (parsed from file tags)
 - Cover art (embedded in files, cached to disk)
 - Full playback: queue, shuffle, loop, gapless, visualizer, EQ/DSP
-- No favorites, playlists, or playback reporting (no server state)
+- Favorites and playlists (stored in local SQLite via Drift)
+- Smart playlists (resolved via SQL against the local tag cache)
 
 **Aetherfin (app) is responsible for everything, on-device:**
 - All audio **decoding** (libmpv via `mpv_audio_kit`).
@@ -109,7 +110,7 @@ On HTTP error, revert. Never store favorite state only on-device.
 | Crypto | `crypto` ^3.0.6 | Subsonic token auth: `md5(password + salt)`. |
 | Audio | `mpv_audio_kit` ^0.1.3 | libmpv-backed player. Replaces `just_audio` + `audio_session`. |
 | Lock-screen | `audio_service` ^0.18 | `AfPlayerService extends BaseAudioHandler`. |
-| Storage | `flutter_secure_storage` ^9.2 (creds + deviceId), `shared_preferences` ^2.3 (settings), `sqflite` ^2.3 (local metadata cache) | Never store creds in shared_preferences. |
+| Storage | `flutter_secure_storage` ^9.2 (creds + deviceId), `shared_preferences` ^2.3 (settings), `drift` ^2.19 (local metadata cache) | Never store creds in shared_preferences. |
 | Discovery | `multicast_dns` ^0.3.2 | mDNS scan for `_jellyfin._tcp`. Navidrome: probed via Subsonic `ping.view`. |
 | Imagery | `cached_network_image` ^3.4, `flutter_svg` ^2.0, `palette_generator_master` ^1.1 | All cover art through `cached_network_image`. |
 | Fonts | `google_fonts` ^6.2, `cupertino_icons` ^1.0.8 | Inter Variable + JetBrains Mono. cupertino_icons satisfies transitive font validator. |
@@ -250,8 +251,11 @@ lib/
 │  ├─ battery_opt.dart      ← Dart bridge to BatteryOptPlugin (aetherfin.battery_opt channel)
 │  ├─ local/
 │  │  ├─ app_mode_store.dart    ← Persist/restore AppMode (server|local) via SharedPreferences
-│  │  ├─ local_db.dart          ← SQLite schema (tracks + folders tables) + query methods
+│  │  ├─ app_database.dart      ← Drift database definition (tracks, folders, favorites, playlists)
+│  │  ├─ app_database.g.dart    ← Drift-generated code (DO NOT hand-edit)
+│  │  ├─ local_db.dart          ← High-level query methods wrapping Drift tables
 │  │  ├─ local_library.dart     ← High-level interface: scan, query albums/artists/tracks/genres
+│  │  ├─ local_backend.dart     ← LocalBackend: implements MusicBackend over LocalLibrary + LocalDb
 │  │  ├─ metadata_scanner.dart  ← Orchestrates SAF scan: list files → read tags → insert DB
 │  │  └─ saf_picker.dart        ← Dart bridge to SafPlugin (aetherfin.saf MethodChannel)
 │  ├─ smart_playlist/
@@ -292,6 +296,10 @@ lib/
 │                             based on auth.serverType. jellyfinClientProvider kept as alias.
 ├─ widgets/                 ← Shared visual atoms
 │  ├─ mini_player.dart      ← 56 dp floating mini-player
+│  ├─ bottom_nav.dart       ← Google-style bottom nav with sliding pill background
+│  │                          Animated sliding indigo900 pill behind active tab (240ms easeStandard).
+│  │                          Inactive tabs show icon only; label appears when showNavLabelsProvider is true.
+│  ├─ hero_album_card.dart  ← Hero album card (used in home screen carousel)
 │  ├─ audio_visual_scrubber.dart ← Combined FFT visualizer + progress scrubber.
 │  │                          _BlockNotifier: power-10 curve, vsync-aligned flush.
 │  │                          Engine-driven rendering: ingest() updates data only (no
@@ -478,8 +486,9 @@ servers in order:
 ## 6. Navigation rules
 
 - **`context.push()`** for transient/detail screens: `/now-playing`, `/lyrics`, `/queue`, `/album/:id`, `/artist/:id`, `/playlist/:id`, `/settings`, `/sleep`, `/cast`. These sit on the navigation stack; back gesture pops them.
-- **`context.go()`** only for top-level shell navigation (tab switches, auth redirects). These replace the stack.
+- **`context go()`** only for top-level shell navigation (tab switches, auth redirects). These replace the stack.
 - Mixing `go()` and `push()` incorrectly destroys the back stack. `lyrics_screen.dart` and `queue_screen.dart` both use `push()` to navigate to each other — using `go()` would replace the stack and break the back gesture.
+- `/lyrics` and `/queue` routes use `NoTransitionPage` (not default `MaterialPage`) to prevent out-of-frame rendering when pushed on `_rootKey` above the now-playing overlay.
 
 ## 7. Notification / lock-screen rules
 
@@ -686,6 +695,11 @@ PII (usernames, server URLs) must be redacted in release builds.
 32. **"Read position from `_player.state.position` or `stream.position`."** No. On some devices, mpv's `observe_property` for `time-pos` never fires. Use elapsed-time extrapolation: anchor position on play/seek, then `pos = anchor + (now - anchorTime) × speed`. Poll `getRawProperty('time-pos')` as primary source; fall back to extrapolation if it returns 0.
 33. **"Use `openAll()` for all queue sizes."** No. For queues > 5 tracks, `openAll` causes a multi-second delay. Use `open(target, play: true)` for instant playback, then `add()` the rest in the background. Suppress `_suppressPlaylistSync` during queue building + 500ms after.
 34. **"Read A-B loop state from `svc.abLoopA`."** No. `_player.state.abLoopA` doesn't update on affected devices. Track loop state in Dart providers (`abLoopAProvider`/`abLoopBProvider`). Use `getRawPosition()` for the actual position when setting markers.
+35. **"Use `Timer.periodic` for the progress reporting loop."** No. `Timer.periodic` doesn't await the callback — requests pile up. Use a serialized `while (_running)` loop with `Future.delayed`.
+36. **"Add a manual drag handle to bottom sheets."** No. The theme sets `showDragHandle: true` on `bottomSheetTheme`, so `showModalBottomSheet` renders one automatically. Adding a manual handle creates a duplicate.
+37. **"Use `builder` for overlay routes like `/lyrics` and `/queue`."** No. Use `pageBuilder` with `NoTransitionPage` — the default `MaterialPage` slide transition renders content out of frame when pushed on `_rootKey`.
+38. **"Load all tracks to prune deleted files."** No. `allTracks()` has a 5000 limit. Use a SQL prefix query (`trackIdsByPrefix`) to get only the tracks matching the folder, with no limit.
+39. **"Call `_nudgeAudioDevice()` without a generation counter."** No. Rapid seeks/play/pause stack multiple nudge chains (3 delayed `setAudioDevice` calls each). Use `_nudgeGen` to cancel stale chains.
 
 ## 16. Glossary
 
@@ -715,6 +729,9 @@ PII (usernames, server URLs) must be redacted in release builds.
 - **`_PositionAnchor`**: Mutable state holder for elapsed-time extrapolation. Tracks `lastKnownPos`, `lastUpdateTime`, and `wasPlaying`. Used when mpv's property observation doesn't fire.
 - **`getRawPosition()` / `getRawDuration()`**: Direct mpv property queries via `getRawProperty('time-pos')`/`getRawProperty('duration')`. Bypasses the broken `observe_property` reactive system. Returns `Duration.zero` on failure.
 - **`abLoopAProvider` / `abLoopBProvider`**: Dart-side StateProviders tracking A-B loop markers. Necessary because `_player.state.abLoopA` doesn't update on devices with broken property observation.
+- **`LocalBackend`**: Implements `MusicBackend` over `LocalLibrary` + `LocalDb`. Enables favorites, playlists, and smart playlists in local mode — same provider interface as server backends.
+- **`_nudgeGen`**: Generation counter in `AfPlayerService` that cancels stale nudge chains. Each call to `_nudgeAudioDevice()` increments it; delayed retries bail out if the generation changed.
+- **`_HeroAlbumCarousel`**: Swipeable PageView on the home screen showing up to 5 recent albums with `viewportFraction: 0.92` and a dot indicator.
 
 ---
 

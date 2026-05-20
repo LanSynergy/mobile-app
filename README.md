@@ -67,6 +67,10 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 - Long-press context menus (play next, add to queue, go to album/artist)
 - Drag-to-reorder queue with swipe-to-remove
 
+### Home
+- Swipeable hero album carousel (up to 5 recent albums, dot indicator)
+- Recently played tracks, artists, and genres sections
+
 ### Now Playing
 - FFT spectrum visualizer (64 bars, 60 fps, engine-driven)
 - Artwork pulse on kick drums (sub-bass transient detection)

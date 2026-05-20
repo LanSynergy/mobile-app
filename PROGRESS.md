@@ -118,51 +118,17 @@
 
 ## Quality
 - [x] `flutter analyze --no-fatal-infos` — 0 errors, 0 warnings
-- [x] `flutter test` — all 24 tests pass
-
----
-
-# UI & UX Improvements — Progress
-
-## Settings Screen
-- [x] Samsung One UI–style grouped card layout
-- [x] Colored circular icon backgrounds per category
-- [x] Section labels above card groups
-- [x] Dynamic version from PackageInfo
-- [x] Source code link (url_launcher)
-- [x] Licenses page (Flutter built-in showLicensePage)
-- [x] Server section: user info, switch server, sign out with confirmation
-
-## Library
-- [x] Liked songs tab (fetches favorite tracks from Jellyfin/Navidrome)
-- [x] `favoriteTracks` method added to MusicBackend interface
-- [x] Jellyfin: `GET /Users/{id}/Items?Filters=IsFavorite&IncludeItemTypes=Audio`
-- [x] Navidrome: `getStarred2.view` → parse `starred2.song`
-
-## Bug Fixes
-- [x] Navidrome stream uses `format=raw` to skip server-side transcoding
-- [x] Progress bar resets on track change (force-emit Duration.zero on track switch)
-- [x] Lyrics scroll resets on track change (clear _lastScrolledIndex)
-- [x] Like button shows error snackbar on failure
-- [x] Back gesture shows "press again to exit" confirmation on home tab
-- [x] Hero album banner respects long titles (min-height + maxLines: 3)
-- [x] EQ/DSP screen scrollable when master switch is off
-
-## Quality
-- [x] `flutter analyze` — 0 issues
-- [x] `flutter test` — 27 tests pass
-- [x] `.gitattributes` for consistent LF line endings
-- [x] `core.autocrlf=input` for cross-platform compatibility
+- [x] `flutter test` — all 96 tests pass
 
 ---
 
 # Local Media Player Mode — Progress
 
 ## Phase 1: Foundation
-- [x] Add sqflite and path dependencies
+- [x] Add drift and path dependencies
 - [x] Create AppMode enum and appModeProvider
 - [x] Persist app mode in shared_preferences (AppModeStore)
-- [x] Create LocalDb — sqflite schema for tracks/folders with query methods
+- [x] Create AppDatabase — Drift schema for tracks/folders/favorites/playlists
 - [x] Create SafPlugin.kt — Android platform channel (folder picker, file listing, metadata, cover art)
 - [x] Create SafPicker — Dart bridge with typed models
 
@@ -191,7 +157,9 @@
 - [x] PlayActions handles local mode (content:// URIs, no auth headers)
 - [x] Artwork widget loads file:// cover art from disk
 - [x] Playback reporting disabled in local mode
-- [x] Favorites no-op in local mode (no server state)
+- [x] Favorites work in local mode (stored in local SQLite via Drift)
+- [x] Playlists work in local mode (stored in local SQLite via Drift)
+- [x] LocalBackend implements MusicBackend — same provider interface as server backends
 
 ## Phase 6: Settings & Polish
 - [x] Music folders section in settings (local mode only)
@@ -201,7 +169,7 @@
 
 ## Quality
 - [x] flutter analyze — 0 issues
-- [x] flutter test — 27 tests pass
+- [x] flutter test — 96 tests pass
 
 
 ---
@@ -272,3 +240,33 @@
 - [x] Build ID generator uses stderr.writeln (resolves avoid_print lint)
 - [x] Release workflow auto-increments +N build number
 - [x] flutter analyze: No issues found
+
+---
+
+# Iterative Bug Fixes (May 2026)
+
+## Resource Management
+- [x] `musicBackendProvider` changed to `autoDispose` — releases HTTP client + cache on sign-out
+- [x] `_downloadArtworkForNotification` HttpClient closed in `try/finally` — prevents socket leak on download failure
+- [x] Cover art temp files cleaned up when switching sources — prevents disk space leak
+
+## Playback Engine
+- [x] `_nudgeRetries` reset to 0 when `playing` becomes true — fixes auto-advance permanently disabled after 3 failures
+- [x] Playlist sync race condition fixed with generation counter (`_suppressPlaylistSyncGen`) — replaces fragile `Future.delayed` boolean
+- [x] Nudge stacking prevented with generation counter (`_nudgeGen`) — rapid seeks/play no longer stack 30+ `setAudioDevice` calls
+
+## Data Integrity
+- [x] Album ID parsing uses `lastIndexOf(':')` instead of `split(':')` — supports colons in album names
+- [x] Local search query normalized (trim + lowercase) before `library.search()` — consistent results
+- [x] `pruneDeletedFiles` uses SQL prefix query instead of `allTracks()` — fixes orphaned tracks beyond 5000 limit
+
+## UI
+- [x] SubsonicApiError humanized on sign-in screen (code 40 → "Wrong username or password")
+- [x] Queue and Lyrics routes use `NoTransitionPage` — fixes out-of-frame rendering
+- [x] Bottom sheet duplicate drag handles removed — theme's `showDragHandle: true` was stacking with manual handles
+- [x] Bottom nav restyled with Google-style sliding pill background (`indigo900` pill behind active tab)
+- [x] Hero album section converted to swipeable PageView carousel (up to 5 albums, dot indicator, `viewportFraction: 0.92`)
+
+## Quality
+- [x] flutter analyze — 0 issues
+- [x] flutter test — 96 tests pass
