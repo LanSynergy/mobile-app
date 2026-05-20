@@ -35,6 +35,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   final _positionAnchor = _PositionAnchor();
   Timer? _positionPollTimer;
   bool _isSeeking = false;
+  Timer? _seekResetTimer;
   bool _isPolling = false;
 
   /// Last raw mpv time-pos observed by the poller.
@@ -477,7 +478,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         await _player.open(medias[safeIndex], play: true);
 
         for (var i = safeIndex + 1; i < medias.length; i++) {
-          await _player.add(medias[i]);
+          unawaited(_player.add(medias[i]));
         }
 
         for (var i = safeIndex - 1; i >= 0; i--) {
@@ -555,7 +556,8 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       // is nudged. This mirrors the manual "switch output device" fix.
       _nudgeAudioDevice();
     } finally {
-      Future.delayed(const Duration(milliseconds: 300), () {
+      _seekResetTimer?.cancel();
+      _seekResetTimer = Timer(const Duration(milliseconds: 300), () {
         if (!_disposed) _isSeeking = false;
       });
     }
@@ -822,6 +824,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     if (_disposed) return;
     _disposed = true;
     _positionPollTimer?.cancel();
+    _seekResetTimer?.cancel();
     for (final s in _subs) {
       await s.cancel();
     }
