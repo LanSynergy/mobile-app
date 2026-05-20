@@ -176,7 +176,7 @@ class AuthNotifier extends StateNotifier<JellyfinAuth?> {
 // Music backend
 // ─────────────────────────────────────────────────────────────────────────────
 
-final musicBackendProvider = Provider<MusicBackend?>((ref) {
+final musicBackendProvider = Provider.autoDispose<MusicBackend?>((ref) {
   final auth = ref.watch(authProvider);
   if (auth == null) {
     // Local mode is no longer a degraded sub-mode — it has its own
