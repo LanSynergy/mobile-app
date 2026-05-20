@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,23 +22,23 @@ class AppShell extends ConsumerWidget {
 
   static const _items = [
     AfBottomNavItem(
-      icon: Icons.home_outlined,
-      filledIcon: Icons.home_rounded,
+      icon: CupertinoIcons.house,
+      filledIcon: CupertinoIcons.house_fill,
       label: 'Home',
     ),
     AfBottomNavItem(
-      icon: Icons.search_outlined,
-      filledIcon: Icons.search_rounded,
+      icon: CupertinoIcons.search,
+      filledIcon: CupertinoIcons.search,
       label: 'Search',
     ),
     AfBottomNavItem(
-      icon: Icons.library_music_outlined,
-      filledIcon: Icons.library_music_rounded,
+      icon: CupertinoIcons.music_albums,
+      filledIcon: CupertinoIcons.music_albums_fill,
       label: 'Library',
     ),
     AfBottomNavItem(
-      icon: Icons.person_outline_rounded,
-      filledIcon: Icons.person_rounded,
+      icon: CupertinoIcons.person,
+      filledIcon: CupertinoIcons.person_fill,
       label: 'Profile',
     ),
   ];

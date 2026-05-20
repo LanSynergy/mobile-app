@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -75,7 +76,7 @@ void showAlbumMoreSheet(
             const SizedBox(height: AfSpacing.s8),
             const Divider(height: 1, color: AfColors.surfaceHigh),
             _MenuItem(
-              icon: Icons.shuffle_rounded,
+              icon: CupertinoIcons.shuffle,
               label: 'Shuffle play',
               enabled: tracks.isNotEmpty,
               onTap: () async {
@@ -85,7 +86,7 @@ void showAlbumMoreSheet(
               },
             ),
             _MenuItem(
-              icon: Icons.playlist_play_rounded,
+              icon: CupertinoIcons.play,
               label: 'Play next',
               enabled: tracks.isNotEmpty,
               onTap: () {
@@ -101,7 +102,7 @@ void showAlbumMoreSheet(
               },
             ),
             _MenuItem(
-              icon: Icons.queue_music_rounded,
+              icon: CupertinoIcons.music_note_list,
               label: 'Add to queue',
               enabled: tracks.isNotEmpty,
               onTap: () {
@@ -118,7 +119,7 @@ void showAlbumMoreSheet(
             ),
             if (album.artistId != null)
               _MenuItem(
-                icon: Icons.person_outline_rounded,
+                icon: CupertinoIcons.person,
                 label: 'Go to artist',
                 onTap: () {
                   Navigator.of(sheetCtx).pop();

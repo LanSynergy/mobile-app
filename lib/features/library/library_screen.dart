@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -149,7 +150,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   Text('Library', style: AfTypography.titleLarge),
                   const Spacer(),
                   PopupMenuButton<LibrarySortOption>(
-                    icon: const Icon(Icons.sort_rounded),
+                    icon: const Icon(CupertinoIcons.sort_down),
                     tooltip: 'Sort',
                     initialValue: _sortOption,
                     onSelected: (option) {

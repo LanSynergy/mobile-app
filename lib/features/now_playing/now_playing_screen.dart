@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -311,7 +312,7 @@ class _MetadataRow extends ConsumerWidget {
         ),
         IconButton(
           icon: Icon(
-            track.isFavorite ? Icons.favorite : Icons.favorite_border,
+            track.isFavorite ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
             color: track.isFavorite
                 ? AfColors.semanticError
                 : AfColors.textPrimary,
@@ -592,7 +593,7 @@ class _TopBar extends ConsumerWidget {
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                icon: const Icon(CupertinoIcons.chevron_down),
                 onPressed: () => Navigator.maybePop(context),
               ),
               Expanded(
@@ -627,7 +628,7 @@ class _TopBar extends ConsumerWidget {
                 ),
               ),
               PopupMenuButton<_NowPlayingAction>(
-                icon: const Icon(Icons.more_horiz_rounded),
+                icon: const Icon(CupertinoIcons.ellipsis),
                 onSelected: (action) async {
                   switch (action) {
                     case _NowPlayingAction.startRadio:
@@ -657,7 +658,7 @@ class _TopBar extends ConsumerWidget {
                   const PopupMenuItem(
                     value: _NowPlayingAction.startRadio,
                     child: ListTile(
-                      leading: Icon(Icons.radio_rounded),
+                      leading: Icon(CupertinoIcons.antenna_radiowaves_left_right),
                       title: Text('Start radio'),
                       subtitle: Text('Similar songs from your library'),
                       contentPadding: EdgeInsets.zero,
@@ -667,7 +668,7 @@ class _TopBar extends ConsumerWidget {
                     const PopupMenuItem(
                       value: _NowPlayingAction.goToAlbum,
                       child: ListTile(
-                        leading: Icon(Icons.album_outlined),
+                        leading: Icon(CupertinoIcons.music_albums),
                         title: Text('Go to album'),
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -676,7 +677,7 @@ class _TopBar extends ConsumerWidget {
                     const PopupMenuItem(
                       value: _NowPlayingAction.goToArtist,
                       child: ListTile(
-                        leading: Icon(Icons.person_outline_rounded),
+                        leading: Icon(CupertinoIcons.person),
                         title: Text('Go to artist'),
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -754,7 +755,7 @@ class _NowPlayingMetaChip extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(
-                  Icons.bedtime_rounded,
+                  CupertinoIcons.moon_fill,
                   size: 13,
                   color: AfColors.indigo300,
                 ),
@@ -812,13 +813,13 @@ class _TransportRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _TransportButton(
-          icon: Icons.shuffle_rounded,
+          icon: CupertinoIcons.shuffle,
           size: 28,
           color: shuffleOn ? accent : AfColors.textPrimary,
           onTap: onShuffle,
         ),
         _TransportButton(
-          icon: Icons.skip_previous_rounded,
+          icon: CupertinoIcons.backward_fill,
           size: 40,
           onTap: onPrev,
         ),
@@ -828,14 +829,14 @@ class _TransportRow extends StatelessWidget {
           onTap: onPlayPause,
         ),
         _TransportButton(
-          icon: Icons.skip_next_rounded,
+          icon: CupertinoIcons.forward_fill,
           size: 40,
           onTap: onNext,
         ),
         _TransportButton(
           icon: loopMode == Loop.file
-              ? Icons.repeat_one_rounded
-              : Icons.repeat_rounded,
+              ? CupertinoIcons.repeat_1
+              : CupertinoIcons.repeat,
           size: 28,
           color: loopMode == Loop.off
               ? AfColors.textPrimary
@@ -904,7 +905,7 @@ class _PlayButton extends StatelessWidget {
           ],
         ),
         child: Icon(
-          isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+          isPlaying ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill,
           color: AfColors.textOnPrimary,
           size: 32,
         ),
@@ -922,12 +923,12 @@ class _UtilityRow extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _UtilityIcon(
-          icon: Icons.lyrics_outlined,
+          icon: CupertinoIcons.text_quote,
           label: 'Lyrics',
           onTap: () => context.push('/lyrics'),
         ),
         _UtilityIcon(
-          icon: Icons.equalizer_rounded,
+          icon: CupertinoIcons.slider_horizontal_3,
           label: 'EQ',
           onTap: () => context.push('/eq-dsp'),
         ),
@@ -942,20 +943,20 @@ class _UtilityRow extends ConsumerWidget {
               (savedIds.contains(track.id) || serverIds.contains(track.id));
           return _UtilityIcon(
             icon: isSaved
-                ? Icons.playlist_add_check_rounded
-                : Icons.playlist_add_rounded,
+                ? CupertinoIcons.checkmark
+                : CupertinoIcons.plus,
             label: isSaved ? 'Saved' : 'Save',
             onTap: () => _showSaveDialog(context, ref),
             color: isSaved ? AfColors.indigo300 : null,
           );
         }),
         _UtilityIcon(
-          icon: Icons.queue_music_rounded,
+          icon: CupertinoIcons.music_note_list,
           label: 'Queue',
           onTap: () => context.push('/queue'),
         ),
         _UtilityIcon(
-          icon: Icons.more_horiz_rounded,
+          icon: CupertinoIcons.ellipsis,
           label: 'More',
           onTap: () => _showMoreSheet(context, ref),
         ),
@@ -976,7 +977,7 @@ class _UtilityRow extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _MoreItem(
-                icon: Icons.bedtime_outlined,
+                icon: CupertinoIcons.moon,
                 label: 'Sleep timer',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -984,7 +985,7 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: Icons.speed_rounded,
+                icon: CupertinoIcons.speedometer,
                 label: 'Playback speed',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -1000,7 +1001,7 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: Icons.volume_up_rounded,
+                icon: CupertinoIcons.speaker_fill,
                 label: 'Volume',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -1008,7 +1009,7 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: Icons.bluetooth_audio_rounded,
+                icon: CupertinoIcons.bluetooth,
                 label: 'Audio delay',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -1016,7 +1017,7 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: Icons.repeat_one_rounded,
+                icon: CupertinoIcons.repeat_1,
                 label: 'A-B Loop',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -1024,7 +1025,7 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: Icons.info_outline_rounded,
+                icon: CupertinoIcons.info,
                 label: 'Show details',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -1055,7 +1056,7 @@ class _UtilityRow extends ConsumerWidget {
               const Text('Volume'),
               const Spacer(),
               IconButton(
-                icon: Icon(muted ? Icons.volume_off_rounded : Icons.volume_up_rounded),
+                icon: Icon(muted ? CupertinoIcons.speaker_slash_fill : CupertinoIcons.speaker_fill),
                 onPressed: () {
                   muted = !muted;
                   svc.setMute(muted);
@@ -1474,7 +1475,7 @@ class _SleepTimerDialogContentState
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.bedtime_rounded,
+                  const Icon(CupertinoIcons.moon_fill,
                       color: AfColors.indigo300, size: 18),
                   const SizedBox(width: AfSpacing.s8),
                   Expanded(
@@ -1676,7 +1677,7 @@ class _OutputDialogContent extends ConsumerWidget {
   IconData _iconForDevice(String name) {
     final n = name.toLowerCase();
     if (n.contains('bluetooth') || n.contains('bt')) {
-      return Icons.bluetooth_audio_rounded;
+      return CupertinoIcons.bluetooth;
     }
     if (n.contains('headphone') || n.contains('headset') ||
         n.contains('earphone') || n.contains('airpod')) {

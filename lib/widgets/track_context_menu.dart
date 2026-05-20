@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -77,8 +78,8 @@ void showTrackContextMenu(
                 const Divider(height: 1, color: AfColors.surfaceHigh),
                 _MenuItem(
                   icon: isFavorite
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
+                      ? CupertinoIcons.heart_fill
+                      : CupertinoIcons.heart,
                   iconColor: isFavorite ? AfColors.indigo300 : null,
                   label: isFavorite ? 'Remove from liked' : 'Add to liked',
                   onTap: () async {
@@ -107,7 +108,7 @@ void showTrackContextMenu(
                   },
                 ),
                 _MenuItem(
-                  icon: Icons.playlist_play_rounded,
+                  icon: CupertinoIcons.play,
                   label: 'Play next',
                   onTap: () {
                     _playNext(innerRef, track);
@@ -120,7 +121,7 @@ void showTrackContextMenu(
                   },
                 ),
                 _MenuItem(
-                  icon: Icons.queue_music_rounded,
+                  icon: CupertinoIcons.music_note_list,
                   label: 'Add to queue',
                   onTap: () {
                     _addToQueue(innerRef, track);
@@ -133,7 +134,7 @@ void showTrackContextMenu(
                   },
                 ),
                 _MenuItem(
-                  icon: Icons.playlist_add_rounded,
+                  icon: CupertinoIcons.plus,
                   label: 'Save to playlist',
                   onTap: () {
                     Navigator.of(dialogCtx).pop();
@@ -142,7 +143,7 @@ void showTrackContextMenu(
                 ),
                 if (track.albumId != null)
                   _MenuItem(
-                    icon: Icons.album_outlined,
+                    icon: CupertinoIcons.music_albums,
                     label: 'Go to album',
                     onTap: () {
                       Navigator.of(dialogCtx).pop();
@@ -151,7 +152,7 @@ void showTrackContextMenu(
                   ),
                 if (track.artistId != null)
                   _MenuItem(
-                    icon: Icons.person_outline_rounded,
+                    icon: CupertinoIcons.person,
                     label: 'Go to artist',
                     onTap: () {
                       Navigator.of(dialogCtx).pop();
@@ -159,7 +160,7 @@ void showTrackContextMenu(
                     },
                   ),
                 _MenuItem(
-                  icon: Icons.info_outline_rounded,
+                  icon: CupertinoIcons.info,
                   label: 'Show details',
                   onTap: () {
                     Navigator.of(dialogCtx).pop();
@@ -221,7 +222,7 @@ void showAlbumContextMenu(
             const SizedBox(height: AfSpacing.s8),
             const Divider(height: 1, color: AfColors.surfaceHigh),
             _MenuItem(
-              icon: Icons.play_arrow_rounded,
+              icon: CupertinoIcons.play_fill,
               label: 'Play album',
               onTap: () async {
                 Navigator.of(dialogCtx).pop();

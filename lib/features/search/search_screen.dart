@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -155,7 +156,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 textInputAction: TextInputAction.search,
                 decoration: const InputDecoration(
                   hintText: 'Artists, albums, tracks…',
-                  prefixIcon: Icon(Icons.search_rounded),
+                  prefixIcon: Icon(CupertinoIcons.search),
                 ),
                 onChanged: _onChanged,
                 onSubmitted: (_) {

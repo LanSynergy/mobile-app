@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -242,7 +243,7 @@ class _OpacityAppBar extends StatelessWidget {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back_rounded),
+                        icon: const Icon(CupertinoIcons.back),
                         onPressed: onBack,
                       ),
                       Expanded(
@@ -258,7 +259,7 @@ class _OpacityAppBar extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.more_vert_rounded),
+                        icon: const Icon(CupertinoIcons.ellipsis),
                         onPressed: onMore,
                       ),
                     ],
@@ -275,7 +276,7 @@ class _OpacityAppBar extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded),
+                    icon: const Icon(CupertinoIcons.back),
                     onPressed: onBack,
                   ),
                   Expanded(
@@ -291,7 +292,7 @@ class _OpacityAppBar extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.more_vert_rounded),
+                    icon: const Icon(CupertinoIcons.ellipsis),
                     onPressed: onMore,
                   ),
                 ],
@@ -381,19 +382,19 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: widget.onPlay,
-            icon: const Icon(Icons.play_arrow_rounded),
+            icon: const Icon(CupertinoIcons.play_fill),
             label: const Text('Play'),
           ),
         ),
         const SizedBox(width: AfSpacing.s12),
         _IconCircle(
-          icon: _isFavorite ? Icons.favorite : Icons.favorite_border,
+          icon: _isFavorite ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
           color: _isFavorite ? AfColors.semanticError : null,
           onTap: _toggleFavorite,
         ),
         const SizedBox(width: AfSpacing.s8),
         _IconCircle(
-          icon: Icons.download_outlined,
+          icon: CupertinoIcons.arrow_down_circle,
           onTap: () => ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Offline downloads coming soon'),
@@ -403,7 +404,7 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
         ),
         const SizedBox(width: AfSpacing.s8),
         _IconCircle(
-          icon: Icons.more_horiz_rounded,
+          icon: CupertinoIcons.ellipsis,
           onTap: widget.onMore,
         ),
       ],
