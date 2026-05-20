@@ -398,6 +398,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   bool get isPlaying => _player.state.playing;
   bool get isCompleted => _player.state.completed;
+  bool get isUserPaused => _userPaused;
 
   /// True when UI/notification progress should keep advancing even if mpv's
   /// reported `playing` flag is temporarily stale/false on an OEM pipeline.

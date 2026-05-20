@@ -367,7 +367,7 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
     // When track completes and playback stops, reset duration & position to zero.
     // mpv keeps reporting the old duration/position after EOF, so we must
     // explicitly clear them based on completion state.
-    if (svc.isCompleted && !svc.isPlaying) {
+    if (svc.isCompleted && !svc.isPlaying && svc.isUserPaused) {
       ref.read(durationStreamProvider.notifier).state = Duration.zero;
       ref.read(positionStreamProvider.notifier).state = Duration.zero;
       return;
