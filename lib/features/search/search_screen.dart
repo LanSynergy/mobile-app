@@ -137,9 +137,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 AfSpacing.s16,
                 AfSpacing.s8,
                 AfSpacing.s16,
-                AfSpacing.s8,
+                AfSpacing.s16,
               ),
-              child: Text('Search', style: AfTypography.titleLarge),
+              child: Text('Search', style: AfTypography.display),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
