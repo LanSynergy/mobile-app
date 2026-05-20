@@ -956,6 +956,15 @@ class _UtilityRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final track = ref.watch(currentTrackProvider);
+    final savedIds = ref.watch(savedTrackIdsProvider);
+    final serverIds = ref.watch(playlistTrackIdsProvider).maybeWhen(
+          data: (ids) => ids,
+          orElse: () => const <String>{},
+        );
+    final isSaved = track != null &&
+        (savedIds.contains(track.id) || serverIds.contains(track.id));
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -977,26 +986,16 @@ class _UtilityRow extends ConsumerWidget {
           label: 'EQ',
           onTap: () => context.push('/eq-dsp'),
         ),
-        Consumer(builder: (context, ref, _) {
-          final track = ref.watch(currentTrackProvider);
-          final savedIds = ref.watch(savedTrackIdsProvider);
-          final serverIds = ref.watch(playlistTrackIdsProvider).maybeWhen(
-                data: (ids) => ids,
-                orElse: () => const <String>{},
-              );
-          final isSaved = track != null &&
-              (savedIds.contains(track.id) || serverIds.contains(track.id));
-          return _UtilityIcon(
-            icon: FaIcon(
-              FontAwesomeIcons.plus,
-              size: 22,
-              color: isSaved ? AfColors.indigo300 : AfColors.textSecondary,
-            ),
-            label: isSaved ? 'Saved' : 'Save',
-            onTap: () => _showSaveDialog(context, ref),
-            color: isSaved ? AfColors.indigo300 : null,
-          );
-        }),
+        _UtilityIcon(
+          icon: FaIcon(
+            FontAwesomeIcons.plus,
+            size: 22,
+            color: isSaved ? AfColors.indigo300 : AfColors.textSecondary,
+          ),
+          label: isSaved ? 'Saved' : 'Save',
+          onTap: () => _showSaveDialog(context, ref),
+          color: isSaved ? AfColors.indigo300 : null,
+        ),
         _UtilityIcon(
           icon: FaIcon(
             FontAwesomeIcons.listUl,
