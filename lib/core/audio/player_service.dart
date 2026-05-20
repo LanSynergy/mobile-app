@@ -57,7 +57,8 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Map<String, String> _authHeaders = const <String, String>{};
   String? _networkCoverTrackId;
   bool _disposed = false;
-  bool _suppressPlaylistSync = false;
+  int _suppressPlaylistSyncGen = 0;
+  int _activePlaylistSyncGen = 0;
 
   DateTime _lastPlaybackStatePush = DateTime.fromMillisecondsSinceEpoch(0);
   bool _lastPushedPlaying = false;
@@ -469,7 +470,8 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       if (medias.length <= 5) {
         await _player.openAll(medias, index: safeIndex, play: true);
       } else {
-        _suppressPlaylistSync = true;
+        _suppressPlaylistSyncGen++;
+        _activePlaylistSyncGen = _suppressPlaylistSyncGen;
         await _player.open(medias[safeIndex], play: true);
 
         for (var i = safeIndex + 1; i < medias.length; i++) {
@@ -486,14 +488,12 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         }
 
         _currentIndex = safeIndex;
-        Future.delayed(const Duration(milliseconds: 500), () {
-          _suppressPlaylistSync = false;
-        });
+        _activePlaylistSyncGen = 0;
       }
 
       _nudgeAudioDevice();
     } catch (e, stack) {
-      _suppressPlaylistSync = false;
+      _activePlaylistSyncGen = 0;
       afLog('audio', 'playQueue failed', error: e, stackTrace: stack);
       _trackQueue.clear();
       _currentIndex = -1;
@@ -579,7 +579,8 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       return;
     }
 
-    _suppressPlaylistSync = true;
+    _suppressPlaylistSyncGen++;
+    _activePlaylistSyncGen = _suppressPlaylistSyncGen;
     if (enabled && _originalQueue.isEmpty) {
       _originalQueue = List<AfTrack>.of(_trackQueue);
     }
@@ -598,7 +599,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     }
 
     if (!enabled) _originalQueue = <AfTrack>[];
-    _suppressPlaylistSync = false;
+    _activePlaylistSyncGen = 0;
 
     _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
     if (playingTrack != null) {
@@ -914,7 +915,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     _subs.add(_player.stream.playlist.listen((playlist) {
       final idx = playlist.index;
       if (idx < 0 || idx >= _trackQueue.length) return;
-      if (_suppressPlaylistSync) return;
+      if (_activePlaylistSyncGen != 0) return;
 
       final indexChanged = idx != _currentIndex;
       final previousTrackId =
