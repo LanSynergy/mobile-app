@@ -720,8 +720,11 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       return false;
     }
 
-    _trackQueue.removeAt(index);
+    // Send the mpv command first so the playlist index matches.
+    // If mpv rejects it, the Dart queue stays intact.
     await _player.sendRawCommand(['playlist-remove', '$index']);
+
+    _trackQueue.removeAt(index);
 
     // Removing an entry before the playhead shifts _currentIndex down by
     // one so the active track is still pointed at after mpv collapses
@@ -756,13 +759,17 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   }) async {
     if (_disposed) return;
     final clamped = index.clamp(0, _trackQueue.length);
-    _trackQueue.insert(clamped, track);
+    final url = resolveStreamUrl(track);
+
+    // Send mpv command first so the playlist index matches.
     await _player.sendRawCommand([
       'loadfile',
-      resolveStreamUrl(track),
+      url,
       'insert-at',
       '$clamped',
     ]);
+
+    _trackQueue.insert(clamped, track);
     if (clamped <= _currentIndex) {
       _currentIndex += 1;
     }
@@ -781,13 +788,16 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     final insertAt = _currentIndex >= 0 && _currentIndex < _trackQueue.length
         ? _currentIndex + 1
         : _trackQueue.length;
-    _trackQueue.insert(insertAt, track);
+    final url = resolveStreamUrl(track);
+
     await _player.sendRawCommand([
       'loadfile',
-      resolveStreamUrl(track),
+      url,
       'insert-at',
       '$insertAt',
     ]);
+
+    _trackQueue.insert(insertAt, track);
     _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
     afLog('audio', 'playNext "${track.title}" at index=$insertAt');
   }
@@ -796,12 +806,15 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     AfTrack track, {
     required String Function(AfTrack) resolveStreamUrl,
   }) async {
-    _trackQueue.add(track);
+    final url = resolveStreamUrl(track);
+
     await _player.sendRawCommand([
       'loadfile',
-      resolveStreamUrl(track),
+      url,
       'append',
     ]);
+
+    _trackQueue.add(track);
     _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
     afLog('audio', 'addToQueue "${track.title}" at end');
   }
