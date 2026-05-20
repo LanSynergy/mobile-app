@@ -164,6 +164,7 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
 
       _fftSub = ref.read(playerServiceProvider).spectrumStream.listen(
         (frame) {
+          if (!mounted) return;
           if (frame.bands.isEmpty) return;
           _silenceTimer?.cancel();
 
