@@ -356,7 +356,7 @@ class PlayerSettingsStore {
           enabled: m['deesser_enabled'] as bool? ?? false,
           i: (m['deesser_i'] as num?)?.toDouble() ?? 0.0,
           m: (m['deesser_m'] as num?)?.toDouble() ?? 0.5,
-          f: (m['deesser_f'] as num?)?.toDouble() ?? 5500.0,
+          f: (m['deesser_f'] as num?)?.toDouble() ?? 0.5,
         ),
         aecho: AechoSettings(
           enabled: m['echo_enabled'] as bool? ?? false,
