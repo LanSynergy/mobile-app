@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/audio/play_actions.dart';
 import '../../core/battery_opt.dart';
+import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/async_error_view.dart';
@@ -123,29 +124,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // Hero album.
+          // Hero album carousel.
           SliverToBoxAdapter(
             child: albumsAsync.when(
               data: (albums) => albums.isEmpty
                   ? const SizedBox.shrink()
-                  : HeroAlbumCard(
-                      album: albums.first,
-                      onTap: () =>
-                          context.push('/album/${albums.first.id}'),
-                      onPlay: () async {
-                        final tracks = ref
-                            .read(playActionsProvider);
-                        final detail = await ref.read(albumDetailProvider(albums.first.id).future);
-                        if (detail != null) {
-                          await tracks.playAlbum(detail.tracks);
-                        }
-                      },
-                    ),
-              loading: () => const SizedBox(height: 168),
+                  : _HeroAlbumCarousel(albums: albums),
+              loading: () => const SizedBox(height: 192),
               error: (e, _) => AsyncErrorView.compact(
                 label: 'Couldn\u2019t load recent albums',
                 error: e,
-                height: 168,
+                height: 192,
                 onRetry: () => ref.invalidate(recentlyAddedAlbumsProvider),
               ),
             ),
@@ -312,6 +301,88 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Color _hex(String hex) {
     final v = int.parse(hex.replaceFirst('#', ''), radix: 16);
     return Color(0xFF000000 | v);
+  }
+}
+
+/// Swipeable carousel of hero album cards with a dot indicator.
+///
+/// Uses `viewportFraction: 0.92` so the next card peeks in from the
+/// right edge — gives the user a clear affordance that the section is
+/// swipeable without needing explicit "swipe" hints.
+class _HeroAlbumCarousel extends ConsumerStatefulWidget {
+  final List<AfAlbum> albums;
+  const _HeroAlbumCarousel({required this.albums});
+
+  @override
+  ConsumerState<_HeroAlbumCarousel> createState() => _HeroAlbumCarouselState();
+}
+
+class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
+  int _currentPage = 0;
+  final PageController _pageController = PageController(
+    viewportFraction: 0.92,
+  );
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final albums = widget.albums.take(5).toList();
+    if (albums.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 168,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: albums.length,
+            onPageChanged: (i) => setState(() => _currentPage = i),
+            itemBuilder: (context, i) {
+              final album = albums[i];
+              return Consumer(builder: (context, ref, _) {
+                return HeroAlbumCard(
+                  album: album,
+                  onTap: () => context.push('/album/${album.id}'),
+                  onPlay: () async {
+                    final tracks = ref.read(playActionsProvider);
+                    final detail = await ref.read(albumDetailProvider(album.id).future);
+                    if (detail != null) {
+                      await tracks.playAlbum(detail.tracks);
+                    }
+                  },
+                );
+              });
+            },
+          ),
+        ),
+        if (albums.length > 1) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              albums.length,
+              (i) => AnimatedContainer(
+                duration: AfDurations.quick,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: _currentPage == i ? 16 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: _currentPage == i
+                      ? AfColors.indigo400
+                      : AfColors.surfaceMax,
+                  borderRadius: AfRadii.borderPill,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }
 
