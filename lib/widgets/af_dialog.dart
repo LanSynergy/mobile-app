@@ -11,11 +11,12 @@ Future<T?> showAfDialog<T>({
 }) {
   return showDialog<T>(
     context: context,
-    barrierColor: Colors.transparent,
+    barrierColor: Colors.black.withValues(alpha: 0.5),
     barrierDismissible: barrierDismissible,
     builder: (ctx) => BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-      child: Center(
+      child: Align(
+        alignment: Alignment.bottomCenter,
         child: Material(
           type: MaterialType.transparency,
           child: Container(

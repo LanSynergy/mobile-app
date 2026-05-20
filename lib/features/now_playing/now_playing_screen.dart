@@ -844,19 +844,19 @@ class _TransportRow extends StatelessWidget {
         _TransportButton(
           icon: FaIcon(
             FontAwesomeIcons.shuffle,
-            size: 28,
+            size: 24,
             color: shuffleOn ? accent : AfColors.textPrimary,
           ),
-          size: 28,
+          size: 24,
           onTap: onShuffle,
         ),
         _TransportButton(
           icon: FaIcon(
             FontAwesomeIcons.backwardStep,
-            size: 40,
+            size: 32,
             color: AfColors.textPrimary,
           ),
-          size: 40,
+          size: 32,
           onTap: onPrev,
         ),
         _PlayButton(
@@ -867,21 +867,21 @@ class _TransportRow extends StatelessWidget {
         _TransportButton(
           icon: FaIcon(
             FontAwesomeIcons.forwardStep,
-            size: 40,
+            size: 32,
             color: AfColors.textPrimary,
           ),
-          size: 40,
+          size: 32,
           onTap: onNext,
         ),
         _TransportButton(
           icon: FaIcon(
             FontAwesomeIcons.repeat,
-            size: 28,
+            size: 24,
             color: loopMode == Loop.off
                 ? AfColors.textPrimary
                 : accent,
           ),
-          size: 28,
+          size: 24,
           onTap: onRepeat,
         ),
       ],
@@ -929,8 +929,8 @@ class _PlayButton extends StatelessWidget {
       ensureHitTarget: false,
       onTap: onTap,
       child: Container(
-        width: 64,
-        height: 64,
+        width: 56,
+        height: 56,
         decoration: BoxDecoration(
           color: color,
           shape: BoxShape.circle,
@@ -938,8 +938,8 @@ class _PlayButton extends StatelessWidget {
             BoxShadow(
               // ignore: deprecated_member_use
               color: color.withValues(alpha: 0.4),
-              blurRadius: 32,
-              spreadRadius: 4,
+              blurRadius: 24,
+              spreadRadius: 2,
             ),
           ],
         ),
@@ -948,7 +948,7 @@ class _PlayButton extends StatelessWidget {
               ? FontAwesomeIcons.pause
               : FontAwesomeIcons.play,
           color: AfColors.textOnPrimary,
-          size: 32,
+          size: 24,
         ),
       ),
     );
