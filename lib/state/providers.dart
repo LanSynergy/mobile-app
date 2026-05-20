@@ -281,6 +281,7 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
   ref.listen(authProvider, (prev, next) {
     if (prev != null && next == null) {
       reporter?.requestStopOnDispose();
+      unawaited(reporter?.dispose());
     }
   });
 
