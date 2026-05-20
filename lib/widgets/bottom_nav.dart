@@ -104,7 +104,7 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav>
                 AnimatedBuilder(
                   animation: _ctrl,
                   builder: (context, _) {
-                    final pillWidth = showLabels ? 64.0 : 48.0;
+                    final pillWidth = 64.0;
                     final centerX = tabWidth * (_ctrl.value + 0.5);
                     return Positioned(
                       left: centerX - pillWidth / 2,
@@ -179,7 +179,7 @@ class _Tab extends StatelessWidget {
                 semanticLabel: showLabel ? null : item.label,
               ),
             ),
-            if (showLabel) ...[
+            if (showLabel || isActive) ...[
               const SizedBox(height: 4),
               Text(
                 item.label,
