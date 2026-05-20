@@ -95,6 +95,15 @@ ThemeData buildNocturneTheme() {
       dragHandleSize: const Size(32, 4),
     ),
 
+    dialogTheme: DialogThemeData(
+      backgroundColor: AfColors.surfaceHigh.withValues(alpha: 0.85),
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      shape: const RoundedRectangleBorder(
+        borderRadius: AfRadii.borderXl,
+      ),
+    ),
+
     snackBarTheme: SnackBarThemeData(
       backgroundColor: AfColors.surfaceHigh,
       contentTextStyle: AfTypography.bodyMedium,
