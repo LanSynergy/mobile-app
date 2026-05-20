@@ -877,7 +877,9 @@ class _TransportRow extends StatelessWidget {
         ),
         _TransportButton(
           icon: FaIcon(
-            FontAwesomeIcons.repeat,
+            loopMode == Loop.file
+                ? FontAwesomeIcons.arrowsSpin
+                : FontAwesomeIcons.repeat,
             size: 24,
             color: loopMode == Loop.off
                 ? AfColors.textPrimary
