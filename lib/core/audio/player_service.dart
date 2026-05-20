@@ -1231,6 +1231,14 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         } catch (_) {}
       }
 
+      // Clean up any mpv-persisted cover from the previous track.
+      if (_coverPath != null) {
+        try {
+          final prev = File(_coverPath!);
+          if (await prev.exists()) await prev.delete();
+        } catch (_) {}
+      }
+
       final file = File(path);
       final sink = file.openWrite();
       await response.pipe(sink);
@@ -1276,6 +1284,13 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
       await File(path).writeAsBytes(raw.bytes);
       _coverPath = path;
+
+      if (_networkCoverPath != null) {
+        try {
+          final prev = File(_networkCoverPath!);
+          if (await prev.exists()) await prev.delete();
+        } catch (_) {}
+      }
       _networkCoverPath = null;
       _networkCoverTrackId = null;
       _updateMediaItem();
