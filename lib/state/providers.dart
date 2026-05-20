@@ -352,17 +352,23 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
     // mpv keeps reporting the old duration/position after EOF, so we must
     // explicitly clear them based on completion state.
     if (svc.isCompleted && !svc.isPlaying && svc.isUserPaused) {
-      ref.read(durationStreamProvider.notifier).state = Duration.zero;
-      ref.read(positionStreamProvider.notifier).state = Duration.zero;
+      try {
+        ref.read(durationStreamProvider.notifier).state = Duration.zero;
+        ref.read(positionStreamProvider.notifier).state = Duration.zero;
+      } catch (_) {}
       return;
     }
 
     if (rawDur > Duration.zero) {
-      ref.read(durationStreamProvider.notifier).state = rawDur;
+      try {
+        ref.read(durationStreamProvider.notifier).state = rawDur;
+      } catch (_) {}
     } else {
       final track = ref.read(currentTrackProvider);
       if (track != null && track.duration > Duration.zero) {
-        ref.read(durationStreamProvider.notifier).state = track.duration;
+        try {
+          ref.read(durationStreamProvider.notifier).state = track.duration;
+        } catch (_) {}
       }
     }
   });
