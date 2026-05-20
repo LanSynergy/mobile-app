@@ -11,18 +11,22 @@ Future<T?> showAfDialog<T>({
 }) {
   return showDialog<T>(
     context: context,
+    barrierColor: Colors.transparent,
     barrierDismissible: barrierDismissible,
     builder: (ctx) => BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
       child: Center(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: AfSpacing.gutter),
-          constraints: const BoxConstraints(maxWidth: 360),
-          decoration: BoxDecoration(
-            color: AfColors.surfaceHigh.withValues(alpha: 0.92),
-            borderRadius: AfRadii.borderXl,
+        child: Material(
+          type: MaterialType.transparency,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: AfSpacing.gutter),
+            constraints: const BoxConstraints(maxWidth: 360),
+            decoration: BoxDecoration(
+              color: AfColors.surfaceHigh.withValues(alpha: 0.7),
+              borderRadius: AfRadii.borderXl,
+            ),
+            child: builder(ctx),
           ),
-          child: builder(ctx),
         ),
       ),
     ),

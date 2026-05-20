@@ -29,7 +29,7 @@ void showAlbumMoreSheet(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
           decoration: const BoxDecoration(
-            color: AfColors.surfaceHigh,
+            color: Color(0xB30B0B14),
             border: Border(
               top: BorderSide(color: AfColors.surfaceLow, width: 1),
             ),
