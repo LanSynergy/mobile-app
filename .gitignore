@@ -52,3 +52,4 @@ app.*.map.json
 .aider*
 .env
 tool/build_local.sh
+AGENTS.md
