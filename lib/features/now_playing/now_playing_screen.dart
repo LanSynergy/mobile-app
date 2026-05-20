@@ -833,51 +833,51 @@ class _TransportRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         _TransportButton(
           icon: FaIcon(
             FontAwesomeIcons.shuffle,
-            size: 24,
+            size: 22,
             color: shuffleOn ? accent : AfColors.textPrimary,
           ),
-          size: 24,
           onTap: onShuffle,
         ),
+        const SizedBox(width: 8),
         _TransportButton(
           icon: FaIcon(
             FontAwesomeIcons.backwardStep,
-            size: 32,
+            size: 28,
             color: AfColors.textPrimary,
           ),
-          size: 32,
           onTap: onPrev,
         ),
+        const SizedBox(width: 16),
         _PlayButton(
           isPlaying: isPlaying,
           color: spectral.energy,
           onTap: onPlayPause,
         ),
+        const SizedBox(width: 16),
         _TransportButton(
           icon: FaIcon(
             FontAwesomeIcons.forwardStep,
-            size: 32,
+            size: 28,
             color: AfColors.textPrimary,
           ),
-          size: 32,
           onTap: onNext,
         ),
+        const SizedBox(width: 8),
         _TransportButton(
           icon: FaIcon(
             loopMode == Loop.file
                 ? FontAwesomeIcons.arrowsSpin
                 : FontAwesomeIcons.repeat,
-            size: 24,
+            size: 22,
             color: loopMode == Loop.off
                 ? AfColors.textPrimary
                 : accent,
           ),
-          size: 24,
           onTap: onRepeat,
         ),
       ],
@@ -887,11 +887,9 @@ class _TransportRow extends StatelessWidget {
 
 class _TransportButton extends StatelessWidget {
   final Widget icon;
-  final double size;
   final VoidCallback onTap;
   const _TransportButton({
     required this.icon,
-    required this.size,
     required this.onTap,
   });
 
@@ -902,7 +900,7 @@ class _TransportButton extends StatelessWidget {
       child: SizedBox(
         width: AfSpacing.minHitTarget,
         height: AfSpacing.minHitTarget,
-        child: icon,
+        child: Center(child: icon),
       ),
     );
   }
@@ -925,8 +923,8 @@ class _PlayButton extends StatelessWidget {
       ensureHitTarget: false,
       onTap: onTap,
       child: Container(
-        width: 56,
-        height: 56,
+        width: 72,
+        height: 72,
         decoration: BoxDecoration(
           color: color,
           shape: BoxShape.circle,
@@ -934,17 +932,19 @@ class _PlayButton extends StatelessWidget {
             BoxShadow(
               // ignore: deprecated_member_use
               color: color.withValues(alpha: 0.4),
-              blurRadius: 24,
-              spreadRadius: 2,
+              blurRadius: 32,
+              spreadRadius: 4,
             ),
           ],
         ),
-        child: FaIcon(
-          isPlaying
-              ? FontAwesomeIcons.pause
-              : FontAwesomeIcons.play,
-          color: AfColors.textOnPrimary,
-          size: 24,
+        child: Center(
+          child: FaIcon(
+            isPlaying
+                ? FontAwesomeIcons.pause
+                : FontAwesomeIcons.play,
+            color: AfColors.textOnPrimary,
+            size: 32,
+          ),
         ),
       ),
     );
