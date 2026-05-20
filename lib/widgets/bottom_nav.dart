@@ -67,7 +67,7 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
                 final width = constraints.maxWidth;
                 final alignLeft =
                     widget.currentIndex < widget.items.length ~/ 2;
-                final pillLeft = alignLeft ? 0.0 : width - 120;
+                final pillLeft = alignLeft ? AfSpacing.s12 : width - 120 - AfSpacing.s12;
 
                 return Stack(
                   children: [
@@ -110,16 +110,19 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
 
     final alignLeft = activeIdx < widget.items.length ~/ 2;
 
-    return Row(
-      mainAxisAlignment:
-          alignLeft ? MainAxisAlignment.start : MainAxisAlignment.end,
-      children: [
-        if (!alignLeft)
-          ...inactiveItems.map((e) => _buildInactiveTab(e.$1, e.$2)),
-        _buildActiveTab(activeIdx, activeItem),
-        if (alignLeft)
-          ...inactiveItems.map((e) => _buildInactiveTab(e.$1, e.$2)),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s12),
+      child: Row(
+        mainAxisAlignment:
+            alignLeft ? MainAxisAlignment.start : MainAxisAlignment.end,
+        children: [
+          if (!alignLeft)
+            ...inactiveItems.map((e) => _buildInactiveTab(e.$1, e.$2)),
+          _buildActiveTab(activeIdx, activeItem),
+          if (alignLeft)
+            ...inactiveItems.map((e) => _buildInactiveTab(e.$1, e.$2)),
+        ],
+      ),
     );
   }
 
