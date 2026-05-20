@@ -8,6 +8,7 @@ import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/display_error.dart';
+import '../../widgets/af_dialog.dart';
 import '../../widgets/async_error_view.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/track_context_menu.dart';
@@ -228,10 +229,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   // ── Remove ─────────────────────────────────────────────────────────────────
 
   Future<bool> _confirmRemove(BuildContext context, String title) async {
-    return await showDialog<bool>(
+    return await showAfDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            backgroundColor: AfColors.surfaceBase,
             title: const Text('Remove track'),
             content: Text('Remove "$title" from this playlist?'),
             actions: [
@@ -304,10 +304,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         }
 
       case _PlaylistAction.delete:
-        final confirmed = await showDialog<bool>(
+        final confirmed = await showAfDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            backgroundColor: AfColors.surfaceBase,
             title: const Text('Delete playlist'),
             content: Text(
                 'Delete "${detail.playlist.name}"? This cannot be undone.'),
@@ -343,10 +342,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
       BuildContext context, String currentName) async {
     final ctl = TextEditingController(text: currentName);
     try {
-      return await showDialog<String>(
+      return await showAfDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: AfColors.surfaceBase,
           title: const Text('Rename playlist'),
           content: TextField(
             controller: ctl,

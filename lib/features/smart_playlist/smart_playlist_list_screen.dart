@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/smart_playlist/smart_playlist_model.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/af_dialog.dart';
 import '../../widgets/async_error_view.dart';
 
 /// Lists all user-created smart playlists — Samsung One UI style.
@@ -180,10 +181,9 @@ class _PlaylistTile extends StatelessWidget {
   }
 
   void _showDeleteDialog(BuildContext context) {
-    showDialog<void>(
+    showAfDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AfColors.surfaceBase,
         title: Text('Delete "${playlist.name}"?'),
         content: const Text('This action cannot be undone.'),
         actions: [

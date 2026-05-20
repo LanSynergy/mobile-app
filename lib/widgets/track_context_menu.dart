@@ -11,6 +11,7 @@ import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import '../utils/display_error.dart';
+import 'af_dialog.dart';
 import 'save_to_playlist_sheet.dart';
 import 'track_details_sheet.dart';
 
@@ -30,17 +31,13 @@ void showTrackContextMenu(
   AfTrack track,
 ) {
   HapticFeedback.mediumImpact();
-  showDialog<void>(
+  showAfDialog<void>(
     context: context,
     builder: (dialogCtx) => Consumer(
       builder: (ctx, innerRef, _) {
-        // Use the override map as the source of truth so the heart row
-        // reflects the latest toggle even after the model itself becomes
-        // stale (e.g. the track came from a cached list).
         final overrides = innerRef.watch(trackFavoriteOverridesProvider);
         final isFavorite = overrides[track.id] ?? track.isFavorite;
         return Dialog(
-          backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
           shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: AfSpacing.s12),
@@ -183,10 +180,9 @@ void showAlbumContextMenu(
   AfAlbum album,
 ) {
   HapticFeedback.mediumImpact();
-  showDialog<void>(
+  showAfDialog<void>(
     context: context,
     builder: (dialogCtx) => Dialog(
-      backgroundColor: AfColors.surfaceBase,
       shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AfSpacing.s12),

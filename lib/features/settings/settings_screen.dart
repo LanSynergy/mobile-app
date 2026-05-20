@@ -20,6 +20,7 @@ import '../../core/local/app_mode_store.dart';
 import '../../build_id.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/af_dialog.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -81,10 +82,9 @@ class SettingsScreen extends ConsumerWidget {
                     title: 'Sign out',
                     subtitle: 'Disconnect from ${auth.server.name}',
                     onTap: () async {
-                      final confirmed = await showDialog<bool>(
+                      final confirmed = await showAfDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          backgroundColor: AfColors.surfaceBase,
                           title: const Text('Sign out?'),
                           content: Text(
                             'You will be disconnected from ${auth.server.name}.',
@@ -133,10 +133,9 @@ class SettingsScreen extends ConsumerWidget {
                   title: 'Switch mode',
                   subtitle: isLocal ? 'Currently: Local files' : 'Currently: Server',
                   onTap: () async {
-                    final confirmed = await showDialog<bool>(
+                    final confirmed = await showAfDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
-                        backgroundColor: AfColors.surfaceBase,
                         title: const Text('Switch mode?'),
                         content: const Text(
                           'This will return you to the mode selection screen.',
@@ -310,10 +309,9 @@ class SettingsScreen extends ConsumerWidget {
                   title: 'Clear app data',
                   subtitle: 'Reset app to initial state',
                   onTap: () async {
-                    final confirmed = await showDialog<bool>(
+                    final confirmed = await showAfDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
-                        backgroundColor: AfColors.surfaceBase,
                         title: const Text('Clear app data?'),
                         content: const Text(
                           'This will wipe all local data, settings, and downloaded metadata. You will need to set up the app again.',
@@ -631,10 +629,9 @@ void _showSampleRateDialog(BuildContext context, WidgetRef ref) {
   final isForced = rates.contains(actualRate) && actualRate != 0;
   final activeRate = isForced ? actualRate : 0;
 
-  showDialog<void>(
+  showAfDialog<void>(
     context: context,
     builder: (dialogCtx) => Dialog(
-      backgroundColor: AfColors.surfaceBase,
       shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
@@ -668,9 +665,9 @@ void _showSampleRateDialog(BuildContext context, WidgetRef ref) {
 }
 
 void _showFormatDialog(BuildContext context, WidgetRef ref) {
-  final svc = ref.read(playerServiceProvider);
-  final currentFormat = svc.audioOutParams.format;
+  final currentFormat = ref.read(playerServiceProvider).audioOutParams.format;
   final formatName = currentFormat?.name ?? 'auto';
+  final activeFormat = currentFormat ?? Format.auto;
 
   final formats = <(Format, String)>[
     (Format.auto, currentFormat != null
@@ -682,16 +679,9 @@ void _showFormatDialog(BuildContext context, WidgetRef ref) {
     (Format.float64, '64-bit float'),
   ];
 
-  // If the actual format matches a forced option, highlight it.
-  // Otherwise highlight Auto.
-  final isForced = currentFormat != null &&
-      formats.any((f) => f.$1 == currentFormat && f.$1 != Format.auto);
-  final activeFormat = isForced ? currentFormat : Format.auto;
-
-  showDialog<void>(
+  showAfDialog<void>(
     context: context,
     builder: (dialogCtx) => Dialog(
-      backgroundColor: AfColors.surfaceBase,
       shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
@@ -737,10 +727,9 @@ void _showCacheDurationDialog(BuildContext context, WidgetRef ref) {
   // If the player hasn't been configured yet, default highlights "30 seconds".
   final effectiveSecs = currentSecs > 0 ? currentSecs : 30;
 
-  showDialog<void>(
+  showAfDialog<void>(
     context: context,
     builder: (dialogCtx) => Dialog(
-      backgroundColor: AfColors.surfaceBase,
       shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
@@ -800,10 +789,9 @@ void _showAudioBufferDialog(BuildContext context, WidgetRef ref) {
   // Default is 200ms if the player reports 0.
   final effectiveMs = currentMs > 0 ? currentMs : 200;
 
-  showDialog<void>(
+  showAfDialog<void>(
     context: context,
     builder: (dialogCtx) => Dialog(
-      backgroundColor: AfColors.surfaceBase,
       shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
@@ -925,10 +913,9 @@ void _showGaplessDialog(BuildContext context, WidgetRef ref) {
     (Gapless.no, 'Off', 'Close and re-open audio output between tracks'),
   ];
 
-  showDialog<void>(
+  showAfDialog<void>(
     context: context,
     builder: (dialogCtx) => Dialog(
-      backgroundColor: AfColors.surfaceBase,
       shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
@@ -972,10 +959,9 @@ void _showGaplessDialog(BuildContext context, WidgetRef ref) {
 }
 
 void _showReplayGainDialog(BuildContext context, WidgetRef ref) {
-  showDialog<void>(
+  showAfDialog<void>(
     context: context,
     builder: (dialogCtx) => Dialog(
-      backgroundColor: AfColors.surfaceBase,
       shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
       child: _ReplayGainDialogContent(),
     ),

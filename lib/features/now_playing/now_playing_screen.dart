@@ -17,6 +17,7 @@ import '../../design_tokens/tokens.dart';
 import '../../features/sleep_timer/sleep_timer_screen.dart';
 import '../../state/providers.dart';
 import '../../utils/time_format.dart';
+import '../../widgets/af_dialog.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/audio_visual_scrubber.dart';
 import '../../widgets/press_scale.dart';
@@ -736,10 +737,9 @@ class _NowPlayingMetaChip extends ConsumerWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () {
-            showDialog<void>(
+            showAfDialog<void>(
               context: context,
               builder: (_) => Dialog(
-                backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
                 shape:
                     RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
                 child: const _SleepTimerDialogContent(),
@@ -965,10 +965,9 @@ class _UtilityRow extends ConsumerWidget {
   }
 
   void _showMoreSheet(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
+    showAfDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
-        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
         shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
@@ -1046,11 +1045,10 @@ class _UtilityRow extends ConsumerWidget {
     final svc = ref.read(playerServiceProvider);
     double volume = svc.volume;
     bool muted = svc.isMuted;
-    showDialog<void>(
+    showAfDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
           title: Row(
             children: [
               const Text('Volume'),
@@ -1095,11 +1093,10 @@ class _UtilityRow extends ConsumerWidget {
   void _showAudioDelayDialog(BuildContext context, WidgetRef ref) {
     final svc = ref.read(playerServiceProvider);
     double delayMs = svc.audioDelay.inMilliseconds.toDouble();
-    showDialog<void>(
+    showAfDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
           title: const Text('Audio delay'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1149,10 +1146,9 @@ class _UtilityRow extends ConsumerWidget {
 
   void _showAbLoopDialog(BuildContext context, WidgetRef ref) {
     final svc = ref.read(playerServiceProvider);
-    showDialog<void>(
+    showAfDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
         title: const Text('A-B Loop'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1238,10 +1234,9 @@ class _UtilityRow extends ConsumerWidget {
   void _showSpeedDialog(BuildContext context, WidgetRef ref) {
     const speeds = <double>[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
     final current = ref.read(playerServiceProvider).speed;
-    showDialog<void>(
+    showAfDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
-        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
         shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
@@ -1278,10 +1273,9 @@ class _UtilityRow extends ConsumerWidget {
   }
 
   void _showSleepDialog(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
+    showAfDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
-        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
         shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
         child: const _SleepTimerDialogContent(),
       ),
@@ -1289,10 +1283,9 @@ class _UtilityRow extends ConsumerWidget {
   }
 
   void _showOutputDialog(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
+    showAfDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
-        backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
         shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),

@@ -80,9 +80,9 @@ ThemeData buildNocturneTheme() {
     ),
 
     bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: AfColors.surfaceHigh.withValues(alpha: 0.80),
+      backgroundColor: AfColors.surfaceHigh.withValues(alpha: 0.85),
       surfaceTintColor: Colors.transparent,
-      modalBackgroundColor: AfColors.surfaceHigh.withValues(alpha: 0.80),
+      modalBackgroundColor: AfColors.surfaceHigh.withValues(alpha: 0.85),
       modalBarrierColor: AfColors.surfaceScrim,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
@@ -96,7 +96,7 @@ ThemeData buildNocturneTheme() {
     ),
 
     dialogTheme: DialogThemeData(
-      backgroundColor: AfColors.surfaceHigh.withValues(alpha: 0.85),
+      backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       shape: const RoundedRectangleBorder(

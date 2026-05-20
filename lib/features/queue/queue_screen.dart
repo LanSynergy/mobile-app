@@ -9,6 +9,7 @@ import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/display_error.dart';
+import '../../widgets/af_dialog.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 
@@ -331,10 +332,9 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         '${two(now.hour)}:${two(now.minute)}';
     final controller = TextEditingController(text: defaultName);
 
-    final name = await showDialog<String>(
+    final name = await showAfDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AfColors.surfaceBase,
         title: const Text('Save queue as playlist'),
         content: TextField(
           controller: controller,

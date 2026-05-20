@@ -9,6 +9,7 @@ import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import '../utils/display_error.dart';
+import 'af_dialog.dart';
 
 /// Shows the "Save to playlist" sheet for an arbitrary [AfTrack].
 ///
@@ -29,10 +30,9 @@ void showSaveToPlaylistSheet(
     return;
   }
   HapticFeedback.mediumImpact();
-  showDialog<void>(
+  showAfDialog<void>(
     context: context,
     builder: (dialogCtx) => Dialog(
-      backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.82),
       shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),

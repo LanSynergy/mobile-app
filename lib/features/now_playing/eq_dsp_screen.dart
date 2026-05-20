@@ -29,6 +29,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart'
 import '../../core/audio/player_settings_store.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/af_dialog.dart';
 
 /// ISO 18-band center frequencies for the superequalizer.
 const kEqBands = <String, String>{
@@ -542,10 +543,9 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
 
   Future<void> _saveCurrentAsPreset() async {
     final controller = TextEditingController();
-    final name = await showDialog<String>(
+    final name = await showAfDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AfColors.surfaceBase,
         title: const Text('Save EQ Preset'),
         content: TextField(
           controller: controller,
@@ -1312,10 +1312,9 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   }
 
   void _showDeletePresetDialog(String name) {
-    showDialog<void>(
+    showAfDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AfColors.surfaceBase,
         title: Text('Delete "$name"?'),
         content: const Text('This preset will be permanently removed.'),
         actions: [
