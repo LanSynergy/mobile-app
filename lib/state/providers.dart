@@ -344,7 +344,8 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
     final rawPos = await svc.getRawPosition();
     if (disposed) return;
 
-    final shouldAdvance = svc.isPlaying || svc.shouldAdvancePosition;
+    final shouldAdvance =
+        (svc.isPlaying || svc.shouldAdvancePosition) && !svc.isCompleted;
 
     if (rawPos > Duration.zero &&
         rawPos.inMilliseconds + 500 >= anchor.lastKnownPos.inMilliseconds) {
