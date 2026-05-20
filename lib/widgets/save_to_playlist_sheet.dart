@@ -228,26 +228,38 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
               ),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 300),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: _playlists?.length ?? 0,
-                itemBuilder: (context, i) {
-                  final p = _playlists![i];
-                  return ListTile(
-                    leading: const Icon(
-                      Icons.playlist_play_rounded,
-                      color: AfColors.indigo300,
+              child: _playlists != null && _playlists!.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: AfSpacing.s24),
+                        child: Text(
+                          'No playlists yet',
+                          style: AfTypography.bodySmall
+                              .copyWith(color: AfColors.textTertiary),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _playlists?.length ?? 0,
+                      itemBuilder: (context, i) {
+                        final p = _playlists![i];
+                        return ListTile(
+                          leading: const Icon(
+                            Icons.playlist_play_rounded,
+                            color: AfColors.indigo300,
+                          ),
+                          title: Text(p.name, style: AfTypography.bodyMedium),
+                          subtitle: Text(
+                            p.trackCountLabel,
+                            style: AfTypography.bodySmall
+                                .copyWith(color: AfColors.textTertiary),
+                          ),
+                          onTap: _saving ? null : () => _addTo(p),
+                        );
+                      },
                     ),
-                    title: Text(p.name, style: AfTypography.bodyMedium),
-                    subtitle: Text(
-                      p.trackCountLabel,
-                      style: AfTypography.bodySmall
-                          .copyWith(color: AfColors.textTertiary),
-                    ),
-                    onTap: _saving ? null : () => _addTo(p),
-                  );
-                },
-              ),
             ),
           ],
           const SizedBox(height: AfSpacing.s12),
