@@ -310,57 +310,37 @@ final playbackErrorProvider = StateProvider<String?>((ref) => null);
 final abLoopAProvider = StateProvider<Duration?>((ref) => null);
 final abLoopBProvider = StateProvider<Duration?>((ref) => null);
 
-class _PositionAnchor {
-  DateTime lastUpdateTime = DateTime.now();
-  Duration lastKnownPos = Duration.zero;
-  bool wasPlaying = false;
-}
-
+/// Bridges [AfPlayerService] position/duration streams into Riverpod
+/// providers and handles EOF state reset.
+///
+/// Position polling and extrapolation happen exclusively inside
+/// [AfPlayerService._pollAndEmitPosition] (200 ms timer). This function
+/// only subscribes to the service's streams and forwards them, plus
+/// polls raw duration once per 250 ms so the UI gets mpv's authoritative
+/// duration even when `stream.duration` stalls.
 void _startPositionPolling(Ref ref, AfPlayerService svc) {
-  final anchor = _PositionAnchor();
   var disposed = false;
 
   ref.onDispose(() {
     disposed = true;
   });
 
-  svc.playingStream.listen((playing) {
-    if (playing && !anchor.wasPlaying) {
-      anchor.lastKnownPos = ref.read(positionStreamProvider);
-      anchor.lastUpdateTime = DateTime.now();
-    }
-    anchor.wasPlaying = playing;
-  });
-
+  // Forward service position → provider (no duplicate polling here).
   svc.positionStream.listen((pos) {
-    anchor.lastKnownPos = pos;
-    anchor.lastUpdateTime = DateTime.now();
     ref.read(positionStreamProvider.notifier).state = pos;
   });
 
+  // Forward service duration → provider.
+  svc.durationStream.listen((dur) {
+    if (dur > Duration.zero) {
+      ref.read(durationStreamProvider.notifier).state = dur;
+    }
+  });
+
+  // Poll raw duration and handle EOF reset. The service's own poller
+  // handles position; we only need duration + completion state here.
   final timer = Timer.periodic(const Duration(milliseconds: 250), (_) async {
     if (disposed) return;
-
-    final rawPos = await svc.getRawPosition();
-    if (disposed) return;
-
-    final shouldAdvance =
-        (svc.isPlaying || svc.shouldAdvancePosition) && !svc.isCompleted;
-
-    if (rawPos > Duration.zero &&
-        rawPos.inMilliseconds + 500 >= anchor.lastKnownPos.inMilliseconds) {
-      ref.read(positionStreamProvider.notifier).state = rawPos;
-      anchor.lastKnownPos = rawPos;
-      anchor.lastUpdateTime = DateTime.now();
-    } else if (shouldAdvance) {
-      final elapsed = DateTime.now().difference(anchor.lastUpdateTime);
-      final speed = svc.speed;
-      final extrapolated = anchor.lastKnownPos +
-          Duration(milliseconds: (elapsed.inMilliseconds * speed).round());
-      ref.read(positionStreamProvider.notifier).state = extrapolated;
-      anchor.lastKnownPos = extrapolated;
-      anchor.lastUpdateTime = DateTime.now();
-    }
 
     final rawDur = await svc.getRawDuration();
     if (disposed) return;
@@ -385,12 +365,6 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
   });
 
   ref.onDispose(timer.cancel);
-
-  svc.durationStream.listen((dur) {
-    if (dur > Duration.zero) {
-      ref.read(durationStreamProvider.notifier).state = dur;
-    }
-  });
 }
 
 final playingStreamProvider = StreamProvider.autoDispose<bool>((ref) {
