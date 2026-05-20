@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -11,15 +12,6 @@ import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 
-/// Bottom-sheet "more options" menu for an album.
-///
-/// Replaces the previous "More options coming soon" snackbars on the
-/// album screen's app-bar `more_vert` and the action-row `more_horiz`
-/// affordances — both of which used to fire from
-/// `lib/features/album/album_screen.dart`. The sheet reuses the
-/// player's existing primitives (`PlayActions.playAlbum`,
-/// `AfPlayerService.playNext`, `AfPlayerService.addToQueue`) so it
-/// behaves identically in server mode and local mode.
 void showAlbumMoreSheet(
   BuildContext context,
   WidgetRef ref,
@@ -29,104 +21,116 @@ void showAlbumMoreSheet(
   HapticFeedback.mediumImpact();
   showModalBottomSheet<void>(
     context: context,
+    backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(AfRadii.lg)),
-    ),
-    builder: (sheetCtx) => SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          0,
-          AfSpacing.s12,
-          0,
-          AfSpacing.s12,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AfSpacing.gutterGenerous,
+    builder: (sheetCtx) => ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: AfRadii.rXl),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AfColors.surfaceHigh,
+            border: Border(
+              top: BorderSide(color: AfColors.surfaceLow, width: 1),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                0,
+                AfSpacing.s12,
+                0,
+                AfSpacing.s12,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: SingleChildScrollView(
+                child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    album.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AfTypography.titleSmall,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    album.artistName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textSecondary,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AfSpacing.gutterGenerous,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          album.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AfTypography.titleSmall,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          album.artistName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AfTypography.bodySmall.copyWith(
+                            color: AfColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(height: AfSpacing.s8),
+                  const Divider(height: 1, color: AfColors.surfaceHigh),
+                  _MenuItem(
+                    icon: CupertinoIcons.shuffle,
+                    label: 'Shuffle play',
+                    enabled: tracks.isNotEmpty,
+                    onTap: () async {
+                      Navigator.of(sheetCtx).pop();
+                      await ref.read(playerServiceProvider).setAfShuffleMode(true);
+                      await ref.read(playActionsProvider).playAlbum(tracks);
+                    },
+                  ),
+                  _MenuItem(
+                    icon: CupertinoIcons.play,
+                    label: 'Play next',
+                    enabled: tracks.isNotEmpty,
+                    onTap: () {
+                      Navigator.of(sheetCtx).pop();
+                      _enqueue(ref, tracks, atFront: true);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            _enqueueLabel(tracks.length, 'will play next'),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  _MenuItem(
+                    icon: CupertinoIcons.music_note_list,
+                    label: 'Add to queue',
+                    enabled: tracks.isNotEmpty,
+                    onTap: () {
+                      Navigator.of(sheetCtx).pop();
+                      _enqueue(ref, tracks, atFront: false);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            _enqueueLabel(tracks.length, 'added to queue'),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  if (album.artistId != null)
+                    _MenuItem(
+                      icon: CupertinoIcons.person,
+                      label: 'Go to artist',
+                      onTap: () {
+                        Navigator.of(sheetCtx).pop();
+                        context.push('/artist/${album.artistId}');
+                      },
+                    ),
                 ],
               ),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            const Divider(height: 1, color: AfColors.surfaceHigh),
-            _MenuItem(
-              icon: CupertinoIcons.shuffle,
-              label: 'Shuffle play',
-              enabled: tracks.isNotEmpty,
-              onTap: () async {
-                Navigator.of(sheetCtx).pop();
-                await ref.read(playerServiceProvider).setAfShuffleMode(true);
-                await ref.read(playActionsProvider).playAlbum(tracks);
-              },
-            ),
-            _MenuItem(
-              icon: CupertinoIcons.play,
-              label: 'Play next',
-              enabled: tracks.isNotEmpty,
-              onTap: () {
-                Navigator.of(sheetCtx).pop();
-                _enqueue(ref, tracks, atFront: true);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      _enqueueLabel(tracks.length, 'will play next'),
-                    ),
-                  ),
-                );
-              },
-            ),
-            _MenuItem(
-              icon: CupertinoIcons.music_note_list,
-              label: 'Add to queue',
-              enabled: tracks.isNotEmpty,
-              onTap: () {
-                Navigator.of(sheetCtx).pop();
-                _enqueue(ref, tracks, atFront: false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      _enqueueLabel(tracks.length, 'added to queue'),
-                    ),
-                  ),
-                );
-              },
-            ),
-            if (album.artistId != null)
-              _MenuItem(
-                icon: CupertinoIcons.person,
-                label: 'Go to artist',
-                onTap: () {
-                  Navigator.of(sheetCtx).pop();
-                  context.push('/artist/${album.artistId}');
-                },
               ),
-          ],
-        ),
+            ),
+          ),
         ),
       ),
     ),

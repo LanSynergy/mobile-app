@@ -95,11 +95,11 @@ ThemeData buildNocturneTheme() {
       dragHandleSize: const Size(32, 4),
     ),
 
-    dialogTheme: DialogThemeData(
-      backgroundColor: AfColors.surfaceBase.withValues(alpha: 0.92),
+    dialogTheme: const DialogThemeData(
+      backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: AfRadii.borderXl,
       ),
     ),

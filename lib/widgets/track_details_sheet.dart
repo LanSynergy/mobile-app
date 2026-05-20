@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,31 +10,36 @@ import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import '../utils/time_format.dart';
 
-/// Shows a bottom-sheet with full song metadata + file details.
-///
-/// Called from the track context menu ("Show details") and from the
-/// Now Playing screen's "More" dialog. Fetches [trackDetailsProvider]
-/// lazily — the sheet renders the basic [AfTrack] info immediately and
-/// appends the extended fields (file size, codec, channels, path, …)
-/// once the network call resolves.
 void showTrackDetailsSheet(BuildContext context, WidgetRef ref, AfTrack track) {
   HapticFeedback.mediumImpact();
   showModalBottomSheet<void>(
     context: context,
+    backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(AfRadii.lg)),
-    ),
-    builder: (sheetCtx) => DraggableScrollableSheet(
-      initialChildSize: 0.55,
-      minChildSize: 0.3,
-      maxChildSize: 0.85,
-      expand: false,
-      builder: (_, scrollController) => SafeArea(
-        top: false,
-        child: _TrackDetailsBody(
-          track: track,
-          scrollController: scrollController,
+    builder: (sheetCtx) => ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: AfRadii.rXl),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AfColors.surfaceHigh,
+            border: Border(
+              top: BorderSide(color: AfColors.surfaceLow, width: 1),
+            ),
+          ),
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.55,
+            minChildSize: 0.3,
+            maxChildSize: 0.85,
+            expand: false,
+            builder: (_, scrollController) => SafeArea(
+              top: false,
+              child: _TrackDetailsBody(
+                track: track,
+                scrollController: scrollController,
+              ),
+            ),
+          ),
         ),
       ),
     ),
