@@ -67,7 +67,7 @@ class HeroAlbumCard extends StatelessWidget {
                 AfSpacing.s16,
                 AfSpacing.s16,
                 160, // leave room for the artwork
-                AfSpacing.s16,
+                AfSpacing.s16 + 36, // + play pill height
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,10 +108,15 @@ class HeroAlbumCard extends StatelessWidget {
                       color: AfColors.textOnPrimary.withValues(alpha: 0.8),
                     ),
                   ),
-                  const SizedBox(height: AfSpacing.s12),
-                  _PlayPill(onTap: onPlay),
                 ],
               ),
+            ),
+
+            // Play pill — anchored to bottom-left so it never overflows.
+            Positioned(
+              left: AfSpacing.s16,
+              bottom: AfSpacing.s16,
+              child: _PlayPill(onTap: onPlay),
             ),
           ],
         ),
