@@ -146,7 +146,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               ),
               child: Row(
                 children: [
-                  Text('Library', style: AfTypography.display),
+                  Text('Library', style: AfTypography.titleLarge),
                   const Spacer(),
                   PopupMenuButton<LibrarySortOption>(
                     icon: const Icon(Icons.sort_rounded),

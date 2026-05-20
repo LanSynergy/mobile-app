@@ -112,7 +112,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               child: Row(
                 children: [
-                  Text('Listen', style: AfTypography.display),
+                  Text('Listen', style: AfTypography.titleLarge),
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.cast_outlined),
