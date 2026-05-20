@@ -1018,27 +1018,27 @@ class _ReplayGainDialogContentState
               horizontal: AfSpacing.gutterGenerous),
           child: Text('ReplayGain', style: AfTypography.titleSmall),
         ),
-          const SizedBox(height: AfSpacing.s4),
-          Padding(
-            padding: const EdgeInsets.symmetric(
-                horizontal: AfSpacing.gutterGenerous),
-            child: Text(
-              'Normalize volume so all tracks play at a similar loudness.',
-              style: AfTypography.bodySmall
-                  .copyWith(color: AfColors.textTertiary),
-            ),
+        const SizedBox(height: AfSpacing.s4),
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous),
+          child: Text(
+            'Normalize volume so all tracks play at a similar loudness.',
+            style: AfTypography.bodySmall
+                .copyWith(color: AfColors.textTertiary),
           ),
-          const SizedBox(height: AfSpacing.s8),
-          for (final (mode, label, subtitle) in options)
-            _OptionTile(
-              label: label,
-              subtitle: subtitle,
-              isActive: mode == _mode,
-              onTap: () {
-                setState(() => _mode = mode);
-                _apply();
-              },
-            ),
+        ),
+        const SizedBox(height: AfSpacing.s8),
+        for (final (mode, label, subtitle) in options)
+          _OptionTile(
+            label: label,
+            subtitle: subtitle,
+            isActive: mode == _mode,
+            onTap: () {
+              setState(() => _mode = mode);
+              _apply();
+            },
+          ),
           if (_mode != ReplayGain.no) ...[
             const SizedBox(height: AfSpacing.s8),
             const Divider(height: 1, color: AfColors.surfaceHigh),
