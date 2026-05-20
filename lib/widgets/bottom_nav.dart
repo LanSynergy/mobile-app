@@ -5,14 +5,14 @@ import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import 'press_scale.dart';
 
-/// Custom 4-tab bottom navigation.
+/// Google-style bottom navigation bar.
 ///
 /// Per §7.7:
 ///   - 4 destinations only.
 ///   - 72dp height (excluding gesture inset).
-///   - 24dp glyph + 11dp label.
-///   - Active indicator is a 32dp wide × 3dp tall capsule under the glyph
-///     in `text.primary`; slides 240ms `easeStandard` between tabs.
+///   - Active tab shows a colored pill background behind icon + label.
+///   - Pill slides between tabs with 240ms `easeStandard` animation.
+///   - Inactive tabs show icon only; label appears when active.
 class AfBottomNavItem {
   final IconData icon;
   final IconData filledIcon;
@@ -93,6 +93,27 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav>
             final tabWidth = c.maxWidth / widget.items.length;
             return Stack(
               children: [
+                // Sliding pill background for active tab.
+                AnimatedBuilder(
+                  animation: _ctrl,
+                  builder: (context, _) {
+                    final pillWidth = showLabels ? 64.0 : 48.0;
+                    final centerX = tabWidth * (_ctrl.value + 0.5);
+                    return Positioned(
+                      left: centerX - pillWidth / 2,
+                      top: 12,
+                      width: pillWidth,
+                      height: 48,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AfColors.indigo900,
+                          borderRadius: AfRadii.borderPill,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                // Tab buttons.
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -106,25 +127,6 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav>
                         ),
                       ),
                   ],
-                ),
-                AnimatedBuilder(
-                  animation: _ctrl,
-                  builder: (context, _) {
-                    final indicatorWidth = 32.0;
-                    final centerX = tabWidth * (_ctrl.value + 0.5);
-                    return Positioned(
-                      left: centerX - indicatorWidth / 2,
-                      top: 12,
-                      width: indicatorWidth,
-                      child: Container(
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: AfColors.textPrimary,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    );
-                  },
                 ),
               ],
             );
@@ -158,7 +160,6 @@ class _Tab extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(height: 8),
             AnimatedSwitcher(
               duration: AfDurations.instant,
               child: Icon(
