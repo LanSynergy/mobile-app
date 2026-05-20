@@ -839,14 +839,18 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
       await _player.setAudioDevice(current);
       afLog('audio', 'nudged audioDevice: ${current.name} (attempt $attempt)');
+
+      // After the first successful nudge, check if the pipeline recovered.
+      // If position is advancing, the freeze is resolved — skip remaining
+      // attempts to avoid unnecessary audio pipeline rebuilds.
+      if (attempt == 0 && _player.state.playing && _player.state.position > Duration.zero) {
+        afLog('audio', 'nudge succeeded on first attempt, skipping retries');
+        return;
+      }
     } catch (e) {
       afLog('audio', 'nudgeAudioDevice attempt $attempt failed', error: e);
     }
 
-    // Always run all attempts — each setAudioDevice call forces a pipeline
-    // reset. The pos == 0 check was wrong: after a seek, pos equals the seek
-    // target (not zero), so the gate prevented retries even when the pipeline
-    // was still stuck. Just run the full schedule unconditionally.
     unawaited(_nudgeAudioDeviceWithRetry(attempt + 1, gen));
   }
 
