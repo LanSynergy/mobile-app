@@ -363,12 +363,13 @@ class LocalBackend implements MusicBackend {
   }
 
   /// `local:album:NAME:ARTIST` → (NAME, ARTIST). Returns null for any
-  /// id that isn't a local album id.
+  /// id that isn't a local album id. Splits on the LAST colon so album
+  /// names containing colons ("Greatest Hits: The Best") parse correctly.
   ({String name, String artist})? _parseAlbumId(String id) {
     const prefix = 'local:album:';
     if (!id.startsWith(prefix)) return null;
     final rest = id.substring(prefix.length);
-    final sep = rest.indexOf(':');
+    final sep = rest.lastIndexOf(':');
     if (sep < 0) return null;
     return (name: rest.substring(0, sep), artist: rest.substring(sep + 1));
   }

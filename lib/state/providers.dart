@@ -761,21 +761,23 @@ final albumDetailProvider = FutureProvider.autoDispose
     .family<({AfAlbum album, List<AfTrack> tracks})?, String>((ref, id) async {
   if (id.startsWith('local:album:')) {
     final lib = ref.read(localLibraryProvider);
-    final parts = id.substring('local:album:'.length).split(':');
-    if (parts.length >= 2) {
-      final albumName = parts[0];
-      final artistName = parts.sublist(1).join(':');
-      final tracks = await lib.tracksByAlbum(albumName, artistName);
-      if (tracks.isNotEmpty) {
-        final album = AfAlbum(
-          id: id,
-          name: albumName,
-          artistName: artistName,
-          trackCount: tracks.length,
-          imageUrl: tracks.first.imageUrl,
-        );
-        return (album: album, tracks: tracks);
-      }
+    final rest = id.substring('local:album:'.length);
+    // Split on the LAST colon — album names commonly contain colons
+    // ("Greatest Hits: The Best") while artist names rarely do.
+    final sep = rest.lastIndexOf(':');
+    if (sep < 0) return null;
+    final albumName = rest.substring(0, sep);
+    final artistName = rest.substring(sep + 1);
+    final tracks = await lib.tracksByAlbum(albumName, artistName);
+    if (tracks.isNotEmpty) {
+      final album = AfAlbum(
+        id: id,
+        name: albumName,
+        artistName: artistName,
+        trackCount: tracks.length,
+        imageUrl: tracks.first.imageUrl,
+      );
+      return (album: album, tracks: tracks);
     }
     return null;
   }
