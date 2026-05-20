@@ -1,9 +1,9 @@
 import 'dart:ui';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/models/items.dart';
@@ -243,7 +243,7 @@ class _OpacityAppBar extends StatelessWidget {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(CupertinoIcons.back),
+                        icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: AfColors.textPrimary, size: 24),
                         onPressed: onBack,
                       ),
                       Expanded(
@@ -259,7 +259,7 @@ class _OpacityAppBar extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(CupertinoIcons.ellipsis),
+                        icon: HugeIcon(icon: HugeIcons.strokeRoundedMoreHorizontal, color: AfColors.textPrimary, size: 24),
                         onPressed: onMore,
                       ),
                     ],
@@ -276,7 +276,7 @@ class _OpacityAppBar extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(CupertinoIcons.back),
+                    icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: AfColors.textPrimary, size: 24),
                     onPressed: onBack,
                   ),
                   Expanded(
@@ -292,7 +292,7 @@ class _OpacityAppBar extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(CupertinoIcons.ellipsis),
+                    icon: HugeIcon(icon: HugeIcons.strokeRoundedMoreHorizontal, color: AfColors.textPrimary, size: 24),
                     onPressed: onMore,
                   ),
                 ],
@@ -382,19 +382,19 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: widget.onPlay,
-            icon: const Icon(CupertinoIcons.play),
+            icon: HugeIcon(icon: HugeIcons.strokeRoundedPlay, color: AfColors.textOnPrimary, size: 22),
             label: const Text('Play'),
           ),
         ),
         const SizedBox(width: AfSpacing.s12),
         _IconCircle(
-          icon: _isFavorite ? CupertinoIcons.heart : CupertinoIcons.heart,
+          icon: HugeIcons.strokeRoundedHeartAdd,
           color: _isFavorite ? AfColors.semanticError : null,
           onTap: _toggleFavorite,
         ),
         const SizedBox(width: AfSpacing.s8),
         _IconCircle(
-          icon: CupertinoIcons.arrow_down_circle,
+          icon: HugeIcons.strokeRoundedDownload01,
           onTap: () => ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Offline downloads coming soon'),
@@ -404,7 +404,7 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
         ),
         const SizedBox(width: AfSpacing.s8),
         _IconCircle(
-          icon: CupertinoIcons.ellipsis,
+          icon: HugeIcons.strokeRoundedMoreHorizontal,
           onTap: widget.onMore,
         ),
       ],
@@ -413,7 +413,7 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
 }
 
 class _IconCircle extends StatelessWidget {
-  final IconData icon;
+  final List<List<dynamic>> icon;
   final VoidCallback onTap;
   final Color? color;
   const _IconCircle({required this.icon, required this.onTap, this.color});
@@ -431,7 +431,7 @@ class _IconCircle extends StatelessWidget {
           color: AfColors.surfaceBase,
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, size: 22, color: color ?? AfColors.textPrimary),
+        child: HugeIcon(icon: icon, size: 22, color: color ?? AfColors.textPrimary),
       ),
     );
   }

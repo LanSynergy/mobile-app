@@ -1,10 +1,10 @@
-import 'package:flutter/cupertino.dart';
 import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
     show
         Device,
@@ -312,11 +312,14 @@ class _MetadataRow extends ConsumerWidget {
           ),
         ),
         IconButton(
-          icon: Icon(
-            track.isFavorite ? CupertinoIcons.heart : CupertinoIcons.heart,
+          icon: HugeIcon(
+            icon: track.isFavorite
+                ? HugeIcons.strokeRoundedHeartAdd
+                : HugeIcons.strokeRoundedHeartAdd,
             color: track.isFavorite
                 ? AfColors.semanticError
                 : AfColors.textPrimary,
+            size: 24,
           ),
           tooltip: track.isFavorite
               ? 'Remove from favorites'
@@ -594,7 +597,11 @@ class _TopBar extends ConsumerWidget {
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(CupertinoIcons.chevron_down),
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedChevronsDownUp,
+                  color: AfColors.textPrimary,
+                  size: 24,
+                ),
                 onPressed: () => Navigator.maybePop(context),
               ),
               Expanded(
@@ -629,7 +636,11 @@ class _TopBar extends ConsumerWidget {
                 ),
               ),
               PopupMenuButton<_NowPlayingAction>(
-                icon: const Icon(CupertinoIcons.ellipsis),
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedMoreHorizontal,
+                  color: AfColors.textPrimary,
+                  size: 24,
+                ),
                 onSelected: (action) async {
                   switch (action) {
                     case _NowPlayingAction.startRadio:
@@ -659,7 +670,11 @@ class _TopBar extends ConsumerWidget {
                   const PopupMenuItem(
                     value: _NowPlayingAction.startRadio,
                     child: ListTile(
-                      leading: Icon(CupertinoIcons.antenna_radiowaves_left_right),
+                      leading: HugeIcon(
+                        icon: HugeIcons.strokeRoundedAntenna,
+                        color: AfColors.textSecondary,
+                        size: 24,
+                      ),
                       title: Text('Start radio'),
                       subtitle: Text('Similar songs from your library'),
                       contentPadding: EdgeInsets.zero,
@@ -669,7 +684,11 @@ class _TopBar extends ConsumerWidget {
                     const PopupMenuItem(
                       value: _NowPlayingAction.goToAlbum,
                       child: ListTile(
-                        leading: Icon(CupertinoIcons.music_albums),
+                        leading: HugeIcon(
+                          icon: HugeIcons.strokeRoundedAlbum,
+                          color: AfColors.textSecondary,
+                          size: 24,
+                        ),
                         title: Text('Go to album'),
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -678,7 +697,11 @@ class _TopBar extends ConsumerWidget {
                     const PopupMenuItem(
                       value: _NowPlayingAction.goToArtist,
                       child: ListTile(
-                        leading: Icon(CupertinoIcons.person),
+                        leading: HugeIcon(
+                          icon: HugeIcons.strokeRoundedUser,
+                          color: AfColors.textSecondary,
+                          size: 24,
+                        ),
                         title: Text('Go to artist'),
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -754,8 +777,8 @@ class _NowPlayingMetaChip extends ConsumerWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  CupertinoIcons.moon,
+                const HugeIcon(
+                  icon: HugeIcons.strokeRoundedMoon,
                   size: 13,
                   color: AfColors.indigo300,
                 ),
@@ -813,13 +836,20 @@ class _TransportRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _TransportButton(
-          icon: CupertinoIcons.shuffle,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedShuffle,
+            size: 28,
+            color: shuffleOn ? accent : AfColors.textPrimary,
+          ),
           size: 28,
-          color: shuffleOn ? accent : AfColors.textPrimary,
           onTap: onShuffle,
         ),
         _TransportButton(
-          icon: CupertinoIcons.backward_fill,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedBackward01,
+            size: 40,
+            color: AfColors.textPrimary,
+          ),
           size: 40,
           onTap: onPrev,
         ),
@@ -829,18 +859,25 @@ class _TransportRow extends StatelessWidget {
           onTap: onPlayPause,
         ),
         _TransportButton(
-          icon: CupertinoIcons.forward_fill,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedForward01,
+            size: 40,
+            color: AfColors.textPrimary,
+          ),
           size: 40,
           onTap: onNext,
         ),
         _TransportButton(
-          icon: loopMode == Loop.file
-              ? CupertinoIcons.repeat_1
-              : CupertinoIcons.repeat,
+          icon: HugeIcon(
+            icon: loopMode == Loop.file
+                ? HugeIcons.strokeRoundedRepeatOne01
+                : HugeIcons.strokeRoundedRepeat,
+            size: 28,
+            color: loopMode == Loop.off
+                ? AfColors.textPrimary
+                : accent,
+          ),
           size: 28,
-          color: loopMode == Loop.off
-              ? AfColors.textPrimary
-              : accent,
           onTap: onRepeat,
         ),
       ],
@@ -849,15 +886,13 @@ class _TransportRow extends StatelessWidget {
 }
 
 class _TransportButton extends StatelessWidget {
-  final IconData icon;
+  final Widget icon;
   final double size;
   final VoidCallback onTap;
-  final Color? color;
   const _TransportButton({
     required this.icon,
     required this.size,
     required this.onTap,
-    this.color,
   });
 
   @override
@@ -867,7 +902,7 @@ class _TransportButton extends StatelessWidget {
       child: SizedBox(
         width: AfSpacing.minHitTarget,
         height: AfSpacing.minHitTarget,
-        child: Icon(icon, size: size, color: color ?? AfColors.textPrimary),
+        child: icon,
       ),
     );
   }
@@ -904,8 +939,10 @@ class _PlayButton extends StatelessWidget {
             ),
           ],
         ),
-        child: Icon(
-          isPlaying ? CupertinoIcons.pause : CupertinoIcons.play,
+        child: HugeIcon(
+          icon: isPlaying
+              ? HugeIcons.strokeRoundedPause
+              : HugeIcons.strokeRoundedPlay,
           color: AfColors.textOnPrimary,
           size: 32,
         ),
@@ -923,12 +960,20 @@ class _UtilityRow extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _UtilityIcon(
-          icon: CupertinoIcons.text_quote,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedQuoteDown,
+            size: 22,
+            color: AfColors.textSecondary,
+          ),
           label: 'Lyrics',
           onTap: () => context.push('/lyrics'),
         ),
         _UtilityIcon(
-          icon: CupertinoIcons.slider_horizontal_3,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedSlidersHorizontal,
+            size: 22,
+            color: AfColors.textSecondary,
+          ),
           label: 'EQ',
           onTap: () => context.push('/eq-dsp'),
         ),
@@ -942,21 +987,31 @@ class _UtilityRow extends ConsumerWidget {
           final isSaved = track != null &&
               (savedIds.contains(track.id) || serverIds.contains(track.id));
           return _UtilityIcon(
-            icon: isSaved
-                ? CupertinoIcons.checkmark
-                : CupertinoIcons.plus,
+            icon: HugeIcon(
+              icon: HugeIcons.strokeRoundedPlusSign,
+              size: 22,
+              color: isSaved ? AfColors.indigo300 : AfColors.textSecondary,
+            ),
             label: isSaved ? 'Saved' : 'Save',
             onTap: () => _showSaveDialog(context, ref),
             color: isSaved ? AfColors.indigo300 : null,
           );
         }),
         _UtilityIcon(
-          icon: CupertinoIcons.music_note_list,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedListMusic,
+            size: 22,
+            color: AfColors.textSecondary,
+          ),
           label: 'Queue',
           onTap: () => context.push('/queue'),
         ),
         _UtilityIcon(
-          icon: CupertinoIcons.ellipsis,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedMoreHorizontal,
+            size: 22,
+            color: AfColors.textSecondary,
+          ),
           label: 'More',
           onTap: () => _showMoreSheet(context, ref),
         ),
@@ -976,7 +1031,11 @@ class _UtilityRow extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _MoreItem(
-                icon: CupertinoIcons.moon,
+                icon: HugeIcon(
+                  icon: HugeIcons.strokeRoundedMoon,
+                  size: 22,
+                  color: AfColors.textSecondary,
+                ),
                 label: 'Sleep timer',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -984,7 +1043,11 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: CupertinoIcons.speedometer,
+                icon: HugeIcon(
+                  icon: HugeIcons.strokeRoundedDashboardSpeed01,
+                  size: 22,
+                  color: AfColors.textSecondary,
+                ),
                 label: 'Playback speed',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -992,7 +1055,11 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: Icons.cast_outlined,
+                icon: Icon(
+                  Icons.cast_outlined,
+                  size: 22,
+                  color: AfColors.textSecondary,
+                ),
                 label: 'Audio output',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -1000,7 +1067,11 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: CupertinoIcons.speaker_fill,
+                icon: HugeIcon(
+                  icon: HugeIcons.strokeRoundedSpeaker,
+                  size: 22,
+                  color: AfColors.textSecondary,
+                ),
                 label: 'Volume',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -1008,7 +1079,11 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: CupertinoIcons.bluetooth,
+                icon: HugeIcon(
+                  icon: HugeIcons.strokeRoundedBluetooth,
+                  size: 22,
+                  color: AfColors.textSecondary,
+                ),
                 label: 'Audio delay',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -1016,7 +1091,11 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: CupertinoIcons.repeat_1,
+                icon: HugeIcon(
+                  icon: HugeIcons.strokeRoundedRepeatOne01,
+                  size: 22,
+                  color: AfColors.textSecondary,
+                ),
                 label: 'A-B Loop',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -1024,7 +1103,11 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
               _MoreItem(
-                icon: CupertinoIcons.info,
+                icon: HugeIcon(
+                  icon: HugeIcons.strokeRoundedInformationCircle,
+                  size: 22,
+                  color: AfColors.textSecondary,
+                ),
                 label: 'Show details',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -1054,7 +1137,13 @@ class _UtilityRow extends ConsumerWidget {
               const Text('Volume'),
               const Spacer(),
               IconButton(
-                icon: Icon(muted ? CupertinoIcons.speaker_slash_fill : CupertinoIcons.speaker_fill),
+                icon: HugeIcon(
+                  icon: muted
+                      ? HugeIcons.strokeRoundedSpeaker
+                      : HugeIcons.strokeRoundedSpeaker,
+                  color: AfColors.textPrimary,
+                  size: 24,
+                ),
                 onPressed: () {
                   muted = !muted;
                   svc.setMute(muted);
@@ -1297,7 +1386,7 @@ class _UtilityRow extends ConsumerWidget {
 }
 
 class _UtilityIcon extends StatelessWidget {
-  final IconData icon;
+  final Widget icon;
   final String label;
   final VoidCallback onTap;
   final Color? color;
@@ -1310,14 +1399,13 @@ class _UtilityIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ensureHitTarget: true ensures 48×48 dp minimum touch area.
     return PressScale(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AfSpacing.s8),
         child: Column(
           children: [
-            Icon(icon, size: 22, color: color ?? AfColors.textSecondary),
+            icon,
             const SizedBox(height: 4),
             Text(
               label,
@@ -1333,7 +1421,7 @@ class _UtilityIcon extends StatelessWidget {
 }
 
 class _MoreItem extends StatelessWidget {
-  final IconData icon;
+  final Widget icon;
   final String label;
   final VoidCallback onTap;
 
@@ -1354,7 +1442,7 @@ class _MoreItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: AfColors.textSecondary),
+            icon,
             const SizedBox(width: AfSpacing.s16),
             Text(label, style: AfTypography.bodyMedium),
           ],
@@ -1468,8 +1556,10 @@ class _SleepTimerDialogContentState
               ),
               child: Row(
                 children: [
-                  const Icon(CupertinoIcons.moon,
-                      color: AfColors.indigo300, size: 18),
+                  const HugeIcon(
+                      icon: HugeIcons.strokeRoundedMoon,
+                      color: AfColors.indigo300,
+                      size: 18),
                   const SizedBox(width: AfSpacing.s8),
                   Expanded(
                     child: Text(
@@ -1634,13 +1724,12 @@ class _OutputDialogContent extends ConsumerWidget {
                     ...devices.map((device) {
                       final isActive = active?.name == device.name;
                       return ListTile(
-                        leading: Icon(
-                          _iconForDevice(device.description.isNotEmpty
-                              ? device.description
-                              : device.name),
-                          color: isActive
-                              ? AfColors.indigo300
-                              : AfColors.textSecondary,
+                        leading: _iconForDevice(device.description.isNotEmpty
+                            ? device.description
+                            : device.name,
+                            color: isActive
+                                ? AfColors.indigo300
+                                : AfColors.textSecondary,
                         ),
                         title: Text(
                           device.description.isNotEmpty
@@ -1667,19 +1756,19 @@ class _OutputDialogContent extends ConsumerWidget {
     );
   }
 
-  IconData _iconForDevice(String name) {
+  Widget _iconForDevice(String name, {required Color color}) {
     final n = name.toLowerCase();
     if (n.contains('bluetooth') || n.contains('bt')) {
-      return CupertinoIcons.bluetooth;
+      return HugeIcon(icon: HugeIcons.strokeRoundedBluetooth, color: color, size: 22);
     }
     if (n.contains('headphone') || n.contains('headset') ||
         n.contains('earphone') || n.contains('airpod')) {
-      return Icons.headphones_rounded;
+      return Icon(Icons.headphones_rounded, color: color, size: 22);
     }
-    if (n.contains('speaker')) return Icons.speaker_rounded;
-    if (n.contains('hdmi')) return Icons.tv_rounded;
-    if (n.contains('usb')) return Icons.usb_rounded;
-    return Icons.smartphone_rounded;
+    if (n.contains('speaker')) return Icon(Icons.speaker_rounded, color: color, size: 22);
+    if (n.contains('hdmi')) return Icon(Icons.tv_rounded, color: color, size: 22);
+    if (n.contains('usb')) return Icon(Icons.usb_rounded, color: color, size: 22);
+    return Icon(Icons.smartphone_rounded, color: color, size: 22);
   }
 }
 

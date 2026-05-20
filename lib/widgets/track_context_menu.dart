@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../core/audio/play_actions.dart';
 import '../core/jellyfin/models/items.dart';
@@ -74,9 +74,7 @@ void showTrackContextMenu(
                 const SizedBox(height: AfSpacing.s8),
                 const Divider(height: 1, color: AfColors.surfaceHigh),
                 _MenuItem(
-                  icon: isFavorite
-                      ? CupertinoIcons.heart
-                      : CupertinoIcons.heart,
+                  icon: HugeIcons.strokeRoundedHeartAdd,
                   iconColor: isFavorite ? AfColors.indigo300 : null,
                   label: isFavorite ? 'Remove from liked' : 'Add to liked',
                   onTap: () async {
@@ -105,7 +103,7 @@ void showTrackContextMenu(
                   },
                 ),
                 _MenuItem(
-                  icon: CupertinoIcons.play,
+                  icon: HugeIcons.strokeRoundedPlay,
                   label: 'Play next',
                   onTap: () {
                     _playNext(innerRef, track);
@@ -118,7 +116,7 @@ void showTrackContextMenu(
                   },
                 ),
                 _MenuItem(
-                  icon: CupertinoIcons.music_note_list,
+                  icon: HugeIcons.strokeRoundedListMusic,
                   label: 'Add to queue',
                   onTap: () {
                     _addToQueue(innerRef, track);
@@ -131,7 +129,7 @@ void showTrackContextMenu(
                   },
                 ),
                 _MenuItem(
-                  icon: CupertinoIcons.plus,
+                  icon: HugeIcons.strokeRoundedPlusSign,
                   label: 'Save to playlist',
                   onTap: () {
                     Navigator.of(dialogCtx).pop();
@@ -140,7 +138,7 @@ void showTrackContextMenu(
                 ),
                 if (track.albumId != null)
                   _MenuItem(
-                    icon: CupertinoIcons.music_albums,
+                    icon: HugeIcons.strokeRoundedAlbum,
                     label: 'Go to album',
                     onTap: () {
                       Navigator.of(dialogCtx).pop();
@@ -149,7 +147,7 @@ void showTrackContextMenu(
                   ),
                 if (track.artistId != null)
                   _MenuItem(
-                    icon: CupertinoIcons.person,
+                    icon: HugeIcons.strokeRoundedUser,
                     label: 'Go to artist',
                     onTap: () {
                       Navigator.of(dialogCtx).pop();
@@ -157,7 +155,7 @@ void showTrackContextMenu(
                     },
                   ),
                 _MenuItem(
-                  icon: CupertinoIcons.info,
+                  icon: HugeIcons.strokeRoundedInformationCircle,
                   label: 'Show details',
                   onTap: () {
                     Navigator.of(dialogCtx).pop();
@@ -218,7 +216,7 @@ void showAlbumContextMenu(
             const SizedBox(height: AfSpacing.s8),
             const Divider(height: 1, color: AfColors.surfaceHigh),
             _MenuItem(
-              icon: CupertinoIcons.play_fill,
+              icon: HugeIcons.strokeRoundedPlay,
               label: 'Play album',
               onTap: () async {
                 Navigator.of(dialogCtx).pop();
@@ -231,7 +229,7 @@ void showAlbumContextMenu(
             ),
             if (album.artistId != null)
               _MenuItem(
-                icon: Icons.person_outline_rounded,
+                icon: HugeIcons.strokeRoundedUser,
                 label: 'Go to artist',
                 onTap: () {
                   Navigator.of(dialogCtx).pop();
@@ -282,7 +280,7 @@ void _addToQueue(WidgetRef ref, AfTrack track) {
 }
 
 class _MenuItem extends StatelessWidget {
-  final IconData icon;
+  final List<List<dynamic>> icon;
   final String label;
   final VoidCallback onTap;
   final Color? iconColor;
@@ -297,7 +295,7 @@ class _MenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: iconColor ?? AfColors.textSecondary, size: 22),
+      leading: HugeIcon(icon: icon, color: iconColor ?? AfColors.textSecondary, size: 22),
       title: Text(label, style: AfTypography.bodyMedium),
       onTap: onTap,
       dense: true,

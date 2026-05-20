@@ -1,8 +1,8 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../design_tokens/tokens.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
@@ -22,23 +22,23 @@ class AppShell extends ConsumerWidget {
 
   static const _items = [
     AfBottomNavItem(
-      icon: CupertinoIcons.house,
-      filledIcon: CupertinoIcons.house,
+      icon: HugeIcons.strokeRoundedHome01,
+      filledIcon: HugeIcons.strokeRoundedHome01,
       label: 'Home',
     ),
     AfBottomNavItem(
-      icon: CupertinoIcons.search,
-      filledIcon: CupertinoIcons.search,
+      icon: HugeIcons.strokeRoundedSearch01,
+      filledIcon: HugeIcons.strokeRoundedSearch01,
       label: 'Search',
     ),
     AfBottomNavItem(
-      icon: CupertinoIcons.music_albums,
-      filledIcon: CupertinoIcons.music_albums,
+      icon: HugeIcons.strokeRoundedAlbum,
+      filledIcon: HugeIcons.strokeRoundedAlbum,
       label: 'Library',
     ),
     AfBottomNavItem(
-      icon: CupertinoIcons.person,
-      filledIcon: CupertinoIcons.person,
+      icon: HugeIcons.strokeRoundedUser,
+      filledIcon: HugeIcons.strokeRoundedUser,
       label: 'Profile',
     ),
   ];

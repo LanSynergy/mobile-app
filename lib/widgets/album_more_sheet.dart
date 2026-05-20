@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../core/audio/play_actions.dart';
 import '../core/jellyfin/models/items.dart';
@@ -76,7 +76,7 @@ void showAlbumMoreSheet(
                   const SizedBox(height: AfSpacing.s8),
                   const Divider(height: 1, color: AfColors.surfaceHigh),
                   _MenuItem(
-                    icon: CupertinoIcons.shuffle,
+                    icon: HugeIcons.strokeRoundedShuffle,
                     label: 'Shuffle play',
                     enabled: tracks.isNotEmpty,
                     onTap: () async {
@@ -86,7 +86,7 @@ void showAlbumMoreSheet(
                     },
                   ),
                   _MenuItem(
-                    icon: CupertinoIcons.play,
+                    icon: HugeIcons.strokeRoundedPlay,
                     label: 'Play next',
                     enabled: tracks.isNotEmpty,
                     onTap: () {
@@ -102,7 +102,7 @@ void showAlbumMoreSheet(
                     },
                   ),
                   _MenuItem(
-                    icon: CupertinoIcons.music_note_list,
+                    icon: HugeIcons.strokeRoundedListMusic,
                     label: 'Add to queue',
                     enabled: tracks.isNotEmpty,
                     onTap: () {
@@ -119,7 +119,7 @@ void showAlbumMoreSheet(
                   ),
                   if (album.artistId != null)
                     _MenuItem(
-                      icon: CupertinoIcons.person,
+                      icon: HugeIcons.strokeRoundedUser,
                       label: 'Go to artist',
                       onTap: () {
                         Navigator.of(sheetCtx).pop();
@@ -179,7 +179,7 @@ String _enqueueLabel(int count, String verbPhrase) {
 }
 
 class _MenuItem extends StatelessWidget {
-  final IconData icon;
+  final List<List<dynamic>> icon;
   final String label;
   final VoidCallback onTap;
   final bool enabled;
@@ -194,8 +194,8 @@ class _MenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(
-        icon,
+      leading: HugeIcon(
+        icon: icon,
         color: enabled
             ? AfColors.textSecondary
             : AfColors.textTertiary.withValues(alpha: 0.4),

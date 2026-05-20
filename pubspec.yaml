@@ -41,7 +41,7 @@ dependencies:
 
   # Fonts
   google_fonts: ^6.2.1
-  cupertino_icons: ^1.0.8
+  hugeicons: ^1.1.7
 
   # Crypto (Subsonic token auth: md5(password + salt))
   crypto: ^3.0.6
