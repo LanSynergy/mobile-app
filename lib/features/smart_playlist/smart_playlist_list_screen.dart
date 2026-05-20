@@ -181,23 +181,32 @@ class _PlaylistTile extends StatelessWidget {
   }
 
   void _showDeleteDialog(BuildContext context) {
-    showAfDialog<void>(
+    showBlurDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Delete "${playlist.name}"?'),
-        content: const Text('This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              onDelete();
-            },
-            child: Text('Delete',
-                style: TextStyle(color: AfColors.semanticError)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Delete "${playlist.name}"?', style: AfTypography.titleMedium),
+          const SizedBox(height: AfSpacing.s12),
+          Text('This action cannot be undone.', style: AfTypography.bodyMedium),
+          const SizedBox(height: AfSpacing.s24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  onDelete();
+                },
+                child: Text('Delete',
+                    style: TextStyle(color: AfColors.semanticError)),
+              ),
+            ],
           ),
         ],
       ),

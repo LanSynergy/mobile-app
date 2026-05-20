@@ -11,7 +11,7 @@ import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import '../utils/display_error.dart';
-import 'af_dialog.dart';
+import 'bottom_sheet.dart';
 import 'save_to_playlist_sheet.dart';
 import 'track_details_sheet.dart';
 
@@ -31,140 +31,134 @@ void showTrackContextMenu(
   AfTrack track,
 ) {
   HapticFeedback.mediumImpact();
-  showAfDialog<void>(
+  showBlurBottomSheet<void>(
     context: context,
     builder: (dialogCtx) => Consumer(
       builder: (ctx, innerRef, _) {
         final overrides = innerRef.watch(trackFavoriteOverridesProvider);
         final isFavorite = overrides[track.id] ?? track.isFavorite;
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AfSpacing.s12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Track info header.
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AfSpacing.gutterGenerous,
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Track info header.
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AfSpacing.gutterGenerous,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    track.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AfTypography.titleSmall,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        track.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AfTypography.titleSmall,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        track.artistName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AfTypography.bodySmall.copyWith(
-                          color: AfColors.textSecondary,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 2),
+                  Text(
+                    track.artistName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textSecondary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: AfSpacing.s8),
-                const Divider(height: 1, color: AfColors.surfaceHigh),
-                _MenuItem(
-                  icon: FontAwesomeIcons.heart,
-                  iconColor: isFavorite ? AfColors.indigo300 : null,
-                  label: isFavorite ? 'Remove from liked' : 'Add to liked',
-                  onTap: () async {
-                    Navigator.of(dialogCtx).pop();
-                    try {
-                      await innerRef.read(favoriteToggleProvider)(track);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(isFavorite
-                                ? 'Removed from liked songs'
-                                : 'Added to liked songs'),
-                          ),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content:
-                                Text(displayError(e, prefix: 'Failed')),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                ),
-                _MenuItem(
-                  icon: FontAwesomeIcons.play,
-                  label: 'Play next',
-                  onTap: () {
-                    _playNext(innerRef, track);
-                    Navigator.of(dialogCtx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content:
-                              Text('"${track.title}" will play next')),
-                    );
-                  },
-                ),
-                _MenuItem(
-                  icon: FontAwesomeIcons.listUl,
-                  label: 'Add to queue',
-                  onTap: () {
-                    _addToQueue(innerRef, track);
-                    Navigator.of(dialogCtx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content:
-                              Text('"${track.title}" added to queue')),
-                    );
-                  },
-                ),
-                _MenuItem(
-                  icon: FontAwesomeIcons.plus,
-                  label: 'Save to playlist',
-                  onTap: () {
-                    Navigator.of(dialogCtx).pop();
-                    showSaveToPlaylistSheet(context, innerRef, track);
-                  },
-                ),
-                if (track.albumId != null)
-                  _MenuItem(
-                    icon: FontAwesomeIcons.compactDisc,
-                    label: 'Go to album',
-                    onTap: () {
-                      Navigator.of(dialogCtx).pop();
-                      context.push('/album/${track.albumId}');
-                    },
-                  ),
-                if (track.artistId != null)
-                  _MenuItem(
-                    icon: FontAwesomeIcons.user,
-                    label: 'Go to artist',
-                    onTap: () {
-                      Navigator.of(dialogCtx).pop();
-                      context.push('/artist/${track.artistId}');
-                    },
-                  ),
-                _MenuItem(
-                  icon: FontAwesomeIcons.circleInfo,
-                  label: 'Show details',
-                  onTap: () {
-                    Navigator.of(dialogCtx).pop();
-                    showTrackDetailsSheet(context, innerRef, track);
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+            const SizedBox(height: AfSpacing.s8),
+            const Divider(height: 1, color: AfColors.surfaceHigh),
+            _MenuItem(
+              icon: FontAwesomeIcons.heart,
+              iconColor: isFavorite ? AfColors.indigo300 : null,
+              label: isFavorite ? 'Remove from liked' : 'Add to liked',
+              onTap: () async {
+                Navigator.of(dialogCtx).pop();
+                try {
+                  await innerRef.read(favoriteToggleProvider)(track);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(isFavorite
+                            ? 'Removed from liked songs'
+                            : 'Added to liked songs'),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content:
+                            Text(displayError(e, prefix: 'Failed')),
+                      ),
+                    );
+                  }
+                }
+              },
+            ),
+            _MenuItem(
+              icon: FontAwesomeIcons.play,
+              label: 'Play next',
+              onTap: () {
+                _playNext(innerRef, track);
+                Navigator.of(dialogCtx).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content:
+                          Text('"${track.title}" will play next')),
+                );
+              },
+            ),
+            _MenuItem(
+              icon: FontAwesomeIcons.listUl,
+              label: 'Add to queue',
+              onTap: () {
+                _addToQueue(innerRef, track);
+                Navigator.of(dialogCtx).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content:
+                          Text('"${track.title}" added to queue')),
+                );
+              },
+            ),
+            _MenuItem(
+              icon: FontAwesomeIcons.plus,
+              label: 'Save to playlist',
+              onTap: () {
+                Navigator.of(dialogCtx).pop();
+                showSaveToPlaylistSheet(context, innerRef, track);
+              },
+            ),
+            if (track.albumId != null)
+              _MenuItem(
+                icon: FontAwesomeIcons.compactDisc,
+                label: 'Go to album',
+                onTap: () {
+                  Navigator.of(dialogCtx).pop();
+                  context.push('/album/${track.albumId}');
+                },
+              ),
+            if (track.artistId != null)
+              _MenuItem(
+                icon: FontAwesomeIcons.user,
+                label: 'Go to artist',
+                onTap: () {
+                  Navigator.of(dialogCtx).pop();
+                  context.push('/artist/${track.artistId}');
+                },
+              ),
+            _MenuItem(
+              icon: FontAwesomeIcons.circleInfo,
+              label: 'Show details',
+              onTap: () {
+                Navigator.of(dialogCtx).pop();
+                showTrackDetailsSheet(context, innerRef, track);
+              },
+            ),
+          ],
         );
       },
     ),
@@ -178,67 +172,61 @@ void showAlbumContextMenu(
   AfAlbum album,
 ) {
   HapticFeedback.mediumImpact();
-  showAfDialog<void>(
+  showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AfSpacing.gutterGenerous,
+    builder: (dialogCtx) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.gutterGenerous,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                album.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AfTypography.titleSmall,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    album.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AfTypography.titleSmall,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    album.artistName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textSecondary,
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 2),
+              Text(
+                album.artistName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textSecondary,
+                ),
               ),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            const Divider(height: 1, color: AfColors.surfaceHigh),
-            _MenuItem(
-              icon: FontAwesomeIcons.play,
-              label: 'Play album',
-              onTap: () async {
-                Navigator.of(dialogCtx).pop();
-                final detail = await ref.read(
-                    albumDetailProvider(album.id).future);
-                if (detail != null) {
-                  await ref.read(playActionsProvider).playAlbum(detail.tracks);
-                }
-              },
-            ),
-            if (album.artistId != null)
-              _MenuItem(
-                icon: FontAwesomeIcons.user,
-                label: 'Go to artist',
-                onTap: () {
-                  Navigator.of(dialogCtx).pop();
-                  context.push('/artist/${album.artistId}');
-                },
-              ),
-          ],
+            ],
+          ),
         ),
-      ),
+        const SizedBox(height: AfSpacing.s8),
+        const Divider(height: 1, color: AfColors.surfaceHigh),
+        _MenuItem(
+          icon: FontAwesomeIcons.play,
+          label: 'Play album',
+          onTap: () async {
+            Navigator.of(dialogCtx).pop();
+            final detail = await ref.read(
+                albumDetailProvider(album.id).future);
+            if (detail != null) {
+              await ref.read(playActionsProvider).playAlbum(detail.tracks);
+            }
+          },
+        ),
+        if (album.artistId != null)
+          _MenuItem(
+            icon: FontAwesomeIcons.user,
+            label: 'Go to artist',
+            onTap: () {
+              Navigator.of(dialogCtx).pop();
+              context.push('/artist/${album.artistId}');
+            },
+          ),
+      ],
     ),
   );
 }

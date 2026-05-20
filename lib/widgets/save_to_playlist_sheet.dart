@@ -9,7 +9,7 @@ import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import '../utils/display_error.dart';
-import 'af_dialog.dart';
+import 'bottom_sheet.dart';
 
 /// Shows the "Save to playlist" sheet for an arbitrary [AfTrack].
 ///
@@ -30,23 +30,20 @@ void showSaveToPlaylistSheet(
     return;
   }
   HapticFeedback.mediumImpact();
-  showAfDialog<void>(
+  showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
-        child: SaveToPlaylistSheet(
-          track: track,
-          backend: backend,
-          onInvalidate: () => ref.invalidate(allPlaylistsProvider),
-          onSaved: () {
-            ref.read(savedTrackIdsProvider.notifier).update(
-                  (ids) => {...ids, track.id},
-                );
-            ref.invalidate(playlistTrackIdsProvider);
-          },
-        ),
+    builder: (_) => ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
+      child: SaveToPlaylistSheet(
+        track: track,
+        backend: backend,
+        onInvalidate: () => ref.invalidate(allPlaylistsProvider),
+        onSaved: () {
+          ref.read(savedTrackIdsProvider.notifier).update(
+                (ids) => {...ids, track.id},
+              );
+          ref.invalidate(playlistTrackIdsProvider);
+        },
       ),
     ),
   );
@@ -157,18 +154,6 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: AfSpacing.s12),
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AfColors.textTertiary,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: AfSpacing.s12),
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),

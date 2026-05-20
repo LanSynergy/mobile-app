@@ -21,6 +21,7 @@ import '../../build_id.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/af_dialog.dart';
+import '../../widgets/bottom_sheet.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -82,24 +83,34 @@ class SettingsScreen extends ConsumerWidget {
                     title: 'Sign out',
                     subtitle: 'Disconnect from ${auth.server.name}',
                     onTap: () async {
-                      final confirmed = await showAfDialog<bool>(
+                      final confirmed = await showBlurDialog<bool>(
                         context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Sign out?'),
-                          content: Text(
-                            'You will be disconnected from ${auth.server.name}.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Cancel'),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text('Sign out?', style: AfTypography.titleMedium),
+                            const SizedBox(height: AfSpacing.s12),
+                            Text(
+                              'You will be disconnected from ${auth.server.name}.',
+                              style: AfTypography.bodyMedium,
                             ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              child: Text(
-                                'Sign out',
-                                style: TextStyle(color: AfColors.semanticError),
-                              ),
+                            const SizedBox(height: AfSpacing.s24),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: Text(
+                                    'Sign out',
+                                    style: TextStyle(color: AfColors.semanticError),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -133,21 +144,31 @@ class SettingsScreen extends ConsumerWidget {
                   title: 'Switch mode',
                   subtitle: isLocal ? 'Currently: Local files' : 'Currently: Server',
                   onTap: () async {
-                    final confirmed = await showAfDialog<bool>(
+                    final confirmed = await showBlurDialog<bool>(
                       context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Switch mode?'),
-                        content: const Text(
-                          'This will return you to the mode selection screen.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('Cancel'),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text('Switch mode?', style: AfTypography.titleMedium),
+                          const SizedBox(height: AfSpacing.s12),
+                          Text(
+                            'This will return you to the mode selection screen.',
+                            style: AfTypography.bodyMedium,
                           ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('Switch'),
+                          const SizedBox(height: AfSpacing.s24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Switch'),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -309,24 +330,34 @@ class SettingsScreen extends ConsumerWidget {
                   title: 'Clear app data',
                   subtitle: 'Reset app to initial state',
                   onTap: () async {
-                    final confirmed = await showAfDialog<bool>(
+                    final confirmed = await showBlurDialog<bool>(
                       context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Clear app data?'),
-                        content: const Text(
-                          'This will wipe all local data, settings, and downloaded metadata. You will need to set up the app again.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('Cancel'),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text('Clear app data?', style: AfTypography.titleMedium),
+                          const SizedBox(height: AfSpacing.s12),
+                          Text(
+                            'This will wipe all local data, settings, and downloaded metadata. You will need to set up the app again.',
+                            style: AfTypography.bodyMedium,
                           ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: Text(
-                              'Clear data',
-                              style: TextStyle(color: AfColors.semanticError),
-                            ),
+                          const SizedBox(height: AfSpacing.s24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: Text(
+                                  'Clear data',
+                                  style: TextStyle(color: AfColors.semanticError),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -629,37 +660,31 @@ void _showSampleRateDialog(BuildContext context, WidgetRef ref) {
   final isForced = rates.contains(actualRate) && actualRate != 0;
   final activeRate = isForced ? actualRate : 0;
 
-  showAfDialog<void>(
+  showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous),
-              child: Text('Sample rate', style: AfTypography.titleSmall),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            for (final rate in rates)
-              _OptionTile(
-                label: labels[rate]!,
-                subtitle: rate == 0 ? 'Matches the source file' : null,
-                isActive: rate == activeRate,
-                onTap: () {
-                  unawaited(
-                      ref.read(playerServiceProvider).setAudioSampleRate(rate));
-                  unawaited(PlayerSettingsStore.saveSampleRate(rate));
-                  Navigator.of(dialogCtx).pop();
-                },
-              ),
-          ],
+    builder: (dialogCtx) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous),
+          child: Text('Sample rate', style: AfTypography.titleSmall),
         ),
-      ),
+        const SizedBox(height: AfSpacing.s8),
+        for (final rate in rates)
+          _OptionTile(
+            label: labels[rate]!,
+            subtitle: rate == 0 ? 'Matches the source file' : null,
+            isActive: rate == activeRate,
+            onTap: () {
+              unawaited(
+                  ref.read(playerServiceProvider).setAudioSampleRate(rate));
+              unawaited(PlayerSettingsStore.saveSampleRate(rate));
+              Navigator.of(dialogCtx).pop();
+            },
+          ),
+      ],
     ),
   );
 }
@@ -679,37 +704,31 @@ void _showFormatDialog(BuildContext context, WidgetRef ref) {
     (Format.float64, '64-bit float'),
   ];
 
-  showAfDialog<void>(
+  showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous),
-              child: Text('Bit depth', style: AfTypography.titleSmall),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            for (final (format, label) in formats)
-              _OptionTile(
-                label: label,
-                subtitle: format == Format.auto ? 'Matches the source file' : null,
-                isActive: format == activeFormat,
-                onTap: () {
-                  unawaited(
-                      ref.read(playerServiceProvider).setAudioFormat(format));
-                  unawaited(PlayerSettingsStore.saveFormat(format));
-                  Navigator.of(dialogCtx).pop();
-                },
-              ),
-          ],
+    builder: (dialogCtx) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous),
+          child: Text('Bit depth', style: AfTypography.titleSmall),
         ),
-      ),
+        const SizedBox(height: AfSpacing.s8),
+        for (final (format, label) in formats)
+          _OptionTile(
+            label: label,
+            subtitle: format == Format.auto ? 'Matches the source file' : null,
+            isActive: format == activeFormat,
+            onTap: () {
+              unawaited(
+                  ref.read(playerServiceProvider).setAudioFormat(format));
+              unawaited(PlayerSettingsStore.saveFormat(format));
+              Navigator.of(dialogCtx).pop();
+            },
+          ),
+      ],
     ),
   );
 }
@@ -727,51 +746,45 @@ void _showCacheDurationDialog(BuildContext context, WidgetRef ref) {
   // If the player hasn't been configured yet, default highlights "30 seconds".
   final effectiveSecs = currentSecs > 0 ? currentSecs : 30;
 
-  showAfDialog<void>(
+  showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous),
-              child: Text('Cache duration', style: AfTypography.titleSmall),
-            ),
-            const SizedBox(height: AfSpacing.s4),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous),
-              child: Text(
-                'How far ahead to buffer audio from the server.',
-                style: AfTypography.bodySmall
-                    .copyWith(color: AfColors.textTertiary),
-              ),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            for (final (secs, label) in options)
-              _OptionTile(
-                label: label,
-                isActive: secs == effectiveSecs,
-                onTap: () {
-                  final svc = ref.read(playerServiceProvider);
-                  unawaited(svc.setCache(
-                    svc.cacheSettings.copyWith(
-                      mode: Cache.yes,
-                      secs: Duration(seconds: secs),
-                    ),
-                  ));
-                  unawaited(PlayerSettingsStore.saveCacheSecs(secs));
-                  Navigator.of(dialogCtx).pop();
-                },
-              ),
-          ],
+    builder: (dialogCtx) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous),
+          child: Text('Cache duration', style: AfTypography.titleSmall),
         ),
-      ),
+        const SizedBox(height: AfSpacing.s4),
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous),
+          child: Text(
+            'How far ahead to buffer audio from the server.',
+            style: AfTypography.bodySmall
+                .copyWith(color: AfColors.textTertiary),
+          ),
+        ),
+        const SizedBox(height: AfSpacing.s8),
+        for (final (secs, label) in options)
+          _OptionTile(
+            label: label,
+            isActive: secs == effectiveSecs,
+            onTap: () {
+              final svc = ref.read(playerServiceProvider);
+              unawaited(svc.setCache(
+                svc.cacheSettings.copyWith(
+                  mode: Cache.yes,
+                  secs: Duration(seconds: secs),
+                ),
+              ));
+              unawaited(PlayerSettingsStore.saveCacheSecs(secs));
+              Navigator.of(dialogCtx).pop();
+            },
+          ),
+      ],
     ),
   );
 }
@@ -789,47 +802,41 @@ void _showAudioBufferDialog(BuildContext context, WidgetRef ref) {
   // Default is 200ms if the player reports 0.
   final effectiveMs = currentMs > 0 ? currentMs : 200;
 
-  showAfDialog<void>(
+  showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous),
-              child: Text('Audio buffer', style: AfTypography.titleSmall),
-            ),
-            const SizedBox(height: AfSpacing.s4),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous),
-              child: Text(
-                'Lower = less latency. Higher = more stable on slow networks.',
-                style: AfTypography.bodySmall
-                    .copyWith(color: AfColors.textTertiary),
-              ),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            for (final (ms, label) in options)
-              _OptionTile(
-                label: label,
-                isActive: ms == effectiveMs,
-                onTap: () {
-                  unawaited(ref.read(playerServiceProvider).setAudioBuffer(
-                        Duration(milliseconds: ms),
-                      ));
-                  unawaited(PlayerSettingsStore.saveBufferMs(ms));
-                  Navigator.of(dialogCtx).pop();
-                },
-              ),
-          ],
+    builder: (dialogCtx) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous),
+          child: Text('Audio buffer', style: AfTypography.titleSmall),
         ),
-      ),
+        const SizedBox(height: AfSpacing.s4),
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous),
+          child: Text(
+            'Lower = less latency. Higher = more stable on slow networks.',
+            style: AfTypography.bodySmall
+                .copyWith(color: AfColors.textTertiary),
+          ),
+        ),
+        const SizedBox(height: AfSpacing.s8),
+        for (final (ms, label) in options)
+          _OptionTile(
+            label: label,
+            isActive: ms == effectiveMs,
+            onTap: () {
+              unawaited(ref.read(playerServiceProvider).setAudioBuffer(
+                    Duration(milliseconds: ms),
+                  ));
+              unawaited(PlayerSettingsStore.saveBufferMs(ms));
+              Navigator.of(dialogCtx).pop();
+            },
+          ),
+      ],
     ),
   );
 }
@@ -913,58 +920,49 @@ void _showGaplessDialog(BuildContext context, WidgetRef ref) {
     (Gapless.no, 'Off', 'Close and re-open audio output between tracks'),
   ];
 
-  showAfDialog<void>(
+  showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous),
-              child:
-                  Text('Gapless playback', style: AfTypography.titleSmall),
-            ),
-            const SizedBox(height: AfSpacing.s4),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous),
-              child: Text(
-                'Controls how the player handles track transitions.',
-                style: AfTypography.bodySmall
-                    .copyWith(color: AfColors.textTertiary),
-              ),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            for (final (mode, label, subtitle) in options)
-              _OptionTile(
-                label: label,
-                subtitle: subtitle,
-                isActive: mode == current,
-                onTap: () {
-                  unawaited(svc.setGapless(mode));
-                  unawaited(PlayerSettingsStore.saveGapless(mode));
-                  Navigator.of(dialogCtx).pop();
-                },
-              ),
-          ],
+    builder: (dialogCtx) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous),
+          child:
+              Text('Gapless playback', style: AfTypography.titleSmall),
         ),
-      ),
+        const SizedBox(height: AfSpacing.s4),
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous),
+          child: Text(
+            'Controls how the player handles track transitions.',
+            style: AfTypography.bodySmall
+                .copyWith(color: AfColors.textTertiary),
+          ),
+        ),
+        const SizedBox(height: AfSpacing.s8),
+        for (final (mode, label, subtitle) in options)
+          _OptionTile(
+            label: label,
+            subtitle: subtitle,
+            isActive: mode == current,
+            onTap: () {
+              unawaited(svc.setGapless(mode));
+              unawaited(PlayerSettingsStore.saveGapless(mode));
+              Navigator.of(dialogCtx).pop();
+            },
+          ),
+      ],
     ),
   );
 }
 
 void _showReplayGainDialog(BuildContext context, WidgetRef ref) {
-  showAfDialog<void>(
+  showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-      child: _ReplayGainDialogContent(),
-    ),
+    builder: (_) => _ReplayGainDialogContent(),
   );
 }
 
@@ -1011,17 +1009,15 @@ class _ReplayGainDialogContentState
       (ReplayGain.album, 'Album', 'Normalize per album (preserves dynamics)'),
     ];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(
-                horizontal: AfSpacing.gutterGenerous),
-            child: Text('ReplayGain', style: AfTypography.titleSmall),
-          ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous),
+          child: Text('ReplayGain', style: AfTypography.titleSmall),
+        ),
           const SizedBox(height: AfSpacing.s4),
           Padding(
             padding: const EdgeInsets.symmetric(
@@ -1138,8 +1134,7 @@ class _ReplayGainDialogContentState
             ),
           ],
         ],
-      ),
-    );
+      );
   }
 }
 

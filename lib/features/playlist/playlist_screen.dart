@@ -229,20 +229,29 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   // ── Remove ─────────────────────────────────────────────────────────────────
 
   Future<bool> _confirmRemove(BuildContext context, String title) async {
-    return await showAfDialog<bool>(
+    return await showBlurDialog<bool>(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Remove track'),
-            content: Text('Remove "$title" from this playlist?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Remove',
-                    style: TextStyle(color: AfColors.semanticError)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Remove track', style: AfTypography.titleMedium),
+              const SizedBox(height: AfSpacing.s12),
+              Text('Remove "$title" from this playlist?', style: AfTypography.bodyMedium),
+              const SizedBox(height: AfSpacing.s24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Remove',
+                        style: TextStyle(color: AfColors.semanticError)),
+                  ),
+                ],
               ),
             ],
           ),
@@ -304,21 +313,31 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         }
 
       case _PlaylistAction.delete:
-        final confirmed = await showAfDialog<bool>(
+        final confirmed = await showBlurDialog<bool>(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Delete playlist'),
-            content: Text(
-                'Delete "${detail.playlist.name}"? This cannot be undone.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Delete',
-                    style: TextStyle(color: AfColors.semanticError)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Delete playlist', style: AfTypography.titleMedium),
+              const SizedBox(height: AfSpacing.s12),
+              Text(
+                  'Delete "${detail.playlist.name}"? This cannot be undone.',
+                  style: AfTypography.bodyMedium),
+              const SizedBox(height: AfSpacing.s24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Delete',
+                        style: TextStyle(color: AfColors.semanticError)),
+                  ),
+                ],
               ),
             ],
           ),
@@ -342,24 +361,33 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
       BuildContext context, String currentName) async {
     final ctl = TextEditingController(text: currentName);
     try {
-      return await showAfDialog<String>(
+      return await showBlurDialog<String>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Rename playlist'),
-          content: TextField(
-            controller: ctl,
-            autofocus: true,
-            decoration: const InputDecoration(hintText: 'Playlist name'),
-            onSubmitted: (v) => Navigator.pop(ctx, v),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Rename playlist', style: AfTypography.titleMedium),
+            const SizedBox(height: AfSpacing.s16),
+            TextField(
+              controller: ctl,
+              autofocus: true,
+              decoration: const InputDecoration(hintText: 'Playlist name'),
+              onSubmitted: (v) => Navigator.pop(context, v),
             ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, ctl.text),
-              child: const Text('Rename'),
+            const SizedBox(height: AfSpacing.s24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, ctl.text),
+                  child: const Text('Rename'),
+                ),
+              ],
             ),
           ],
         ),

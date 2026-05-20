@@ -543,26 +543,35 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
 
   Future<void> _saveCurrentAsPreset() async {
     final controller = TextEditingController();
-    final name = await showAfDialog<String>(
+    final name = await showBlurDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Save EQ Preset'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Preset name',
-            border: OutlineInputBorder(),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Save EQ Preset', style: AfTypography.titleMedium),
+          const SizedBox(height: AfSpacing.s16),
+          TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: 'Preset name',
+              border: OutlineInputBorder(),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('Save'),
+          const SizedBox(height: AfSpacing.s24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, controller.text.trim()),
+                child: const Text('Save'),
+              ),
+            ],
           ),
         ],
       ),
@@ -1312,25 +1321,34 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   }
 
   void _showDeletePresetDialog(String name) {
-    showAfDialog<void>(
+    showBlurDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Delete "$name"?'),
-        content: const Text('This preset will be permanently removed.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _deletePreset(name);
-            },
-            child: Text(
-              'Delete',
-              style: TextStyle(color: AfColors.semanticError),
-            ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Delete "$name"?', style: AfTypography.titleMedium),
+          const SizedBox(height: AfSpacing.s12),
+          Text('This preset will be permanently removed.', style: AfTypography.bodyMedium),
+          const SizedBox(height: AfSpacing.s24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _deletePreset(name);
+                },
+                child: Text(
+                  'Delete',
+                  style: TextStyle(color: AfColors.semanticError),
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -20,6 +20,7 @@ import '../../utils/time_format.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/audio_visual_scrubber.dart';
+import '../../widgets/bottom_sheet.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/quality_chip.dart';
 import '../../widgets/save_to_playlist_sheet.dart';
@@ -763,13 +764,9 @@ class _NowPlayingMetaChip extends ConsumerWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () {
-            showAfDialog<void>(
+            showBlurDialog<void>(
               context: context,
-              builder: (_) => Dialog(
-                shape:
-                    RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-                child: const _SleepTimerDialogContent(),
-              ),
+              child: const _SleepTimerDialogContent(),
             );
           },
           child: Padding(
@@ -1023,16 +1020,12 @@ class _UtilityRow extends ConsumerWidget {
   }
 
   void _showMoreSheet(BuildContext context, WidgetRef ref) {
-    showAfDialog<void>(
+    showBlurBottomSheet<void>(
       context: context,
-      builder: (dialogCtx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+      builder: (dialogCtx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
               _MoreItem(
                 icon: FaIcon(
                   FontAwesomeIcons.moon,
@@ -1121,8 +1114,6 @@ class _UtilityRow extends ConsumerWidget {
                 },
               ),
             ],
-          ),
-        ),
       ),
     );
   }
@@ -1131,52 +1122,52 @@ class _UtilityRow extends ConsumerWidget {
     final svc = ref.read(playerServiceProvider);
     double volume = svc.volume;
     bool muted = svc.isMuted;
-    showAfDialog<void>(
+    showBlurDialog<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Row(
-            children: [
-              const Text('Volume'),
-              const Spacer(),
-              IconButton(
-                icon: FaIcon(
-                  muted
-                      ? FontAwesomeIcons.volumeXmark
-                      : FontAwesomeIcons.volumeHigh,
-                  color: AfColors.textPrimary,
-                  size: 24,
+      child: StatefulBuilder(
+        builder: (ctx, setDialogState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Text('Volume', style: AfTypography.titleMedium),
+                const Spacer(),
+                IconButton(
+                  icon: FaIcon(
+                    muted
+                        ? FontAwesomeIcons.volumeXmark
+                        : FontAwesomeIcons.volumeHigh,
+                    color: AfColors.textPrimary,
+                    size: 24,
+                  ),
+                  onPressed: () {
+                    muted = !muted;
+                    svc.setMute(muted);
+                    setDialogState(() {});
+                  },
                 ),
-                onPressed: () {
-                  muted = !muted;
-                  svc.setMute(muted);
-                  setDialogState(() {});
-                },
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Slider(
-                value: volume.clamp(0, 150),
-                min: 0,
-                max: 150,
-                divisions: 30,
-                activeColor: AfColors.indigo400,
-                label: '${volume.round()}%',
-                onChanged: (v) {
-                  volume = v;
-                  svc.setVolume(v);
-                  setDialogState(() {});
-                },
-              ),
-              Text(
-                '${volume.round()}%',
-                style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
-              ),
-            ],
-          ),
+              ],
+            ),
+            const SizedBox(height: AfSpacing.s16),
+            Slider(
+              value: volume.clamp(0, 150),
+              min: 0,
+              max: 150,
+              divisions: 30,
+              activeColor: AfColors.indigo400,
+              label: '${volume.round()}%',
+              onChanged: (v) {
+                volume = v;
+                svc.setVolume(v);
+                setDialogState(() {});
+              },
+            ),
+            Text(
+              '${volume.round()}%',
+              style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
+            ),
+          ],
         ),
       ),
     );
@@ -1185,50 +1176,55 @@ class _UtilityRow extends ConsumerWidget {
   void _showAudioDelayDialog(BuildContext context, WidgetRef ref) {
     final svc = ref.read(playerServiceProvider);
     double delayMs = svc.audioDelay.inMilliseconds.toDouble();
-    showAfDialog<void>(
+    showBlurDialog<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Audio delay'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Shift audio timing for Bluetooth sync',
-                style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-              ),
-              const SizedBox(height: AfSpacing.s16),
-              Slider(
-                value: delayMs.clamp(-500, 500),
-                min: -500,
-                max: 500,
-                divisions: 20,
-                activeColor: AfColors.indigo400,
-                label: '${delayMs.round()} ms',
-                onChanged: (v) {
-                  delayMs = v;
-                  svc.setAudioDelay(Duration(milliseconds: v.round()));
-                  setDialogState(() {});
-                },
-              ),
-              Text(
-                '${delayMs.round()} ms',
-                style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                delayMs = 0;
-                svc.setAudioDelay(Duration.zero);
+      child: StatefulBuilder(
+        builder: (ctx, setDialogState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Audio delay', style: AfTypography.titleMedium),
+            const SizedBox(height: AfSpacing.s12),
+            Text(
+              'Shift audio timing for Bluetooth sync',
+              style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
+            ),
+            const SizedBox(height: AfSpacing.s16),
+            Slider(
+              value: delayMs.clamp(-500, 500),
+              min: -500,
+              max: 500,
+              divisions: 20,
+              activeColor: AfColors.indigo400,
+              label: '${delayMs.round()} ms',
+              onChanged: (v) {
+                delayMs = v;
+                svc.setAudioDelay(Duration(milliseconds: v.round()));
                 setDialogState(() {});
               },
-              child: const Text('Reset'),
             ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Done'),
+            Text(
+              '${delayMs.round()} ms',
+              style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
+            ),
+            const SizedBox(height: AfSpacing.s24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    delayMs = 0;
+                    svc.setAudioDelay(Duration.zero);
+                    setDialogState(() {});
+                  },
+                  child: const Text('Reset'),
+                ),
+                const SizedBox(width: AfSpacing.s8),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Done'),
+                ),
+              ],
             ),
           ],
         ),
@@ -1238,75 +1234,74 @@ class _UtilityRow extends ConsumerWidget {
 
   void _showAbLoopDialog(BuildContext context, WidgetRef ref) {
     final svc = ref.read(playerServiceProvider);
-    showAfDialog<void>(
+    showBlurDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('A-B Loop'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Set markers to loop a section of the track.',
-              style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('A-B Loop', style: AfTypography.titleMedium),
+          const SizedBox(height: AfSpacing.s12),
+          Text(
+            'Set markers to loop a section of the track.',
+            style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
+          ),
+          const SizedBox(height: AfSpacing.s16),
+          FilledButton.icon(
+            onPressed: () async {
+              final pos = await svc.getRawPosition();
+              await svc.setAbLoopA(pos);
+              ref.read(abLoopAProvider.notifier).state = pos;
+              if (context.mounted) Navigator.pop(context);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Loop start: ${_fmtDuration(pos)}')),
+                );
+              }
+            },
+            icon: const Icon(Icons.flag_rounded, size: 18),
+            label: const Text('Set A (start)'),
+            style: FilledButton.styleFrom(backgroundColor: AfColors.indigo600),
+          ),
+          const SizedBox(height: AfSpacing.s8),
+          FilledButton.icon(
+            onPressed: () async {
+              final pos = await svc.getRawPosition();
+              await svc.setAbLoopB(pos);
+              ref.read(abLoopBProvider.notifier).state = pos;
+              if (context.mounted) Navigator.pop(context);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Loop end: ${_fmtDuration(pos)}')),
+                );
+              }
+            },
+            icon: const Icon(Icons.flag_outlined, size: 18),
+            label: const Text('Set B (end)'),
+            style: FilledButton.styleFrom(backgroundColor: AfColors.indigo600),
+          ),
+          const SizedBox(height: AfSpacing.s8),
+          OutlinedButton.icon(
+            onPressed: () async {
+              await svc.setAbLoopA(null);
+              await svc.setAbLoopB(null);
+              ref.read(abLoopAProvider.notifier).state = null;
+              ref.read(abLoopBProvider.notifier).state = null;
+              if (context.mounted) Navigator.pop(context);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('A-B loop cleared')),
+                );
+              }
+            },
+            icon: const Icon(Icons.clear_rounded, size: 18),
+            label: const Text('Clear loop'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AfColors.semanticError,
+              side: const BorderSide(color: AfColors.surfaceHigh),
             ),
-            const SizedBox(height: AfSpacing.s16),
-            FilledButton.icon(
-              onPressed: () async {
-                final pos = await svc.getRawPosition();
-                await svc.setAbLoopA(pos);
-                ref.read(abLoopAProvider.notifier).state = pos;
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Loop start: ${_fmtDuration(pos)}')),
-                  );
-                }
-              },
-              icon: const Icon(Icons.flag_rounded, size: 18),
-              label: const Text('Set A (start)'),
-              style: FilledButton.styleFrom(backgroundColor: AfColors.indigo600),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            FilledButton.icon(
-              onPressed: () async {
-                final pos = await svc.getRawPosition();
-                await svc.setAbLoopB(pos);
-                ref.read(abLoopBProvider.notifier).state = pos;
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Loop end: ${_fmtDuration(pos)}')),
-                  );
-                }
-              },
-              icon: const Icon(Icons.flag_outlined, size: 18),
-              label: const Text('Set B (end)'),
-              style: FilledButton.styleFrom(backgroundColor: AfColors.indigo600),
-            ),
-            const SizedBox(height: AfSpacing.s8),
-            OutlinedButton.icon(
-              onPressed: () async {
-                await svc.setAbLoopA(null);
-                await svc.setAbLoopB(null);
-                ref.read(abLoopAProvider.notifier).state = null;
-                ref.read(abLoopBProvider.notifier).state = null;
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('A-B loop cleared')),
-                  );
-                }
-              },
-              icon: const Icon(Icons.clear_rounded, size: 18),
-              label: const Text('Clear loop'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AfColors.semanticError,
-                side: const BorderSide(color: AfColors.surfaceHigh),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1326,63 +1321,51 @@ class _UtilityRow extends ConsumerWidget {
   void _showSpeedDialog(BuildContext context, WidgetRef ref) {
     const speeds = <double>[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
     final current = ref.read(playerServiceProvider).speed;
-    showAfDialog<void>(
+    showBlurBottomSheet<void>(
       context: context,
-      builder: (dialogCtx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous,
-                ),
-                child: Text('Playback speed', style: AfTypography.titleSmall),
-              ),
-              const SizedBox(height: AfSpacing.s8),
-              for (final s in speeds)
-                ListTile(
-                  title: Text(
-                    '${s.toStringAsFixed(s == s.roundToDouble() ? 1 : 2)}×',
-                    style: AfTypography.bodyMedium,
-                  ),
-                  trailing: (s - current).abs() < 0.001
-                      ? const Icon(Icons.check_rounded, size: 20)
-                      : null,
-                  onTap: () {
-                    unawaited(ref.read(playerServiceProvider).setAfSpeed(s));
-                    Navigator.of(dialogCtx).pop();
-                  },
-                ),
-            ],
+      builder: (dialogCtx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous,
+            ),
+            child: Text('Playback speed', style: AfTypography.titleSmall),
           ),
-        ),
+          const SizedBox(height: AfSpacing.s8),
+          for (final s in speeds)
+            ListTile(
+              title: Text(
+                '${s.toStringAsFixed(s == s.roundToDouble() ? 1 : 2)}×',
+                style: AfTypography.bodyMedium,
+              ),
+              trailing: (s - current).abs() < 0.001
+                  ? const Icon(Icons.check_rounded, size: 20)
+                  : null,
+              onTap: () {
+                unawaited(ref.read(playerServiceProvider).setAfSpeed(s));
+                Navigator.of(dialogCtx).pop();
+              },
+            ),
+        ],
       ),
     );
   }
 
   void _showSleepDialog(BuildContext context, WidgetRef ref) {
-    showAfDialog<void>(
+    showBlurBottomSheet<void>(
       context: context,
-      builder: (dialogCtx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-        child: const _SleepTimerDialogContent(),
-      ),
+      builder: (_) => const _SleepTimerDialogContent(),
     );
   }
 
   void _showOutputDialog(BuildContext context, WidgetRef ref) {
-    showAfDialog<void>(
+    showBlurBottomSheet<void>(
       context: context,
-      builder: (dialogCtx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
-          child: const _OutputDialogContent(),
-        ),
+      builder: (_) => ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
+        child: const _OutputDialogContent(),
       ),
     );
   }
