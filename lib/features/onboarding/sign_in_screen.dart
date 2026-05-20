@@ -130,6 +130,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   /// Falls back to the full exception string so we never hide what's wrong
   /// behind a generic 'check your username' message.
   String _humanizeError(Object e) {
+    if (e is SubsonicApiError) {
+      // Subsonic error codes: 40 = wrong password, 10 = missing param,
+      // etc. Show a user-friendly message instead of the raw toString().
+      return e.code == 40
+          ? 'Wrong username or password.'
+          : 'Server error: ${e.message}';
+    }
     if (e is DioException) {
       final status = e.response?.statusCode;
       // Use the redacted URL in the visible error message — Subsonic
