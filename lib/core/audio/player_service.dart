@@ -517,7 +517,13 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Future<void> play() async {
     _userPaused = false;
     _positionAnchor.wasPlaying = true;
-    _positionAnchor.lastKnownPos = _player.state.position;
+    // Don't blindly trust `_player.state.position` — on Samsung One UI it
+    // can return the last seek position instead of actual elapsed time.
+    // Query raw position and only advance the anchor (never jump backwards).
+    final rawPos = await getRawPosition();
+    if (rawPos > _positionAnchor.lastKnownPos) {
+      _positionAnchor.lastKnownPos = rawPos;
+    }
     _positionAnchor.lastUpdateTime = DateTime.now();
     await _player.play();
     _nudgeAudioDevice();
@@ -528,7 +534,12 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     _userPaused = true;
     _pendingPlayNudgeIdx = null;
     _positionAnchor.wasPlaying = false;
-    _positionAnchor.lastKnownPos = _player.state.position;
+    // Same One UI guard as `play()` — prevents the UI from jumping back
+    // to the last seek position when the user pauses.
+    final rawPos = await getRawPosition();
+    if (rawPos > _positionAnchor.lastKnownPos) {
+      _positionAnchor.lastKnownPos = rawPos;
+    }
     _positionAnchor.lastUpdateTime = DateTime.now();
     await _player.pause();
   }
