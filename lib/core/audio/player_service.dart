@@ -8,6 +8,20 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
 
+/// Default spectrum analyser configuration shared across initialisation and
+/// on-track-change re-configuration.
+const _defaultSpectrumSettings = SpectrumSettings(
+  fftSize: 2048,
+  bandCount: 64,
+  bandLowHz: 20.0,
+  bandHighHz: 20000.0,
+  attackSmoothing: 0.8,
+  releaseSmoothing: 0.1,
+  minDb: -105.0,
+  maxDb: 35.0,
+  emitInterval: Duration(milliseconds: 8),
+);
+
 /// Stores a snapshot of playback position for elapsed-time extrapolation.
 /// Used when mpv's observe_property/getRawProperty for time-pos stalls.
 class _PositionAnchor {
@@ -346,17 +360,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   Future<void> configureSpectrum() async {
     try {
-      await _player.setSpectrum(const SpectrumSettings(
-        fftSize: 2048,
-        bandCount: 64,
-        bandLowHz: 20.0,
-        bandHighHz: 20000.0,
-        attackSmoothing: 0.8,
-        releaseSmoothing: 0.1,
-        minDb: -105.0,
-        maxDb: 35.0,
-        emitInterval: Duration(milliseconds: 8),
-      ));
+      await _player.setSpectrum(_defaultSpectrumSettings);
     } catch (e) {
       afLog('audio', 'configureSpectrum failed', error: e);
     }
@@ -947,17 +951,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     try {
       await Future.delayed(const Duration(milliseconds: 250));
       if (_disposed) return;
-      await _player.setSpectrum(const SpectrumSettings(
-        fftSize: 2048,
-        bandCount: 64,
-        bandLowHz: 20.0,
-        bandHighHz: 20000.0,
-        attackSmoothing: 0.8,
-        releaseSmoothing: 0.1,
-        minDb: -105.0,
-        maxDb: 35.0,
-        emitInterval: Duration(milliseconds: 8),
-      ));
+      await _player.setSpectrum(_defaultSpectrumSettings);
       afLog('audio', 'spectrum re-configured after track change');
     } catch (e) {
       afLog('audio', 'reconfigureSpectrumOnTrackChange failed', error: e);
