@@ -141,12 +141,11 @@ class AfArtworkManager {
         } catch (_) {}
       }
 
-      if (_coverPath != null) {
-        try {
-          final prev = File(_coverPath!);
-          if (await prev.exists()) await prev.delete();
-        } catch (_) {}
-      }
+      // Do NOT delete _coverPath here. Embedded cover art from mpv's
+      // `coverArt` stream is higher quality than network thumbnails and
+      // must be preserved. The network download is a fallback for tracks
+      // that lack embedded art — deleting _coverPath would cause the
+      // notification artwork to flicker between sources.
 
       await tmpFile.rename(path);
 

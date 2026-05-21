@@ -260,6 +260,15 @@ class SettingsScreen extends ConsumerWidget {
             SettingsGroup(
               children: [
                 SettingsTile(
+                  icon: Icons.high_quality_rounded,
+                  iconColor: AfColors.semanticInfo,
+                  title: 'Streaming quality',
+                  subtitle: ref.watch(maxBitrateProvider) == 0
+                      ? 'Original / Lossless'
+                      : '${ref.watch(maxBitrateProvider)} kbps',
+                  onTap: () => showStreamingQualityDialog(context, ref),
+                ),
+                SettingsTile(
                   icon: Icons.cached_rounded,
                   iconColor: AfColors.semanticInfo,
                   title: 'Cache duration',

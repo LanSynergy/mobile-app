@@ -33,6 +33,18 @@ void main() {
       expect(url.contains('MaxStreamingBitrate=320000'), isTrue);
     });
 
+    test('omits MaxStreamingBitrate when maxBitrateKbps is null (Original / Lossless)', () {
+      final url = _client(token: 't-abc', userId: 'u-1')
+          .trackStreamUrl('track-1', maxBitrateKbps: null);
+      expect(url.contains('MaxStreamingBitrate'), isFalse);
+    });
+
+    test('sets MaxStreamingBitrate correctly for other bitrates (e.g. 192 kbps)', () {
+      final url = _client(token: 't-abc', userId: 'u-1')
+          .trackStreamUrl('track-1', maxBitrateKbps: 192);
+      expect(url.contains('MaxStreamingBitrate=192000'), isTrue);
+    });
+
     test('URL-encodes path + query values', () {
       // Track IDs with `+` `=` `&` are unusual but exist in some libraries.
       final url = _client(userId: 'a+b=c&d').trackStreamUrl('xyz');

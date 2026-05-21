@@ -75,6 +75,7 @@ class PlayerSettingsStore {
   static const _kArtworkPulse = 'af.artwork_pulse_enabled';
   static const _kOfflineCacheEnabled = 'af.offline_cache_enabled';
   static const _kOfflineCacheMaxSize = 'af.offline_cache_max_size';
+  static const _kMaxBitrate = 'af.max_bitrate_kbps';
 
   static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
@@ -179,6 +180,18 @@ class PlayerSettingsStore {
   static Future<int> loadOfflineCacheMaxSize() async {
     final p = await _prefs();
     return p.getInt(_kOfflineCacheMaxSize) ?? (1024 * 1024 * 1024);
+  }
+
+  /// Persist max streaming bitrate in kbps. 0 means Original / Lossless.
+  static Future<void> saveMaxBitrate(int kbps) async {
+    final p = await _prefs();
+    await p.setInt(_kMaxBitrate, kbps);
+  }
+
+  /// Load max streaming bitrate in kbps. Defaults to 0 (Original / Lossless).
+  static Future<int> loadMaxBitrate() async {
+    final p = await _prefs();
+    return p.getInt(_kMaxBitrate) ?? 0;
   }
 
   /// Serialize the user-visible audio effects to JSON and persist.

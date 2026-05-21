@@ -30,3 +30,6 @@ final offlineCacheEnabledProvider = StateProvider<bool>((ref) => false);
 final offlineCacheMaxSizeProvider = StateProvider<int>((ref) {
   return 1024 * 1024 * 1024;
 });
+
+/// Max streaming bitrate in kbps. 0 means Original / Lossless.
+final maxBitrateProvider = StateProvider<int>((ref) => 0);

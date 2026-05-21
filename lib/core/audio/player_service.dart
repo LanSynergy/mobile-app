@@ -509,6 +509,12 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       _queueManager.syncFromMpv(mpvItems, newIdx);
     }
 
+    // Clear the pre-shuffle snapshot AFTER syncFromMpv has used it as a
+    // fallback lookup source. Clearing earlier would break track matching.
+    if (!enabled) {
+      _queueManager.clearOriginalQueueAfterSync();
+    }
+
     _queueManager.endPlaylistSync();
     _queueManager.emitQueue();
 
