@@ -20,6 +20,7 @@ class _PositionAnchor {
 class AfPositionTracker {
   final Player _player;
   final bool Function() _shouldAdvancePosition;
+  final bool Function()? _isLoadingQueue;
 
   final StreamController<Duration> _positionController =
       StreamController<Duration>.broadcast();
@@ -41,8 +42,10 @@ class AfPositionTracker {
   AfPositionTracker({
     required Player player,
     required bool Function() shouldAdvancePosition,
+    bool Function()? isLoadingQueue,
   })  : _player = player,
-        _shouldAdvancePosition = shouldAdvancePosition;
+        _shouldAdvancePosition = shouldAdvancePosition,
+        _isLoadingQueue = isLoadingQueue;
 
   void start() {
     _positionPollTimer =
@@ -173,6 +176,13 @@ class AfPositionTracker {
 
   Future<void> _pollAndEmitPosition() async {
     if (_isSeeking) return;
+    if (_isLoadingQueue?.call() ?? false) {
+      _positionAnchor.lastKnownPos = Duration.zero;
+      _positionAnchor.lastUpdateTime = DateTime.now();
+      _positionController.add(Duration.zero);
+      _resetRawPositionStaleDetector(Duration.zero);
+      return;
+    }
     if (_isPolling) {
       _emitExtrapolatedPosition();
       return;

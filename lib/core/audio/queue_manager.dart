@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Media;
 
@@ -23,8 +24,7 @@ class AfQueueManager {
   final _trackController = StreamController<AfTrack?>.broadcast();
   final _queueController = StreamController<List<AfTrack>>.broadcast();
 
-  int _suppressPlaylistSyncGen = 0;
-  int _activePlaylistSyncGen = 0;
+  int _activePlaylistSyncs = 0;
 
   // ── Streams ────────────────────────────────────────────────────────
 
@@ -35,7 +35,7 @@ class AfQueueManager {
   // ── State queries ──────────────────────────────────────────────────
 
   bool get isShuffleEnabled => _shuffleEnabled;
-  List<AfTrack> get currentQueue => List<AfTrack>.unmodifiable(_trackQueue);
+  List<AfTrack> get currentQueue => UnmodifiableListView(_trackQueue);
   int get currentIndex => _currentIndex;
 
   AfTrack? get currentTrack =>
@@ -46,14 +46,14 @@ class AfQueueManager {
   bool get isAtQueueEnd =>
       _currentIndex >= _trackQueue.length - 1;
 
-  bool get isSyncingPlaylist => _activePlaylistSyncGen != 0;
+  bool get isSyncingPlaylist => _activePlaylistSyncs != 0;
 
   /// Returns `true` if the queue is not currently being modified by
   /// the owning service (playlist sync is inactive). The service sets
   /// [beginPlaylistSync]/[endPlaylistSync] around batch operations so
   /// the playlist listener does not re-enter.
   bool get canHandlePlaylistEvent =>
-      _activePlaylistSyncGen == 0;
+      _activePlaylistSyncs == 0;
 
   // ── URL↔track mapping ──────────────────────────────────────────────
 
@@ -61,8 +61,10 @@ class AfQueueManager {
 
   void rebuildUrlMap(Iterable<Media> medias, Iterable<AfTrack> tracks) {
     _urlToTrack.clear();
-    for (var i = 0; i < tracks.length && i < medias.length; i++) {
-      _urlToTrack[medias.elementAt(i).uri] = tracks.elementAt(i);
+    final mediaIter = medias.iterator;
+    final trackIter = tracks.iterator;
+    while (mediaIter.moveNext() && trackIter.moveNext()) {
+      _urlToTrack[mediaIter.current.uri] = trackIter.current;
     }
   }
 
@@ -97,12 +99,13 @@ class AfQueueManager {
   // ── Shuffle ────────────────────────────────────────────────────────
 
   void beginPlaylistSync() {
-    _suppressPlaylistSyncGen++;
-    _activePlaylistSyncGen = _suppressPlaylistSyncGen;
+    _activePlaylistSyncs++;
   }
 
   void endPlaylistSync() {
-    _activePlaylistSyncGen = 0;
+    if (_activePlaylistSyncs > 0) {
+      _activePlaylistSyncs--;
+    }
   }
 
   void setShuffleEnabled(bool enabled) {
@@ -127,11 +130,10 @@ class AfQueueManager {
   // ── Playlist event processing ──────────────────────────────────────
 
   /// Update internal queue state from an mpv playlist event.
-  /// Returns the previous track id if the index changed, null otherwise.
-  String? processPlaylistEvent(int newIndex) {
-    if (newIndex < 0 || newIndex >= _trackQueue.length) return null;
+  /// Returns true if the active track changed, false otherwise.
+  bool processPlaylistEvent(int newIndex) {
+    if (newIndex < 0 || newIndex >= _trackQueue.length) return false;
 
-    final indexChanged = newIndex != _currentIndex;
     final previousTrackId =
         (_currentIndex >= 0 && _currentIndex < _trackQueue.length)
             ? _trackQueue[_currentIndex].id
@@ -139,11 +141,10 @@ class AfQueueManager {
 
     _currentIndex = newIndex;
 
-    if (!indexChanged) return null;
     final track = _trackQueue[newIndex];
-    if (track.id == previousTrackId) return null;
+    final trackChanged = track.id != previousTrackId;
 
-    return previousTrackId;
+    return trackChanged;
   }
 
   /// Reconcile the Dart queue order with mpv's (post-shuffle).

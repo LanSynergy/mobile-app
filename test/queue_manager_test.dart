@@ -87,5 +87,52 @@ void main() {
         await sub2.cancel();
       });
     });
+
+    group('processPlaylistEvent and Sync Locks tests', () {
+      test('processPlaylistEvent returns true on transition from -1 to 0', () {
+        final qm = AfQueueManager();
+        qm.insert(0, tracks[0], 'https://example.com/track1');
+        expect(qm.currentIndex, -1);
+        expect(qm.processPlaylistEvent(0), isTrue);
+        expect(qm.currentIndex, 0);
+      });
+
+      test('processPlaylistEvent returns true when track changes', () {
+        final qm = AfQueueManager();
+        qm.replaceQueue([tracks[0], tracks[1]], 0); // index 0, track1
+        expect(qm.processPlaylistEvent(1), isTrue); // index 1, track2
+      });
+
+      test('processPlaylistEvent returns false when track does not change', () {
+        final qm = AfQueueManager();
+        qm.replaceQueue([tracks[0], tracks[1]], 0); // index 0, track1
+        expect(qm.processPlaylistEvent(0), isFalse); // index 0, track1
+      });
+
+      test('re-entrant lock nesting works correctly', () {
+        expect(queueManager.canHandlePlaylistEvent, isTrue);
+        
+        queueManager.beginPlaylistSync();
+        expect(queueManager.canHandlePlaylistEvent, isFalse);
+        
+        queueManager.beginPlaylistSync();
+        expect(queueManager.canHandlePlaylistEvent, isFalse);
+        
+        queueManager.endPlaylistSync();
+        expect(queueManager.canHandlePlaylistEvent, isFalse);
+        
+        queueManager.endPlaylistSync();
+        expect(queueManager.canHandlePlaylistEvent, isTrue);
+      });
+      
+      test('rebuildUrlMap handles empty and mismatched lists in O(N)', () {
+        final urls = [Media('url1'), Media('url2')];
+        final qTracks = [tracks[0], tracks[1], tracks[2]];
+        queueManager.rebuildUrlMap(urls, qTracks);
+        expect(queueManager.trackForUrl('url1'), tracks[0]);
+        expect(queueManager.trackForUrl('url2'), tracks[1]);
+        expect(queueManager.trackForUrl('url3'), isNull);
+      });
+    });
   });
 }
