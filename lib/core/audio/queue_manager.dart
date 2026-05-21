@@ -192,6 +192,8 @@ class AfQueueManager {
       );
       _trackQueue.clear();
       _currentIndex = 0;
+      _trackController.add(null);
+      _queueController.add(const <AfTrack>[]);
     }
   }
 

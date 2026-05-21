@@ -46,5 +46,46 @@ void main() {
         queueManager.clearOriginalQueueAfterSync();
       });
     });
+
+    group('BUG-009: Full sync failure emission', () {
+      test('syncFromMpv emits null track and empty queue on full sync failure', () async {
+        queueManager.replaceQueue(tracks, 0);
+
+        // Listen to streams
+        AfTrack? emittedTrack;
+        var trackEmitted = false;
+        List<AfTrack>? emittedQueue;
+        var queueEmitted = false;
+
+        final sub1 = queueManager.currentTrackStream.listen((track) {
+          emittedTrack = track;
+          trackEmitted = true;
+        });
+
+        final sub2 = queueManager.queueStream.listen((q) {
+          emittedQueue = q;
+          queueEmitted = true;
+        });
+
+        // Trigger a full sync failure by resolving 0 tracks
+        final mpvItems = [Media('https://example.com/unknown_url')];
+        queueManager.syncFromMpv(mpvItems, 0);
+
+        // Allow microtasks to process stream events
+        await Future<void>.delayed(Duration.zero);
+
+        expect(queueManager.currentQueue, isEmpty);
+        expect(queueManager.currentIndex, 0);
+
+        expect(trackEmitted, isTrue);
+        expect(emittedTrack, isNull);
+
+        expect(queueEmitted, isTrue);
+        expect(emittedQueue, isEmpty);
+
+        await sub1.cancel();
+        await sub2.cancel();
+      });
+    });
   });
 }
