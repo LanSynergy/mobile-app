@@ -39,6 +39,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   int? _pendingPlayNudgeIdx;
   bool _userPaused = false;
+  bool _isLoadingQueue = false;
 
   AfPlayerService() : _player = Player() {
     _positionTracker = AfPositionTracker(
@@ -399,6 +400,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     }).toList();
     _queueManager.rebuildUrlMap(medias, tracks);
 
+    _isLoadingQueue = true;
     try {
       _positionTracker.onTrackChanged();
 
@@ -433,6 +435,8 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       _queueManager.clear();
       await _player.stop();
       rethrow;
+    } finally {
+      _isLoadingQueue = false;
     }
   }
 
@@ -485,7 +489,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Future<void> setAfShuffleMode(bool enabled) async {
     if (_queueManager.isShuffleEnabled == enabled) return;
 
-    final playingTrack = currentTrack;
     if (_queueManager.currentQueue.isEmpty) {
       afLog('data', 'shuffleMode source=live enabled=$enabled (queue empty)');
       return;
@@ -507,9 +510,12 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     }
 
     _queueManager.endPlaylistSync();
+    _queueManager.emitQueue();
 
-    if (playingTrack != null) {
-      _queueManager.emitCurrentTrack(playingTrack);
+    final track = currentTrack;
+    if (track != null) {
+      _queueManager.emitCurrentTrack(track);
+      onTrackChanged?.call(track);
     }
 
     afLog('data', 'shuffleMode source=live enabled=$enabled '
@@ -728,6 +734,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
     _subs.add(_player.stream.completed.listen((completed) async {
       if (_disposed) return;
+      if (_isLoadingQueue) return;
       _updatePlaybackState();
       if (!completed) return;
 

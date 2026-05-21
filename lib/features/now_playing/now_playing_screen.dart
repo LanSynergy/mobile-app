@@ -141,6 +141,7 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
   double _bassAverage = 0.0;
   double _prevBass    = 0.0;
   int    _cooldown    = 0;
+  int    _fftSkip     = 0;
 
   @override
   void initState() {
@@ -168,6 +169,12 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
         (frame) {
           if (!mounted) return;
           if (frame.bands.isEmpty) return;
+
+          // Skip 2 of every 3 frames to reduce CPU load on low-end
+          // devices while keeping the visual pulse responsive.
+          _fftSkip = (_fftSkip + 1) % 3;
+          if (_fftSkip != 0) return;
+
           _silenceTimer?.cancel();
 
           // Kick / low-bass pool. With the player configured for 64

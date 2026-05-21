@@ -90,6 +90,10 @@ class AfQueueManager {
     _trackController.add(track);
   }
 
+  void emitQueue() {
+    _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
+  }
+
   // ── Shuffle ────────────────────────────────────────────────────────
 
   void beginPlaylistSync() {
