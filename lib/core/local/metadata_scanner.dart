@@ -13,8 +13,12 @@ import 'saf_picker.dart';
 /// into the local SQLite database. Reports progress via a callback.
 class MetadataScanner {
   final LocalDb db;
+  bool _isScanning = false;
 
   MetadataScanner(this.db);
+
+  /// Check scanning state to allow UI buttons to show progress or disable themselves.
+  bool get isScanning => _isScanning;
 
   /// Scan a folder tree URI. Calls [onProgress] with (completed, total).
   /// Returns the number of tracks inserted/updated.
@@ -22,91 +26,101 @@ class MetadataScanner {
     String treeUri, {
     void Function(int completed, int total)? onProgress,
   }) async {
-    afLog('local', 'scanFolder start: $treeUri');
+    if (_isScanning) {
+      afLog('local', 'scanFolder bypassed: scan already in progress');
+      return 0;
+    }
 
-    // 1. List all audio files
-    final files = await SafPicker.listAudioFiles(treeUri);
-    afLog('local', 'found ${files.length} audio files');
+    _isScanning = true;
+    try {
+      afLog('local', 'scanFolder start: $treeUri');
 
-    if (files.isEmpty) return 0;
+      // 1. List all audio files
+      final files = await SafPicker.listAudioFiles(treeUri);
+      afLog('local', 'found ${files.length} audio files');
 
-    int completed = 0;
-    int inserted = 0;
-    final coverCacheDir = await _coverCacheDir();
+      if (files.isEmpty) return 0;
 
-    // 2. Process in batches of 50 for DB efficiency
-    final batch = <Map<String, dynamic>>[];
+      int completed = 0;
+      int inserted = 0;
+      final coverCacheDir = await _coverCacheDir();
 
-    for (final file in files) {
-      // Check if file is already in DB and unchanged
-      final existingModified = await db.getTrackLastModified(file.uri);
-      if (existingModified != null && existingModified == file.lastModified) {
-        completed++;
-        onProgress?.call(completed, files.length);
-        continue;
-      }
+      // 2. Process in batches of 50 for DB efficiency
+      final batch = <Map<String, dynamic>>[];
 
-      // 3. Read metadata
-      try {
-        final meta = await SafPicker.readMetadata(file.uri);
-        final title = meta.title?.isNotEmpty == true
-            ? meta.title!
-            : _titleFromFilename(file.name);
-
-        // 4. Extract cover art (if not already cached)
-        String? coverPath;
-        final coverFile = File(p.join(coverCacheDir, _coverFilename(file.uri)));
-        if (!coverFile.existsSync()) {
-          final artBytes = await SafPicker.readCoverArt(file.uri);
-          if (artBytes != null && artBytes.isNotEmpty) {
-            await coverFile.writeAsBytes(artBytes);
-            coverPath = coverFile.path;
-          }
-        } else {
-          coverPath = coverFile.path;
+      for (final file in files) {
+        // Check if file is already in DB and unchanged
+        final existingModified = await db.getTrackLastModified(file.uri);
+        if (existingModified != null && existingModified == file.lastModified) {
+          completed++;
+          onProgress?.call(completed, files.length);
+          continue;
         }
 
-        batch.add({
-          'id': file.uri,
-          'title': title,
-          'artist': meta.artist ?? '',
-          'album': meta.album ?? '',
-          'album_artist': meta.albumArtist ?? '',
-          'track_number': meta.trackNum,
-          'duration_ms': meta.durationMs,
-          'year': meta.yearInt,
-          'genre': meta.genre ?? '',
-          'file_path': file.name,
-          'file_size': file.size,
-          'last_modified': file.lastModified,
-          'cover_path': coverPath,
-          'codec': meta.codec,
-          'bitrate': meta.bitrateKbps,
-          'sample_rate': meta.sampleRateHz,
-        });
+        // 3. Read metadata
+        try {
+          final meta = await SafPicker.readMetadata(file.uri);
+          final title = meta.title?.isNotEmpty == true
+              ? meta.title!
+              : _titleFromFilename(file.name);
 
-        inserted++;
-      } catch (e) {
-        afLog('local', 'metadata read failed for ${file.name}', error: e);
+          // 4. Extract cover art (if not already cached)
+          String? coverPath;
+          final coverFile = File(p.join(coverCacheDir, _coverFilename(file.uri)));
+          if (!coverFile.existsSync()) {
+            final artBytes = await SafPicker.readCoverArt(file.uri);
+            if (artBytes != null && artBytes.isNotEmpty) {
+              await coverFile.writeAsBytes(artBytes);
+              coverPath = coverFile.path;
+            }
+          } else {
+            coverPath = coverFile.path;
+          }
+
+          batch.add({
+            'id': file.uri,
+            'title': title,
+            'artist': meta.artist ?? '',
+            'album': meta.album ?? '',
+            'album_artist': meta.albumArtist ?? '',
+            'track_number': meta.trackNum,
+            'duration_ms': meta.durationMs,
+            'year': meta.yearInt,
+            'genre': meta.genre ?? '',
+            'file_path': file.name,
+            'file_size': file.size,
+            'last_modified': file.lastModified,
+            'cover_path': coverPath,
+            'codec': meta.codec,
+            'bitrate': meta.bitrateKbps,
+            'sample_rate': meta.sampleRateHz,
+          });
+
+          inserted++;
+        } catch (e) {
+          afLog('local', 'metadata read failed for ${file.name}', error: e);
+        }
+
+        completed++;
+        onProgress?.call(completed, files.length);
+
+        // Flush batch every 50 tracks
+        if (batch.length >= 50) {
+          await db.upsertTracks(batch);
+          batch.clear();
+        }
       }
 
-      completed++;
-      onProgress?.call(completed, files.length);
-
-      // Flush batch every 50 tracks
-      if (batch.length >= 50) {
+      // Flush remaining
+      if (batch.isNotEmpty) {
         await db.upsertTracks(batch);
-        batch.clear();
       }
-    }
 
-    // Flush remaining
-    if (batch.isNotEmpty) {
-      await db.upsertTracks(batch);
+      afLog('local', 'scanFolder done: $inserted tracks inserted/updated');
+      return inserted;
+    } finally {
+      _isScanning = false;
     }
-
-    afLog('local', 'scanFolder done: $inserted tracks inserted/updated');
-    return inserted;
   }
 
   /// Remove tracks from DB that no longer exist on disk for a given folder.

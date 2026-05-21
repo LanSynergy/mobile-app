@@ -278,9 +278,9 @@ class SubsonicClient implements MusicBackend {
   Future<List<AfGenre>> genres({int limit = 200}) async {
     final root = await _get('getGenres');
     final genresData = root['genres'] as Map<String, dynamic>?;
-    final list = (genresData?['genre'] as List?)
-            ?.cast<Map<String, dynamic>>() ??
-        const [];
+    final list = genresData?['genre'] as List?;
+    if (list == null || list.isEmpty) return const [];
+
     const palette = <String>[
       '#5644C9', '#A89DEC', '#3FD18C', '#FF7A59',
       '#F8C42D', '#FF6FB5', '#3DB6FF', '#FF4D6D',
@@ -290,10 +290,14 @@ class SubsonicClient implements MusicBackend {
     // off result.length). Avoids the O(n²) `list.indexOf(g)` lookup and
     // the identity-equality footgun (Map doesn't override ==).
     final result = <AfGenre>[];
-    for (final g in list.take(limit)) {
-      final name = (g['value'] as String?) ?? '';
-      if (name.isEmpty) continue;
-      result.add(AfGenre(name, palette[result.length % palette.length]));
+    final count = list.length < limit ? list.length : limit;
+    for (var i = 0; i < count; i++) {
+      final g = list[i];
+      if (g is Map) {
+        final name = (g['value'] as String?) ?? '';
+        if (name.isEmpty) continue;
+        result.add(AfGenre(name, palette[result.length % palette.length]));
+      }
     }
     return result;
   }

@@ -400,6 +400,10 @@ class _ScrubOverlayPainter extends CustomPainter {
   final Color playedColor;
   final Color unplayedColor;
 
+  double? _cachedFillW;
+  Color? _cachedPlayedColor;
+  Shader? _cachedShader;
+
   _ScrubOverlayPainter({
     required this.notifier,
     required this.playedColor,
@@ -425,18 +429,25 @@ class _ScrubOverlayPainter extends CustomPainter {
     // 2. Tail — fading gradient from transparent to playedColor.
     // Only draw if there's actually a filled portion (fillW > 1 px).
     if (fillW > 1) {
+      if (_cachedShader == null ||
+          _cachedFillW != fillW ||
+          _cachedPlayedColor != playedColor) {
+        _cachedFillW = fillW;
+        _cachedPlayedColor = playedColor;
+        _cachedShader = LinearGradient(
+          colors: [
+            playedColor.withValues(alpha: 0.0),
+            playedColor,
+          ],
+        ).createShader(Rect.fromLTWH(0, midY - 1.5, fillW, 3));
+      }
+
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(0, midY - 1.5, fillW, 3),
           const Radius.circular(1.5),
         ),
-        Paint()
-          ..shader = LinearGradient(
-            colors: [
-              playedColor.withValues(alpha: 0.0),
-              playedColor,
-            ],
-          ).createShader(Rect.fromLTWH(0, midY - 1.5, fillW, 3)),
+        Paint()..shader = _cachedShader,
       );
     }
 
