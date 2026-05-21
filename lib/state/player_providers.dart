@@ -1,0 +1,175 @@
+import 'dart:async' show Timer, unawaited;
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop, FftFrame, MpvPlayerError;
+
+import '../core/audio/jellyfin_playback_reporter.dart';
+import '../core/jellyfin/models/items.dart';
+import '../core/audio/live_update_service.dart';
+import '../core/audio/player_service.dart';
+import '../core/audio/player_settings_store.dart';
+import 'app_mode_providers.dart';
+import 'auth_providers.dart';
+import 'music_backend_providers.dart';
+
+void wirePlayerService(Ref ref, AfPlayerService svc) {
+  svc.onTrackChanged = (track) {
+    ref.read(currentTrackProvider.notifier).state = track;
+    ref.read(positionStreamProvider.notifier).state = Duration.zero;
+    ref.read(durationStreamProvider.notifier).state =
+        track.duration > Duration.zero ? track.duration : Duration.zero;
+    ref.read(abLoopAProvider.notifier).state = null;
+    ref.read(abLoopBProvider.notifier).state = null;
+  };
+
+  _startPositionPolling(ref, svc);
+
+  svc.errorStream.listen((error) {
+    ref.read(playbackErrorProvider.notifier).state = error;
+  });
+
+  final mode = ref.read(appModeProvider);
+  JellyfinPlaybackReporter? reporter;
+  if (mode != AppMode.local) {
+    reporter = JellyfinPlaybackReporter(
+      svc,
+      () => ref.read(musicBackendProvider),
+    );
+  }
+
+  final liveUpdate = LiveUpdateService(svc);
+  unawaited(liveUpdate.attach());
+  unawaited(svc.configureSpectrum().then((_) {
+    return PlayerSettingsStore.applyPersisted(svc);
+  }));
+
+  ref.listen(authProvider, (prev, next) {
+    if (prev != null && next == null) {
+      reporter?.requestStopOnDispose();
+      unawaited(reporter?.dispose());
+    }
+  });
+
+  ref.onDispose(() async {
+    await liveUpdate.dispose();
+    await reporter?.dispose();
+    await svc.dispose();
+  });
+}
+
+final playerServiceProvider = Provider<AfPlayerService>((ref) {
+  final svc = AfPlayerService();
+  wirePlayerService(ref, svc);
+  return svc;
+});
+
+final playerQueueProvider = StreamProvider.autoDispose<List<AfTrack>>((ref) {
+  final svc = ref.watch(playerServiceProvider);
+  return Stream<List<AfTrack>>.multi((controller) {
+    controller.add(svc.currentQueue);
+    final sub = svc.queueStream.listen(controller.add);
+    controller.onCancel = sub.cancel;
+  });
+});
+
+final positionStreamProvider = StateProvider<Duration>((ref) => Duration.zero);
+final durationStreamProvider = StateProvider<Duration>((ref) => Duration.zero);
+final playbackErrorProvider = StateProvider<MpvPlayerError?>((ref) => null);
+final abLoopAProvider = StateProvider<Duration?>((ref) => null);
+final abLoopBProvider = StateProvider<Duration?>((ref) => null);
+
+/// Bridges [AfPlayerService] position/duration streams into Riverpod
+/// providers and handles EOF state reset.
+void _startPositionPolling(Ref ref, AfPlayerService svc) {
+  var disposed = false;
+
+  ref.onDispose(() {
+    disposed = true;
+  });
+
+  svc.positionStream.listen((pos) {
+    ref.read(positionStreamProvider.notifier).state = pos;
+  });
+
+  svc.durationStream.listen((dur) {
+    if (dur > Duration.zero) {
+      ref.read(durationStreamProvider.notifier).state = dur;
+    }
+  });
+
+  final timer = Timer.periodic(const Duration(milliseconds: 250), (_) async {
+    if (disposed) return;
+
+    final rawDur = await svc.getRawDuration();
+    if (disposed) return;
+
+    final isLastTrack = svc.currentQueue.isNotEmpty &&
+        svc.currentTrack != null &&
+        svc.currentQueue.last.id == svc.currentTrack!.id;
+    if (svc.isCompleted && !svc.isPlaying && svc.isUserPaused && isLastTrack) {
+      try {
+        ref.read(durationStreamProvider.notifier).state = Duration.zero;
+        ref.read(positionStreamProvider.notifier).state = Duration.zero;
+      } catch (_) {}
+      return;
+    }
+
+    if (rawDur > Duration.zero) {
+      try {
+        ref.read(durationStreamProvider.notifier).state = rawDur;
+      } catch (_) {}
+    } else {
+      final track = ref.read(currentTrackProvider);
+      if (track != null && track.duration > Duration.zero) {
+        try {
+          ref.read(durationStreamProvider.notifier).state = track.duration;
+        } catch (_) {}
+      }
+    }
+  });
+
+  ref.onDispose(timer.cancel);
+}
+
+final playingStreamProvider = StreamProvider.autoDispose<bool>((ref) {
+  final svc = ref.watch(playerServiceProvider);
+  return svc.playingStream;
+});
+
+final shuffleModeProvider = StreamProvider.autoDispose<bool>((ref) {
+  final svc = ref.watch(playerServiceProvider);
+  return Stream<bool>.multi((controller) {
+    controller.add(svc.isShuffleEnabled);
+    final sub = svc.shuffleModeStream.listen(controller.add);
+    controller.onCancel = sub.cancel;
+  });
+});
+
+final loopModeProvider = StreamProvider.autoDispose<Loop>((ref) {
+  final svc = ref.watch(playerServiceProvider);
+  return Stream<Loop>.multi((controller) {
+    controller.add(svc.loopMode);
+    final sub = svc.loopModeStream.listen(controller.add);
+    controller.onCancel = sub.cancel;
+  });
+});
+
+final playbackSpeedProvider = StreamProvider.autoDispose<double>((ref) {
+  final svc = ref.watch(playerServiceProvider);
+  return Stream<double>.multi((controller) {
+    controller.add(svc.speed);
+    final sub = svc.speedStream.listen(controller.add);
+    controller.onCancel = sub.cancel;
+  });
+});
+
+final fftSpectrumProvider = StreamProvider.autoDispose<FftFrame>((ref) {
+  final svc = ref.watch(playerServiceProvider);
+  return svc.spectrumStream.cast<FftFrame>();
+});
+
+final currentTrackProvider = StateProvider<AfTrack?>((ref) => null);
+
+final hasActivePlaybackProvider = Provider<bool>((ref) {
+  return ref.watch(currentTrackProvider) != null;
+});

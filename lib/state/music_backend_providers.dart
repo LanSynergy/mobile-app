@@ -1,0 +1,73 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../core/backend/music_backend.dart';
+import '../core/jellyfin/client.dart';
+import '../core/jellyfin/models/server.dart';
+import '../core/local/local_backend.dart';
+import '../core/subsonic/client.dart';
+import '../utils/log.dart';
+import 'app_mode_providers.dart';
+import 'auth_providers.dart';
+import 'local_library_providers.dart';
+
+void _logData(String feature, {required String source, String? extra}) {
+  final detail = extra == null || extra.isEmpty ? '' : ' $extra';
+  afLog('data', '$feature source=$source$detail');
+}
+
+final musicBackendProvider = Provider.autoDispose<MusicBackend?>((ref) {
+  final auth = ref.watch(authProvider);
+  if (auth == null) {
+    if (ref.watch(appModeProvider) == AppMode.local) {
+      final lib = ref.watch(localLibraryProvider);
+      _logData('musicBackend', source: 'live', extra: 'type=local');
+      return LocalBackend(library: lib, db: lib.db);
+    }
+    _logData('musicBackend', source: 'demo', extra: '(signed out)');
+    return null;
+  }
+
+  _logData(
+    'musicBackend',
+    source: 'live',
+    extra: 'type=${auth.serverType.name} '
+        'server=${kReleaseMode ? '<redacted>' : auth.server.baseUrl} '
+        'user=${kReleaseMode ? '<redacted>' : auth.userName}',
+  );
+
+  final clientVersion = ref.watch(aetherfinVersionProvider);
+
+  switch (auth.serverType) {
+    case ServerType.subsonic: {
+      final client = SubsonicClient(
+        server: auth.server,
+        username: auth.userName,
+        password: auth.accessToken,
+        clientVersion: clientVersion,
+      );
+      ref.onDispose(client.close);
+      return client;
+    }
+    case ServerType.jellyfin: {
+      final client = JellyfinClient(
+        server: auth.server,
+        deviceId: ref.watch(deviceIdProvider),
+        accessToken: auth.accessToken,
+        userId: auth.userId,
+        clientVersion: clientVersion,
+      );
+      ref.onDispose(client.close);
+      return client;
+    }
+    case ServerType.local:
+      final lib = ref.watch(localLibraryProvider);
+      return LocalBackend(library: lib, db: lib.db);
+  }
+});
+
+final jellyfinClientProvider = Provider<JellyfinClient?>((ref) {
+  final backend = ref.watch(musicBackendProvider);
+  if (backend is JellyfinClient) return backend;
+  return null;
+});
