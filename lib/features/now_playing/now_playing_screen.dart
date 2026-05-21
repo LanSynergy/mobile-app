@@ -748,6 +748,7 @@ class _NowPlayingMetaChip extends ConsumerWidget {
   const _NowPlayingMetaChip({required this.quality});
 
   static String _formatRemaining(Duration d) {
+    if (d.isNegative) return '0:00';
     // Round up so the user never sees 0:00 while the timer is still
     // technically running.
     final totalSeconds = d.inSeconds + (d.inMilliseconds % 1000 > 0 ? 1 : 0);
@@ -1471,18 +1472,20 @@ class _SleepTimerDialogContentState
     // highlighted when re-opening the dialog.
     final activeTimer = ref.read(sleepTimerProvider);
     if (activeTimer != null) {
-      final isEndOfTrack =
-          activeTimer.difference(DateTime.now()).inHours > 12;
+      final remaining = activeTimer.difference(DateTime.now());
+      // End-of-track is set to 24h; detect when remaining exceeds
+      // any reasonable timer value (max preset is 60 min).
+      final isEndOfTrack = remaining.inMinutes > 120;
       if (isEndOfTrack) {
         _selectedMinutes = 0;
       } else {
-        final remaining = activeTimer.difference(DateTime.now()).inMinutes;
+        final mins = remaining.inMinutes;
         // Find the closest preset, or keep the raw remaining value.
         final closest = _presets.cast<int?>().firstWhere(
-          (p) => (p! - remaining).abs() <= 2,
+          (p) => (p! - mins).abs() <= 2,
           orElse: () => null,
         );
-        _selectedMinutes = closest ?? remaining;
+        _selectedMinutes = closest ?? mins;
       }
     }
   }
