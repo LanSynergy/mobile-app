@@ -290,3 +290,21 @@
 ## Quality
 - [x] flutter analyze — 0 issues (was 0, still 0)
 - [x] flutter test — 96 tests pass (no regressions)
+
+---
+
+# Concurrency & Operation Serialization (May 2026)
+
+## Synchronization
+- [x] Create `AfAsyncLock` class helper for sequential async operation chain execution
+- [x] Serialize all queue mutations (`playQueue`, `setAfShuffleMode`, `reorderQueue`, `removeFromQueue`, `insertIntoQueue`, `playNext`, `addToQueue`) using `_queueLock`
+
+## Concurrency and Leak Prevention
+- [x] Sequential additions in `playQueue` one-by-one via `_player.add()` loop with generation checks at each step
+- [x] Generation counter (`_queueLoadGen`) and early abort checks in `playQueue` to preempt stale load tasks
+- [x] Connect `_isLoadingQueue` callback to `AfPositionTracker` to reset position anchor and ignore raw position during load transitions
+- [x] Guard `seek`, `skipToNext`, `skipToPrevious`, and `skipToQueueItem` to prevent concurrent control mutations during active queue load
+
+## Quality
+- [x] flutter analyze — 0 issues
+- [x] flutter test — all 101 tests pass (including new concurrency tests)

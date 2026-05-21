@@ -81,3 +81,4 @@ Smooth audio crossfade when transitioning between tracks (configurable duration)
 - [x] playQueue partial failure — _player.stop() to clear mpv playlist
 - [x] _hex() in home_screen — try-catch with length validation + fallback color
 - [x] Position extrapolation — capped at 1h when duration is zero
+- [x] Concurrency and operation serialization — Sequential queue serialization, playback controls loading guards, position leaks prevention, and sequential track additions

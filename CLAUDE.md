@@ -748,6 +748,9 @@ PII (usernames, server URLs) must be redacted in release builds.
 41. **"Let `playQueue` fail without cleaning up mpv's playlist."** No. When `Future.wait(addFutures...)` throws, some tracks may have already been added to mpv's internal playlist via `_player.add()`. Clear Dart-side state AND call `await _player.stop()` to reset mpv's playlist.
 42. **"Leave `pause()`/`_jumpAndPlay()` unawaited in stream listeners."** No. `Stream.listen()` callbacks that touch `Future<void>` methods must be `async` with `await` on each call. Un-awaited futures in listeners are unhandled rejection sources.
 43. **"Parse tint hex strings without validation."** No. `_hex()` in `home_screen.dart` called `int.parse(hex.replaceFirst('#', ''), radix: 16)` with no try-catch or length check — a malformed string (DB corruption, future provider change) crashes the entire HomeScreen build. Match `search_screen.dart`'s `_parseTint` pattern: try-catch, validate length (6 or 8), fallback to `AfColors.indigo600`.
+44. **"Avoid serializing queue operations."** No. Multiple sequential queue mutations (reorders, additions, removals) can interleave while awaiting mpv responses, corrupting state. Use `_queueLock` (`AfAsyncLock`) to serialize all mutating operations.
+45. **"Allow playback controls during queue loading."** No. Issuing seeks, skips, or jumps while a new queue is loading (`_isLoadingQueue` is true) leads to state corruption or out-of-bounds errors. Guard playback controls to return early when loading.
+46. **"Use Future.wait in playQueue for addition concurrency."** No. Concurrent additions interleave native operations in-flight, which can complete *after* an aborted load is canceled and a new load starts. Always add tracks sequentially in a loop and check the generation counter (`_queueLoadGen`) at each step.
 
 ## 16. Glossary
 
@@ -789,6 +792,8 @@ PII (usernames, server URLs) must be redacted in release builds.
 - **`TrackRepository`**: CRUD for tracks at `lib/core/local/local_db_tracks.dart`. Row-to-track mapping, query helpers, 5000-row limit on `allTracks()`.
 - **`AlbumRepository`**: Aggregation queries for albums at `lib/core/local/local_db_albums.dart`. Album artist, year, track-count queries.
 - **`PlaylistRepository`**: CRUD for playlists at `lib/core/local/local_db_playlists.dart`. Transaction-based insert/delete/reorder.
+- **`AfAsyncLock`**: Utility class in `player_service.dart` used to serialize asynchronous queue mutations and loads sequentially using a single future chain.
+- **`_queueLoadGen`**: Generation counter in `AfPlayerService` used to abort obsolete queue load operations. Incremented synchronously at the start of `playQueue`.
 
 ---
 
