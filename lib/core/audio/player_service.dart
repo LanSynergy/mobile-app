@@ -7,6 +7,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
 import 'artwork_manager.dart';
+import 'audio_device_manager.dart';
 import 'position_tracker.dart';
 
 /// Default spectrum analyser configuration shared across initialisation and
@@ -29,6 +30,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   final Player _player;
   late final AfPositionTracker _positionTracker;
   late final AfArtworkManager _artworkManager;
+  late final AfAudioDeviceManager _audioDeviceManager;
 
   final List<AfTrack> _trackQueue = <AfTrack>[];
   int _currentIndex = -1;
@@ -46,7 +48,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   bool _disposed = false;
   int _suppressPlaylistSyncGen = 0;
   int _activePlaylistSyncGen = 0;
-  int _nudgeGen = 0;
 
   DateTime _lastPlaybackStatePush = DateTime.fromMillisecondsSinceEpoch(0);
   bool _lastPushedPlaying = false;
@@ -54,13 +55,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   int _nudgeRetries = 0;
   static const _maxNudgeRetries = 3;
-
-  /// Last `audio-device` name observed from mpv. Used by the
-  /// `_player.stream.audioDevice` listener to skip duplicate
-  /// emissions (mpv re-emits the same device on some property
-  /// polls), so we only re-apply the filter chain on *real*
-  /// device transitions. `null` until the first emission.
-  String? _lastObservedAudioDevice;
 
   int? _pendingPlayNudgeIdx;
   bool _userPaused = false;
@@ -72,6 +66,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     );
     _artworkManager = AfArtworkManager()
       ..onArtworkChanged = _updateMediaItem;
+    _audioDeviceManager = AfAudioDeviceManager(player: _player);
 
     // Set audio driver BEFORE binding streams. If setAudioDriver is called
     // after property observation starts, it can re-initialize the output
@@ -86,7 +81,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     // Default to 'auto' (Autoselect devices) after streams are bound.
     // mpv starts on a specific device; we switch to 'auto' so the UI
     // shows "Autoselect devices" on first launch. setAudioDevice() no
-    // longer calls _nudgeAudioDevice(), so the selection won't bounce back.
+    // longer calls _audioDeviceManager.nudge(), so the selection won't bounce back.
     Future.delayed(const Duration(milliseconds: 500), () {
       if (_disposed) return;
       try {
@@ -137,7 +132,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Future<void> setAudioExclusive(bool enabled) async {
     await _player.setAudioExclusive(enabled);
     afLog('audio', 'audioExclusive=$enabled');
-    _nudgeAudioDevice();
+    _audioDeviceManager.nudge();
   }
 
   Future<void> setAudioSampleRate(int rate) async {
@@ -457,7 +452,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         _activePlaylistSyncGen = 0;
       }
 
-      _nudgeAudioDevice();
+      _audioDeviceManager.nudge();
     } catch (e, stack) {
       _activePlaylistSyncGen = 0;
       afLog('audio', 'playQueue failed', error: e, stackTrace: stack);
@@ -478,7 +473,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       _positionTracker.updateKnownPosition(rawPos);
     }
     await _player.play();
-    _nudgeAudioDevice();
+    _audioDeviceManager.nudge();
   }
 
   @override
@@ -508,7 +503,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
     try {
       await _player.seek(position);
-      _nudgeAudioDevice();
+      _audioDeviceManager.nudge();
     } catch (_) {
       // onSeek already handled the timer-based reset
     }
@@ -796,82 +791,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     await _player.dispose();
   }
 
-  void _nudgeAudioDevice() {
-    _nudgeGen++;
-    unawaited(_nudgeAudioDeviceWithRetry(0, _nudgeGen));
-  }
-
-  static const _nudgeDelaysMs = [300, 1000, 2500];
-
-  Future<void> _nudgeAudioDeviceWithRetry(int attempt, int gen) async {
-    if (attempt >= _nudgeDelaysMs.length || _disposed) return;
-
-    await Future.delayed(Duration(milliseconds: _nudgeDelaysMs[attempt]));
-    if (_disposed || gen != _nudgeGen) return;
-
-    try {
-      var current = _player.state.audioDevice;
-
-      if (current.name == 'auto') {
-        final devices = _player.state.audioDevices;
-        final preferred = devices.where((d) => d.name != 'auto').toList();
-        if (preferred.isNotEmpty) {
-          current = preferred.firstWhere(
-            (d) => d.name == 'aaudio',
-            orElse: () => preferred.first,
-          );
-        }
-      }
-
-      await _player.setAudioDevice(current);
-      afLog('audio', 'nudged audioDevice: ${current.name} (attempt $attempt)');
-
-      // After the first successful nudge, check if the pipeline recovered.
-      // If the player is actively playing, the freeze is resolved — skip
-      // remaining attempts to avoid unnecessary audio pipeline rebuilds.
-      // Position may still be zero on a fresh track, so we rely on the
-      // playing flag (which tracks mpv's core-idle inverted).
-      if (attempt == 0 && _player.state.playing) {
-        afLog('audio', 'nudge succeeded on first attempt, skipping retries');
-        return;
-      }
-    } catch (e) {
-      afLog('audio', 'nudgeAudioDevice attempt $attempt failed', error: e);
-    }
-
-    unawaited(_nudgeAudioDeviceWithRetry(attempt + 1, gen));
-  }
-
-  /// Re-apply the *current* in-memory audio effects to mpv after an
-  /// output-device change.
-  ///
-  /// On some Android audio outputs (USB DAC, certain Bluetooth
-  /// codecs) the `af` filter chain detaches from the output pipeline
-  /// when mpv rebuilds it, leaving the user with un-filtered audio
-  /// even though `_player.state.audioEffects` still reports the
-  /// filters as enabled. Re-issuing `setAudioEffects(current)`
-  /// re-attaches the chain.
-  ///
-  /// This used to load from `SharedPreferences` instead of the live
-  /// player state, which raced with `_apply()` in the EQ screen —
-  /// `_apply()` issues `setAudioEffects(newFx)` + `saveAudioEffects(newFx)`
-  /// as two unawaited futures, so any audioDevice event firing in
-  /// between (e.g. from `_nudgeAudioDevice` after `play()`/`seek()`)
-  /// would read the *previous* persisted state and clobber the
-  /// user's just-applied slider change. Using `_player.state` makes
-  /// the operation a pure no-op when nothing has actually changed,
-  /// and preserves any pending UI update that's already been pushed
-  /// to mpv.
-  Future<void> _reapplyPersistedEffects() async {
-    if (_disposed) return;
-    try {
-      final current = _player.state.audioEffects;
-      await _player.setAudioEffects(current);
-      afLog('audio', 're-applied audio effects after device change');
-    } catch (e) {
-      afLog('audio', 'reapplyPersistedEffects failed', error: e);
-    }
-  }
+  
 
   Future<void> _reconfigureSpectrumOnTrackChange() async {
     if (_disposed) return;
@@ -996,18 +916,8 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     }));
 
     _subs.add(_player.stream.audioDevice.listen((newDevice) {
-      // Re-apply effects after a *real* device change — on some
-      // devices the audio filter chain (af) doesn't properly attach
-      // to the output pipeline on first init. Re-issuing the chain
-      // after device change re-wires the filters.
-      //
-      // Skip when the stream re-emits the same device (mpv re-emits
-      // on every property poll on some platforms). Without this
-      // guard, every position tick can fire `_reapplyPersistedEffects`,
-      // which competes with in-flight UI changes from the EQ screen.
-      if (newDevice.name == _lastObservedAudioDevice) return;
-      _lastObservedAudioDevice = newDevice.name;
-      unawaited(_reapplyPersistedEffects());
+      if (!_audioDeviceManager.isRealDeviceChange(newDevice.name)) return;
+      unawaited(_audioDeviceManager.reapplyPersistedEffects());
     }));
 
   }
