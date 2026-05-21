@@ -351,7 +351,13 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
     // When track completes and playback stops, reset duration & position to zero.
     // mpv keeps reporting the old duration/position after EOF, so we must
     // explicitly clear them based on completion state.
-    if (svc.isCompleted && !svc.isPlaying && svc.isUserPaused) {
+    // Guard: only reset if we are actually on the last track. This prevents
+    // false resets on Samsung One UI where `isCompleted` can flicker true
+    // during audio pipeline pauses/nudges.
+    final isLastTrack = svc.currentQueue.isNotEmpty &&
+        svc.currentTrack != null &&
+        svc.currentQueue.last.id == svc.currentTrack!.id;
+    if (svc.isCompleted && !svc.isPlaying && svc.isUserPaused && isLastTrack) {
       try {
         ref.read(durationStreamProvider.notifier).state = Duration.zero;
         ref.read(positionStreamProvider.notifier).state = Duration.zero;
