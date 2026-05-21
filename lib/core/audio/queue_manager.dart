@@ -111,8 +111,17 @@ class AfQueueManager {
     if (enabled && _originalQueue.isEmpty) {
       _originalQueue = List<AfTrack>.of(_trackQueue);
     }
-    if (!enabled) _originalQueue = <AfTrack>[];
+    // When disabling shuffle, do NOT clear _originalQueue here.
+    // syncFromMpv() needs it as a fallback for byId lookups. The caller
+    // must call clearOriginalQueueAfterSync() after the sync completes.
     _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
+  }
+
+  /// Clear the original (pre-shuffle) queue snapshot. Call this AFTER
+  /// [syncFromMpv] has finished when disabling shuffle, so the sync can
+  /// use the original queue as a fallback lookup source.
+  void clearOriginalQueueAfterSync() {
+    _originalQueue = <AfTrack>[];
   }
 
   // ── Playlist event processing ──────────────────────────────────────
