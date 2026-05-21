@@ -178,7 +178,6 @@ class AfPositionTracker {
     if (_isSeeking) return;
     if (_isLoadingQueue?.call() ?? false) {
       _positionAnchor.lastKnownPos = Duration.zero;
-      _positionAnchor.lastUpdateTime = DateTime.now();
       _positionController.add(Duration.zero);
       _resetRawPositionStaleDetector(Duration.zero);
       return;

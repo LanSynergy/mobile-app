@@ -360,11 +360,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     final hasTrack = currentTrack != null;
     final completedAtQueueEnd =
         _player.state.completed && _queueManager.isAtQueueEnd;
-    return hasTrack &&
-        !completedAtQueueEnd &&
-        !_userPaused &&
-        _pendingPlayNudgeIdx == null &&
-        !_isLoadingQueue;
+    return hasTrack && !completedAtQueueEnd && !_userPaused && !_isLoadingQueue;
   }
 
   bool get isShuffleEnabled => _queueManager.isShuffleEnabled;
