@@ -7,6 +7,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
+import 'position_tracker.dart';
 
 /// Default spectrum analyser configuration shared across initialisation and
 /// on-track-change re-configuration.
@@ -22,18 +23,11 @@ const _defaultSpectrumSettings = SpectrumSettings(
   emitInterval: Duration(milliseconds: 8),
 );
 
-/// Stores a snapshot of playback position for elapsed-time extrapolation.
-/// Used when mpv's observe_property/getRawProperty for time-pos stalls.
-class _PositionAnchor {
-  Duration lastKnownPos = Duration.zero;
-  DateTime lastUpdateTime = DateTime.now();
-  bool wasPlaying = false;
-}
-
 /// Bridges [Player] (mpv_audio_kit) with [audio_service] so the OS
 /// lock-screen / notification controls drive playback.
 class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   final Player _player;
+  late final AfPositionTracker _positionTracker;
 
   final List<AfTrack> _trackQueue = <AfTrack>[];
   int _currentIndex = -1;
@@ -44,24 +38,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   final _shuffleController = StreamController<bool>.broadcast();
   final _trackController = StreamController<AfTrack?>.broadcast();
   final _queueController = StreamController<List<AfTrack>>.broadcast();
-  final _positionController = StreamController<Duration>.broadcast();
-
-  final _positionAnchor = _PositionAnchor();
-  Timer? _positionPollTimer;
-  bool _isSeeking = false;
-  Timer? _seekResetTimer;
-  bool _isPolling = false;
-
-  /// Last raw mpv time-pos observed by the poller.
-  ///
-  /// Samsung One UI can get stuck returning the same non-zero value after a
-  /// seek. The old fallback only handled rawPos == 0, so it kept trusting the
-  /// frozen seek value forever. These fields detect a stale non-zero raw
-  /// position and let the Dart-side extrapolator take over.
-  Duration? _lastRawPolledPos;
-  int _staleRawPollTicks = 0;
-  static const _rawStaleTolerance = Duration(milliseconds: 250);
-  static const _rawStaleAfterTicks = 4;
 
   void Function(AfTrack track)? onTrackChanged;
   final List<StreamSubscription<dynamic>> _subs = <StreamSubscription<dynamic>>[];
@@ -95,6 +71,11 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   bool _userPaused = false;
 
   AfPlayerService() : _player = Player() {
+    _positionTracker = AfPositionTracker(
+      player: _player,
+      shouldAdvancePosition: () => shouldAdvancePosition,
+    );
+
     // Set audio driver BEFORE binding streams. If setAudioDriver is called
     // after property observation starts, it can re-initialize the output
     // pipeline and break time-pos observation until output is re-selected.
@@ -103,6 +84,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     // 200 ms keeps background playback stable under Android Doze.
     _player.setAudioBuffer(const Duration(milliseconds: 200));
     _bindStreams();
+    _positionTracker.start();
 
     // Default to 'auto' (Autoselect devices) after streams are bound.
     // mpv starts on a specific device; we switch to 'auto' so the UI
@@ -125,7 +107,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   // Public stream surface
   // ---------------------------------------------------------------------------
 
-  Stream<Duration> get positionStream => _positionController.stream;
+  Stream<Duration> get positionStream => _positionTracker.positionStream;
   Stream<bool> get playingStream => _player.stream.playing;
   Stream<Duration> get audioPtsStream => _player.stream.audioPts;
   Stream<double> get percentPosStream => _player.stream.percentPos;
@@ -370,29 +352,9 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Duration get duration => _player.state.duration;
   Stream<Duration> get durationStream => _player.stream.duration;
 
-  Future<Duration> getRawPosition() async {
-    try {
-      final raw = await _player.getRawProperty('time-pos');
-      if (raw == null) return Duration.zero;
-      final secs = double.tryParse(raw);
-      if (secs == null || secs < 0) return Duration.zero;
-      return Duration(milliseconds: (secs * 1000).round());
-    } catch (_) {
-      return Duration.zero;
-    }
-  }
+  Future<Duration> getRawPosition() => _positionTracker.getRawPosition();
 
-  Future<Duration> getRawDuration() async {
-    try {
-      final raw = await _player.getRawProperty('duration');
-      if (raw == null) return Duration.zero;
-      final secs = double.tryParse(raw);
-      if (secs == null || secs <= 0) return Duration.zero;
-      return Duration(milliseconds: (secs * 1000).round());
-    } catch (_) {
-      return Duration.zero;
-    }
-  }
+  Future<Duration> getRawDuration() => _positionTracker.getRawDuration();
 
   List<AfTrack> get currentQueue => List<AfTrack>.unmodifiable(_trackQueue);
 
@@ -466,14 +428,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     }).toList();
 
     try {
-      // Reset position before opening new tracks. The playlist listener
-      // won't fire indexChanged when the new index equals the old one
-      // (e.g. tapping a different album at index 0), so we must reset here.
-      _positionAnchor.lastKnownPos = Duration.zero;
-      _positionAnchor.lastUpdateTime = DateTime.now();
-      _positionAnchor.wasPlaying = true;
-      _positionController.add(Duration.zero);
-      _resetRawPositionStaleDetector(Duration.zero);
+      _positionTracker.onTrackChanged();
 
       if (medias.length <= 5) {
         await _player.openAll(medias, index: safeIndex, play: true);
@@ -520,15 +475,11 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   @override
   Future<void> play() async {
     _userPaused = false;
-    _positionAnchor.wasPlaying = true;
-    // Don't blindly trust `_player.state.position` — on Samsung One UI it
-    // can return the last seek position instead of actual elapsed time.
-    // Query raw position and only advance the anchor (never jump backwards).
-    final rawPos = await getRawPosition();
-    if (rawPos > _positionAnchor.lastKnownPos) {
-      _positionAnchor.lastKnownPos = rawPos;
+    _positionTracker.onPlay();
+    final rawPos = await _positionTracker.getRawPosition();
+    if (rawPos > _positionTracker.lastKnownPosition) {
+      _positionTracker.updateKnownPosition(rawPos);
     }
-    _positionAnchor.lastUpdateTime = DateTime.now();
     await _player.play();
     _nudgeAudioDevice();
   }
@@ -537,14 +488,11 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Future<void> pause() async {
     _userPaused = true;
     _pendingPlayNudgeIdx = null;
-    _positionAnchor.wasPlaying = false;
-    // Same One UI guard as `play()` — prevents the UI from jumping back
-    // to the last seek position when the user pauses.
-    final rawPos = await getRawPosition();
-    if (rawPos > _positionAnchor.lastKnownPos) {
-      _positionAnchor.lastKnownPos = rawPos;
+    _positionTracker.onPause();
+    final rawPos = await _positionTracker.getRawPosition();
+    if (rawPos > _positionTracker.lastKnownPosition) {
+      _positionTracker.updateKnownPosition(rawPos);
     }
-    _positionAnchor.lastUpdateTime = DateTime.now();
     await _player.pause();
   }
 
@@ -552,36 +500,20 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Future<void> stop() async {
     _userPaused = true;
     _pendingPlayNudgeIdx = null;
-    _positionAnchor.wasPlaying = false;
-    _positionAnchor.lastKnownPos = Duration.zero;
-    _positionAnchor.lastUpdateTime = DateTime.now();
-    _resetRawPositionStaleDetector(Duration.zero);
-    _positionController.add(Duration.zero);
+    _positionTracker.onStop();
     await _player.stop();
   }
 
   @override
   Future<void> seek(Duration position) async {
-    _isSeeking = true;
-    final now = DateTime.now();
-    _positionAnchor.lastKnownPos = position;
-    _positionAnchor.lastUpdateTime = now;
-    _resetRawPositionStaleDetector(position);
-    _positionController.add(position);
+    _positionTracker.onSeek(position);
     _updatePlaybackState();
 
     try {
       await _player.seek(position);
-
-      // Seeking is one reproducible trigger for the One UI freeze: raw
-      // time-pos can keep returning the seeked value until the output pipeline
-      // is nudged. This mirrors the manual "switch output device" fix.
       _nudgeAudioDevice();
-    } finally {
-      _seekResetTimer?.cancel();
-      _seekResetTimer = Timer(const Duration(milliseconds: 300), () {
-        if (!_disposed) _isSeeking = false;
-      });
+    } catch (_) {
+      // onSeek already handled the timer-based reset
     }
   }
 
@@ -857,14 +789,12 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    _positionPollTimer?.cancel();
-    _seekResetTimer?.cancel();
+    _positionTracker.dispose();
     for (final s in _subs) {
       await s.cancel();
     }
     await _trackController.close();
     await _queueController.close();
-    await _positionController.close();
     await _shuffleController.close();
     await _player.dispose();
   }
@@ -989,10 +919,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         final track = _trackQueue[idx];
         if (track.id == previousTrackId) return;
 
-        _positionAnchor.lastKnownPos = Duration.zero;
-        _positionAnchor.lastUpdateTime = DateTime.now();
-        _positionController.add(Duration.zero);
-        _resetRawPositionStaleDetector(Duration.zero);
+        _positionTracker.onTrackChanged();
 
         _trackController.add(track);
         afLog(
@@ -1083,98 +1010,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       unawaited(_reapplyPersistedEffects());
     }));
 
-    _positionPollTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
-      if (_disposed) return;
-      _pollAndEmitPosition();
-    });
-  }
-
-  void _resetRawPositionStaleDetector([Duration? seed]) {
-    _lastRawPolledPos = seed;
-    _staleRawPollTicks = 0;
-  }
-
-  bool _isRawPositionStale(Duration rawPos) {
-    final previous = _lastRawPolledPos;
-    _lastRawPolledPos = rawPos;
-
-    if (previous == null) {
-      _staleRawPollTicks = 0;
-      return false;
-    }
-
-    final deltaMs = (rawPos - previous).inMilliseconds.abs();
-    if (deltaMs <= _rawStaleTolerance.inMilliseconds) {
-      _staleRawPollTicks++;
-    } else {
-      _staleRawPollTicks = 0;
-    }
-
-    return _staleRawPollTicks >= _rawStaleAfterTicks;
-  }
-
-  /// Polls mpv for current position. Falls back to elapsed-time extrapolation
-  /// when mpv returns 0 OR when mpv returns the same non-zero raw position for
-  /// several ticks while playback should be advancing.
-  Future<void> _pollAndEmitPosition() async {
-    if (_isSeeking || _isPolling) return;
-    _isPolling = true;
-
-    try {
-      final rawPos = await getRawPosition();
-      final now = DateTime.now();
-      final playing = _player.state.playing;
-      final shouldAdvance = playing || shouldAdvancePosition;
-
-      if (rawPos > Duration.zero) {
-        final rawBehindAnchor = shouldAdvance &&
-            rawPos.inMilliseconds + 500 <
-                _positionAnchor.lastKnownPos.inMilliseconds;
-        final rawStale =
-            shouldAdvance && (_isRawPositionStale(rawPos) || rawBehindAnchor);
-
-        if (!rawStale) {
-          _positionAnchor.lastKnownPos = rawPos;
-          _positionAnchor.lastUpdateTime = now;
-          _positionAnchor.wasPlaying = playing;
-          _positionController.add(rawPos);
-          return;
-        }
-
-        if (_staleRawPollTicks == _rawStaleAfterTicks || rawBehindAnchor) {
-          afLog('audio',
-              'raw time-pos stale at ${rawPos.inMilliseconds}ms; using extrapolated position');
-        }
-      }
-
-      if (shouldAdvance) {
-        final dur = _player.state.duration;
-        // If position already reached duration, cap it and stop extrapolating.
-        // This prevents the progress bar from running indefinitely when mpv's
-        // `completed` flag is delayed or never fires on some OEM pipelines.
-        if (dur > Duration.zero && _positionAnchor.lastKnownPos >= dur) {
-          _positionAnchor.lastKnownPos = dur;
-          _positionController.add(dur);
-          return;
-        }
-
-        final elapsed = now.difference(_positionAnchor.lastUpdateTime);
-        final speed = _player.state.rate;
-        final extrapolated = _positionAnchor.lastKnownPos +
-            Duration(milliseconds: (elapsed.inMilliseconds * speed).round());
-        // Clamp single-tick overshoot so a large scheduler delay doesn't
-        // push the position past the end.
-        final capped = (dur > Duration.zero && extrapolated > dur) ? dur : extrapolated;
-        _positionAnchor.lastKnownPos = capped;
-        _positionAnchor.lastUpdateTime = now;
-        _positionAnchor.wasPlaying = true;
-        _positionController.add(capped);
-      } else if (rawPos == Duration.zero) {
-        _resetRawPositionStaleDetector(Duration.zero);
-      }
-    } finally {
-      _isPolling = false;
-    }
   }
 
   void _updatePlaybackStateThrottled() {
@@ -1219,7 +1054,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
                 ? AudioProcessingState.completed
                 : AudioProcessingState.ready,
         playing: effectivePlaying,
-        updatePosition: _positionAnchor.lastKnownPos,
+        updatePosition: _positionTracker.lastKnownPosition,
         bufferedPosition: s.buffer,
         speed: s.rate,
         queueIndex: _currentIndex >= 0 ? _currentIndex : null,
