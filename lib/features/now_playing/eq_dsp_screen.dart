@@ -31,89 +31,8 @@ import '../../design_tokens/tokens.dart';
 import '../../utils/display_error.dart';
 import '../../state/providers.dart';
 import '../../widgets/af_dialog.dart';
-
-/// ISO 18-band center frequencies for the superequalizer.
-const kEqBands = <String, String>{
-  '1b': '65 Hz',
-  '2b': '92 Hz',
-  '3b': '131 Hz',
-  '4b': '185 Hz',
-  '5b': '262 Hz',
-  '6b': '370 Hz',
-  '7b': '523 Hz',
-  '8b': '740 Hz',
-  '9b': '1.0 kHz',
-  '10b': '1.5 kHz',
-  '11b': '2.1 kHz',
-  '12b': '2.9 kHz',
-  '13b': '4.2 kHz',
-  '14b': '5.9 kHz',
-  '15b': '8.3 kHz',
-  '16b': '11.8 kHz',
-  '17b': '16.7 kHz',
-  '18b': '20 kHz',
-};
-
-/// Built-in EQ presets.
-const kBuiltInPresets = <String, EqPreset>{
-  'Flat': EqPreset(bands: {}, bass: 0, treble: 0),
-  'Rock': EqPreset(
-    bands: {'1b': 1.6, '2b': 1.4, '3b': 1.2, '4b': 1.0, '5b': 0.9,
-             '6b': 0.8, '7b': 0.9, '8b': 1.1, '9b': 1.3, '10b': 1.5,
-             '11b': 1.6, '12b': 1.5, '13b': 1.4, '14b': 1.3, '15b': 1.2,
-             '16b': 1.1, '17b': 1.0, '18b': 1.0},
-    bass: 3, treble: 1,
-  ),
-  'Jazz': EqPreset(
-    bands: {'1b': 1.1, '2b': 1.1, '3b': 1.0, '4b': 1.2, '5b': 1.3,
-             '6b': 1.3, '7b': 1.0, '8b': 1.1, '9b': 1.3, '10b': 1.4,
-             '11b': 1.3, '12b': 1.2, '13b': 1.4, '14b': 1.3, '15b': 1.2,
-             '16b': 1.1, '17b': 1.0, '18b': 1.0},
-    bass: 2, treble: -1,
-  ),
-  'Classical': EqPreset(
-    bands: {'1b': 1.0, '2b': 1.0, '3b': 1.0, '4b': 1.0, '5b': 1.0,
-             '6b': 1.0, '7b': 1.0, '8b': 1.0, '9b': 1.1, '10b': 1.2,
-             '11b': 1.3, '12b': 1.4, '13b': 1.3, '14b': 1.2, '15b': 1.1,
-             '16b': 1.0, '17b': 1.0, '18b': 1.0},
-    bass: 0, treble: 2,
-  ),
-  'Hip-Hop': EqPreset(
-    bands: {'1b': 1.8, '2b': 1.7, '3b': 1.5, '4b': 1.3, '5b': 1.1,
-             '6b': 1.0, '7b': 0.9, '8b': 0.9, '9b': 1.0, '10b': 1.0,
-             '11b': 1.1, '12b': 1.2, '13b': 1.3, '14b': 1.2, '15b': 1.1,
-             '16b': 1.0, '17b': 1.0, '18b': 1.0},
-    bass: 5, treble: -1,
-  ),
-  'Electronic': EqPreset(
-    bands: {'1b': 1.6, '2b': 1.5, '3b': 1.3, '4b': 1.1, '5b': 1.0,
-             '6b': 0.9, '7b': 1.0, '8b': 1.2, '9b': 1.4, '10b': 1.5,
-             '11b': 1.5, '12b': 1.4, '13b': 1.5, '14b': 1.6, '15b': 1.5,
-             '16b': 1.4, '17b': 1.3, '18b': 1.2},
-    bass: 4, treble: 3,
-  ),
-  'Vocal': EqPreset(
-    bands: {'1b': 0.8, '2b': 0.9, '3b': 0.9, '4b': 1.0, '5b': 1.1,
-             '6b': 1.3, '7b': 1.5, '8b': 1.6, '9b': 1.6, '10b': 1.5,
-             '11b': 1.4, '12b': 1.3, '13b': 1.2, '14b': 1.1, '15b': 1.0,
-             '16b': 0.9, '17b': 0.9, '18b': 0.9},
-    bass: -2, treble: 1,
-  ),
-  'Bass Boost': EqPreset(
-    bands: {'1b': 2.2, '2b': 2.0, '3b': 1.8, '4b': 1.5, '5b': 1.2,
-             '6b': 1.0, '7b': 1.0, '8b': 1.0, '9b': 1.0, '10b': 1.0,
-             '11b': 1.0, '12b': 1.0, '13b': 1.0, '14b': 1.0, '15b': 1.0,
-             '16b': 1.0, '17b': 1.0, '18b': 1.0},
-    bass: 6, treble: 0,
-  ),
-  'Treble Boost': EqPreset(
-    bands: {'1b': 1.0, '2b': 1.0, '3b': 1.0, '4b': 1.0, '5b': 1.0,
-             '6b': 1.0, '7b': 1.0, '8b': 1.0, '9b': 1.0, '10b': 1.0,
-             '11b': 1.1, '12b': 1.2, '13b': 1.4, '14b': 1.6, '15b': 1.8,
-             '16b': 2.0, '17b': 2.0, '18b': 1.8},
-    bass: 0, treble: 5,
-  ),
-};
+import 'eq_dsp_widgets.dart';
+import 'eq_preset.dart';
 
 class EqDspScreen extends ConsumerStatefulWidget {
   const EqDspScreen({super.key});
@@ -154,14 +73,6 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   double _gateRelease = 250.0;
 
   // ── De-esser (fine-tuning) ──
-  //
-  // mpv's `lavfi-deesser` accepts three normalised 0..1 parameters
-  // (intensity, mix, "frequency content kept"). The "freq" param is
-  // NOT a Hz value — it's a 0..1 ratio. Previously this screen
-  // exposed it as a Hz slider 2000..12000 and forwarded the raw
-  // value to mpv, which made mpv reject the *entire* af chain when
-  // de-esser was enabled (kicking the user back to dry audio and
-  // silently disabling Bass/Treble/EQ at the same time).
   bool _deesser = false;
   double _deesserIntensity = 0.0;
   double _deesserMix = 0.5;
@@ -277,20 +188,14 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     _gateAttack = fx.agate.attack;
     _gateRelease = fx.agate.release;
     _deesser = fx.deesser.enabled;
-    // mpv's deesser params are all clamped 0..1. Clamp on load so a
-    // value persisted by an earlier build (when the "Frequency"
-    // slider was 2000..12000 Hz) doesn't blow up libmpv's filter
-    // parser the next time the user enables de-esser.
     _deesserIntensity = fx.deesser.i.clamp(0.0, 1.0);
     _deesserMix = fx.deesser.m.clamp(0.0, 1.0);
     _deesserFreq = fx.deesser.f.clamp(0.0, 1.0);
-    // Echo
     _echoEnabled = fx.aecho.enabled;
     _echoInGain = fx.aecho.in_gain;
     _echoOutGain = fx.aecho.out_gain;
     _echoDelays = fx.aecho.delays;
     _echoDecays = fx.aecho.decays;
-    // Modulation
     _phaser = fx.aphaser.enabled;
     _phaserInGain = fx.aphaser.in_gain;
     _phaserOutGain = fx.aphaser.out_gain;
@@ -320,9 +225,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     _crusherBits = fx.acrusher.bits;
     _crusherMix = fx.acrusher.mix;
     _crusherSamples = fx.acrusher.samples;
-    // Master toggle — load persisted state
     _loadMasterState();
-    // Load presets
     _loadPresets();
   }
 
@@ -579,7 +482,8 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                   child: const Text('Cancel'),
                 ),
                 TextButton(
-                  onPressed: () => Navigator.pop(context, controller.text.trim()),
+                  onPressed: () =>
+                      Navigator.pop(context, controller.text.trim()),
                   child: const Text('Save'),
                 ),
               ],
@@ -651,10 +555,6 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           duration: const Duration(milliseconds: 200),
           child: NotificationListener<ScrollNotification>(
             onNotification: (notification) {
-              // Track whether the user's finger is actively in a scroll gesture.
-              // ScrollStartNotification → finger down + moving.
-              // ScrollEndNotification → finger lifted or fling settled.
-              // Only call setState on transitions to avoid spurious rebuilds.
               if (notification is ScrollStartNotification &&
                   !_isScrollActive) {
                 setState(() => _isScrollActive = true);
@@ -662,16 +562,10 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                   _isScrollActive) {
                 setState(() => _isScrollActive = false);
               }
-              return false; // let the notification keep bubbling
+              return false;
             },
             child: NotificationListener<OverscrollIndicatorNotification>(
               onNotification: (notification) {
-                // Prevent Android 16's StretchingOverscrollIndicator from
-                // activating. The stretch effect distorts touch coordinates
-                // at the platform level, causing Slider/Switch/ChoiceChip
-                // widgets to receive phantom pointer events even with
-                // ClampingScrollPhysics. Disallowing the indicator removes
-                // the stretch entirely.
                 notification.disallowIndicator();
                 return true;
               },
@@ -681,12 +575,6 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                     horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
                 children: _buildSections()
                     .map((child) => IgnorePointer(
-                          // Block child interactions when:
-                          // 1. Master DSP is disabled (!_masterEnabled).
-                          // 2. User is mid-scroll (_isScrollActive) — prevents
-                          //    Slider/Switch/ChoiceChip from receiving pointer
-                          //    events that fall through when the list is held
-                          //    at its top/bottom boundary.
                           ignoring: !_masterEnabled || _isScrollActive,
                           child: child,
                         ))
@@ -698,28 +586,26 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     );
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
+  // ── Sections ─────────────────────────────────────────────────────────────
 
   /// Build the flat list of section widgets for the ListView.
-  /// Each item is a section label or a card — no wrapping Column.
-  /// This lets ListView properly cull off-screen items and gives
-  /// Slider/Switch their own Material canvas for correct rendering.
+  /// Each item is a section label or a card.
   List<Widget> _buildSections() => [
         // ── EQ Presets ─────────────────────────────────────────────────
-        _sectionLabel('EQ Presets'),
-        _card([_buildPresetChips()]),
+        eqSectionLabel('EQ Presets'),
+        eqCard([_buildPresetChips()]),
         const SizedBox(height: AfSpacing.s16),
 
         // ── Tone shelves ───────────────────────────────────────────────
-        _sectionLabel('Tone'),
-        _card([
-          _sliderRow('Bass', _bass, -12, 12, 24, (v) {
+        eqSectionLabel('Tone'),
+        eqCard([
+          eqSliderRow('Bass', _bass, -12, 12, 24, (v) {
             setState(() {
               _bass = v;
               _activePreset = null;
             });
           }, _apply, suffix: 'dB'),
-          _sliderRow('Treble', _treble, -12, 12, 24, (v) {
+          eqSliderRow('Treble', _treble, -12, 12, 24, (v) {
             setState(() {
               _treble = v;
               _activePreset = null;
@@ -729,8 +615,8 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         const SizedBox(height: AfSpacing.s16),
 
         // ── 18-band graphic EQ ─────────────────────────────────────────
-        _sectionLabel('18-band Equalizer'),
-        _card([
+        eqSectionLabel('18-band Equalizer'),
+        eqCard([
           SwitchListTile.adaptive(
             value: _eqEnabled,
             onChanged: (v) {
@@ -778,10 +664,10 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         const SizedBox(height: AfSpacing.s16),
 
         // ── Dynamics ───────────────────────────────────────────────────
-        _sectionLabel('Dynamics'),
-        _card([
-          _toggleTile('Loudness normalization', 'EBU R128 (-16 LUFS)',
-              _loudnorm, (v) {
+        eqSectionLabel('Dynamics'),
+        eqCard([
+          eqToggleTile('Loudness normalization',
+              'EBU R128 (-16 LUFS)', _loudnorm, (v) {
             setState(() => _loudnorm = v);
             unawaited(_apply());
           }),
@@ -801,16 +687,16 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_compressor) ...[
-            _sliderRow('Threshold', _compThreshold, 0.001, 1.0, 100, (v) {
+            eqSliderRow('Threshold', _compThreshold, 0.001, 1.0, 100, (v) {
               setState(() => _compThreshold = v);
             }, _apply, precision: 3),
-            _sliderRow('Ratio', _compRatio, 1.0, 20.0, 38, (v) {
+            eqSliderRow('Ratio', _compRatio, 1.0, 20.0, 38, (v) {
               setState(() => _compRatio = v);
             }, _apply, precision: 1, suffix: ':1'),
-            _sliderRow('Attack', _compAttack, 0.01, 200.0, 100, (v) {
+            eqSliderRow('Attack', _compAttack, 0.01, 200.0, 100, (v) {
               setState(() => _compAttack = v);
             }, _apply, precision: 1, suffix: 'ms'),
-            _sliderRow('Release', _compRelease, 5.0, 2000.0, 100, (v) {
+            eqSliderRow('Release', _compRelease, 5.0, 2000.0, 100, (v) {
               setState(() => _compRelease = v);
             }, _apply, precision: 0, suffix: 'ms'),
           ],
@@ -830,16 +716,16 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_gate) ...[
-            _sliderRow('Threshold', _gateThreshold, 0.001, 1.0, 100, (v) {
+            eqSliderRow('Threshold', _gateThreshold, 0.001, 1.0, 100, (v) {
               setState(() => _gateThreshold = v);
             }, _apply, precision: 3),
-            _sliderRow('Ratio', _gateRatio, 1.0, 20.0, 38, (v) {
+            eqSliderRow('Ratio', _gateRatio, 1.0, 20.0, 38, (v) {
               setState(() => _gateRatio = v);
             }, _apply, precision: 1, suffix: ':1'),
-            _sliderRow('Attack', _gateAttack, 0.01, 200.0, 100, (v) {
+            eqSliderRow('Attack', _gateAttack, 0.01, 200.0, 100, (v) {
               setState(() => _gateAttack = v);
             }, _apply, precision: 1, suffix: 'ms'),
-            _sliderRow('Release', _gateRelease, 5.0, 2000.0, 100, (v) {
+            eqSliderRow('Release', _gateRelease, 5.0, 2000.0, 100, (v) {
               setState(() => _gateRelease = v);
             }, _apply, precision: 0, suffix: 'ms'),
           ],
@@ -859,17 +745,13 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_deesser) ...[
-            _sliderRow('Intensity', _deesserIntensity, 0.0, 1.0, 20, (v) {
+            eqSliderRow('Intensity', _deesserIntensity, 0.0, 1.0, 20, (v) {
               setState(() => _deesserIntensity = v);
             }, _apply, precision: 2),
-            _sliderRow('Mix', _deesserMix, 0.0, 1.0, 20, (v) {
+            eqSliderRow('Mix', _deesserMix, 0.0, 1.0, 20, (v) {
               setState(() => _deesserMix = v);
             }, _apply, precision: 2),
-            // mpv's `lavfi-deesser` "f" parameter is a 0..1 ratio
-            // ("how much of original frequency content to keep"),
-            // not a Hz value. Treating it as Hz makes libmpv reject
-            // the entire `af` chain — see field comment above.
-            _sliderRow('Frequency keep', _deesserFreq, 0.0, 1.0, 20, (v) {
+            eqSliderRow('Frequency keep', _deesserFreq, 0.0, 1.0, 20, (v) {
               setState(() => _deesserFreq = v);
             }, _apply, precision: 2),
           ],
@@ -877,8 +759,8 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         const SizedBox(height: AfSpacing.s16),
 
         // ── Echo / Delay ───────────────────────────────────────────────
-        _sectionLabel('Echo / Delay'),
-        _card([
+        eqSectionLabel('Echo / Delay'),
+        eqCard([
           SwitchListTile.adaptive(
             value: _echoEnabled,
             onChanged: (v) {
@@ -895,17 +777,17 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_echoEnabled) ...[
-            _sliderRow('In gain', _echoInGain, 0.0, 1.0, 20, (v) {
+            eqSliderRow('In gain', _echoInGain, 0.0, 1.0, 20, (v) {
               setState(() => _echoInGain = v);
             }, _apply, precision: 2),
-            _sliderRow('Out gain', _echoOutGain, 0.0, 1.0, 20, (v) {
+            eqSliderRow('Out gain', _echoOutGain, 0.0, 1.0, 20, (v) {
               setState(() => _echoOutGain = v);
             }, _apply, precision: 2),
-            _textFieldRow('Delays (ms)', _echoDelays, 'e.g. 500|250', (v) {
+            eqTextFieldRow(context, 'Delays (ms)', _echoDelays, 'e.g. 500|250', (v) {
               setState(() => _echoDelays = v);
               unawaited(_apply());
             }),
-            _textFieldRow('Decays (0-1)', _echoDecays, 'e.g. 0.5|0.3', (v) {
+            eqTextFieldRow(context, 'Decays (0-1)', _echoDecays, 'e.g. 0.5|0.3', (v) {
               setState(() => _echoDecays = v);
               unawaited(_apply());
             }),
@@ -922,8 +804,8 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         const SizedBox(height: AfSpacing.s16),
 
         // ── Pitch & Tempo ──────────────────────────────────────────────
-        _sectionLabel('Pitch & Tempo'),
-        _card([
+        eqSectionLabel('Pitch & Tempo'),
+        eqCard([
           SwitchListTile.adaptive(
             value: _rubberbandEnabled,
             onChanged: (v) {
@@ -941,7 +823,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_rubberbandEnabled) ...[
-            _sliderRow(
+            eqSliderRow(
               'Pitch',
               _pitch,
               0.5,
@@ -952,7 +834,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
               suffix: '×',
               precision: 2,
             ),
-            _sliderRow(
+            eqSliderRow(
               'Tempo',
               _tempo,
               0.5,
@@ -968,8 +850,8 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         const SizedBox(height: AfSpacing.s16),
 
         // ── Spatial ────────────────────────────────────────────────────
-        _sectionLabel('Spatial'),
-        _card([
+        eqSectionLabel('Spatial'),
+        eqCard([
           SwitchListTile.adaptive(
             value: _crossfeed,
             onChanged: (v) {
@@ -986,7 +868,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_crossfeed)
-            _sliderRow(
+            eqSliderRow(
               'Strength',
               _crossfeedStrength,
               0.0,
@@ -1012,7 +894,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_stereoWiden)
-            _sliderRow(
+            eqSliderRow(
               'Delay',
               _stereoWidenDelay,
               1.0,
@@ -1027,8 +909,8 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         const SizedBox(height: AfSpacing.s16),
 
         // ── Modulation ─────────────────────────────────────────────────
-        _sectionLabel('Modulation'),
-        _card([
+        eqSectionLabel('Modulation'),
+        eqCard([
           SwitchListTile.adaptive(
             value: _phaser,
             onChanged: (v) {
@@ -1045,19 +927,19 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_phaser) ...[
-            _sliderRow('In gain', _phaserInGain, 0.0, 1.0, 20, (v) {
+            eqSliderRow('In gain', _phaserInGain, 0.0, 1.0, 20, (v) {
               setState(() => _phaserInGain = v);
             }, _apply, precision: 2),
-            _sliderRow('Out gain', _phaserOutGain, 0.0, 1.0, 20, (v) {
+            eqSliderRow('Out gain', _phaserOutGain, 0.0, 1.0, 20, (v) {
               setState(() => _phaserOutGain = v);
             }, _apply, precision: 2),
-            _sliderRow('Delay', _phaserDelay, 0.0, 5.0, 50, (v) {
+            eqSliderRow('Delay', _phaserDelay, 0.0, 5.0, 50, (v) {
               setState(() => _phaserDelay = v);
             }, _apply, precision: 1, suffix: 'ms'),
-            _sliderRow('Decay', _phaserDecay, 0.0, 0.99, 99, (v) {
+            eqSliderRow('Decay', _phaserDecay, 0.0, 0.99, 99, (v) {
               setState(() => _phaserDecay = v);
             }, _apply, precision: 2),
-            _sliderRow('Speed', _phaserSpeed, 0.1, 2.0, 19, (v) {
+            eqSliderRow('Speed', _phaserSpeed, 0.1, 2.0, 19, (v) {
               setState(() => _phaserSpeed = v);
             }, _apply, precision: 2, suffix: 'Hz'),
           ],
@@ -1077,19 +959,19 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_flanger) ...[
-            _sliderRow('Delay', _flangerDelay, 0.0, 30.0, 60, (v) {
+            eqSliderRow('Delay', _flangerDelay, 0.0, 30.0, 60, (v) {
               setState(() => _flangerDelay = v);
             }, _apply, precision: 1, suffix: 'ms'),
-            _sliderRow('Depth', _flangerDepth, 0.0, 10.0, 20, (v) {
+            eqSliderRow('Depth', _flangerDepth, 0.0, 10.0, 20, (v) {
               setState(() => _flangerDepth = v);
             }, _apply, precision: 1),
-            _sliderRow('Regen', _flangerRegen, -95.0, 95.0, 38, (v) {
+            eqSliderRow('Regen', _flangerRegen, -95.0, 95.0, 38, (v) {
               setState(() => _flangerRegen = v);
             }, _apply, precision: 0, suffix: '%'),
-            _sliderRow('Width', _flangerWidth, 0.0, 100.0, 20, (v) {
+            eqSliderRow('Width', _flangerWidth, 0.0, 100.0, 20, (v) {
               setState(() => _flangerWidth = v);
             }, _apply, precision: 0, suffix: '%'),
-            _sliderRow('Speed', _flangerSpeed, 0.1, 10.0, 99, (v) {
+            eqSliderRow('Speed', _flangerSpeed, 0.1, 10.0, 99, (v) {
               setState(() => _flangerSpeed = v);
             }, _apply, precision: 1, suffix: 'Hz'),
           ],
@@ -1109,25 +991,25 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_chorus) ...[
-            _sliderRow('In gain', _chorusInGain, 0.0, 1.0, 20, (v) {
+            eqSliderRow('In gain', _chorusInGain, 0.0, 1.0, 20, (v) {
               setState(() => _chorusInGain = v);
             }, _apply, precision: 2),
-            _sliderRow('Out gain', _chorusOutGain, 0.0, 1.0, 20, (v) {
+            eqSliderRow('Out gain', _chorusOutGain, 0.0, 1.0, 20, (v) {
               setState(() => _chorusOutGain = v);
             }, _apply, precision: 2),
-            _textFieldRow('Delays (ms)', _chorusDelays, 'e.g. 40|60', (v) {
+            eqTextFieldRow(context, 'Delays (ms)', _chorusDelays, 'e.g. 40|60', (v) {
               setState(() => _chorusDelays = v);
               unawaited(_apply());
             }),
-            _textFieldRow('Decays', _chorusDecays, 'e.g. 0.4|0.32', (v) {
+            eqTextFieldRow(context, 'Decays', _chorusDecays, 'e.g. 0.4|0.32', (v) {
               setState(() => _chorusDecays = v);
               unawaited(_apply());
             }),
-            _textFieldRow('Speeds (Hz)', _chorusSpeeds, 'e.g. 0.25|0.4', (v) {
+            eqTextFieldRow(context, 'Speeds (Hz)', _chorusSpeeds, 'e.g. 0.25|0.4', (v) {
               setState(() => _chorusSpeeds = v);
               unawaited(_apply());
             }),
-            _textFieldRow('Depths', _chorusDepths, 'e.g. 2|3', (v) {
+            eqTextFieldRow(context, 'Depths', _chorusDepths, 'e.g. 2|3', (v) {
               setState(() => _chorusDepths = v);
               unawaited(_apply());
             }),
@@ -1156,10 +1038,10 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_tremolo) ...[
-            _sliderRow('Frequency', _tremoloFreq, 0.1, 20.0, 40, (v) {
+            eqSliderRow('Frequency', _tremoloFreq, 0.1, 20.0, 40, (v) {
               setState(() => _tremoloFreq = v);
             }, _apply, precision: 1, suffix: 'Hz'),
-            _sliderRow('Depth', _tremoloDepth, 0.0, 1.0, 20, (v) {
+            eqSliderRow('Depth', _tremoloDepth, 0.0, 1.0, 20, (v) {
               setState(() => _tremoloDepth = v);
             }, _apply, precision: 2),
           ],
@@ -1179,10 +1061,10 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_vibrato) ...[
-            _sliderRow('Frequency', _vibratoFreq, 0.1, 20.0, 40, (v) {
+            eqSliderRow('Frequency', _vibratoFreq, 0.1, 20.0, 40, (v) {
               setState(() => _vibratoFreq = v);
             }, _apply, precision: 1, suffix: 'Hz'),
-            _sliderRow('Depth', _vibratoDepth, 0.0, 1.0, 20, (v) {
+            eqSliderRow('Depth', _vibratoDepth, 0.0, 1.0, 20, (v) {
               setState(() => _vibratoDepth = v);
             }, _apply, precision: 2),
           ],
@@ -1190,8 +1072,8 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         const SizedBox(height: AfSpacing.s16),
 
         // ── Creative ───────────────────────────────────────────────────
-        _sectionLabel('Creative'),
-        _card([
+        eqSectionLabel('Creative'),
+        eqCard([
           SwitchListTile.adaptive(
             value: _exciter,
             onChanged: (v) {
@@ -1208,7 +1090,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_exciter)
-            _sliderRow(
+            eqSliderRow(
               'Amount',
               _exciterAmount,
               0.0,
@@ -1234,7 +1116,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_crystalizer)
-            _sliderRow(
+            eqSliderRow(
               'Intensity',
               _crystalizerIntensity,
               -10.0,
@@ -1260,7 +1142,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_virtualBass)
-            _sliderRow(
+            eqSliderRow(
               'Cutoff',
               _virtualBassCutoff,
               100.0,
@@ -1287,13 +1169,13 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           if (_crusher) ...[
-            _sliderRow('Bits', _crusherBits, 1.0, 16.0, 15, (v) {
+            eqSliderRow('Bits', _crusherBits, 1.0, 16.0, 15, (v) {
               setState(() => _crusherBits = v);
             }, _apply, precision: 0),
-            _sliderRow('Mix', _crusherMix, 0.0, 1.0, 20, (v) {
+            eqSliderRow('Mix', _crusherMix, 0.0, 1.0, 20, (v) {
               setState(() => _crusherMix = v);
             }, _apply, precision: 2),
-            _sliderRow('Samples', _crusherSamples, 1.0, 250.0, 50, (v) {
+            eqSliderRow('Samples', _crusherSamples, 1.0, 250.0, 50, (v) {
               setState(() => _crusherSamples = v);
             }, _apply, precision: 0),
           ],
@@ -1344,7 +1226,8 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         children: [
           Text('Delete "$name"?', style: AfTypography.titleMedium),
           const SizedBox(height: AfSpacing.s12),
-          Text('This preset will be permanently removed.', style: AfTypography.bodyMedium),
+          Text('This preset will be permanently removed.',
+              style: AfTypography.bodyMedium),
           const SizedBox(height: AfSpacing.s24),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -1370,137 +1253,6 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     );
   }
 
-  Widget _sectionLabel(String title) => Padding(
-        padding: const EdgeInsets.fromLTRB(AfSpacing.s4, 0, AfSpacing.s4, AfSpacing.s8),
-        child: Text(title,
-            style: AfTypography.bodySmall.copyWith(
-              color: AfColors.textTertiary,
-              fontWeight: FontWeight.w500,
-            )),
-      );
-
-  Widget _card(List<Widget> children) => Material(
-        color: AfColors.surfaceBase,
-        borderRadius: AfRadii.borderLg,
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.all(AfSpacing.s16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: children,
-          ),
-        ),
-      );
-
-  Widget _toggleTile(
-    String title,
-    String subtitle,
-    bool value,
-    ValueChanged<bool> onChanged,
-  ) {
-    return SwitchListTile.adaptive(
-      value: value,
-      onChanged: onChanged,
-      title: Text(title, style: AfTypography.bodyMedium),
-      subtitle: Text(
-        subtitle,
-        style:
-            AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-      ),
-      activeThumbColor: AfColors.indigo500,
-      contentPadding: EdgeInsets.zero,
-    );
-  }
-
-  Widget _sliderRow(
-    String label,
-    double value,
-    double min,
-    double max,
-    int divisions,
-    ValueChanged<double> onChanged,
-    VoidCallback onChangeEnd, {
-    String? suffix,
-    int precision = 0,
-  }) {
-    final display = value >= 0 && suffix == 'dB'
-        ? '+${value.toStringAsFixed(precision)}'
-        : value.toStringAsFixed(precision);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            Text(label, style: AfTypography.bodyMedium),
-            const Spacer(),
-            Text(
-              suffix != null ? '$display $suffix' : display,
-              style:
-                  AfTypography.mono.copyWith(color: AfColors.textTertiary),
-            ),
-          ],
-        ),
-        Slider(
-          value: value.clamp(min, max),
-          min: min,
-          max: max,
-          divisions: divisions,
-          activeColor: AfColors.indigo400,
-          onChanged: onChanged,
-          onChangeEnd: (_) => onChangeEnd(),
-        ),
-      ],
-    );
-  }
-
-  Widget _textFieldRow(
-    String label,
-    String value,
-    String hint,
-    ValueChanged<String> onSubmitted,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(label, style: AfTypography.bodySmall),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextFormField(
-              initialValue: value,
-              style: AfTypography.mono.copyWith(fontSize: 13),
-              decoration: InputDecoration(
-                hintText: hint,
-                hintStyle: AfTypography.mono.copyWith(
-                  fontSize: 12,
-                  color: AfColors.textTertiary,
-                ),
-                isDense: true,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(6),
-                  borderSide: const BorderSide(color: AfColors.surfaceHigh),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(6),
-                  borderSide: const BorderSide(color: AfColors.surfaceHigh),
-                ),
-              ),
-              onFieldSubmitted: onSubmitted,
-              onTapOutside: (_) => FocusScope.of(context).unfocus(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Only include bands that differ from the flat default (1.0).
   Map<String, double> _buildEqParams() {
     final params = <String, double>{};
     for (final entry in _eqBands.entries) {
