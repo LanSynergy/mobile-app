@@ -561,10 +561,9 @@ class SubsonicClient implements MusicBackend {
     // silently removed the wrong tracks — interpreting an ID like "42" as
     // "remove the track at position 42 of the playlist."
     if (entryIds.isEmpty) return;
-    try {
-      final detail = await playlist(playlistId);
-      if (detail == null) return;
-      final wanted = entryIds.toSet();
+    final detail = await playlist(playlistId);
+    if (detail == null) return;
+    final wanted = entryIds.toSet();
     final indices = <int>[];
     for (var i = 0; i < detail.tracks.length; i++) {
       if (wanted.contains(detail.tracks[i].id)) indices.add(i);
@@ -579,9 +578,6 @@ class SubsonicClient implements MusicBackend {
       'songIndexToRemove': indices,
     };
     await _get('updatePlaylist', params);
-    } catch (e) {
-      afLog('subsonic', 'removeFromPlaylist failed', error: e);
-    }
   }
 
   @override

@@ -125,14 +125,9 @@ class LocalBackend implements MusicBackend {
     // the library to find one row. Tracks are loaded in parallel; one
     // favoriteIds() query is shared between the album row's
     // isFavorite flag and the per-track hydration below.
-    final results = await Future.wait([
-      db.albumByKey(parsed.name, parsed.artist),
-      library.tracksByAlbum(parsed.name, parsed.artist),
-      db.favoriteIds(),
-    ]);
-    final albumMeta = results[0] as AfAlbum?;
-    final tracks = results[1] as List<AfTrack>;
-    final favIds = results[2] as Set<String>;
+    final albumMeta = await db.albumByKey(parsed.name, parsed.artist);
+    final tracks = await library.tracksByAlbum(parsed.name, parsed.artist);
+    final favIds = await db.favoriteIds();
     if (tracks.isEmpty) return null;
     final album = albumMeta ??
         AfAlbum(

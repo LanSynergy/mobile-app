@@ -67,7 +67,7 @@ class MetadataScanner {
           // 4. Extract cover art (if not already cached)
           String? coverPath;
           final coverFile = File(p.join(coverCacheDir, _coverFilename(file.uri)));
-          if (!coverFile.existsSync()) {
+          if (!await coverFile.exists()) {
             final artBytes = await SafPicker.readCoverArt(file.uri);
             if (artBytes != null && artBytes.isNotEmpty) {
               await coverFile.writeAsBytes(artBytes);

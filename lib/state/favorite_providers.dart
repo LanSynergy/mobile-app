@@ -16,7 +16,19 @@ final trackFavoriteOverridesProvider =
     StateProvider<Map<String, bool>>((ref) => const {});
 
 final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
+  /// Serializer: any previous in-flight toggle must resolve before the
+  /// next one starts. Without this, rapid double-taps create a race
+  /// between optimistic overrides and backend responses — the earlier
+  /// toggle's error-handler can restore a stale value, and two
+  /// concurrent `setFavorite` calls can leave the server in the
+  /// opposite state from what the override map shows.
+  Future<void>? pending;
+
   return (AfTrack track) async {
+    while (pending != null) {
+      try { await pending!; } catch (_) {}
+    }
+
     final backend = ref.read(musicBackendProvider);
     final overrides = ref.read(trackFavoriteOverridesProvider);
     final wasFavorite = overrides[track.id] ?? track.isFavorite;
@@ -37,22 +49,30 @@ final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
       return;
     }
 
-    try {
-      await backend.setFavorite(track.id, next);
-      _logData('favoriteToggle',
-          source: 'live', extra: 'id=${track.id} isFavorite=$next');
-      ref.invalidate(favoriteAlbumsProvider);
-      ref.invalidate(favoriteTracksProvider);
-      ref.invalidate(recentlyPlayedTracksProvider);
-    } catch (e, stack) {
-      afLog('error', 'favoriteToggle failed', error: e, stackTrace: stack);
-      if (current?.id == track.id) {
-        ref.read(currentTrackProvider.notifier).state = track;
+    pending = (() async {
+      try {
+        await backend.setFavorite(track.id, next);
+        _logData('favoriteToggle',
+            source: 'live', extra: 'id=${track.id} isFavorite=$next');
+        ref.invalidate(favoriteAlbumsProvider);
+        ref.invalidate(favoriteTracksProvider);
+        ref.invalidate(recentlyPlayedTracksProvider);
+      } catch (e, stack) {
+        afLog('error', 'favoriteToggle failed', error: e, stackTrace: stack);
+        if (current?.id == track.id) {
+          ref.read(currentTrackProvider.notifier).state = track;
+        }
+        ref.read(trackFavoriteOverridesProvider.notifier).update(
+              (s) => {...s, track.id: wasFavorite},
+            );
+        rethrow;
       }
-      ref.read(trackFavoriteOverridesProvider.notifier).update(
-            (s) => {...s, track.id: wasFavorite},
-          );
-      rethrow;
+    })();
+
+    try {
+      await pending!;
+    } finally {
+      pending = null;
     }
   };
 });

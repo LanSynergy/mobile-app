@@ -18,9 +18,8 @@ void _logData(String feature, {required String source, String? extra}) {
 final selectedLibraryIdsProvider = StateProvider<Set<String>?>((ref) => null);
 
 final smartPlaylistDbProvider = Provider<SmartPlaylistDb>((ref) {
-  final db = SmartPlaylistDb();
-  ref.onDispose(() => db.close());
-  return db;
+  final appDb = ref.watch(appDatabaseProvider);
+  return SmartPlaylistDb(database: appDb);
 });
 
 final smartPlaylistsProvider =

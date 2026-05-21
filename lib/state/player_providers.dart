@@ -1,4 +1,4 @@
-import 'dart:async' show Timer, unawaited;
+import 'dart:async' show unawaited;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop, FftFrame, MpvPlayerError;
@@ -24,7 +24,7 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
 
   _startPositionPolling(ref, svc);
 
-  svc.errorStream.listen((error) {
+  final errorSub = svc.errorStream.listen((error) {
     ref.read(playbackErrorProvider.notifier).state = error;
   });
 
@@ -51,6 +51,7 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
   });
 
   ref.onDispose(() async {
+    await errorSub.cancel();
     await liveUpdate.dispose();
     await reporter?.dispose();
     await svc.dispose();
@@ -97,20 +98,22 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
     }
   });
 
-  Timer? timer;
+  // Duration poll loop — recursive Future.delayed instead of
+  // Timer.periodic so the async callback never overlaps with itself.
+  // Timer.periodic does NOT await the callback; if getRawDuration()
+  // takes longer than 250 ms the ticks pile up, causing redundant
+  // state writes and wasted work.
+  int loopGeneration = 0;
+  bool loopRunning = false;
 
-  void cancelTimer() {
-    timer?.cancel();
-    timer = null;
-  }
-
-  void ensureTimer() {
-    if (timer != null) return;
-    timer = Timer.periodic(const Duration(milliseconds: 250), (_) async {
-      if (disposed) return;
+  Future<void> runDurationPollLoop() async {
+    final gen = loopGeneration;
+    while (loopRunning && gen == loopGeneration) {
+      await Future.delayed(const Duration(milliseconds: 250));
+      if (!loopRunning || gen != loopGeneration || disposed) break;
 
       final rawDur = await svc.getRawDuration();
-      if (disposed) return;
+      if (!loopRunning || gen != loopGeneration || disposed) return;
 
       if (rawDur > Duration.zero) {
         try {
@@ -124,7 +127,18 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
           } catch (_) {}
         }
       }
-    });
+    }
+  }
+
+  void cancelTimer() {
+    loopRunning = false;
+  }
+
+  void ensureTimer() {
+    if (loopRunning) return;
+    loopGeneration++;
+    loopRunning = true;
+    runDurationPollLoop();
   }
 
   ensureTimer();

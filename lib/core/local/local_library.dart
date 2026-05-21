@@ -1,4 +1,5 @@
 import '../jellyfin/models/items.dart';
+import 'app_database.dart';
 import 'local_db.dart';
 import 'metadata_scanner.dart';
 import 'saf_picker.dart';
@@ -11,7 +12,7 @@ class LocalLibrary {
   final LocalDb _db;
   late final MetadataScanner _scanner;
 
-  LocalLibrary() : _db = LocalDb() {
+  LocalLibrary({AppDatabase? database}) : _db = LocalDb(database: database) {
     _scanner = MetadataScanner(_db);
   }
 
@@ -106,6 +107,8 @@ class LocalLibrary {
   Future<AfTrackDetails?> trackDetails(String id) => _db.trackDetailsById(id);
 
   // ── Lifecycle ───────────────────────────────────────────────────────────
+  // AppDatabase lifecycle is managed by appDatabaseProvider — individual
+  // consumers (LocalLibrary, SmartPlaylistDb) should NOT close it.
 
-  Future<void> close() => _db.close();
+  Future<void> close() async {}
 }
