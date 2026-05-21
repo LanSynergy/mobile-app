@@ -299,8 +299,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Color _hex(String hex) {
-    final v = int.parse(hex.replaceFirst('#', ''), radix: 16);
-    return Color(0xFF000000 | v);
+    try {
+      final cleaned = hex.replaceFirst('#', '');
+      if (cleaned.length != 6 && cleaned.length != 8) return AfColors.indigo600;
+      final value = int.parse(
+        cleaned.length == 6 ? 'FF$cleaned' : cleaned,
+        radix: 16,
+      );
+      return Color(value);
+    } catch (_) {
+      return AfColors.indigo600;
+    }
   }
 }
 

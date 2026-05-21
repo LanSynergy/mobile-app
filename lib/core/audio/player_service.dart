@@ -52,10 +52,14 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     // Set audio driver BEFORE binding streams. If setAudioDriver is called
     // after property observation starts, it can re-initialize the output
     // pipeline and break time-pos observation until output is re-selected.
-    _player.setAudioDriver('aaudio');
+    _player.setAudioDriver('aaudio').catchError((Object e, StackTrace? stack) {
+      afLog('error', 'setAudioDriver failed', error: e, stackTrace: stack);
+    });
 
     // 200 ms keeps background playback stable under Android Doze.
-    _player.setAudioBuffer(const Duration(milliseconds: 200));
+    _player.setAudioBuffer(const Duration(milliseconds: 200)).catchError((Object e, StackTrace? stack) {
+      afLog('error', 'setAudioBuffer failed', error: e, stackTrace: stack);
+    });
     _bindStreams();
     _positionTracker.start();
 
@@ -426,6 +430,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       _queueManager.endPlaylistSync();
       afLog('audio', 'playQueue failed', error: e, stackTrace: stack);
       _queueManager.clear();
+      await _player.stop();
       rethrow;
     }
   }
@@ -711,18 +716,18 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     _subs.add(_player.stream.position.listen((_) => _updatePlaybackStateThrottled()));
     _subs.add(_player.stream.buffering.listen((_) => _updatePlaybackState()));
 
-    _subs.add(_player.stream.completed.listen((completed) {
+    _subs.add(_player.stream.completed.listen((completed) async {
       _updatePlaybackState();
       if (!completed) return;
       final nextIdx = _queueManager.currentIndex + 1;
       if (nextIdx < _queueManager.currentQueue.length) {
         final currentMpvIdx = _player.state.playlist.index;
         if (currentMpvIdx == _queueManager.currentIndex) {
-          _jumpAndPlay(nextIdx);
+          await _jumpAndPlay(nextIdx);
           afLog('audio', 'completed fallback: jump+play to index=$nextIdx');
         }
       } else if (_player.state.loop == Loop.off) {
-        pause();
+        await pause();
         afLog('audio', 'queue end reached, auto-stop (loop=off)');
       }
     }));

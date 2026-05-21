@@ -194,8 +194,8 @@ class AfPositionTracker {
         final speed = _player.state.rate;
         final extrapolated = _positionAnchor.lastKnownPos +
             Duration(milliseconds: (elapsed.inMilliseconds * speed).round());
-        final capped =
-            (dur > Duration.zero && extrapolated > dur) ? dur : extrapolated;
+        final durCap = dur > Duration.zero ? dur : const Duration(hours: 1);
+        final capped = extrapolated > durCap ? durCap : extrapolated;
         _positionAnchor.lastKnownPos = capped;
         _positionAnchor.lastUpdateTime = now;
         _positionAnchor.wasPlaying = true;
