@@ -227,7 +227,9 @@ lib/
 ├─ design_tokens/           ← Single source of truth for §4 visual spec
 ├─ core/
 │  ├─ audio/
-│  │  ├─ player_service.dart        ← AfPlayerService: mpv_audio_kit + audio_service bridge
+│  │  ├─ player_service.dart        ← AfPlayerService: mpv_audio_kit + audio_service bridge.
+│  │  │                               Composes AfPositionTracker, AfArtworkManager,
+│  │  │                               AfAudioDeviceManager, AfQueueManager.
 │  │  │                               Throttled playbackState (~2 Hz), _pendingPlayNudgeIdx
 │  │  │                               state machine, _jumpAndPlay async/await, _disposed guards.
 │  │  │                               playNext() and addToQueue() for context-menu actions.
@@ -242,7 +244,12 @@ lib/
 │  │  │                               Navidrome: scrobble.view
 │  │  │                               Serialized progress loop (not Timer.periodic), 5s timeouts.
 │  │  ├─ live_update_service.dart   ← Android 16+ Live Update chip (in-flight guard)
-│  │  └─ spectral_extractor.dart    ← palette_generator → Spectral triple (LRU cache)
+│  │  ├─ spectral_extractor.dart    ← palette_generator → Spectral triple (LRU cache)
+│  │  ├─ af_position_tracker.dart   ← AfPositionTracker: elapsed-time position extrapolation
+│  │  ├─ af_artwork_manager.dart    ← AfArtworkManager: cover art download + notification artwork
+│  │  ├─ af_audio_device_manager.dart ← AfAudioDeviceManager: audio device routing + nudge chains
+│  │  ├─ af_queue_manager.dart      ← AfQueueManager: playlist queue + shuffle/original order
+│  │  └─ spectrum_settings.dart     ← Default SpectrumSettings constants
 │  ├─ backend/
 │  │  └─ music_backend.dart ← Abstract MusicBackend interface. Both JellyfinClient and
 │  │                          SubsonicClient implement this. Defines all server operations:
@@ -253,7 +260,11 @@ lib/
 │  │  ├─ app_mode_store.dart    ← Persist/restore AppMode (server|local) via SharedPreferences
 │  │  ├─ app_database.dart      ← Drift database definition (tracks, folders, favorites, playlists)
 │  │  ├─ app_database.g.dart    ← Drift-generated code (DO NOT hand-edit)
-│  │  ├─ local_db.dart          ← High-level query methods wrapping Drift tables
+│  │  ├─ local_db.dart          ← High-level query methods composing 3 repositories:
+│  │  │                           TrackRepository + AlbumRepository + PlaylistRepository
+│  │  ├─ local_db_tracks.dart   ← TrackRepository: track CRUD + queries + rowToTrack
+│  │  ├─ local_db_albums.dart   ← AlbumRepository: all album aggregation queries
+│  │  ├─ local_db_playlists.dart← PlaylistRepository: CRUD + transaction logic
 │  │  ├─ local_library.dart     ← High-level interface: scan, query albums/artists/tracks/genres
 │  │  ├─ local_backend.dart     ← LocalBackend: implements MusicBackend over LocalLibrary + LocalDb
 │  │  ├─ metadata_scanner.dart  ← Orchestrates SAF scan: list files → read tags → insert DB
@@ -263,7 +274,10 @@ lib/
 │  │  ├─ smart_playlist_db.dart     ← SQLite CRUD for smart playlists
 │  │  └─ smart_playlist_engine.dart ← Resolves rules → tracks (SQL for local, filter for server)
 │  ├─ jellyfin/
-│  │  ├─ client.dart        ← THE ONLY file that speaks HTTP to Jellyfin (implements MusicBackend)
+│  │  ├─ client.dart        ← HTTP to Jellyfin (implements MusicBackend). Composes
+│  │  │                        JellyfinResponseParser + JellyfinUrlBuilder.
+│  │  ├─ response_parser.dart ← JellyfinResponseParser: JSON→domain parsing + field constants
+│  │  ├─ url_builder.dart    ← JellyfinUrlBuilder: auth headers, stream/image URLs
 │  │  ├─ auth_storage.dart  ← secure_storage wrappers (token, userId, deviceId, serverType)
 │  │  ├─ discovery.dart     ← mDNS scan + public-info probe
 │  │  └─ models/            ← Plain Dart classes — NO json_serializable codegen
@@ -279,9 +293,21 @@ lib/
 │  ├─ home/        library/  album/      artist/     genre/
 │  ├─ search/      queue/    now_playing/ lyrics/
 │  ├─ onboarding/  profile/  settings/    cast_picker/  sleep_timer/  playlist/
-│  │                            now_playing/ contains eq_dsp_screen.dart (full EQ/DSP screen)
+│  │                            now_playing/ contains eq_dsp_screen.dart (EQ/DSP screen),
+│  │                            eq_preset.dart (kEqBands, kBuiltInPresets),
+│  │                            eq_dsp_widgets.dart (section labels, cards, sliders).
+│  │                            now_playing_screen.dart composes 11 reactive widgets:
+│  │                            reactive_background, reactive_artwork, metadata_row,
+│  │                            reactive_progress, reactive_transport, top_bar,
+│  │                            transport_widgets, now_playing_chip, utility_row,
+│  │                            sleep_timer_dialog.
 │  │                            smart_playlist/ — list, detail, edit screens (Samsung One UI style)
-│  │                            settings/ Samsung One UI grouped card layout. Sections:
+│  │                            settings_screen.dart — build() only; delegates to
+│  │                            settings_widgets.dart (SettingsLabel, SettingsGroup, SettingsTile,
+│  │                              SettingsSwitchTile, OptionTile),
+│  │                            settings_dialogs.dart (6 dialogs + ReplayGainDialogContent),
+│  │                            settings_sections.dart (MusicFoldersCard, PrefetchToggle, etc.).
+│  │                            Samsung One UI grouped card layout. Sections:
 │  │                            Server (info, switch, sign out), Appearance,
 │  │                            Audio output (current output, sample rate, bit depth, exclusive),
 │  │                            Network & cache (cache duration, audio buffer, keep audio active),
@@ -291,9 +317,20 @@ lib/
 │  │                            Long-press context menus on track rows (Play next, Add to queue,
 │  │                            Go to album, Go to artist) and album tiles (Play album, Go to artist).
 ├─ state/
-│  └─ providers.dart        ← All Riverpod providers in one file (intentional)
-│                             musicBackendProvider creates JellyfinClient or SubsonicClient
-│                             based on auth.serverType. jellyfinClientProvider kept as alias.
+│  ├─ providers.dart        ← Barrel re-export of 13 domain provider files
+│  ├─ app_mode_providers.dart
+│  ├─ auth_providers.dart
+│  ├─ detail_providers.dart
+│  ├─ favorite_providers.dart
+│  ├─ library_providers.dart
+│  ├─ local_library_providers.dart
+│  ├─ music_backend_providers.dart
+│  ├─ player_providers.dart
+│  ├─ playlist_providers.dart
+│  ├─ search_history_providers.dart
+│  ├─ search_providers.dart
+│  ├─ settings_providers.dart
+│  └─ spectral_providers.dart
 ├─ widgets/                 ← Shared visual atoms
 │  ├─ mini_player.dart      ← 56 dp floating mini-player
 │  ├─ bottom_nav.dart       ← Google-style bottom nav with sliding pill background
@@ -395,7 +432,9 @@ route (full Scaffold with AppBar). Sections:
 - Master on/off switch in AppBar (bypasses all effects, dims UI but keeps scrollable)
 
 Uses `player.setAudioEffects(AudioEffects(...))` API. State persisted via
-`PlayerSettingsStore.saveAudioEffects()`. File: `lib/features/now_playing/eq_dsp_screen.dart`.
+`PlayerSettingsStore.saveAudioEffects()`. Files: `lib/features/now_playing/eq_dsp_screen.dart`
+(main screen), `eq_preset.dart` (kEqBands, kBuiltInPresets), `eq_dsp_widgets.dart`
+(reusable widget builders).
 
 ## 5. Jellyfin auth — battle-tested format
 
@@ -605,7 +644,7 @@ ticker stops when scale < 1.001
     ▼  ValueListenableBuilder → Transform.scale
 ```
 
-Lives in `_ReactiveArtworkState` inside `now_playing_screen.dart`.
+Lives in `reactive_artwork.dart` (extracted from `now_playing_screen.dart`).
 `ValueNotifier<double>` + `Transform.scale` — no `setState`, no parent rebuild.
 
 ## 11. Build, run, lint, test
@@ -637,12 +676,17 @@ PII (usernames, server URLs) must be redacted in release builds.
 
 - Two HTTP clients, each the **only** file that speaks to its server:
   - `JellyfinClient` (`lib/core/jellyfin/client.dart`) — Jellyfin REST API.
+    Composes `JellyfinResponseParser` for JSON→domain parsing and `JellyfinUrlBuilder`
+    for auth headers and stream/image URL construction.
   - `SubsonicClient` (`lib/core/subsonic/client.dart`) — Subsonic/OpenSubsonic API (Navidrome).
 - Both implement `MusicBackend` (`lib/core/backend/music_backend.dart`).
   All providers and UI code use `musicBackendProvider` which returns the
   correct client based on `auth.serverType`.
 - `JellyfinClient` endpoints assert `userId` via `_assertUser()`.
   `SubsonicClient` endpoints embed auth via `_authParams()`.
+- `LocalDb` composes three repositories at `lib/core/local/`: `TrackRepository`
+  (`local_db_tracks.dart`, track CRUD), `AlbumRepository` (`local_db_albums.dart`,
+  album aggregation), and `PlaylistRepository` (`local_db_playlists.dart`, playlist CRUD).
 - No `json_serializable`. Models are hand-written in `lib/core/jellyfin/models/`.
   Both clients parse responses into the same `AfTrack`, `AfAlbum`, `AfArtist`,
   `AfPlaylist` types.
@@ -736,6 +780,15 @@ PII (usernames, server URLs) must be redacted in release builds.
 - **`LocalBackend`**: Implements `MusicBackend` over `LocalLibrary` + `LocalDb`. Enables favorites, playlists, and smart playlists in local mode — same provider interface as server backends.
 - **`_nudgeGen`**: Generation counter in `AfPlayerService` that cancels stale nudge chains. Each call to `_nudgeAudioDevice()` increments it; delayed retries bail out if the generation changed.
 - **`_HeroAlbumCarousel`**: Swipeable PageView on the home screen showing up to 5 recent albums with `viewportFraction: 0.92` and a dot indicator.
+- **`AfPositionTracker`**: Manager class in `AfPlayerService` (`lib/core/audio/af_position_tracker.dart`). Handles elapsed-time position extrapolation with `_PositionAnchor`, `getRawPosition()` fallback.
+- **`AfArtworkManager`**: Manager class in `AfPlayerService` (`lib/core/audio/af_artwork_manager.dart`). Downloads cover art bytes and provides file:// URIs for notification artwork.
+- **`AfAudioDeviceManager`**: Manager class in `AfPlayerService` (`lib/core/audio/af_audio_device_manager.dart`). Manages audio device routing and nudge chains with `_nudgeGen`.
+- **`AfQueueManager`**: Manager class in `AfPlayerService` (`lib/core/audio/af_queue_manager.dart`). Manages playlist queue, shuffle state, and `_originalQueue` order tracking.
+- **`JellyfinResponseParser`**: Extracted from `JellyfinClient` (`lib/core/jellyfin/response_parser.dart`). All JSON→domain parsing logic + field string constants.
+- **`JellyfinUrlBuilder`**: Extracted from `JellyfinClient` (`lib/core/jellyfin/url_builder.dart`). Auth header construction, stream URL building, and image URL generation.
+- **`TrackRepository`**: CRUD for tracks at `lib/core/local/local_db_tracks.dart`. Row-to-track mapping, query helpers, 5000-row limit on `allTracks()`.
+- **`AlbumRepository`**: Aggregation queries for albums at `lib/core/local/local_db_albums.dart`. Album artist, year, track-count queries.
+- **`PlaylistRepository`**: CRUD for playlists at `lib/core/local/local_db_playlists.dart`. Transaction-based insert/delete/reorder.
 
 ---
 

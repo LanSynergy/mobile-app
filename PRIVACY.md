@@ -156,7 +156,7 @@ If you want to verify the claims in this policy, the relevant files are:
 - `lib/core/subsonic/client.dart` — the only file that issues HTTP
   requests to Navidrome (Subsonic API).
 - `lib/core/jellyfin/auth_storage.dart` — the secure-storage adapter.
-- `lib/state/providers.dart` — every data fetch the UI watches.
+- `lib/state/providers.dart` — barrel re-export of 13 domain provider files.
 - `lib/main.dart` — bootstrap and initialization.
 
 ## 9. Changes to this policy
