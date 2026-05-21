@@ -11,19 +11,7 @@ import 'audio_device_manager.dart';
 import 'position_tracker.dart';
 import 'queue_manager.dart';
 
-/// Default spectrum analyser configuration shared across initialisation and
-/// on-track-change re-configuration.
-const _defaultSpectrumSettings = SpectrumSettings(
-  fftSize: 2048,
-  bandCount: 64,
-  bandLowHz: 20.0,
-  bandHighHz: 20000.0,
-  attackSmoothing: 0.8,
-  releaseSmoothing: 0.1,
-  minDb: -105.0,
-  maxDb: 35.0,
-  emitInterval: Duration(milliseconds: 8),
-);
+import 'spectrum_settings.dart';
 
 /// Bridges [Player] (mpv_audio_kit) with [audio_service] so the OS
 /// lock-screen / notification controls drive playback.
@@ -327,7 +315,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   Future<void> configureSpectrum() async {
     try {
-      await _player.setSpectrum(_defaultSpectrumSettings);
+      await _player.setSpectrum(defaultSpectrumSettings);
     } catch (e) {
       afLog('audio', 'configureSpectrum failed', error: e);
     }
@@ -649,7 +637,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     try {
       await Future.delayed(const Duration(milliseconds: 250));
       if (_disposed) return;
-      await _player.setSpectrum(_defaultSpectrumSettings);
+      await _player.setSpectrum(defaultSpectrumSettings);
       afLog('audio', 'spectrum re-configured after track change');
     } catch (e) {
       afLog('audio', 'reconfigureSpectrumOnTrackChange failed', error: e);
