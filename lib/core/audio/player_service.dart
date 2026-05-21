@@ -434,10 +434,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Future<void> play() async {
     _userPaused = false;
     _positionTracker.onPlay();
-    final rawPos = await _positionTracker.getRawPosition();
-    if (rawPos > _positionTracker.lastKnownPosition) {
-      _positionTracker.updateKnownPosition(rawPos);
-    }
     await _player.play();
     _audioDeviceManager.nudge();
   }
@@ -447,10 +443,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     _userPaused = true;
     _pendingPlayNudgeIdx = null;
     _positionTracker.onPause();
-    final rawPos = await _positionTracker.getRawPosition();
-    if (rawPos > _positionTracker.lastKnownPosition) {
-      _positionTracker.updateKnownPosition(rawPos);
-    }
     await _player.pause();
   }
 
@@ -773,7 +765,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   void _updatePlaybackState() {
     final s = _player.state;
     final isQueueEnd = s.completed && _queueManager.isAtQueueEnd;
-    final effectivePlaying = s.playing || shouldAdvancePosition;
+    final effectivePlaying = isQueueEnd ? false : (s.playing || shouldAdvancePosition);
 
     playbackState.add(
       PlaybackState(
