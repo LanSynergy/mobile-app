@@ -1,28 +1,5 @@
 # TODO
 
-## Offline track cache (Server mode)
-
-Cache fully streamed songs to disk so they don't need to be fetched from the server again on replay.
-
-### Requirements
-
-- Save raw audio bytes to app-private storage after a track finishes streaming completely
-- Track manifest (which tracks are cached, file sizes, last-played timestamps)
-- Before opening a stream URL, check if the track is cached locally — use `file://` path instead
-- LRU eviction when cache exceeds user-configured max size
-- Settings UI: toggle on/off, max cache size picker (500 MB / 1 GB / 2 GB / 5 GB / 10 GB), "clear cache" button with current usage display
-- Handle partial downloads (don't cache interrupted streams)
-- Invalidation strategy: re-fetch if server file changes (compare `PrimaryImageTag` or `DateModified`)
-
-### Implementation notes
-
-- New dependency needed for manifest storage (SQLite via `drift` or simple JSON file)
-- Hook into `resolveStreamUrl` in `PlayActions` — check cache before building network URL
-- Listen to `player.stream.completed` or track the stream progress to know when a track is fully downloaded
-- mpv's `cache-on-disk` might handle some of this natively — investigate before building custom
-- File naming: use track ID as filename (GUIDs are unique, no collisions)
-- Storage path: `getApplicationSupportDirectory()` / `audio_cache/`
-
 ## Crossfade between tracks
 
 Smooth audio crossfade when transitioning between tracks (configurable duration).
@@ -61,6 +38,14 @@ Smooth audio crossfade when transitioning between tracks (configurable duration)
 ---
 
 # Completed
+
+## Offline track cache (Server mode)
+- [x] Save raw audio bytes to app-private storage after track finishes playing
+- [x] Cache manifest stored in SQLite via Drift (`CacheEntries` table)
+- [x] Redirect network stream URLs to `file://` cached URIs on cache hit
+- [x] LRU eviction when cache size exceeds configured maximum limit
+- [x] Settings UI for toggling cache on/off, selecting maximum cache size, and clearing cache
+- [x] Automatic cleanup of orphaned temp download files on startup
 
 ## UI/UX
 - [x] Hero album carousel — swipeable PageView with dot indicator
