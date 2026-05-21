@@ -829,7 +829,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         processingState: s.buffering
             ? AudioProcessingState.buffering
             : isQueueEnd
-                ? AudioProcessingState.completed
+                ? AudioProcessingState.idle
                 : AudioProcessingState.ready,
         playing: effectivePlaying,
         updatePosition: _positionTracker.lastKnownPosition,
