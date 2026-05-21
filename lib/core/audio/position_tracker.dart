@@ -162,13 +162,14 @@ class AfPositionTracker {
       final shouldAdvance = playing || _shouldAdvancePosition();
 
       if (rawPos > Duration.zero) {
-        final rawBehindAnchor = shouldAdvance &&
-            rawPos.inMilliseconds + 500 <
-                _positionAnchor.lastKnownPos.inMilliseconds;
+        final behind = rawPos.inMilliseconds + 1000 <
+            _positionAnchor.lastKnownPos.inMilliseconds;
+        final rawBehindAnchor =
+            shouldAdvance && behind;
         final rawStale =
             shouldAdvance && (_isRawPositionStale(rawPos) || rawBehindAnchor);
 
-        if (!rawStale) {
+        if (!rawStale && (!behind || shouldAdvance)) {
           _positionAnchor.lastKnownPos = rawPos;
           _positionAnchor.lastUpdateTime = now;
           _positionAnchor.wasPlaying = playing;
