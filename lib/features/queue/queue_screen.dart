@@ -336,44 +336,47 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         'Queue · ${now.year}-${two(now.month)}-${two(now.day)} '
         '${two(now.hour)}:${two(now.minute)}';
     final controller = TextEditingController(text: defaultName);
-
-    final name = await showBlurDialog<String>(
-      context: context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('Save queue as playlist', style: AfTypography.titleMedium),
-          const SizedBox(height: AfSpacing.s16),
-          TextField(
-            controller: controller,
-            autofocus: true,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              hintText: 'Playlist name',
-              border: OutlineInputBorder(),
+    final String? name;
+    try {
+      name = await showBlurDialog<String>(
+        context: context,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Save queue as playlist', style: AfTypography.titleMedium),
+            const SizedBox(height: AfSpacing.s16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                hintText: 'Playlist name',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
             ),
-            onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
-          ),
-          const SizedBox(height: AfSpacing.s24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () =>
-                    Navigator.of(context).pop(controller.text.trim()),
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
+            const SizedBox(height: AfSpacing.s24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () =>
+                      Navigator.of(context).pop(controller.text.trim()),
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
 
     if (name == null || name.isEmpty || !mounted) return;
 
