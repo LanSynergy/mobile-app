@@ -55,6 +55,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   int _coverCounter = 0;
   String? _coverPath;
   String? _networkCoverPath;
+  static final HttpClient _httpClient = HttpClient();
   Map<String, String> _authHeaders = const <String, String>{};
   String? _networkCoverTrackId;
   bool _disposed = false;
@@ -646,13 +647,25 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         ..clear()
         ..addAll(reordered);
       _currentIndex = newIdx.clamp(0, _trackQueue.length - 1);
-    } else {
+    } else if (reordered.isNotEmpty) {
       afLog(
         'audio',
         '_syncTrackQueueFromMpv partial sync: '
             'resolved ${reordered.length}/${mpvItems.length} tracks, '
-            'keeping stale queue',
+            'updating with resolved subset',
       );
+      _trackQueue
+        ..clear()
+        ..addAll(reordered);
+      _currentIndex = newIdx.clamp(0, _trackQueue.length - 1);
+    } else {
+      afLog(
+        'audio',
+        '_syncTrackQueueFromMpv full sync failure: '
+            'resolved 0/${mpvItems.length} tracks, clearing queue',
+      );
+      _trackQueue.clear();
+      _currentIndex = 0;
     }
   }
 
@@ -1249,53 +1262,47 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
     try {
       final uri = Uri.parse(imageUrl);
-      final client = HttpClient();
-      String? path;
-      try {
-        final request = await client.getUrl(uri);
-        _authHeaders.forEach((key, value) {
-          request.headers.set(key, value);
-        });
+      final request = await _httpClient.getUrl(uri);
+      _authHeaders.forEach((key, value) {
+        request.headers.set(key, value);
+      });
 
-        final response = await request.close();
-        if (response.statusCode != 200) {
-          await response.drain<int>(0);
-          return;
-        }
+      final response = await request.close();
+      if (response.statusCode != 200) {
+        await response.drain<int>(0);
+        return;
+      }
 
-        final contentType = response.headers.contentType;
-        var ext = 'jpg';
-        if (contentType != null && contentType.subType.isNotEmpty) {
-          ext = contentType.subType == 'jpeg' ? 'jpg' : contentType.subType;
-        }
+      final contentType = response.headers.contentType;
+      var ext = 'jpg';
+      if (contentType != null && contentType.subType.isNotEmpty) {
+        ext = contentType.subType == 'jpeg' ? 'jpg' : contentType.subType;
+      }
 
-        final id = ++_coverCounter;
-        final tmpDir = Directory.systemTemp.path;
-        path = '$tmpDir${Platform.pathSeparator}aetherfin_notif_$id.$ext';
+      final id = ++_coverCounter;
+      final tmpDir = Directory.systemTemp.path;
+      final path = '$tmpDir${Platform.pathSeparator}aetherfin_notif_$id.$ext';
 
-        if (_networkCoverPath != null) {
-          try {
-            final prev = File(_networkCoverPath!);
-            if (await prev.exists()) await prev.delete();
-          } catch (_) {}
-        }
-
-        if (_coverPath != null) {
-          try {
-            final prev = File(_coverPath!);
-            if (await prev.exists()) await prev.delete();
-          } catch (_) {}
-        }
-
-        final file = File(path);
-        final sink = file.openWrite();
+      if (_networkCoverPath != null) {
         try {
-          await response.pipe(sink);
-        } finally {
-          await sink.close();
-        }
+          final prev = File(_networkCoverPath!);
+          if (await prev.exists()) await prev.delete();
+        } catch (_) {}
+      }
+
+      if (_coverPath != null) {
+        try {
+          final prev = File(_coverPath!);
+          if (await prev.exists()) await prev.delete();
+        } catch (_) {}
+      }
+
+      final file = File(path);
+      final sink = file.openWrite();
+      try {
+        await response.pipe(sink);
       } finally {
-        client.close(force: true);
+        await sink.close();
       }
 
       if (_disposed) return;
