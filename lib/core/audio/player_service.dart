@@ -9,6 +9,7 @@ import '../jellyfin/models/items.dart';
 import 'artwork_manager.dart';
 import 'audio_device_manager.dart';
 import 'position_tracker.dart';
+import 'queue_manager.dart';
 
 /// Default spectrum analyser configuration shared across initialisation and
 /// on-track-change re-configuration.
@@ -31,23 +32,14 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   late final AfPositionTracker _positionTracker;
   late final AfArtworkManager _artworkManager;
   late final AfAudioDeviceManager _audioDeviceManager;
-
-  final List<AfTrack> _trackQueue = <AfTrack>[];
-  int _currentIndex = -1;
-  List<AfTrack> _originalQueue = <AfTrack>[];
-  final Map<String, AfTrack> _urlToTrack = <String, AfTrack>{};
-
-  bool _shuffleEnabled = false;
-  final _shuffleController = StreamController<bool>.broadcast();
-  final _trackController = StreamController<AfTrack?>.broadcast();
-  final _queueController = StreamController<List<AfTrack>>.broadcast();
+  late final AfQueueManager _queueManager;
 
   void Function(AfTrack track)? onTrackChanged;
   final List<StreamSubscription<dynamic>> _subs = <StreamSubscription<dynamic>>[];
 
   bool _disposed = false;
-  int _suppressPlaylistSyncGen = 0;
-  int _activePlaylistSyncGen = 0;
+
+
 
   DateTime _lastPlaybackStatePush = DateTime.fromMillisecondsSinceEpoch(0);
   bool _lastPushedPlaying = false;
@@ -67,6 +59,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     _artworkManager = AfArtworkManager()
       ..onArtworkChanged = _updateMediaItem;
     _audioDeviceManager = AfAudioDeviceManager(player: _player);
+    _queueManager = AfQueueManager();
 
     // Set audio driver BEFORE binding streams. If setAudioDriver is called
     // after property observation starts, it can re-initialize the output
@@ -104,9 +97,9 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Stream<Duration> get audioPtsStream => _player.stream.audioPts;
   Stream<double> get percentPosStream => _player.stream.percentPos;
   double get percentPos => _player.state.percentPos;
-  Stream<AfTrack?> get currentTrackStream => _trackController.stream;
-  Stream<List<AfTrack>> get queueStream => _queueController.stream;
-  Stream<bool> get shuffleModeStream => _shuffleController.stream;
+  Stream<AfTrack?> get currentTrackStream => _queueManager.currentTrackStream;
+  Stream<List<AfTrack>> get queueStream => _queueManager.queueStream;
+  Stream<bool> get shuffleModeStream => _queueManager.shuffleModeStream;
   Stream<Loop> get loopModeStream => _player.stream.loop;
   Stream<double> get speedStream => _player.stream.rate;
 
@@ -348,12 +341,9 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   Future<Duration> getRawDuration() => _positionTracker.getRawDuration();
 
-  List<AfTrack> get currentQueue => List<AfTrack>.unmodifiable(_trackQueue);
+  List<AfTrack> get currentQueue => _queueManager.currentQueue;
 
-  AfTrack? get currentTrack =>
-      (_currentIndex >= 0 && _currentIndex < _trackQueue.length)
-          ? _trackQueue[_currentIndex]
-          : null;
+  AfTrack? get currentTrack => _queueManager.currentTrack;
 
   bool get isPlaying => _player.state.playing;
   bool get isCompleted => _player.state.completed;
@@ -364,14 +354,14 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   bool get shouldAdvancePosition {
     final hasTrack = currentTrack != null;
     final completedAtQueueEnd =
-        _player.state.completed && _currentIndex >= _trackQueue.length - 1;
+        _player.state.completed && _queueManager.isAtQueueEnd;
     return hasTrack &&
         !completedAtQueueEnd &&
         !_userPaused &&
         _pendingPlayNudgeIdx == null;
   }
 
-  bool get isShuffleEnabled => _shuffleEnabled;
+  bool get isShuffleEnabled => _queueManager.isShuffleEnabled;
   Loop get loopMode => _player.state.loop;
   double get speed => _player.state.rate;
 
@@ -396,15 +386,13 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       _artworkManager.setAuthHeaders(streamHeaders);
     }
 
-    _trackQueue
-      ..clear()
-      ..addAll(tracks);
-    _currentIndex = safeIndex;
-    _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
-    _originalQueue = _shuffleEnabled ? List<AfTrack>.of(tracks) : <AfTrack>[];
+    _queueManager.replaceQueue(tracks, safeIndex);
+    if (_queueManager.isShuffleEnabled) {
+      _queueManager.setOriginalQueue(List<AfTrack>.of(tracks));
+    }
 
     final startTrack = tracks[safeIndex];
-    _trackController.add(startTrack);
+    _queueManager.emitCurrentTrack(startTrack);
     onTrackChanged?.call(startTrack);
     afLog(
       'data',
@@ -412,12 +400,11 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
           'startIndex=$safeIndex first="${startTrack.title}"',
     );
 
-    _urlToTrack.clear();
     final medias = tracks.map((t) {
       final url = resolveStreamUrl(t);
-      _urlToTrack[url] = t;
       return Media(url);
     }).toList();
+    _queueManager.rebuildUrlMap(medias, tracks);
 
     try {
       _positionTracker.onTrackChanged();
@@ -425,14 +412,9 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       if (medias.length <= 5) {
         await _player.openAll(medias, index: safeIndex, play: true);
       } else {
-        _suppressPlaylistSyncGen++;
-        _activePlaylistSyncGen = _suppressPlaylistSyncGen;
+        _queueManager.beginPlaylistSync();
         await _player.open(medias[safeIndex], play: true);
 
-        // Await all append adds so the playlist sync gen isn't reset
-        // until mpv's playlist matches our Dart queue. If we reset
-        // early, the playlist listener could see a partial mpv
-        // playlist and corrupt _trackQueue.
         final addFutures = <Future<void>>[];
         for (var i = safeIndex + 1; i < medias.length; i++) {
           addFutures.add(_player.add(medias[i]));
@@ -448,18 +430,14 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
           ]);
         }
 
-        _currentIndex = safeIndex;
-        _activePlaylistSyncGen = 0;
+        _queueManager.endPlaylistSync();
       }
 
       _audioDeviceManager.nudge();
     } catch (e, stack) {
-      _activePlaylistSyncGen = 0;
+      _queueManager.endPlaylistSync();
       afLog('audio', 'playQueue failed', error: e, stackTrace: stack);
-      _trackQueue.clear();
-      _currentIndex = -1;
-      _queueController.add(const <AfTrack>[]);
-      _trackController.add(null);
+      _queueManager.clear();
       rethrow;
     }
   }
@@ -519,109 +497,37 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   Future<void> skipToQueueItem(int index) => _player.jump(index);
 
   Future<void> setAfShuffleMode(bool enabled) async {
-    if (_shuffleEnabled == enabled) return;
-    _shuffleEnabled = enabled;
-    _shuffleController.add(enabled);
+    if (_queueManager.isShuffleEnabled == enabled) return;
 
     final playingTrack = currentTrack;
-    if (_trackQueue.isEmpty) {
+    if (_queueManager.currentQueue.isEmpty) {
       afLog('data', 'shuffleMode source=live enabled=$enabled (queue empty)');
       return;
     }
 
-    _suppressPlaylistSyncGen++;
-    _activePlaylistSyncGen = _suppressPlaylistSyncGen;
-    if (enabled && _originalQueue.isEmpty) {
-      _originalQueue = List<AfTrack>.of(_trackQueue);
-    }
-
+    _queueManager.beginPlaylistSync();
+    _queueManager.setShuffleEnabled(enabled);
     await _player.setShuffle(enabled);
 
     try {
       final newPlaylist = await _player.stream.playlist.first
           .timeout(const Duration(seconds: 2));
-      _syncTrackQueueFromMpv(newPlaylist.items, newPlaylist.index);
+      _queueManager.syncFromMpv(newPlaylist.items, newPlaylist.index);
     } catch (e) {
       afLog('audio', 'shuffle playlist stream timeout, using state fallback', error: e);
       final mpvItems = _player.state.playlist.items;
       final newIdx = _player.state.playlist.index;
-      _syncTrackQueueFromMpv(mpvItems, newIdx);
+      _queueManager.syncFromMpv(mpvItems, newIdx);
     }
 
-    if (!enabled) _originalQueue = <AfTrack>[];
-    _activePlaylistSyncGen = 0;
+    _queueManager.endPlaylistSync();
 
-    _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
     if (playingTrack != null) {
-      _trackController.add(playingTrack);
+      _queueManager.emitCurrentTrack(playingTrack);
     }
 
     afLog('data', 'shuffleMode source=live enabled=$enabled '
-        'queueSize=${_trackQueue.length} currentIndex=$_currentIndex');
-  }
-
-  void _syncTrackQueueFromMpv(List<Media> mpvItems, int newIdx) {
-    if (mpvItems.isEmpty) return;
-
-    final byId = <String, AfTrack>{};
-    for (final t in _trackQueue) {
-      byId[t.id] = t;
-    }
-    for (final t in _originalQueue) {
-      byId[t.id] = t;
-    }
-
-    final reordered = <AfTrack>[];
-    for (final media in mpvItems) {
-      var track = _urlToTrack[media.uri];
-      if (track == null) {
-        final id = _extractTrackId(media.uri);
-        track = id != null ? byId[id] : null;
-      }
-      if (track != null) reordered.add(track);
-    }
-
-    if (reordered.length == mpvItems.length) {
-      _trackQueue
-        ..clear()
-        ..addAll(reordered);
-      _currentIndex = newIdx.clamp(0, _trackQueue.length - 1);
-    } else if (reordered.isNotEmpty) {
-      afLog(
-        'audio',
-        '_syncTrackQueueFromMpv partial sync: '
-            'resolved ${reordered.length}/${mpvItems.length} tracks, '
-            'updating with resolved subset',
-      );
-      _trackQueue
-        ..clear()
-        ..addAll(reordered);
-      _currentIndex = newIdx.clamp(0, _trackQueue.length - 1);
-    } else {
-      afLog(
-        'audio',
-        '_syncTrackQueueFromMpv full sync failure: '
-            'resolved 0/${mpvItems.length} tracks, clearing queue',
-      );
-      _trackQueue.clear();
-      _currentIndex = 0;
-    }
-  }
-
-  static String? _extractTrackId(String uri) {
-    final parsed = Uri.tryParse(uri);
-    if (parsed == null) return null;
-
-    final segments = parsed.pathSegments;
-    for (var i = 0; i < segments.length - 1; i++) {
-      if (segments[i].toLowerCase() == 'audio') {
-        return segments[i + 1];
-      }
-    }
-
-    final queryId = parsed.queryParameters['id'];
-    if (queryId != null && queryId.isNotEmpty) return queryId;
-    return null;
+        'queueSize=${_queueManager.currentQueue.length} currentIndex=${_queueManager.currentIndex}');
   }
 
   Future<void> setAfLoopMode(Loop mode) async {
@@ -635,108 +541,57 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   }
 
   Future<void> reorderQueue(int oldIndex, int newIndex) async {
-    if (oldIndex < 0 ||
-        oldIndex >= _trackQueue.length ||
-        newIndex < 0 ||
-        newIndex > _trackQueue.length ||
-        oldIndex == newIndex) {
-      return;
-    }
+    if (!_queueManager.canReorder(oldIndex, newIndex)) return;
 
-    final track = _trackQueue.removeAt(oldIndex);
-    // After removal the list shrank by one. If the target was after the
-    // removed item, shift the insertion index down.
-    final insertIdx = newIndex > oldIndex ? newIndex - 1 : newIndex;
-    _trackQueue.insert(insertIdx, track);
+    final insertIdx = _queueManager.reorder(oldIndex, newIndex);
     await _player.sendRawCommand(['playlist-move', '$oldIndex', '$insertIdx']);
 
-    if (_currentIndex == oldIndex) {
-      _currentIndex = insertIdx;
-    } else if (oldIndex < _currentIndex && insertIdx >= _currentIndex) {
-      _currentIndex -= 1;
-    } else if (oldIndex > _currentIndex && insertIdx <= _currentIndex) {
-      _currentIndex += 1;
-    }
-
-    _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
     afLog(
       'audio',
       'reorderQueue oldIndex=$oldIndex newIndex=$newIndex '
-          'currentIndex=$_currentIndex queueSize=${_trackQueue.length}',
+          'currentIndex=${_queueManager.currentIndex} queueSize=${_queueManager.currentQueue.length}',
     );
   }
 
   /// Remove a track from the queue at [index]. Refuses to remove the
-  /// currently-playing item — callers should disable the affordance for
-  /// the active row rather than rely on a silent no-op (so the user
-  /// understands why the swipe was rejected). Returns `true` when the
-  /// removal actually took effect.
+  /// currently-playing item. Returns `true` when the removal took effect.
   Future<bool> removeFromQueue(int index) async {
     if (_disposed) return false;
-    if (index < 0 || index >= _trackQueue.length) return false;
-    if (index == _currentIndex) {
+    if (!_queueManager.canRemove(index)) {
       afLog('audio', 'removeFromQueue refused index=$index (currently playing)');
       return false;
     }
 
-    // Send the mpv command first so the playlist index matches.
-    // If mpv rejects it, the Dart queue stays intact.
     await _player.sendRawCommand(['playlist-remove', '$index']);
-
-    _trackQueue.removeAt(index);
-
-    // Removing an entry before the playhead shifts _currentIndex down by
-    // one so the active track is still pointed at after mpv collapses
-    // the playlist. Removing an entry after the playhead leaves
-    // _currentIndex untouched.
-    if (index < _currentIndex) {
-      _currentIndex -= 1;
-    }
-
-    _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
+    _queueManager.remove(index);
     afLog(
       'audio',
-      'removeFromQueue index=$index currentIndex=$_currentIndex '
-          'queueSize=${_trackQueue.length}',
+      'removeFromQueue index=$index currentIndex=${_queueManager.currentIndex} '
+          'queueSize=${_queueManager.currentQueue.length}',
     );
     return true;
   }
 
-  /// Insert [track] at an arbitrary [index] in the queue. Used to
-  /// recover from a swipe-to-remove undo — the caller already knows
-  /// the exact index the track came from, so we don't have to fall
-  /// back to "play next" semantics.
-  ///
-  /// Indices outside `[0, _trackQueue.length]` are clamped. If the
-  /// insertion lands at or before the currently playing index,
-  /// `_currentIndex` shifts by one so the active track keeps pointing
-  /// at the same audio entry after mpv expands the playlist.
   Future<void> insertIntoQueue(
     int index,
     AfTrack track, {
     required String Function(AfTrack) resolveStreamUrl,
   }) async {
     if (_disposed) return;
-    final clamped = index.clamp(0, _trackQueue.length);
     final url = resolveStreamUrl(track);
 
-    // Send mpv command first so the playlist index matches.
     await _player.sendRawCommand([
       'loadfile',
       url,
       'insert-at',
-      '$clamped',
+      '$index',
     ]);
 
-    _trackQueue.insert(clamped, track);
-    if (clamped <= _currentIndex) {
-      _currentIndex += 1;
-    }
-    _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
+    _queueManager.insert(index, track, url);
     afLog(
       'audio',
-      'insertIntoQueue "${track.title}" at index=$clamped '
-          'currentIndex=$_currentIndex',
+      'insertIntoQueue "${track.title}" at index=$index '
+          'currentIndex=${_queueManager.currentIndex}',
     );
   }
 
@@ -744,9 +599,9 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     AfTrack track, {
     required String Function(AfTrack) resolveStreamUrl,
   }) async {
-    final insertAt = _currentIndex >= 0 && _currentIndex < _trackQueue.length
-        ? _currentIndex + 1
-        : _trackQueue.length;
+    final insertAt = _queueManager.currentIndex >= 0
+        ? _queueManager.currentIndex + 1
+        : _queueManager.currentQueue.length;
     final url = resolveStreamUrl(track);
 
     await _player.sendRawCommand([
@@ -756,8 +611,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       '$insertAt',
     ]);
 
-    _trackQueue.insert(insertAt, track);
-    _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
+    _queueManager.insert(insertAt, track, url);
     afLog('audio', 'playNext "${track.title}" at index=$insertAt');
   }
 
@@ -773,8 +627,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       'append',
     ]);
 
-    _trackQueue.add(track);
-    _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
+    _queueManager.append(track, url);
     afLog('audio', 'addToQueue "${track.title}" at end');
   }
 
@@ -782,12 +635,10 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     if (_disposed) return;
     _disposed = true;
     _positionTracker.dispose();
+    _queueManager.dispose();
     for (final s in _subs) {
       await s.cancel();
     }
-    await _trackController.close();
-    await _queueController.close();
-    await _shuffleController.close();
     await _player.dispose();
   }
 
@@ -822,44 +673,36 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   void _bindStreams() {
     _subs.add(_player.stream.playlist.listen((playlist) {
       final idx = playlist.index;
-      if (idx < 0 || idx >= _trackQueue.length) return;
-      if (_activePlaylistSyncGen != 0) return;
+      if (idx < 0 || idx >= _queueManager.currentQueue.length) return;
+      if (!_queueManager.canHandlePlaylistEvent) return;
 
-      final indexChanged = idx != _currentIndex;
-      final previousTrackId =
-          (_currentIndex >= 0 && _currentIndex < _trackQueue.length)
-              ? _trackQueue[_currentIndex].id
-              : null;
-      _currentIndex = idx;
+      final previousTrackId = _queueManager.processPlaylistEvent(idx);
+      if (previousTrackId == null) return;
+      final track = _queueManager.currentTrack;
+      if (track == null) return;
 
-      if (indexChanged) {
-        final track = _trackQueue[idx];
-        if (track.id == previousTrackId) return;
+      _positionTracker.onTrackChanged();
+      _queueManager.emitCurrentTrack(track);
+      afLog(
+        'data',
+        'currentTrack source=live id=${track.id} '
+            'title="${track.title}" index=$idx',
+      );
+      onTrackChanged?.call(track);
+      _updateMediaItem();
 
-        _positionTracker.onTrackChanged();
+      unawaited(_reconfigureSpectrumOnTrackChange());
+      _nudgeRetries = 0;
+      _pendingPlayNudgeIdx = idx;
 
-        _trackController.add(track);
-        afLog(
-          'data',
-          'currentTrack source=live id=${track.id} '
-              'title="${track.title}" index=$idx',
-        );
-        onTrackChanged?.call(track);
-        _updateMediaItem();
-
-        unawaited(_reconfigureSpectrumOnTrackChange());
-        _nudgeRetries = 0;
-        _pendingPlayNudgeIdx = idx;
-
-        if (!_player.state.playing && !_userPaused) {
-          if (_nudgeRetries < _maxNudgeRetries) {
-            _nudgeRetries++;
-            _player.play();
-            afLog('audio',
-                'auto-advance nudge (playlist event) play() at index=$idx (attempt $_nudgeRetries)');
-          }
-          _pendingPlayNudgeIdx = null;
+      if (!_player.state.playing && !_userPaused) {
+        if (_nudgeRetries < _maxNudgeRetries) {
+          _nudgeRetries++;
+          _player.play();
+          afLog('audio',
+              'auto-advance nudge (playlist event) play() at index=$idx (attempt $_nudgeRetries)');
         }
+        _pendingPlayNudgeIdx = null;
       }
     }));
 
@@ -871,15 +714,15 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         _nudgeRetries = 0;
       } else if (!_userPaused &&
           _pendingPlayNudgeIdx != null &&
-          _pendingPlayNudgeIdx == _currentIndex) {
+          _pendingPlayNudgeIdx == _queueManager.currentIndex) {
         if (_nudgeRetries < _maxNudgeRetries) {
           _nudgeRetries++;
           _player.play();
           afLog('audio',
-              'auto-advance nudge play() at index=$_currentIndex (attempt $_nudgeRetries)');
+              'auto-advance nudge play() at index=${_queueManager.currentIndex} (attempt $_nudgeRetries)');
         } else {
           afLog('audio',
-              'auto-advance nudge exhausted after $_maxNudgeRetries attempts at index=$_currentIndex');
+              'auto-advance nudge exhausted after $_maxNudgeRetries attempts at index=${_queueManager.currentIndex}');
         }
         _pendingPlayNudgeIdx = null;
       }
@@ -891,10 +734,10 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     _subs.add(_player.stream.completed.listen((completed) {
       _updatePlaybackState();
       if (!completed) return;
-      final nextIdx = _currentIndex + 1;
-      if (nextIdx < _trackQueue.length) {
+      final nextIdx = _queueManager.currentIndex + 1;
+      if (nextIdx < _queueManager.currentQueue.length) {
         final currentMpvIdx = _player.state.playlist.index;
-        if (currentMpvIdx == _currentIndex) {
+        if (currentMpvIdx == _queueManager.currentIndex) {
           _jumpAndPlay(nextIdx);
           afLog('audio', 'completed fallback: jump+play to index=$nextIdx');
         }
@@ -941,7 +784,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   void _updatePlaybackState() {
     final s = _player.state;
-    final isQueueEnd = s.completed && (_currentIndex >= _trackQueue.length - 1);
+    final isQueueEnd = s.completed && _queueManager.isAtQueueEnd;
     final effectivePlaying = s.playing || shouldAdvancePosition;
 
     playbackState.add(
@@ -967,18 +810,19 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         updatePosition: _positionTracker.lastKnownPosition,
         bufferedPosition: s.buffer,
         speed: s.rate,
-        queueIndex: _currentIndex >= 0 ? _currentIndex : null,
+        queueIndex: _queueManager.currentIndex >= 0
+            ? _queueManager.currentIndex
+            : null,
       ),
     );
   }
 
   void _updateMediaItem() {
-    if (_currentIndex < 0 || _currentIndex >= _trackQueue.length) {
+    final track = _queueManager.currentTrack;
+    if (track == null) {
       mediaItem.add(null);
       return;
     }
-
-    final track = _trackQueue[_currentIndex];
     final artUri = _artworkManager.artUri(track);
     if (artUri == null && _artworkManager.needsRemoteArtwork(track)) {
       unawaited(_artworkManager.downloadArtworkForNotification(track));
