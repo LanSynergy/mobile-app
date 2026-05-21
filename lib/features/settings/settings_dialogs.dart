@@ -499,6 +499,7 @@ Future<bool> showOfflineCacheClearDialog(
   final count = await cache.cachedCount();
   final label = size > 0 ? OfflineCacheService.formatSize(size) : '0 B';
 
+  if (!context.mounted) return false;
   final confirmed = await showBlurDialog<bool>(
     context: context,
     child: Column(
