@@ -89,9 +89,9 @@ class HeroAlbumCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AfSpacing.s12),
-                  Flexible(
+                  Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
