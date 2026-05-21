@@ -1,9 +1,7 @@
 <svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Aetherfin">
   <title>Aetherfin mark</title>
-  <!-- Pulse arch (sound wave, 50% alpha) -->
-  <path d="M 98 144 Q 128 112 158 144"
-        stroke="currentColor" stroke-width="10" stroke-linecap="round" fill="none" opacity="0.5"/>
-  <!-- A chevron -->
-  <path d="M 82 176 L 128 62 L 174 176"
-        stroke="currentColor" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <g transform="scale(2.56)">
+    <path d="M25 20 C 40 20, 60 35, 85 50 C 60 65, 40 80, 25 80 C 35 60, 35 40, 25 20 Z" fill="currentColor"/>
+    <path d="M25 20 C 25 20, 45 40, 45 50 C 45 60, 25 80, 25 80 C 20 80, 15 75, 15 70 L 15 30 C 15 25, 20 20, 25 20 Z" fill="currentColor" opacity="0.5"/>
+  </g>
 </svg>

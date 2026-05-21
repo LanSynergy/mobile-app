@@ -18,22 +18,13 @@
       <rect width="256" height="256" rx="56" ry="56"/>
     </clipPath>
   </defs>
-
-  <!-- Everything clipped to the rounded container -->
   <g clip-path="url(#af-clip)">
-    <!-- Container: rounded square with indigo gradient -->
     <rect width="256" height="256" fill="url(#af-bg)"/>
-    <!-- Radial highlight that lifts the gradient -->
     <rect width="256" height="256" fill="url(#af-glow)"/>
-    <!-- Top sheen (subtle) -->
     <rect width="256" height="140" fill="url(#af-sheen)"/>
-
-    <!-- Pulse arch (sound wave, behind the A) -->
-    <path d="M 98 144 Q 128 112 158 144"
-          stroke="#CDC6F4" stroke-width="10" stroke-linecap="round" fill="none"/>
-
-    <!-- The A chevron (foreground, no filter to avoid bbox clipping) -->
-    <path d="M 82 176 L 128 62 L 174 176"
-          stroke="#ffffff" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <g transform="scale(2.56)">
+      <path d="M25 20 C 40 20, 60 35, 85 50 C 60 65, 40 80, 25 80 C 35 60, 35 40, 25 20 Z" fill="#ffffff"/>
+      <path d="M25 20 C 25 20, 45 40, 45 50 C 45 60, 25 80, 25 80 C 20 80, 15 75, 15 70 L 15 30 C 15 25, 20 20, 25 20 Z" fill="#CDC6F4" opacity="0.9"/>
+    </g>
   </g>
 </svg>

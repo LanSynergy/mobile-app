@@ -11,20 +11,16 @@
       <stop offset="100%" stop-color="#A89DEC"/>
     </linearGradient>
   </defs>
-
-  <!-- Mark: rounded-square indigo container, scaled to 160 -->
   <g transform="translate(20, 20)">
     <clipPath id="wm-clip"><rect width="160" height="160" rx="36" ry="36"/></clipPath>
     <g clip-path="url(#wm-clip)">
       <rect width="160" height="160" fill="url(#wm-bg)"/>
-      <path d="M 61 90 Q 80 70 99 90"
-            stroke="#CDC6F4" stroke-width="6" stroke-linecap="round" fill="none"/>
-      <path d="M 51 110 L 80 39 L 109 110"
-            stroke="#ffffff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <g transform="scale(1.6)">
+        <path d="M25 20 C 40 20, 60 35, 85 50 C 60 65, 40 80, 25 80 C 35 60, 35 40, 25 20 Z" fill="#ffffff"/>
+        <path d="M25 20 C 25 20, 45 40, 45 50 C 45 60, 25 80, 25 80 C 20 80, 15 75, 15 70 L 15 30 C 15 25, 20 20, 25 20 Z" fill="#CDC6F4" opacity="0.9"/>
+      </g>
     </g>
   </g>
-
-  <!-- Wordmark text -->
   <text x="210" y="132" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
         font-size="104" font-weight="700" letter-spacing="-3"
         fill="url(#wm-text)">Aetherfin</text>
