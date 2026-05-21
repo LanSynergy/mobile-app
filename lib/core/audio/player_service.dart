@@ -720,15 +720,29 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       _updatePlaybackState();
       if (!completed) return;
       final nextIdx = _queueManager.currentIndex + 1;
-      if (nextIdx < _queueManager.currentQueue.length) {
+      final isAtEnd = nextIdx >= _queueManager.currentQueue.length;
+      if (!isAtEnd && _player.state.loop == Loop.file) {
+        await _jumpAndPlay(_queueManager.currentIndex);
+        afLog('audio', 'completed: replay file (loop=file)');
+      } else if (!isAtEnd) {
         final currentMpvIdx = _player.state.playlist.index;
         if (currentMpvIdx == _queueManager.currentIndex) {
           await _jumpAndPlay(nextIdx);
-          afLog('audio', 'completed fallback: jump+play to index=$nextIdx');
+          afLog('audio', 'completed: jump+play to index=$nextIdx');
         }
-      } else if (_player.state.loop == Loop.off) {
-        await pause();
-        afLog('audio', 'queue end reached, auto-stop (loop=off)');
+      } else {
+        switch (_player.state.loop) {
+          case Loop.off:
+            _positionTracker.onPause();
+            await _player.pause();
+            afLog('audio', 'queue end, auto-stop (loop=off)');
+          case Loop.playlist:
+            await _jumpAndPlay(0);
+            afLog('audio', 'queue end, looping playlist');
+          case Loop.file:
+            await _jumpAndPlay(_queueManager.currentIndex);
+            afLog('audio', 'queue end, looping file');
+        }
       }
     }));
 
