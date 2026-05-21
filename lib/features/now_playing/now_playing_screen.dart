@@ -273,6 +273,7 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
 /// Static metadata row — only rebuilds when track changes (on skip).
 class _MetadataRow extends ConsumerWidget {
   final AfTrack track;
+
   const _MetadataRow({required this.track});
 
   @override
@@ -285,10 +286,8 @@ class _MetadataRow extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                track.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              _MarqueeText(
+                text: track.title,
                 style: AfTypography.titleLarge,
               ),
               const SizedBox(height: 2),
@@ -304,10 +303,8 @@ class _MetadataRow extends ConsumerWidget {
                       ? null
                       : 'Go to artist ${track.artistName}',
                   button: track.artistId != null,
-                  child: Text(
-                    track.artistName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: _MarqueeText(
+                    text: track.artistName,
                     style: AfTypography.bodyMedium.copyWith(
                       color: AfColors.textSecondary,
                     ),
@@ -348,6 +345,97 @@ class _MetadataRow extends ConsumerWidget {
         _AbLoopButton(),
         _NowPlayingMetaChip(quality: track.quality),
       ],
+    );
+  }
+}
+
+/// Scrolls [text] from right to left when it exceeds the available width.
+/// Falls back to a static [Text] when the content fits.
+class _MarqueeText extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+
+  const _MarqueeText({required this.text, required this.style});
+
+  @override
+  State<_MarqueeText> createState() => _MarqueeTextState();
+}
+
+class _MarqueeTextState extends State<_MarqueeText>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  double _offset = 0.0;
+  bool _shouldScroll = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this);
+  }
+
+  @override
+  void didUpdateWidget(covariant _MarqueeText old) {
+    super.didUpdateWidget(old);
+    if (old.text != widget.text) {
+      _controller.stop();
+      _controller.value = 0;
+      _shouldScroll = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final tp = TextPainter(
+          text: TextSpan(text: widget.text, style: widget.style),
+          maxLines: 1,
+          textDirection: TextDirection.ltr,
+        )..layout();
+
+        if (tp.width <= maxWidth) {
+          if (_shouldScroll) {
+            _controller.stop();
+            _controller.value = 0;
+            _shouldScroll = false;
+          }
+          return Text(widget.text, maxLines: 1, style: widget.style);
+        }
+
+        if (!_shouldScroll) {
+          _shouldScroll = true;
+          _offset = tp.width + 32.0;
+          final durationMs = (_offset / 60.0 * 1000).round().clamp(2000, 10000);
+          _controller.duration = Duration(milliseconds: durationMs);
+          _controller.repeat();
+        }
+
+        return ClipRect(
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              return Transform.translate(
+                offset: Offset(-_offset * _controller.value, 0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(widget.text, maxLines: 1, style: widget.style),
+                    const SizedBox(width: 32),
+                    Text(widget.text, maxLines: 1, style: widget.style),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
