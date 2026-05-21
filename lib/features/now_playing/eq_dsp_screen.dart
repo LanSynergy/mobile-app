@@ -552,49 +552,55 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
 
   Future<void> _saveCurrentAsPreset() async {
     final controller = TextEditingController();
-    final name = await showBlurDialog<String>(
-      context: context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('Save EQ Preset', style: AfTypography.titleMedium),
-          const SizedBox(height: AfSpacing.s16),
-          TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(
-              hintText: 'Preset name',
-              border: OutlineInputBorder(),
+    final String? name;
+    try {
+      name = await showBlurDialog<String>(
+        context: context,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Save EQ Preset', style: AfTypography.titleMedium),
+            const SizedBox(height: AfSpacing.s16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: 'Preset name',
+                border: OutlineInputBorder(),
+              ),
             ),
-          ),
-          const SizedBox(height: AfSpacing.s24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, controller.text.trim()),
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+            const SizedBox(height: AfSpacing.s24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, controller.text.trim()),
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
     if (name == null || name.isEmpty) return;
+    final presetName = name;
     final preset = EqPreset(
       bands: Map.of(_eqBands),
       bass: _bass,
       treble: _treble,
     );
-    await PlayerSettingsStore.saveEqPreset(name, preset);
+    await PlayerSettingsStore.saveEqPreset(presetName, preset);
     setState(() {
-      _userPresets[name] = preset;
-      _activePreset = name;
+      _userPresets[presetName] = preset;
+      _activePreset = presetName;
     });
   }
 
