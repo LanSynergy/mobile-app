@@ -700,6 +700,10 @@ PII (usernames, server URLs) must be redacted in release builds.
 37. **"Use `builder` for overlay routes like `/lyrics` and `/queue`."** No. Use `pageBuilder` with `NoTransitionPage` — the default `MaterialPage` slide transition renders content out of frame when pushed on `_rootKey`.
 38. **"Load all tracks to prune deleted files."** No. `allTracks()` has a 5000 limit. Use a SQL prefix query (`trackIdsByPrefix`) to get only the tracks matching the folder, with no limit.
 39. **"Call `_nudgeAudioDevice()` without a generation counter."** No. Rapid seeks/play/pause stack multiple nudge chains (3 delayed `setAudioDevice` calls each). Use `_nudgeGen` to cancel stale chains.
+40. **"Call `setAudioDriver()`/`setAudioBuffer()` in the constructor without error handling."** No. Both return `Future<void>` from a sync constructor — if the native plugin throws, the error becomes an unhandled future rejection. Wrap each with `.catchError((Object e, StackTrace? stack) { ... })` and explicitly type the parameters to satisfy `argument_type_not_assignable`.
+41. **"Let `playQueue` fail without cleaning up mpv's playlist."** No. When `Future.wait(addFutures...)` throws, some tracks may have already been added to mpv's internal playlist via `_player.add()`. Clear Dart-side state AND call `await _player.stop()` to reset mpv's playlist.
+42. **"Leave `pause()`/`_jumpAndPlay()` unawaited in stream listeners."** No. `Stream.listen()` callbacks that touch `Future<void>` methods must be `async` with `await` on each call. Un-awaited futures in listeners are unhandled rejection sources.
+43. **"Parse tint hex strings without validation."** No. `_hex()` in `home_screen.dart` called `int.parse(hex.replaceFirst('#', ''), radix: 16)` with no try-catch or length check — a malformed string (DB corruption, future provider change) crashes the entire HomeScreen build. Match `search_screen.dart`'s `_parseTint` pattern: try-catch, validate length (6 or 8), fallback to `AfColors.indigo600`.
 
 ## 16. Glossary
 

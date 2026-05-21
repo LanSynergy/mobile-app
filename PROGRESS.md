@@ -270,3 +270,23 @@
 ## Quality
 - [x] flutter analyze — 0 issues
 - [x] flutter test — 96 tests pass
+
+---
+
+# Defensive Fixes (May 2026)
+
+## Async Safety
+- [x] `setAudioDriver`/`setAudioBuffer` in constructor wrapped with `.catchError()` — prevents unhandled crash on native plugin failure
+- [x] `completed` stream listener made `async` — `pause()` and `_jumpAndPlay()` properly awaited
+- [x] `_jumpAndPlay(nextIdx)` awaited in completed listener (was unawaited `Future<void>`)
+
+## Playback Consistency
+- [x] `playQueue` catch block calls `_player.stop()` — clears mpv playlist on partial failure
+- [x] Position extrapolation capped at 1h when `duration == Duration.zero` — prevents absurd progress on wake
+
+## Data Validation
+- [x] `_hex()` in home_screen converted to try-catch with length validation + `AfColors.indigo600` fallback — matches `search_screen.dart` defensive pattern
+
+## Quality
+- [x] flutter analyze — 0 issues (was 0, still 0)
+- [x] flutter test — 96 tests pass (no regressions)

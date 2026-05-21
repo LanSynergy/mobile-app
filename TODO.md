@@ -76,3 +76,8 @@ Smooth audio crossfade when transitioning between tracks (configurable duration)
 - [x] Album ID parsing — lastIndexOf(':') supports colons in names
 - [x] Nudge retries never reset — reset on playing=true
 - [x] Playlist sync race — generation counter replaces Future.delayed
+- [x] Constructor async calls — catchError guards on setAudioDriver/setAudioBuffer
+- [x] Completed listener — async + awaited pause()/jumpAndPlay()
+- [x] playQueue partial failure — _player.stop() to clear mpv playlist
+- [x] _hex() in home_screen — try-catch with length validation + fallback color
+- [x] Position extrapolation — capped at 1h when duration is zero
