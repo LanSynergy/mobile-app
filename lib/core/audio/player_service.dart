@@ -1143,14 +1143,27 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       }
 
       if (shouldAdvance) {
+        final dur = _player.state.duration;
+        // If position already reached duration, cap it and stop extrapolating.
+        // This prevents the progress bar from running indefinitely when mpv's
+        // `completed` flag is delayed or never fires on some OEM pipelines.
+        if (dur > Duration.zero && _positionAnchor.lastKnownPos >= dur) {
+          _positionAnchor.lastKnownPos = dur;
+          _positionController.add(dur);
+          return;
+        }
+
         final elapsed = now.difference(_positionAnchor.lastUpdateTime);
         final speed = _player.state.rate;
         final extrapolated = _positionAnchor.lastKnownPos +
             Duration(milliseconds: (elapsed.inMilliseconds * speed).round());
-        _positionAnchor.lastKnownPos = extrapolated;
+        // Clamp single-tick overshoot so a large scheduler delay doesn't
+        // push the position past the end.
+        final capped = (dur > Duration.zero && extrapolated > dur) ? dur : extrapolated;
+        _positionAnchor.lastKnownPos = capped;
         _positionAnchor.lastUpdateTime = now;
         _positionAnchor.wasPlaying = true;
-        _positionController.add(extrapolated);
+        _positionController.add(capped);
       } else if (rawPos == Duration.zero) {
         _resetRawPositionStaleDetector(Duration.zero);
       }

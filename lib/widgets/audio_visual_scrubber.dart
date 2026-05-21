@@ -337,7 +337,7 @@ class _CombinedBarPainter extends CustomPainter {
     // when position briefly resets to 0 during track transitions.
     final double fillX   = fftNotifier.hasEnergy
         ? math.max(rawFillX, slotW * 0.75)
-        : rawFillX;
+        : (fftNotifier.totalEnergy > 0 ? rawFillX : 0.0);
     final double maxBarH = midY * 0.8;
     final barRadius      = Radius.circular(barW / 2);
 
