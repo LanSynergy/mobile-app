@@ -305,7 +305,8 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         if (cachedUri != null) return cachedUri;
       }
       if (backend != null) {
-        return backend.trackStreamUrl(t.id, maxBitrateKbps: 320);
+        final maxBitrate = ref.read(maxBitrateProvider);
+        return backend.trackStreamUrl(t.id, maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate);
       }
       return 'about:blank';
     }

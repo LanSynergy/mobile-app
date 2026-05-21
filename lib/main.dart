@@ -116,7 +116,8 @@ Future<void> main() async {
     // Load offline cache settings.
     final offlineCacheEnabled = prefs.getBool('af.offline_cache_enabled') ?? false;
     final offlineCacheMaxSize = prefs.getInt('af.offline_cache_max_size') ?? (1024 * 1024 * 1024);
-    _boot('offlineCacheEnabled=$offlineCacheEnabled maxSize=$offlineCacheMaxSize');
+    final maxBitrate = prefs.getInt('af.max_bitrate_kbps') ?? 0;
+    _boot('offlineCacheEnabled=$offlineCacheEnabled maxSize=$offlineCacheMaxSize maxBitrate=$maxBitrate');
 
     // Resolve the app version once at boot so every HTTP client can stamp
     // its `User-Agent` and Jellyfin `Version="…"` header from a single
@@ -176,6 +177,7 @@ Future<void> main() async {
         artworkPulseEnabledProvider.overrideWith((ref) => artworkPulse),
         offlineCacheEnabledProvider.overrideWith((ref) => offlineCacheEnabled),
         offlineCacheMaxSizeProvider.overrideWith((ref) => offlineCacheMaxSize),
+        maxBitrateProvider.overrideWith((ref) => maxBitrate),
         playerServiceProvider.overrideWith((ref) {
           wirePlayerService(ref, handler);
           return handler;

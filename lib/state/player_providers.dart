@@ -31,7 +31,8 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     final backend = ref.read(musicBackendProvider);
     if (backend == null) return;
     final cache = ref.read(offlineCacheServiceProvider);
-    final url = backend.trackStreamUrl(track.id, maxBitrateKbps: 320);
+    final maxBitrate = ref.read(maxBitrateProvider);
+    final url = backend.trackStreamUrl(track.id, maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate);
     unawaited(cache.cacheTrack(track.id, url, headers: backend.authHeaders));
   };
 

@@ -154,7 +154,8 @@ String Function(AfTrack)? _streamResolver(WidgetRef ref) {
       final cachedUri = cache.cachedFileUri(t.id);
       if (cachedUri != null) return cachedUri;
     }
-    return backend.trackStreamUrl(t.id, maxBitrateKbps: 320);
+    final maxBitrate = ref.read(maxBitrateProvider);
+    return backend.trackStreamUrl(t.id, maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate);
   };
 }
 
