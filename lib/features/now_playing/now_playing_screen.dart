@@ -50,7 +50,12 @@ class NowPlayingScreen extends ConsumerWidget {
 
     if (track == null) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_downward_rounded),
+            onPressed: () => Navigator.maybePop(context),
+          ),
+        ),
         body: const Center(child: Text('Nothing playing yet.')),
       );
     }
@@ -204,12 +209,15 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
             if (!_ticker.isAnimating) _ticker.repeat();
           }
 
-          _silenceTimer = Timer(const Duration(milliseconds: 300), () {
-            if (mounted) {
-              _bassAverage = 0.0;
-              _prevBass = 0.0;
-            }
-          });
+          _silenceTimer?.cancel();
+          if (mounted) {
+            _silenceTimer = Timer(const Duration(milliseconds: 300), () {
+              if (mounted) {
+                _bassAverage = 0.0;
+                _prevBass = 0.0;
+              }
+            });
+          }
         },
       );
     });
