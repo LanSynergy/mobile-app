@@ -37,7 +37,7 @@ class JellyfinResponseParser {
           .toList(growable: false);
 
   AfAlbum parseAlbum(Map<String, dynamic> m) {
-    final id = m['Id'] as String;
+    final id = (m['Id'] as String?) ?? '';
     final ticks = m['RunTimeTicks'];
     final duration = ticks is num
         ? Duration(microseconds: ticks ~/ 10)
@@ -60,7 +60,7 @@ class JellyfinResponseParser {
 
   AfArtist parseArtist(Map<String, dynamic> m) {
     return AfArtist(
-      id: m['Id'] as String,
+      id: (m['Id'] as String?) ?? '',
       name: (m['Name'] as String?) ?? 'Unknown',
       albumCount: (m['AlbumCount'] as int?) ?? 0,
       trackCount: (m['SongCount'] as int?) ?? (m['ChildCount'] as int?) ?? 0,
@@ -82,7 +82,7 @@ class JellyfinResponseParser {
         .whereType<String>()
         .toList();
     return AfTrack(
-      id: m['Id'] as String,
+      id: (m['Id'] as String?) ?? '',
       title: (m['Name'] as String?) ?? 'Unknown',
       artistName: trackArtistName(m),
       albumName: (m['Album'] as String?) ?? '',
@@ -104,7 +104,7 @@ class JellyfinResponseParser {
         ? Duration(microseconds: ticks ~/ 10)
         : Duration.zero;
     return AfPlaylist(
-      id: m['Id'] as String,
+      id: (m['Id'] as String?) ?? '',
       name: (m['Name'] as String?) ?? 'Unknown',
       trackCount: (m['ChildCount'] as int?) ?? 0,
       duration: duration,
@@ -116,7 +116,12 @@ class JellyfinResponseParser {
   TrackQuality? parseQuality(Map<String, dynamic> m) {
     final sources = m['MediaSources'] as List?;
     if (sources == null || sources.isEmpty) return null;
-    final src = (sources.first as Map).cast<String, dynamic>();
+    final rawSrc = sources.firstWhere(
+      (s) => s is Map,
+      orElse: () => null,
+    );
+    if (rawSrc is! Map) return null;
+    final src = rawSrc.cast<String, dynamic>();
     final streams = (src['MediaStreams'] as List? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map((s) => s.cast<String, dynamic>())
@@ -141,9 +146,15 @@ class JellyfinResponseParser {
   String albumArtistName(Map<String, dynamic> m) {
     final artists = m['AlbumArtists'] as List?;
     if (artists != null && artists.isNotEmpty) {
-      final first = (artists.first as Map).cast<String, dynamic>();
-      final name = first['Name'] as String?;
-      if (name != null && name.isNotEmpty) return name;
+      final first = artists.firstWhere(
+        (a) => a is Map,
+        orElse: () => null,
+      );
+      if (first is Map) {
+        final fm = first.cast<String, dynamic>();
+        final name = fm['Name'] as String?;
+        if (name != null && name.isNotEmpty) return name;
+      }
     }
     return (m['AlbumArtist'] as String?) ?? (m['Artists'] as List?)?.cast<String>().join(', ') ?? '';
   }
@@ -151,8 +162,14 @@ class JellyfinResponseParser {
   String? albumArtistId(Map<String, dynamic> m) {
     final artists = m['AlbumArtists'] as List?;
     if (artists != null && artists.isNotEmpty) {
-      final first = (artists.first as Map).cast<String, dynamic>();
-      return first['Id'] as String?;
+      final first = artists.firstWhere(
+        (a) => a is Map,
+        orElse: () => null,
+      );
+      if (first is Map) {
+        final fm = first.cast<String, dynamic>();
+        return fm['Id'] as String?;
+      }
     }
     return null;
   }

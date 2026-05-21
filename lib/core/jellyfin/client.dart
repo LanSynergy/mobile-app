@@ -184,13 +184,28 @@ class JellyfinClient implements MusicBackend {
       'Users/AuthenticateByName',
       data: {'Username': username, 'Pw': password},
     );
-    final data = res.data!;
-    final user = (data['User'] as Map).cast<String, dynamic>();
+    final data = res.data;
+    if (data == null) {
+      throw StateError('Authentication failed: empty response body.');
+    }
+    final rawUser = data['User'];
+    if (rawUser is! Map) {
+      throw StateError('Authentication failed: invalid or missing User object.');
+    }
+    final user = rawUser.cast<String, dynamic>();
+    final userId = user['Id'];
+    if (userId is! String) {
+      throw StateError('Authentication failed: missing or invalid User.Id.');
+    }
+    final accessToken = data['AccessToken'];
+    if (accessToken is! String) {
+      throw StateError('Authentication failed: missing or invalid AccessToken.');
+    }
     return JellyfinAuth(
       server: server,
-      userId: user['Id'] as String,
-      userName: user['Name'] as String,
-      accessToken: data['AccessToken'] as String,
+      userId: userId,
+      userName: (user['Name'] as String?) ?? '',
+      accessToken: accessToken,
     );
   }
 
@@ -229,7 +244,7 @@ class JellyfinClient implements MusicBackend {
     ));
     try {
       final res = await probe.get<List<dynamic>>('Users');
-      final users = (res.data ?? const []).cast<Map<String, dynamic>>();
+      final users = (res.data ?? const []).whereType<Map<String, dynamic>>();
       final wanted = username.trim().toLowerCase();
       for (final raw in users) {
         final u = raw.cast<String, dynamic>();
@@ -254,8 +269,10 @@ class JellyfinClient implements MusicBackend {
 
   @override
   Future<List<LibraryView>> userViews() async {
+    _urlBuilder.assertUser();
     final res = await _dio.get<Map<String, dynamic>>('Users/$userId/Views');
-    final items = (res.data?['Items'] as List? ?? const []).cast<Map<String, dynamic>>();
+    final items = (res.data?['Items'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>();
     return items
         .map((m) => LibraryView(
               id: m['Id'] as String,
@@ -455,8 +472,17 @@ class JellyfinClient implements MusicBackend {
       final primaryTag = imageTags?['Primary'] as String?;
       String? imageUrl;
       if (id.isNotEmpty && primaryTag != null) {
-        final base = stripTrailingSlash(server.baseUrl);
-        imageUrl = '$base/Items/$id/Images/Primary?tag=$primaryTag&quality=80&maxWidth=480';
+        final baseUri = Uri.parse(stripTrailingSlash(server.baseUrl));
+        imageUrl = baseUri
+            .replace(
+              path: '${baseUri.path}/Items/$id/Images/Primary',
+              queryParameters: {
+                'tag': primaryTag,
+                'quality': '80',
+                'maxWidth': '480',
+              },
+            )
+            .toString();
       }
       for (final part in raw.split(_genreSplitRe)) {
         final token = part.trim();
@@ -728,13 +754,19 @@ class JellyfinClient implements MusicBackend {
     Map<String, dynamic>? src;
     Map<String, dynamic>? audio;
     if (sources != null && sources.isNotEmpty) {
-      src = (sources.first as Map).cast<String, dynamic>();
+      final rawFirst = sources.firstWhere(
+        (s) => s is Map,
+        orElse: () => null,
+      );
+      if (rawFirst is Map) src = rawFirst.cast<String, dynamic>();
+      if (src != null) {
       final streams = (src['MediaStreams'] as List? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map((s) => s.cast<String, dynamic>())
           .where((s) => (s['Type'] as String?) == 'Audio')
           .toList();
       if (streams.isNotEmpty) audio = streams.first;
+      }
     }
 
     final genres = (data['Genres'] as List?)
@@ -870,7 +902,8 @@ class JellyfinClient implements MusicBackend {
       final res = await _dio.get<Map<String, dynamic>>(
         'Audio/$trackId/Lyrics',
       );
-      final lyricsList = (res.data?['Lyrics'] as List? ?? const []).cast<Map<String, dynamic>>();
+      final lyricsList = (res.data?['Lyrics'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>();
       if (lyricsList.isEmpty) return null;
       // Reconstruct an LRC blob from the structured lyrics Jellyfin returns.
       // Each entry has `Text` and optionally `Start` (in ticks). For unsynced

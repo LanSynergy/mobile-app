@@ -87,37 +87,61 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
     disposed = true;
   });
 
-  svc.positionStream.listen((pos) {
+  final posSub = svc.positionStream.listen((pos) {
     ref.read(positionStreamProvider.notifier).state = pos;
   });
 
-  svc.durationStream.listen((dur) {
+  final durSub = svc.durationStream.listen((dur) {
     if (dur > Duration.zero) {
       ref.read(durationStreamProvider.notifier).state = dur;
     }
   });
 
-  final timer = Timer.periodic(const Duration(milliseconds: 250), (_) async {
-    if (disposed) return;
+  Timer? timer;
 
-    final rawDur = await svc.getRawDuration();
-    if (disposed) return;
+  void cancelTimer() {
+    timer?.cancel();
+    timer = null;
+  }
 
-    if (rawDur > Duration.zero) {
-      try {
-        ref.read(durationStreamProvider.notifier).state = rawDur;
-      } catch (_) {}
-    } else {
-      final track = ref.read(currentTrackProvider);
-      if (track != null && track.duration > Duration.zero) {
+  void ensureTimer() {
+    if (timer != null) return;
+    timer = Timer.periodic(const Duration(milliseconds: 250), (_) async {
+      if (disposed) return;
+
+      final rawDur = await svc.getRawDuration();
+      if (disposed) return;
+
+      if (rawDur > Duration.zero) {
         try {
-          ref.read(durationStreamProvider.notifier).state = track.duration;
+          ref.read(durationStreamProvider.notifier).state = rawDur;
         } catch (_) {}
+      } else {
+        final track = ref.read(currentTrackProvider);
+        if (track != null && track.duration > Duration.zero) {
+          try {
+            ref.read(durationStreamProvider.notifier).state = track.duration;
+          } catch (_) {}
+        }
       }
+    });
+  }
+
+  ensureTimer();
+
+  ref.listen(currentTrackProvider, (prev, next) {
+    if (prev != null && next == null) {
+      cancelTimer();
+    } else if (prev == null && next != null) {
+      ensureTimer();
     }
   });
 
-  ref.onDispose(timer.cancel);
+  ref.onDispose(() {
+    cancelTimer();
+    unawaited(posSub.cancel());
+    unawaited(durSub.cancel());
+  });
 }
 
 final playingStreamProvider = StreamProvider.autoDispose<bool>((ref) {

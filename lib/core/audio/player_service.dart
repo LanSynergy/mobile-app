@@ -517,6 +517,9 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   Future<void> setAfLoopMode(Loop mode) async {
     await _player.setLoop(mode);
+    if (isCompleted && !isPlaying && mode == Loop.playlist) {
+      await _jumpAndPlay(0);
+    }
     afLog('data', 'loopMode source=live mode=${mode.name}');
   }
 
@@ -642,6 +645,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   }
 
   Future<void> _jumpAndPlay(int index) async {
+    if (_disposed) return;
     try {
       await _player.jump(index);
       await _player.play();
@@ -683,10 +687,15 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       if (!_player.state.playing && !_userPaused) {
         if (_nudgeRetries < _maxNudgeRetries) {
           _nudgeRetries++;
-          _player.play();
+          unawaited(_player.play());
           afLog('audio',
               'auto-advance nudge (playlist event) play() at index=$idx (attempt $_nudgeRetries)');
+        } else {
+          _pendingPlayNudgeIdx = null;
+          afLog('audio',
+              'auto-advance nudge exhausted after $_maxNudgeRetries attempts at index=$idx');
         }
+      } else {
         _pendingPlayNudgeIdx = null;
       }
     }));
@@ -702,14 +711,14 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
           _pendingPlayNudgeIdx == _queueManager.currentIndex) {
         if (_nudgeRetries < _maxNudgeRetries) {
           _nudgeRetries++;
-          _player.play();
+          unawaited(_player.play());
           afLog('audio',
               'auto-advance nudge play() at index=${_queueManager.currentIndex} (attempt $_nudgeRetries)');
         } else {
+          _pendingPlayNudgeIdx = null;
           afLog('audio',
               'auto-advance nudge exhausted after $_maxNudgeRetries attempts at index=${_queueManager.currentIndex}');
         }
-        _pendingPlayNudgeIdx = null;
       }
     }));
 
@@ -717,6 +726,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     _subs.add(_player.stream.buffering.listen((_) => _updatePlaybackState()));
 
     _subs.add(_player.stream.completed.listen((completed) async {
+      if (_disposed) return;
       _updatePlaybackState();
       if (!completed) return;
       final nextIdx = _queueManager.currentIndex + 1;
@@ -765,6 +775,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   }
 
   void _updatePlaybackStateThrottled() {
+    if (_disposed) return;
     final s = _player.state;
     final now = DateTime.now();
     final stateChanged =
@@ -782,6 +793,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   }
 
   void _updatePlaybackState() {
+    if (_disposed) return;
     final s = _player.state;
     final isQueueEnd = s.completed && _queueManager.isAtQueueEnd;
     final effectivePlaying = isQueueEnd ? false : (s.playing || shouldAdvancePosition);
@@ -817,6 +829,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   }
 
   void _updateMediaItem() {
+    if (_disposed) return;
     final track = _queueManager.currentTrack;
     if (track == null) {
       mediaItem.add(null);
@@ -891,10 +904,10 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 AudioEffects autoBypassFlat(AudioEffects fx) {
   return fx.copyWith(
     bass: fx.bass.copyWith(
-      enabled: fx.bass.enabled && fx.bass.g != 0,
+      enabled: fx.bass.enabled && fx.bass.g.abs() > 0.001,
     ),
     treble: fx.treble.copyWith(
-      enabled: fx.treble.enabled && fx.treble.g != 0,
+      enabled: fx.treble.enabled && fx.treble.g.abs() > 0.001,
     ),
     superequalizer: fx.superequalizer.copyWith(
       enabled:

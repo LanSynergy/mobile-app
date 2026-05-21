@@ -125,22 +125,32 @@ class SubsonicClient implements MusicBackend {
     Map<String, dynamic>? extra,
   ]) async {
     final qp = <String, dynamic>{..._authParams(), ...?extra};
-    final res = await _dio.get<Map<String, dynamic>>(
-      '$endpoint.view',
-      queryParameters: qp,
-    );
-    final root = res.data?['subsonic-response'] as Map<String, dynamic>?;
-    if (root == null) {
-      throw StateError('Subsonic response missing subsonic-response envelope');
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '$endpoint.view',
+        queryParameters: qp,
+      );
+      final root = res.data?['subsonic-response'] as Map<String, dynamic>?;
+      if (root == null) {
+        throw StateError('Subsonic response missing subsonic-response envelope');
+      }
+      final status = root['status'] as String?;
+      if (status != 'ok') {
+        final err = root['error'] as Map<String, dynamic>?;
+        final code = err?['code'] as int? ?? 0;
+        final msg = err?['message'] as String? ?? 'Unknown Subsonic error';
+        throw SubsonicApiError(code, msg);
+      }
+      return root;
+    } on DioException catch (e) {
+      throw DioException(
+        requestOptions: e.requestOptions,
+        response: e.response,
+        type: e.type,
+        error: e.error,
+        message: 'Subsonic API error: ${e.message}',
+      );
     }
-    final status = root['status'] as String?;
-    if (status != 'ok') {
-      final err = root['error'] as Map<String, dynamic>?;
-      final code = err?['code'] as int? ?? 0;
-      final msg = err?['message'] as String? ?? 'Unknown Subsonic error';
-      throw SubsonicApiError(code, msg);
-    }
-    return root;
   }
 
   // ── MusicBackend implementation ───────────────────────────────────────
@@ -297,6 +307,8 @@ class SubsonicClient implements MusicBackend {
         final name = (g['value'] as String?) ?? '';
         if (name.isEmpty) continue;
         result.add(AfGenre(name, palette[result.length % palette.length]));
+      } else if (g is String && g.isNotEmpty) {
+        result.add(AfGenre(g, palette[result.length % palette.length]));
       }
     }
     return result;
@@ -413,7 +425,8 @@ class SubsonicClient implements MusicBackend {
     } catch (e) {
       afLog('subsonic', 'getTopSongs failed, falling back to search', error: e);
       // getTopSongs may not be supported; fall back to search
-      final root = await _get('search3', {
+      try {
+        final root = await _get('search3', {
         'query': artistObj.name,
         'songCount': limit,
         'albumCount': 0,
@@ -424,6 +437,10 @@ class SubsonicClient implements MusicBackend {
               ?.cast<Map<String, dynamic>>() ??
           const [];
       return songs.map(_parseTrack).toList(growable: false);
+      } catch (e2) {
+        afLog('subsonic', 'search3 fallback also failed', error: e2);
+        return const [];
+      }
     }
   }
 
@@ -474,6 +491,7 @@ class SubsonicClient implements MusicBackend {
       'songCount': 20,
       'albumCount': 20,
       'artistCount': 20,
+      'playlistCount': 20,
     });
     final results = root['searchResult3'] as Map<String, dynamic>?;
     final songs =
@@ -483,11 +501,14 @@ class SubsonicClient implements MusicBackend {
     final artistsList =
         (results?['artist'] as List?)?.cast<Map<String, dynamic>>() ??
             const [];
+    final playlistsList =
+        (results?['playlist'] as List?)?.cast<Map<String, dynamic>>() ??
+            const [];
     return (
       tracks: songs.map(_parseTrack).toList(growable: false),
       albums: albumsList.map(_parseAlbumDetail).toList(growable: false),
       artists: artistsList.map(_parseArtist).toList(growable: false),
-      playlists: const <AfPlaylist>[],
+      playlists: playlistsList.map(_parsePlaylist).toList(growable: false),
     );
   }
 
@@ -540,9 +561,10 @@ class SubsonicClient implements MusicBackend {
     // silently removed the wrong tracks — interpreting an ID like "42" as
     // "remove the track at position 42 of the playlist."
     if (entryIds.isEmpty) return;
-    final detail = await playlist(playlistId);
-    if (detail == null) return;
-    final wanted = entryIds.toSet();
+    try {
+      final detail = await playlist(playlistId);
+      if (detail == null) return;
+      final wanted = entryIds.toSet();
     final indices = <int>[];
     for (var i = 0; i < detail.tracks.length; i++) {
       if (wanted.contains(detail.tracks[i].id)) indices.add(i);
@@ -557,6 +579,9 @@ class SubsonicClient implements MusicBackend {
       'songIndexToRemove': indices,
     };
     await _get('updatePlaylist', params);
+    } catch (e) {
+      afLog('subsonic', 'removeFromPlaylist failed', error: e);
+    }
   }
 
   @override
@@ -625,7 +650,7 @@ class SubsonicClient implements MusicBackend {
       final buf = StringBuffer();
       for (final line in lines) {
         final text = (line['value'] as String?) ?? '';
-        final startMs = line['start'] as int?;
+        final startMs = _asInt(line['start']);
         if (startMs != null) {
           final mm = (startMs ~/ 60000).toString().padLeft(2, '0');
           final ss = ((startMs ~/ 1000) % 60).toString().padLeft(2, '0');
@@ -709,7 +734,16 @@ class SubsonicClient implements MusicBackend {
     Duration position, {
     bool isPaused = false,
   }) async {
-    // Subsonic has no progress endpoint; scrobble handles start/stop only
+    if (isPaused) return;
+    try {
+      await _get('scrobble', {
+        'id': trackId,
+        'submission': false,
+        'time': '${position.inMilliseconds}',
+      });
+    } catch (e) {
+      afLog('subsonic', 'reportProgress scrobble failed', error: e);
+    }
   }
 
   @override
@@ -718,6 +752,7 @@ class SubsonicClient implements MusicBackend {
       await _get('scrobble', {
         'id': trackId,
         'submission': true,
+        'time': '${position.inMilliseconds}',
       });
     } catch (e) {
       afLog('subsonic', 'reportPlaybackStop scrobble failed', error: e);

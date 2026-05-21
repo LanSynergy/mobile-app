@@ -36,11 +36,13 @@ class LocalDb {
   }
 
   Future<void> removeFolder(String uri) async {
-    await (db.delete(db.folders)..where((f) => f.uri.equals(uri))).go();
-    await db.customStatement(
-      r"DELETE FROM tracks WHERE id LIKE ? ESCAPE '\'",
-      ['${escapeSqlLike(uri)}%'],
-    );
+    await db.transaction(() async {
+      await (db.delete(db.folders)..where((f) => f.uri.equals(uri))).go();
+      await db.customStatement(
+        r"DELETE FROM tracks WHERE id LIKE ? ESCAPE '\'",
+        ['${escapeSqlLike(uri)}%'],
+      );
+    });
   }
 
   Future<List<Map<String, dynamic>>> getFolders() async {

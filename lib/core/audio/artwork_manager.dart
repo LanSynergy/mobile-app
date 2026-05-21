@@ -66,6 +66,9 @@ class AfArtworkManager {
     final path = '$tmpDir${Platform.pathSeparator}aetherfin_cover_$id.$ext';
 
     try {
+      final tmpPath = '$path.tmp';
+      await File(tmpPath).writeAsBytes(raw.bytes);
+
       if (_coverPath != null) {
         final prev = File(_coverPath!);
         if (await prev.exists()) {
@@ -73,7 +76,7 @@ class AfArtworkManager {
         }
       }
 
-      await File(path).writeAsBytes(raw.bytes);
+      await File(tmpPath).rename(path);
       _coverPath = path;
 
       _networkCoverPath = null;
@@ -120,6 +123,17 @@ class AfArtworkManager {
       final tmpDir = Directory.systemTemp.path;
       final path = '$tmpDir${Platform.pathSeparator}aetherfin_notif_$id.$ext';
 
+      final tmpPath = '$path.tmp';
+      final tmpFile = File(tmpPath);
+      final sink = tmpFile.openWrite();
+      try {
+        await response.pipe(sink);
+      } finally {
+        await sink.close();
+      }
+
+      if (_disposed) return;
+
       if (_networkCoverPath != null) {
         try {
           final prev = File(_networkCoverPath!);
@@ -134,15 +148,7 @@ class AfArtworkManager {
         } catch (_) {}
       }
 
-      final file = File(path);
-      final sink = file.openWrite();
-      try {
-        await response.pipe(sink);
-      } finally {
-        await sink.close();
-      }
-
-      if (_disposed) return;
+      await tmpFile.rename(path);
 
       _networkCoverPath = path;
       _networkCoverTrackId = track.id;

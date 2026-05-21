@@ -33,7 +33,7 @@ class AfPositionTracker {
 
   Duration? _lastRawPolledPos;
   int _staleRawPollTicks = 0;
-  static const _rawStaleTolerance = Duration(milliseconds: 250);
+  static const _rawStaleTolerance = Duration(milliseconds: 50);
   static const _rawStaleAfterTicks = 4;
 
   bool _disposed = false;
@@ -151,8 +151,32 @@ class AfPositionTracker {
     return _staleRawPollTicks >= _rawStaleAfterTicks;
   }
 
+  void _emitExtrapolatedPosition() {
+    final now = DateTime.now();
+    final dur = _player.state.duration;
+    if (dur > Duration.zero && _positionAnchor.lastKnownPos >= dur) {
+      _positionAnchor.lastKnownPos = dur;
+      _positionController.add(dur);
+      return;
+    }
+    final elapsed = now.difference(_positionAnchor.lastUpdateTime);
+    final speed = _player.state.rate;
+    final extrapolated = _positionAnchor.lastKnownPos +
+        Duration(milliseconds: (elapsed.inMilliseconds * speed).round());
+    final durCap = dur > Duration.zero ? dur : const Duration(hours: 1);
+    final capped = extrapolated > durCap ? durCap : extrapolated;
+    _positionAnchor.lastKnownPos = capped;
+    _positionAnchor.lastUpdateTime = now;
+    _positionAnchor.wasPlaying = true;
+    _positionController.add(capped);
+  }
+
   Future<void> _pollAndEmitPosition() async {
-    if (_isSeeking || _isPolling) return;
+    if (_isSeeking) return;
+    if (_isPolling) {
+      _emitExtrapolatedPosition();
+      return;
+    }
     _isPolling = true;
 
     try {
@@ -184,23 +208,7 @@ class AfPositionTracker {
       }
 
       if (shouldAdvance) {
-        final dur = _player.state.duration;
-        if (dur > Duration.zero && _positionAnchor.lastKnownPos >= dur) {
-          _positionAnchor.lastKnownPos = dur;
-          _positionController.add(dur);
-          return;
-        }
-
-        final elapsed = now.difference(_positionAnchor.lastUpdateTime);
-        final speed = _player.state.rate;
-        final extrapolated = _positionAnchor.lastKnownPos +
-            Duration(milliseconds: (elapsed.inMilliseconds * speed).round());
-        final durCap = dur > Duration.zero ? dur : const Duration(hours: 1);
-        final capped = extrapolated > durCap ? durCap : extrapolated;
-        _positionAnchor.lastKnownPos = capped;
-        _positionAnchor.lastUpdateTime = now;
-        _positionAnchor.wasPlaying = true;
-        _positionController.add(capped);
+        _emitExtrapolatedPosition();
       } else if (rawPos == Duration.zero) {
         _resetRawPositionStaleDetector(Duration.zero);
       }
@@ -210,6 +218,7 @@ class AfPositionTracker {
   }
 
   void dispose() {
+    if (_disposed) return;
     _disposed = true;
     _positionPollTimer?.cancel();
     _seekResetTimer?.cancel();

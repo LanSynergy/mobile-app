@@ -79,7 +79,9 @@ class JellyfinUrlBuilder {
     final tags = m['ImageTags'] as Map?;
     final tag = (tags?[imageType] as String?) ?? '';
     if (tag.isEmpty) return null;
-    return buildImageUrl(m['Id'] as String, imageType,
+    final id = m['Id'];
+    if (id is! String) return null;
+    return buildImageUrl(id, imageType,
         tag: tag, maxWidth: maxWidth, quality: quality);
   }
 

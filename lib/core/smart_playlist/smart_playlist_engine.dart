@@ -28,7 +28,8 @@ class SmartPlaylistEngine {
     }
     sql += ' ORDER BY $orderBy';
     if (playlist.limit != null) {
-      sql += ' LIMIT ${playlist.limit}';
+      sql += ' LIMIT ?';
+      where.args.add(playlist.limit);
     }
 
     final rows = await d.customSelect(
