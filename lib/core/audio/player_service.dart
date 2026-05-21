@@ -554,31 +554,37 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   @override
   Future<void> skipToNext() async {
     if (_isLoadingQueue) return;
-    try {
-      await _player.next();
-    } catch (e, stack) {
-      afLog('audio', 'skipToNext failed', error: e, stackTrace: stack);
-    }
+    return _queueLock.run(() async {
+      try {
+        await _player.next();
+      } catch (e, stack) {
+        afLog('audio', 'skipToNext failed', error: e, stackTrace: stack);
+      }
+    });
   }
 
   @override
   Future<void> skipToPrevious() async {
     if (_isLoadingQueue) return;
-    try {
-      await _player.previous();
-    } catch (e, stack) {
-      afLog('audio', 'skipToPrevious failed', error: e, stackTrace: stack);
-    }
+    return _queueLock.run(() async {
+      try {
+        await _player.previous();
+      } catch (e, stack) {
+        afLog('audio', 'skipToPrevious failed', error: e, stackTrace: stack);
+      }
+    });
   }
 
   @override
   Future<void> skipToQueueItem(int index) async {
     if (_isLoadingQueue) return;
-    try {
-      await _player.jump(index);
-    } catch (e, stack) {
-      afLog('audio', 'skipToQueueItem failed', error: e, stackTrace: stack);
-    }
+    return _queueLock.run(() async {
+      try {
+        await _player.jump(index);
+      } catch (e, stack) {
+        afLog('audio', 'skipToQueueItem failed', error: e, stackTrace: stack);
+      }
+    });
   }
 
   Future<void> setAfShuffleMode(bool enabled) async {
@@ -661,7 +667,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     try {
       await _player.setLoop(mode);
       if (isCompleted && !isPlaying && mode == Loop.playlist) {
-        await _jumpAndPlay(0);
+        await _queueLock.run(() => _jumpAndPlay(0));
       }
       afLog('data', 'loopMode source=live mode=${mode.name}');
     } catch (e, stack) {
@@ -955,40 +961,46 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       _updatePlaybackState();
       if (!completed) return;
 
-      final finishedTrack = _queueManager.currentTrack;
-      final nextIdx = _queueManager.currentIndex + 1;
-      final isAtEnd = nextIdx >= _queueManager.currentQueue.length;
-      if (!isAtEnd && _player.state.loop == Loop.file) {
-        await _jumpAndPlay(_queueManager.currentIndex);
-        afLog('audio', 'completed: replay file (loop=file)');
-      } else if (!isAtEnd) {
-        final currentMpvIdx = _player.state.playlist.index;
-        if (currentMpvIdx == _queueManager.currentIndex) {
-          await _jumpAndPlay(nextIdx);
-          afLog('audio', 'completed: jump+play to index=$nextIdx');
+      await _queueLock.run(() async {
+        final finishedTrack = _queueManager.currentTrack;
+        final nextIdx = _queueManager.currentIndex + 1;
+        final isAtEnd = nextIdx >= _queueManager.currentQueue.length;
+        if (!isAtEnd && _player.state.loop == Loop.file) {
+          if (!_player.state.playing) {
+            await _player.play();
+          }
+          afLog('audio', 'completed: replay file (loop=file) — mpv handles internally');
+        } else if (!isAtEnd) {
+          final currentMpvIdx = _player.state.playlist.index;
+          if (currentMpvIdx == _queueManager.currentIndex) {
+            await _jumpAndPlay(nextIdx);
+            afLog('audio', 'completed: jump+play to index=$nextIdx');
+          }
+        } else {
+          switch (_player.state.loop) {
+            case Loop.off:
+              _positionTracker.onPause();
+              try {
+                await _player.pause();
+              } catch (e, stack) {
+                afLog('audio', 'pause failed on queue completion', error: e, stackTrace: stack);
+              }
+              afLog('audio', 'queue end, auto-stop (loop=off)');
+            case Loop.playlist:
+              await _jumpAndPlay(0);
+              afLog('audio', 'queue end, looping playlist');
+            case Loop.file:
+              if (!_player.state.playing) {
+                await _player.play();
+              }
+              afLog('audio', 'queue end, looping file — mpv handles internally');
+          }
         }
-      } else {
-        switch (_player.state.loop) {
-          case Loop.off:
-            _positionTracker.onPause();
-            try {
-              await _player.pause();
-            } catch (e, stack) {
-              afLog('audio', 'pause failed on queue completion', error: e, stackTrace: stack);
-            }
-            afLog('audio', 'queue end, auto-stop (loop=off)');
-          case Loop.playlist:
-            await _jumpAndPlay(0);
-            afLog('audio', 'queue end, looping playlist');
-          case Loop.file:
-            await _jumpAndPlay(_queueManager.currentIndex);
-            afLog('audio', 'queue end, looping file');
-        }
-      }
 
-      if (finishedTrack != null) {
-        onTrackCompleted?.call(finishedTrack);
-      }
+        if (finishedTrack != null) {
+          onTrackCompleted?.call(finishedTrack);
+        }
+      });
     }));
 
     _subs.add(_player.stream.rate.listen((_) => _updatePlaybackState()));

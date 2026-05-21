@@ -751,6 +751,10 @@ PII (usernames, server URLs) must be redacted in release builds.
 44. **"Avoid serializing queue operations."** No. Multiple sequential queue mutations (reorders, additions, removals) can interleave while awaiting mpv responses, corrupting state. Use `_queueLock` (`AfAsyncLock`) to serialize all mutating operations.
 45. **"Allow playback controls during queue loading."** No. Issuing seeks, skips, or jumps while a new queue is loading (`_isLoadingQueue` is true) leads to state corruption or out-of-bounds errors. Guard playback controls to return early when loading.
 46. **"Use Future.wait in playQueue for addition concurrency."** No. Concurrent additions interleave native operations in-flight, which can complete *after* an aborted load is canceled and a new load starts. Always add tracks sequentially in a loop and check the generation counter (`_queueLoadGen`) at each step.
+47. **"Let the `completed` handler run outside `_queueLock`."** No. The handler reads `currentTrack`, `currentIndex`, `currentQueue.length` while a concurrent `removeFromQueue`/`reorderQueue` could be mutating those fields. Wrap the critical section — reading queue state + acting on it — in `_queueLock.run()` so mpv's track-advance command fires against a consistent view.
+48. **"`setAfLoopMode` can call `_jumpAndPlay` directly."** No. `_jumpAndPlay(0)` sends a `playlist-play-index` command that triggers a playlist event. If a queue mutation holds `_queueLock`, the event fires against stale state. Wrap the jump in `_queueLock.run()`.
+49. **"`skipToNext`/`skipToPrevious`/`skipToQueueItem` are lightweight, no lock needed."** No. Rapid skips interleave with queue mutations — the playlist listener fires mid-`removeFromQueue`, reading an inconsistent index. Wrap each in `_queueLock.run()`.
+50. **"Call `_jumpAndPlay(currentIndex)` when `Loop.file` completes."** No. When `loop-file=inf` is set, mpv restarts the file internally and fires `completed` after restart. `_jumpAndPlay(currentIndex)` issues a redundant `playlist-play-index` that reloads the same file, causing the first ~1s of audio to play twice. Only call `_player.play()` if mpv stopped.
 
 ## 16. Glossary
 
@@ -786,7 +790,9 @@ PII (usernames, server URLs) must be redacted in release builds.
 - **`AfPositionTracker`**: Manager class in `AfPlayerService` (`lib/core/audio/af_position_tracker.dart`). Handles elapsed-time position extrapolation with `_PositionAnchor`, `getRawPosition()` fallback.
 - **`AfArtworkManager`**: Manager class in `AfPlayerService` (`lib/core/audio/af_artwork_manager.dart`). Downloads cover art bytes and provides file:// URIs for notification artwork.
 - **`AfAudioDeviceManager`**: Manager class in `AfPlayerService` (`lib/core/audio/af_audio_device_manager.dart`). Manages audio device routing and nudge chains with `_nudgeGen`.
-- **`AfQueueManager`**: Manager class in `AfPlayerService` (`lib/core/audio/af_queue_manager.dart`). Manages playlist queue, shuffle state, and `_originalQueue` order tracking.
+- **`AfQueueManager`**: Manager class in `AfPlayerService` (`lib/core/audio/af_queue_manager.dart`). Manages playlist queue, shuffle state, and `_originalQueue` order tracking. Sync lock (`_activePlaylistSyncs`) blocks the playlist listener during batch operations.
+- **`_queueLock`**: `AfAsyncLock` instance in `AfPlayerService` that serializes all queue-mutating operations (`playQueue`, `setAfShuffleMode`, `setAfLoopMode` jump, `skipToNext/Previous/QueueItem`, `reorderQueue`, `removeFromQueue`, `insertIntoQueue`, `playNext`, `addToQueue`, and the `completed` handler's critical section). Prevents interleaved state reads/writes across async boundaries.
+- **`_isLoadingQueue`**: Guard flag in `AfPlayerService` that prevents playback controls (`seek`, skip, queue mutations) and the `completed` handler from running while `playQueue` is actively loading tracks into mpv.
 - **`JellyfinResponseParser`**: Extracted from `JellyfinClient` (`lib/core/jellyfin/response_parser.dart`). All JSON→domain parsing logic + field string constants.
 - **`JellyfinUrlBuilder`**: Extracted from `JellyfinClient` (`lib/core/jellyfin/url_builder.dart`). Auth header construction, stream URL building, and image URL generation.
 - **`TrackRepository`**: CRUD for tracks at `lib/core/local/local_db_tracks.dart`. Row-to-track mapping, query helpers, 5000-row limit on `allTracks()`.

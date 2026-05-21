@@ -308,3 +308,19 @@
 ## Quality
 - [x] flutter analyze — 0 issues
 - [x] flutter test — all 101 tests pass (including new concurrency tests)
+
+---
+
+# Shuffle & Loop Serialization (May 2026)
+
+## Race conditions fixed
+- [x] `setAfLoopMode` `_jumpAndPlay(0)` wrapped in `_queueLock` — prevents playlist event firing during concurrent queue mutation
+- [x] `completed` stream handler critical section wrapped in `_queueLock` — atomic queue state read prevents stale `currentIndex`/`currentQueue.length`
+- [x] `skipToNext`, `skipToPrevious`, `skipToQueueItem` wrapped in `_queueLock` — serializes skip operations against queue mutations
+
+## Loop.file double-handling fixed
+- [x] Removed redundant `_jumpAndPlay(currentIndex)` in completed handler for `Loop.file` — mpv's `loop-file=inf` restarts the file internally. The call triggered a second `playlist-play-index`, causing an audible first-second glitch on each loop.
+
+## Quality
+- [x] flutter analyze — 0 issues
+- [x] flutter test — all 114 tests pass

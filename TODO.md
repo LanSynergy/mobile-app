@@ -67,3 +67,5 @@ Smooth audio crossfade when transitioning between tracks (configurable duration)
 - [x] _hex() in home_screen — try-catch with length validation + fallback color
 - [x] Position extrapolation — capped at 1h when duration is zero
 - [x] Concurrency and operation serialization — Sequential queue serialization, playback controls loading guards, position leaks prevention, and sequential track additions
+- [x] Shuffle & loop serialization — `_queueLock` in `setAfLoopMode`, `completed` handler, `skipToNext/Previous/QueueItem`
+- [x] Loop.file double-handling — removed redundant `_jumpAndPlay` when mpv handles loop-file internally
