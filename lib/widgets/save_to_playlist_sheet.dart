@@ -167,10 +167,22 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
           else if (_error != null)
             Padding(
               padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
-              child: Text(
-                _error!,
-                style: AfTypography.bodySmall
-                    .copyWith(color: AfColors.semanticError),
+              child: Column(
+                children: [
+                  Text(
+                    _error!,
+                    style: AfTypography.bodySmall
+                        .copyWith(color: AfColors.semanticError),
+                  ),
+                  const SizedBox(height: AfSpacing.s12),
+                  TextButton(
+                    onPressed: () {
+                      setState(() { _error = null; _loading = true; });
+                      _load();
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
               ),
             )
           else ...[
