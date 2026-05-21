@@ -62,6 +62,7 @@ class JellyfinPlaybackReporter {
           await client
               .reportPlaybackStop(previousId, position)
               .timeout(const Duration(seconds: 5));
+          if (_disposed) return;
           afLog(
             'data',
             'playbackStop source=live track=$previousId '
@@ -78,6 +79,7 @@ class JellyfinPlaybackReporter {
       return;
     }
     if (track.id == previousId) return;
+    if (_disposed) return;
 
     _lastReportedTrackId = track.id;
     if (client == null) {
@@ -88,6 +90,7 @@ class JellyfinPlaybackReporter {
       await client
           .reportPlaybackStart(track.id)
           .timeout(const Duration(seconds: 5));
+      if (_disposed) return;
       afLog('data', 'playbackStart source=live track=${track.id}');
       _startProgressTimer();
     } catch (e, stack) {
