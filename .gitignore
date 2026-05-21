@@ -53,3 +53,4 @@ app.*.map.json
 .env
 tool/build_local.sh
 AGENTS.md
+.antigravitycli/
