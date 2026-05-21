@@ -96,12 +96,16 @@ final _router = GoRouter(
     GoRoute(
       path: '/onboarding/sign-in',
       builder: (_, state) {
-        final extra = state.extra!;
+        final extra = state.extra;
         if (extra is JellyfinServer) {
           return SignInScreen(server: extra);
         }
-        final rec = extra as ({JellyfinServer server, ServerType serverType});
-        return SignInScreen(server: rec.server, serverType: rec.serverType);
+        if (extra is ({JellyfinServer server, ServerType serverType})) {
+          return SignInScreen(server: extra.server, serverType: extra.serverType);
+        }
+        return const Scaffold(
+          body: Center(child: Text('Missing server information.')),
+        );
       },
     ),
     GoRoute(
