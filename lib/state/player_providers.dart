@@ -103,17 +103,6 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
     final rawDur = await svc.getRawDuration();
     if (disposed) return;
 
-    final isLastTrack = svc.currentQueue.isNotEmpty &&
-        svc.currentTrack != null &&
-        svc.currentQueue.last.id == svc.currentTrack!.id;
-    if (svc.isCompleted && !svc.isPlaying && svc.isUserPaused && isLastTrack) {
-      try {
-        ref.read(durationStreamProvider.notifier).state = Duration.zero;
-        ref.read(positionStreamProvider.notifier).state = Duration.zero;
-      } catch (_) {}
-      return;
-    }
-
     if (rawDur > Duration.zero) {
       try {
         ref.read(durationStreamProvider.notifier).state = rawDur;
