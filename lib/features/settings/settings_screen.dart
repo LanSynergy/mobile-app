@@ -337,7 +337,7 @@ class SettingsScreen extends ConsumerWidget {
                   iconColor: AfColors.semanticInfo,
                   title: 'Max cache size',
                   subtitle: OfflineCacheService.formatSize(
-                      ref.read(offlineCacheMaxSizeProvider)),
+                      ref.watch(offlineCacheMaxSizeProvider)),
                   onTap: () =>
                       showOfflineCacheSizeDialog(context, ref),
                 ),
@@ -535,7 +535,7 @@ class _CacheUsageTileState extends ConsumerState<_CacheUsageTile> {
 
   @override
   Widget build(BuildContext context) {
-    final maxSize = ref.read(offlineCacheMaxSizeProvider);
+    final maxSize = ref.watch(offlineCacheMaxSizeProvider);
     final usedLabel = OfflineCacheService.formatSize(_cacheSize);
     final maxLabel = OfflineCacheService.formatSize(maxSize);
     return SettingsTile(

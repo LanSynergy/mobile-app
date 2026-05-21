@@ -132,6 +132,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
   Future<void> _onRefresh() async {
     final isLocal = ref.read(appModeProvider) == AppMode.local;
+
+    // Invalidate all first
+    ref.invalidate(isLocal ? localAlbumsProvider : allAlbumsProvider);
+    ref.invalidate(isLocal ? localArtistsProvider : allArtistsProvider);
+    ref.invalidate(isLocal ? localTracksProvider : allTracksProvider);
+    ref.invalidate(allPlaylistsProvider);
+    ref.invalidate(isLocal ? localGenresProvider : allGenresProvider);
+    if (!isLocal) ref.invalidate(favoriteTracksProvider);
+
     final providers = <Future<Object?>>[
       ref.read((isLocal ? localAlbumsProvider : allAlbumsProvider).future),
       ref.read((isLocal ? localArtistsProvider : allArtistsProvider).future),
@@ -142,13 +151,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     if (!isLocal) {
       providers.add(ref.read(favoriteTracksProvider.future));
     }
-    // Invalidate all first, then wait for refetches.
-    ref.invalidate(isLocal ? localAlbumsProvider : allAlbumsProvider);
-    ref.invalidate(isLocal ? localArtistsProvider : allArtistsProvider);
-    ref.invalidate(isLocal ? localTracksProvider : allTracksProvider);
-    ref.invalidate(allPlaylistsProvider);
-    ref.invalidate(isLocal ? localGenresProvider : allGenresProvider);
-    if (!isLocal) ref.invalidate(favoriteTracksProvider);
     await Future.wait(providers).catchError((_) => <Object?>[]);
   }
 
