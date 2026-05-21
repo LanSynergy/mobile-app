@@ -24,9 +24,14 @@ class PlayActions {
     final backend = ref.read(musicBackendProvider);
 
     // In local mode, the track ID is the content:// URI itself.
-    // In server mode, resolve via the backend.
+    // In server mode, check offline cache first, then the backend.
     String resolveStreamUrl(AfTrack t) {
       if (mode == AppMode.local) return t.id;
+      final cache = ref.read(offlineCacheServiceProvider);
+      if (ref.read(offlineCacheEnabledProvider)) {
+        final cachedUri = cache.cachedFileUri(t.id);
+        if (cachedUri != null) return cachedUri;
+      }
       if (backend != null) {
         return backend.trackStreamUrl(t.id, maxBitrateKbps: 320);
       }

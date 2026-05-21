@@ -113,6 +113,11 @@ Future<void> main() async {
     final artworkPulse = prefs.getBool('af.artwork_pulse_enabled') ?? true;
     _boot('artworkPulse=$artworkPulse');
 
+    // Load offline cache settings.
+    final offlineCacheEnabled = prefs.getBool('af.offline_cache_enabled') ?? false;
+    final offlineCacheMaxSize = prefs.getInt('af.offline_cache_max_size') ?? (1024 * 1024 * 1024);
+    _boot('offlineCacheEnabled=$offlineCacheEnabled maxSize=$offlineCacheMaxSize');
+
     // Resolve the app version once at boot so every HTTP client can stamp
     // its `User-Agent` and Jellyfin `Version="…"` header from a single
     // source of truth (pubspec.yaml → platform manifest → PackageInfo).
@@ -169,12 +174,24 @@ Future<void> main() async {
         if (persistedMode != null)
           appModeProvider.overrideWith((ref) => persistedMode),
         artworkPulseEnabledProvider.overrideWith((ref) => artworkPulse),
+        offlineCacheEnabledProvider.overrideWith((ref) => offlineCacheEnabled),
+        offlineCacheMaxSizeProvider.overrideWith((ref) => offlineCacheMaxSize),
         playerServiceProvider.overrideWith((ref) {
           wirePlayerService(ref, handler);
           return handler;
         }),
       ],
     );
+
+    // Initialize offline cache service.
+    try {
+      final cacheSvc = container.read(offlineCacheServiceProvider);
+      await cacheSvc.init();
+      _boot('OfflineCacheService init OK');
+    } catch (e, stack) {
+      afLog('error', 'OfflineCacheService init failed',
+          error: e, stackTrace: stack);
+    }
 
     // Give the router direct access to the container so its redirect
     // function can read auth state without BuildContext dependency.

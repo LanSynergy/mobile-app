@@ -23,6 +23,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   late final AfQueueManager _queueManager;
 
   void Function(AfTrack track)? onTrackChanged;
+  void Function(AfTrack track)? onTrackCompleted;
   final List<StreamSubscription<dynamic>> _subs = <StreamSubscription<dynamic>>[];
 
   bool _disposed = false;
@@ -729,6 +730,8 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       if (_disposed) return;
       _updatePlaybackState();
       if (!completed) return;
+
+      final finishedTrack = _queueManager.currentTrack;
       final nextIdx = _queueManager.currentIndex + 1;
       final isAtEnd = nextIdx >= _queueManager.currentQueue.length;
       if (!isAtEnd && _player.state.loop == Loop.file) {
@@ -753,6 +756,10 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
             await _jumpAndPlay(_queueManager.currentIndex);
             afLog('audio', 'queue end, looping file');
         }
+      }
+
+      if (finishedTrack != null) {
+        onTrackCompleted?.call(finishedTrack);
       }
     }));
 

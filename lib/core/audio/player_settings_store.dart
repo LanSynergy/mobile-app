@@ -73,6 +73,8 @@ class PlayerSettingsStore {
   static const _kActivePreset = 'af.active_eq_preset';
   static const _kDspMasterEnabled = 'af.dsp_master_enabled';
   static const _kArtworkPulse = 'af.artwork_pulse_enabled';
+  static const _kOfflineCacheEnabled = 'af.offline_cache_enabled';
+  static const _kOfflineCacheMaxSize = 'af.offline_cache_max_size';
 
   static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
@@ -153,6 +155,30 @@ class PlayerSettingsStore {
   static Future<bool> loadArtworkPulse() async {
     final p = await _prefs();
     return p.getBool(_kArtworkPulse) ?? true;
+  }
+
+  /// Persist offline cache enabled state.
+  static Future<void> saveOfflineCacheEnabled(bool enabled) async {
+    final p = await _prefs();
+    await p.setBool(_kOfflineCacheEnabled, enabled);
+  }
+
+  /// Persist offline cache max size in bytes.
+  static Future<void> saveOfflineCacheMaxSize(int bytes) async {
+    final p = await _prefs();
+    await p.setInt(_kOfflineCacheMaxSize, bytes);
+  }
+
+  /// Load offline cache enabled state. Defaults to false (disabled).
+  static Future<bool> loadOfflineCacheEnabled() async {
+    final p = await _prefs();
+    return p.getBool(_kOfflineCacheEnabled) ?? false;
+  }
+
+  /// Load offline cache max size. Defaults to 1 GB.
+  static Future<int> loadOfflineCacheMaxSize() async {
+    final p = await _prefs();
+    return p.getInt(_kOfflineCacheMaxSize) ?? (1024 * 1024 * 1024);
   }
 
   /// Serialize the user-visible audio effects to JSON and persist.

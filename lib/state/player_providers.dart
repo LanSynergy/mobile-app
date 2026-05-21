@@ -11,6 +11,7 @@ import '../core/audio/player_settings_store.dart';
 import 'app_mode_providers.dart';
 import 'auth_providers.dart';
 import 'music_backend_providers.dart';
+import 'settings_providers.dart';
 
 void wirePlayerService(Ref ref, AfPlayerService svc) {
   svc.onTrackChanged = (track) {
@@ -20,6 +21,18 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
         track.duration > Duration.zero ? track.duration : Duration.zero;
     ref.read(abLoopAProvider.notifier).state = null;
     ref.read(abLoopBProvider.notifier).state = null;
+  };
+
+  svc.onTrackCompleted = (track) {
+    final enabled = ref.read(offlineCacheEnabledProvider);
+    if (!enabled) return;
+    final mode = ref.read(appModeProvider);
+    if (mode == AppMode.local) return;
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) return;
+    final cache = ref.read(offlineCacheServiceProvider);
+    final url = backend.trackStreamUrl(track.id, maxBitrateKbps: 320);
+    unawaited(cache.cacheTrack(track.id, url, headers: backend.authHeaders));
   };
 
   _startPositionPolling(ref, svc);

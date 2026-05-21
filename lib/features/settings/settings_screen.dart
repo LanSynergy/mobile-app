@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show AudioParams;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/audio/offline_cache_service.dart';
 import '../../core/audio/player_settings_store.dart';
 import '../../core/local/app_mode_store.dart';
 import '../../build_id.dart';
@@ -295,6 +296,48 @@ class SettingsScreen extends ConsumerWidget {
 
             const SizedBox(height: AfSpacing.s16),
 
+            // ── Offline cache (server mode only) ───────────────────────
+            if (!isLocal) ...[
+            SettingsLabel('Offline cache'),
+            SettingsGroup(
+              children: [
+                Consumer(
+                  builder: (context, ref2, _) {
+                    final enabled = ref2.watch(offlineCacheEnabledProvider);
+                    return SettingsSwitchTile(
+                      icon: Icons.sd_storage_rounded,
+                      iconColor: AfColors.semanticSuccess,
+                      title: 'Cache tracks offline',
+                      subtitle: enabled
+                          ? 'Save streamed tracks to device storage'
+                          : 'Always stream from server',
+                      value: enabled,
+                      onChanged: (v) {
+                        ref
+                            .read(offlineCacheEnabledProvider.notifier)
+                            .state = v;
+                        unawaited(
+                            PlayerSettingsStore.saveOfflineCacheEnabled(v));
+                      },
+                    );
+                  },
+                ),
+                _CacheUsageTile(),
+                SettingsTile(
+                  icon: Icons.storage_rounded,
+                  iconColor: AfColors.semanticInfo,
+                  title: 'Max cache size',
+                  subtitle: OfflineCacheService.formatSize(
+                      ref.read(offlineCacheMaxSizeProvider)),
+                  onTap: () =>
+                      showOfflineCacheSizeDialog(context, ref),
+                ),
+              ],
+            ),
+            ],
+
+            const SizedBox(height: AfSpacing.s16),
+
             // ── Audio processing ───────────────────────────────────────
             SettingsLabel('Audio processing'),
             SettingsGroup(
@@ -435,6 +478,68 @@ class SettingsScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CacheUsageTile extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_CacheUsageTile> createState() => _CacheUsageTileState();
+}
+
+class _CacheUsageTileState extends ConsumerState<_CacheUsageTile> {
+  int _cacheSize = 0;
+  int _cacheCount = 0;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final cache = ref.read(offlineCacheServiceProvider);
+    final size = await cache.cacheSize();
+    final count = await cache.cachedCount();
+    if (mounted) {
+      setState(() {
+        _cacheSize = size;
+        _cacheCount = count;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _clearCache() async {
+    final confirmed = await showOfflineCacheClearDialog(context, ref);
+    if (confirmed && mounted) {
+      await ref.read(offlineCacheServiceProvider).clearCache();
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cache cleared')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxSize = ref.read(offlineCacheMaxSizeProvider);
+    final usedLabel = OfflineCacheService.formatSize(_cacheSize);
+    final maxLabel = OfflineCacheService.formatSize(maxSize);
+    return SettingsTile(
+      icon: Icons.space_dashboard_rounded,
+      iconColor: AfColors.semanticWarning,
+      title: _loading ? 'Cache usage…' : 'Cache usage',
+      subtitle: _loading ? null : '$_cacheCount tracks · $usedLabel / $maxLabel',
+      trailing: _loading
+          ? null
+          : TextButton(
+              onPressed: _cacheSize > 0 ? _clearCache : null,
+              child: const Text('Clear'),
+            ),
     );
   }
 }

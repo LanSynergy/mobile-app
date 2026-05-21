@@ -296,8 +296,14 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
   void _undoRemove(int index, AfTrack track) {
     final mode = ref.read(appModeProvider);
     final backend = ref.read(musicBackendProvider);
+    final cache = ref.read(offlineCacheServiceProvider);
+    final cacheEnabled = ref.read(offlineCacheEnabledProvider);
     String resolve(AfTrack t) {
       if (mode == AppMode.local) return t.id;
+      if (cacheEnabled) {
+        final cachedUri = cache.cachedFileUri(t.id);
+        if (cachedUri != null) return cachedUri;
+      }
       if (backend != null) {
         return backend.trackStreamUrl(t.id, maxBitrateKbps: 320);
       }

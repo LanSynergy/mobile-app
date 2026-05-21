@@ -244,9 +244,17 @@ String Function(AfTrack)? _streamResolver(WidgetRef ref) {
   if (mode == AppMode.local) {
     return (t) => t.id;
   }
+  final cache = ref.read(offlineCacheServiceProvider);
+  final cacheEnabled = ref.read(offlineCacheEnabledProvider);
   final backend = ref.read(musicBackendProvider);
   if (backend == null) return null;
-  return (t) => backend.trackStreamUrl(t.id, maxBitrateKbps: 320);
+  return (t) {
+    if (cacheEnabled) {
+      final cachedUri = cache.cachedFileUri(t.id);
+      if (cachedUri != null) return cachedUri;
+    }
+    return backend.trackStreamUrl(t.id, maxBitrateKbps: 320);
+  };
 }
 
 void _playNext(WidgetRef ref, AfTrack track) {

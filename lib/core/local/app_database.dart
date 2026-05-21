@@ -101,8 +101,26 @@ class PlaylistEntries extends Table {
   Set<Column> get primaryKey => {entryId};
 }
 
+@DataClassName('CacheEntryEntity')
+class CacheEntries extends Table {
+  TextColumn get trackId => text()();
+  IntColumn get fileSize => integer()();
+  IntColumn get lastPlayedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {trackId};
+}
+
 @DriftDatabase(
-    tables: [Tracks, Folders, SmartPlaylists, Favorites, Playlists, PlaylistEntries])
+    tables: [
+      Tracks,
+      Folders,
+      SmartPlaylists,
+      Favorites,
+      Playlists,
+      PlaylistEntries,
+      CacheEntries,
+    ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -111,7 +129,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -126,6 +144,9 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(favorites);
             await m.createTable(playlists);
             await m.createTable(playlistEntries);
+          }
+          if (from < 3) {
+            await m.createTable(cacheEntries);
           }
         },
       );
