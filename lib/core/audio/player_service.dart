@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
@@ -7,6 +6,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
+import 'artwork_manager.dart';
 import 'position_tracker.dart';
 
 /// Default spectrum analyser configuration shared across initialisation and
@@ -28,6 +28,7 @@ const _defaultSpectrumSettings = SpectrumSettings(
 class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   final Player _player;
   late final AfPositionTracker _positionTracker;
+  late final AfArtworkManager _artworkManager;
 
   final List<AfTrack> _trackQueue = <AfTrack>[];
   int _currentIndex = -1;
@@ -42,12 +43,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   void Function(AfTrack track)? onTrackChanged;
   final List<StreamSubscription<dynamic>> _subs = <StreamSubscription<dynamic>>[];
 
-  int _coverCounter = 0;
-  String? _coverPath;
-  String? _networkCoverPath;
-  static final HttpClient _httpClient = HttpClient();
-  Map<String, String> _authHeaders = const <String, String>{};
-  String? _networkCoverTrackId;
   bool _disposed = false;
   int _suppressPlaylistSyncGen = 0;
   int _activePlaylistSyncGen = 0;
@@ -75,6 +70,8 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       player: _player,
       shouldAdvancePosition: () => shouldAdvancePosition,
     );
+    _artworkManager = AfArtworkManager()
+      ..onArtworkChanged = _updateMediaItem;
 
     // Set audio driver BEFORE binding streams. If setAudioDriver is called
     // after property observation starts, it can re-initialize the output
@@ -388,7 +385,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   // ---------------------------------------------------------------------------
 
   void setAuthHeaders(Map<String, String> headers) {
-    _authHeaders = headers;
+    _artworkManager.setAuthHeaders(headers);
   }
 
   Future<void> playQueue(
@@ -401,7 +398,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
     final safeIndex = startIndex.clamp(0, tracks.length - 1);
     if (streamHeaders.isNotEmpty) {
-      _authHeaders = streamHeaders;
+      _artworkManager.setAuthHeaders(streamHeaders);
     }
 
     _trackQueue
@@ -993,7 +990,10 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         _updateMediaItem();
       }
     }));
-    _subs.add(_player.stream.coverArt.listen(_persistCover));
+    _subs.add(_player.stream.coverArt.listen((raw) {
+      unawaited(_artworkManager.persistCover(raw));
+      _updateMediaItem();
+    }));
 
     _subs.add(_player.stream.audioDevice.listen((newDevice) {
       // Re-apply effects after a *real* device change — on some
@@ -1069,16 +1069,9 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     }
 
     final track = _trackQueue[_currentIndex];
-    Uri? artUri;
-
-    if (_coverPath != null) {
-      artUri = Uri.file(_coverPath!);
-    } else if (_networkCoverPath != null && _networkCoverTrackId == track.id) {
-      artUri = Uri.file(_networkCoverPath!);
-    } else if (track.imageUrl != null && track.imageUrl!.startsWith('file://')) {
-      artUri = Uri.parse(track.imageUrl!);
-    } else if (track.imageUrl != null) {
-      unawaited(_downloadArtworkForNotification(track));
+    final artUri = _artworkManager.artUri(track);
+    if (artUri == null && _artworkManager.needsRemoteArtwork(track)) {
+      unawaited(_artworkManager.downloadArtworkForNotification(track));
     }
 
     final mpvDur = _player.state.duration;
@@ -1100,117 +1093,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     );
   }
 
-  Future<void> _downloadArtworkForNotification(AfTrack track) async {
-    if (_disposed) return;
-    final imageUrl = track.imageUrl;
-    if (imageUrl == null || imageUrl.isEmpty) return;
-    if (_networkCoverTrackId == track.id && _networkCoverPath != null) return;
-
-    if (imageUrl.startsWith('file://')) {
-      _networkCoverTrackId = track.id;
-      _networkCoverPath = imageUrl.substring('file://'.length);
-      _updateMediaItem();
-      return;
-    }
-
-    try {
-      final uri = Uri.parse(imageUrl);
-      final request = await _httpClient.getUrl(uri);
-      _authHeaders.forEach((key, value) {
-        request.headers.set(key, value);
-      });
-
-      final response = await request.close();
-      if (response.statusCode != 200) {
-        await response.drain<int>(0);
-        return;
-      }
-
-      final contentType = response.headers.contentType;
-      var ext = 'jpg';
-      if (contentType != null && contentType.subType.isNotEmpty) {
-        ext = contentType.subType == 'jpeg' ? 'jpg' : contentType.subType;
-      }
-
-      final id = ++_coverCounter;
-      final tmpDir = Directory.systemTemp.path;
-      final path = '$tmpDir${Platform.pathSeparator}aetherfin_notif_$id.$ext';
-
-      if (_networkCoverPath != null) {
-        try {
-          final prev = File(_networkCoverPath!);
-          if (await prev.exists()) await prev.delete();
-        } catch (_) {}
-      }
-
-      if (_coverPath != null) {
-        try {
-          final prev = File(_coverPath!);
-          if (await prev.exists()) await prev.delete();
-        } catch (_) {}
-      }
-
-      final file = File(path);
-      final sink = file.openWrite();
-      try {
-        await response.pipe(sink);
-      } finally {
-        await sink.close();
-      }
-
-      if (_disposed) return;
-      final currentTrackNow = currentTrack;
-      if (currentTrackNow?.id != track.id) return;
-
-      _networkCoverPath = path;
-      _networkCoverTrackId = track.id;
-      _updateMediaItem();
-    } catch (e) {
-      afLog('audio', 'artwork download for notification failed', error: e);
-    }
-  }
-
-  Future<void> _persistCover(CoverArt? raw) async {
-    if (_disposed) return;
-    if (raw == null) {
-      _coverPath = null;
-      _updateMediaItem();
-      return;
-    }
-
-    // Use mpv_audio_kit's mime → extension mapping so we agree with
-    // `_downloadArtworkForNotification` (which already maps image/jpeg
-    // → .jpg) and so unknown mime types fall back to `.jpg` instead of
-    // a literal `.octet-stream` or empty extension. The bytes are
-    // played-back/decoded by path on Android's MediaSession so a sane
-    // extension matters for MediaStore / Notification panel previewers.
-    final ext = raw.extension.isNotEmpty ? raw.extension : 'jpg';
-    final id = ++_coverCounter;
-    final tmpDir = Directory.systemTemp.path;
-    final path = '$tmpDir${Platform.pathSeparator}aetherfin_cover_$id.$ext';
-
-    try {
-      if (_coverPath != null) {
-        final prev = File(_coverPath!);
-        if (await prev.exists()) {
-          await prev.delete();
-        }
-      }
-
-      await File(path).writeAsBytes(raw.bytes);
-      _coverPath = path;
-
-      // Don't delete _networkCoverPath here — it may still be in use by
-      // an in-flight _downloadArtworkForNotification. The temp file will
-      // be cleaned up by the OS eventually, and the next notification
-      // cover download will overwrite it anyway.
-      _networkCoverPath = null;
-      _networkCoverTrackId = null;
-      _updateMediaItem();
-    } catch (e) {
-      afLog('audio', 'cover art persist failed', error: e);
-    }
-  }
 }
 
 /// Sanitise an [AudioEffects] bundle before it goes into libmpv's
