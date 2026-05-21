@@ -28,6 +28,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart'
 
 import '../../core/audio/player_settings_store.dart';
 import '../../design_tokens/tokens.dart';
+import '../../utils/display_error.dart';
 import '../../state/providers.dart';
 import '../../widgets/af_dialog.dart';
 
@@ -444,8 +445,16 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         samples: _crusherSamples,
       ),
     );
-    await svc.setAudioEffects(effects);
-    await PlayerSettingsStore.saveAudioEffects(effects);
+    try {
+      await svc.setAudioEffects(effects);
+      await PlayerSettingsStore.saveAudioEffects(effects);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(displayError(e, prefix: 'Failed to apply'))),
+        );
+      }
+    }
   }
 
   void _resetAll() {
