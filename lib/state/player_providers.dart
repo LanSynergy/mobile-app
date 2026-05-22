@@ -114,7 +114,10 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
 
   final durSub = svc.durationStream.listen((dur) {
     if (dur > Duration.zero) {
-      ref.read(durationStreamProvider.notifier).state = dur;
+      final current = ref.read(durationStreamProvider);
+      if (dur != current) {
+        ref.read(durationStreamProvider.notifier).state = dur;
+      }
     }
   });
 
@@ -137,7 +140,10 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
 
       if (rawDur > Duration.zero) {
         if (disposed) return;
-        ref.read(durationStreamProvider.notifier).state = rawDur;
+        final current = ref.read(durationStreamProvider);
+        if (rawDur != current) {
+          ref.read(durationStreamProvider.notifier).state = rawDur;
+        }
       } else {
         final track = ref.read(currentTrackProvider);
         if (track != null && track.duration > Duration.zero) {
