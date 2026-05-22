@@ -12,10 +12,10 @@ import '../jellyfin/models/items.dart';
 /// 2. Remote artwork URLs → downloaded to temp file for notification display
 ///
 /// Tracks the latest cover path so [artUri] always returns the current best
-/// available artwork URI for [mediaItem] updates.
+/// available artwork URI for native notification updates.
 class AfArtworkManager {
   /// Called when artwork is persisted or downloaded so the owner can
-  /// update the [MediaItem] / notification artwork.
+  /// update the native notification artwork.
   void Function()? onArtworkChanged;
 
   int _coverCounter = 0;
