@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
 import 'package:go_router/go_router.dart';
 
 import '../core/jellyfin/models/server.dart';
@@ -41,9 +41,12 @@ final _rootKey = GlobalKey<NavigatorState>();
 final _shellKey = GlobalKey<NavigatorState>();
 final _authRefresh = _AuthRefreshListenable();
 
-// Container reference set by main.dart before runApp so the router's
-// redirect can read auth state without depending on BuildContext.
-ProviderContainer? _container;
+/// Auth & mode snapshot for the router redirect. Set by [setRouterAuthState]
+/// in main.dart before runApp, then kept in sync via provider listeners.
+/// Exists as module-level vars instead of a ProviderContainer reference so
+/// the router has zero dependency on the Riverpod container API.
+JellyfinAuth? _auth;
+AppMode? _appMode;
 
 /// The single [GoRouter] instance. Created once; never recreated.
 final _router = GoRouter(
@@ -51,8 +54,8 @@ final _router = GoRouter(
   initialLocation: '/',
   refreshListenable: _authRefresh,
   redirect: (context, state) {
-    final auth = _container?.read(authProvider);
-    final mode = _container?.read(appModeProvider);
+    final auth = _auth;
+    final mode = _appMode;
     final loc = state.matchedLocation;
     final inOnboarding = loc == '/' || loc.startsWith('/onboarding');
 
@@ -261,9 +264,8 @@ final _router = GoRouter(
 /// Provides the singleton [GoRouter].
 ///
 /// Auth-change and mode-change notifications are wired in [main.dart] via
-/// a [ProviderContainer] listener that calls [notifyAuthChanged]. This
-/// provider exists only for tests that need to read the router through
-/// Riverpod.
+/// [setRouterAuthState] and [notifyAuthChanged]. This provider exists only
+/// for tests that need to read the router through Riverpod.
 final routerProvider = Provider<GoRouter>((ref) {
   return _router;
 });
@@ -278,12 +280,14 @@ class _AuthRefreshListenable extends ChangeNotifier {
   void _notify() => notifyListeners();
 }
 
-/// Called from main.dart to wire the container before runApp.
-void setRouterContainer(ProviderContainer container) {
-  _container = container;
+/// Called from main.dart to initialise auth/mode state before runApp,
+/// and from provider listeners to keep the redirect snapshot in sync.
+void setRouterAuthState({JellyfinAuth? auth, AppMode? mode}) {
+  _auth = auth;
+  _appMode = mode;
 }
 
-/// Called from main.dart when auth state changes to trigger router redirect.
+/// Called from main.dart when auth/mode changes to trigger router redirect.
 void notifyAuthChanged() => _authRefresh._notify();
 
 class _NowPlayingPage extends Page<void> {

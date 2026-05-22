@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import 'app/app.dart';
-import 'app/router.dart' show notifyAuthChanged, setRouterContainer;
+import 'app/router.dart' show notifyAuthChanged, setRouterAuthState;
 import 'core/audio/player_service.dart';
 import 'core/local/app_mode_store.dart';
 import 'core/jellyfin/auth_storage.dart';
@@ -163,24 +163,19 @@ Future<void> main() async {
           error: e, stackTrace: stack);
     }
 
-    // Give the router direct access to the container so its redirect
-    // function can read auth state without BuildContext dependency.
-    // TODO: replace with an explicit auth-hydration notifier so the router
-    // doesn't need a mutable global reference (review finding 2).
-    setRouterContainer(container);
-
-    // Trigger an initial redirect evaluation after the first frame so the
-    // widget tree is fully mounted before the router reads auth state.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      notifyAuthChanged();
-    });
+    // Seed the router with the initial auth/mode so its redirect runs
+    // correctly on the very first frame.
+    setRouterAuthState(auth: initialAuth, mode: persistedMode);
 
     // Wire auth → router redirect. Capture the subscription so it can be
     // disposed if the architecture evolves (review finding 3).
     // ignore: unused_local_variable
     final authSub = container.listen<JellyfinAuth?>(
       authProvider,
-      (prev, next) => notifyAuthChanged(),
+      (prev, next) {
+        setRouterAuthState(auth: next);
+        notifyAuthChanged();
+      },
       fireImmediately: false,
     );
 
