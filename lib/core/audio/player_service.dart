@@ -666,9 +666,6 @@ class AfPlayerService {
     return _queueLock.run(() async {
       try {
         await _player.setLoop(mode);
-        if (isCompleted && !isPlaying && mode == Loop.playlist) {
-          await _jumpAndPlay(0);
-        }
         afLog('data', 'loopMode source=live mode=${mode.name}');
       } catch (e, stack) {
         afLog('audio', 'setAfLoopMode failed', error: e, stackTrace: stack);
@@ -998,12 +995,14 @@ class AfPlayerService {
           } else {
             switch (loopAtEvent) {
               case Loop.off:
+                _userPaused = true;
                 _positionTracker.onPause();
                 try {
                   await _player.pause();
                 } catch (e, stack) {
                   afLog('audio', 'pause failed on queue completion', error: e, stackTrace: stack);
                 }
+                _pushStateToNative();
                 afLog('audio', 'queue end, auto-stop (loop=off)');
               case Loop.playlist:
                 await _jumpAndPlay(0);
