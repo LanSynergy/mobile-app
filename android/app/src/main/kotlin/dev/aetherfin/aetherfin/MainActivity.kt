@@ -2,6 +2,7 @@ package dev.aetherfin.aetherfin
 
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import androidx.core.content.ContextCompat
 import dev.aetherfin.aetherfin.battery.BatteryOptPlugin
 import dev.aetherfin.aetherfin.live_update.LiveUpdatePlugin
