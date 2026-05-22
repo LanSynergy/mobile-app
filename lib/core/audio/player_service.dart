@@ -401,6 +401,15 @@ class AfPlayerService {
   bool get isUserPaused => _userPaused;
   bool get isLoadingQueue => _isLoadingQueue;
 
+  @visibleForTesting
+  set isLoadingQueueForTesting(bool value) => _isLoadingQueue = value;
+
+  @visibleForTesting
+  set disposedForTesting(bool value) => _disposed = value;
+
+  @visibleForTesting
+  bool get isDisposedForTesting => _disposed;
+
   /// True when UI/notification progress should keep advancing even if mpv's
   /// reported `playing` flag is temporarily stale/false on an OEM pipeline.
   bool get shouldAdvancePosition {
@@ -650,11 +659,9 @@ class AfPlayerService {
   }
 
   Future<void> setAfShuffleMode(bool enabled) async {
+    if (_disposed) return;
+    if (_isLoadingQueue) return;
     return _queueLock.run(() async {
-      if (_isLoadingQueue) {
-        afLog('audio', 'setAfShuffleMode ignored: queue is loading');
-        return;
-      }
       if (_queueManager.isShuffleEnabled == enabled) return;
 
       if (_queueManager.currentQueue.isEmpty) {
@@ -726,6 +733,8 @@ class AfPlayerService {
   }
 
   Future<void> setAfLoopMode(Loop mode) async {
+    if (_disposed) return;
+    if (_isLoadingQueue) return;
     return _queueLock.run(() async {
       try {
         await _player.setLoop(mode);

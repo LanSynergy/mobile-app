@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show PlayerApi;
 
 import '../../utils/log.dart';
@@ -8,7 +9,7 @@ import '../../utils/log.dart';
 /// Used when mpv's observe_property/getRawProperty for time-pos stalls.
 class _PositionAnchor {
   Duration lastKnownPos = Duration.zero;
-  DateTime lastUpdateTime = DateTime.now();
+  DateTime lastUpdateTime = clock.now();
 }
 
 /// Manages position polling, extrapolation, and stale detection.
@@ -87,7 +88,7 @@ class AfPositionTracker {
 
   void onSeek(Duration position) {
     _isSeeking = true;
-    final now = DateTime.now();
+    final now = clock.now();
     _positionAnchor.lastKnownPos = position;
     _positionAnchor.lastUpdateTime = now;
     _resetRawPositionStaleDetector(position);
@@ -101,7 +102,7 @@ class AfPositionTracker {
 
   void onTrackChanged() {
     _positionAnchor.lastKnownPos = Duration.zero;
-    _positionAnchor.lastUpdateTime = DateTime.now();
+    _positionAnchor.lastUpdateTime = clock.now();
     _onZeroEmit();
   }
 
@@ -114,14 +115,14 @@ class AfPositionTracker {
 
   void updateKnownPosition(Duration pos) {
     _positionAnchor.lastKnownPos = pos;
-    _positionAnchor.lastUpdateTime = DateTime.now();
+    _positionAnchor.lastUpdateTime = clock.now();
   }
 
   void onPause() {}
 
   void onStop() {
     _positionAnchor.lastKnownPos = Duration.zero;
-    _positionAnchor.lastUpdateTime = DateTime.now();
+    _positionAnchor.lastUpdateTime = clock.now();
     _onZeroEmit();
   }
 
@@ -174,7 +175,7 @@ class AfPositionTracker {
   }
 
   void _emitExtrapolatedPosition() {
-    final now = DateTime.now();
+    final now = clock.now();
     final dur = _player.state.duration;
     if (dur > Duration.zero && _positionAnchor.lastKnownPos >= dur) {
       _positionAnchor.lastKnownPos = dur;
@@ -196,7 +197,7 @@ class AfPositionTracker {
     if (_isSeeking) return;
     if (_isLoadingQueue?.call() ?? false) {
       _positionAnchor.lastKnownPos = Duration.zero;
-      _positionAnchor.lastUpdateTime = DateTime.now();
+      _positionAnchor.lastUpdateTime = clock.now();
       _onZeroEmit();
       return;
     }
@@ -208,7 +209,7 @@ class AfPositionTracker {
 
     try {
       final rawPos = await getRawPosition();
-      final now = DateTime.now();
+      final now = clock.now();
       final playing = _player.state.playing;
       final shouldAdvance = playing || _shouldAdvancePosition();
 

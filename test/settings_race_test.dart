@@ -1,207 +1,172 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+
+import 'package:aetherfin/core/audio/player_service.dart';
+import 'package:aetherfin/core/jellyfin/models/items.dart';
+import 'helpers/fake_player.dart';
+
+class MockMethodChannel extends Mock implements MethodChannel {}
 
 void main() {
-  group('Settings race guards', () {
-    // -------------------------------------------------------------------
-    // Guard helpers mirroring the pattern added to AfPlayerService setters.
-    // The guards in player_service.dart are:
-    //   if (_disposed) return;
-    //   if (_isLoadingQueue) return;
-    //
-    // These tests verify that the guard *logic* correctly intercepts
-    // before any _player.* command fires. The setters directly delegate
-    // to _player.*; the guards are the sole defense mechanism.
-    //
-    // Note: guards use parameters instead of local constants so the
-    // analyzer cannot statically prove dead branches — each test
-    // simulates a true runtime decision.
-    // -------------------------------------------------------------------
+  group('Settings race guards on AfPlayerService', () {
+    late AfPlayerService service;
+    late MockPlayer player;
+    late MockMethodChannel channel;
+    late StreamControllers ctrls;
 
-    group('_isLoadingQueue guard', () {
-      test('skips setter when isLoadingQueue is true', () {
-        var commandFired = false;
+    setUpAll(() {
+      registerFallbackValue(Duration.zero);
+      registerFallbackValue(Device.auto);
+      registerFallbackValue(Loop.off);
+      registerFallbackValue(Gapless.weak);
+      registerFallbackValue(SpectrumSettings.defaults);
+      registerFallbackValue(Media(''));
+    });
 
-        void guardedSetter(bool isLoadingQueue) {
-          if (isLoadingQueue) return;
-          commandFired = true;
-        }
+    setUp(() async {
+      final fixture = createMockPlayer();
+      player = fixture.player;
+      ctrls = fixture.ctrls;
+      channel = MockMethodChannel();
+      when(() => channel.setMethodCallHandler(any())).thenAnswer((_) async {});
+      service = AfPlayerService.test(player: player, channel: channel);
 
-        guardedSetter(true);
+      // Stub player methods called by the guarded settings setters
+      when(() => player.setAudioDevice(any())).thenAnswer((_) async {});
+      when(() => player.setAudioExclusive(any())).thenAnswer((_) async {});
+      when(() => player.setAudioSampleRate(any())).thenAnswer((_) async {});
+      when(() => player.setPrefetchPlaylist(any())).thenAnswer((_) async {});
+      when(() => player.setRate(any())).thenAnswer((_) async {});
+      when(() => player.setGapless(any())).thenAnswer((_) async {});
+      when(() => player.setLoop(any())).thenAnswer((_) async {});
+      when(() => player.setShuffle(any())).thenAnswer((_) async {});
 
-        expect(
-          commandFired,
-          isFalse,
-          reason: 'guard prevented mpv command from firing during queue load',
-        );
+      // Populate queue so settings actions are allowed
+      final track = const AfTrack(
+        id: '1',
+        title: 'Track A',
+        artistName: 'Test Artist',
+        albumName: 'Test Album',
+      );
+      await service.playQueue(
+        [track],
+        startIndex: 0,
+        resolveStreamUrl: (t) => 'https://example.com/1.flac',
+      );
+      ctrls.playlist.add(
+        Playlist(
+          [Media('https://example.com/1.flac')],
+          index: 0,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      clearInteractions(player);
+    });
+
+    tearDown(() async {
+      await service.dispose();
+      ctrls.dispose();
+    });
+
+    group('isLoadingQueue guard', () {
+      test('skips settings actions when isLoadingQueue is true', () async {
+        service.isLoadingQueueForTesting = true;
+
+        await service.setAudioDevice(Device.auto);
+        verifyNever(() => player.setAudioDevice(any()));
+
+        await service.setAudioExclusive(true);
+        verifyNever(() => player.setAudioExclusive(any()));
+
+        await service.setAudioSampleRate(44100);
+        verifyNever(() => player.setAudioSampleRate(any()));
+
+        await service.setPrefetchPlaylist(true);
+        verifyNever(() => player.setPrefetchPlaylist(any()));
+
+        await service.setAfSpeed(1.5);
+        verifyNever(() => player.setRate(any()));
+
+        await service.setGapless(Gapless.weak);
+        verifyNever(() => player.setGapless(any()));
+
+        await service.setAfLoopMode(Loop.file);
+        verifyNever(() => player.setLoop(any()));
+
+        await service.setAfShuffleMode(true);
+        verifyNever(() => player.setShuffle(any()));
       });
 
-      test('allows setter when isLoadingQueue is false', () {
-        var commandFired = false;
+      test('allows settings actions when isLoadingQueue is false', () async {
+        service.isLoadingQueueForTesting = false;
 
-        void guardedSetter(bool isLoadingQueue) {
-          if (isLoadingQueue) return;
-          commandFired = true;
-        }
+        await service.setAudioDevice(Device.auto);
+        verify(() => player.setAudioDevice(Device.auto)).called(1);
 
-        guardedSetter(false);
+        await service.setAudioExclusive(true);
+        verify(() => player.setAudioExclusive(true)).called(1);
 
-        expect(
-          commandFired,
-          isTrue,
-          reason: 'setter proceeds normally when not loading',
-        );
-      });
+        await service.setAudioSampleRate(44100);
+        verify(() => player.setAudioSampleRate(44100)).called(1);
 
-      test('guard is transparent after loading completes (toggle test)', () {
-        var commandFired = 0;
-        var isLoadingQueue = true;
+        await service.setPrefetchPlaylist(true);
+        verify(() => player.setPrefetchPlaylist(true)).called(1);
 
-        void guardedSetter() {
-          if (isLoadingQueue) return;
-          commandFired++;
-        }
+        await service.setAfSpeed(1.5);
+        verify(() => player.setRate(1.5)).called(1);
 
-        guardedSetter(); // skipped
-        expect(commandFired, 0);
+        await service.setGapless(Gapless.weak);
+        verify(() => player.setGapless(Gapless.weak)).called(1);
 
-        isLoadingQueue = false;
-        guardedSetter(); // proceeds
-        expect(commandFired, 1);
+        await service.setAfLoopMode(Loop.file);
+        verify(() => player.setLoop(Loop.file)).called(1);
 
-        // Verify the guard doesn't permanently block
-        guardedSetter(); // proceeds again
-        expect(commandFired, 2);
+        await service.setAfShuffleMode(true);
+        verify(() => player.setShuffle(true)).called(1);
       });
     });
 
-    group('_disposed guard', () {
-      test('skips setter when disposed is true', () {
-        var commandFired = false;
+    group('disposed guard', () {
+      test('skips settings actions when disposed is true', () async {
+        service.disposedForTesting = true;
 
-        void guardedSetter(bool disposed) {
-          if (disposed) return;
-          commandFired = true;
-        }
+        await service.setAudioDevice(Device.auto);
+        verifyNever(() => player.setAudioDevice(any()));
 
-        guardedSetter(true);
+        await service.setAudioExclusive(true);
+        verifyNever(() => player.setAudioExclusive(any()));
 
-        expect(
-          commandFired,
-          isFalse,
-          reason: 'guard prevented mpv command after dispose',
-        );
-      });
+        await service.setAudioSampleRate(44100);
+        verifyNever(() => player.setAudioSampleRate(any()));
 
-      test('allows setter when disposed is false', () {
-        var commandFired = false;
+        await service.setPrefetchPlaylist(true);
+        verifyNever(() => player.setPrefetchPlaylist(any()));
 
-        void guardedSetter(bool disposed) {
-          if (disposed) return;
-          commandFired = true;
-        }
+        await service.setAfSpeed(1.5);
+        verifyNever(() => player.setRate(any()));
 
-        guardedSetter(false);
+        await service.setGapless(Gapless.weak);
+        verifyNever(() => player.setGapless(any()));
 
-        expect(
-          commandFired,
-          isTrue,
-          reason: 'setter proceeds normally when not disposed',
-        );
+        await service.setAfLoopMode(Loop.file);
+        verifyNever(() => player.setLoop(any()));
+
+        await service.setAfShuffleMode(true);
+        verifyNever(() => player.setShuffle(any()));
       });
     });
 
-    group('_isLoadingQueue guard on audio device handler', () {
-      test('skips reapplyPersistedEffects when isLoadingQueue is true', () {
-        var effectsReapplied = false;
+    group('combined priority guards', () {
+      test('disposed check takes priority over isLoadingQueue check', () async {
+        service.disposedForTesting = true;
+        service.isLoadingQueueForTesting = false;
 
-        // Simulates the audioDevice stream handler guard:
-        //   if (_isLoadingQueue) return;
-        //   await _audioDeviceManager.reapplyPersistedEffects();
-        Future<void> audioDeviceHandler(bool isLoadingQueue) async {
-          if (isLoadingQueue) return;
-          effectsReapplied = true;
-        }
-
-        audioDeviceHandler(true);
-
-        expect(
-          effectsReapplied,
-          isFalse,
-          reason: 'guard prevented reapplyPersistedEffects during queue load',
-        );
-      });
-
-      test('allows reapplyPersistedEffects when not loading', () async {
-        var effectsReapplied = false;
-
-        Future<void> audioDeviceHandler(bool isLoadingQueue) async {
-          if (isLoadingQueue) return;
-          effectsReapplied = true;
-        }
-
-        await audioDeviceHandler(false);
-
-        expect(
-          effectsReapplied,
-          isTrue,
-          reason: 'reapplyPersistedEffects proceeds when not loading',
-        );
-      });
-    });
-
-    group('combined guards (no false rejection)', () {
-      test('setter proceeds when both flags are false', () {
-        var commandFired = false;
-
-        void guardedSetter(bool disposed, bool isLoadingQueue) {
-          if (disposed) return;
-          if (isLoadingQueue) return;
-          commandFired = true;
-        }
-
-        guardedSetter(false, false);
-
-        expect(
-          commandFired,
-          isTrue,
-          reason: 'setter proceeds with both flags false — no false rejection',
-        );
-      });
-
-      test('_disposed guard takes priority over isLoadingQueue', () {
-        var commandFired = false;
-
-        void guardedSetter(bool disposed, bool isLoadingQueue) {
-          if (disposed) return;
-          if (isLoadingQueue) return;
-          commandFired = true;
-        }
-
-        guardedSetter(true, false);
-
-        expect(
-          commandFired,
-          isFalse,
-          reason: '_disposed guard fires first and prevents execution',
-        );
-      });
-
-      test('isLoadingQueue guard fires when disposed is false', () {
-        var commandFired = false;
-
-        void guardedSetter(bool disposed, bool isLoadingQueue) {
-          if (disposed) return;
-          if (isLoadingQueue) return;
-          commandFired = true;
-        }
-
-        guardedSetter(false, true);
-
-        expect(
-          commandFired,
-          isFalse,
-          reason: '_isLoadingQueue guard fires when only it is active',
-        );
+        await service.setAudioDevice(Device.auto);
+        expect(service.isDisposedForTesting, isTrue);
+        expect(service.isLoadingQueue, isFalse);
+        verifyNever(() => player.setAudioDevice(any()));
       });
     });
   });

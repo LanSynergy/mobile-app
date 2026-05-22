@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -21,6 +22,7 @@ typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater)
   StreamControllers ctrls,
   MockMethodChannel channel,
   _StateUpdater updateState,
+  Future<dynamic> Function(MethodCall)? handler,
 }) _createFixture() {
   final result = createMockPlayer();
   final player = result.player;
@@ -34,10 +36,14 @@ typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater)
     mutableState = updater(mutableState);
   }
 
+  Future<dynamic> Function(MethodCall)? handler;
+
   // Stub MethodChannel calls (the service uses catchError on failures).
   when(() => channel.invokeMethod(any())).thenAnswer((_) async => null);
   when(() => channel.invokeMethod(any(), any())).thenAnswer((_) async => null);
-  when(() => channel.setMethodCallHandler(any())).thenAnswer((_) async {});
+  when(() => channel.setMethodCallHandler(any())).thenAnswer((invocation) async {
+    handler = invocation.positionalArguments[0] as Future<dynamic> Function(MethodCall)?;
+  });
 
   final service = AfPlayerService.test(
     player: player,
@@ -50,6 +56,7 @@ typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater)
     ctrls: ctrls,
     channel: channel,
     updateState: updateState,
+    handler: handler,
   );
 }
 
@@ -60,6 +67,7 @@ void main() {
     late StreamControllers ctrls;
     late MockMethodChannel channel;
     late _StateUpdater updateState;
+    Future<dynamic> Function(MethodCall)? handler;
 
     final trackA = const AfTrack(
       id: '1',
@@ -89,6 +97,7 @@ void main() {
       registerFallbackValue(Gapless.weak);
       registerFallbackValue(SpectrumSettings.defaults);
       registerFallbackValue(Media(''));
+      registerFallbackValue(<Media>[]);
     });
 
     setUp(() {
@@ -98,6 +107,7 @@ void main() {
       ctrls = fixture.ctrls;
       channel = fixture.channel;
       updateState = fixture.updateState;
+      handler = fixture.handler;
     });
 
     tearDown(() async {
@@ -388,6 +398,171 @@ void main() {
       // setShuffle(false) is also called once during playQueue (non-shuffle path).
       verify(() => player.setShuffle(false)).called(greaterThanOrEqualTo(1));
       expect(service.isShuffleEnabled, isFalse);
+    });
+
+    test('play and pause respect disposed guard', () async {
+      await service.dispose();
+      await service.play();
+      verifyNever(() => player.play());
+      await service.pause();
+      verifyNever(() => player.pause());
+    });
+
+    test('seek, skipToNext, skipToPrevious, skipToQueueItem respect isLoadingQueue guard', () async {
+      final completer = Completer<void>();
+      when(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
+          .thenAnswer((_) => completer.future);
+
+      final playQueueFuture = service.playQueue(
+        [trackA, trackB],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+
+      // Give event loop a chance to run so playQueue starts and sets _isLoadingQueue = true.
+      await Future<void>.delayed(Duration.zero);
+
+      // Now call seek, next, previous, skipToQueueItem. They should do nothing and return.
+      await service.seek(const Duration(seconds: 1));
+      verifyNever(() => player.seek(any()));
+
+      await service.skipToNext();
+      verifyNever(() => player.next());
+
+      await service.skipToPrevious();
+      verifyNever(() => player.previous());
+
+      await service.skipToQueueItem(1);
+      verifyNever(() => player.jump(any()));
+
+      // Clean up by completing the openAll call.
+      completer.complete();
+      await playQueueFuture;
+    });
+
+    test('playQueue error recovery clears queue manager and stops player on failure', () async {
+      when(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
+          .thenThrow(Exception('openAll failed'));
+      when(() => player.stop()).thenAnswer((_) async {});
+
+      await expectLater(
+        service.playQueue(
+          [trackA, trackB],
+          startIndex: 0,
+          resolveStreamUrl: resolveStreamUrl,
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      verify(() => player.stop()).called(1);
+      expect(service.currentQueue, isEmpty);
+    });
+
+    test('removeFromQueue, insertIntoQueue, playNext, addToQueue, reorderQueue operate correctly', () async {
+      // First populate the queue
+      await service.playQueue(
+        [trackA, trackB],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+
+      ctrls.playlist.add(
+        Playlist([
+          Media('https://example.com/1.flac'),
+          Media('https://example.com/2.flac'),
+        ], index: 0),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      // 1. insertIntoQueue
+      when(() => player.sendRawCommand(any())).thenAnswer((_) async {});
+      await service.insertIntoQueue(1, trackC, resolveStreamUrl: resolveStreamUrl);
+      verify(() => player.sendRawCommand([
+        'loadfile',
+        'https://example.com/3.flac',
+        'insert-at',
+        '1',
+      ])).called(1);
+      expect(service.currentQueue.length, equals(3));
+      expect(service.currentQueue[1].id, equals('3'));
+
+      // 2. playNext
+      await service.playNext(trackC, resolveStreamUrl: resolveStreamUrl);
+      // currentIndex is 0, so it inserts at 1.
+      verify(() => player.sendRawCommand([
+        'loadfile',
+        'https://example.com/3.flac',
+        'insert-at',
+        '1',
+      ])).called(1);
+
+      // 3. addToQueue
+      await service.addToQueue(trackC, resolveStreamUrl: resolveStreamUrl);
+      verify(() => player.sendRawCommand([
+        'loadfile',
+        'https://example.com/3.flac',
+        'append',
+      ])).called(1);
+
+      // 4. reorderQueue
+      await service.reorderQueue(1, 2);
+      verify(() => player.sendRawCommand(['playlist-move', '1', '1'])).called(1);
+
+      // 5. removeFromQueue
+      // Removing index 1 (trackB/trackC) should succeed (as long as it's not the currently playing index 0).
+      final removed = await service.removeFromQueue(1);
+      expect(removed, isTrue);
+      verify(() => player.sendRawCommand(['playlist-remove', '1'])).called(1);
+
+      // Removing current index (0) should fail
+      final removedCurrent = await service.removeFromQueue(0);
+      expect(removedCurrent, isFalse);
+    });
+
+    test('platform method calls invoke corresponding service methods', () async {
+      expect(handler, isNotNull);
+
+      // Stub methods called by player_service
+      when(() => player.play()).thenAnswer((_) async {});
+      when(() => player.pause()).thenAnswer((_) async {});
+      when(() => player.stop()).thenAnswer((_) async {});
+      when(() => player.next()).thenAnswer((_) async {});
+      when(() => player.previous()).thenAnswer((_) async {});
+      when(() => player.seek(any())).thenAnswer((_) async {});
+      when(() => player.jump(any())).thenAnswer((_) async {});
+
+      await handler!(const MethodCall('play'));
+      await Future<void>.delayed(Duration.zero);
+      verify(() => player.play()).called(1);
+
+      await handler!(const MethodCall('pause'));
+      await Future<void>.delayed(Duration.zero);
+      verify(() => player.pause()).called(1);
+
+      await handler!(const MethodCall('next'));
+      await Future<void>.delayed(Duration.zero);
+      verify(() => player.next()).called(1);
+
+      await handler!(const MethodCall('previous'));
+      await Future<void>.delayed(Duration.zero);
+      verify(() => player.previous()).called(1);
+
+      await handler!(const MethodCall('stop'));
+      await Future<void>.delayed(Duration.zero);
+      verify(() => player.stop()).called(1);
+
+      await handler!(const MethodCall('seek', {'positionMs': 1234}));
+      await Future<void>.delayed(Duration.zero);
+      verify(() => player.seek(const Duration(milliseconds: 1234))).called(1);
+
+      await handler!(const MethodCall('skipTo', {'queueIndex': 5}));
+      await Future<void>.delayed(Duration.zero);
+      verify(() => player.jump(5)).called(1);
+
+      expect(
+        () => handler!(const MethodCall('invalidMethod')),
+        throwsA(isA<PlatformException>()),
+      );
     });
   });
 }
