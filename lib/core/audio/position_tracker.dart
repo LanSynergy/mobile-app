@@ -36,6 +36,14 @@ class AfPositionTracker {
   static const _rawStaleTolerance = Duration(milliseconds: 50);
   static const _rawStaleAfterTicks = 4;
 
+  /// Last position emitted to the stream. Frames closer than this delta
+  /// are dropped — the UI doesn't need sub-second precision on the seek
+  /// bar, and skipping intermediate emissions cuts rebuilds significantly.
+  static const _frameSkipDelta = Duration(milliseconds: 500);
+
+  /// Tracks the last position actually emitted (after frame-skip gate).
+  Duration _lastEmittedPosition = Duration.zero;
+
   bool _disposed = false;
 
   AfPositionTracker({
@@ -62,13 +70,28 @@ class AfPositionTracker {
   bool get isSeeking => _isSeeking;
   Duration get lastKnownPosition => _positionAnchor.lastKnownPos;
 
+  /// Emit [pos] to the position stream, but only if the delta from the
+  /// last emission exceeds [_frameSkipDelta]. User-initiated actions
+  /// (seek, track change, stop) should always emit and can bypass this
+  /// gate by calling [_forceEmit] instead.
+  void _emitPosition(Duration pos) {
+    if ((pos - _lastEmittedPosition).abs() < _frameSkipDelta) return;
+    _lastEmittedPosition = pos;
+    _positionController.add(pos);
+  }
+
+  void _forceEmit(Duration pos) {
+    _lastEmittedPosition = pos;
+    _positionController.add(pos);
+  }
+
   void onSeek(Duration position) {
     _isSeeking = true;
     final now = DateTime.now();
     _positionAnchor.lastKnownPos = position;
     _positionAnchor.lastUpdateTime = now;
     _resetRawPositionStaleDetector(position);
-    _positionController.add(position);
+    _forceEmit(position);
 
     _seekResetTimer?.cancel();
     _seekResetTimer = Timer(const Duration(milliseconds: 300), () {
@@ -79,7 +102,11 @@ class AfPositionTracker {
   void onTrackChanged() {
     _positionAnchor.lastKnownPos = Duration.zero;
     _positionAnchor.lastUpdateTime = DateTime.now();
-    _positionController.add(Duration.zero);
+    _onZeroEmit();
+  }
+
+  void _onZeroEmit() {
+    _forceEmit(Duration.zero);
     _resetRawPositionStaleDetector(Duration.zero);
   }
 
@@ -95,8 +122,7 @@ class AfPositionTracker {
   void onStop() {
     _positionAnchor.lastKnownPos = Duration.zero;
     _positionAnchor.lastUpdateTime = DateTime.now();
-    _resetRawPositionStaleDetector(Duration.zero);
-    _positionController.add(Duration.zero);
+    _onZeroEmit();
   }
 
   Future<Duration> getRawPosition() async {
@@ -152,7 +178,7 @@ class AfPositionTracker {
     final dur = _player.state.duration;
     if (dur > Duration.zero && _positionAnchor.lastKnownPos >= dur) {
       _positionAnchor.lastKnownPos = dur;
-      _positionController.add(dur);
+      _emitPosition(dur);
       return;
     }
     final elapsed = now.difference(_positionAnchor.lastUpdateTime);
@@ -163,15 +189,15 @@ class AfPositionTracker {
     final capped = extrapolated > durCap ? durCap : extrapolated;
     _positionAnchor.lastKnownPos = capped;
     _positionAnchor.lastUpdateTime = now;
-    _positionController.add(capped);
+    _emitPosition(capped);
   }
 
   Future<void> _pollAndEmitPosition() async {
     if (_isSeeking) return;
     if (_isLoadingQueue?.call() ?? false) {
       _positionAnchor.lastKnownPos = Duration.zero;
-      _positionController.add(Duration.zero);
-      _resetRawPositionStaleDetector(Duration.zero);
+      _positionAnchor.lastUpdateTime = DateTime.now();
+      _onZeroEmit();
       return;
     }
     if (_isPolling) {
@@ -197,7 +223,7 @@ class AfPositionTracker {
         if (!rawStale && (!behind || shouldAdvance)) {
           _positionAnchor.lastKnownPos = rawPos;
           _positionAnchor.lastUpdateTime = now;
-          _positionController.add(rawPos);
+          _emitPosition(rawPos);
           return;
         }
 
