@@ -136,6 +136,26 @@ void main() {
       });
     });
 
+    group('replaceQueue empty-input guard', () {
+      test('replaceQueue with empty list does not crash and preserves existing queue', () {
+        queueManager.replaceQueue(tracks, 0);
+        final originalQueue = queueManager.currentQueue.toList();
+
+        queueManager.replaceQueue([], 0);
+
+        // Queue should be unchanged — empty input is a no-op
+        expect(queueManager.currentQueue.length, originalQueue.length);
+        expect(queueManager.currentIndex, 0);
+      });
+
+      test('replaceQueue with empty list on empty queue does not crash', () {
+        queueManager.replaceQueue([], 0);
+
+        expect(queueManager.currentQueue, isEmpty);
+        expect(queueManager.currentIndex, -1);
+      });
+    });
+
     group('endPlayback', () {
       test('sets currentTrack to null while preserving queue list', () async {
         queueManager.replaceQueue(tracks, 0);
