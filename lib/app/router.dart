@@ -284,7 +284,7 @@ class _AuthRefreshListenable extends ChangeNotifier {
 /// and from provider listeners to keep the redirect snapshot in sync.
 void setRouterAuthState({JellyfinAuth? auth, AppMode? mode}) {
   _auth = auth;
-  _appMode = mode;
+  if (mode != null) _appMode = mode;
 }
 
 /// Called from main.dart when auth/mode changes to trigger router redirect.

@@ -179,6 +179,20 @@ Future<void> main() async {
       fireImmediately: false,
     );
 
+    // Wire mode → router redirect. Without this, selecting "Play local
+    // files" on the welcome screen updates appModeProvider but the
+    // router's _appMode snapshot stays null — so after scanning,
+    // context.go('/home') hits effectiveMode==null → redirect to '/'.
+    // ignore: unused_local_variable
+    final modeSub = container.listen<AppMode?>(
+      appModeProvider,
+      (prev, next) {
+        setRouterAuthState(auth: container.read(authProvider), mode: next);
+        notifyAuthChanged();
+      },
+      fireImmediately: false,
+    );
+
     runApp(
       UncontrolledProviderScope(
         container: container,
