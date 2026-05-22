@@ -23,8 +23,8 @@ class AetherfinMediaSessionService : Service() {
 
     companion object {
         const val ACTION_UPDATE_STATE = "dev.aetherfin.aetherfin.UPDATE_STATE"
+        const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "dev.aetherfin.audio"
-        private const val NOTIFICATION_ID = 1001
     }
 
     private var mediaSession: MediaSessionCompat? = null
@@ -318,6 +318,8 @@ class AetherfinMediaSessionService : Service() {
     }
 
     override fun onDestroy() {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(NOTIFICATION_ID)
         mediaSession?.apply {
             isActive = false
             release()

@@ -1,6 +1,7 @@
 package dev.aetherfin.aetherfin
 
-import android.content.Intent
+import android.app.NotificationManager
+import android.content.Context
 import androidx.core.content.ContextCompat
 import dev.aetherfin.aetherfin.battery.BatteryOptPlugin
 import dev.aetherfin.aetherfin.live_update.LiveUpdatePlugin
@@ -49,6 +50,8 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
                 "clear" -> {
+                    val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    notificationManager.cancel(AetherfinMediaSessionService.NOTIFICATION_ID)
                     val intent = Intent(this, AetherfinMediaSessionService::class.java)
                     stopService(intent)
                     result.success(null)
