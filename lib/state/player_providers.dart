@@ -123,7 +123,7 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
   Future<void> runDurationPollLoop() async {
     final gen = loopGeneration;
     while (loopRunning && gen == loopGeneration) {
-      await Future.delayed(const Duration(milliseconds: 250));
+      await Future.delayed(const Duration(milliseconds: 1000));
       if (!loopRunning || gen != loopGeneration || disposed) break;
 
       final rawDur = await svc.getRawDuration();

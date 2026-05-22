@@ -48,7 +48,7 @@ class AfPositionTracker {
 
   void start() {
     _positionPollTimer =
-        Timer.periodic(const Duration(milliseconds: 200), (_) {
+        Timer.periodic(const Duration(milliseconds: 500), (_) {
       if (_disposed) return;
       _pollAndEmitPosition();
     });

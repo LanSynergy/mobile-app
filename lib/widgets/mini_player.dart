@@ -49,7 +49,11 @@ class MiniPlayer extends ConsumerWidget {
           data: (v) => v,
           orElse: () => false,
         );
-    final position = ref.watch(positionStreamProvider);
+    final position = ref.watch(
+      positionStreamProvider.select(
+        (pos) => Duration(seconds: pos.inSeconds),
+      ),
+    );
     final spectral = ref.watch(currentSpectralProvider);
     final mpvDuration = ref.watch(durationStreamProvider);
     final duration = mpvDuration > Duration.zero ? mpvDuration : track.duration;
