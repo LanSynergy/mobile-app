@@ -562,26 +562,30 @@ class AfPlayerService {
 
   Future<void> play() async {
     if (_disposed) return;
-    _userPaused = false;
-    _positionTracker.onPlay();
-    try {
-      await _player.play();
-      _audioDeviceManager.nudge();
-    } catch (e, stack) {
-      afLog('audio', 'play failed', error: e, stackTrace: stack);
-    }
+    return _queueLock.run(() async {
+      _userPaused = false;
+      _positionTracker.onPlay();
+      try {
+        await _player.play();
+        _audioDeviceManager.nudge();
+      } catch (e, stack) {
+        afLog('audio', 'play failed', error: e, stackTrace: stack);
+      }
+    });
   }
 
   Future<void> pause() async {
     if (_disposed) return;
-    _userPaused = true;
-    _pendingPlayNudgeIdx = null;
-    _positionTracker.onPause();
-    try {
-      await _player.pause();
-    } catch (e, stack) {
-      afLog('audio', 'pause failed', error: e, stackTrace: stack);
-    }
+    return _queueLock.run(() async {
+      _userPaused = true;
+      _pendingPlayNudgeIdx = null;
+      _positionTracker.onPause();
+      try {
+        await _player.pause();
+      } catch (e, stack) {
+        afLog('audio', 'pause failed', error: e, stackTrace: stack);
+      }
+    });
   }
 
   Future<void> stop() async {
@@ -601,13 +605,15 @@ class AfPlayerService {
     if (_isLoadingQueue) return;
     _positionTracker.onSeek(position);
 
-    try {
-      await _player.seek(position);
-      _updateMediaSession();
-      _audioDeviceManager.nudge();
-    } catch (e, stack) {
-      afLog('audio', 'seek failed', error: e, stackTrace: stack);
-    }
+    return _queueLock.run(() async {
+      try {
+        await _player.seek(position);
+        _updateMediaSession();
+        _audioDeviceManager.nudge();
+      } catch (e, stack) {
+        afLog('audio', 'seek failed', error: e, stackTrace: stack);
+      }
+    });
   }
 
   Future<void> skipToNext() async {
