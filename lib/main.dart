@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,11 +30,6 @@ const _fallbackDeviceIdKey = 'aetherfin.deviceId.fallback.v1';
 /// `adb logcat | grep aetherfin:boot` shows the full startup trace.
 /// PII (usernames, server URLs) is redacted in release builds.
 void _boot(String message) => afLog('boot', message);
-
-/// Whether the AudioService foreground integration is available.
-/// Exposed so the UI can surface a degraded-mode banner if needed.
-bool _audioServiceAvailable = false;
-bool get audioServiceAvailable => _audioServiceAvailable;
 
 
 
@@ -136,34 +130,8 @@ Future<void> main() async {
     _boot('MpvAudioKit.ensureInitialized OK');
 
     // ── Phase 3: OS audio service ─────────────────────────────────────────
-    // AudioService.init must complete before runApp so the foreground
-    // service is registered before any playback call can arrive.
-    late final AfPlayerService handler;
-    try {
-      _boot('AudioService.init starting');
-      handler = await AudioService.init(
-        builder: AfPlayerService.new,
-        config: AudioServiceConfig(
-          androidNotificationChannelId: 'dev.aetherfin.audio',
-          androidNotificationChannelName: 'Aetherfin playback',
-          androidNotificationOngoing: true,
-          androidStopForegroundOnPause: true,
-          androidNotificationIcon: 'drawable/ic_launcher_foreground',
-          notificationColor: const Color(0xFF332C7A),
-        ),
-      ).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw TimeoutException('AudioService.init timeout'),
-      );
-      _audioServiceAvailable = true;
-      _boot('AudioService.init OK');
-    } catch (e, stack) {
-      afLog('error', 'AudioService.init failed', error: e, stackTrace: stack);
-      // Degraded mode: in-app controls work, lock-screen controls won't.
-      // _audioServiceAvailable stays false so the UI can surface a banner.
-      handler = AfPlayerService();
-      _boot('AudioService.init failed — degraded mode (no lock-screen controls)');
-    }
+    final handler = AfPlayerService();
+    _boot('AfPlayerService initialized');
 
     // ── Phase 4: Provider container + router wiring ───────────────────────
     _boot('calling runApp');

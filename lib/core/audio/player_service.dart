@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/services.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../utils/log.dart';
@@ -13,9 +13,8 @@ import 'queue_manager.dart';
 
 import 'spectrum_settings.dart';
 
-/// Bridges [Player] (mpv_audio_kit) with [audio_service] so the OS
-/// lock-screen / notification controls drive playback.
-class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
+/// Bridges [Player] (mpv_audio_kit) with a platform-native media session.
+class AfPlayerService {
   final Player _player;
   late final AfPositionTracker _positionTracker;
   late final AfArtworkManager _artworkManager;
@@ -28,7 +27,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   bool _disposed = false;
 
-
+  static const _channel = MethodChannel('aetherfin.media_session');
 
   DateTime _lastPlaybackStatePush = DateTime.fromMillisecondsSinceEpoch(0);
   bool _lastPushedPlaying = false;
@@ -52,9 +51,11 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       isLoadingQueue: () => _isLoadingQueue,
     );
     _artworkManager = AfArtworkManager()
-      ..onArtworkChanged = _updateMediaItem;
+      ..onArtworkChanged = _pushStateToNative;
     _audioDeviceManager = AfAudioDeviceManager(player: _player);
     _queueManager = AfQueueManager();
+
+    _channel.setMethodCallHandler(_handleMethodCall);
 
     // Set audio driver BEFORE binding streams. If setAudioDriver is called
     // after property observation starts, it can re-initialize the output
@@ -502,7 +503,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     });
   }
 
-  @override
   Future<void> play() async {
     _userPaused = false;
     _positionTracker.onPlay();
@@ -514,7 +514,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     }
   }
 
-  @override
   Future<void> pause() async {
     _userPaused = true;
     _pendingPlayNudgeIdx = null;
@@ -526,7 +525,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     }
   }
 
-  @override
   Future<void> stop() async {
     _userPaused = true;
     _pendingPlayNudgeIdx = null;
@@ -538,11 +536,10 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     }
   }
 
-  @override
   Future<void> seek(Duration position) async {
     if (_isLoadingQueue) return;
     _positionTracker.onSeek(position);
-    _updatePlaybackState();
+    _pushStateToNative();
 
     try {
       await _player.seek(position);
@@ -552,7 +549,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     }
   }
 
-  @override
   Future<void> skipToNext() async {
     if (_isLoadingQueue) return;
     return _queueLock.run(() async {
@@ -564,7 +560,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     });
   }
 
-  @override
   Future<void> skipToPrevious() async {
     if (_isLoadingQueue) return;
     return _queueLock.run(() async {
@@ -576,7 +571,6 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     });
   }
 
-  @override
   Future<void> skipToQueueItem(int index) async {
     if (_isLoadingQueue) return;
     return _queueLock.run(() async {
@@ -901,7 +895,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
               'title="${track.title}" index=$idx',
         );
         onTrackChanged?.call(track);
-        _updateMediaItem();
+        _pushStateToNative();
 
         try {
           await _reconfigureSpectrumOnTrackChange();
@@ -938,7 +932,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
     _subs.add(_player.stream.playing.listen((playing) async {
       try {
-        _updatePlaybackState();
+        _pushStateToNative();
         if (playing) {
           _pendingPlayNudgeIdx = null;
           _userPaused = false;
@@ -967,13 +961,13 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     }));
 
     _subs.add(_player.stream.position.listen((_) => _updatePlaybackStateThrottled()));
-    _subs.add(_player.stream.buffering.listen((_) => _updatePlaybackState()));
+    _subs.add(_player.stream.buffering.listen((_) => _pushStateToNative()));
 
     _subs.add(_player.stream.completed.listen((completed) async {
       try {
         if (_disposed) return;
         if (_isLoadingQueue) return;
-        _updatePlaybackState();
+        _pushStateToNative();
         if (!completed) return;
 
         // Snapshot state at event time to prevent race with setAfLoopMode
@@ -1026,10 +1020,10 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       }
     }));
 
-    _subs.add(_player.stream.rate.listen((_) => _updatePlaybackState()));
+    _subs.add(_player.stream.rate.listen((_) => _pushStateToNative()));
     _subs.add(_player.stream.duration.listen((dur) {
       if (dur > Duration.zero) {
-        _updateMediaItem();
+        _pushStateToNative();
       }
     }));
     _subs.add(_player.stream.coverArt.listen((raw) async {
@@ -1039,7 +1033,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
         } catch (e, stack) {
           afLog('audio', 'persistCover failed', error: e, stackTrace: stack);
         }
-        _updateMediaItem();
+        _pushStateToNative();
       } catch (e, stack) {
         afLog('audio', 'coverArt handler failed', error: e, stackTrace: stack);
       }
@@ -1075,52 +1069,21 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     _lastPlaybackStatePush = now;
     _lastPushedPlaying = s.playing;
     _lastPushedBuffering = s.buffering;
-    _updatePlaybackState();
+    _pushStateToNative();
   }
 
-  void _updatePlaybackState() {
+  void _pushStateToNative() {
     if (_disposed) return;
+    final track = _queueManager.currentTrack;
+    if (track == null) {
+      _channel.invokeMethod('clear');
+      return;
+    }
+
     final s = _player.state;
     final isQueueEnd = s.completed && _queueManager.isAtQueueEnd;
     final effectivePlaying = isQueueEnd ? false : (s.playing || shouldAdvancePosition);
 
-    playbackState.add(
-      PlaybackState(
-        controls: [
-          MediaControl.skipToPrevious,
-          effectivePlaying ? MediaControl.pause : MediaControl.play,
-          MediaControl.skipToNext,
-        ],
-        systemActions: const {
-          MediaAction.seek,
-          MediaAction.seekForward,
-          MediaAction.seekBackward,
-          MediaAction.stop,
-        },
-        androidCompactActionIndices: const [0, 1, 2],
-        processingState: s.buffering
-            ? AudioProcessingState.buffering
-            : isQueueEnd
-                ? AudioProcessingState.idle
-                : AudioProcessingState.ready,
-        playing: effectivePlaying,
-        updatePosition: _positionTracker.lastKnownPosition,
-        bufferedPosition: _isLoadingQueue ? Duration.zero : s.buffer,
-        speed: s.rate,
-        queueIndex: _queueManager.currentIndex >= 0
-            ? _queueManager.currentIndex
-            : null,
-      ),
-    );
-  }
-
-  void _updateMediaItem() {
-    if (_disposed) return;
-    final track = _queueManager.currentTrack;
-    if (track == null) {
-      mediaItem.add(null);
-      return;
-    }
     final artUri = _artworkManager.artUri(track);
     if (artUri == null && _artworkManager.needsRemoteArtwork(track)) {
       unawaited(_artworkManager.downloadArtworkForNotification(track));
@@ -1129,22 +1092,63 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     final mpvDur = _isLoadingQueue ? Duration.zero : _player.state.duration;
     final effectiveDuration = mpvDur > Duration.zero ? mpvDur : track.duration;
 
-    mediaItem.add(
-      MediaItem(
-        id: track.id,
-        title: track.title,
-        artist: track.artistName,
-        album: track.albumName,
-        duration: effectiveDuration == Duration.zero ? null : effectiveDuration,
-        artUri: artUri,
-        extras: {
-          'albumId': track.albumId,
-          'artistId': track.artistId,
-        },
-      ),
-    );
+    final artPath = artUri != null && artUri.isScheme('file') ? artUri.toFilePath() : null;
+
+    final args = {
+      'playing': effectivePlaying,
+      'buffering': s.buffering,
+      'positionMs': _positionTracker.lastKnownPosition.inMilliseconds,
+      'durationMs': effectiveDuration.inMilliseconds,
+      'speed': s.rate,
+      'title': track.title,
+      'artist': track.artistName,
+      'album': track.albumName,
+      'artPath': artPath,
+      'queueIndex': _queueManager.currentIndex >= 0 ? _queueManager.currentIndex : null,
+      'queueSize': _queueManager.currentQueue.length,
+    };
+
+    _channel.invokeMethod('updateState', args).catchError((Object e) {
+      afLog('error', 'Failed to update native media state', error: e);
+    });
   }
 
+  Future<dynamic> _handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'play':
+        await play();
+        break;
+      case 'pause':
+        await pause();
+        break;
+      case 'next':
+        await skipToNext();
+        break;
+      case 'previous':
+        await skipToPrevious();
+        break;
+      case 'stop':
+        await stop();
+        break;
+      case 'seek':
+        final positionMs = call.arguments['positionMs'] as int?;
+        if (positionMs != null) {
+          await seek(Duration(milliseconds: positionMs));
+        }
+        break;
+      case 'skipTo':
+        final queueIndex = call.arguments['queueIndex'] as int?;
+        if (queueIndex != null) {
+          await skipToQueueItem(queueIndex);
+        }
+        break;
+      default:
+        throw PlatformException(
+          code: 'Unimplemented',
+          details: 'Method ${call.method} is not implemented',
+        );
+    }
+  }
 }
 
 /// Sanitise an [AudioEffects] bundle before it goes into libmpv's
