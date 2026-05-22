@@ -664,15 +664,17 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   }
 
   Future<void> setAfLoopMode(Loop mode) async {
-    try {
-      await _player.setLoop(mode);
-      if (isCompleted && !isPlaying && mode == Loop.playlist) {
-        await _queueLock.run(() => _jumpAndPlay(0));
+    return _queueLock.run(() async {
+      try {
+        await _player.setLoop(mode);
+        if (isCompleted && !isPlaying && mode == Loop.playlist) {
+          await _jumpAndPlay(0);
+        }
+        afLog('data', 'loopMode source=live mode=${mode.name}');
+      } catch (e, stack) {
+        afLog('audio', 'setAfLoopMode failed', error: e, stackTrace: stack);
       }
-      afLog('data', 'loopMode source=live mode=${mode.name}');
-    } catch (e, stack) {
-      afLog('audio', 'setAfLoopMode failed', error: e, stackTrace: stack);
-    }
+    });
   }
 
   Future<void> setAfSpeed(double speed) async {
@@ -961,23 +963,27 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
       _updatePlaybackState();
       if (!completed) return;
 
+      // Snapshot state at event time to prevent race with setAfLoopMode
+      // changing _player.state.loop while the lock action is queued.
+      final loopAtEvent = _player.state.loop;
+      final playlistIndexAtEvent = _player.state.playlist.index;
+
       await _queueLock.run(() async {
         final finishedTrack = _queueManager.currentTrack;
         final nextIdx = _queueManager.currentIndex + 1;
         final isAtEnd = nextIdx >= _queueManager.currentQueue.length;
-        if (!isAtEnd && _player.state.loop == Loop.file) {
+        if (!isAtEnd && loopAtEvent == Loop.file) {
           if (!_player.state.playing) {
             await _player.play();
           }
           afLog('audio', 'completed: replay file (loop=file) — mpv handles internally');
         } else if (!isAtEnd) {
-          final currentMpvIdx = _player.state.playlist.index;
-          if (currentMpvIdx == _queueManager.currentIndex) {
+          if (playlistIndexAtEvent == _queueManager.currentIndex) {
             await _jumpAndPlay(nextIdx);
             afLog('audio', 'completed: jump+play to index=$nextIdx');
           }
         } else {
-          switch (_player.state.loop) {
+          switch (loopAtEvent) {
             case Loop.off:
               _positionTracker.onPause();
               try {
