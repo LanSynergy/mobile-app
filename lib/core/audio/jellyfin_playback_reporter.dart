@@ -63,6 +63,9 @@ class JellyfinPlaybackReporter {
               .reportPlaybackStop(previousId, position)
               .timeout(const Duration(seconds: 5));
           if (_disposed) return;
+          // Re-check after the await: a concurrent _onTrackChanged(null)
+          // may have cleared _lastReportedTrackId, invalidating our context.
+          if (_lastReportedTrackId != previousId) return;
           afLog(
             'data',
             'playbackStop source=live track=$previousId '

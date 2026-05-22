@@ -42,6 +42,7 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
   bool _isLoadingQueue = false;
   int _shuffleGen = 0;
   int _queueLoadGen = 0;
+  int _playlistHandlerGen = 0;
   final AfAsyncLock _queueLock = AfAsyncLock();
 
   AfPlayerService() : _player = Player() {
@@ -881,76 +882,87 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   void _bindStreams() {
     _subs.add(_player.stream.playlist.listen((playlist) async {
-      final idx = playlist.index;
-      if (idx < 0 || idx >= _queueManager.currentQueue.length) return;
-      if (!_queueManager.canHandlePlaylistEvent) return;
-
-      final trackChanged = _queueManager.processPlaylistEvent(idx);
-      if (!trackChanged) return;
-      final track = _queueManager.currentTrack;
-      if (track == null) return;
-
-      _positionTracker.onTrackChanged();
-      _queueManager.emitCurrentTrack(track);
-      afLog(
-        'data',
-        'currentTrack source=live id=${track.id} '
-            'title="${track.title}" index=$idx',
-      );
-      onTrackChanged?.call(track);
-      _updateMediaItem();
-
+      final myGen = ++_playlistHandlerGen;
       try {
-        await _reconfigureSpectrumOnTrackChange();
-      } catch (e, stack) {
-        afLog('audio', 'spectrum configuration failed', error: e, stackTrace: stack);
-      }
-      _nudgeRetries = 0;
-      _pendingPlayNudgeIdx = idx;
+        final idx = playlist.index;
+        if (idx < 0 || idx >= _queueManager.currentQueue.length) return;
+        if (!_queueManager.canHandlePlaylistEvent) return;
 
-      if (!_player.state.playing && !_userPaused) {
-        if (_nudgeRetries < _maxNudgeRetries) {
-          _nudgeRetries++;
-          try {
-            await _player.play();
+        final trackChanged = _queueManager.processPlaylistEvent(idx);
+        if (!trackChanged) return;
+        final track = _queueManager.currentTrack;
+        if (track == null) return;
+
+        _positionTracker.onTrackChanged();
+        _queueManager.emitCurrentTrack(track);
+        afLog(
+          'data',
+          'currentTrack source=live id=${track.id} '
+              'title="${track.title}" index=$idx',
+        );
+        onTrackChanged?.call(track);
+        _updateMediaItem();
+
+        try {
+          await _reconfigureSpectrumOnTrackChange();
+        } catch (e, stack) {
+          afLog('audio', 'spectrum configuration failed', error: e, stackTrace: stack);
+        }
+
+        if (myGen != _playlistHandlerGen) return;
+        _nudgeRetries = 0;
+        _pendingPlayNudgeIdx = idx;
+
+        if (!_player.state.playing && !_userPaused) {
+          if (_nudgeRetries < _maxNudgeRetries) {
+            _nudgeRetries++;
+            try {
+              await _player.play();
+              afLog('audio',
+                  'auto-advance nudge (playlist event) play() at index=$idx (attempt $_nudgeRetries)');
+            } catch (e, stack) {
+              afLog('audio', 'auto-advance nudge play failed', error: e, stackTrace: stack);
+            }
+          } else {
+            _pendingPlayNudgeIdx = null;
             afLog('audio',
-                'auto-advance nudge (playlist event) play() at index=$idx (attempt $_nudgeRetries)');
-          } catch (e, stack) {
-            afLog('audio', 'auto-advance nudge play failed', error: e, stackTrace: stack);
+                'auto-advance nudge exhausted after $_maxNudgeRetries attempts at index=$idx');
           }
         } else {
           _pendingPlayNudgeIdx = null;
-          afLog('audio',
-              'auto-advance nudge exhausted after $_maxNudgeRetries attempts at index=$idx');
         }
-      } else {
-        _pendingPlayNudgeIdx = null;
+      } catch (e, stack) {
+        afLog('audio', 'playlist handler failed', error: e, stackTrace: stack);
       }
     }));
 
     _subs.add(_player.stream.playing.listen((playing) async {
-      _updatePlaybackState();
-      if (playing) {
-        _pendingPlayNudgeIdx = null;
-        _userPaused = false;
-        _nudgeRetries = 0;
-      } else if (!_userPaused &&
-          _pendingPlayNudgeIdx != null &&
-          _pendingPlayNudgeIdx == _queueManager.currentIndex) {
-        if (_nudgeRetries < _maxNudgeRetries) {
-          _nudgeRetries++;
-          try {
-            await _player.play();
-            afLog('audio',
-                'auto-advance nudge play() at index=${_queueManager.currentIndex} (attempt $_nudgeRetries)');
-          } catch (e, stack) {
-            afLog('audio', 'auto-advance nudge play failed', error: e, stackTrace: stack);
-          }
-        } else {
+      try {
+        _updatePlaybackState();
+        if (playing) {
           _pendingPlayNudgeIdx = null;
-          afLog('audio',
-              'auto-advance nudge exhausted after $_maxNudgeRetries attempts at index=${_queueManager.currentIndex}');
+          _userPaused = false;
+          _nudgeRetries = 0;
+        } else if (!_userPaused &&
+            _pendingPlayNudgeIdx != null &&
+            _pendingPlayNudgeIdx == _queueManager.currentIndex) {
+          if (_nudgeRetries < _maxNudgeRetries) {
+            _nudgeRetries++;
+            try {
+              await _player.play();
+              afLog('audio',
+                  'auto-advance nudge play() at index=${_queueManager.currentIndex} (attempt $_nudgeRetries)');
+            } catch (e, stack) {
+              afLog('audio', 'auto-advance nudge play failed', error: e, stackTrace: stack);
+            }
+          } else {
+            _pendingPlayNudgeIdx = null;
+            afLog('audio',
+                'auto-advance nudge exhausted after $_maxNudgeRetries attempts at index=${_queueManager.currentIndex}');
+          }
         }
+      } catch (e, stack) {
+        afLog('audio', 'playing handler failed', error: e, stackTrace: stack);
       }
     }));
 
@@ -958,55 +970,60 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     _subs.add(_player.stream.buffering.listen((_) => _updatePlaybackState()));
 
     _subs.add(_player.stream.completed.listen((completed) async {
-      if (_disposed) return;
-      if (_isLoadingQueue) return;
-      _updatePlaybackState();
-      if (!completed) return;
+      try {
+        if (_disposed) return;
+        if (_isLoadingQueue) return;
+        _updatePlaybackState();
+        if (!completed) return;
 
-      // Snapshot state at event time to prevent race with setAfLoopMode
-      // changing _player.state.loop while the lock action is queued.
-      final loopAtEvent = _player.state.loop;
-      final playlistIndexAtEvent = _player.state.playlist.index;
+        // Snapshot state at event time to prevent race with setAfLoopMode
+        // changing _player.state.loop while the lock action is queued.
+        final loopAtEvent = _player.state.loop;
+        final playlistIndexAtEvent = _player.state.playlist.index;
+        final playingAtEvent = _player.state.playing;
 
-      await _queueLock.run(() async {
-        final finishedTrack = _queueManager.currentTrack;
-        final nextIdx = _queueManager.currentIndex + 1;
-        final isAtEnd = nextIdx >= _queueManager.currentQueue.length;
-        if (!isAtEnd && loopAtEvent == Loop.file) {
-          if (!_player.state.playing) {
-            await _player.play();
+        await _queueLock.run(() async {
+          final finishedTrack = _queueManager.currentTrack;
+          final nextIdx = _queueManager.currentIndex + 1;
+          final isAtEnd = nextIdx >= _queueManager.currentQueue.length;
+          if (!isAtEnd && loopAtEvent == Loop.file) {
+            if (!playingAtEvent) {
+              await _player.play();
+            }
+            afLog('audio', 'completed: replay file (loop=file) — mpv handles internally');
+          } else if (!isAtEnd) {
+            if (playlistIndexAtEvent == _queueManager.currentIndex) {
+              await _jumpAndPlay(nextIdx);
+              afLog('audio', 'completed: jump+play to index=$nextIdx');
+            }
+          } else {
+            switch (loopAtEvent) {
+              case Loop.off:
+                _positionTracker.onPause();
+                try {
+                  await _player.pause();
+                } catch (e, stack) {
+                  afLog('audio', 'pause failed on queue completion', error: e, stackTrace: stack);
+                }
+                afLog('audio', 'queue end, auto-stop (loop=off)');
+              case Loop.playlist:
+                await _jumpAndPlay(0);
+                afLog('audio', 'queue end, looping playlist');
+              case Loop.file:
+                if (!playingAtEvent) {
+                  await _player.play();
+                }
+                afLog('audio', 'queue end, looping file — mpv handles internally');
+            }
           }
-          afLog('audio', 'completed: replay file (loop=file) — mpv handles internally');
-        } else if (!isAtEnd) {
-          if (playlistIndexAtEvent == _queueManager.currentIndex) {
-            await _jumpAndPlay(nextIdx);
-            afLog('audio', 'completed: jump+play to index=$nextIdx');
-          }
-        } else {
-          switch (loopAtEvent) {
-            case Loop.off:
-              _positionTracker.onPause();
-              try {
-                await _player.pause();
-              } catch (e, stack) {
-                afLog('audio', 'pause failed on queue completion', error: e, stackTrace: stack);
-              }
-              afLog('audio', 'queue end, auto-stop (loop=off)');
-            case Loop.playlist:
-              await _jumpAndPlay(0);
-              afLog('audio', 'queue end, looping playlist');
-            case Loop.file:
-              if (!_player.state.playing) {
-                await _player.play();
-              }
-              afLog('audio', 'queue end, looping file — mpv handles internally');
-          }
-        }
 
-        if (finishedTrack != null) {
-          onTrackCompleted?.call(finishedTrack);
-        }
-      });
+          if (finishedTrack != null) {
+            unawaited(Future.microtask(() => onTrackCompleted?.call(finishedTrack)));
+          }
+        });
+      } catch (e, stack) {
+        afLog('audio', 'completed handler failed', error: e, stackTrace: stack);
+      }
     }));
 
     _subs.add(_player.stream.rate.listen((_) => _updatePlaybackState()));
@@ -1017,19 +1034,27 @@ class AfPlayerService extends BaseAudioHandler with SeekHandler, QueueHandler {
     }));
     _subs.add(_player.stream.coverArt.listen((raw) async {
       try {
-        await _artworkManager.persistCover(raw);
+        try {
+          await _artworkManager.persistCover(raw);
+        } catch (e, stack) {
+          afLog('audio', 'persistCover failed', error: e, stackTrace: stack);
+        }
+        _updateMediaItem();
       } catch (e, stack) {
-        afLog('audio', 'persistCover failed', error: e, stackTrace: stack);
+        afLog('audio', 'coverArt handler failed', error: e, stackTrace: stack);
       }
-      _updateMediaItem();
     }));
 
     _subs.add(_player.stream.audioDevice.listen((newDevice) async {
-      if (!_audioDeviceManager.isRealDeviceChange(newDevice.name)) return;
       try {
-        await _audioDeviceManager.reapplyPersistedEffects();
+        if (!_audioDeviceManager.isRealDeviceChange(newDevice.name)) return;
+        try {
+          await _audioDeviceManager.reapplyPersistedEffects();
+        } catch (e, stack) {
+          afLog('audio', 'reapplyPersistedEffects failed', error: e, stackTrace: stack);
+        }
       } catch (e, stack) {
-        afLog('audio', 'reapplyPersistedEffects failed', error: e, stackTrace: stack);
+        afLog('audio', 'audioDevice handler failed', error: e, stackTrace: stack);
       }
     }));
 
