@@ -479,7 +479,7 @@ If `curl` also returns 500, restart the Jellyfin Docker container.
 `main()` reads `AuthStorage().load()` before `runApp` and injects the
 result via `ProviderScope` overrides. `AuthNotifier` takes the initial
 value through its constructor — no async hydrate, no race window.
-Storage IO has a 5s timeout; `AudioService.init` has a 10s timeout.
+Storage IO has a 5s timeout.
 
 ### 5.3 Router-level auth redirects
 
