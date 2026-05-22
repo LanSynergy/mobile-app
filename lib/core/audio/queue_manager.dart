@@ -157,7 +157,18 @@ class AfQueueManager {
     return trackChanged;
   }
 
+  /// Callback invoked when [syncFromMpv] fails to resolve tracks.
+  /// The [resolveCount]/[totalCount] ratio indicates severity.
+  void Function(int resolveCount, int totalCount)? onSyncFailed;
+
   /// Reconcile the Dart queue order with mpv's (post-shuffle).
+  ///
+  /// On **full resolution** (all mpv items matched): the queue is replaced
+  /// with the reordered tracks. On **partial resolution** (some items
+  /// matched): the existing queue is preserved and a warning is logged to
+  /// avoid silent truncation. On **full failure** (zero items matched): the
+  /// existing queue is preserved and [onSyncFailed] is invoked so the
+  /// service can surface the error to the UI.
   void syncFromMpv(List<Media> mpvItems, int newIdx) {
     if (mpvItems.isEmpty) return;
 
@@ -185,26 +196,24 @@ class AfQueueManager {
         ..addAll(reordered);
       _currentIndex = newIdx.clamp(0, _trackQueue.length - 1);
     } else if (reordered.isNotEmpty) {
+      // Partial sync — preserve existing queue to prevent silent truncation.
+      // The mpv-side playlist may have URLs we can't map back to AfTracks,
+      // but losing those tracks from the UI is worse than a stale order.
       afLog(
         'audio',
         '_syncTrackQueueFromMpv partial sync: '
             'resolved ${reordered.length}/${mpvItems.length} tracks, '
-            'updating with resolved subset',
+            'preserving existing queue',
       );
-      _trackQueue
-        ..clear()
-        ..addAll(reordered);
-      _currentIndex = newIdx.clamp(0, _trackQueue.length - 1);
+      onSyncFailed?.call(reordered.length, mpvItems.length);
     } else {
       afLog(
         'audio',
         '_syncTrackQueueFromMpv full sync failure: '
-            'resolved 0/${mpvItems.length} tracks, clearing queue',
+            'resolved 0/${mpvItems.length} tracks, '
+            'preserving existing queue',
       );
-      _trackQueue.clear();
-      _currentIndex = 0;
-      _trackController.add(null);
-      _queueController.add(const <AfTrack>[]);
+      onSyncFailed?.call(0, mpvItems.length);
     }
   }
 

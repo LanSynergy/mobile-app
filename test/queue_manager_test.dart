@@ -48,25 +48,28 @@ void main() {
       });
     });
 
-    group('BUG-009: Full sync failure emission', () {
-      test('syncFromMpv emits null track and empty queue on full sync failure', () async {
+    group('BUG-009: Full sync failure preservation', () {
+      test('syncFromMpv preserves existing queue on full sync failure', () async {
         queueManager.replaceQueue(tracks, 0);
 
         // Listen to streams
         AfTrack? emittedTrack;
-        var trackEmitted = false;
         List<AfTrack>? emittedQueue;
-        var queueEmitted = false;
 
         final sub1 = queueManager.currentTrackStream.listen((track) {
           emittedTrack = track;
-          trackEmitted = true;
         });
 
         final sub2 = queueManager.queueStream.listen((q) {
           emittedQueue = q;
-          queueEmitted = true;
         });
+
+        int? syncFailedResolved;
+        int? syncFailedTotal;
+        queueManager.onSyncFailed = (resolved, total) {
+          syncFailedResolved = resolved;
+          syncFailedTotal = total;
+        };
 
         // Trigger a full sync failure by resolving 0 tracks
         final mpvItems = [Media('https://example.com/unknown_url')];
@@ -75,17 +78,49 @@ void main() {
         // Allow microtasks to process stream events
         await Future<void>.delayed(Duration.zero);
 
-        expect(queueManager.currentQueue, isEmpty);
+        // Queue should be preserved — not cleared
+        expect(queueManager.currentQueue.length, 3);
         expect(queueManager.currentIndex, 0);
 
-        expect(trackEmitted, isTrue);
-        expect(emittedTrack, isNull);
+        // onSyncFailed should have been invoked
+        expect(syncFailedResolved, 0);
+        expect(syncFailedTotal, 1);
 
-        expect(queueEmitted, isTrue);
-        expect(emittedQueue, isEmpty);
+        // No track/queue emissions on failure (queue unchanged)
+        expect(emittedTrack, isNull);
+        expect(emittedQueue, isNull);
 
         await sub1.cancel();
         await sub2.cancel();
+      });
+
+      test('syncFromMpv invokes onSyncFailed on partial sync failure', () async {
+        queueManager.replaceQueue(tracks, 0);
+
+        int? syncFailedResolved;
+        int? syncFailedTotal;
+        queueManager.onSyncFailed = (resolved, total) {
+          syncFailedResolved = resolved;
+          syncFailedTotal = total;
+        };
+
+        // 2 mpv items, only 1 resolvable — partial failure
+        queueManager.rebuildUrlMap(
+          [Media('https://example.com/track1')],
+          [tracks[0]],
+        );
+        final mpvItems = [
+          Media('https://example.com/track1'),
+          Media('https://example.com/unknown'),
+        ];
+        queueManager.syncFromMpv(mpvItems, 0);
+
+        await Future<void>.delayed(Duration.zero);
+
+        // Queue preserved
+        expect(queueManager.currentQueue.length, 3);
+        expect(syncFailedResolved, 1);
+        expect(syncFailedTotal, 2);
       });
     });
 
