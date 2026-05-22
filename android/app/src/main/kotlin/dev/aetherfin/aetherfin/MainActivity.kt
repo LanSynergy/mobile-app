@@ -62,7 +62,9 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         mediaSessionChannel?.setMethodCallHandler(null)
-        mediaSessionChannel = null
+        // Keep mediaSessionChannel reference alive across Activity recreation
+        // so AetherfinMediaSessionService commands are not silently dropped.
+        // The reference is overwritten on the next configureFlutterEngine call.
         super.onDestroy()
     }
 }

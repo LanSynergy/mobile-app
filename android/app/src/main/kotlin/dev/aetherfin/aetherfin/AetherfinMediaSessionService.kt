@@ -300,7 +300,11 @@ class AetherfinMediaSessionService : Service() {
     private fun sendCommandToFlutter(method: String, args: Any? = null) {
         MainActivity.mediaSessionChannel?.let { channel ->
             android.os.Handler(android.os.Looper.getMainLooper()).post {
-                channel.invokeMethod(method, args)
+                try {
+                    channel.invokeMethod(method, args)
+                } catch (e: Exception) {
+                    // Stale channel during Activity recreation — safe to ignore.
+                }
             }
         }
     }

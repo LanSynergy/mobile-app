@@ -504,6 +504,7 @@ class AfPlayerService {
   }
 
   Future<void> play() async {
+    if (_disposed) return;
     _userPaused = false;
     _positionTracker.onPlay();
     try {
@@ -515,6 +516,7 @@ class AfPlayerService {
   }
 
   Future<void> pause() async {
+    if (_disposed) return;
     _userPaused = true;
     _pendingPlayNudgeIdx = null;
     _positionTracker.onPause();
@@ -526,6 +528,7 @@ class AfPlayerService {
   }
 
   Future<void> stop() async {
+    if (_disposed) return;
     _userPaused = true;
     _pendingPlayNudgeIdx = null;
     _positionTracker.onStop();
@@ -537,12 +540,13 @@ class AfPlayerService {
   }
 
   Future<void> seek(Duration position) async {
+    if (_disposed) return;
     if (_isLoadingQueue) return;
     _positionTracker.onSeek(position);
-    _pushStateToNative();
 
     try {
       await _player.seek(position);
+      _pushStateToNative();
       _audioDeviceManager.nudge();
     } catch (e, stack) {
       afLog('audio', 'seek failed', error: e, stackTrace: stack);
@@ -837,6 +841,7 @@ class AfPlayerService {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _channel.setMethodCallHandler(null);
     _positionTracker.dispose();
     _queueManager.dispose();
     for (final s in _subs) {
@@ -1076,7 +1081,9 @@ class AfPlayerService {
     if (_disposed) return;
     final track = _queueManager.currentTrack;
     if (track == null) {
-      _channel.invokeMethod('clear');
+      _channel.invokeMethod('clear').catchError((Object e) {
+        afLog('error', 'Failed to clear native media state', error: e);
+      });
       return;
     }
 
