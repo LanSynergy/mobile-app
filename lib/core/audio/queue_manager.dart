@@ -80,6 +80,7 @@ class AfQueueManager {
   // ── Queue lifecycle ────────────────────────────────────────────────
 
   void replaceQueue(List<AfTrack> tracks, int startIndex) {
+    if (tracks.isEmpty) return;
     _trackQueue
       ..clear()
       ..addAll(tracks);
