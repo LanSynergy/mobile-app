@@ -112,8 +112,8 @@ by law.
 
 ## 7. Third-party components
 
-Aetherfin uses third-party open-source libraries (Flutter, just_audio,
-audio_service, dio, flutter_riverpod, cached_network_image,
+Aetherfin uses third-party open-source libraries (Flutter, mpv_audio_kit,
+dio, flutter_riverpod, cached_network_image,
 flutter_secure_storage, palette_generator, etc.) and connects to
 Jellyfin servers operated by their respective owners. These components
 are licensed separately and are not maintained by the Aetherfin author.

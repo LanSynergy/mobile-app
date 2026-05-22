@@ -34,7 +34,7 @@ import io.flutter.plugin.common.PluginRegistry
  * ongoing.
  *
  * On Android 15 and older, every method is a no-op. The existing
- * `audio_service` `MediaStyle` notification continues to render unchanged
+ * native `MediaStyle` notification continues to render unchanged
  * on those devices (and *also* on Android 16 — the two notifications are
  * complementary: ProgressStyle for the chip, MediaStyle for the
  * expanded shade with transport controls).
@@ -44,7 +44,7 @@ import io.flutter.plugin.common.PluginRegistry
  * promotion: Standard, BigTextStyle, CallStyle, ProgressStyle,
  * MetricStyle. `MediaStyle` is intentionally not in that list. A
  * notification can only have one Style, so we run a parallel
- * ProgressStyle notification rather than mutate `audio_service`'s.
+ * ProgressStyle notification rather than mutate the native media service's.
  *
  * MethodChannel: `aetherfin.live_update`
  *

@@ -165,5 +165,5 @@ MIT. See [LICENSE](./LICENSE).
 
 - [Jellyfin](https://jellyfin.org) and [Navidrome](https://www.navidrome.org) — the servers
 - [mpv_audio_kit](https://pub.dev/packages/mpv_audio_kit) — libmpv audio engine
-- [audio_service](https://pub.dev/packages/audio_service) — lock-screen controls
+- Custom Android MediaSession Service — platform-native lock-screen controls via MethodChannel
 - [Finamp](https://github.com/jmshrv/finamp) — prior art

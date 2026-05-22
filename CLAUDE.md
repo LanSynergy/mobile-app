@@ -71,7 +71,7 @@ a local SQLite database (`sqflite`), and plays files via `content://` URIs.
 - Real-time FFT spectrum + client-side DSP for the visualizer.
 - FFT-driven artwork pulse (sub-bass transient detector).
 - Spectral color extraction from artwork (`palette_generator_master`).
-- Lock-screen / notification media-session integration (`audio_service`).
+- Lock-screen / notification media-session integration (custom Kotlin `MediaSessionCompat` + MethodChannel).
 - Cover-art file cache (`cached_network_image` for server, `Image.file` for local).
 - Local settings: audio-quality preference, sleep timer, EQ/DSP, ReplayGain.
 - **Local mode only:** metadata scanning, SQLite cache, SAF folder management.
@@ -109,7 +109,7 @@ On HTTP error, revert. Never store favorite state only on-device.
 | HTTP | `dio` ^5.7 + `dio_cache_interceptor` ^3.5 | One Dio per client. Jellyfin: auth header in `BaseOptions.headers`. Subsonic: auth as query params. |
 | Crypto | `crypto` ^3.0.6 | Subsonic token auth: `md5(password + salt)`. |
 | Audio | `mpv_audio_kit` ^0.1.3 | libmpv-backed player. Replaces `just_audio` + `audio_session`. |
-| Lock-screen | `audio_service` ^0.18 | `AfPlayerService extends BaseAudioHandler`. |
+| Lock-screen | Native MediaSession | Custom Kotlin service (`AetherfinMediaSessionService`) with `MethodChannel` (`aetherfin.media_session`). |
 | Storage | `flutter_secure_storage` ^9.2 (creds + deviceId), `shared_preferences` ^2.3 (settings), `drift` ^2.19 (local metadata cache) | Never store creds in shared_preferences. |
 | Discovery | `multicast_dns` ^0.3.2 | mDNS scan for `_jellyfin._tcp`. Navidrome: probed via Subsonic `ping.view`. |
 | Imagery | `cached_network_image` ^3.4, `flutter_svg` ^2.0, `palette_generator_master` ^1.1 | All cover art through `cached_network_image`. |
@@ -217,8 +217,8 @@ Loop.playlist  // repeat entire queue
 
 ```
 lib/
-├─ main.dart                ← runApp + boot trace + AudioService init
-│                             Startup timeouts (5s storage, 10s AudioService).
+├─ main.dart                ← runApp + boot trace + player service init
+│                             Startup timeouts (5s storage).
 │                             UUID v4 fallback device ID. Release error redaction.
 ├─ app/
 │  ├─ app.dart              ← Root MaterialApp.router
@@ -227,7 +227,7 @@ lib/
 ├─ design_tokens/           ← Single source of truth for §4 visual spec
 ├─ core/
 │  ├─ audio/
-│  │  ├─ player_service.dart        ← AfPlayerService: mpv_audio_kit + audio_service bridge.
+│  │  ├─ player_service.dart        ← AfPlayerService: mpv_audio_kit + MethodChannel bridge to Kotlin service.
 │  │  │                               Composes AfPositionTracker, AfArtworkManager,
 │  │  │                               AfAudioDeviceManager, AfQueueManager.
 │  │  │                               Throttled playbackState (~2 Hz), _pendingPlayNudgeIdx
@@ -531,11 +531,10 @@ servers in order:
 
 ## 7. Notification / lock-screen rules
 
-- Controls: `[skipToPrevious, pause/play, skipToNext]` with `androidCompactActionIndices: [0, 1, 2]`.
-- **Never include `MediaControl.stop`** in the controls array — `audio_service` converts it to a `CustomAction` (not a notification button), making index 3 out-of-bounds and dropping the "next" button.
-- `MediaAction.stop` goes in `systemActions` (renders as the notification cancel button).
-- **Never pass a network `artUri`** to `MediaItem` — `audio_service` tries to download it without auth headers, leaving `mediaMetadata = null` on Android and suppressing the notification. Only pass `file://` URIs from `_persistCover`.
-- `androidStopForegroundOnPause: true` — Samsung One UI hides ongoing notifications from demoted services when `false`.
+- Implemented via a platform-native Kotlin foreground service `AetherfinMediaSessionService` and a `MethodChannel` (`aetherfin.media_session`).
+- Controls are dynamically updated on the native side based on the current queue bounds (Previous/Play-Pause/Next).
+- **Never pass a network artwork URL** to the native player state — the native service reads artwork directly from local storage. Always resolve and download/save the artwork to a local `file://` URI first, and pass the path using `artPath` to the native service.
+- When playback is paused, the foreground service status is dropped (`stopForeground(false)`) to let the user swipe the notification away, but the notification itself is kept visible.
 
 ## 8. Background playback (Samsung / Doze)
 
@@ -716,12 +715,12 @@ PII (usernames, server URLs) must be redacted in release builds.
 9. **"go_router will figure out where to send a signed-in user."** No. Without `redirect:` + `refreshListenable`, you land on WelcomeScreen.
 10. **"`context.pop()` is safe on any screen."** No. Guard with `canPop()` on screens reached via `context.go()`.
 11. **"Use `context.go()` to navigate from lyrics to queue."** No. `go()` replaces the stack. Use `push()` for all detail/overlay screens.
-12. **"Include `MediaControl.stop` in the notification controls."** No. It becomes a `CustomAction`, breaks `androidCompactActionIndices`, and drops the next button.
-13. **"Pass the artwork network URL as `artUri` in `MediaItem`."** No. `audio_service` downloads it without auth headers → `mediaMetadata = null` → notification suppressed. Only pass `file://` URIs.
+12. **"Add stop action in compact controls."** No. Compact actions are handled dynamically on the native side (Previous/Play-Pause/Next) based on queue bounds.
+13. **"Pass the artwork network URL directly to the native media session."** No. The native service cannot fetch network URLs with auth headers. Always resolve and download/save artwork to a local `file://` URI first, passing the local file path as `artPath` to the native service.
 14. **"Use `Timer.periodic` for progress reporting."** No. It doesn't await the callback — requests pile up. Use a serialized `while (_running)` loop.
 15. **"Use `Future.delayed` for auto-advance."** No. Doze throttles it when the screen is off. Use stream callbacks.
 16. **"Use `.then()` chaining for jump+play."** No. Doze can defer `.then()` callbacks. Use `async/await` in a named method (`_jumpAndPlay`).
-17. **"Set `androidStopForegroundOnPause: false`."** No. Samsung One UI hides the notification when the service is demoted. Keep it `true`.
+17. **"Forget to call `notify()` after `stopForeground(false)` on pause."** If you stop the foreground service on pause without calling `notify()` again, the notification might be dismissed or hidden on some devices (like Samsung One UI).
 18. **"Use `AudioMotionVisualizer` or `Waveform` widgets."** These were deleted. The combined widget is `AudioVisualScrubber`.
 19. **"The visualizer should apply its own client-side DSP (log, treble boost, AGC, lerp)."** No. The engine's native C++ EMA handles all bounce physics. The client applies only a power-10 curve for visual compression and renders via vsync-aligned ticker. Adding client-side smoothing fights the engine and causes lag.
 20. **"Create a shader per bar inside `paint()`."** No. That's 64 allocations/frame at 60fps — causes raster-thread GC lag. Pre-compute shaders once per `paint()` call.
@@ -762,7 +761,7 @@ PII (usernames, server URLs) must be redacted in release builds.
 - **`PrimaryImageTag`**: Short hash for HTTP cache-busting on image URLs.
 - **`Loop.off / Loop.file / Loop.playlist`**: mpv_audio_kit loop enum.
 - **`FftFrame`**: mpv_audio_kit spectrum frame — `bands: Float32List` (64 values in [0,1], post-DSP).
-- **`AfPlayerService`**: The app's audio handler. Extends `BaseAudioHandler` (audio_service) and wraps `Player` (mpv_audio_kit).
+- **`AfPlayerService`**: Bridges the app's player with the platform-native Android `MediaSession` service. Wraps `Player` (mpv_audio_kit) and communicates with `AetherfinMediaSessionService` over the `aetherfin.media_session` MethodChannel.
 - **`_pendingPlayNudgeIdx`**: State machine field in `AfPlayerService`. Set when playlist index changes; cleared when `playing=true` fires. Prevents `Future.delayed` for auto-advance.
 - **`AudioVisualScrubber`**: Combined FFT visualizer + progress scrubber widget. Owns `_BlockNotifier` (signal DSP) and `_ScrubNotifier` (drag state). Two `RepaintBoundary` layers.
 - **`_BlockNotifier`**: `ChangeNotifier` inside `AudioVisualScrubber`. Applies power-10 curve to engine bands. `ingest()` updates data only; `flush()` fires `notifyListeners()` on vsync via ticker. 300ms silence timer triggers fade-out (0.85× decay per frame).

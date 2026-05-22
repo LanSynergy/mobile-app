@@ -7,7 +7,7 @@ import 'player_service.dart';
 /// `aetherfin.live_update` MethodChannel.
 ///
 /// CURRENTLY DISABLED: On Android 16+ the OS already promotes the
-/// audio_service MediaStyle notification to a rich media widget (with
+/// native MediaStyle notification to a rich media widget (with
 /// artwork, seekbar, and transport controls). Posting a second
 /// ProgressStyle notification just creates a duplicate in the
 /// notification shade — this applies to ALL Android 16 devices
