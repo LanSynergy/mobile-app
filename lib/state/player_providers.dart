@@ -210,7 +210,7 @@ final playbackSpeedProvider = StreamProvider.autoDispose<double>((ref) {
 
 final fftSpectrumProvider = StreamProvider.autoDispose<FftFrame>((ref) {
   final svc = ref.watch(playerServiceProvider);
-  return svc.spectrumStream.cast<FftFrame>();
+  return svc.spectrumStream;
 });
 
 final currentTrackProvider = StateProvider<AfTrack?>((ref) => null);
