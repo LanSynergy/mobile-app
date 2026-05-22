@@ -134,5 +134,36 @@ void main() {
         expect(queueManager.trackForUrl('url3'), isNull);
       });
     });
+
+    group('endPlayback', () {
+      test('sets currentTrack to null while preserving queue list', () async {
+        queueManager.replaceQueue(tracks, 0);
+        expect(queueManager.currentTrack, isNotNull);
+        expect(queueManager.currentQueue.length, 3);
+
+        AfTrack? emittedTrack;
+        final sub = queueManager.currentTrackStream.listen((track) {
+          emittedTrack = track;
+        });
+
+        queueManager.endPlayback();
+
+        // Allow stream event to process
+        await Future<void>.delayed(Duration.zero);
+
+        expect(queueManager.currentTrack, isNull);
+        expect(queueManager.currentIndex, -1);
+        expect(emittedTrack, isNull);
+
+        // Queue list, original queue, and URL map are preserved
+        expect(queueManager.currentQueue.length, 3);
+        expect(
+          queueManager.currentQueue.map((t) => t.id).toList(),
+          ['track1', 'track2', 'track3'],
+        );
+
+        await sub.cancel();
+      });
+    });
   });
 }

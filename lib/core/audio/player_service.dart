@@ -21,7 +21,7 @@ class AfPlayerService {
   late final AfAudioDeviceManager _audioDeviceManager;
   late final AfQueueManager _queueManager;
 
-  void Function(AfTrack track)? onTrackChanged;
+  void Function(AfTrack? track)? onTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
   final List<StreamSubscription<dynamic>> _subs = <StreamSubscription<dynamic>>[];
 
@@ -997,12 +997,20 @@ class AfPlayerService {
             switch (loopAtEvent) {
               case Loop.off:
                 _userPaused = true;
-                _positionTracker.onPause();
+                _pendingPlayNudgeIdx = null;
+                _positionTracker.onStop();
                 try {
-                  await _player.pause();
+                  await _player.stop();
                 } catch (e, stack) {
-                  afLog('audio', 'pause failed on queue completion', error: e, stackTrace: stack);
+                  afLog(
+                    'audio',
+                    'stop failed on queue completion',
+                    error: e,
+                    stackTrace: stack,
+                  );
                 }
+                _queueManager.endPlayback();
+                onTrackChanged?.call(null);
                 _pushStateToNative();
                 afLog('audio', 'queue end, auto-stop (loop=off)');
               case Loop.playlist:

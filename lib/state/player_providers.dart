@@ -18,7 +18,9 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     ref.read(currentTrackProvider.notifier).state = track;
     ref.read(positionStreamProvider.notifier).state = Duration.zero;
     ref.read(durationStreamProvider.notifier).state =
-        track.duration > Duration.zero ? track.duration : Duration.zero;
+        (track != null && track.duration > Duration.zero)
+            ? track.duration
+            : Duration.zero;
     ref.read(abLoopAProvider.notifier).state = null;
     ref.read(abLoopBProvider.notifier).state = null;
   };

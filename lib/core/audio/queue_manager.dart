@@ -280,6 +280,20 @@ class AfQueueManager {
     _trackController.add(null);
   }
 
+  /// End playback without clearing the queue or shuffle state.
+  ///
+  /// Sets `_currentIndex = -1` and emits `null` on the track stream so the
+  /// native session sends `clear` instead of a paused notification. The
+  /// queue list, original queue, and URL→track map are preserved so the
+  /// UI can still show the queue history and the user can restart playback.
+  ///
+  /// Contrast with [clear] which destroys all state (queue, shuffle,
+  /// original queue, URL map).
+  void endPlayback() {
+    _currentIndex = -1;
+    _trackController.add(null);
+  }
+
   // ── Lifecycle ──────────────────────────────────────────────────────
 
   void dispose() {
