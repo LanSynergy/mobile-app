@@ -7,7 +7,6 @@ import '../core/audio/jellyfin_playback_reporter.dart';
 import '../core/jellyfin/models/items.dart';
 import '../core/audio/live_update_service.dart';
 import '../core/audio/player_service.dart';
-import '../core/audio/player_settings_store.dart';
 import 'app_mode_providers.dart';
 import 'auth_providers.dart';
 import 'music_backend_providers.dart';
@@ -55,9 +54,7 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
 
   final liveUpdate = LiveUpdateService(svc);
   unawaited(liveUpdate.attach());
-  unawaited(svc.configureSpectrum().then((_) {
-    return PlayerSettingsStore.applyPersisted(svc);
-  }));
+  unawaited(svc.configureSpectrum());
 
   ref.listen(authProvider, (prev, next) {
     if (prev != null && next == null) {

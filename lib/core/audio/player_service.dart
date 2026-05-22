@@ -109,6 +109,8 @@ class AfPlayerService {
   Device get audioDevice => _player.state.audioDevice;
 
   Future<void> setAudioDevice(Device device) async {
+    if (_disposed) return;
+    if (_isLoadingQueue) return;
     await _player.setAudioDevice(device);
     afLog('audio', 'audioDevice set to ${device.name}');
   }
@@ -123,17 +125,23 @@ class AfPlayerService {
   }
 
   Future<void> setAudioExclusive(bool enabled) async {
+    if (_disposed) return;
+    if (_isLoadingQueue) return;
     await _player.setAudioExclusive(enabled);
     afLog('audio', 'audioExclusive=$enabled');
     _audioDeviceManager.nudge();
   }
 
   Future<void> setAudioSampleRate(int rate) async {
+    if (_disposed) return;
+    if (_isLoadingQueue) return;
     await _player.setAudioSampleRate(rate);
     afLog('audio', 'audioSampleRate=$rate');
   }
 
   Future<void> setAudioFormat(Format format) async {
+    if (_disposed) return;
+    if (_isLoadingQueue) return;
     await _player.setAudioFormat(format);
     afLog('audio', 'audioFormat=$format');
   }
@@ -156,6 +164,8 @@ class AfPlayerService {
   // ---------------------------------------------------------------------------
 
   Future<void> setCache(CacheSettings settings) async {
+    if (_disposed) return;
+    if (_isLoadingQueue) return;
     await _player.setCache(settings);
     afLog('audio', 'cache set: mode=${settings.mode} secs=${settings.secs}');
   }
@@ -184,11 +194,15 @@ class AfPlayerService {
   }
 
   Future<void> setAudioBuffer(Duration buffer) async {
+    if (_disposed) return;
+    if (_isLoadingQueue) return;
     await _player.setAudioBuffer(buffer);
     afLog('audio', 'audioBuffer=${buffer.inMilliseconds}ms');
   }
 
   Future<void> setAudioStreamSilence(bool enabled) async {
+    if (_disposed) return;
+    if (_isLoadingQueue) return;
     await _player.setAudioStreamSilence(enabled);
     afLog('audio', 'audioStreamSilence=$enabled');
   }
@@ -278,6 +292,8 @@ class AfPlayerService {
   // ---------------------------------------------------------------------------
 
   Future<void> setAudioEffects(AudioEffects effects) async {
+    if (_disposed) return;
+    if (_isLoadingQueue) return;
     final optimized = _autoBypassFlat(effects);
     await _player.setAudioEffects(optimized);
     afLog('audio', 'audioEffects set');
@@ -297,6 +313,8 @@ class AfPlayerService {
   AudioEffects get audioEffects => _player.state.audioEffects;
 
   Future<void> setReplayGain(ReplayGainSettings settings) async {
+    if (_disposed) return;
+    if (_isLoadingQueue) return;
     await _player.setReplayGain(settings);
     afLog('audio', 'replayGain mode=${settings.mode}');
   }
@@ -309,6 +327,8 @@ class AfPlayerService {
   // ---------------------------------------------------------------------------
 
   Future<void> setGapless(Gapless mode) async {
+    if (_disposed) return;
+    if (_isLoadingQueue) return;
     await _player.setGapless(mode);
     afLog('audio', 'gapless=${mode.name}');
   }
@@ -317,6 +337,8 @@ class AfPlayerService {
   Stream<Gapless> get gaplessStream => _player.stream.gapless;
 
   Future<void> setPrefetchPlaylist(bool enabled) async {
+    if (_disposed) return;
+    if (_isLoadingQueue) return;
     await _player.setPrefetchPlaylist(enabled);
     afLog('audio', 'prefetchPlaylist=$enabled');
   }
@@ -675,6 +697,8 @@ class AfPlayerService {
   }
 
   Future<void> setAfSpeed(double speed) async {
+    if (_disposed) return;
+    if (_isLoadingQueue) return;
     await _player.setRate(speed);
     afLog('data', 'playbackSpeed source=live speed=$speed');
   }
@@ -1053,6 +1077,7 @@ class AfPlayerService {
     }));
 
     _subs.add(_player.stream.audioDevice.listen((newDevice) async {
+      if (_isLoadingQueue) return;
       try {
         if (!_audioDeviceManager.isRealDeviceChange(newDevice.name)) return;
         try {

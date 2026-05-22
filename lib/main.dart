@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import 'app/app.dart';
 import 'app/router.dart' show notifyAuthChanged, setRouterAuthState;
 import 'core/audio/player_service.dart';
+import 'core/audio/player_settings_store.dart';
 import 'core/local/app_mode_store.dart';
 import 'core/jellyfin/auth_storage.dart';
 import 'core/jellyfin/models/server.dart';
@@ -132,6 +133,10 @@ Future<void> main() async {
     // ── Phase 3: OS audio service ─────────────────────────────────────────
     final handler = AfPlayerService();
     _boot('AfPlayerService initialized');
+
+    // ── Phase 3.5: Apply persisted settings before any user interaction ───
+    await PlayerSettingsStore.applyPersisted(handler);
+    _boot('persisted settings applied');
 
     // ── Phase 4: Provider container + router wiring ───────────────────────
     _boot('calling runApp');
