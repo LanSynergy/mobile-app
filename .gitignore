@@ -54,3 +54,8 @@ app.*.map.json
 tool/build_local.sh
 AGENTS.md
 .antigravitycli/
+thoughts/
+.mindmodel/
+.ocx/
+.opencode/
+.logs/
