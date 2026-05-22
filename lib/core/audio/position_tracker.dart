@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Player;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show PlayerApi;
 
 import '../../utils/log.dart';
 
@@ -17,7 +17,7 @@ class _PositionAnchor {
 /// extrapolation when mpv returns 0 or when the same non-zero position
 /// repeats across several ticks (Samsung One UI freeze workaround).
 class AfPositionTracker {
-  final Player _player;
+  final PlayerApi _player;
   final bool Function() _shouldAdvancePosition;
   final bool Function()? _isLoadingQueue;
 
@@ -47,7 +47,7 @@ class AfPositionTracker {
   bool _disposed = false;
 
   AfPositionTracker({
-    required Player player,
+    required PlayerApi player,
     required bool Function() shouldAdvancePosition,
     bool Function()? isLoadingQueue,
   })  : _player = player,

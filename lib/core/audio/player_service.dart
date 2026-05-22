@@ -6,16 +6,18 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
+import '../jellyfin/models/server.dart';
 import 'artwork_manager.dart';
 import 'audio_device_manager.dart';
 import 'position_tracker.dart';
 import 'queue_manager.dart';
+import 'track_id_extractor.dart';
 
 import 'spectrum_settings.dart';
 
 /// Bridges [Player] (mpv_audio_kit) with a platform-native media session.
 class AfPlayerService {
-  final Player _player;
+  final PlayerApi _player;
   late final AfPositionTracker _positionTracker;
   late final AfArtworkManager _artworkManager;
   late final AfAudioDeviceManager _audioDeviceManager;
@@ -27,11 +29,7 @@ class AfPlayerService {
 
   bool _disposed = false;
 
-  static const _channel = MethodChannel('aetherfin.media_session');
-
-  DateTime _lastPlaybackStatePush = DateTime.fromMillisecondsSinceEpoch(0);
-  bool _lastPushedPlaying = false;
-  bool _lastPushedBuffering = false;
+  MethodChannel _channel = const MethodChannel('aetherfin.media_session');
 
   int _nudgeRetries = 0;
   static const _maxNudgeRetries = 3;
@@ -86,6 +84,31 @@ class AfPlayerService {
         _player.setAudioDevice(auto);
       } catch (_) {}
     });
+  }
+
+  @visibleForTesting
+  AfPlayerService.test({
+    required PlayerApi player,
+    MethodChannel? channel,
+  }) : _player = player {
+    _positionTracker = AfPositionTracker(
+      player: player,
+      shouldAdvancePosition: () => shouldAdvancePosition,
+      isLoadingQueue: () => _isLoadingQueue,
+    );
+    _artworkManager = AfArtworkManager()
+      ..onArtworkChanged = _pushStateToNative;
+    _audioDeviceManager = AfAudioDeviceManager(player: player);
+    _queueManager = AfQueueManager();
+
+    if (channel != null) {
+      _channel = channel;
+    }
+    _channel.setMethodCallHandler(_handleMethodCall);
+
+    // Skip setAudioDriver, setAudioBuffer, Future.delayed in test mode
+    _bindStreams();
+    _positionTracker.start();
   }
 
   // ---------------------------------------------------------------------------
@@ -399,6 +422,17 @@ class AfPlayerService {
     _artworkManager.setAuthHeaders(headers);
   }
 
+  /// Set the queue manager's [TrackIdExtractor] based on the active
+  /// [ServerType]. Called from [wirePlayerService] once the backend
+  /// is known, and can be called again if the backend changes.
+  void setTrackIdExtractorForServerType(ServerType type) {
+    _queueManager.extractor = switch (type) {
+      ServerType.jellyfin => const JellyfinTrackIdExtractor(),
+      ServerType.subsonic => const SubsonicTrackIdExtractor(),
+      ServerType.local => const LocalTrackIdExtractor(),
+    };
+  }
+
   Future<void> playQueue(
     List<AfTrack> tracks, {
     int startIndex = 0,
@@ -569,7 +603,7 @@ class AfPlayerService {
 
     try {
       await _player.seek(position);
-      _pushStateToNative();
+      _updateMediaSession();
       _audioDeviceManager.nudge();
     } catch (e, stack) {
       afLog('audio', 'seek failed', error: e, stackTrace: stack);
@@ -872,6 +906,40 @@ class AfPlayerService {
     await _player.dispose();
   }
 
+  Future<dynamic> _handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'play':
+        unawaited(play());
+      case 'pause':
+        unawaited(pause());
+      case 'next':
+        unawaited(skipToNext());
+      case 'previous':
+        unawaited(skipToPrevious());
+      case 'stop':
+        unawaited(stop());
+      case 'seek':
+        final positionMs = call.arguments['positionMs'] as int?;
+        if (positionMs != null) {
+          unawaited(seek(Duration(milliseconds: positionMs)));
+        }
+      case 'skipTo':
+        final queueIndex = call.arguments['queueIndex'] as int?;
+        if (queueIndex != null) {
+          unawaited(skipToQueueItem(queueIndex));
+        }
+      default:
+        throw PlatformException(
+          code: 'Unimplemented',
+          details: 'Method ${call.method} is not implemented',
+        );
+    }
+  }
+
+  void _pushStateToNative() {
+    _updateMediaSession();
+  }
+
   
 
   Future<void> _reconfigureSpectrumOnTrackChange() async {
@@ -922,7 +990,7 @@ class AfPlayerService {
               'title="${track.title}" index=$idx',
         );
         onTrackChanged?.call(track);
-        _pushStateToNative();
+        _updateMediaSession();
 
         try {
           await _reconfigureSpectrumOnTrackChange();
@@ -959,7 +1027,7 @@ class AfPlayerService {
 
     _subs.add(_player.stream.playing.listen((playing) async {
       try {
-        _pushStateToNative();
+        _updateMediaSession();
         if (playing) {
           _pendingPlayNudgeIdx = null;
           _userPaused = false;
@@ -987,14 +1055,14 @@ class AfPlayerService {
       }
     }));
 
-    _subs.add(_player.stream.position.listen((_) => _updatePlaybackStateThrottled()));
-    _subs.add(_player.stream.buffering.listen((_) => _pushStateToNative()));
+    _subs.add(_player.stream.position.listen((_) => _updateMediaSession()));
+    _subs.add(_player.stream.buffering.listen((_) => _updateMediaSession()));
 
     _subs.add(_player.stream.completed.listen((completed) async {
       try {
         if (_disposed) return;
         if (_isLoadingQueue) return;
-        _pushStateToNative();
+        _updateMediaSession();
         if (!completed) return;
 
         // Snapshot state at event time to prevent race with setAfLoopMode
@@ -1035,7 +1103,7 @@ class AfPlayerService {
                 }
                 _queueManager.endPlayback();
                 onTrackChanged?.call(null);
-                _pushStateToNative();
+                _updateMediaSession();
                 afLog('audio', 'queue end, auto-stop (loop=off)');
               case Loop.playlist:
                 await _jumpAndPlay(0);
@@ -1057,10 +1125,10 @@ class AfPlayerService {
       }
     }));
 
-    _subs.add(_player.stream.rate.listen((_) => _pushStateToNative()));
+    _subs.add(_player.stream.rate.listen((_) => _updateMediaSession()));
     _subs.add(_player.stream.duration.listen((dur) {
       if (dur > Duration.zero) {
-        _pushStateToNative();
+        _updateMediaSession();
       }
     }));
     _subs.add(_player.stream.coverArt.listen((raw) async {
@@ -1070,7 +1138,7 @@ class AfPlayerService {
         } catch (e, stack) {
           afLog('audio', 'persistCover failed', error: e, stackTrace: stack);
         }
-        _pushStateToNative();
+        _updateMediaSession();
       } catch (e, stack) {
         afLog('audio', 'coverArt handler failed', error: e, stackTrace: stack);
       }
@@ -1092,25 +1160,10 @@ class AfPlayerService {
 
   }
 
-  void _updatePlaybackStateThrottled() {
-    if (_disposed) return;
-    final s = _player.state;
-    final now = DateTime.now();
-    final stateChanged =
-        s.playing != _lastPushedPlaying || s.buffering != _lastPushedBuffering;
-    if (!stateChanged &&
-        now.difference(_lastPlaybackStatePush) <
-            const Duration(milliseconds: 500)) {
-      return;
-    }
-
-    _lastPlaybackStatePush = now;
-    _lastPushedPlaying = s.playing;
-    _lastPushedBuffering = s.buffering;
-    _pushStateToNative();
-  }
-
-  void _pushStateToNative() {
+  /// Push the current state through the platform channel.
+  /// Sends `updateState` when there is an active track,
+  /// or `clear` when the queue is empty.
+  void _updateMediaSession() {
     if (_disposed) return;
     final track = _queueManager.currentTrack;
     if (track == null) {
@@ -1122,19 +1175,17 @@ class AfPlayerService {
 
     final s = _player.state;
     final isQueueEnd = s.completed && _queueManager.isAtQueueEnd;
-    final effectivePlaying = isQueueEnd ? false : (s.playing || shouldAdvancePosition);
+    final effectivePlaying =
+        isQueueEnd ? false : (s.playing || shouldAdvancePosition);
 
-    final artUri = _artworkManager.artUri(track);
-    if (artUri == null && _artworkManager.needsRemoteArtwork(track)) {
-      unawaited(_artworkManager.downloadArtworkForNotification(track));
-    }
-
-    final mpvDur = _isLoadingQueue ? Duration.zero : _player.state.duration;
+    final mpvDur = _isLoadingQueue ? Duration.zero : s.duration;
     final effectiveDuration = mpvDur > Duration.zero ? mpvDur : track.duration;
 
-    final artPath = artUri != null && artUri.isScheme('file') ? artUri.toFilePath() : null;
+    final artUri = _artworkManager.artUri(track);
+    final artPath =
+        artUri != null && artUri.isScheme('file') ? artUri.toFilePath() : null;
 
-    final args = {
+    final args = <String, dynamic>{
       'playing': effectivePlaying,
       'buffering': s.buffering,
       'positionMs': _positionTracker.lastKnownPosition.inMilliseconds,
@@ -1144,50 +1195,16 @@ class AfPlayerService {
       'artist': track.artistName,
       'album': track.albumName,
       'artPath': artPath,
-      'queueIndex': _queueManager.currentIndex >= 0 ? _queueManager.currentIndex : null,
+      'queueIndex':
+          _queueManager.currentIndex >= 0 ? _queueManager.currentIndex : null,
       'queueSize': _queueManager.currentQueue.length,
+      'needsArtworkDownload':
+          artUri == null && _artworkManager.needsRemoteArtwork(track),
     };
 
     _channel.invokeMethod('updateState', args).catchError((Object e) {
       afLog('error', 'Failed to update native media state', error: e);
     });
-  }
-
-  Future<dynamic> _handleMethodCall(MethodCall call) async {
-    switch (call.method) {
-      case 'play':
-        await play();
-        break;
-      case 'pause':
-        await pause();
-        break;
-      case 'next':
-        await skipToNext();
-        break;
-      case 'previous':
-        await skipToPrevious();
-        break;
-      case 'stop':
-        await stop();
-        break;
-      case 'seek':
-        final positionMs = call.arguments['positionMs'] as int?;
-        if (positionMs != null) {
-          await seek(Duration(milliseconds: positionMs));
-        }
-        break;
-      case 'skipTo':
-        final queueIndex = call.arguments['queueIndex'] as int?;
-        if (queueIndex != null) {
-          await skipToQueueItem(queueIndex);
-        }
-        break;
-      default:
-        throw PlatformException(
-          code: 'Unimplemented',
-          details: 'Method ${call.method} is not implemented',
-        );
-    }
   }
 }
 

@@ -5,6 +5,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Media;
 
 import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
+import 'track_id_extractor.dart';
 
 /// Manages the playback queue, track index, shuffle state, and URL→track
 /// mapping. Owns the queue/track/shuffle broadcast streams so the UI
@@ -25,6 +26,10 @@ class AfQueueManager {
   final _queueController = StreamController<List<AfTrack>>.broadcast();
 
   int _activePlaylistSyncs = 0;
+  late TrackIdExtractor _extractor;
+
+  AfQueueManager({TrackIdExtractor? extractor})
+      : _extractor = extractor ?? const JellyfinTrackIdExtractor();
 
   // ── Streams ────────────────────────────────────────────────────────
 
@@ -54,6 +59,10 @@ class AfQueueManager {
   /// the playlist listener does not re-enter.
   bool get canHandlePlaylistEvent =>
       _activePlaylistSyncs == 0;
+
+  set extractor(TrackIdExtractor extractor) {
+    _extractor = extractor;
+  }
 
   // ── URL↔track mapping ──────────────────────────────────────────────
 
@@ -163,7 +172,7 @@ class AfQueueManager {
     for (final media in mpvItems) {
       var track = _urlToTrack[media.uri];
       if (track == null) {
-        final id = _extractTrackId(media.uri);
+        final id = _extractor.extractId(media.uri);
         track = id != null ? byId[id] : null;
       }
       if (track != null) reordered.add(track);
@@ -196,22 +205,6 @@ class AfQueueManager {
       _trackController.add(null);
       _queueController.add(const <AfTrack>[]);
     }
-  }
-
-  static String? _extractTrackId(String uri) {
-    final parsed = Uri.tryParse(uri);
-    if (parsed == null) return null;
-
-    final segments = parsed.pathSegments;
-    for (var i = 0; i < segments.length - 1; i++) {
-      if (segments[i].toLowerCase() == 'audio') {
-        return segments[i + 1];
-      }
-    }
-
-    final queryId = parsed.queryParameters['id'];
-    if (queryId != null && queryId.isNotEmpty) return queryId;
-    return null;
   }
 
   // ── Queue manipulation ─────────────────────────────────────────────

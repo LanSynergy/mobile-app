@@ -21,7 +21,9 @@ class AfArtworkManager {
   int _coverCounter = 0;
   String? _coverPath;
   String? _networkCoverPath;
-  static final HttpClient _httpClient = HttpClient();
+  static final HttpClient _httpClient = HttpClient()
+    ..connectionTimeout = const Duration(seconds: 10)
+    ..idleTimeout = const Duration(seconds: 15);
   Map<String, String> _authHeaders = const <String, String>{};
   String? _networkCoverTrackId;
   bool _disposed = false;

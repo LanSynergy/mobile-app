@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Media;
 
 import 'package:aetherfin/core/audio/queue_manager.dart';
+import 'package:aetherfin/core/audio/track_id_extractor.dart';
 import 'package:aetherfin/core/jellyfin/models/items.dart';
 
 void main() {
@@ -163,6 +164,75 @@ void main() {
         );
 
         await sub.cancel();
+      });
+    });
+
+    group('Extractor dispatch', () {
+      test('defaults to JellyfinTrackIdExtractor when none provided', () {
+        final qm = AfQueueManager();
+        final track = const AfTrack(
+          id: '999',
+          title: 'Track',
+          artistName: 'A',
+          albumName: 'B',
+        );
+        qm.replaceQueue([track], 0);
+
+        // Jellyfin URL with ID 999 in path — extractor resolves '999',
+        // then byId lookup finds the track.
+        final mpvItems = [Media('https://server.com/Audio/999/stream')];
+        qm.syncFromMpv(mpvItems, 0);
+
+        expect(qm.currentQueue.length, 1);
+        expect(qm.currentQueue[0].id, '999');
+      });
+
+      test('custom SubsonicTrackIdExtractor resolves id query param', () {
+        final qm = AfQueueManager(extractor: const SubsonicTrackIdExtractor());
+        final track = const AfTrack(
+          id: 'abc',
+          title: 'Track',
+          artistName: 'A',
+          albumName: 'B',
+        );
+        qm.replaceQueue([track], 0);
+
+        final mpvItems = [
+          Media('https://server/rest/stream.view?id=abc&u=user&t=token'),
+        ];
+        qm.syncFromMpv(mpvItems, 0);
+
+        expect(qm.currentQueue.length, 1);
+        expect(qm.currentQueue[0].id, 'abc');
+      });
+
+      test('setter switches extractor at runtime', () {
+        final qm = AfQueueManager();
+        final track = const AfTrack(
+          id: 'local-id',
+          title: 'Track',
+          artistName: 'A',
+          albumName: 'B',
+        );
+        qm.replaceQueue([track], 0);
+
+        // Switch to LocalTrackIdExtractor
+        qm.extractor = const LocalTrackIdExtractor();
+
+        // Local URI — extractor returns full URI as id.
+        // syncFromMpv will try _urlToTrack first (miss), then extractor
+        // which returns the URI. byId lookup uses the URI string which
+        // doesn't match 'local-id', so we also pre-populate _urlToTrack.
+        qm.rebuildUrlMap(
+          [Media('content://media/external/audio/media/local-id')],
+          [track],
+        );
+
+        final mpvItems = [Media('content://media/external/audio/media/local-id')];
+        qm.syncFromMpv(mpvItems, 0);
+
+        expect(qm.currentQueue.length, 1);
+        expect(qm.currentQueue[0].id, 'local-id');
       });
     });
   });

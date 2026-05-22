@@ -10,6 +10,11 @@ import 'package:aetherfin/core/jellyfin/models/items.dart';
 
 class MockHttpClient extends Fake implements HttpClient {
   @override
+  Duration? connectionTimeout;
+  @override
+  Duration idleTimeout = const Duration(seconds: 15);
+
+  @override
   Future<HttpClientRequest> getUrl(Uri url) async {
     return MockHttpClientRequest();
   }

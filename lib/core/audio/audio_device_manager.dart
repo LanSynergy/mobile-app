@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Player;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show PlayerApi;
 
 import '../../utils/log.dart';
 
@@ -12,7 +12,7 @@ import '../../utils/log.dart';
 /// mpv rebuilds it. Re-issuing the current effects re-attaches the
 /// chain.
 class AfAudioDeviceManager {
-  final Player _player;
+  final PlayerApi _player;
   bool _disposed = false;
 
   int _nudgeGen = 0;
@@ -23,7 +23,7 @@ class AfAudioDeviceManager {
 
   static const _nudgeDelaysMs = [300, 1000, 2500];
 
-  AfAudioDeviceManager({required Player player}) : _player = player;
+  AfAudioDeviceManager({required PlayerApi player}) : _player = player;
 
   /// Returns `true` when [deviceName] represents a *real* device change
   /// (not a duplicate emission from mpv polling).
