@@ -130,15 +130,13 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
       if (!loopRunning || gen != loopGeneration || disposed) return;
 
       if (rawDur > Duration.zero) {
-        try {
-          ref.read(durationStreamProvider.notifier).state = rawDur;
-        } catch (_) {}
+        if (disposed) return;
+        ref.read(durationStreamProvider.notifier).state = rawDur;
       } else {
         final track = ref.read(currentTrackProvider);
         if (track != null && track.duration > Duration.zero) {
-          try {
-            ref.read(durationStreamProvider.notifier).state = track.duration;
-          } catch (_) {}
+          if (disposed) return;
+          ref.read(durationStreamProvider.notifier).state = track.duration;
         }
       }
     }
@@ -149,7 +147,7 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
   }
 
   void ensureTimer() {
-    if (loopRunning) return;
+    if (disposed || loopRunning) return;
     loopGeneration++;
     loopRunning = true;
     runDurationPollLoop();

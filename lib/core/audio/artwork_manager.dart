@@ -159,5 +159,6 @@ class AfArtworkManager {
 
   void dispose() {
     _disposed = true;
+    _httpClient.close();
   }
 }

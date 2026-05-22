@@ -484,6 +484,7 @@ class AfPlayerService {
       } catch (e, stack) {
         if (myGen != _queueLoadGen) return;
         afLog('audio', 'playQueue failed', error: e, stackTrace: stack);
+        _userPaused = true;
         _queueManager.clear();
         try {
           await _player.stop();

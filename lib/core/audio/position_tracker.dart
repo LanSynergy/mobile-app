@@ -9,7 +9,6 @@ import '../../utils/log.dart';
 class _PositionAnchor {
   Duration lastKnownPos = Duration.zero;
   DateTime lastUpdateTime = DateTime.now();
-  bool wasPlaying = false;
 }
 
 /// Manages position polling, extrapolation, and stale detection.
@@ -80,26 +79,20 @@ class AfPositionTracker {
   void onTrackChanged() {
     _positionAnchor.lastKnownPos = Duration.zero;
     _positionAnchor.lastUpdateTime = DateTime.now();
-    _positionAnchor.wasPlaying = false;
     _positionController.add(Duration.zero);
     _resetRawPositionStaleDetector(Duration.zero);
   }
 
-  void onPlay() {
-    _positionAnchor.wasPlaying = true;
-  }
+  void onPlay() {}
 
   void updateKnownPosition(Duration pos) {
     _positionAnchor.lastKnownPos = pos;
     _positionAnchor.lastUpdateTime = DateTime.now();
   }
 
-  void onPause() {
-    _positionAnchor.wasPlaying = false;
-  }
+  void onPause() {}
 
   void onStop() {
-    _positionAnchor.wasPlaying = false;
     _positionAnchor.lastKnownPos = Duration.zero;
     _positionAnchor.lastUpdateTime = DateTime.now();
     _resetRawPositionStaleDetector(Duration.zero);
@@ -170,7 +163,6 @@ class AfPositionTracker {
     final capped = extrapolated > durCap ? durCap : extrapolated;
     _positionAnchor.lastKnownPos = capped;
     _positionAnchor.lastUpdateTime = now;
-    _positionAnchor.wasPlaying = true;
     _positionController.add(capped);
   }
 
@@ -205,7 +197,6 @@ class AfPositionTracker {
         if (!rawStale && (!behind || shouldAdvance)) {
           _positionAnchor.lastKnownPos = rawPos;
           _positionAnchor.lastUpdateTime = now;
-          _positionAnchor.wasPlaying = playing;
           _positionController.add(rawPos);
           return;
         }

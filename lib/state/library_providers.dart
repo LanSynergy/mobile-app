@@ -112,16 +112,18 @@ final playlistTrackIdsProvider =
   final playlists = await ref.watch(allPlaylistsProvider.future);
   final ids = <String>{};
 
-  for (final pl in playlists) {
-    try {
-      final detail = await backend.playlist(pl.id);
-      if (detail != null) {
-        for (final t in detail.tracks) {
-          ids.add(t.id);
-        }
+  final results = await Future.wait(
+    playlists.map((pl) => backend.playlist(pl.id)),
+    eagerError: false,
+  );
+  for (var i = 0; i < results.length; i++) {
+    final detail = results[i];
+    if (detail != null) {
+      for (final t in detail.tracks) {
+        ids.add(t.id);
       }
-    } catch (e) {
-      afLog('data', 'playlist track fetch failed id=${pl.id}', error: e);
+    } else {
+      afLog('data', 'playlist track fetch returned null id=${playlists[i].id}');
     }
   }
 

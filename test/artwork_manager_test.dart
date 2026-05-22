@@ -13,6 +13,9 @@ class MockHttpClient extends Fake implements HttpClient {
   Future<HttpClientRequest> getUrl(Uri url) async {
     return MockHttpClientRequest();
   }
+
+  @override
+  void close({bool force = false}) {}
 }
 
 class MockHttpClientRequest extends Fake implements HttpClientRequest {

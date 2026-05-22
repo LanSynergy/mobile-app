@@ -56,11 +56,6 @@ class SpectralExtractor {
     // The disk-cache key on `CachedNetworkImageProvider` below has the
     // same problem — match it so we share the cache slot.
     final key = stableImageCacheKey(imageUrl);
-    final cached = _cache.remove(key);
-    if (cached != null) {
-      _cache[key] = cached;
-      return cached;
-    }
 
     // Deduplicate concurrent requests for the same key.
     final pending = _inFlight[key];
@@ -81,6 +76,13 @@ class SpectralExtractor {
     String imageUrl,
     Map<String, String>? headers,
   ) async {
+    // Fast-path: already cached.
+    final cached = _cache.remove(key);
+    if (cached != null) {
+      _cache[key] = cached;
+      return cached;
+    }
+
     try {
       final ImageProvider provider;
       if (imageUrl.startsWith('file://')) {

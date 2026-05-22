@@ -28,9 +28,10 @@ class SubsonicClient implements MusicBackend {
   final JellyfinServer server;
   final String username;
 
-  /// The plaintext password — stored in encrypted secure storage. Needed
-  /// to compute the per-request `md5(password + salt)` token.
-  final String password;
+  /// UTF-8 bytes of the password, zeroed on [close] to minimise the
+  /// plaintext-residence window in native heap memory. Converted from the
+  /// constructor argument so the original [String] can be GC'd immediately.
+  final List<int> _passwordBytes;
 
   /// Aetherfin's running app version (e.g. `0.2.3`). Sent in `User-Agent`.
   /// Loaded from `package_info_plus` in `main()` and injected through
@@ -45,9 +46,10 @@ class SubsonicClient implements MusicBackend {
   SubsonicClient({
     required this.server,
     required this.username,
-    required this.password,
+    required String password,
     required this.clientVersion,
-  })  : _cacheStore = MemCacheStore(
+  })  : _passwordBytes = utf8.encode(password),
+        _cacheStore = MemCacheStore(
             maxSize: 20 * 1024 * 1024, maxEntrySize: 1 * 1024 * 1024),
         _dio = Dio(BaseOptions(
           baseUrl: _buildBaseUrl(server.baseUrl),
@@ -101,7 +103,9 @@ class SubsonicClient implements MusicBackend {
   /// Generate Subsonic auth query params for every request.
   Map<String, String> _authParams() {
     final salt = _generateSalt();
-    final token = md5.convert(utf8.encode('$password$salt')).toString();
+    final token = md5
+        .convert([..._passwordBytes, ...utf8.encode(salt)])
+        .toString();
     return {
       'u': username,
       't': token,
@@ -166,6 +170,9 @@ class SubsonicClient implements MusicBackend {
 
   @override
   void close() {
+    for (var i = 0; i < _passwordBytes.length; i++) {
+      _passwordBytes[i] = 0;
+    }
     _cacheStore.close();
     _dio.close(force: true);
   }
