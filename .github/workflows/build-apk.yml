@@ -196,14 +196,17 @@ jobs:
             
             echo "Uploading $(basename "$apk") ($SIZE_HUMAN)..."
             
-            # Pipe file via stdin instead of curl's @-syntax to avoid filesystem-level
-            # path resolution issues on the CI runner (exit code 26 seen previously).
+            # Copy to /tmp first — the build output directory sometimes has read
+            # quirks on the CI runner (exit code 26 previously with both @path
+            # and @- stdin approaches).
+            cp "$APK_PATH" "/tmp/upload.apk"
             HTTP_CODE=$(curl -sS -o /tmp/tg-resp.json -w "%{http_code}" \
-              -F "document=@-;filename=$(basename "$apk")" \
+              -F "document=@/tmp/upload.apk;filename=$(basename "$apk")" \
               -F "chat_id=${CHAT_ID}" \
               -F "caption=${CAPTION}" \
               -F "parse_mode=HTML" \
-              "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" < "$APK_PATH")
+              "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument")
+            rm -f /tmp/upload.apk
             
             if [ "$HTTP_CODE" != "200" ]; then
               echo "::error::sendDocument failed for $apk: HTTP $HTTP_CODE"
