@@ -89,31 +89,29 @@ class HeroAlbumCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AfSpacing.s12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          album.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: AfTypography.titleLarge.copyWith(
-                            color: AfColors.textOnPrimary,
-                          ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        album.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AfTypography.titleLarge.copyWith(
+                          color: AfColors.textOnPrimary,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          album.artistName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AfTypography.bodyMedium.copyWith(
-                            // ignore: deprecated_member_use
-                            color: AfColors.textOnPrimary.withValues(alpha: 0.8),
-                          ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        album.artistName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AfTypography.bodyMedium.copyWith(
+                          // ignore: deprecated_member_use
+                          color: AfColors.textOnPrimary.withValues(alpha: 0.8),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AfSpacing.s12),
                   _PlayPill(onTap: onPlay),
