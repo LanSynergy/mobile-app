@@ -1065,7 +1065,6 @@ class AfPlayerService {
       }
     }));
 
-    _subs.add(_player.stream.position.listen((_) => _updateMediaSession()));
     _subs.add(_player.stream.buffering.listen((_) => _updateMediaSession()));
 
     _subs.add(_player.stream.completed.listen((completed) async {
