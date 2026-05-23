@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import 'package:aetherfin/core/audio/media_session_bridge.dart';
 import 'package:aetherfin/core/audio/player_service.dart';
 import 'package:aetherfin/core/jellyfin/models/items.dart';
 import 'helpers/fake_player.dart';
@@ -13,6 +14,7 @@ typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater)
 
 ({
   AfPlayerService service,
+  NativeMediaSessionBridge bridge,
   MockPlayer player,
   StreamControllers ctrls,
   MockMethodChannel channel,
@@ -33,13 +35,15 @@ typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater)
   when(() => channel.invokeMethod(any(), any())).thenAnswer((_) async => null);
   when(() => channel.setMethodCallHandler(any())).thenAnswer((_) async {});
 
+  final bridge = NativeMediaSessionBridge(channel: channel);
   final service = AfPlayerService.test(
     player: player,
-    channel: channel,
+    bridge: bridge,
   );
 
   return (
     service: service,
+    bridge: bridge,
     player: player,
     ctrls: ctrls,
     channel: channel,

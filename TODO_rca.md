@@ -146,11 +146,11 @@ The playback subsystem has accumulated multiple latent bugs and test gaps across
 
 ### P3 — Technical Debt & Code Quality
 
-- [ ] **RCA-FIND-4.1 [NativeMediaSessionBridge refactor incomplete]**:
+- [x] **RCA-FIND-4.1 [NativeMediaSessionBridge refactor incomplete]**:
   - **Evidence**: `lib/core/audio/media_session_bridge.dart` defines `NativeMediaSessionBridge` (lines 57-177) with throttled `pushState`, `MediaSessionState` snapshot, and callback-based dispatch. `AfPlayerService` still uses the inline `_channel` + `_handleMethodCall` + `_updateMediaSession()` approach at lines 32, 909-937, and 1166-1208.
   - **Reasoning**: The refactored bridge is a cleaner, more testable abstraction with throttle, immutability, and explicit callbacks. It was written but never wired into the service.
   - **Impact**: Dead code; the inline implementation lacks throttle and uses fragile `Map<String, dynamic>` arguments.
-  - **Status**: **Confirmed** (incomplete refactor)
+  - **Status**: **Resolved** (wired in PR — `AfPlayerService` now uses `NativeMediaSessionBridge` with callback dispatch + throttled `pushState`; inline `_channel`/`_handleMethodCall` removed)
   - **Confidence**: **High**
   - **Counterfactual**: Wiring `NativeMediaSessionBridge` into `AfPlayerService` would deduplicate code and add throttle.
   - **Owner**: Playback team
@@ -430,9 +430,10 @@ have caught any of these bugs before deployment. This is the systemic gap.
 
 ### P3 — Backlog
 
-- [ ] **RCA-REM-4.1 [Wire NativeMediaSessionBridge into AfPlayerService]**:
+- [x] **RCA-REM-4.1 [Wire NativeMediaSessionBridge into AfPlayerService]**:
   - Replace inline `_channel` + `_handleMethodCall` + `_updateMediaSession()` with `NativeMediaSessionBridge`
   - Benefits: throttle (100ms dedup), immutable state snapshots, cleaner callback dispatch
+  - **Status**: Completed — `AfPlayerService` uses `NativeMediaSessionBridge` callbacks (`onPlay`/`onPause`/`onSeek`/etc.) and `pushState()` with 100ms throttle
   - **Timeline**: Backlog
 
 - [ ] **RCA-REM-4.2 [Remove or stub LiveUpdateService]**:
@@ -468,7 +469,7 @@ have caught any of these bugs before deployment. This is the systemic gap.
 | REM-3.4 | Convert guard tests to integration | P2 | 8 hours | Moderate | Test hooks in AfPlayerService |
 | REM-3.5 | Extend artwork test coverage | P2 | 8 hours | Moderate | HttpClient mocking |
 | REM-3.6 | Add race-condition tests | P2 | 12 hours | Complex | Loop mode race test pattern |
-| REM-4.1 | Wire NativeMediaSessionBridge | P3 | 8 hours | Moderate | None |
+| REM-4.1 | Wire NativeMediaSessionBridge | P3 | 8 hours | Moderate | None — Completed |
 | REM-4.2 | Remove LiveUpdateService | P3 | 2 hours | Simple | Verify no consumers |
 | REM-4.3 | Robust string parsing | P3 | 2 hours | Simple | None |
 | REM-4.4 | Sequential poll chain | P3 | 4 hours | Moderate | Position tracker redesign |

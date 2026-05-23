@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
-import 'package:flutter/services.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../utils/log.dart';
@@ -9,6 +8,7 @@ import '../jellyfin/models/items.dart';
 import '../jellyfin/models/server.dart';
 import 'artwork_manager.dart';
 import 'audio_device_manager.dart';
+import 'media_session_bridge.dart';
 import 'position_tracker.dart';
 import 'queue_manager.dart';
 import 'track_id_extractor.dart';
@@ -29,7 +29,7 @@ class AfPlayerService {
 
   bool _disposed = false;
 
-  MethodChannel _channel = const MethodChannel('aetherfin.media_session');
+  NativeMediaSessionBridge _bridge = NativeMediaSessionBridge();
 
   int _nudgeRetries = 0;
   static const _maxNudgeRetries = 3;
@@ -53,7 +53,15 @@ class AfPlayerService {
     _audioDeviceManager = AfAudioDeviceManager(player: _player);
     _queueManager = AfQueueManager();
 
-    _channel.setMethodCallHandler(_handleMethodCall);
+    final bridge = NativeMediaSessionBridge();
+    bridge.onPlay = () => unawaited(play());
+    bridge.onPause = () => unawaited(pause());
+    bridge.onNext = () => unawaited(skipToNext());
+    bridge.onPrevious = () => unawaited(skipToPrevious());
+    bridge.onStop = () => unawaited(stop());
+    bridge.onSeek = (Duration pos) => unawaited(seek(pos));
+    bridge.onSkipToQueueItem = (int idx) => unawaited(skipToQueueItem(idx));
+    _bridge = bridge;
 
     // Set audio driver BEFORE binding streams. If setAudioDriver is called
     // after property observation starts, it can re-initialize the output
@@ -89,7 +97,7 @@ class AfPlayerService {
   @visibleForTesting
   AfPlayerService.test({
     required PlayerApi player,
-    MethodChannel? channel,
+    NativeMediaSessionBridge? bridge,
   }) : _player = player {
     _positionTracker = AfPositionTracker(
       player: player,
@@ -101,10 +109,16 @@ class AfPlayerService {
     _audioDeviceManager = AfAudioDeviceManager(player: player);
     _queueManager = AfQueueManager();
 
-    if (channel != null) {
-      _channel = channel;
+    if (bridge != null) {
+      _bridge = bridge;
     }
-    _channel.setMethodCallHandler(_handleMethodCall);
+    _bridge.onPlay = () => unawaited(play());
+    _bridge.onPause = () => unawaited(pause());
+    _bridge.onNext = () => unawaited(skipToNext());
+    _bridge.onPrevious = () => unawaited(skipToPrevious());
+    _bridge.onStop = () => unawaited(stop());
+    _bridge.onSeek = (Duration pos) => unawaited(seek(pos));
+    _bridge.onSkipToQueueItem = (int idx) => unawaited(skipToQueueItem(idx));
 
     // Skip setAudioDriver, setAudioBuffer, Future.delayed in test mode
     _bindStreams();
@@ -914,43 +928,13 @@ class AfPlayerService {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    _channel.setMethodCallHandler(null);
+    _bridge.dispose();
     _positionTracker.dispose();
     _queueManager.dispose();
     for (final s in _subs) {
       await s.cancel();
     }
     await _player.dispose();
-  }
-
-  Future<dynamic> _handleMethodCall(MethodCall call) async {
-    switch (call.method) {
-      case 'play':
-        unawaited(play());
-      case 'pause':
-        unawaited(pause());
-      case 'next':
-        unawaited(skipToNext());
-      case 'previous':
-        unawaited(skipToPrevious());
-      case 'stop':
-        unawaited(stop());
-      case 'seek':
-        final positionMs = call.arguments['positionMs'] as int?;
-        if (positionMs != null) {
-          unawaited(seek(Duration(milliseconds: positionMs)));
-        }
-      case 'skipTo':
-        final queueIndex = call.arguments['queueIndex'] as int?;
-        if (queueIndex != null) {
-          unawaited(skipToQueueItem(queueIndex));
-        }
-      default:
-        throw PlatformException(
-          code: 'Unimplemented',
-          details: 'Method ${call.method} is not implemented',
-        );
-    }
   }
 
   void _pushStateToNative() {
@@ -1177,16 +1161,14 @@ class AfPlayerService {
 
   }
 
-  /// Push the current state through the platform channel.
+  /// Push the current state through the bridge (throttled to ~100ms).
   /// Sends `updateState` when there is an active track,
   /// or `clear` when the queue is empty.
   void _updateMediaSession() {
     if (_disposed) return;
     final track = _queueManager.currentTrack;
     if (track == null) {
-      _channel.invokeMethod('clear').catchError((Object e) {
-        afLog('error', 'Failed to clear native media state', error: e);
-      });
+      _bridge.clear();
       return;
     }
 
@@ -1202,26 +1184,22 @@ class AfPlayerService {
     final artPath =
         artUri != null && artUri.isScheme('file') ? artUri.toFilePath() : null;
 
-    final args = <String, dynamic>{
-      'playing': effectivePlaying,
-      'buffering': s.buffering,
-      'positionMs': _positionTracker.lastKnownPosition.inMilliseconds,
-      'durationMs': effectiveDuration.inMilliseconds,
-      'speed': s.rate,
-      'title': track.title,
-      'artist': track.artistName,
-      'album': track.albumName,
-      'artPath': artPath,
-      'queueIndex':
+    _bridge.pushState(MediaSessionState(
+      playing: effectivePlaying,
+      buffering: s.buffering,
+      position: _positionTracker.lastKnownPosition,
+      duration: effectiveDuration,
+      speed: s.rate,
+      title: track.title,
+      artist: track.artistName,
+      album: track.albumName,
+      artPath: artPath,
+      queueIndex:
           _queueManager.currentIndex >= 0 ? _queueManager.currentIndex : null,
-      'queueSize': _queueManager.currentQueue.length,
-      'needsArtworkDownload':
+      queueSize: _queueManager.currentQueue.length,
+      needsArtworkDownload:
           artUri == null && _artworkManager.needsRemoteArtwork(track),
-    };
-
-    _channel.invokeMethod('updateState', args).catchError((Object e) {
-      afLog('error', 'Failed to update native media state', error: e);
-    });
+    ));
   }
 }
 

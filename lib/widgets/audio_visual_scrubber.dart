@@ -226,6 +226,18 @@ class _ScrubNotifier extends ChangeNotifier {
 
 class _BlockNotifier extends ChangeNotifier {
   static const int bins = 64;
+  static const int _lutSize = 1024;
+
+  static final Float32List _pow10Lut = Float32List(_lutSize);
+  static bool _lutReady = false;
+
+  static void _initLut() {
+    if (_lutReady) return;
+    for (var i = 0; i < _lutSize; i++) {
+      _pow10Lut[i] = math.pow(i / (_lutSize - 1), 10.0).toDouble();
+    }
+    _lutReady = true;
+  }
 
   final Float32List smoothed = Float32List(bins);
 
@@ -241,14 +253,13 @@ class _BlockNotifier extends ChangeNotifier {
   void ingest(Float32List bands) {
     _fadingOut = false;
     if (bands.isEmpty) return;
-    double energy = 0.0;
+    if (!_lutReady) _initLut();
 
+    double energy = 0.0;
     final int n = bands.length < bins ? bands.length : bins;
     for (var i = 0; i < n; i++) {
-      final double raw = bands[i].clamp(0.0, 1.0);
-      // Power-10 curve: aggressive compression — only loud peaks reach
-      // visible height, quiet passages stay near zero.
-      final v = math.pow(raw, 10.0).toDouble();
+      final idx = (bands[i].clamp(0.0, 1.0) * (_lutSize - 1)).round();
+      final v = _pow10Lut[idx];
       smoothed[i] = v;
       energy += v;
     }

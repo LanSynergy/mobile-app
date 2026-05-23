@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import 'package:aetherfin/core/audio/media_session_bridge.dart';
 import 'package:aetherfin/core/audio/player_service.dart';
 import 'package:aetherfin/core/jellyfin/models/items.dart';
 import 'helpers/fake_player.dart';
@@ -10,11 +11,11 @@ import 'helpers/fake_player.dart';
 class MockMethodChannel extends Mock implements MethodChannel {}
 
 void main() {
-  group('Settings race guards on AfPlayerService', () {
-    late AfPlayerService service;
+  group('Settings Race Guard - player_service', () {
     late MockPlayer player;
-    late MockMethodChannel channel;
     late StreamControllers ctrls;
+    late MockMethodChannel channel;
+    late AfPlayerService service;
 
     setUpAll(() {
       registerFallbackValue(Duration.zero);
@@ -31,7 +32,8 @@ void main() {
       ctrls = fixture.ctrls;
       channel = MockMethodChannel();
       when(() => channel.setMethodCallHandler(any())).thenAnswer((_) async {});
-      service = AfPlayerService.test(player: player, channel: channel);
+      final bridge = NativeMediaSessionBridge(channel: channel);
+      service = AfPlayerService.test(player: player, bridge: bridge);
 
       // Stub player methods called by the guarded settings setters
       when(() => player.setAudioDevice(any())).thenAnswer((_) async {});

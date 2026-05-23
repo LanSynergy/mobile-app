@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import 'package:aetherfin/core/audio/media_session_bridge.dart';
 import 'package:aetherfin/core/audio/player_service.dart';
 import 'package:aetherfin/core/jellyfin/models/items.dart';
 import 'helpers/fake_player.dart';
@@ -18,6 +19,7 @@ typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater)
 /// Returns the service, along with helpers for controlling state and streams.
 ({
   AfPlayerService service,
+  NativeMediaSessionBridge bridge,
   MockPlayer player,
   StreamControllers ctrls,
   MockMethodChannel channel,
@@ -38,20 +40,22 @@ typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater)
 
   Future<dynamic> Function(MethodCall)? handler;
 
-  // Stub MethodChannel calls (the service uses catchError on failures).
+  // Stub MethodChannel calls (the bridge uses catchError on failures).
   when(() => channel.invokeMethod(any())).thenAnswer((_) async => null);
   when(() => channel.invokeMethod(any(), any())).thenAnswer((_) async => null);
   when(() => channel.setMethodCallHandler(any())).thenAnswer((invocation) async {
     handler = invocation.positionalArguments[0] as Future<dynamic> Function(MethodCall)?;
   });
 
+  final bridge = NativeMediaSessionBridge(channel: channel);
   final service = AfPlayerService.test(
     player: player,
-    channel: channel,
+    bridge: bridge,
   );
 
   return (
     service: service,
+    bridge: bridge,
     player: player,
     ctrls: ctrls,
     channel: channel,

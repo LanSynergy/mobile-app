@@ -191,7 +191,7 @@ The central hub. Composes 4 managers:
 - **AfAudioDeviceManager** — Output routing with nudge chains (generation-counter guarded)
 - **AfQueueManager** — Queue state + shuffle/original order
 
-Communicates with native `AetherfinMediaSessionService` via `MethodChannel('aetherfin.media_session')`. Operations serialized via `AfAsyncLock` (`_queueLock`).
+Communicates with native `AetherfinMediaSessionService` via `NativeMediaSessionBridge` (wrapping `MethodChannel('aetherfin.media_session')`). Operations serialized via `AfAsyncLock` (`_queueLock`).
 
 ### Backend Abstraction (`MusicBackend`)
 ```dart
@@ -266,7 +266,7 @@ Audio playback flow:
 |---|---|---|
 | **Jellyfin** | REST API | Auth: `Authorization: MediaBrowser ...` header. Stream: `/Audio/{id}/stream?Static=true` |
 | **Navidrome** | Subsonic API | Auth: MD5 token in query params. Stream: `/rest/stream.view?id=...` |
-| **Android MediaSession** | MethodChannel | `aetherfin.media_session` — lock-screen controls |
+| **Android MediaSession** | MethodChannel | `aetherfin.media_session` — lock-screen controls (via `NativeMediaSessionBridge`) |
 | **Battery Opt** | MethodChannel | `aetherfin.battery_opt` — request battery exemption |
 | **SAF** | MethodChannel | `aetherfin.saf` — Storage Access Framework for local mode |
 | **Live Update** | MethodChannel | `aetherfin.live_update` — Android 16+ progress chip |

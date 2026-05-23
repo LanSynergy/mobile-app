@@ -227,12 +227,10 @@ lib/
 ├─ design_tokens/           ← Single source of truth for §4 visual spec
 ├─ core/
 │  ├─ audio/
-│  │  ├─ player_service.dart        ← AfPlayerService: mpv_audio_kit + MethodChannel bridge to Kotlin service.
-│  │  │                               Composes AfPositionTracker, AfArtworkManager,
-│  │  │                               AfAudioDeviceManager, AfQueueManager.
+│  │  ├─ player_service.dart        ← AfPlayerService: mpv_audio_kit + NativeMediaSessionBridge
+│  │  │                               bridge to Kotlin service. Composes AfPositionTracker,
+│  │  │                               AfArtworkManager, AfAudioDeviceManager, AfQueueManager.
 │  │  │                               Throttled playbackState (~2 Hz), _pendingPlayNudgeIdx
-│  │  │                               state machine, _jumpAndPlay async/await, _disposed guards.
-│  │  │                               playNext() and addToQueue() for context-menu actions.
 │  │  │                               Shuffle: setShuffle(true/false) → mpv playlist-shuffle/unshuffle.
 │  │  │                               Syncs _trackQueue via _player.stream.playlist.first after command.
 │  │  │                               Track-ID guard in playlist listener prevents displayed song change.
@@ -249,6 +247,9 @@ lib/
 │  │  ├─ af_artwork_manager.dart    ← AfArtworkManager: cover art download + notification artwork
 │  │  ├─ af_audio_device_manager.dart ← AfAudioDeviceManager: audio device routing + nudge chains
 │  │  ├─ af_queue_manager.dart      ← AfQueueManager: playlist queue + shuffle/original order
+│  │  ├─ media_session_bridge.dart  ← NativeMediaSessionBridge: throttled pushState (100ms),
+│  │  │                               MediaSessionState snapshots, callback-based dispatch.
+│  │  │                               Replaces raw MethodChannel calls in AfPlayerService.
 │  │  └─ spectrum_settings.dart     ← Default SpectrumSettings constants
 │  ├─ backend/
 │  │  └─ music_backend.dart ← Abstract MusicBackend interface. Both JellyfinClient and
@@ -531,7 +532,7 @@ servers in order:
 
 ## 7. Notification / lock-screen rules
 
-- Implemented via a platform-native Kotlin foreground service `AetherfinMediaSessionService` and a `MethodChannel` (`aetherfin.media_session`).
+- Implemented via a platform-native Kotlin foreground service `AetherfinMediaSessionService` and a `NativeMediaSessionBridge` (Dart bridge) over `MethodChannel` (`aetherfin.media_session`).
 - Controls are dynamically updated on the native side based on the current queue bounds (Previous/Play-Pause/Next).
 - **Never pass a network artwork URL** to the native player state — the native service reads artwork directly from local storage. Always resolve and download/save the artwork to a local `file://` URI first, and pass the path using `artPath` to the native service.
 - When playback is paused, the foreground service status is dropped (`stopForeground(false)`) to let the user swipe the notification away, but the notification itself is kept visible.
@@ -566,7 +567,7 @@ Player.stream.spectrum (64 bands, ~120 fps, engine-smoothed)
     ▼  ingest() — data update only, no notifyListeners
 for each band i:
   raw = bands[i].clamp(0, 1)
-  smoothed[i] = pow(raw, 10.0)    ← power-10 compression
+  smoothed[i] = pow(raw, 10.0)    ← power-10 compression (precomputed LUT, 1024 entries)
 totalEnergy = mean(smoothed)
 _dirty = true
     │
@@ -761,10 +762,10 @@ PII (usernames, server URLs) must be redacted in release builds.
 - **`PrimaryImageTag`**: Short hash for HTTP cache-busting on image URLs.
 - **`Loop.off / Loop.file / Loop.playlist`**: mpv_audio_kit loop enum.
 - **`FftFrame`**: mpv_audio_kit spectrum frame — `bands: Float32List` (64 values in [0,1], post-DSP).
-- **`AfPlayerService`**: Bridges the app's player with the platform-native Android `MediaSession` service. Wraps `Player` (mpv_audio_kit) and communicates with `AetherfinMediaSessionService` over the `aetherfin.media_session` MethodChannel.
+- **`AfPlayerService`**: Bridges the app's player with the platform-native Android `MediaSession` service. Wraps `Player` (mpv_audio_kit) and communicates with `AetherfinMediaSessionService` over the `aetherfin.media_session` MethodChannel via `NativeMediaSessionBridge`.
 - **`_pendingPlayNudgeIdx`**: State machine field in `AfPlayerService`. Set when playlist index changes; cleared when `playing=true` fires. Prevents `Future.delayed` for auto-advance.
 - **`AudioVisualScrubber`**: Combined FFT visualizer + progress scrubber widget. Owns `_BlockNotifier` (signal DSP) and `_ScrubNotifier` (drag state). Two `RepaintBoundary` layers.
-- **`_BlockNotifier`**: `ChangeNotifier` inside `AudioVisualScrubber`. Applies power-10 curve to engine bands. `ingest()` updates data only; `flush()` fires `notifyListeners()` on vsync via ticker. 300ms silence timer triggers fade-out (0.85× decay per frame).
+- **`_BlockNotifier`**: `ChangeNotifier` inside `AudioVisualScrubber`. Applies power-10 curve to engine bands via precomputed LUT (1024 entries). `ingest()` updates data only; `flush()` fires `notifyListeners()` on vsync via ticker. 300ms silence timer triggers fade-out (0.85× decay per frame).
 - **`_ScrubNotifier`**: `ChangeNotifier` inside `AudioVisualScrubber`. Owns drag state and display progress.
 - **`Spectral`**: Runtime color triple (`energy`, `shadow`, `glow`) extracted from current artwork. Lives in `currentSpectralProvider`. Never hardcode these values.
 - **`BatteryOptPlugin`**: Kotlin `ActivityAware` plugin on channel `aetherfin.battery_opt`. Fires `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` on first HomeScreen visit.
@@ -790,8 +791,9 @@ PII (usernames, server URLs) must be redacted in release builds.
 - **`AfArtworkManager`**: Manager class in `AfPlayerService` (`lib/core/audio/af_artwork_manager.dart`). Downloads cover art bytes and provides file:// URIs for notification artwork.
 - **`AfAudioDeviceManager`**: Manager class in `AfPlayerService` (`lib/core/audio/af_audio_device_manager.dart`). Manages audio device routing and nudge chains with `_nudgeGen`.
 - **`AfQueueManager`**: Manager class in `AfPlayerService` (`lib/core/audio/af_queue_manager.dart`). Manages playlist queue, shuffle state, and `_originalQueue` order tracking. Sync lock (`_activePlaylistSyncs`) blocks the playlist listener during batch operations.
+- **`NativeMediaSessionBridge`**: Dart bridge (`lib/core/audio/media_session_bridge.dart`) wrapping the `aetherfin.media_session` MethodChannel. Provides 100ms throttle, `MediaSessionState` snapshots, and callback-based dispatch (`onPlay`, `onPause`, `onSeek`, etc.). Replaces raw `_channel.invokeMethod` calls in `AfPlayerService`.
 - **`_queueLock`**: `AfAsyncLock` instance in `AfPlayerService` that serializes all queue-mutating operations (`playQueue`, `setAfShuffleMode`, `setAfLoopMode` jump, `skipToNext/Previous/QueueItem`, `reorderQueue`, `removeFromQueue`, `insertIntoQueue`, `playNext`, `addToQueue`, and the `completed` handler's critical section). Prevents interleaved state reads/writes across async boundaries.
-- **`_isLoadingQueue`**: Guard flag in `AfPlayerService` that prevents playback controls (`seek`, skip, queue mutations) and the `completed` handler from running while `playQueue` is actively loading tracks into mpv.
+- **`_isLoadingQueue`**: Guard flag in `AfPlayerService` that prevents playback controls (`play`, `pause`, `seek`, skip, queue mutations) and the `completed` handler from running while `playQueue` is actively loading tracks into mpv.
 - **`JellyfinResponseParser`**: Extracted from `JellyfinClient` (`lib/core/jellyfin/response_parser.dart`). All JSON→domain parsing logic + field string constants.
 - **`JellyfinUrlBuilder`**: Extracted from `JellyfinClient` (`lib/core/jellyfin/url_builder.dart`). Auth header construction, stream URL building, and image URL generation.
 - **`TrackRepository`**: CRUD for tracks at `lib/core/local/local_db_tracks.dart`. Row-to-track mapping, query helpers, 5000-row limit on `allTracks()`.

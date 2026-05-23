@@ -55,7 +55,7 @@ class MediaSessionState {
 /// The owner ([AfPlayerService]) creates the bridge, wires callbacks, and
 /// calls [pushState] on every playback state change.
 class NativeMediaSessionBridge {
-  static const _channel = MethodChannel('aetherfin.media_session');
+  final MethodChannel _channel;
 
   static const _throttleDuration = Duration(milliseconds: 100);
 
@@ -80,7 +80,8 @@ class NativeMediaSessionBridge {
   /// trigger a remote artwork download for the current track.
   VoidCallback? onArtworkNeeded;
 
-  NativeMediaSessionBridge() {
+  NativeMediaSessionBridge({MethodChannel? channel})
+      : _channel = channel ?? const MethodChannel('aetherfin.media_session') {
     _channel.setMethodCallHandler(_handleMethodCall);
   }
 
