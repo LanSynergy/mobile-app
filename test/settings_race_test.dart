@@ -11,6 +11,7 @@ import 'helpers/fake_player.dart';
 class MockMethodChannel extends Mock implements MethodChannel {}
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   group('Settings Race Guard - player_service', () {
     late MockPlayer player;
     late StreamControllers ctrls;

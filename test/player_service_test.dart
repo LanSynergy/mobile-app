@@ -65,6 +65,7 @@ typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater)
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   group('AfPlayerService playback integration', () {
     late AfPlayerService service;
     late MockPlayer player;

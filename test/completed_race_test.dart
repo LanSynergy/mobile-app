@@ -52,6 +52,7 @@ typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater)
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   group('Completed handler race conditions & serialization', () {
     late AfPlayerService service;
     late MockPlayer player;
