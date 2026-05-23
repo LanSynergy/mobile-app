@@ -1170,9 +1170,17 @@ class AfPlayerService {
 
   }
 
+  int _lastMediaSessionUpdateMs = 0;
+
   /// Push the current state through the bridge (throttled to ~100ms).
   /// Sends `updateState` when there is an active track,
   /// or `clear` when the queue is empty.
+  ///
+  /// Throttles at the entry point so `MediaSessionState` construction
+  /// (which involves several field accesses across managers) doesn't
+  /// run at 30–60 Hz from [_player.stream.position]. The bridge's own
+  /// internal throttle on the MethodChannel call is insufficient because
+  /// by the time it's reached, the state object has already been built.
   void _updateMediaSession() {
     if (_disposed) return;
     final track = _queueManager.currentTrack;
@@ -1180,6 +1188,12 @@ class AfPlayerService {
       _bridge.clear();
       return;
     }
+
+    // Throttle — skip early when called too frequently. The notification
+    // lock-screen doesn't need sub-100ms accuracy for any field.
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (nowMs - _lastMediaSessionUpdateMs < 100) return;
+    _lastMediaSessionUpdateMs = nowMs;
 
     final s = _player.state;
     final isQueueEnd = s.completed && _queueManager.isAtQueueEnd;

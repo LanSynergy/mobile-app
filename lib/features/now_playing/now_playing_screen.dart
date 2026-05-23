@@ -141,7 +141,6 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
   double _bassAverage = 0.0;
   double _prevBass    = 0.0;
   int    _cooldown    = 0;
-  int    _fftSkip     = 0;
 
   @override
   void initState() {
@@ -170,10 +169,8 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
           if (!mounted) return;
           if (frame.bands.isEmpty) return;
 
-          // Skip 2 of every 3 frames to reduce CPU load on low-end
-          // devices while keeping the visual pulse responsive.
-          _fftSkip = (_fftSkip + 1) % 3;
-          if (_fftSkip != 0) return;
+          // Process every frame. At 60 fps input the pulse detector
+          // is ~0.1 μs/frame (7-band sum + compare) — negligible.
 
           _silenceTimer?.cancel();
 
@@ -208,7 +205,7 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
           } else if ((rawBass > _bassAverage * 1.12 || delta > 0.04) &&
                      rawBass > 0.015) {
             _scale.value = 1.06;  // +6% bump
-            _cooldown    = 15;    // ~125ms lockout at 120 fps
+            _cooldown    = 15;    // ~250ms lockout at 60 fps
             if (!_ticker.isAnimating) _ticker.repeat();
           }
 

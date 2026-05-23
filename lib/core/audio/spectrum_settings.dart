@@ -11,5 +11,8 @@ const defaultSpectrumSettings = SpectrumSettings(
   releaseSmoothing: 0.1,
   minDb: -105.0,
   maxDb: 35.0,
-  emitInterval: Duration(milliseconds: 8),
+  // 60 fps matches the visualizer ticker's vsync-aligned flush rate.
+  // Higher rates (120 fps) waste native FFT CPU on frames the ticker
+  // never renders and increase Dart stream callback overhead.
+  emitInterval: Duration(milliseconds: 16),
 );
