@@ -117,17 +117,10 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Send APK to Telegram
+      - name: Prepare APK for Telegram
         env:
-          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BUILD_MODE: ${{ inputs.build_mode }}
-          SPLIT: ${{ inputs.split_per_abi }}
         run: |
-          if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
-            echo "::warning::TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set; skipping Telegram delivery."
-            exit 0
-          fi
           SHORT_SHA="${GITHUB_SHA:0:7}"
           BUILD_ID=$(grep "kBuildId" lib/build_id.dart | sed "s/.*'\(.*\)'.*/\1/")
           COMMIT_MSG=$(git log -1 --pretty=format:"%s" | tr -d '_*`[]')
@@ -169,49 +162,59 @@ jobs:
             echo "::error::No APKs found to send."
             exit 1
           fi
-          for apk in "${APKS[@]}"; do
-            # We already cd'd into flutter-apk — $PWD is the reliable absolute path
-            APK_PATH="$PWD/$apk"
-            
-            # Verify file exists and is readable
-            if [[ ! -r "$APK_PATH" ]]; then
-              echo "::error::Cannot read APK file: $APK_PATH"
-              ls -la "$PWD"
-              exit 1
-            fi
-            
-            SIZE_BYTES=$(stat -c%s "$APK_PATH")
-            SIZE_HUMAN=$(numfmt --to=iec --suffix=B "$SIZE_BYTES")
-            
-            if [ "$SIZE_BYTES" -gt 52428800 ]; then
-              echo "::error::$apk is $SIZE_HUMAN — over Telegram Bot API's 50 MB sendDocument limit. Re-run with split_per_abi=true."
-              exit 1
-            fi
-            
-            # HTML-escape special chars in the commit message (< > &) before embedding
-            COMMIT_ESC=$(printf '%s' "$COMMIT_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
-            
-            CAPTION=$(printf '<b>Aetherfin</b> · <code>%s</code>\n\n<code>%s</code>\n%s\n\nBuild: <code>%s</code>\n<code>%s</code> on <code>%s</code>\n<i>%s</i>\n%s\n\n<a href="%s">View run</a>' \
-              "$BUILD_MODE" "$(basename "$apk")" "$SIZE_HUMAN" "$BUILD_ID" "$SHORT_SHA" "$BRANCH" "$COMMIT_ESC" "$TIMESTAMP" "$RUN_URL")
-            
-            echo "Uploading $(basename "$apk") ($SIZE_HUMAN)..."
-            
-            # Copy to /tmp first — the build output directory sometimes has read
-            # quirks on the CI runner (exit code 26 previously with both @path
-            # and @- stdin approaches).
-            cp "$APK_PATH" "/tmp/upload.apk"
-            HTTP_CODE=$(curl -sS -o /tmp/tg-resp.json -w "%{http_code}" \
-              -F "document=@/tmp/upload.apk;filename=$(basename "$apk")" \
-              -F "chat_id=${CHAT_ID}" \
-              -F "caption=${CAPTION}" \
-              -F "parse_mode=HTML" \
-              "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument")
-            rm -f /tmp/upload.apk
-            
-            if [ "$HTTP_CODE" != "200" ]; then
-              echo "::error::sendDocument failed for $apk: HTTP $HTTP_CODE"
-              cat /tmp/tg-resp.json
-              exit 1
-            fi
-            echo "Sent $(basename "$apk")."
-          done
+
+          # Take the first matching APK (arm64-v8a or universal)
+          apk="${APKS[0]}"
+          APK_PATH="$PWD/$apk"
+
+          # Verify file exists and readable
+          if [[ ! -r "$APK_PATH" ]]; then
+            echo "::error::Cannot read APK file: $APK_PATH"
+            ls -la "$PWD"
+            exit 1
+          fi
+
+          SIZE_BYTES=$(stat -c%s "$APK_PATH")
+          SIZE_HUMAN=$(numfmt --to=iec --suffix=B "$SIZE_BYTES")
+
+          if [ "$SIZE_BYTES" -gt 52428800 ]; then
+            echo "::error::$apk is $SIZE_HUMAN — over Telegram Bot API's 50 MB sendDocument limit. Re-run with split_per_abi=true."
+            exit 1
+          fi
+
+          # HTML-escape commit message (< > &) for HTML caption
+          COMMIT_ESC=$(printf '%s' "$COMMIT_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+
+          # Export metadata for the telegram action step
+          echo "TG_APK_PATH=${APK_PATH}"    >> "${GITHUB_ENV}"
+          echo "TG_APK_NAME=$(basename "$apk")" >> "${GITHUB_ENV}"
+          echo "TG_MODE=${BUILD_MODE}"      >> "${GITHUB_ENV}"
+          echo "TG_SIZE=${SIZE_HUMAN}"      >> "${GITHUB_ENV}"
+          echo "TG_BUILD_ID=${BUILD_ID}"    >> "${GITHUB_ENV}"
+          echo "TG_SHA=${SHORT_SHA}"        >> "${GITHUB_ENV}"
+          echo "TG_BRANCH=${BRANCH}"        >> "${GITHUB_ENV}"
+          echo "TG_TIMESTAMP=${TIMESTAMP}"  >> "${GITHUB_ENV}"
+          echo "TG_COMMIT=${COMMIT_ESC}"    >> "${GITHUB_ENV}"
+          echo "TG_RUN_URL=${RUN_URL}"      >> "${GITHUB_ENV}"
+
+      - name: Send APK to Telegram
+        if: env.TG_APK_PATH != ''
+        uses: appleboy/telegram-action@master
+        with:
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          document: ${{ env.TG_APK_PATH }}
+          format: html
+          message: |
+            <b>Aetherfin</b> · <code>${{ env.TG_MODE }}</code>
+
+            <code>${{ env.TG_APK_NAME }}</code>
+            ${{ env.TG_SIZE }}
+
+            Build: <code>${{ env.TG_BUILD_ID }}</code>
+            <code>${{ env.TG_SHA }}</code> on <code>${{ env.TG_BRANCH }}</code>
+            <i>${{ env.TG_COMMIT }}</i>
+            ${{ env.TG_TIMESTAMP }}
+
+            <a href="${{ env.TG_RUN_URL }}">View run</a>
+          disable_web_page_preview: true
