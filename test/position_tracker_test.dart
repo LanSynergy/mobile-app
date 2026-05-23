@@ -37,6 +37,10 @@ void main() {
 
     test('polled positions are emitted on every tick (frame-skip gate removed)', () {
       fakeAsync((async) {
+        // Simulate active playback so the poll-skip optimization doesn't
+        // short-circuit before getRawProperty is called.
+        when(() => player.state).thenReturn(const PlayerState(playing: true));
+
         final shouldAdvance = false;
         final tracker = AfPositionTracker(
           player: player,
@@ -268,6 +272,10 @@ void main() {
 
     test('pollAndEmitPosition bails early when seeking or loading queue', () {
       fakeAsync((async) {
+        // Simulate active playback so the poll-skip optimization allows
+        // the poll to fire once isSeeking is cleared.
+        when(() => player.state).thenReturn(const PlayerState(playing: true));
+
         var isLoading = false;
         final tracker = AfPositionTracker(
           player: player,

@@ -126,13 +126,11 @@ void main() {
       setUp(() async {
         await db.createPlaylist('local:playlist:1', 'Roadtrip 2024');
         await db.createPlaylist('local:playlist:2', 'Workout');
+        var entryIdCounter = 0;
         await db.addToPlaylist(
           'local:playlist:1',
           ['content://uri/c1', 'content://uri/c2', 'content://uri/m1'],
-          makeEntryId: () {
-            // Stable but unique entry ids for the test.
-            return 'e${DateTime.now().microsecondsSinceEpoch}';
-          },
+          makeEntryId: () => 'test_entry_${entryIdCounter++}',
         );
       });
 

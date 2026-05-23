@@ -132,6 +132,11 @@ class AfPositionTracker {
   /// Returns the parsed seconds, or `null` if the string can't be parsed.
   @visibleForTesting
   static double? parseSeconds(String raw) {
+    // Fast path: clean numeric string — handles 99.9% of mpv output.
+    final trimmed = raw.trim();
+    final fastResult = double.tryParse(trimmed);
+    if (fastResult != null) return fastResult;
+    // Fallback: unit suffixes, EU locale, whitespace padding.
     final match = _secondsRegex.firstMatch(raw);
     if (match == null) return null;
     final normalized = match.group(1)!.replaceFirst(',', '.');
@@ -211,6 +216,13 @@ class AfPositionTracker {
       _positionAnchor.lastKnownPos = Duration.zero;
       _positionAnchor.lastUpdateTime = clock.now();
       _onZeroEmit();
+      return;
+    }
+    // Skip poll when nothing is advancing — no need to hit the
+    // MethodChannel for getRawProperty('time-pos').  UI reads from
+    // positionStreamProvider which holds the last emitted value.
+    if (!_player.state.playing && !_shouldAdvancePosition()) {
+      _emitPosition(_positionAnchor.lastKnownPos);
       return;
     }
     // If a poll is already in-flight, skip this tick silently.
