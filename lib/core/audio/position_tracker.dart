@@ -1,9 +1,19 @@
 import 'dart:async';
 
 import 'package:clock/clock.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show PlayerApi;
 
 import '../../utils/log.dart';
+
+/// Matches a numeric seconds value with optional sign, decimal portion,
+/// and optional unit suffix (s, sec, seconds, ms, milliseconds).
+///
+/// Valid: "5", "5.0", "5.0s", "5.00 ms", "-1.5", "3,14" (EU locale).
+final _secondsRegex = RegExp(
+  r'^\s*([+-]?\d+(?:[.,]\d+)?)\s*(?:s(?:ec(?:onds?)?)?|ms|milliseconds)?\s*$',
+  caseSensitive: false,
+);
 
 /// Stores a snapshot of playback position for elapsed-time extrapolation.
 /// Used when mpv's observe_property/getRawProperty for time-pos stalls.
@@ -30,7 +40,7 @@ class AfPositionTracker {
   Timer? _positionPollTimer;
   bool _isSeeking = false;
   Timer? _seekResetTimer;
-  bool _isPolling = false;
+  Future<void>? _pollChain;
 
   Duration? _lastRawPolledPos;
   int _staleRawPollTicks = 0;
@@ -111,11 +121,28 @@ class AfPositionTracker {
     _onZeroEmit();
   }
 
+  /// Parses a seconds value from mpv's string property format.
+  ///
+  /// Handles:
+  /// - Plain numbers: "5", "5.0"
+  /// - Unit suffixes: "5.0s", "3.00 ms", "1.5 sec", "500ms"
+  /// - EU locale: "3,14" (comma decimal)
+  /// - Whitespace: "  5.0  "
+  ///
+  /// Returns the parsed seconds, or `null` if the string can't be parsed.
+  @visibleForTesting
+  static double? parseSeconds(String raw) {
+    final match = _secondsRegex.firstMatch(raw);
+    if (match == null) return null;
+    final normalized = match.group(1)!.replaceFirst(',', '.');
+    return double.tryParse(normalized);
+  }
+
   Future<Duration> getRawPosition() async {
     try {
       final raw = await _player.getRawProperty('time-pos');
       if (raw == null) return Duration.zero;
-      final secs = double.tryParse(raw);
+      final secs = parseSeconds(raw);
       if (secs == null || secs < 0) return Duration.zero;
       return Duration(milliseconds: (secs * 1000).round());
     } catch (_) {
@@ -127,7 +154,7 @@ class AfPositionTracker {
     try {
       final raw = await _player.getRawProperty('duration');
       if (raw == null) return Duration.zero;
-      final secs = double.tryParse(raw);
+      final secs = parseSeconds(raw);
       if (secs == null || secs <= 0) return Duration.zero;
       return Duration(milliseconds: (secs * 1000).round());
     } catch (_) {
@@ -186,12 +213,16 @@ class AfPositionTracker {
       _onZeroEmit();
       return;
     }
-    if (_isPolling) {
-      _emitExtrapolatedPosition();
-      return;
-    }
-    _isPolling = true;
+    // If a poll is already in-flight, skip this tick silently.
+    // The next tick (500ms later) will get a fresh raw read instead
+    // of falling back to extrapolation which can drift.
+    if (_pollChain != null) return;
 
+    _pollChain = _executePoll().then((_) => _pollChain = null);
+    await _pollChain;
+  }
+
+  Future<void> _executePoll() async {
     try {
       final rawPos = await getRawPosition();
       final now = clock.now();
@@ -224,8 +255,8 @@ class AfPositionTracker {
       } else if (rawPos == Duration.zero) {
         _resetRawPositionStaleDetector(Duration.zero);
       }
-    } finally {
-      _isPolling = false;
+    } catch (_) {
+      // Poll failed silently — next tick will retry.
     }
   }
 

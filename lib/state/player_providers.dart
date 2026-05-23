@@ -5,7 +5,6 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop, FftFrame, MpvPlayer
 
 import '../core/audio/jellyfin_playback_reporter.dart';
 import '../core/jellyfin/models/items.dart';
-import '../core/audio/live_update_service.dart';
 import '../core/audio/player_service.dart';
 import 'app_mode_providers.dart';
 import 'auth_providers.dart';
@@ -59,8 +58,6 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     );
   }
 
-  final liveUpdate = LiveUpdateService(svc);
-  unawaited(liveUpdate.attach());
   unawaited(svc.configureSpectrum());
 
   ref.listen(authProvider, (prev, next) {
@@ -72,7 +69,6 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
 
   ref.onDispose(() async {
     await errorSub.cancel();
-    await liveUpdate.dispose();
     await reporter?.dispose();
     await svc.dispose();
   });

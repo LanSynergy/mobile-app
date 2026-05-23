@@ -18,9 +18,14 @@ The playback subsystem has accumulated multiple latent bugs and test gaps across
 4. 347 lines of critical playback logic (position_tracker + audio_device_manager) have **zero test coverage**
 5. Guard tests validate *reimplemented* logic, not actual `AfPlayerService` guards — false confidence in regression protection
 
-**Risk level distribution:** Critical (2) | High (3) | Medium (5) | Low (4)
+**Risk level distribution:** Critical (2) | High (3) | Medium (5) | Low (1)
 
-**Immediate action items:** Fix the `replaceQueue` empty-input crash, add `_queueLock` to `play()`/`pause()`/`seek()`, and write position_tracker tests.
+**Completed items (this session):**
+- REM-4.2: Removed `LiveUpdateService` dead code (`lib/core/audio/live_update_service.dart` deleted)
+- REM-4.3: Added robust string parsing for `getRawPosition`/`getRawDuration` via `RegExp` + `parseSeconds()`
+- REM-4.4: Replaced `_isPolling` boolean with sequential `_pollChain` in `AfPositionTracker`
+
+**Remaining action items:** Fix the `replaceQueue` empty-input crash, add `_queueLock` to `play()`/`pause()`/`seek()`, and write position_tracker tests (P0–P2 items still open).
 
 **Prevention strategy summary:** Add missing unit tests for untested modules, convert guard tests from simulated to integration-level, and add race-condition tests for the `completed` handler vs navigation methods.
 
@@ -156,7 +161,7 @@ The playback subsystem has accumulated multiple latent bugs and test gaps across
   - **Owner**: Playback team
   - **Priority**: **P3**
 
-- [ ] **RCA-FIND-4.2 [LiveUpdateService retained no-op]**:
+- [x] **RCA-FIND-4.2 [LiveUpdateService retained no-op]**:
   - **Evidence**: `lib/core/audio/live_update_service.dart` is created in `wirePlayerService` (line 62), `attach()` is called (line 63), and `dispose()` is called on cleanup (line 75). Looking at the code, the service is a no-op shell (Android 16 feature, currently disabled).
   - **Reasoning**: The full native plugin is compiled into the APK but the Dart integration never uses it. Retaining the code increases APK size and creates a misleading code path.
   - **Impact**: Dead code increases maintenance surface.
@@ -166,7 +171,7 @@ The playback subsystem has accumulated multiple latent bugs and test gaps across
   - **Owner**: Playback team
   - **Priority**: **P3**
 
-- [ ] **RCA-FIND-4.3 [getRawPosition uses fragile string parsing]**:
+- [x] **RCA-FIND-4.3 [getRawPosition uses fragile string parsing]**:
   - **Evidence**: `lib/core/audio/position_tracker.dart:130-132` — `final raw = await _player.getRawProperty('time-pos'); final secs = double.tryParse(raw);`. The mpv plugin returns position as a `String?`. `double.tryParse` depends on locale-agnostic string format.
   - **Reasoning**: If the mpv_audio_kit plugin ever changes its return format (e.g., adds trailing units, locale-dependent decimal separators), `tryParse` returns `null` and the position silently drops to zero.
   - **Impact**: Position stuck at zero if mpv_audio_kit format changes.
@@ -176,7 +181,7 @@ The playback subsystem has accumulated multiple latent bugs and test gaps across
   - **Owner**: Playback team
   - **Priority**: **P3**
 
-- [ ] **RCA-FIND-4.4 [_isPolling re-entrancy fallback silently falls back]**:
+- [x] **RCA-FIND-4.4 [_isPolling re-entrancy fallback silently falls back]**:
   - **Evidence**: `lib/core/audio/position_tracker.dart:203-206` — If `_isPolling` is `true` (previous poll still in-flight >500ms), the new tick emits an extrapolated position without a fresh raw read.
   - **Reasoning**: While this is a documented design choice, it means a slow `getRawProperty` call (e.g., due to IPC jitter on Android) cascades: extrapolation drifts until the next successful poll. The drift has no correction mechanism.
   - **Impact**: Position indicator shows extrapolated value that may drift from actual playback position.
@@ -436,20 +441,21 @@ have caught any of these bugs before deployment. This is the systemic gap.
   - **Status**: Completed — `AfPlayerService` uses `NativeMediaSessionBridge` callbacks (`onPlay`/`onPause`/`onSeek`/etc.) and `pushState()` with 100ms throttle
   - **Timeline**: Backlog
 
-- [ ] **RCA-REM-4.2 [Remove or stub LiveUpdateService]**:
-  - Either implement the Android 16 live update feature or remove the dead code
-  - If keeping: add a feature flag and document the current state
-  - **Timeline**: Backlog
+- [x] **RCA-REM-4.2 [Remove or stub LiveUpdateService]**:
+  - Removed: `lib/core/audio/live_update_service.dart` deleted, import + wiring removed from `player_providers.dart`
+  - File size reduction: -32 lines dead code
+  - **Status**: Completed
 
-- [ ] **RCA-REM-4.3 [Add robust string parsing for mpv properties]**:
-  - Add regex validation or unit-suffix stripping to `getRawPosition` and `getRawDuration`
-  - Add locale-independent decimal parsing (strip `,` separators)
-  - **Timeline**: Backlog
+- [x] **RCA-REM-4.3 [Add robust string parsing for mpv properties]**:
+  - Added `_secondsRegex` top-level `RegExp` + `@visibleForTesting parseSeconds()` helper
+  - Handles: whitespace, unit suffixes (`s`/`ms`/`sec`/`seconds`/`milliseconds`), EU locale comma decimals, signed values
+  - **Status**: Completed
 
-- [ ] **RCA-REM-4.4 [Replace _isPolling boolean with sequential chain]**:
-  - Use `AfAsyncLock` for position polling to prevent re-entrancy fallback
-  - Ensure poll chain always completes before next tick
-  - **Timeline**: Backlog
+- [x] **RCA-REM-4.4 [Replace _isPolling boolean with sequential chain]**:
+  - Replaced `bool _isPolling` with `Future<void>? _pollChain` sequential chain
+  - Re-entrancy skips silently (no extrapolation fallback) — next 500ms tick gets fresh read
+  - Extracted `_executePoll()` method; chain-level error catch prevents unhandled rejections
+  - **Status**: Completed
 
 ---
 
@@ -470,17 +476,17 @@ have caught any of these bugs before deployment. This is the systemic gap.
 | REM-3.5 | Extend artwork test coverage | P2 | 8 hours | Moderate | HttpClient mocking |
 | REM-3.6 | Add race-condition tests | P2 | 12 hours | Complex | Loop mode race test pattern |
 | REM-4.1 | Wire NativeMediaSessionBridge | P3 | 8 hours | Moderate | None — Completed |
-| REM-4.2 | Remove LiveUpdateService | P3 | 2 hours | Simple | Verify no consumers |
-| REM-4.3 | Robust string parsing | P3 | 2 hours | Simple | None |
-| REM-4.4 | Sequential poll chain | P3 | 4 hours | Moderate | Position tracker redesign |
+| REM-4.2 | Remove LiveUpdateService | P3 | 2 hours | Simple | ✅ Done |
+| REM-4.3 | Robust string parsing | P3 | 2 hours | Simple | ✅ Done |
+| REM-4.4 | Sequential poll chain | P3 | 4 hours | Moderate | ✅ Done |
 
-**Total estimated effort**: ~91 hours initial cleanup + ongoing maintenance
+**Total estimated effort**: ~91 hours initial cleanup + ongoing maintenance (8 hours completed this session)
 
 **ROI Assessment**:
 - P0 items (REM-1.1, REM-1.2): 5 hours → eliminates crash risk + race condition (highest ROI)
 - P1 items (REM-2.1 through REM-2.4): 15 hours → eliminates silent data corruption and UI desync
 - P2 test items (REM-3.1 through REM-3.6): 68 hours → prevents future regressions (medium ROI)
-- P3 items (REM-4.1 through REM-4.4): 16 hours → code quality improvements (lowest ROI)
+- P3 items (REM-4.1 through REM-4.4): 16 hours → code quality improvements (lowest ROI) — **8 hours completed**
 
 ---
 
