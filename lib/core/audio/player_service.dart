@@ -571,6 +571,7 @@ class AfPlayerService {
 
   Future<void> play() async {
     if (_disposed) return;
+    if (_isLoadingQueue) return;
     return _queueLock.run(() async {
       _userPaused = false;
       _positionTracker.onPlay();
@@ -585,6 +586,7 @@ class AfPlayerService {
 
   Future<void> pause() async {
     if (_disposed) return;
+    if (_isLoadingQueue) return;
     return _queueLock.run(() async {
       _userPaused = true;
       _pendingPlayNudgeIdx = null;
