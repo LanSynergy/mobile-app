@@ -143,9 +143,10 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                     horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
                 itemCount: _items.length,
                 buildDefaultDragHandles: false,
-                onReorderItem: (oldIndex, newIndex) {
-                  // onReorderItem already adjusts newIndex for the removed
-                  // item, so no manual newIndex -= 1 needed here.
+                onReorder: (oldIndex, newIndex) {
+                  // Adjust newIndex for item removal: dragging down shifts
+                  // the target index by one.
+                  if (newIndex > oldIndex) newIndex -= 1;
                   setState(() {
                     final item = _items.removeAt(oldIndex);
                     _items.insert(newIndex, item);
