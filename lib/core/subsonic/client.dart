@@ -75,17 +75,20 @@ class SubsonicClient implements MusicBackend {
       _dio.interceptors.add(
         InterceptorsWrapper(
           onRequest: (options, handler) {
-            afLog('http', '→ ${options.method} ${options.uri.path}');
+            final redacted = _redactUri(options.uri);
+            afLog('http', '→ ${options.method} $redacted');
             handler.next(options);
           },
           onResponse: (response, handler) {
+            final redacted = _redactUri(response.requestOptions.uri);
             afLog('http',
-                '← ${response.statusCode} ${response.requestOptions.uri.path}');
+                '← ${response.statusCode} $redacted');
             handler.next(response);
           },
           onError: (err, handler) {
+            final redacted = _redactUri(err.requestOptions.uri);
             afLog('http',
-                '✕ ${err.response?.statusCode ?? '?'} ${err.requestOptions.uri.path}');
+                '✕ ${err.response?.statusCode ?? '?'} $redacted');
             handler.next(err);
           },
         ),
@@ -121,6 +124,25 @@ class SubsonicClient implements MusicBackend {
         'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     return List.generate(length, (_) => chars[_rng.nextInt(chars.length)])
         .join();
+  }
+
+  /// Redact sensitive Subsonic auth params from a URI before logging.
+  /// Strips `u`, `t`, `s`, and `api_key` values so credentials never
+  /// appear in logcat output.
+  static String _redactUri(Uri uri) {
+    if (uri.queryParameters.isEmpty) return uri.path;
+    final scrubbed = <String, dynamic>{
+      for (final e in uri.queryParametersAll.entries)
+        e.key: _isSensitiveSubsonicParam(e.key)
+            ? const ['<redacted>']
+            : e.value,
+    };
+    return uri.replace(queryParameters: scrubbed).path;
+  }
+
+  static bool _isSensitiveSubsonicParam(String key) {
+    final k = key.toLowerCase();
+    return k == 'u' || k == 't' || k == 's' || k == 'api_key';
   }
 
   /// Execute a Subsonic API call and return the inner response data.
