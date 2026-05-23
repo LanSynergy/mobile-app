@@ -135,6 +135,26 @@ jobs:
           RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
           cd build/app/outputs/flutter-apk
+
+          # Extract version from pubspec.yaml for standard APK naming
+          VERSION=$(grep "^version:" "${GITHUB_WORKSPACE}/pubspec.yaml" | sed 's/version: *\([^+]*\)[+ ].*/\1/' | tr -d ' ')
+
+          # Rename APKs to standard format: Aetherfin-v{version}-{build_id}[-{abi}].apk
+          for f in app-*.apk; do
+            stem="${f#app-}"
+            stem="${stem%.apk}"
+            abi_part="${stem%-${BUILD_MODE}}"
+            if [ -n "$abi_part" ]; then
+              newname="Aetherfin-v${VERSION}-${abi_part}-${BUILD_ID}.apk"
+            else
+              newname="Aetherfin-v${VERSION}-${BUILD_ID}.apk"
+            fi
+            if [ "$f" != "$newname" ]; then
+              echo "Renaming $f → $newname"
+              mv "$f" "$newname"
+            fi
+          done
+
           shopt -s nullglob
           # Prefer the arm64 split if it exists (per user request); otherwise fall
           # back to the universal APK from a non-split build.
