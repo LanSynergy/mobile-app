@@ -143,10 +143,9 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                     horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
                 itemCount: _items.length,
                 buildDefaultDragHandles: false,
-                onReorder: (oldIndex, newIndex) {
-                  // Apply the standard ReorderableListView adjustment
-                  // before touching either the local mirror or the player.
-                  if (newIndex > oldIndex) newIndex -= 1;
+                onReorderItem: (oldIndex, newIndex) {
+                  // onReorderItem already adjusts newIndex for the removed
+                  // item, so no manual newIndex -= 1 needed here.
                   setState(() {
                     final item = _items.removeAt(oldIndex);
                     _items.insert(newIndex, item);
