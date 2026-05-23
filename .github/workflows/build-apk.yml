@@ -1,5 +1,4 @@
 name: Build APK
-
 # Manual trigger only — click "Run workflow" in the Actions tab.
 on:
   workflow_dispatch:
@@ -25,7 +24,6 @@ jobs:
     name: Build ${{ inputs.build_mode }} APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -152,25 +150,43 @@ jobs:
             exit 1
           fi
           for apk in "${APKS[@]}"; do
-            SIZE_BYTES=$(stat -c%s "$apk")
+            # Resolve to absolute path to avoid curl @-syntax issues
+            APK_PATH="$(cd "$(dirname "$apk")" && pwd)/$(basename "$apk")"
+            
+            # Verify file exists and is readable
+            if [[ ! -r "$APK_PATH" ]]; then
+              echo "::error::Cannot read APK file: $APK_PATH"
+              exit 1
+            fi
+            
+            SIZE_BYTES=$(stat -c%s "$APK_PATH")
             SIZE_HUMAN=$(numfmt --to=iec --suffix=B "$SIZE_BYTES")
+            
             if [ "$SIZE_BYTES" -gt 52428800 ]; then
               echo "::error::$apk is $SIZE_HUMAN — over Telegram Bot API's 50 MB sendDocument limit. Re-run with split_per_abi=true."
               exit 1
             fi
-            CAPTION=$(printf '*Aetherfin* · `%s`\n\n`%s`\n%s\n\nBuild: `%s`\n`%s` on `%s`\n_%s_\n%s\n\n[View run](%s)' \
-              "$BUILD_MODE" "$apk" "$SIZE_HUMAN" "$BUILD_ID" "$SHORT_SHA" "$BRANCH" "$COMMIT_MSG" "$TIMESTAMP" "$RUN_URL")
-            echo "Uploading $apk ($SIZE_HUMAN)..."
+            
+            # HTML-escape special chars in the commit message (< > &) before embedding
+            COMMIT_ESC=$(printf '%s' "$COMMIT_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+            
+            CAPTION=$(printf '<b>Aetherfin</b> · <code>%s</code>\n\n<code>%s</code>\n%s\n\nBuild: <code>%s</code>\n<code>%s</code> on <code>%s</code>\n<i>%s</i>\n%s\n\n<a href="%s">View run</a>' \
+              "$BUILD_MODE" "$(basename "$apk")" "$SIZE_HUMAN" "$BUILD_ID" "$SHORT_SHA" "$BRANCH" "$COMMIT_ESC" "$TIMESTAMP" "$RUN_URL")
+            
+            echo "Uploading $(basename "$apk") ($SIZE_HUMAN)..."
+            
+            # Upload with properly quoted @ syntax and absolute path
             HTTP_CODE=$(curl -sS -o /tmp/tg-resp.json -w "%{http_code}" \
-              -F document=@"$apk" \
-              -F chat_id="$CHAT_ID" \
-              -F caption="$CAPTION" \
-              -F parse_mode="Markdown" \
-              "https://api.telegram.org/bot$BOT_TOKEN/sendDocument")
+              -F "document=@${APK_PATH}" \
+              -F "chat_id=${CHAT_ID}" \
+              -F "caption=${CAPTION}" \
+              -F "parse_mode=HTML" \
+              "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument")
+            
             if [ "$HTTP_CODE" != "200" ]; then
               echo "::error::sendDocument failed for $apk: HTTP $HTTP_CODE"
               cat /tmp/tg-resp.json
               exit 1
             fi
-            echo "Sent $apk."
+            echo "Sent $(basename "$apk")."
           done
