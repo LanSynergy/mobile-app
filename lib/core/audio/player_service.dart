@@ -331,7 +331,7 @@ class AfPlayerService {
   Future<void> setAudioEffects(AudioEffects effects) async {
     if (_disposed) return;
     if (_isLoadingQueue) return;
-    final optimized = _autoBypassFlat(effects);
+    final optimized = autoBypassFlat(effects);
     await _player.setAudioEffects(optimized);
     afLog('audio', 'audioEffects set');
   }
@@ -339,12 +339,10 @@ class AfPlayerService {
   Future<void> updateAudioEffects(AudioEffects Function(AudioEffects) mapper) async {
     await _player.updateAudioEffects((current) {
       final updated = mapper(current);
-      return _autoBypassFlat(updated);
+      return autoBypassFlat(updated);
     });
     afLog('audio', 'audioEffects updated');
   }
-
-  AudioEffects _autoBypassFlat(AudioEffects fx) => autoBypassFlat(fx);
 
   Stream<AudioEffects> get audioEffectsStream => _player.stream.audioEffects;
   AudioEffects get audioEffects => _player.state.audioEffects;
@@ -1280,7 +1278,9 @@ class AfAsyncLock {
           completer.completeError(e, st);
         }
       },
-    ).catchError((Object _) {});
+    ).catchError((Object error, StackTrace stack) {
+      afLog('error', 'AfAsyncLock chain error', error: error, stackTrace: stack);
+    });
     return completer.future;
   }
 }
