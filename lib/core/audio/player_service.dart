@@ -495,11 +495,9 @@ class AfPlayerService {
       _queueManager.rebuildUrlMap(medias, tracks);
 
       _isLoadingQueue = true;
-      var localSyncs = 0;
       try {
         _positionTracker.onTrackChanged();
         _queueManager.beginPlaylistSync();
-        localSyncs++;
 
         final shouldPlay = !_userPaused;
         if (medias.length <= 5) {
@@ -570,10 +568,10 @@ class AfPlayerService {
         }
         rethrow;
       } finally {
-        while (localSyncs > 0) {
-          _queueManager.endPlaylistSync();
-          localSyncs--;
-        }
+        // beginPlaylistSync is called exactly once above, so a single
+        // endPlaylistSync balances it. Using an unconditional call keeps
+        // the pattern simple and prevents unbalanced sync state.
+        _queueManager.endPlaylistSync();
         if (myGen == _queueLoadGen) {
           _isLoadingQueue = false;
         }
@@ -759,6 +757,9 @@ class AfPlayerService {
     });
   }
 
+  /// Set playback speed. Intentionally bypasses `_queueLock` because
+  /// `setRate` is a simple mpv property setter — it doesn't touch the
+  /// playlist/queue state and cannot interleave with queue mutations.
   Future<void> setAfSpeed(double speed) async {
     if (_disposed) return;
     if (_isLoadingQueue) return;

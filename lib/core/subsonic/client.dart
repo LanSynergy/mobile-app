@@ -192,6 +192,12 @@ class SubsonicClient implements MusicBackend {
 
   @override
   void close() {
+    // Best-effort zeroing of the password buffer. This clears the list
+    // wrapper, but Dart's GC may have already copied the underlying
+    // Uint8List bytes to an older heap generation where they persist
+    // until overwritten by future allocations. True memory zeroing is
+    // not guaranteed in a GC-managed heap — this is a defense-in-depth
+    // mitigation, not a security guarantee.
     for (var i = 0; i < _passwordBytes.length; i++) {
       _passwordBytes[i] = 0;
     }
@@ -589,6 +595,13 @@ class SubsonicClient implements MusicBackend {
     // opaque string IDs) and (b) when track IDs happened to be numeric,
     // silently removed the wrong tracks — interpreting an ID like "42" as
     // "remove the track at position 42 of the playlist."
+    //
+    // NOTE: This fetch-then-modify pattern has a stale-read race: if the
+    // playlist is modified server-side between the fetch (playlist() call)
+    // and the modify (updatePlaylist), the computed indices may remove
+    // the wrong tracks. For the single-user Navidrome use case this is
+    // extremely unlikely. If multi-user access becomes a concern, wrap
+    // in a retry loop that re-fetches and re-computes on failure.
     if (entryIds.isEmpty) return;
     final detail = await playlist(playlistId);
     if (detail == null) return;
