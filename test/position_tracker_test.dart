@@ -35,7 +35,7 @@ void main() {
       ctrls.dispose();
     });
 
-    test('frame-skip gate filters emissions within 500ms delta', () {
+    test('polled positions are emitted on every tick (frame-skip gate removed)', () {
       fakeAsync((async) {
         final shouldAdvance = false;
         final tracker = AfPositionTracker(
@@ -53,13 +53,14 @@ void main() {
         emittedPositions.clear();
 
         // Mock raw properties for subsequent ticks
-        // Tick 1 (+500ms): raw pos is 1200ms. Delta is 200ms (< 500ms frame skip delta), so it gets skipped.
+        // Tick 1 (+500ms): raw pos is 1200ms, emitted immediately.
         when(() => player.getRawProperty('time-pos')).thenAnswer((_) async => '1.2');
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
-        expect(emittedPositions, isEmpty);
+        expect(emittedPositions, [const Duration(milliseconds: 1200)]);
+        emittedPositions.clear();
 
-        // Tick 2 (+1000ms): raw pos is 1600ms. Delta from last emitted (1000ms) is 600ms (>= 500ms), so it gets emitted.
+        // Tick 2 (+1000ms): raw pos is 1600ms, emitted immediately.
         when(() => player.getRawProperty('time-pos')).thenAnswer((_) async => '1.6');
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
@@ -69,7 +70,7 @@ void main() {
       });
     });
 
-    test('onSeek, onTrackChanged, and onStop force emit bypassing frame-skip gate', () {
+    test('onSeek, onTrackChanged, and onStop emit position immediately', () {
       fakeAsync((async) {
         final tracker = AfPositionTracker(
           player: player,
