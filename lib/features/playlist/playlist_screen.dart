@@ -123,7 +123,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                           horizontal: AfSpacing.s16),
                       buildDefaultDragHandles: false,
                       itemCount: tracks.length,
-                      onReorder: (oldIndex, newIndex) =>
+                      onReorderItem: (oldIndex, newIndex) =>
                           _onReorder(oldIndex, newIndex, tracks, backend, pl.id),
                       itemBuilder: (context, i) {
                         final t = tracks[i];
@@ -207,8 +207,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
 
   void _onReorder(int oldIndex, int newIndex, List<AfTrack> tracks,
       MusicBackend client, String playlistId) {
-    // Adjust newIndex for item removal: dragging down shifts the target.
-    if (newIndex > oldIndex) newIndex -= 1;
+    // Note: no newIndex adjustment needed — onReorderItem already handles it.
     final updated = List<AfTrack>.from(tracks);
     final item = updated.removeAt(oldIndex);
     updated.insert(newIndex, item);
