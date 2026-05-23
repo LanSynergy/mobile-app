@@ -103,7 +103,7 @@ On HTTP error, revert. Never store favorite state only on-device.
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Framework | Flutter **3.41.9 stable**, Dart **3.11.5** | `flutter --version` must match. CI pins this. |
+| Framework | Flutter **3.44.0 stable**, Dart **3.11.5** | `flutter --version` must match. CI pins this. |
 | State | `flutter_riverpod` ^2.6 | `FutureProvider.autoDispose`, `StateNotifierProvider`. No `ChangeNotifier` for Riverpod providers. |
 | Routing | `go_router` ^14.7 | Shell route with bottom nav. See `lib/app/router.dart`. |
 | HTTP | `dio` ^5.7 + `dio_cache_interceptor` ^3.5 | One Dio per client. Jellyfin: auth header in `BaseOptions.headers`. Subsonic: auth as query params. |

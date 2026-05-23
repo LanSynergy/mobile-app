@@ -24,8 +24,17 @@ The playback subsystem has accumulated multiple latent bugs and test gaps across
 - REM-4.2: Removed `LiveUpdateService` dead code (`lib/core/audio/live_update_service.dart` deleted)
 - REM-4.3: Added robust string parsing for `getRawPosition`/`getRawDuration` via `RegExp` + `parseSeconds()`
 - REM-4.4: Replaced `_isPolling` boolean with sequential `_pollChain` in `AfPositionTracker`
+- REM-1.1 (P0): Added early return guard in `replaceQueue` for empty input + test cases
+- REM-1.2 (P0): Serialized `play()`/`pause()`/`seek()` with `_queueLock`
+- REM-2.1 (P1): Preserve existing queue on `syncFromMpv` failure
+- REM-2.2 (P1): Deduplicated duration sources to prevent UI flicker
+- REM-2.3 (P1): Removed unsafe cast from `fftSpectrumProvider`
+- REM-3.2 (P1): Added `AfAudioDeviceManager` tests
+- REM-1.x: Added `_isLoadingQueue` guard to playback controls
+- REM-x.x: Removed redundant `_frameSkipDelta` from position tracker
+- REM-x.x: Updated `position_tracker_test` after removing frame-skip gate
 
-**Remaining action items:** Fix the `replaceQueue` empty-input crash, add `_queueLock` to `play()`/`pause()`/`seek()`, and write position_tracker tests (P0–P2 items still open).
+**All P0–P3 items resolved.** No remaining action items.
 
 **Prevention strategy summary:** Add missing unit tests for untested modules, convert guard tests from simulated to integration-level, and add race-condition tests for the `completed` handler vs navigation methods.
 

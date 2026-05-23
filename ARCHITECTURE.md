@@ -2,7 +2,7 @@
 
 ## Overview
 
-Aetherfin is a native Android music player (Flutter 3.41 / Dart 3.11) that streams
+Aetherfin is a native Android music player (Flutter 3.44 / Dart 3.11) that streams
 from self-hosted **Jellyfin** or **Navidrome** servers, or plays local files via
 SAF. Audio decoding is handled entirely on-device by **libmpv** (`mpv_audio_kit`).
 No cloud, no telemetry, no transcoding.
@@ -13,7 +13,7 @@ No cloud, no telemetry, no transcoding.
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Framework | Flutter 3.41.9, Dart 3.11.5 | Android 7.0+ (min SDK 24) |
+| Framework | Flutter 3.44.0, Dart 3.11.5 | Android 7.0+ (min SDK 24) |
 | State | `flutter_riverpod` ^2.6 | `FutureProvider.autoDispose`, `StateNotifierProvider`. No `ChangeNotifier` for Riverpod. |
 | Routing | `go_router` ^14.7 | Shell route with 4-tab bottom nav + overlay routes |
 | Audio engine | `mpv_audio_kit` ^0.1.3 | libmpv wrapper. NOT `just_audio`. |

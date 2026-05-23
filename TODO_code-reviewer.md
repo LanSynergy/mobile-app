@@ -15,7 +15,7 @@
   - `lib/app/router.dart` — GoRouter configuration + auth/mode redirect
   - `lib/widgets/audio_visual_scrubber.dart` — FFT visualizer + scrubber (519 lines)
   - `lib/state/providers.dart` — Barrel exports for all providers
-- **Language**: Dart 3.11.5 / Flutter 3.41.9
+- **Language**: Dart 3.11.5 / Flutter 3.44.0
 - **Runtime**: Android 7.0+ (minSdk 24)
 - **Scope**: Security audit, performance evaluation, bug detection, code quality assessment across core audio, networking, routing, and UI rendering layers
 

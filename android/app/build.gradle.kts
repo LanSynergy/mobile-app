@@ -18,7 +18,7 @@ android {
     namespace = "dev.aetherfin.aetherfin"
     compileSdk = flutter.compileSdkVersion
     // mpv_audio_kit requires NDK 28.2.13676358 for its CMake/JNI build.
-    // Flutter 3.41.9's default flutter.ndkVersion is 26.0.1 which is
+    // Flutter 3.44.0's default flutter.ndkVersion is 26.0.1 which is
     // incompatible — override it explicitly here.
     ndkVersion = "28.2.13676358"
 
