@@ -38,7 +38,10 @@ import '../widgets/app_shell.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 final _rootKey = GlobalKey<NavigatorState>();
-final _shellKey = GlobalKey<NavigatorState>();
+final _shellBranch1Key = GlobalKey<NavigatorState>();
+final _shellBranch2Key = GlobalKey<NavigatorState>();
+final _shellBranch3Key = GlobalKey<NavigatorState>();
+final _shellBranch4Key = GlobalKey<NavigatorState>();
 final _authRefresh = _AuthRefreshListenable();
 
 /// Auth & mode snapshot for the router redirect. Set by [setRouterAuthState]
@@ -125,7 +128,7 @@ final _router = GoRouter(
       builder: (context, state, shell) => AppShell(shell: shell),
       branches: [
         StatefulShellBranch(
-          navigatorKey: _shellKey,
+          navigatorKey: _shellBranch1Key,
           routes: [
             GoRoute(
               path: '/home',
@@ -135,6 +138,7 @@ final _router = GoRouter(
           ],
         ),
         StatefulShellBranch(
+          navigatorKey: _shellBranch2Key,
           routes: [
             GoRoute(
               path: '/search',
@@ -144,6 +148,7 @@ final _router = GoRouter(
           ],
         ),
         StatefulShellBranch(
+          navigatorKey: _shellBranch3Key,
           routes: [
             GoRoute(
               path: '/library',
@@ -162,6 +167,7 @@ final _router = GoRouter(
           ],
         ),
         StatefulShellBranch(
+          navigatorKey: _shellBranch4Key,
           routes: [
             GoRoute(
               path: '/profile',
