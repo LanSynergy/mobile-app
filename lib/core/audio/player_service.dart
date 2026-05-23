@@ -504,14 +504,24 @@ class AfPlayerService {
           await _player.openAll(medias, index: safeIndex, play: shouldPlay);
           if (myGen != _queueLoadGen) return;
         } else {
+          // Sequential per-track adds (not batched) — intentional design:
+          // each `await` is interleaved with a `_queueLoadGen` guard check
+          // so a concurrent `playQueue` call can abort stale adds at the
+          // next iteration. Batching via openAll or Future.wait would let
+          // orphan tracks flood mpv's playlist on abort. For N > 5, the
+          // first track plays immediately (Phase 1) while the rest load
+          // sequentially in the background (Phases 2-3).
           await _player.open(medias[safeIndex], play: shouldPlay);
           if (myGen != _queueLoadGen) return;
 
+          // Phase 2: tracks after current — forward append
           for (var i = safeIndex + 1; i < medias.length; i++) {
             await _player.add(medias[i]);
             if (myGen != _queueLoadGen) return;
           }
 
+          // Phase 3: tracks before current — backward insert-at-0
+          // (reversed so they end up in original order)
           for (var i = safeIndex - 1; i >= 0; i--) {
             await _player.sendRawCommand([
               'loadfile',
@@ -768,11 +778,11 @@ class AfPlayerService {
   }
 
   Future<void> reorderQueue(int oldIndex, int newIndex) async {
+    if (_isLoadingQueue) {
+      afLog('audio', 'reorderQueue ignored: queue is loading');
+      return;
+    }
     return _queueLock.run(() async {
-      if (_isLoadingQueue) {
-        afLog('audio', 'reorderQueue ignored: queue is loading');
-        return;
-      }
       if (!_queueManager.canReorder(oldIndex, newIndex)) return;
 
       _queueManager.beginPlaylistSync();
@@ -796,12 +806,12 @@ class AfPlayerService {
   /// Remove a track from the queue at [index]. Refuses to remove the
   /// currently-playing item. Returns `true` when the removal took effect.
   Future<bool> removeFromQueue(int index) async {
+    if (_isLoadingQueue) {
+      afLog('audio', 'removeFromQueue ignored: queue is loading');
+      return false;
+    }
     return _queueLock.run(() async {
       if (_disposed) return false;
-      if (_isLoadingQueue) {
-        afLog('audio', 'removeFromQueue ignored: queue is loading');
-        return false;
-      }
       if (!_queueManager.canRemove(index)) {
         afLog('audio', 'removeFromQueue refused index=$index (currently playing)');
         return false;
@@ -831,12 +841,12 @@ class AfPlayerService {
     AfTrack track, {
     required String Function(AfTrack) resolveStreamUrl,
   }) async {
+    if (_isLoadingQueue) {
+      afLog('audio', 'insertIntoQueue ignored: queue is loading');
+      return;
+    }
     return _queueLock.run(() async {
       if (_disposed) return;
-      if (_isLoadingQueue) {
-        afLog('audio', 'insertIntoQueue ignored: queue is loading');
-        return;
-      }
       final url = resolveStreamUrl(track);
 
       _queueManager.beginPlaylistSync();
@@ -866,11 +876,11 @@ class AfPlayerService {
     AfTrack track, {
     required String Function(AfTrack) resolveStreamUrl,
   }) async {
+    if (_isLoadingQueue) {
+      afLog('audio', 'playNext ignored: queue is loading');
+      return;
+    }
     return _queueLock.run(() async {
-      if (_isLoadingQueue) {
-        afLog('audio', 'playNext ignored: queue is loading');
-        return;
-      }
       final insertAt = _queueManager.currentIndex >= 0
           ? _queueManager.currentIndex + 1
           : _queueManager.currentQueue.length;
@@ -899,11 +909,11 @@ class AfPlayerService {
     AfTrack track, {
     required String Function(AfTrack) resolveStreamUrl,
   }) async {
+    if (_isLoadingQueue) {
+      afLog('audio', 'addToQueue ignored: queue is loading');
+      return;
+    }
     return _queueLock.run(() async {
-      if (_isLoadingQueue) {
-        afLog('audio', 'addToQueue ignored: queue is loading');
-        return;
-      }
       final url = resolveStreamUrl(track);
 
       _queueManager.beginPlaylistSync();

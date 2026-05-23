@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
@@ -31,7 +32,8 @@ class SubsonicClient implements MusicBackend {
   /// UTF-8 bytes of the password, zeroed on [close] to minimise the
   /// plaintext-residence window in native heap memory. Converted from the
   /// constructor argument so the original [String] can be GC'd immediately.
-  final List<int> _passwordBytes;
+  /// Typed as [Uint8List] to clarify this is raw UTF-8 byte data.
+  final Uint8List _passwordBytes;
 
   /// Aetherfin's running app version (e.g. `0.2.3`). Sent in `User-Agent`.
   /// Loaded from `package_info_plus` in `main()` and injected through
@@ -104,11 +106,17 @@ class SubsonicClient implements MusicBackend {
   // ── Auth helpers ──────────────────────────────────────────────────────
 
   /// Generate Subsonic auth query params for every request.
+  /// Feeds password and salt as separate chunks via [startChunkedConversion]
+  /// to avoid the intermediate spread list (`[...password, ...salt]`) that
+  /// would copy password bytes into a new heap buffer on every API call.
   Map<String, String> _authParams() {
     final salt = _generateSalt();
-    final token = md5
-        .convert([..._passwordBytes, ...utf8.encode(salt)])
-        .toString();
+    final collector = _DigestCollector();
+    final hasher = md5.startChunkedConversion(collector);
+    hasher.add(_passwordBytes);
+    hasher.add(utf8.encode(salt));
+    hasher.close();
+    final token = collector.digest.toString();
     return {
       'u': username,
       't': token,
@@ -919,6 +927,16 @@ class SubsonicClient implements MusicBackend {
     if (v is String) return int.tryParse(v);
     return null;
   }
+}
+
+/// Collects a single [Digest] from a chunked hash operation.
+/// Replaces [DigestSink] (not publicly exported from `package:crypto`).
+class _DigestCollector implements Sink<Digest> {
+  Digest? digest;
+  @override
+  void add(Digest data) => digest = data;
+  @override
+  void close() {}
 }
 
 /// Error returned by the Subsonic API (status != "ok").

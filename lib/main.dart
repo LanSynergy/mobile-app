@@ -172,8 +172,11 @@ Future<void> main() async {
     // correctly on the very first frame.
     setRouterAuthState(auth: initialAuth, mode: persistedMode);
 
-    // Wire auth → router redirect. Capture the subscription so it can be
-    // disposed if the architecture evolves (review finding 3).
+    // Wire auth → router redirect. The subscription lives for the process
+    // lifetime — it intentionally keeps `container` alive (which is fine
+    // since `container` is the app's root provider scope). If the architecture
+    // ever supports hot-restart of the provider tree, this subscription would
+    // need to be disposed. Accept as-is for now.
     // ignore: unused_local_variable
     final authSub = container.listen<JellyfinAuth?>(
       authProvider,
