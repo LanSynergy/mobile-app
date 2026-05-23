@@ -39,6 +39,7 @@ dependencies:
   # Fonts
   google_fonts: ^6.2.1
   font_awesome_flutter: ^11.0.0
+  cupertino_icons: ^1.0.8
 
   # Crypto (Subsonic token auth: md5(password + salt))
   crypto: ^3.0.6
