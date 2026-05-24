@@ -73,14 +73,22 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 
 ### Now Playing
 - FFT spectrum visualizer (64 bars, 60 fps, engine-driven)
+- Gradient background that shifts with spectral colors extracted from artwork
 - Artwork pulse on kick drums (sub-bass transient detection)
 - Synced lyrics (LRC, auto-scrolling)
 - Favorite toggle, quality chip, save to playlist
+- Translucent queue screen with frosted-glass effect
 
 ### Settings
 - Audio output: sample rate, bit depth, exclusive mode
 - Network: cache duration, buffer size, keep-audio-active
 - Server: connection info, switch server, sign out
+
+### UI/UX
+- **Lucide icons** throughout — consistent, modern icon set (replaced hugeicons)
+- **Skeleton loading** — shimmer placeholder animations on every screen while data loads
+- Context menus as dialogs (album 3-dot, track long-press) — cleaner than bottom sheets
+- Per-sheet manual drag handles on bottom sheets — avoids floating transparent handles
 
 ---
 

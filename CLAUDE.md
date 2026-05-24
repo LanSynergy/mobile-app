@@ -112,9 +112,11 @@ On HTTP error, revert. Never store favorite state only on-device.
 | Lock-screen | Native MediaSession | Custom Kotlin service (`AetherfinMediaSessionService`) with `MethodChannel` (`aetherfin.media_session`). |
 | Storage | `flutter_secure_storage` ^9.2 (creds + deviceId), `shared_preferences` ^2.3 (settings), `drift` ^2.19 (local metadata cache) | Never store creds in shared_preferences. |
 | Discovery | `multicast_dns` ^0.3.2 | mDNS scan for `_jellyfin._tcp`. Navidrome: probed via Subsonic `ping.view`. |
+| Icons | `lucide_icons` ^0.257.0, `lucide_icons_flutter` ^3.1.14+1 | All UI icons use **Lucide** (replaced hugeicons). Import from `package:lucide_icons_flutter/lucide_icons.dart`. |
 | Imagery | `cached_network_image` ^3.4, `flutter_svg` ^2.0, `palette_generator_master` ^1.1 | All cover art through `cached_network_image`. |
 | Fonts | `google_fonts` ^6.2, `cupertino_icons` ^1.0.8 | Inter Variable + JetBrains Mono. cupertino_icons satisfies transitive font validator. |
 | UUID | `uuid` ^4.5 | Fallback device ID generation (cryptographically random). |
+| Skeleton | Custom skeleton widgets in `lib/widgets/skeletons/` | Shimmer skeleton loading on all screens. Each screen has a corresponding `*_skeleton.dart` file. |
 
 The min Android SDK is **24** (Android 7.0). Built with **Java 17** + Gradle
 in CI. Local Java 17 is required.
@@ -269,7 +271,9 @@ lib/
 │  │  ├─ local_library.dart     ← High-level interface: scan, query albums/artists/tracks/genres
 │  │  ├─ local_backend.dart     ← LocalBackend: implements MusicBackend over LocalLibrary + LocalDb
 │  │  ├─ metadata_scanner.dart  ← Orchestrates SAF scan: list files → read tags → insert DB
-│  │  └─ saf_picker.dart        ← Dart bridge to SafPlugin (aetherfin.saf MethodChannel)
+│  │  ├─ saf_picker.dart        ← Dart bridge to SafPlugin (aetherfin.saf MethodChannel)
+│  │  └─ cover_cache_manager.dart ← CoverCacheManager: LRU-evicted cover art disk cache
+│  │                               Cleans up orphan temp files on startup
 │  ├─ smart_playlist/
 │  │  ├─ smart_playlist_model.dart  ← SmartPlaylist + SmartRule data models
 │  │  ├─ smart_playlist_db.dart     ← SQLite CRUD for smart playlists
@@ -297,11 +301,11 @@ lib/
 │  │                            now_playing/ contains eq_dsp_screen.dart (EQ/DSP screen),
 │  │                            eq_preset.dart (kEqBands, kBuiltInPresets),
 │  │                            eq_dsp_widgets.dart (section labels, cards, sliders).
-│  │                            now_playing_screen.dart composes 11 reactive widgets:
-│  │                            reactive_background, reactive_artwork, metadata_row,
-│  │                            reactive_progress, reactive_transport, top_bar,
-│  │                            transport_widgets, now_playing_chip, utility_row,
-│  │                            sleep_timer_dialog.
+│  │                            now_playing_screen.dart composes reactive widgets:
+│  │                            reactive_artwork, metadata_row, reactive_progress,
+│  │                            reactive_transport, top_bar, transport_widgets,
+│  │                            now_playing_chip, utility_row, sleep_timer_dialog.
+│  │                            Gradient background via AnimatedContainer + spectral colors.
 │  │                            smart_playlist/ — list, detail, edit screens (Samsung One UI style)
 │  │                            settings_screen.dart — build() only; delegates to
 │  │                            settings_widgets.dart (SettingsLabel, SettingsGroup, SettingsTile,
@@ -315,8 +319,9 @@ lib/
 │  │                            Audio processing (ReplayGain, gapless, prefetch),
 │  │                            About (dynamic version, source link, licenses).
 │  │                            library/ sections: Albums, Artists, Songs, Playlists, Genres, Liked.
-│  │                            Long-press context menus on track rows (Play next, Add to queue,
-│  │                            Go to album, Go to artist) and album tiles (Play album, Go to artist).
+│  │                            Context menus use dialogs (not bottom sheets) for album 3-dot
+│  │                            and track long-press. Bottom sheets use per-sheet manual drag
+│  │                            handles (theme no longer provides showDragHandle).
 ├─ state/
 │  ├─ providers.dart        ← Barrel re-export of 13 domain provider files
 │  ├─ app_mode_providers.dart
@@ -349,6 +354,21 @@ lib/
 │  │                          Lifecycle-aware (AppLifecycleListener + route obscure detection).
 │  │                          Ticker drives repaints at vsync; 300ms silence timer for fade-out
 │  │                          (0.85× decay). Scrubber drag race fix with _isDragging flag.
+│  ├─ skeleton.dart         ← Reusable skeleton/shimmer base widget
+│  ├─ skeletons/            ← Screen-specific skeleton loaders
+│  │   ├─ home_skeleton.dart    album_card_skeleton.dart
+│  │   ├─ library_skeleton.dart album_skeleton.dart
+│  │   ├─ artist_skeleton.dart  genre_skeleton.dart
+│  │   ├─ playlist_skeleton.dart track_row_skeleton.dart
+│  │   ├─ search_skeleton.dart  lyrics_skeleton.dart
+│  │   └─ sheet_skeleton.dart
+│  ├─ af_dialog.dart        ← Unified dialog wrapper for context menus
+│  ├─ album_more_sheet.dart ← Album 3-dot action sheet (dialog-based)
+│  ├─ bottom_sheet.dart     ← Shared bottom sheet wrapper with frosted glass
+│  ├─ press_scale.dart      ← Press-down scale animation wrapper
+│  ├─ save_to_playlist_sheet.dart ← Save-track-to-playlist bottom sheet
+│  ├─ track_details_sheet.dart  ← Track info bottom sheet
+│  ├─ track_context_menu.dart   ← Long-press context menu builder
 │  └─ …
 └─ utils/
    ├─ log.dart              ← afLog() wrapper around dart:developer.log
@@ -740,7 +760,7 @@ PII (usernames, server URLs) must be redacted in release builds.
 33. **"Use `openAll()` for all queue sizes."** No. For queues > 5 tracks, `openAll` causes a multi-second delay. Use `open(target, play: true)` for instant playback, then `add()` the rest in the background. Suppress `_suppressPlaylistSync` during queue building + 500ms after.
 34. **"Read A-B loop state from `svc.abLoopA`."** No. `_player.state.abLoopA` doesn't update on affected devices. Track loop state in Dart providers (`abLoopAProvider`/`abLoopBProvider`). Use `getRawPosition()` for the actual position when setting markers.
 35. **"Use `Timer.periodic` for the progress reporting loop."** No. `Timer.periodic` doesn't await the callback — requests pile up. Use a serialized `while (_running)` loop with `Future.delayed`.
-36. **"Add a manual drag handle to bottom sheets."** No. The theme sets `showDragHandle: true` on `bottomSheetTheme`, so `showModalBottomSheet` renders one automatically. Adding a manual handle creates a duplicate.
+36. **"Keep a manual drag handle on bottom sheets."** Now handled per-sheet. The theme sets `showDragHandle: false` with `Colors.transparent` background. Each sheet (`album_more_sheet.dart`, `track_details_sheet.dart`, `save_to_playlist_sheet.dart`) adds its own manual drag handle inside the frosted-glass container. This avoids the floating transparent handle on dark backgrounds.
 37. **"Use `builder` for overlay routes like `/lyrics` and `/queue`."** No. Use `pageBuilder` with `NoTransitionPage` — the default `MaterialPage` slide transition renders content out of frame when pushed on `_rootKey`.
 38. **"Load all tracks to prune deleted files."** No. `allTracks()` has a 5000 limit. Use a SQL prefix query (`trackIdsByPrefix`) to get only the tracks matching the folder, with no limit.
 39. **"Call `_nudgeAudioDevice()` without a generation counter."** No. Rapid seeks/play/pause stack multiple nudge chains (3 delayed `setAudioDevice` calls each). Use `_nudgeGen` to cancel stale chains.
@@ -755,6 +775,17 @@ PII (usernames, server URLs) must be redacted in release builds.
 48. **"`setAfLoopMode` can call `_jumpAndPlay` directly."** No. `_jumpAndPlay(0)` sends a `playlist-play-index` command that triggers a playlist event. If a queue mutation holds `_queueLock`, the event fires against stale state. Wrap the jump in `_queueLock.run()`.
 49. **"`skipToNext`/`skipToPrevious`/`skipToQueueItem` are lightweight, no lock needed."** No. Rapid skips interleave with queue mutations — the playlist listener fires mid-`removeFromQueue`, reading an inconsistent index. Wrap each in `_queueLock.run()`.
 50. **"Call `_jumpAndPlay(currentIndex)` when `Loop.file` completes."** No. When `loop-file=inf` is set, mpv restarts the file internally and fires `completed` after restart. `_jumpAndPlay(currentIndex)` issues a redundant `playlist-play-index` that reloads the same file, causing the first ~1s of audio to play twice. Only call `_player.play()` if mpv stopped.
+51. **"Use hugeicons or cupertino_icons for UI icons."** No. All UI icons use **Lucide** (`lucide_icons_flutter`). Import from `package:lucide_icons_flutter/lucide_icons.dart`. The old hugeicons dependency was removed entirely.
+52. **"Use bottom sheets for context menus and album actions."** No. Album 3-dot menus and track long-press menus are now **dialogs** (`af_dialog.dart`), not bottom sheets. Bottom sheets are reserved for save-to-playlist and track details only. This avoids the floating transparent drag handle issue on dark backgrounds and provides a more native feel.
+53. **"`shouldAdvancePosition` returns true at the end of queue."** No. `shouldAdvancePosition` returns `false` when `isAtQueueEnd && !playing`. This prevents the QS media session from getting stuck at `playing=true` after the last track finishes — without this guard, a transient `playing=true` event interacts with the extrapolated position at speed=1.0, making the QS progress bar run forever.
+54. **"`ScrollEndNotification` always fires when finger lifts."** No. On Android (especially with Android 16 slow animations), `ScrollEndNotification` is NOT always fired when finger lifts at a scroll boundary. The EQ screen uses a `_scrollSafetyTimer` (300ms fallback) + `UserScrollNotification idle` listener + `ScrollUpdateNotification` keepalive to detect scroll end reliably.
+55. **"Seek at end-of-queue doesn't need a play() call."** No. When the queue ends, `_userPaused=true` and the player stops. Seeking via the progress bar positions the tracker but doesn't resume playback. The `seek()` handler detects `wasCompletedAtEnd` and calls `play()` after a successful seek to restart playback.
+56. **"`openAll()` works fine for large queues."** No. For queues > 5 tracks, `openAll` causes a multi-second delay. Use `open(target, play: true)` for instant playback, then `add()` sequentially in a loop with generation counter checks. Additionally, cap the initial load to **30 forward tracks** — the rest are cached in memory for shuffle (see `_queueLoadLimit` and `_cachedOverflow` in `playQueue`).
+57. **"Skeleton screens need complex widget trees."** No. Each screen has a dedicated `*_skeleton.dart` widget in `lib/widgets/skeletons/`. They use the shared `ShimmerLayout` base widget from `skeleton.dart` with `LinearGradient` shimmer animation. Skeleton widgets sit in the `widgets/skeletons/` directory and are loaded during data fetch.
+58. **"Cover art caching needs no eviction policy."** No. `CoverCacheManager` (`lib/core/local/cover_cache_manager.dart`) manages an LRU-evicted disk cache for cover art. Temp files are cleaned up on startup. The eviction test must be robust against filesystem-dependent directory order.
+59. **"Hand-write save/load triples for each setting."** No. Use the `SettingsKey<T>` descriptor pattern (`player_settings_store.dart`). Each setting is a typed key with `keyName`, `defaultValue`, `encoder`, and `decoder`. This eliminates the error-prone hand-rolled save/load triples.
+60. **"info-level lints can be ignored."** No. All 363 info-level lints were fixed in a single pass (`9621d50`). `flutter analyze --no-fatal-infos` reports **0 issues** across the entire codebase. New code must maintain this.
+61. **"QS media session progress bar after queue end is correct."** No. After the queue ends, the QS progress bar can keep running because `playing=false` events are throttled (arriving <100ms apart) while a transient `playing=true` event at ~54ms pushes `playing=true` to native. Android QS then extrapolates position from the last known speed=1.0 forever. Fix: `trackEnded` fallback in `_updateMediaSession` overrides transient `playing=true` when position >= duration at queue end.
 
 ## 16. Glossary
 
@@ -801,6 +832,12 @@ PII (usernames, server URLs) must be redacted in release builds.
 - **`PlaylistRepository`**: CRUD for playlists at `lib/core/local/local_db_playlists.dart`. Transaction-based insert/delete/reorder.
 - **`AfAsyncLock`**: Utility class in `player_service.dart` used to serialize asynchronous queue mutations and loads sequentially using a single future chain.
 - **`_queueLoadGen`**: Generation counter in `AfPlayerService` used to abort obsolete queue load operations. Incremented synchronously at the start of `playQueue`.
+- **`_queueLoadLimit`**: Max tracks loaded into mpv on initial `playQueue` call (30 forward tracks). Remaining tracks are stored in `_cachedOverflow` and used by the shuffle engine for pool selection.
+- **`_playbackEnded`**: Flag in `AfQueueManager` set on `endPlayback()`. Guards the playlist listener (`processPlaylistEvent`) to prevent reinstating tracks after a completed queue ends.
+- **`CoverCacheManager`**: LRU-evicted disk cache for cover art (`lib/core/local/cover_cache_manager.dart`). Cleans up orphan temp files on startup. Eviction test must handle filesystem-dependent directory order.
+- **`SettingsKey<T>`**: Typed descriptor pattern in `player_settings_store.dart` for persisted settings. Each setting has `keyName`, `defaultValue`, `encoder`, `decoder`. Eliminates hand-rolled save/load triples.
+- **`ShimmerLayout`**: Base skeleton widget in `lib/widgets/skeleton.dart`. Applies `LinearGradient` shimmer animation over a gray placeholder. Each screen has a dedicated `*_skeleton.dart` in `widgets/skeletons/`.
+- **`_scrollSafetyTimer`**: Fallback timer in `eq_dsp_screen.dart` that resets `_isScrollActive` after 300ms of no scroll activity. Compensates for `ScrollEndNotification` not always firing on Android at scroll boundaries.
 
 ---
 

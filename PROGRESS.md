@@ -324,3 +324,140 @@
 ## Quality
 - [x] flutter analyze — 0 issues
 - [x] flutter test — all 114 tests pass
+
+---
+
+# UI Revamp & Icon Migration (May 2026)
+
+## Lucide Icons Migration
+- [x] Replaced hugeicons + cupertino_icons with `lucide_icons_flutter` for all UI icons
+- [x] Import from `package:lucide_icons_flutter/lucide_icons.dart`
+- [x] Removed hugeicons dependency entirely
+
+## Now Playing Screen
+- [x] Gradient background via `AnimatedContainer` + spectral colors (runtime extracted from artwork)
+- [x] Translucent queue screen with frosted-glass effect (`Color(0xB30B0B14)`)
+- [x] Improved More sheet — volume icon, track details non-fullscreen, install fix
+- [x] Fixed MoreItem icon/text vertical alignment
+
+## Bottom Sheet Redesign
+- [x] Moved drag handles from theme to per-sheet manual handles (avoids floating transparent handle)
+- [x] Theme sets `showDragHandle: false` with `Colors.transparent` background
+- [x] Each sheet (`album_more_sheet`, `track_details_sheet`, `save_to_playlist_sheet`) adds manual drag handle
+- [x] Unified container background to `Color(0xB30B0B14)` across all sheets
+- [x] Removed `DraggableScrollableSheet` wrapper from `track_details_sheet.dart`
+
+## Context Menu Migration
+- [x] Album 3-dot menu converted from bottom sheet to dialog (`af_dialog.dart`)
+- [x] Track long-press context menus converted from bottom sheets to dialogs
+- [x] Reduced dialog content padding from 24px to 16px on all sides
+
+## Equalizer Fixes
+- [x] `_scrollSafetyTimer` (300ms fallback) for scroll-end detection when `ScrollEndNotification` doesn't fire
+- [x] `UserScrollNotification idle` listener catches finger-lift at scroll boundary
+- [x] `ScrollUpdateNotification` keepalive extends safety timer while actively scrolling
+- [x] Seek-after-complete: `seek()` now detects `wasCompletedAtEnd` and calls `play()` to resume playback
+
+## Quality
+- [x] flutter analyze — 0 issues
+- [x] flutter test — all tests pass
+
+---
+
+# Media Session & QS Fixes (May 2026)
+
+## QS Media Session Fixes
+- [x] `shouldAdvancePosition` returns `false` when `isAtQueueEnd && !playing` — prevents stuck `playing=true` state
+- [x] `trackEnded` fallback in `_updateMediaSession` overrides transient `playing=true` using position >= duration at queue end
+- [x] Speed: use `effectivePlaying ? s.rate : 0.0` (was always `s.rate` — kept progress bar running after queue end)
+- [x] Position tracker uses `shouldAdvancePosition` as single truth source
+- [x] `_playbackEnded` flag in `AfQueueManager` + `processPlaylistEvent` guard prevents track reinstate after `endPlayback()`
+
+## Quality
+- [x] flutter analyze — 0 issues
+- [x] flutter test — all tests pass
+
+---
+
+# Skeleton Loading Screens (May 2026)
+
+- [x] Created reusable `ShimmerLayout` base widget (`lib/widgets/skeleton.dart`) with `LinearGradient` shimmer
+- [x] Dedicated skeleton widgets for each screen in `lib/widgets/skeletons/`:
+  `home_skeleton.dart`, `album_card_skeleton.dart`, `library_skeleton.dart`,
+  `album_skeleton.dart`, `artist_skeleton.dart`, `genre_skeleton.dart`,
+  `playlist_skeleton.dart`, `track_row_skeleton.dart`, `search_skeleton.dart`,
+  `lyrics_skeleton.dart`, `sheet_skeleton.dart`
+- [x] Wired skeleton widgets to all screens — shown during data fetch, replaced with content on load
+
+## Quality
+- [x] flutter analyze — 0 issues
+- [x] flutter test — all tests pass
+
+---
+
+# Code Quality & Infrastructure (May 2026)
+
+## Analyzer
+- [x] Expanded `analysis_options.yaml` with 12 stricter lint rules
+- [x] Fixed all 363 info-level lints across 94 files via `dart fix --apply` + manual fixes
+- [x] `flutter analyze --no-fatal-infos` reports **0 issues** across entire codebase
+
+## Dependency Management
+- [x] Pinned exact dependency versions in `pubspec.yaml` (all `: x.y.z` instead of `^x.y.z`)
+- [x] Added `lucide_icons` (^0.257.0) and `lucide_icons_flutter` (^3.1.14+1)
+- [x] Added `lucide_icons` to Icons section of tech stack
+
+## Settings Refactoring
+- [x] Replaced hand-rolled save/load triples with `SettingsKey<T>` typed descriptor pattern
+- [x] Each setting has `keyName`, `defaultValue`, `encoder`, `decoder`
+- [x] Eliminated save/load boilerplate in `player_settings_store.dart`
+
+## Cover Art Caching
+- [x] `CoverCacheManager` with LRU-evicted disk cache for cover art
+- [x] Orphan temp file cleanup on startup
+- [x] LRU eviction test handles filesystem-dependent directory order
+
+## Client-Side Pagination
+- [x] Infinite scroll for library tracks (client-side pagination)
+- [x] Load-more-on-scroll pattern for large libraries
+
+## AudioVisualScrubber Tests
+- [x] Widget tests for `AudioVisualScrubber` with FFT spectrum mocking
+- [x] Verifies rendering with mock `FftFrame` data
+
+## Defensive Fixes
+- [x] Hero card Play button: fixed `RenderFlex` overflow when album title wraps to 2 lines
+- [x] `ScrollDirection` explicit import for `flutter/rendering.dart`
+- [x] QS media session stuck fix: `trackEnded` fallback + speed zero on pause
+- [x] Remove redundant `_player.stream.position` listener causing UI lag on Samsung S901E
+- [x] Reduce UI lag during active playback (optimized polling)
+- [x] Migrate from explicit Kotlin Gradle Plugin to Flutter built-in Kotlin
+- [x] Override Kotlin to 2.2.20 in `settings.gradle.kts` to silence deprecation warning
+- [x] CI: APK naming standardization, Telegram delivery via appleboy/telegram-action
+
+## Quality
+- [x] flutter analyze — 0 issues
+- [x] flutter test — all tests pass
+
+---
+
+# Queue Initial Load Fix (May 2026)
+
+## Problem
+- `playQueue` with large queues (>5 tracks) had multi-second delay before playback started
+- `openAll()` loads all tracks into mpv before returning — O(n) delay proportional to queue size
+
+## Solution
+- Cap initial load to **30 forward tracks** (`_queueLoadLimit`) loaded via `open(target, play: true)` + sequential `add()` loop
+- Remaining tracks stored in `_cachedOverflow` (in-memory) for shuffle pool expansion
+- `_cachedOverflow` used by shuffle engine to replace consumed tracks from the cache
+- `_totalTracksCount` tracks total size for accurate index calculations
+- Generation counter (`_queueLoadGen`) aborts stale loads on rapid queue changes
+
+## Files Changed
+- `lib/core/audio/player_service.dart` — queue splitting, overflow caching, sequential add loop with gen checks
+- `lib/core/audio/queue_manager.dart` — overflow storage, total count tracking, shuffle pool expansion from cache
+
+## Quality
+- [x] flutter analyze — 0 issues
+- [x] flutter test — all tests pass (including new queue_manager_test.dart cases)

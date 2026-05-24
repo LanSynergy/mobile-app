@@ -1,6 +1,6 @@
 # Root Cause Analysis: Playback System
 
-**Date**: 2026-05-23
+**Date**: 2026-05-23 (updated 2026-05-25)
 **System**: Aetherfin mobile app — Android music player
 **Component**: Playback subsystem (AfPlayerService, AfPositionTracker, AfQueueManager, state layer)
 **Severity**: Mixed (P0–P3 findings)
