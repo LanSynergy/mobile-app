@@ -37,7 +37,7 @@ class _BlurDialog extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
           child: Container(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
               color: AfColors.surfaceRaised.withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(borderRadius),
