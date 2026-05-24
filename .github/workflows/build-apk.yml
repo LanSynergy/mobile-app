@@ -210,10 +210,10 @@ jobs:
 
           # Build caption from env vars (set by prepare step)
           caption = (
-              '<b>Aetherfin</b> \xb7 <code>{mode}</code>\n\n'
-              '<code>{name}</code>\n{size}\n\n'
-              'Build: <code>{build_id}</code>\n'
-              '<code>{sha}</code> on <code>{branch}</code>\n'
+              '<b>{name}</b> \xb7 <code>{mode}</code>\n'
+              '<b>Size:</b> {size}\n\n'
+              '<b>Build:</b> <code>{build_id}</code>\n'
+              '<b>Commit:</b> <code>{sha}</code> on <code>{branch}</code>\n'
               '<i>{commit}</i>\n{timestamp}\n\n'
               '<a href="{url}">View run</a>'
           ).format(
