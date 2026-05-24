@@ -12,6 +12,7 @@ import '../../widgets/section_header.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
+import '../../widgets/skeletons/artist_skeleton.dart';
 
 /// Mockup 08 — Artist detail.
 class ArtistScreen extends ConsumerWidget {
@@ -23,7 +24,7 @@ class ArtistScreen extends ConsumerWidget {
     final artistAsync = ref.watch(artistDetailProvider(artistId));
     return Scaffold(
       body: artistAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ArtistSkeleton(),
         error: (e, _) => AsyncErrorView(
           label: 'Could not load artist',
           error: e,

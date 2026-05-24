@@ -183,7 +183,16 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: AfColors.indigo400,
+            ),
+          ),
+        ),
         error: (e, _) => AsyncErrorView(
           label: 'Could not resolve smart playlist',
           error: e,

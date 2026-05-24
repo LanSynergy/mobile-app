@@ -11,6 +11,7 @@ import '../../widgets/async_error_view.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
+import '../../widgets/skeletons/library_skeleton.dart';
 
 enum LibrarySection { albums, artists, songs, playlists, genres, liked }
 
@@ -344,7 +345,7 @@ class _SectionBody extends ConsumerWidget {
               },
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.albums),
           error: (e, _) => AsyncErrorView(
             label: 'Couldn\u2019t load albums',
             error: e,
@@ -382,7 +383,7 @@ class _SectionBody extends ConsumerWidget {
               },
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.artists),
           error: (e, _) => AsyncErrorView(
             label: 'Couldn\u2019t load artists',
             error: e,
@@ -415,7 +416,7 @@ class _SectionBody extends ConsumerWidget {
                 },
               );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.songs),
             error: (e, _) => AsyncErrorView(
               label: 'Couldn\u2019t load songs',
               error: e,
@@ -562,7 +563,7 @@ class _SectionBody extends ConsumerWidget {
               );
             },
           ),
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.playlists),
           error: (e, _) => AsyncErrorView(
             label: 'Couldn\u2019t load playlists',
             error: e,
@@ -599,7 +600,7 @@ class _SectionBody extends ConsumerWidget {
               );
             },
           ),
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.genres),
           error: (e, _) => AsyncErrorView(
             label: 'Couldn\u2019t load genres',
             error: e,
@@ -645,7 +646,7 @@ class _SectionBody extends ConsumerWidget {
                     );
                   },
                 ),
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.liked),
           error: (e, _) => AsyncErrorView(
             label: 'Couldn\u2019t load liked songs',
             error: e,

@@ -17,6 +17,7 @@ import '../../widgets/async_error_view.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
+import '../../widgets/skeletons/album_skeleton.dart';
 
 /// Mockup 07 — Album detail.
 ///
@@ -56,7 +57,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
       body: detailAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AlbumSkeleton(),
         error: (e, _) => AsyncErrorView(
           label: 'Could not load album',
           error: e,

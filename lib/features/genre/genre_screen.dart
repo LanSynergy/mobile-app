@@ -7,6 +7,7 @@ import '../../state/providers.dart';
 import '../../widgets/async_error_view.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
+import '../../widgets/skeletons/genre_skeleton.dart';
 
 /// Albums filtered by genre. Uses Jellyfin's `Genres=` query parameter
 /// via [genreAlbumsProvider] so only albums actually tagged with this
@@ -28,7 +29,7 @@ class GenreScreen extends ConsumerWidget {
         title: Text(genreName, style: AfTypography.titleMedium),
       ),
       body: albumsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const GenreSkeleton(),
         error: (e, _) => AsyncErrorView(
           label: 'Could not load "$genreName"',
           error: e,

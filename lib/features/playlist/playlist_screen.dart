@@ -13,6 +13,7 @@ import '../../widgets/async_error_view.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
+import '../../widgets/skeletons/playlist_skeleton.dart';
 
 /// Playlist detail screen with full management:
 ///   • Play / Shuffle
@@ -75,7 +76,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         ],
       ),
       body: detailAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const PlaylistSkeleton(),
         error: (e, _) => AsyncErrorView(
           label: 'Could not load playlist',
           error: e,

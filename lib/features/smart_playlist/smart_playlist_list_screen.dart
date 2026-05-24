@@ -7,6 +7,7 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/async_error_view.dart';
+import '../../widgets/skeletons/playlist_skeleton.dart';
 
 /// Lists all user-created smart playlists — Samsung One UI style.
 class SmartPlaylistListScreen extends ConsumerWidget {
@@ -107,7 +108,7 @@ class SmartPlaylistListScreen extends ConsumerWidget {
                   const SizedBox(height: AfSpacing.s24),
                 ],
               ),
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const PlaylistSkeleton(),
         error: (e, _) => AsyncErrorView(
           label: 'Could not load smart playlists',
           error: e,

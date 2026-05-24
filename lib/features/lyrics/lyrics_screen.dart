@@ -9,6 +9,7 @@ import '../../core/lyrics/lrc_parser.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/async_error_view.dart';
+import '../../widgets/skeletons/lyrics_skeleton.dart';
 
 class LyricsScreen extends ConsumerStatefulWidget {
   const LyricsScreen({super.key});
@@ -147,7 +148,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
         ),
         child: SafeArea(
           child: lrcAsync.maybeWhen(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const LyricsSkeleton(),
             error: (e, _) => AsyncErrorView(
               label: 'Could not load lyrics',
               error: e,
