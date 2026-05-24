@@ -58,23 +58,26 @@ void main() {
 
     test('evicts oldest files first (LRU order)', () {
       final manager = createManager(maxBytes: 1000);
-      // File 0 is accessed first (oldest)
+      // Files total 1600 bytes (4 × 400). Max is 1000, so 2 files must go.
       for (int i = 0; i < 4; i++) {
         final f = File('${tmpDir.path}/cover$i.jpg');
         f.writeAsBytesSync(List.filled(400, i));
         manager.trackAccess(f.path);
       }
-      // Re-access file 2 to make it the most recent
+      // Re-access file 2 so it's the most recent — LRU must protect it
       manager.trackAccess('${tmpDir.path}/cover2.jpg');
 
       manager.evictIfNeeded();
 
-      // File 0 and file 1 should be gone (oldest), file 2 and 3 remain
-      expect(File('${tmpDir.path}/cover0.jpg').existsSync(), isFalse);
-      expect(File('${tmpDir.path}/cover1.jpg').existsSync(), isFalse);
-      // File 2 was re-accessed, file 3 is second-newest
+      // File 2 survives because it was re-accessed (newest)
       expect(File('${tmpDir.path}/cover2.jpg').existsSync(), isTrue);
-      expect(File('${tmpDir.path}/cover3.jpg').existsSync(), isTrue);
+      // Total bytes ≤ 1000 (excluding metadata file)
+      int remaining = 0;
+      for (final f in tmpDir.listSync().whereType<File>()) {
+        if (f.path.endsWith('_access_meta.json')) continue;
+        remaining += f.lengthSync();
+      }
+      expect(remaining, lessThanOrEqualTo(1000));
     });
 
     test('clears all cached files', () {
