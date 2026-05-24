@@ -14,6 +14,36 @@ import '../jellyfin/models/items.dart';
 /// Tracks the latest cover path so [artUri] always returns the current best
 /// available artwork URI for native notification updates.
 class AfArtworkManager {
+  /// Cleans up orphan `.tmp` files left behind by aborted or crashed
+  /// [persistCover] / [downloadArtworkForNotification] calls.
+  ///
+  /// Should be called once at app startup to reclaim disk space from
+  /// interrupted writes. Scans [Directory.systemTemp] for files matching
+  /// the `aetherfin_*.tmp` pattern and removes them.
+  static Future<void> cleanupOrphanTempFiles() async {
+    try {
+      final tmpDir = Directory.systemTemp;
+      final orphans = <File>[];
+      await for (final entity in tmpDir.list()) {
+        if (entity is File) {
+          final name = entity.uri.pathSegments.last;
+          if (name.startsWith('aetherfin_') && name.endsWith('.tmp')) {
+            orphans.add(entity);
+          }
+        }
+      }
+      if (orphans.isEmpty) return;
+      for (final f in orphans) {
+        try {
+          await f.delete();
+        } catch (_) {
+          // Best-effort; another process may have already deleted it.
+        }
+      }
+    } catch (_) {
+      // Best-effort; directory may not be accessible.
+    }
+  }
   /// Called when artwork is persisted or downloaded so the owner can
   /// update the native notification artwork.
   void Function()? onArtworkChanged;
