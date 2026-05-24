@@ -554,6 +554,7 @@ class AfPlayerService {
     final nextTrack = _queueManager.currentTrack;
     if (nextTrack == null) return;
 
+    _positionTracker.onTrackChanged();
     _queueManager.emitCurrentTrack(nextTrack);
     onTrackChanged?.call(nextTrack);
     _updateMediaSession();
@@ -574,6 +575,7 @@ class AfPlayerService {
     final prevTrack = _queueManager.currentTrack;
     if (prevTrack == null) return;
 
+    _positionTracker.onTrackChanged();
     _queueManager.emitCurrentTrack(prevTrack);
     onTrackChanged?.call(prevTrack);
     _updateMediaSession();
@@ -594,6 +596,7 @@ class AfPlayerService {
     final targetTrack = _queueManager.currentTrack;
     if (targetTrack == null) return;
 
+    _positionTracker.onTrackChanged();
     _queueManager.emitCurrentTrack(targetTrack);
     onTrackChanged?.call(targetTrack);
     _updateMediaSession();
@@ -796,6 +799,7 @@ class AfPlayerService {
           // Advance engine state
           _queueManager.engine.advanceIndex();
           _queueManager.engine.advanceWindow();
+          _positionTracker.onTrackChanged();
 
           // Notify and emit
           final current = _queueManager.currentTrack;
@@ -844,10 +848,12 @@ class AfPlayerService {
               afLog('audio', 'queue end, auto-stop (loop=off)');
             case Loop.playlist:
               _queueManager.engine.jumpTo(0);
+              _positionTracker.onTrackChanged();
               await _rebuildWindow(_queueManager.currentTrack!);
               _updateMediaSession();
               afLog('audio', 'queue end, looping playlist');
             case Loop.file:
+              _positionTracker.onTrackChanged();
               if (!playingAtEvent) {
                 await _player.play();
               }
