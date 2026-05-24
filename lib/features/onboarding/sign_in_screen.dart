@@ -42,7 +42,28 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   bool get _isSubsonic => widget.serverType == ServerType.subsonic;
 
+  String? _validateServerUrl(String url) {
+    if (url.isEmpty) return 'Server URL is required';
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
+      return 'Invalid URL format';
+    }
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') {
+      return 'URL must use http:// or https://';
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
+    final urlError = _validateServerUrl(widget.server.baseUrl);
+    if (urlError != null) {
+      setState(() {
+        _error = urlError;
+        _busy = false;
+      });
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;

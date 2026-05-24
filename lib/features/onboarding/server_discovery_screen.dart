@@ -60,14 +60,28 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
     });
   }
 
+  String? _validateServerUrl(String url) {
+    if (url.isEmpty) return 'Server URL is required';
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
+      return 'Invalid URL format';
+    }
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') {
+      return 'URL must use http:// or https://';
+    }
+    return null;
+  }
+
   Future<void> _useManual() async {
     final raw = _manualController.text.trim();
     if (raw.isEmpty) return;
-    final uri = Uri.tryParse(raw);
-    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
-      setState(() => _manualError = 'That URL doesn’t look right.');
+    final urlError = _validateServerUrl(raw);
+    if (urlError != null) {
+      setState(() => _manualError = urlError);
       return;
     }
+    final uri = Uri.tryParse(raw)!;
     setState(() => _manualError = null);
 
     // Preserve any base path the user pasted (e.g. https://media.example.com/jellyfin),
