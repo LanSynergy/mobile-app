@@ -133,10 +133,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   Future<void> _onRefresh() async {
     final isLocal = ref.read(appModeProvider) == AppMode.local;
 
-    // Invalidate all first
+    // Refresh paginated tracks
+    await ref.read(tracksPaginationProvider.notifier).loadFirstPage();
+
+    // Invalidate other section providers
     ref.invalidate(isLocal ? localAlbumsProvider : allAlbumsProvider);
     ref.invalidate(isLocal ? localArtistsProvider : allArtistsProvider);
-    ref.invalidate(isLocal ? localTracksProvider : allTracksProvider);
     ref.invalidate(allPlaylistsProvider);
     ref.invalidate(isLocal ? localGenresProvider : allGenresProvider);
     if (!isLocal) ref.invalidate(favoriteTracksProvider);
@@ -144,7 +146,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final providers = <Future<Object?>>[
       ref.read((isLocal ? localAlbumsProvider : allAlbumsProvider).future),
       ref.read((isLocal ? localArtistsProvider : allArtistsProvider).future),
-      ref.read((isLocal ? localTracksProvider : allTracksProvider).future),
       ref.read(allPlaylistsProvider.future),
       ref.read((isLocal ? localGenresProvider : allGenresProvider).future),
     ];
@@ -389,10 +390,9 @@ class _SectionBody extends ConsumerWidget {
           ),
         );
       case LibrarySection.songs:
-        return Consumer(builder: (context, ref, _) {
-          final tracksProvider =
-              isLocal ? localTracksProvider : allTracksProvider;
-          final tracks = ref.watch(tracksProvider);
+        // Local mode: use the simple localTracksProvider (fast, SQL-backed)
+        if (isLocal) {
+          final tracks = ref.watch(localTracksProvider);
           return tracks.when(
             data: (list) {
               final sorted = sortTracks != null ? sortTracks!(list) : list;
@@ -419,10 +419,74 @@ class _SectionBody extends ConsumerWidget {
             error: (e, _) => AsyncErrorView(
               label: 'Couldn\u2019t load songs',
               error: e,
-              onRetry: () => ref.invalidate(tracksProvider),
+              onRetry: () => ref.invalidate(localTracksProvider),
             ),
           );
-        });
+        }
+
+        // Server mode: paginated with infinite scroll
+        final tracksState = ref.watch(tracksPaginationProvider);
+
+        if (tracksState.error != null && tracksState.items.isEmpty) {
+          return AsyncErrorView(
+            label: 'Couldn\u2019t load songs',
+            error: Exception(tracksState.error),
+            onRetry: () =>
+                ref.read(tracksPaginationProvider.notifier).loadFirstPage(),
+          );
+        }
+
+        if (tracksState.items.isEmpty && tracksState.isLoadingMore) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final sorted =
+            sortTracks != null ? sortTracks!(tracksState.items) : tracksState.items;
+
+        return NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollEndNotification &&
+                notification.metrics.pixels >=
+                    notification.metrics.maxScrollExtent - 200 &&
+                tracksState.hasMore &&
+                !tracksState.isLoadingMore) {
+              ref
+                  .read(tracksPaginationProvider.notifier)
+                  .loadNextPage();
+            }
+            return false;
+          },
+          child: ListView.separated(
+            padding: padding.add(const EdgeInsets.only(
+                bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+            itemCount: sorted.length + (tracksState.isLoadingMore ? 1 : 0),
+            separatorBuilder: (context, index) =>
+                const SizedBox(height: AfSpacing.s4),
+            itemBuilder: (context, i) {
+              if (i >= sorted.length) {
+                return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                );
+              }
+              final t = sorted[i];
+              return TrackRow(
+                track: t,
+                onTap: () => ref
+                    .read(playActionsProvider)
+                    .playQueue(sorted, startIndex: i),
+                onLongPress: () =>
+                    showTrackContextMenu(context, ref, t),
+              );
+            },
+          ),
+        );
       case LibrarySection.playlists:
         final playlists = ref.watch(allPlaylistsProvider);
         final smartPlaylists = ref.watch(smartPlaylistsProvider);

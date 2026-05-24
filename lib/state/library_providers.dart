@@ -4,6 +4,100 @@ import '../core/jellyfin/models/items.dart';
 import '../utils/log.dart';
 import 'music_backend_providers.dart';
 
+// ── Pagination helpers ─────────────────────────────────────────────────────
+
+/// Holds pagination state for a paginated list.
+class PaginationState<T> {
+  final List<T> items;
+  final int currentPage;
+  final bool isLoadingMore;
+  final bool hasMore;
+  final String? error;
+
+  const PaginationState({
+    this.items = const [],
+    this.currentPage = 0,
+    this.isLoadingMore = false,
+    this.hasMore = true,
+    this.error,
+  });
+
+  PaginationState<T> copyWith({
+    List<T>? items,
+    int? currentPage,
+    bool? isLoadingMore,
+    bool? hasMore,
+    String? error,
+  }) =>
+      PaginationState<T>(
+        items: items ?? this.items,
+        currentPage: currentPage ?? this.currentPage,
+        isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+        hasMore: hasMore ?? this.hasMore,
+        error: error,
+      );
+}
+
+/// Manages paginated track loading via [MusicBackend.allTracks()].
+class TracksNotifier extends StateNotifier<PaginationState<AfTrack>> {
+  final Ref _ref;
+  static const _pageSize = 100;
+
+  TracksNotifier(this._ref) : super(const PaginationState<AfTrack>()) {
+    Future.microtask(() => loadFirstPage());
+  }
+
+  /// Fetch the first page of tracks.
+  Future<void> loadFirstPage() async {
+    state = state.copyWith(isLoadingMore: true, error: null);
+    try {
+      final backend = _ref.read(musicBackendProvider);
+      if (backend == null) {
+        state = state.copyWith(isLoadingMore: false, hasMore: false);
+        return;
+      }
+      logData('allTracks', source: 'live');
+      final tracks = await backend.allTracks(limit: _pageSize, startIndex: 0);
+      state = PaginationState<AfTrack>(
+        items: tracks,
+        currentPage: 0,
+        hasMore: tracks.length >= _pageSize,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoadingMore: false, error: e.toString());
+    }
+  }
+
+  /// Fetch the next page of tracks (appended to existing items).
+  Future<void> loadNextPage() async {
+    if (state.isLoadingMore || !state.hasMore) return;
+    state = state.copyWith(isLoadingMore: true);
+    try {
+      final backend = _ref.read(musicBackendProvider);
+      if (backend == null) return;
+      final startIndex = (state.currentPage + 1) * _pageSize;
+      final tracks = await backend.allTracks(
+        limit: _pageSize,
+        startIndex: startIndex,
+      );
+      state = PaginationState<AfTrack>(
+        items: [...state.items, ...tracks],
+        currentPage: state.currentPage + 1,
+        hasMore: tracks.length >= _pageSize,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoadingMore: false, error: e.toString());
+    }
+  }
+}
+
+/// Provider for paginated track list (replaces direct [allTracksProvider]
+/// usage in screens that support infinite scroll).
+final tracksPaginationProvider =
+    StateNotifierProvider<TracksNotifier, PaginationState<AfTrack>>((ref) {
+  return TracksNotifier(ref);
+});
+
 final recentlyAddedAlbumsProvider =
     FutureProvider.autoDispose<List<AfAlbum>>((ref) async {
   final backend = ref.watch(musicBackendProvider);

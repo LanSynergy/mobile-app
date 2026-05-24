@@ -73,7 +73,7 @@ class TrackRepository {
 
   // ── Query ───────────────────────────────────────────────────────────────
 
-  Future<List<AfTrack>> allTracks({int limit = 5000, int offset = 0}) async {
+  Future<List<AfTrack>> allTracks({int limit = 100, int offset = 0}) async {
     final rows = await (db.select(db.tracks)
           ..orderBy([(t) => OrderingTerm(expression: t.title.collate(Collate.noCase), mode: OrderingMode.asc)])
           ..limit(limit, offset: offset > 0 ? offset : null))
