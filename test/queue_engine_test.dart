@@ -92,6 +92,130 @@ void main() {
       });
     });
 
+    group('shuffle interactions', () {
+      test('currentIndex and tracks reflect shuffle state', () {
+        engine.replaceAll(tracks, 2);
+        engine.setShuffle(true);
+        expect(engine.currentIndex, 0);
+        expect(engine.tracks.first.id, '3');
+        expect(engine.tracks.length, 5);
+      });
+
+      test('advanceIndex and retreatIndex work logically', () {
+        engine.replaceAll(tracks, 2);
+        engine.setShuffle(true);
+        // logical order starts with track '3' at index 0
+        expect(engine.currentIndex, 0);
+        expect(engine.currentTrack?.id, '3');
+
+        // Advance to logical 1
+        final nextLogIdx = engine.advanceIndex();
+        expect(nextLogIdx, 1);
+        expect(engine.currentIndex, 1);
+        // The track playing should be engine.tracks[1]
+        expect(engine.currentTrack?.id, engine.tracks[1].id);
+
+        // Retreat back to logical 0
+        final prevLogIdx = engine.retreatIndex();
+        expect(prevLogIdx, 0);
+        expect(engine.currentIndex, 0);
+        expect(engine.currentTrack?.id, '3');
+      });
+
+      test('jumpTo works logically', () {
+        engine.replaceAll(tracks, 2);
+        engine.setShuffle(true);
+        engine.jumpTo(3);
+        expect(engine.currentIndex, 3);
+        expect(engine.currentTrack?.id, engine.tracks[3].id);
+        expect(engine.windowStart, 3);
+      });
+
+      test('isAtQueueEnd works logically', () {
+        engine.replaceAll(tracks, 2);
+        engine.setShuffle(true);
+        expect(engine.isAtQueueEnd, isFalse);
+        engine.jumpTo(4);
+        expect(engine.isAtQueueEnd, isTrue);
+      });
+
+      test('nextTrack, nextNextTrack, windowSlot0, windowSlot1 work logically', () {
+        engine.replaceAll(tracks, 2);
+        engine.setShuffle(true);
+        // logical order starts with track '3' at index 0. windowStart is 0.
+        expect(engine.windowSlot0?.id, '3');
+        expect(engine.windowSlot1?.id, engine.tracks[1].id);
+        expect(engine.nextTrack?.id, engine.tracks[1].id);
+        expect(engine.nextNextTrack?.id, engine.tracks[2].id);
+
+        // advance window logically
+        engine.advanceWindow();
+        expect(engine.windowStart, 1);
+        expect(engine.windowSlot0?.id, engine.tracks[1].id);
+        expect(engine.windowSlot1?.id, engine.tracks[2].id);
+        expect(engine.nextNextTrack?.id, engine.tracks[3].id);
+      });
+
+      test('remove works logically under shuffle', () {
+        engine.replaceAll(tracks, 2);
+        engine.setShuffle(true);
+        // track 3 (id='3') is at logical 0 (currentIndex is logical 0, physical 2)
+        // Let's verify canRemove
+        expect(engine.canRemove(0), isFalse); // cannot remove current
+        expect(engine.canRemove(1), isTrue);
+
+        final trackAtLogical1 = engine.tracks[1];
+        engine.remove(1);
+        expect(engine.length, 4);
+        expect(engine.currentIndex, 0);
+        expect(engine.currentTrack?.id, '3');
+        expect(engine.tracks.any((t) => t.id == trackAtLogical1.id), isFalse);
+      });
+
+      test('insert works logically under shuffle', () {
+        engine.replaceAll(tracks, 2);
+        engine.setShuffle(true);
+        const newTrack = AfTrack(id: 'new', title: 'New', artistName: 'X', albumName: 'Y');
+        // currentIndex is logical 0, windowStart is 0
+        engine.insert(1, newTrack);
+        expect(engine.length, 6);
+        expect(engine.tracks[1].id, 'new');
+        expect(engine.currentIndex, 0);
+        expect(engine.windowStart, 0);
+
+        engine.insert(0, newTrack);
+        // currentIndex was logical 0, insert at 0 shifts it to logical 1
+        expect(engine.currentIndex, 1);
+        expect(engine.windowStart, 1);
+      });
+
+      test('append works logically under shuffle', () {
+        engine.replaceAll(tracks, 2);
+        engine.setShuffle(true);
+        const newTrack = AfTrack(id: 'new', title: 'New', artistName: 'X', albumName: 'Y');
+        engine.append(newTrack);
+        expect(engine.length, 6);
+        expect(engine.tracks.last.id, 'new');
+      });
+
+      test('reorder works logically under shuffle', () {
+        engine.replaceAll(tracks, 2);
+        engine.setShuffle(true);
+        // engine.tracks is shuffled, currentIndex is logical 0 (first track)
+        final firstTrack = engine.tracks[0];
+        final secondTrack = engine.tracks[1];
+
+        // Reorder index 0 to 2
+        engine.reorder(0, 2);
+        // new order should have secondTrack first, then firstTrack at index 1
+        expect(engine.tracks[0].id, secondTrack.id);
+        expect(engine.tracks[1].id, firstTrack.id);
+        // currentIndex should be logical 1 now
+        expect(engine.currentIndex, 1);
+        expect(engine.currentTrack?.id, firstTrack.id);
+      });
+    });
+
     group('track transitions', () {
       test('advanceIndex moves forward', () {
         engine.replaceAll(tracks, 1);

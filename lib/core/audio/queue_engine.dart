@@ -26,8 +26,15 @@ class AfQueueEngine {
 
   // ── Query helpers ──────────────────────────────────────────────────
 
-  List<AfTrack> get tracks => List<AfTrack>.unmodifiable(_tracks);
-  int get currentIndex => _currentIndex;
+  List<AfTrack> get tracks {
+    if (_shuffleOrder == null) return List<AfTrack>.unmodifiable(_tracks);
+    return List<AfTrack>.unmodifiable(_shuffleOrder!.map((i) => _tracks[i]));
+  }
+  int get currentIndex {
+    if (_shuffleOrder == null) return _currentIndex;
+    if (_currentIndex == -1) return -1;
+    return _shuffleOrder!.indexOf(_currentIndex);
+  }
   int get windowStart => _windowStart;
   bool get isShuffleEnabled => _shuffleOrder != null;
   bool get playbackEnded => _playbackEnded;
@@ -40,21 +47,21 @@ class AfQueueEngine {
   /// Track at mpv slot 0 (the currently-playing slot).
   AfTrack? get windowSlot0 {
     if (_windowStart < 0 || _windowStart >= _tracks.length) return null;
-    return _tracks[_windowStart];
+    return trackAt(_windowStart);
   }
 
   /// Track at mpv slot 1 (the pre-decoded next track).
   AfTrack? get windowSlot1 {
     final idx = _windowStart + 1;
     if (idx < 0 || idx >= _tracks.length) return null;
-    return _tracks[idx];
+    return trackAt(idx);
   }
 
   /// The next track that should be loaded into mpv after the current one.
   AfTrack? get nextTrack {
-    final nextIdx = _currentIndex + 1;
+    final nextIdx = currentIndex + 1;
     if (nextIdx < 0 || nextIdx >= _tracks.length) return null;
-    return _tracks[nextIdx];
+    return trackAt(nextIdx);
   }
 
   /// The index in [_tracks] of the "next next" track (for window replacement).
@@ -63,10 +70,13 @@ class AfQueueEngine {
   AfTrack? get nextNextTrack {
     final idx = nextNextIndex;
     if (idx < 0 || idx >= _tracks.length) return null;
-    return _tracks[idx];
+    return trackAt(idx);
   }
 
-  bool get isAtQueueEnd => _currentIndex >= _tracks.length - 1;
+  bool get isAtQueueEnd {
+    if (_tracks.isEmpty) return true;
+    return currentIndex >= _tracks.length - 1;
+  }
   bool get isEmpty => _tracks.isEmpty;
   int get length => _tracks.length;
 
@@ -112,7 +122,9 @@ class AfQueueEngine {
     if (enabled) {
       _shuffleOrder = List<int>.generate(_tracks.length, (i) => i);
       _fisherYatesShuffle();
+      _windowStart = 0;
     } else {
+      _windowStart = _currentIndex >= 0 ? _currentIndex : 0;
       _shuffleOrder = null;
     }
   }
@@ -166,28 +178,31 @@ class AfQueueEngine {
 
   /// Advance to the next track. Returns new currentIndex.
   int advanceIndex() {
-    if (_tracks.isEmpty) return _currentIndex;
-    if (_currentIndex < _tracks.length - 1) {
-      _currentIndex++;
+    if (_tracks.isEmpty) return currentIndex;
+    final logicalIdx = currentIndex;
+    if (logicalIdx < _tracks.length - 1) {
+      _currentIndex = physicalIndex(logicalIdx + 1);
     }
-    return _currentIndex;
+    return currentIndex;
   }
 
   /// Retreat to the previous track. Returns new currentIndex.
   int retreatIndex() {
-    if (_tracks.isEmpty) return _currentIndex;
-    if (_currentIndex > 0) {
-      _currentIndex--;
+    if (_tracks.isEmpty) return currentIndex;
+    final logicalIdx = currentIndex;
+    if (logicalIdx > 0) {
+      _currentIndex = physicalIndex(logicalIdx - 1);
     }
-    return _currentIndex;
+    return currentIndex;
   }
 
   /// Jump to a specific logical index. Returns new currentIndex.
   int jumpTo(int logicalIndex) {
-    if (_tracks.isEmpty) return _currentIndex;
-    _currentIndex = logicalIndex.clamp(0, _tracks.length - 1);
-    _windowStart = _currentIndex;
-    return _currentIndex;
+    if (_tracks.isEmpty) return currentIndex;
+    final clamped = logicalIndex.clamp(0, _tracks.length - 1);
+    _currentIndex = physicalIndex(clamped);
+    _windowStart = clamped;
+    return currentIndex;
   }
 
   /// Advance the window start by 1 (called after a track completes).
@@ -210,54 +225,113 @@ class AfQueueEngine {
   /// Reorder a track from [oldIndex] to [newIndex].
   /// Returns the adjusted insertion index.
   int reorder(int oldIndex, int newIndex) {
-    final track = _tracks.removeAt(oldIndex);
-    final insertIdx = newIndex > oldIndex ? newIndex - 1 : newIndex;
-    _tracks.insert(insertIdx, track);
+    if (_shuffleOrder == null) {
+      final track = _tracks.removeAt(oldIndex);
+      final insertIdx = newIndex > oldIndex ? newIndex - 1 : newIndex;
+      _tracks.insert(insertIdx, track);
 
-    // Track where the current track moved to after reorder
-    if (_currentIndex == oldIndex) {
-      _currentIndex = insertIdx;
-    } else if (oldIndex < _currentIndex && insertIdx >= _currentIndex) {
-      _currentIndex -= 1;
-    } else if (oldIndex > _currentIndex && insertIdx <= _currentIndex) {
-      _currentIndex += 1;
-    }
-    // WindowStart follows the same logic as currentIndex for reorder
-    if (_windowStart == oldIndex) {
-      _windowStart = insertIdx;
-    } else if (oldIndex < _windowStart && insertIdx >= _windowStart) {
-      _windowStart -= 1;
-    } else if (oldIndex > _windowStart && insertIdx <= _windowStart) {
-      _windowStart += 1;
-    }
+      // Track where the current track moved to after reorder
+      if (_currentIndex == oldIndex) {
+        _currentIndex = insertIdx;
+      } else if (oldIndex < _currentIndex && insertIdx >= _currentIndex) {
+        _currentIndex -= 1;
+      } else if (oldIndex > _currentIndex && insertIdx <= _currentIndex) {
+        _currentIndex += 1;
+      }
+      // WindowStart follows the same logic as currentIndex for reorder
+      if (_windowStart == oldIndex) {
+        _windowStart = insertIdx;
+      } else if (oldIndex < _windowStart && insertIdx >= _windowStart) {
+        _windowStart -= 1;
+      } else if (oldIndex > _windowStart && insertIdx <= _windowStart) {
+        _windowStart += 1;
+      }
 
-    return insertIdx;
+      return insertIdx;
+    } else {
+      final physicalIdx = _shuffleOrder!.removeAt(oldIndex);
+      final insertIdx = newIndex > oldIndex ? newIndex - 1 : newIndex;
+      _shuffleOrder!.insert(insertIdx, physicalIdx);
+
+      // Adjust _windowStart (logical)
+      if (_windowStart == oldIndex) {
+        _windowStart = insertIdx;
+      } else if (oldIndex < _windowStart && insertIdx >= _windowStart) {
+        _windowStart -= 1;
+      } else if (oldIndex > _windowStart && insertIdx <= _windowStart) {
+        _windowStart += 1;
+      }
+
+      return insertIdx;
+    }
   }
 
-  bool canRemove(int index) =>
-      index >= 0 && index < _tracks.length && index != _currentIndex;
+  bool canRemove(int index) {
+    if (index < 0 || index >= _tracks.length) return false;
+    return index != currentIndex;
+  }
 
   /// Remove a track at [index].
   void remove(int index) {
-    _tracks.removeAt(index);
-    _adjustIndicesAfterRemove(index, null);
+    if (_shuffleOrder == null) {
+      _tracks.removeAt(index);
+      _adjustIndicesAfterRemove(index, null);
+    } else {
+      final physicalIdx = _shuffleOrder![index];
+      _tracks.removeAt(physicalIdx);
+      _shuffleOrder!.removeAt(index);
+
+      // Adjust any physical indices in _shuffleOrder that were after the removed physical index
+      for (var i = 0; i < _shuffleOrder!.length; i++) {
+        if (_shuffleOrder![i] > physicalIdx) {
+          _shuffleOrder![i]--;
+        }
+      }
+
+      // Adjust _currentIndex (physical)
+      if (_currentIndex > physicalIdx) {
+        _currentIndex--;
+      }
+
+      // Adjust _windowStart (logical)
+      final logicalCurrentIndex = _shuffleOrder!.indexOf(_currentIndex);
+      if (_windowStart > index) {
+        _windowStart--;
+      } else if (_windowStart == index) {
+        _windowStart = logicalCurrentIndex.clamp(0, _shuffleOrder!.length - 1);
+      }
+    }
   }
 
   /// Insert [track] at [index].
   void insert(int index, AfTrack track) {
-    final clamped = index.clamp(0, _tracks.length);
-    _tracks.insert(clamped, track);
-    if (clamped <= _currentIndex) {
-      _currentIndex++;
-    }
-    if (clamped <= _windowStart) {
-      _windowStart++;
+    if (_shuffleOrder == null) {
+      final clamped = index.clamp(0, _tracks.length);
+      _tracks.insert(clamped, track);
+      if (clamped <= _currentIndex) {
+        _currentIndex++;
+      }
+      if (clamped <= _windowStart) {
+        _windowStart++;
+      }
+    } else {
+      final clampedLogical = index.clamp(0, _shuffleOrder!.length);
+      _tracks.add(track);
+      final newPhysicalIndex = _tracks.length - 1;
+      _shuffleOrder!.insert(clampedLogical, newPhysicalIndex);
+
+      if (clampedLogical <= _windowStart) {
+        _windowStart++;
+      }
     }
   }
 
   /// Append [track] to the end of the queue.
   void append(AfTrack track) {
     _tracks.add(track);
+    if (_shuffleOrder != null) {
+      _shuffleOrder!.add(_tracks.length - 1);
+    }
   }
 
   /// Call when the slot to replace on track completion changes.
