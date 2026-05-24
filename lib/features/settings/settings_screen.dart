@@ -174,6 +174,10 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                     );
                     if (confirmed == true && context.mounted) {
+                      // Clear auth FIRST so authSub fires before modeSub.
+                      // This way the router redirect sees auth=null before
+                      // the migration fallback kicks in when mode→null.
+                      await ref.read(authProvider.notifier).clear();
                       await AppModeStore.clear();
                       ref.read(appModeProvider.notifier).state = null;
                       if (context.mounted) context.go('/');

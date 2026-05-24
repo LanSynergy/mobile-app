@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import 'app/app.dart';
-import 'app/router.dart' show notifyAuthChanged, setRouterAuthState;
+import 'app/router.dart' show notifyAuthChanged, resetRouterMode, setRouterAuthState;
 import 'core/audio/player_service.dart';
 import 'core/audio/player_settings_store.dart';
 import 'core/local/app_mode_store.dart';
@@ -191,11 +191,18 @@ Future<void> main() async {
     // files" on the welcome screen updates appModeProvider but the
     // router's _appMode snapshot stays null — so after scanning,
     // context.go('/home') hits effectiveMode==null → redirect to '/'.
+    //
+    // When mode is cleared to null (mode switch, clear app data), explicitly
+    // reset the router snapshot via resetRouterMode().  setRouterAuthState's
+    // null guard prevents clearing _appMode through that path.
     // ignore: unused_local_variable
     final modeSub = container.listen<AppMode?>(
       appModeProvider,
       (prev, next) {
         setRouterAuthState(auth: container.read(authProvider), mode: next);
+        if (next == null) {
+          resetRouterMode();
+        }
         notifyAuthChanged();
       },
       fireImmediately: false,

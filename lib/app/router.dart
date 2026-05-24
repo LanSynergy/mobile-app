@@ -294,9 +294,20 @@ class _AuthRefreshListenable extends ChangeNotifier {
 
 /// Called from main.dart to initialise auth/mode state before runApp,
 /// and from provider listeners to keep the redirect snapshot in sync.
+///
+/// NOTE: the `if (mode != null)` guard is intentional — it prevents
+/// `authSub` (which only passes auth) from accidentally clearing `_appMode`.
+/// To explicitly clear mode to null, use [resetRouterMode].
 void setRouterAuthState({JellyfinAuth? auth, AppMode? mode}) {
   _auth = auth;
   if (mode != null) _appMode = mode;
+}
+
+/// Explicitly clear the router's mode snapshot to null.
+/// Used when the user switches modes or clears app data, so the redirect
+/// doesn't read stale `_appMode` and skip onboarding.
+void resetRouterMode() {
+  _appMode = null;
 }
 
 /// Called from main.dart when auth/mode changes to trigger router redirect.
