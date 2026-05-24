@@ -290,5 +290,74 @@ void main() {
         expect(qm.currentQueue[0].id, 'local-id');
       });
     });
+
+  group('Media cache', () {
+    late List<Media> testMedias;
+
+    setUp(() {
+      testMedias = [
+        const Media('https://example.com/track1'),
+        const Media('https://example.com/track2'),
+        const Media('https://example.com/track3'),
+        const Media('https://example.com/track4'),
+        const Media('https://example.com/track5'),
+      ];
+    });
+
+    test('cacheQueue stores Media with generation', () {
+      queueManager.cacheQueue(testMedias, 42);
+      expect(queueManager.remainingCachedCount(42), equals(5));
+    });
+
+    test('drainAllCached returns cached Media and clears cache', () {
+      queueManager.cacheQueue(testMedias, 42);
+      final result = queueManager.drainAllCached(42);
+      expect(result, isNotNull);
+      expect(result!.length, equals(5));
+      expect(result[0].uri, equals('https://example.com/track1'));
+      // Cache should be empty after drain
+      expect(queueManager.remainingCachedCount(42), equals(0));
+    });
+
+    test('drainAllCached returns null on gen mismatch', () {
+      queueManager.cacheQueue(testMedias, 42);
+      final result = queueManager.drainAllCached(99); // wrong gen
+      expect(result, isNull);
+      // Original cache still intact
+      expect(queueManager.remainingCachedCount(42), equals(5));
+    });
+
+    test('drainAllCached returns null when cache is empty', () {
+      final result = queueManager.drainAllCached(42);
+      expect(result, isNull);
+    });
+
+    test('remainingCachedCount returns 0 on gen mismatch', () {
+      queueManager.cacheQueue(testMedias, 42);
+      expect(queueManager.remainingCachedCount(99), equals(0));
+    });
+
+    test('remainingCachedCount returns 0 when cache is empty', () {
+      expect(queueManager.remainingCachedCount(42), equals(0));
+    });
+
+    test('clearCache resets both cache and generation', () {
+      queueManager.cacheQueue(testMedias, 42);
+      queueManager.clearCache();
+      expect(queueManager.remainingCachedCount(42), equals(0));
+      expect(queueManager.drainAllCached(42), isNull);
+    });
+
+    test('clear() also clears the media cache', () {
+      queueManager.replaceQueue(
+        tracks.map((t) => t).toList(),
+        0,
+      );
+      queueManager.cacheQueue(testMedias, 42);
+      queueManager.clear();
+      expect(queueManager.remainingCachedCount(42), equals(0));
+      expect(queueManager.drainAllCached(42), isNull);
+    });
   });
+});
 }

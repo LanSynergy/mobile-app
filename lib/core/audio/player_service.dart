@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' show min;
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -119,6 +120,7 @@ class AfPlayerService {
 
   int _nudgeRetries = 0;
   static const _maxNudgeRetries = 3;
+  static const int kMaxInitialQueueAdds = 30;
 
   int? _pendingPlayNudgeIdx;
   bool _userPaused = false;
@@ -525,25 +527,45 @@ class AfPlayerService {
           // orphan tracks flood mpv's playlist on abort. For N > 5, the
           // first track plays immediately (Phase 1) while the rest load
           // sequentially in the background (Phases 2-3).
+          //
+          // Phase 2 (forward adds) is capped to kMaxInitialQueueAdds to
+          // reduce MethodChannel blocking during initial playback.
+          // Phase 3 (backward inserts) is NOT capped — all backward tracks
+          // are loaded so mpv playlist indices always match Dart queue
+          // indices for loaded tracks. The forward overflow above the cap
+          // is cached and replenished lazily on auto-advance or shuffle.
           await _player.open(medias[safeIndex], play: shouldPlay);
           if (myGen != _queueLoadGen) return;
 
-          // Phase 2: tracks after current — forward append
-          for (var i = safeIndex + 1; i < medias.length; i++) {
-            await _player.add(medias[i]);
+          // Phase 2: tracks after current — forward append, capped.
+          final forwardCount = medias.length - 1 - safeIndex;
+          final forwardLoaded = min(forwardCount, kMaxInitialQueueAdds);
+          for (var i = 0; i < forwardLoaded; i++) {
+            await _player.add(medias[safeIndex + 1 + i]);
             if (myGen != _queueLoadGen) return;
           }
 
-          // Phase 3: tracks before current — backward insert-at-0
-          // (reversed so they end up in original order)
-          for (var i = safeIndex - 1; i >= 0; i--) {
+          // Phase 3: tracks before current — backward insert-at-0.
+          // All backward tracks are always loaded so _player.jump(dartIndex)
+          // maps correctly to mpv's internal playlist index.
+          for (var i = 1; i <= safeIndex; i++) {
             await _player.sendRawCommand([
               'loadfile',
-              medias[i].uri,
+              medias[safeIndex - i].uri,
               'insert-at',
               '0',
             ]);
             if (myGen != _queueLoadGen) return;
+          }
+
+          // Cache forward overflow for lazy replenish on auto-advance / shuffle.
+          if (forwardCount > forwardLoaded) {
+            _queueManager.cacheQueue(
+              medias.sublist(safeIndex + 1 + forwardLoaded),
+              myGen,
+            );
+          } else {
+            _queueManager.clearCache();
           }
         }
 
@@ -687,6 +709,18 @@ class AfPlayerService {
     if (_isLoadingQueue) return;
     return _queueLock.run(() async {
       try {
+        final gen = _queueLoadGen;
+        // If the target index is beyond mpv's loaded range, replenish
+        // all cached forward tracks first so the jump lands correctly.
+        if (_queueManager.remainingCachedCount(gen) > 0) {
+          final remaining = _queueManager.drainAllCached(gen);
+          if (remaining != null) {
+            for (final m in remaining) {
+              if (gen != _queueLoadGen) return;
+              await _player.add(m);
+            }
+          }
+        }
         await _player.jump(index);
       } catch (e, stack) {
         afLog('audio', 'skipToQueueItem failed', error: e, stackTrace: stack);
@@ -703,6 +737,19 @@ class AfPlayerService {
       if (_queueManager.currentQueue.isEmpty) {
         afLog('data', 'shuffleMode source=live enabled=$enabled (queue empty)');
         return;
+      }
+
+      // Pre-load remaining tracks from cache before shuffling so
+      // playlist-shuffle operates on the complete track list.
+      {
+        final cacheGen = _queueLoadGen;
+        final remaining = _queueManager.drainAllCached(cacheGen);
+        if (remaining != null) {
+          for (final m in remaining) {
+            if (cacheGen != _queueLoadGen) return;
+            await _player.add(m);
+          }
+        }
       }
 
       final myGen = ++_shuffleGen;
@@ -1119,6 +1166,18 @@ class AfPlayerService {
               afLog('audio', 'completed: replay file (loop=file) — mpv handles internally');
             } else if (!isAtEnd) {
               if (playlistIndexAtEvent == _queueManager.currentIndex) {
+                // Replenish forward overflow from cache before jumping.
+                // mpv fired completed because its playlist ended at the
+                // last loaded forward track. Drain all cached forward
+                // tracks into mpv so the next index exists.
+                final cacheGen = _queueLoadGen;
+                final remaining = _queueManager.drainAllCached(cacheGen);
+                if (remaining != null) {
+                  for (final m in remaining) {
+                    if (cacheGen != _queueLoadGen) return;
+                    await _player.add(m);
+                  }
+                }
                 await _jumpAndPlay(nextIdx);
                 afLog('audio', 'completed: jump+play to index=$nextIdx');
               }

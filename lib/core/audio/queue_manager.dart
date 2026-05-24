@@ -32,6 +32,42 @@ class AfQueueManager {
   bool _playbackEnded = false;
   late TrackIdExtractor _extractor;
 
+  // ── Media cache ──────────────────────────────────────────────────────
+  List<Media>? _mediaCache;
+  int _mediaCacheGen = -1;
+
+  /// Store resolved [Media] objects tied to a generation counter.
+  /// Callers pass the current [_queueLoadGen] so stale cache reads
+  /// are rejected.
+  void cacheQueue(List<Media> medias, int loadGen) {
+    _mediaCache = List<Media>.of(medias);
+    _mediaCacheGen = loadGen;
+  }
+
+  /// Return all cached [Media] objects if [loadGen] matches the current
+  /// cache generation. Clears the cache after draining.
+  /// Returns `null` on gen mismatch (stale cache).
+  List<Media>? drainAllCached(int loadGen) {
+    if (loadGen != _mediaCacheGen || _mediaCache == null) return null;
+    final result = _mediaCache!;
+    _mediaCache = null;
+    _mediaCacheGen = -1;
+    return result;
+  }
+
+  /// How many [Media] objects remain in the cache for the given generation.
+  /// Returns 0 on gen mismatch or empty cache.
+  int remainingCachedCount(int loadGen) {
+    if (loadGen != _mediaCacheGen || _mediaCache == null) return 0;
+    return _mediaCache!.length;
+  }
+
+  /// Reset the cache (called when a new queue replaces the current one).
+  void clearCache() {
+    _mediaCache = null;
+    _mediaCacheGen = -1;
+  }
+
   // ── Streams ────────────────────────────────────────────────────────
 
   Stream<AfTrack?> get currentTrackStream => _trackController.stream;
@@ -280,6 +316,7 @@ class AfQueueManager {
   }
 
   void clear() {
+    clearCache();
     _playbackEnded = false;
     _trackQueue.clear();
     _currentIndex = -1;
