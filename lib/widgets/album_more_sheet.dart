@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +10,7 @@ import '../core/audio/play_actions.dart';
 import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
+import 'af_dialog.dart';
 
 void showAlbumMoreSheet(
   BuildContext context,
@@ -19,131 +19,92 @@ void showAlbumMoreSheet(
   List<AfTrack> tracks,
 ) {
   HapticFeedback.mediumImpact();
-  showModalBottomSheet<void>(
+  showBlurDialog<void>(
     context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (sheetCtx) => ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: AfRadii.rXl),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xB30B0B14),
-            border: Border(
-              top: BorderSide(color: AfColors.surfaceLow, width: 1),
+    child: Builder(
+      builder: (dialogCtx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  album.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AfTypography.titleSmall,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  album.artistName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                0,
-                AfSpacing.s12,
-                0,
-                AfSpacing.s12,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Drag handle
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AfColors.textTertiary.withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AfSpacing.s12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AfSpacing.gutterGenerous,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          album.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AfTypography.titleSmall,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          album.artistName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AfTypography.bodySmall.copyWith(
-                            color: AfColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AfSpacing.s8),
-                  const Divider(height: 1, color: AfColors.surfaceHigh),
-                  _MenuItem(
-                    icon: FontAwesomeIcons.shuffle,
-                    label: 'Shuffle play',
-                    enabled: tracks.isNotEmpty,
-                    onTap: () async {
-                      Navigator.of(sheetCtx).pop();
-                      await ref.read(playerServiceProvider).setAfShuffleMode(true);
-                      await ref.read(playActionsProvider).playAlbum(tracks);
-                    },
-                  ),
-                  _MenuItem(
-                    icon: FontAwesomeIcons.play,
-                    label: 'Play next',
-                    enabled: tracks.isNotEmpty,
-                    onTap: () {
-                      Navigator.of(sheetCtx).pop();
-                      _enqueue(ref, tracks, atFront: true);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            _enqueueLabel(tracks.length, 'will play next'),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  _MenuItem(
-                    icon: FontAwesomeIcons.listUl,
-                    label: 'Add to queue',
-                    enabled: tracks.isNotEmpty,
-                    onTap: () {
-                      Navigator.of(sheetCtx).pop();
-                      _enqueue(ref, tracks, atFront: false);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            _enqueueLabel(tracks.length, 'added to queue'),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  if (album.artistId != null)
-                    _MenuItem(
-                      icon: FontAwesomeIcons.user,
-                      label: 'Go to artist',
-                      onTap: () {
-                        Navigator.of(sheetCtx).pop();
-                        context.push('/artist/${album.artistId}');
-                      },
-                    ),
-                ],
-              ),
-              ),
-            ),
+          const SizedBox(height: AfSpacing.s8),
+          const Divider(height: 1, color: AfColors.surfaceHigh),
+          _MenuItem(
+            icon: FontAwesomeIcons.shuffle,
+            label: 'Shuffle play',
+            enabled: tracks.isNotEmpty,
+            onTap: () async {
+              Navigator.of(dialogCtx).pop();
+              await ref.read(playerServiceProvider).setAfShuffleMode(true);
+              await ref.read(playActionsProvider).playAlbum(tracks);
+            },
           ),
-        ),
+          _MenuItem(
+            icon: FontAwesomeIcons.play,
+            label: 'Play next',
+            enabled: tracks.isNotEmpty,
+            onTap: () {
+              Navigator.of(dialogCtx).pop();
+              _enqueue(ref, tracks, atFront: true);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    _enqueueLabel(tracks.length, 'will play next'),
+                  ),
+                ),
+              );
+            },
+          ),
+          _MenuItem(
+            icon: FontAwesomeIcons.listUl,
+            label: 'Add to queue',
+            enabled: tracks.isNotEmpty,
+            onTap: () {
+              Navigator.of(dialogCtx).pop();
+              _enqueue(ref, tracks, atFront: false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    _enqueueLabel(tracks.length, 'added to queue'),
+                  ),
+                ),
+              );
+            },
+          ),
+          if (album.artistId != null)
+            _MenuItem(
+              icon: FontAwesomeIcons.user,
+              label: 'Go to artist',
+              onTap: () {
+                Navigator.of(dialogCtx).pop();
+                context.push('/artist/${album.artistId}');
+              },
+            ),
+        ],
       ),
     ),
   );
