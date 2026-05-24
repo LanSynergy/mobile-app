@@ -6,6 +6,7 @@ import '../../core/audio/play_actions.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/async_error_view.dart';
+import '../../widgets/skeletons/track_row_skeleton.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 
@@ -183,14 +184,27 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
             ],
           );
         },
-        loading: () => const Center(
-          child: SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              color: AfColors.indigo400,
-            ),
+        loading: () => const SingleChildScrollView(
+          padding: AfSpacing.pageHorizontal,
+          child: Column(
+            children: [
+              SizedBox(height: AfSpacing.s16),
+              TrackRowSkeleton(),
+              SizedBox(height: AfSpacing.s4),
+              TrackRowSkeleton(),
+              SizedBox(height: AfSpacing.s4),
+              TrackRowSkeleton(),
+              SizedBox(height: AfSpacing.s4),
+              TrackRowSkeleton(),
+              SizedBox(height: AfSpacing.s4),
+              TrackRowSkeleton(),
+              SizedBox(height: AfSpacing.s4),
+              TrackRowSkeleton(),
+              SizedBox(height: AfSpacing.s4),
+              TrackRowSkeleton(),
+              SizedBox(height: AfSpacing.s4),
+              TrackRowSkeleton(),
+            ],
           ),
         ),
         error: (e, _) => AsyncErrorView(

@@ -9,6 +9,7 @@ import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import '../utils/display_error.dart';
+import '../widgets/skeletons/sheet_skeleton.dart';
 import 'bottom_sheet.dart';
 
 /// Shows the "Save to playlist" sheet for an arbitrary [AfTrack].
@@ -162,7 +163,7 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
           if (_loading)
             const Padding(
               padding: EdgeInsets.all(AfSpacing.s24),
-              child: Center(child: CircularProgressIndicator()),
+              child: SheetSkeleton(),
             )
           else if (_error != null)
             Padding(

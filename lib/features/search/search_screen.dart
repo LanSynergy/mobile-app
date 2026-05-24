@@ -14,6 +14,7 @@ import '../../widgets/artwork.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
+import '../../widgets/skeletons/search_skeleton.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SearchScreen
@@ -271,7 +272,7 @@ class _LiveSearchResults extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(searchProvider(query));
     return async.when(
-      loading: () => const _SearchLoadingSkeleton(),
+      loading: () => const SearchSkeleton(),
       error: (e, _) => Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AfSpacing.s16,
@@ -336,49 +337,6 @@ class _LiveSearchResults extends ConsumerWidget {
           unbounded: filter != SearchFilter.all,
         );
       },
-    );
-  }
-}
-
-/// Subtle loading skeleton — avoids the "frozen UI" feeling of a blank
-/// state while preventing spinner storms on fast networks.
-class _SearchLoadingSkeleton extends StatelessWidget {
-  const _SearchLoadingSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AfSpacing.s16,
-        vertical: AfSpacing.s24,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var i = 0; i < 5; i++) ...[
-            _SkeletonBar(width: i.isEven ? 200 : 140, height: 14),
-            const SizedBox(height: AfSpacing.s12),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _SkeletonBar extends StatelessWidget {
-  const _SkeletonBar({required this.width, required this.height});
-  final double width;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: const BoxDecoration(
-        color: AfColors.surfaceBase,
-        borderRadius: AfRadii.borderSm,
-      ),
     );
   }
 }

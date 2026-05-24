@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/smart_playlist/smart_playlist_model.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/skeletons/track_row_skeleton.dart';
 
 /// Create or edit a smart playlist — Samsung One UI style rule builder.
 class SmartPlaylistEditScreen extends ConsumerStatefulWidget { // null = create new
@@ -110,7 +111,25 @@ class _SmartPlaylistEditScreenState
     if (_loading) {
       return const Scaffold(
         backgroundColor: AfColors.surfaceCanvas,
-        body: Center(child: CircularProgressIndicator()),
+        body: SingleChildScrollView(
+          padding: AfSpacing.pageHorizontal,
+          child: Column(
+            children: [
+              SizedBox(height: AfSpacing.s16),
+              TrackRowSkeleton(),
+              SizedBox(height: AfSpacing.s4),
+              TrackRowSkeleton(),
+              SizedBox(height: AfSpacing.s4),
+              TrackRowSkeleton(),
+              SizedBox(height: AfSpacing.s4),
+              TrackRowSkeleton(),
+              SizedBox(height: AfSpacing.s4),
+              TrackRowSkeleton(),
+              SizedBox(height: AfSpacing.s4),
+              TrackRowSkeleton(),
+            ],
+          ),
+        ),
       );
     }
 

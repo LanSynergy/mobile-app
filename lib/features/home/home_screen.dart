@@ -13,6 +13,7 @@ import '../../widgets/section_header.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
+import '../../widgets/skeletons/home_skeleton.dart';
 
 /// Mockup 04 — Home.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -130,7 +131,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               data: (albums) => albums.isEmpty
                   ? const SizedBox.shrink()
                   : _HeroAlbumCarousel(albums: albums),
-              loading: () => const SizedBox(height: 192),
+              loading: () => const HomeCarouselSkeleton(),
               error: (e, _) => AsyncErrorView.compact(
                 label: 'Couldn\u2019t load recent albums',
                 error: e,
@@ -176,7 +177,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   );
                 },
               ),
-              loading: () => const SizedBox(height: 80),
+              loading: () => const HomeRecentSkeleton(),
               error: (e, _) => AsyncErrorView.compact(
                 label: 'Couldn\u2019t load recently played',
                 error: e,
@@ -204,7 +205,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
           SliverToBoxAdapter(
             child: artistsAsync.when(
-              loading: () => const SizedBox(height: 172),
+              loading: () => const HomeArtistsSkeleton(),
               error: (e, _) => AsyncErrorView.compact(
                 label: 'Couldn\u2019t load artists',
                 error: e,
