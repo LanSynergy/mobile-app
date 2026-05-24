@@ -7,10 +7,38 @@ analyzer:
 
 linter:
   rules:
+    # Printing
     avoid_print: true
+
+    # Async safety
     unawaited_futures: true
     cancel_subscriptions: true
     close_sinks: true
+
+    # Build context
     use_build_context_synchronously: true
+
+    # Variables & types
     prefer_final_locals: true
+    always_declare_return_types: true
+    avoid_dynamic_calls: false  # some legacy patterns use dynamic
+
+    # Naming & style
+    no_leading_underscores_for_local_identifiers: true
+    sort_constructors_first: true
     require_trailing_commas: true
+    prefer_const_constructors: true
+    prefer_const_declarations: true
+    prefer_const_literals_to_create_immutables: true
+
+    # Unnecessary code
+    unnecessary_lambdas: true
+    unnecessary_string_escapes: true
+    unnecessary_string_interpolations: true
+
+    # Null safety
+    prefer_if_null_operators: true
+    prefer_null_aware_operators: true
+
+    # Collections
+    prefer_collection_literals: true
