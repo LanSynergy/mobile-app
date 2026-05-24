@@ -15,7 +15,6 @@ void showTrackDetailsSheet(BuildContext context, WidgetRef ref, AfTrack track) {
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.transparent,
-    isScrollControlled: true,
     builder: (sheetCtx) => ClipRRect(
       borderRadius: const BorderRadius.vertical(top: AfRadii.rXl),
       child: BackdropFilter(
@@ -44,8 +43,11 @@ void showTrackDetailsSheet(BuildContext context, WidgetRef ref, AfTrack track) {
                   ),
                 ),
                 const SizedBox(height: AfSpacing.s12),
-                Expanded(
-                  child: _TrackDetailsBody(track: track),
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 400),
+                    child: _TrackDetailsBody(track: track),
+                  ),
                 ),
               ],
             ),

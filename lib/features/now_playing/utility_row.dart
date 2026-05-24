@@ -138,7 +138,7 @@ void showMoreSheet(BuildContext context, WidgetRef ref) {
         ),
         MoreItem(
           icon: const FaIcon(
-            FontAwesomeIcons.volumeHigh,
+            FontAwesomeIcons.volumeLow,
             size: 22,
             color: AfColors.textSecondary,
           ),
