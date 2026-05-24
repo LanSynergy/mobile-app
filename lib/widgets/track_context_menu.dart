@@ -11,7 +11,7 @@ import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import '../utils/display_error.dart';
-import 'bottom_sheet.dart';
+import 'af_dialog.dart';
 import 'save_to_playlist_sheet.dart';
 import 'track_details_sheet.dart';
 
@@ -31,9 +31,9 @@ void showTrackContextMenu(
   AfTrack track,
 ) {
   HapticFeedback.mediumImpact();
-  showBlurBottomSheet<void>(
+  showBlurDialog<void>(
     context: context,
-    builder: (dialogCtx) => Consumer(
+    child: Consumer(
       builder: (ctx, innerRef, _) {
         final overrides = innerRef.watch(trackFavoriteOverridesProvider);
         final isFavorite = overrides[track.id] ?? track.isFavorite;
@@ -74,7 +74,7 @@ void showTrackContextMenu(
               iconColor: isFavorite ? AfColors.indigo300 : null,
               label: isFavorite ? 'Remove from liked' : 'Add to liked',
               onTap: () async {
-                Navigator.of(dialogCtx).pop();
+                Navigator.of(ctx).pop();
                 try {
                   await innerRef.read(favoriteToggleProvider)(track);
                   if (context.mounted) {
@@ -103,7 +103,7 @@ void showTrackContextMenu(
               label: 'Play next',
               onTap: () {
                 _playNext(innerRef, track);
-                Navigator.of(dialogCtx).pop();
+                Navigator.of(ctx).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                       content:
@@ -116,7 +116,7 @@ void showTrackContextMenu(
               label: 'Add to queue',
               onTap: () {
                 _addToQueue(innerRef, track);
-                Navigator.of(dialogCtx).pop();
+                Navigator.of(ctx).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                       content:
@@ -128,7 +128,7 @@ void showTrackContextMenu(
               icon: FontAwesomeIcons.plus,
               label: 'Save to playlist',
               onTap: () {
-                Navigator.of(dialogCtx).pop();
+                Navigator.of(ctx).pop();
                 showSaveToPlaylistSheet(context, innerRef, track);
               },
             ),
@@ -137,7 +137,7 @@ void showTrackContextMenu(
                 icon: FontAwesomeIcons.compactDisc,
                 label: 'Go to album',
                 onTap: () {
-                  Navigator.of(dialogCtx).pop();
+                  Navigator.of(ctx).pop();
                   context.push('/album/${track.albumId}');
                 },
               ),
@@ -146,7 +146,7 @@ void showTrackContextMenu(
                 icon: FontAwesomeIcons.user,
                 label: 'Go to artist',
                 onTap: () {
-                  Navigator.of(dialogCtx).pop();
+                  Navigator.of(ctx).pop();
                   context.push('/artist/${track.artistId}');
                 },
               ),
@@ -154,7 +154,7 @@ void showTrackContextMenu(
               icon: FontAwesomeIcons.circleInfo,
               label: 'Show details',
               onTap: () {
-                Navigator.of(dialogCtx).pop();
+                Navigator.of(ctx).pop();
                 showTrackDetailsSheet(context, innerRef, track);
               },
             ),
@@ -172,61 +172,63 @@ void showAlbumContextMenu(
   AfAlbum album,
 ) {
   HapticFeedback.mediumImpact();
-  showBlurBottomSheet<void>(
+  showBlurDialog<void>(
     context: context,
-    builder: (dialogCtx) => Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AfSpacing.gutterGenerous,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                album.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AfTypography.titleSmall,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                album.artistName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textSecondary,
+    child: Builder(
+      builder: (dialogCtx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  album.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AfTypography.titleSmall,
                 ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  album.artistName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: AfSpacing.s8),
-        const Divider(height: 1, color: AfColors.surfaceHigh),
-        _MenuItem(
-          icon: FontAwesomeIcons.play,
-          label: 'Play album',
-          onTap: () async {
-            Navigator.of(dialogCtx).pop();
-            final detail = await ref.read(
-                albumDetailProvider(album.id).future);
-            if (detail != null) {
-              await ref.read(playActionsProvider).playAlbum(detail.tracks);
-            }
-          },
-        ),
-        if (album.artistId != null)
+          const SizedBox(height: AfSpacing.s8),
+          const Divider(height: 1, color: AfColors.surfaceHigh),
           _MenuItem(
-            icon: FontAwesomeIcons.user,
-            label: 'Go to artist',
-            onTap: () {
+            icon: FontAwesomeIcons.play,
+            label: 'Play album',
+            onTap: () async {
               Navigator.of(dialogCtx).pop();
-              context.push('/artist/${album.artistId}');
+              final detail = await ref.read(
+                  albumDetailProvider(album.id).future);
+              if (detail != null) {
+                await ref.read(playActionsProvider).playAlbum(detail.tracks);
+              }
             },
           ),
-      ],
+          if (album.artistId != null)
+            _MenuItem(
+              icon: FontAwesomeIcons.user,
+              label: 'Go to artist',
+              onTap: () {
+                Navigator.of(dialogCtx).pop();
+                context.push('/artist/${album.artistId}');
+              },
+            ),
+        ],
+      ),
     ),
   );
 }
