@@ -33,6 +33,31 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/log.dart';
 import 'player_service.dart';
 
+/// Typed descriptor for a persisted setting key.
+///
+/// Pairs the string key with conversion functions so [PlayerSettingsStore]
+/// can read and write any supported type through a single generic path.
+class SettingsKey<T> {
+  final String key;
+  final T Function(dynamic) fromStorage;
+  final dynamic Function(T) toStorage;
+
+  const SettingsKey(this.key,
+      {required this.fromStorage, required this.toStorage});
+
+  static SettingsKey<int> intKey(String k) =>
+      SettingsKey<int>(k, fromStorage: (v) => (v as num).toInt(), toStorage: (v) => v);
+
+  static SettingsKey<double> doubleKey(String k) =>
+      SettingsKey<double>(k, fromStorage: (v) => (v as num).toDouble(), toStorage: (v) => v);
+
+  static SettingsKey<bool> boolKey(String k) =>
+      SettingsKey<bool>(k, fromStorage: (v) => v as bool, toStorage: (v) => v);
+
+  static SettingsKey<String> stringKey(String k) =>
+      SettingsKey<String>(k, fromStorage: (v) => v as String, toStorage: (v) => v);
+}
+
 /// Persists user-tweakable mpv runtime settings to `shared_preferences`
 /// so they survive app restarts.
 ///
@@ -46,153 +71,140 @@ import 'player_service.dart';
 /// 2. On app start, `applyPersisted(svc)` reads every key and replays the
 ///    setters against the freshly-constructed player.
 ///
-/// Persisted keys:
-///   - audio_sample_rate (int, 0 = auto)
-///   - audio_format (String, Format.mpvValue or 'auto')
-///   - audio_exclusive (bool)
-///   - audio_buffer_ms (int, default 200)
-///   - audio_stream_silence (bool)
-///   - cache_secs (int, default 30)
-///   - replay_gain_mode (String, ReplayGain.mpvValue)
-///   - gapless (String, Gapless.mpvValue)
+/// All simple (non-compound) settings are persisted through the typed
+/// [SettingsKey] descriptor system. Complex types like [AudioEffects] and
+/// [EqPreset] use custom JSON serialization.
 class PlayerSettingsStore {
-  static const _kSampleRate = 'af.audio_sample_rate';
-  static const _kFormat = 'af.audio_format';
-  static const _kExclusive = 'af.audio_exclusive';
-  static const _kBufferMs = 'af.audio_buffer_ms';
-  static const _kStreamSilence = 'af.audio_stream_silence';
-  static const _kCacheSecs = 'af.cache_secs';
-  static const _kReplayGain = 'af.replay_gain_mode';
-  static const _kGapless = 'af.gapless';
-  static const _kReplayGainPreamp = 'af.replay_gain_preamp';
-  static const _kReplayGainFallback = 'af.replay_gain_fallback';
-  static const _kReplayGainClip = 'af.replay_gain_clip';
-  static const _kPrefetchPlaylist = 'af.prefetch_playlist';
-  static const _kAudioEffects = 'af.audio_effects_json';
-  static const _kEqPresets = 'af.eq_presets_json';
-  static const _kActivePreset = 'af.active_eq_preset';
-  static const _kDspMasterEnabled = 'af.dsp_master_enabled';
-  static const _kArtworkPulse = 'af.artwork_pulse_enabled';
-  static const _kOfflineCacheEnabled = 'af.offline_cache_enabled';
-  static const _kOfflineCacheMaxSize = 'af.offline_cache_max_size';
-  static const _kMaxBitrate = 'af.max_bitrate_kbps';
+  // ── Typed key descriptors ────────────────────────────────────────────────
+  static final kSampleRate = SettingsKey.intKey('af.audio_sample_rate');
+  static final kFormat = SettingsKey.stringKey('af.audio_format');
+  static final kExclusive = SettingsKey.boolKey('af.audio_exclusive');
+  static final kBufferMs = SettingsKey.intKey('af.audio_buffer_ms');
+  static final kStreamSilence = SettingsKey.boolKey('af.audio_stream_silence');
+  static final kCacheSecs = SettingsKey.intKey('af.cache_secs');
+  static final kReplayGain = SettingsKey.stringKey('af.replay_gain_mode');
+  static final kGapless = SettingsKey.stringKey('af.gapless');
+  static final kReplayGainPreamp = SettingsKey.doubleKey('af.replay_gain_preamp');
+  static final kReplayGainFallback = SettingsKey.doubleKey('af.replay_gain_fallback');
+  static final kReplayGainClip = SettingsKey.boolKey('af.replay_gain_clip');
+  static final kPrefetchPlaylist = SettingsKey.boolKey('af.prefetch_playlist');
+  static final kDspMasterEnabled = SettingsKey.boolKey('af.dsp_master_enabled');
+  static final kArtworkPulse = SettingsKey.boolKey('af.artwork_pulse_enabled');
+  static final kOfflineCacheEnabled = SettingsKey.boolKey('af.offline_cache_enabled');
+  static final kOfflineCacheMaxSize = SettingsKey.intKey('af.offline_cache_max_size');
+  static final kMaxBitrate = SettingsKey.intKey('af.max_bitrate_kbps');
+
+  // Compound keys (custom JSON serialization)
+  static const kAudioEffects = 'af.audio_effects_json';
+  static const kEqPresets = 'af.eq_presets_json';
+  static const kActivePreset = 'af.active_eq_preset';
 
   static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
+  // ── Generic persistence ──────────────────────────────────────────────────
+
+  /// Save a typed value through its descriptor.
+  static Future<void> saveValue<T>(SettingsKey<T> desc, T value) async {
+    final p = await _prefs();
+    final stored = desc.toStorage(value);
+    switch (stored) {
+      case int v:
+        await p.setInt(desc.key, v);
+      case double v:
+        await p.setDouble(desc.key, v);
+      case bool v:
+        await p.setBool(desc.key, v);
+      case String v:
+        await p.setString(desc.key, v);
+      default:
+        throw ArgumentError('Unsupported type for key ${desc.key}: ${stored.runtimeType}');
+    }
+  }
+
+  /// Load a typed value through its descriptor. Returns `null` if absent.
+  static Future<T?> loadValue<T>(SettingsKey<T> desc) async {
+    final p = await _prefs();
+    final raw = p.get(desc.key);
+    if (raw == null) return null;
+    return desc.fromStorage(raw);
+  }
+
   // ── Setters (called from UI) ──────────────────────────────────────────────
 
-  static Future<void> saveSampleRate(int rate) async {
-    final p = await _prefs();
-    await p.setInt(_kSampleRate, rate);
-  }
+  static Future<void> saveSampleRate(int rate) async =>
+      saveValue(kSampleRate, rate);
 
-  static Future<void> saveFormat(Format format) async {
-    final p = await _prefs();
-    await p.setString(_kFormat, format.name);
-  }
+  static Future<void> saveFormat(Format format) async =>
+      saveValue(kFormat, format.name);
 
-  static Future<void> saveExclusive(bool enabled) async {
-    final p = await _prefs();
-    await p.setBool(_kExclusive, enabled);
-  }
+  static Future<void> saveExclusive(bool enabled) async =>
+      saveValue(kExclusive, enabled);
 
-  static Future<void> saveBufferMs(int ms) async {
-    final p = await _prefs();
-    await p.setInt(_kBufferMs, ms);
-  }
+  static Future<void> saveBufferMs(int ms) async =>
+      saveValue(kBufferMs, ms);
 
-  static Future<void> saveStreamSilence(bool enabled) async {
-    final p = await _prefs();
-    await p.setBool(_kStreamSilence, enabled);
-  }
+  static Future<void> saveStreamSilence(bool enabled) async =>
+      saveValue(kStreamSilence, enabled);
 
-  static Future<void> saveCacheSecs(int secs) async {
-    final p = await _prefs();
-    await p.setInt(_kCacheSecs, secs);
-  }
+  static Future<void> saveCacheSecs(int secs) async =>
+      saveValue(kCacheSecs, secs);
 
-  static Future<void> saveReplayGain(ReplayGain mode) async {
-    final p = await _prefs();
-    await p.setString(_kReplayGain, mode.name);
-  }
+  static Future<void> saveReplayGain(ReplayGain mode) async =>
+      saveValue(kReplayGain, mode.name);
 
   static Future<void> saveReplayGainFull(ReplayGainSettings settings) async {
     final p = await _prefs();
-    await p.setString(_kReplayGain, settings.mode.name);
-    await p.setDouble(_kReplayGainPreamp, settings.preamp);
-    await p.setDouble(_kReplayGainFallback, settings.fallback);
-    await p.setBool(_kReplayGainClip, settings.clip);
+    await saveValue(kReplayGain, settings.mode.name);
+    await p.setDouble(kReplayGainPreamp.key, settings.preamp);
+    await p.setDouble(kReplayGainFallback.key, settings.fallback);
+    await p.setBool(kReplayGainClip.key, settings.clip);
   }
 
-  static Future<void> savePrefetchPlaylist(bool enabled) async {
-    final p = await _prefs();
-    await p.setBool(_kPrefetchPlaylist, enabled);
-  }
+  static Future<void> savePrefetchPlaylist(bool enabled) async =>
+      saveValue(kPrefetchPlaylist, enabled);
 
-  static Future<void> saveGapless(Gapless mode) async {
-    final p = await _prefs();
-    await p.setString(_kGapless, mode.name);
-  }
+  static Future<void> saveGapless(Gapless mode) async =>
+      saveValue(kGapless, mode.name);
 
   /// Persist the DSP master switch state.
-  static Future<void> saveDspMasterEnabled(bool enabled) async {
-    final p = await _prefs();
-    await p.setBool(_kDspMasterEnabled, enabled);
-  }
+  static Future<void> saveDspMasterEnabled(bool enabled) async =>
+      saveValue(kDspMasterEnabled, enabled);
 
   /// Load the DSP master switch state. Defaults to true (effects active).
-  static Future<bool> loadDspMasterEnabled() async {
-    final p = await _prefs();
-    return p.getBool(_kDspMasterEnabled) ?? true;
-  }
+  static Future<bool> loadDspMasterEnabled() async =>
+      (await loadValue(kDspMasterEnabled)) ?? true;
 
   /// Persist the artwork pulse animation toggle.
-  static Future<void> saveArtworkPulse(bool enabled) async {
-    final p = await _prefs();
-    await p.setBool(_kArtworkPulse, enabled);
-  }
+  static Future<void> saveArtworkPulse(bool enabled) async =>
+      saveValue(kArtworkPulse, enabled);
 
   /// Load the artwork pulse animation toggle. Defaults to true (pulse on).
-  static Future<bool> loadArtworkPulse() async {
-    final p = await _prefs();
-    return p.getBool(_kArtworkPulse) ?? true;
-  }
+  static Future<bool> loadArtworkPulse() async =>
+      (await loadValue(kArtworkPulse)) ?? true;
 
   /// Persist offline cache enabled state.
-  static Future<void> saveOfflineCacheEnabled(bool enabled) async {
-    final p = await _prefs();
-    await p.setBool(_kOfflineCacheEnabled, enabled);
-  }
+  static Future<void> saveOfflineCacheEnabled(bool enabled) async =>
+      saveValue(kOfflineCacheEnabled, enabled);
 
   /// Persist offline cache max size in bytes.
-  static Future<void> saveOfflineCacheMaxSize(int bytes) async {
-    final p = await _prefs();
-    await p.setInt(_kOfflineCacheMaxSize, bytes);
-  }
+  static Future<void> saveOfflineCacheMaxSize(int bytes) async =>
+      saveValue(kOfflineCacheMaxSize, bytes);
 
   /// Load offline cache enabled state. Defaults to false (disabled).
-  static Future<bool> loadOfflineCacheEnabled() async {
-    final p = await _prefs();
-    return p.getBool(_kOfflineCacheEnabled) ?? false;
-  }
+  static Future<bool> loadOfflineCacheEnabled() async =>
+      (await loadValue(kOfflineCacheEnabled)) ?? false;
 
   /// Load offline cache max size. Defaults to 1 GB.
-  static Future<int> loadOfflineCacheMaxSize() async {
-    final p = await _prefs();
-    return p.getInt(_kOfflineCacheMaxSize) ?? (1024 * 1024 * 1024);
-  }
+  static Future<int> loadOfflineCacheMaxSize() async =>
+      (await loadValue(kOfflineCacheMaxSize)) ?? (1024 * 1024 * 1024);
 
   /// Persist max streaming bitrate in kbps. 0 means Original / Lossless.
-  static Future<void> saveMaxBitrate(int kbps) async {
-    final p = await _prefs();
-    await p.setInt(_kMaxBitrate, kbps);
-  }
+  static Future<void> saveMaxBitrate(int kbps) async =>
+      saveValue(kMaxBitrate, kbps);
 
   /// Load max streaming bitrate in kbps. Defaults to 0 (Original / Lossless).
-  static Future<int> loadMaxBitrate() async {
-    final p = await _prefs();
-    return p.getInt(_kMaxBitrate) ?? 0;
-  }
+  static Future<int> loadMaxBitrate() async =>
+      (await loadValue(kMaxBitrate)) ?? 0;
 
   /// Serialize the user-visible audio effects to JSON and persist.
   static Future<void> saveAudioEffects(AudioEffects fx) async {
@@ -269,7 +281,7 @@ class PlayerSettingsStore {
       'crusher_mix': fx.acrusher.mix,
       'crusher_samples': fx.acrusher.samples,
     };
-    await p.setString(_kAudioEffects, jsonEncode(map));
+    await p.setString(kAudioEffects, jsonEncode(map));
   }
 
   // ── EQ Presets ────────────────────────────────────────────────────────────
@@ -280,7 +292,7 @@ class PlayerSettingsStore {
     final all = loadEqPresets(p);
     all[name] = preset;
     final encoded = all.map((k, v) => MapEntry(k, v.toJson()));
-    await p.setString(_kEqPresets, jsonEncode(encoded));
+    await p.setString(kEqPresets, jsonEncode(encoded));
   }
 
   /// Delete a named EQ preset.
@@ -289,12 +301,12 @@ class PlayerSettingsStore {
     final all = loadEqPresets(p);
     all.remove(name);
     final encoded = all.map((k, v) => MapEntry(k, v.toJson()));
-    await p.setString(_kEqPresets, jsonEncode(encoded));
+    await p.setString(kEqPresets, jsonEncode(encoded));
   }
 
   /// Load all user-saved EQ presets.
   static Map<String, EqPreset> loadEqPresets(SharedPreferences p) {
-    final json = p.getString(_kEqPresets);
+    final json = p.getString(kEqPresets);
     if (json == null) return {};
     try {
       final raw = jsonDecode(json) as Map<String, dynamic>;
@@ -314,20 +326,20 @@ class PlayerSettingsStore {
   static Future<void> saveActivePreset(String? name) async {
     final p = await _prefs();
     if (name == null) {
-      await p.remove(_kActivePreset);
+      await p.remove(kActivePreset);
     } else {
-      await p.setString(_kActivePreset, name);
+      await p.setString(kActivePreset, name);
     }
   }
 
   /// Load the name of the currently active preset.
   static String? loadActivePreset(SharedPreferences p) {
-    return p.getString(_kActivePreset);
+    return p.getString(kActivePreset);
   }
 
   /// Restore audio effects from JSON.
   static AudioEffects? loadAudioEffects(SharedPreferences p) {
-    final json = p.getString(_kAudioEffects);
+    final json = p.getString(kAudioEffects);
     if (json == null) return null;
     try {
       final m = jsonDecode(json) as Map<String, dynamic>;
@@ -469,13 +481,13 @@ class PlayerSettingsStore {
       }
     }
 
-    final sampleRate = p.getInt(_kSampleRate);
+    final sampleRate = p.getInt(kSampleRate.key);
     if (sampleRate != null) {
       await tryApply('sampleRate=$sampleRate',
           () => svc.setAudioSampleRate(sampleRate));
     }
 
-    final formatName = p.getString(_kFormat);
+    final formatName = p.getString(kFormat.key);
     if (formatName != null) {
       final format = Format.values.firstWhere(
         (f) => f.name == formatName,
@@ -484,25 +496,25 @@ class PlayerSettingsStore {
       await tryApply('format=$formatName', () => svc.setAudioFormat(format));
     }
 
-    final exclusive = p.getBool(_kExclusive);
+    final exclusive = p.getBool(kExclusive.key);
     if (exclusive != null) {
       await tryApply('exclusive=$exclusive',
           () => svc.setAudioExclusive(exclusive));
     }
 
-    final bufferMs = p.getInt(_kBufferMs);
+    final bufferMs = p.getInt(kBufferMs.key);
     if (bufferMs != null) {
       await tryApply('bufferMs=$bufferMs',
           () => svc.setAudioBuffer(Duration(milliseconds: bufferMs)));
     }
 
-    final streamSilence = p.getBool(_kStreamSilence);
+    final streamSilence = p.getBool(kStreamSilence.key);
     if (streamSilence != null) {
       await tryApply('streamSilence=$streamSilence',
           () => svc.setAudioStreamSilence(streamSilence));
     }
 
-    final cacheSecs = p.getInt(_kCacheSecs);
+    final cacheSecs = p.getInt(kCacheSecs.key);
     if (cacheSecs != null) {
       await tryApply('cacheSecs=$cacheSecs', () async {
         await svc.setCache(svc.cacheSettings.copyWith(
@@ -512,15 +524,15 @@ class PlayerSettingsStore {
       });
     }
 
-    final replayGainName = p.getString(_kReplayGain);
+    final replayGainName = p.getString(kReplayGain.key);
     if (replayGainName != null) {
       final mode = ReplayGain.values.firstWhere(
         (m) => m.name == replayGainName,
         orElse: () => ReplayGain.no,
       );
-      final preamp = p.getDouble(_kReplayGainPreamp) ?? 0.0;
-      final fallback = p.getDouble(_kReplayGainFallback) ?? 0.0;
-      final clip = p.getBool(_kReplayGainClip) ?? false;
+      final preamp = p.getDouble(kReplayGainPreamp.key) ?? 0.0;
+      final fallback = p.getDouble(kReplayGainFallback.key) ?? 0.0;
+      final clip = p.getBool(kReplayGainClip.key) ?? false;
       await tryApply('replayGain=$replayGainName', () async {
         await svc.setReplayGain(ReplayGainSettings(
           mode: mode,
@@ -531,7 +543,7 @@ class PlayerSettingsStore {
       });
     }
 
-    final gaplessName = p.getString(_kGapless);
+    final gaplessName = p.getString(kGapless.key);
     if (gaplessName != null) {
       final mode = Gapless.values.firstWhere(
         (g) => g.name == gaplessName,
@@ -540,7 +552,7 @@ class PlayerSettingsStore {
       await tryApply('gapless=$gaplessName', () => svc.setGapless(mode));
     }
 
-    final prefetch = p.getBool(_kPrefetchPlaylist);
+    final prefetch = p.getBool(kPrefetchPlaylist.key);
     if (prefetch != null) {
       await tryApply('prefetchPlaylist=$prefetch',
           () => svc.setPrefetchPlaylist(prefetch));
@@ -549,7 +561,7 @@ class PlayerSettingsStore {
     final fx = loadAudioEffects(p);
     if (fx != null) {
       // Only apply effects if the master switch was ON when last saved.
-      final masterEnabled = p.getBool(_kDspMasterEnabled) ?? true;
+      final masterEnabled = p.getBool(kDspMasterEnabled.key) ?? true;
       if (masterEnabled) {
         await tryApply('audioEffects', () => svc.setAudioEffects(fx));
       }
