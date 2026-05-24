@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../utils/log.dart';
+import 'cover_cache_manager.dart';
 import 'local_db.dart';
 import 'saf_picker.dart';
 
@@ -14,6 +15,7 @@ import 'saf_picker.dart';
 class MetadataScanner {
   final LocalDb db;
   bool _isScanning = false;
+  CoverCacheManager? _coverCacheManager;
 
   MetadataScanner(this.db);
 
@@ -44,6 +46,7 @@ class MetadataScanner {
       int completed = 0;
       int inserted = 0;
       final coverCacheDir = await _coverCacheDir();
+      _coverCacheManager ??= CoverCacheManager(cacheDir: coverCacheDir);
 
       // 2. Process in batches of 50 for DB efficiency
       final batch = <Map<String, dynamic>>[];
@@ -72,9 +75,11 @@ class MetadataScanner {
             if (artBytes != null && artBytes.isNotEmpty) {
               await coverFile.writeAsBytes(artBytes);
               coverPath = coverFile.path;
+              _coverCacheManager?.trackAccess(coverFile.path);
             }
           } else {
             coverPath = coverFile.path;
+            _coverCacheManager?.trackAccess(coverFile.path);
           }
 
           batch.add({
@@ -114,6 +119,12 @@ class MetadataScanner {
       // Flush remaining
       if (batch.isNotEmpty) {
         await db.upsertTracks(batch);
+      }
+
+      // Evict old covers if cache exceeds size limit
+      final evicted = _coverCacheManager?.evictIfNeeded() ?? 0;
+      if (evicted > 0) {
+        afLog('local', 'evicted $evicted stale cover art files');
       }
 
       afLog('local', 'scanFolder done: $inserted tracks inserted/updated');
