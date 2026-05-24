@@ -36,12 +36,6 @@ class MiniPlayer extends ConsumerWidget {
           data: (v) => v,
           orElse: () => false,
         );
-    final position = ref.watch(positionStreamProvider);
-    final mpvDuration = ref.watch(durationStreamProvider);
-    final duration = mpvDuration > Duration.zero ? mpvDuration : track.duration;
-    final ringProgress = duration.inMilliseconds == 0
-        ? 0.0
-        : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -88,11 +82,8 @@ class MiniPlayer extends ConsumerWidget {
                       SizedBox(
                         width: 48,
                         height: 48,
-                        child: CircularProgressRing(
-                          progress: ringProgress,
-                          progressColor: ref.watch(currentSpectralProvider).energy,
-                          size: 48,
-                          strokeWidth: 2,
+                        child: _ReactiveProgressRing(
+                          track: track,
                           child: Hero(
                             tag: 'now-playing-artwork',
                             child: ClipRRect(
@@ -287,6 +278,35 @@ class _MarqueeTextState extends State<_MarqueeText>
           ),
         );
       },
+    );
+  }
+}
+
+class _ReactiveProgressRing extends ConsumerWidget {
+  const _ReactiveProgressRing({
+    required this.track,
+    required this.child,
+  });
+
+  final AfTrack track;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final position = ref.watch(positionStreamProvider);
+    final mpvDuration = ref.watch(durationStreamProvider);
+    final duration = mpvDuration > Duration.zero ? mpvDuration : track.duration;
+    final ringProgress = duration.inMilliseconds == 0
+        ? 0.0
+        : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
+    final energyColor = ref.watch(currentSpectralProvider).energy;
+
+    return CircularProgressRing(
+      progress: ringProgress,
+      progressColor: energyColor,
+      size: 48,
+      strokeWidth: 2,
+      child: child,
     );
   }
 }
