@@ -346,7 +346,9 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
     return Column(
       children: [
         SizedBox(
-          height: 168,
+          // Must match HeroAlbumCard's minHeight (192) so the PageView
+          // allocates enough vertical space for two-line titles.
+          height: 192,
           child: PageView.builder(
             controller: _pageController,
             itemCount: albums.length,

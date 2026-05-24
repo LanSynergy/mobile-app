@@ -36,7 +36,10 @@ class HeroAlbumCard extends StatelessWidget {
       ensureHitTarget: false,
       onTap: onTap,
       child: Container(
-        constraints: const BoxConstraints(minHeight: 168),
+        // Increased from 168 → 192 to give the Column enough vertical room
+        // when the album title wraps to two lines (titleLarge is 30px/line).
+        // 1-line: needs ~154px, 2-line: needs ~184px — both fit in 192.
+        constraints: const BoxConstraints(minHeight: 192),
         margin: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -70,6 +73,9 @@ class HeroAlbumCard extends StatelessWidget {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                // mainAxisSize.max so Spacer() below can push the Play pill
+                // to the bottom regardless of how many lines the title uses.
+                mainAxisSize: MainAxisSize.max,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -113,7 +119,9 @@ class HeroAlbumCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: AfSpacing.s12),
+                  // Spacer pushes the Play pill to the card bottom so it
+                  // stays anchored regardless of how many title lines render.
+                  const Spacer(),
                   _PlayPill(onTap: onPlay),
                 ],
               ),
