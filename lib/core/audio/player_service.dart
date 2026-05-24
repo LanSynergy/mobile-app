@@ -1173,6 +1173,7 @@ class AfPlayerService {
   }
 
   int _lastMediaSessionUpdateMs = 0;
+  bool _lastEffectivePlaying = false;
 
   /// Push the current state through the bridge (throttled to ~100ms).
   /// Sends `updateState` when there is an active track,
@@ -1191,16 +1192,20 @@ class AfPlayerService {
       return;
     }
 
-    // Throttle — skip early when called too frequently. The notification
-    // lock-screen doesn't need sub-100ms accuracy for any field.
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-    if (nowMs - _lastMediaSessionUpdateMs < 100) return;
-    _lastMediaSessionUpdateMs = nowMs;
-
     final s = _player.state;
     final isQueueEnd = s.completed && _queueManager.isAtQueueEnd;
     final effectivePlaying =
         isQueueEnd ? false : (s.playing || shouldAdvancePosition);
+
+    // Throttle — skip early when called too frequently, BUT always let
+    // playing→stopped transitions through immediately. If we throttle
+    // the first playing:false call, Android MediaSession keeps the last
+    // STATE_PLAYING anchor and extrapolates the progress bar forever.
+    final playingChanged = effectivePlaying != _lastEffectivePlaying;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (!playingChanged && nowMs - _lastMediaSessionUpdateMs < 100) return;
+    _lastMediaSessionUpdateMs = nowMs;
+    _lastEffectivePlaying = effectivePlaying;
 
     final mpvDur = _isLoadingQueue ? Duration.zero : s.duration;
     final effectiveDuration = mpvDur > Duration.zero ? mpvDur : track.duration;

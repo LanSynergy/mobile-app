@@ -108,8 +108,20 @@ class AetherfinMediaSessionService : Service() {
                     startForeground(NOTIFICATION_ID, notification)
                 }
             } else {
-                // If paused, stop foreground to allow swiping notification away, but keep it visible
-                stopForeground(false)
+                // When paused: demote from foreground so the user can swipe the
+                // notification away, but keep the notification visible so they
+                // can resume from QS/lock-screen.
+                //
+                // Android 12+ (S, API 31) deprecated the boolean overload of
+                // stopForeground(). Use STOP_FOREGROUND_DETACH to keep the
+                // notification posted (equivalent to stopForeground(false))
+                // without the deprecation warning.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    stopForeground(STOP_FOREGROUND_DETACH)
+                } else {
+                    @Suppress("DEPRECATION")
+                    stopForeground(false)
+                }
                 val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 notificationManager.notify(NOTIFICATION_ID, notification)
             }
@@ -135,10 +147,18 @@ class AetherfinMediaSessionService : Service() {
             else -> PlaybackStateCompat.STATE_PAUSED
         }
 
-        var actions = PlaybackStateCompat.ACTION_PLAY or
-                PlaybackStateCompat.ACTION_PAUSE or
-                PlaybackStateCompat.ACTION_PLAY_PAUSE or
-                PlaybackStateCompat.ACTION_SEEK_TO
+        // When paused/stopped, only advertise ACTION_PLAY (not ACTION_PAUSE).
+        // Advertising ACTION_PAUSE while in STATE_PAUSED causes some OEM skins
+        // (Samsung One UI, MIUI) to show a "pause" button even though nothing
+        // is playing, which is exactly the wrong UI.
+        var actions = if (playing) {
+            PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                    PlaybackStateCompat.ACTION_PAUSE or
+                    PlaybackStateCompat.ACTION_SEEK_TO
+        } else {
+            PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                    PlaybackStateCompat.ACTION_PLAY
+        }
 
         if (queueIndex > 0) {
             actions = actions or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
@@ -147,9 +167,16 @@ class AetherfinMediaSessionService : Service() {
             actions = actions or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
         }
 
+        // Use speed=0f when not playing. Passing the real playback speed
+        // (e.g. 1.0f) alongside STATE_PAUSED causes some Android/OEM
+        // framework versions to continue extrapolating the position forward,
+        // which is the root cause of the QS progress bar running after
+        // the queue ends.
+        val effectiveSpeed = if (playing) speed.toFloat() else 0f
+
         val stateBuilder = PlaybackStateCompat.Builder()
             .setActions(actions)
-            .setState(state, positionMs, speed.toFloat(), SystemClock.elapsedRealtime())
+            .setState(state, positionMs, effectiveSpeed, SystemClock.elapsedRealtime())
 
         if (queueIndex >= 0) {
             stateBuilder.setActiveQueueItemId(queueIndex.toLong())
@@ -321,6 +348,21 @@ class AetherfinMediaSessionService : Service() {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(NOTIFICATION_ID)
         mediaSession?.apply {
+            // Explicitly set STATE_STOPPED before releasing. Without this,
+            // Android MediaSession retains the last STATE_PLAYING anchor
+            // (with its elapsedRealtime timestamp) and QS Media continues to
+            // extrapolate the progress bar forward even after the service
+            // is destroyed.
+            val stoppedState = PlaybackStateCompat.Builder()
+                .setState(
+                    PlaybackStateCompat.STATE_STOPPED,
+                    0L,
+                    0f,
+                    SystemClock.elapsedRealtime()
+                )
+                .setActions(0)
+                .build()
+            setPlaybackState(stoppedState)
             isActive = false
             release()
         }
