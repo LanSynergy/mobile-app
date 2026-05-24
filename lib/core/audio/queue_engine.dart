@@ -15,14 +15,14 @@ import '../jellyfin/models/items.dart';
 /// Window tracking: _windowStart is the _tracks index of mpv slot 0.
 /// Slot 0 = tracks[_windowStart], Slot 1 = tracks[_windowStart + 1].
 class AfQueueEngine {
+  AfQueueEngine({Random? random}) : _random = random ?? Random();
+
   List<AfTrack> _tracks = <AfTrack>[];
   int _currentIndex = -1;
   List<int>? _shuffleOrder;
   int _windowStart = 0;
   bool _playbackEnded = false;
   final Random _random;
-
-  AfQueueEngine({Random? random}) : _random = random ?? Random();
 
   // ── Query helpers ──────────────────────────────────────────────────
 
@@ -213,7 +213,24 @@ class AfQueueEngine {
     final track = _tracks.removeAt(oldIndex);
     final insertIdx = newIndex > oldIndex ? newIndex - 1 : newIndex;
     _tracks.insert(insertIdx, track);
-    _adjustIndicesAfterRemove(oldIndex, insertIdx);
+
+    // Track where the current track moved to after reorder
+    if (_currentIndex == oldIndex) {
+      _currentIndex = insertIdx;
+    } else if (oldIndex < _currentIndex && insertIdx >= _currentIndex) {
+      _currentIndex -= 1;
+    } else if (oldIndex > _currentIndex && insertIdx <= _currentIndex) {
+      _currentIndex += 1;
+    }
+    // WindowStart follows the same logic as currentIndex for reorder
+    if (_windowStart == oldIndex) {
+      _windowStart = insertIdx;
+    } else if (oldIndex < _windowStart && insertIdx >= _windowStart) {
+      _windowStart -= 1;
+    } else if (oldIndex > _windowStart && insertIdx <= _windowStart) {
+      _windowStart += 1;
+    }
+
     return insertIdx;
   }
 

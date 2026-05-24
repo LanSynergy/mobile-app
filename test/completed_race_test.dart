@@ -53,12 +53,11 @@ typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater)
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  group('Completed handler race conditions & serialization', () {
+  group('Completed handler with 2-track window', () {
     late AfPlayerService service;
     late MockPlayer player;
     late StreamControllers ctrls;
     late _StateUpdater updateState;
-    late List<String> events;
 
     const trackA = AfTrack(
       id: '1',
@@ -95,7 +94,6 @@ void main() {
       player = fixture.player;
       ctrls = fixture.ctrls;
       updateState = fixture.updateState;
-      events = <String>[];
 
       // Stub methods called during playback setup
       when(() => player.setAudioDevice(any())).thenAnswer((_) async {});
@@ -107,100 +105,15 @@ void main() {
       when(() => player.setLoop(any())).thenAnswer((_) async {});
       when(() => player.setShuffle(any())).thenAnswer((_) async {});
 
-      // Stub methods to track execution order with delays
-      when(() => player.jump(any())).thenAnswer((invocation) async {
-        final index = invocation.positionalArguments[0] as int;
-        events.add('jump_start_$index');
-        await Future<void>.delayed(const Duration(milliseconds: 20));
-        updateState((s) => s.copyWith(
-              playlist: Playlist(
-                s.playlist.items,
-                index: index,
-              ),
-            ));
-        ctrls.playlist.add(
-          Playlist(
-            [
-              const Media('https://example.com/1.flac'),
-              const Media('https://example.com/2.flac'),
-              const Media('https://example.com/3.flac'),
-            ],
-            index: index,
-          ),
-        );
-        events.add('jump_end_$index');
-      });
-
-      when(() => player.next()).thenAnswer((_) async {
-        events.add('next_start');
-        await Future<void>.delayed(const Duration(milliseconds: 20));
-        final nextIndex = player.state.playlist.index + 1;
-        updateState((s) => s.copyWith(
-              playlist: Playlist(
-                s.playlist.items,
-                index: nextIndex,
-              ),
-            ));
-        ctrls.playlist.add(
-          Playlist(
-            [
-              const Media('https://example.com/1.flac'),
-              const Media('https://example.com/2.flac'),
-              const Media('https://example.com/3.flac'),
-            ],
-            index: nextIndex,
-          ),
-        );
-        events.add('next_end');
-      });
-
-      when(() => player.previous()).thenAnswer((_) async {
-        events.add('previous_start');
-        await Future<void>.delayed(const Duration(milliseconds: 20));
-        final prevIndex = player.state.playlist.index - 1;
-        updateState((s) => s.copyWith(
-              playlist: Playlist(
-                s.playlist.items,
-                index: prevIndex,
-              ),
-            ));
-        ctrls.playlist.add(
-          Playlist(
-            [
-              const Media('https://example.com/1.flac'),
-              const Media('https://example.com/2.flac'),
-              const Media('https://example.com/3.flac'),
-            ],
-            index: prevIndex,
-          ),
-        );
-        events.add('previous_end');
-      });
-
-      when(() => player.play()).thenAnswer((_) async {
-        events.add('play_start');
-        await Future<void>.delayed(const Duration(milliseconds: 20));
-        events.add('play_end');
-      });
-
-      when(() => player.pause()).thenAnswer((_) async {
-        events.add('pause_start');
-        await Future<void>.delayed(const Duration(milliseconds: 20));
-        events.add('pause_end');
-      });
-
-      when(() => player.seek(any())).thenAnswer((invocation) async {
-        final pos = invocation.positionalArguments[0] as Duration;
-        events.add('seek_start_${pos.inMilliseconds}');
-        await Future<void>.delayed(const Duration(milliseconds: 20));
-        events.add('seek_end_${pos.inMilliseconds}');
-      });
-
-      when(() => player.stop()).thenAnswer((_) async {
-        events.add('stop_start');
-        await Future<void>.delayed(const Duration(milliseconds: 20));
-        events.add('stop_end');
-      });
+      // Stub mpv player methods
+      when(() => player.play()).thenAnswer((_) async {});
+      when(() => player.pause()).thenAnswer((_) async {});
+      when(() => player.stop()).thenAnswer((_) async {});
+      when(() => player.next()).thenAnswer((_) async {});
+      when(() => player.previous()).thenAnswer((_) async {});
+      when(() => player.seek(any())).thenAnswer((_) async {});
+      when(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
+          .thenAnswer((_) async {});
 
       // Populate queue
       await service.playQueue(
@@ -209,19 +122,7 @@ void main() {
         resolveStreamUrl: (t) => 'https://example.com/${t.id}.flac',
       );
 
-      ctrls.playlist.add(
-        const Playlist(
-          [
-            Media('https://example.com/1.flac'),
-            Media('https://example.com/2.flac'),
-            Media('https://example.com/3.flac'),
-          ],
-          index: 0,
-        ),
-      );
-
       await Future<void>.delayed(Duration.zero);
-      events.clear();
     });
 
     tearDown(() async {
@@ -229,185 +130,118 @@ void main() {
       ctrls.dispose();
     });
 
-    test('completed handler and skipToNext run sequentially without interleaving', () async {
+    // -----------------------------------------------------------------------
+    // Completed handler + skipToNext — both advance engine, no lock needed
+    // -----------------------------------------------------------------------
+    test('completed handler advances engine; then skipToNext advances again',
+        () async {
+      expect(service.currentTrack?.id, equals('1'));
+
+      // Fire completed at non-queue-end (index 0 of 3).
       updateState((s) => s.copyWith(
             playing: true,
             completed: true,
             loop: Loop.off,
-            playlist: const Playlist(
-              [
-                Media('https://example.com/1.flac'),
-                Media('https://example.com/2.flac'),
-                Media('https://example.com/3.flac'),
-              ],
-              index: 0,
-            ),
           ));
-
       ctrls.completed.add(true);
       await Future<void>.delayed(Duration.zero);
-      final skipFut = service.skipToNext();
 
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      await skipFut;
+      // Handler advanced engine to index 1.
+      expect(service.currentTrack?.id, equals('2'));
 
-      expect(
-        events,
-        containsAllInOrder([
-          'jump_start_1',
-          'jump_end_1',
-          'next_start',
-          'next_end',
-        ]),
-      );
-
-      final indexStart1 = events.indexOf('jump_start_1');
-      final indexEnd1 = events.indexOf('jump_end_1');
-      final indexStart2 = events.indexOf('next_start');
-      final indexEnd2 = events.indexOf('next_end');
-
-      expect(indexStart1, lessThan(indexEnd1));
-      expect(indexEnd1, lessThan(indexStart2));
-      expect(indexStart2, lessThan(indexEnd2));
+      // Now skip to next.
+      await service.skipToNext();
+      expect(service.currentTrack?.id, equals('3'));
+      verify(() => player.next()).called(1);
+      // No jump() call in 2-track model.
+      verifyNever(() => player.jump(any()));
     });
 
-    test('completed handler and skipToQueueItem run sequentially without interleaving', () async {
+    // -----------------------------------------------------------------------
+    // Completed handler + skipToQueueItem — both rebuild window
+    // -----------------------------------------------------------------------
+    test('completed handler advances engine; then skipToQueueItem jumps',
+        () async {
+      expect(service.currentTrack?.id, equals('1'));
+
+      // Fire completed at non-queue-end.
       updateState((s) => s.copyWith(
             playing: true,
             completed: true,
             loop: Loop.off,
-            playlist: const Playlist(
-              [
-                Media('https://example.com/1.flac'),
-                Media('https://example.com/2.flac'),
-                Media('https://example.com/3.flac'),
-              ],
-              index: 0,
-            ),
           ));
-
       ctrls.completed.add(true);
       await Future<void>.delayed(Duration.zero);
-      final skipFut = service.skipToQueueItem(2);
 
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      await skipFut;
+      // Handler advanced engine to index 1.
+      expect(service.currentTrack?.id, equals('2'));
 
-      expect(
-        events,
-        containsAllInOrder([
-          'jump_start_1',
-          'jump_end_1',
-          'jump_start_2',
-          'jump_end_2',
-        ]),
-      );
-
-      final indexStart1 = events.indexOf('jump_start_1');
-      final indexEnd1 = events.indexOf('jump_end_1');
-      final indexStart2 = events.indexOf('jump_start_2');
-      final indexEnd2 = events.indexOf('jump_end_2');
-
-      expect(indexStart1, lessThan(indexEnd1));
-      expect(indexEnd1, lessThan(indexStart2));
-      expect(indexStart2, lessThan(indexEnd2));
+      // Now skip to queue item 2 (track C).
+      clearInteractions(player);
+      await service.skipToQueueItem(2);
+      expect(service.currentTrack?.id, equals('3'));
+      // skipToQueueItem uses _rebuildWindow → openAll, not jump().
+      verify(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
+          .called(1);
+      verifyNever(() => player.jump(any()));
     });
 
-    test('completed handler (stop) and play run sequentially', () async {
-      ctrls.playlist.add(
-        const Playlist(
-          [
-            Media('https://example.com/1.flac'),
-            Media('https://example.com/2.flac'),
-            Media('https://example.com/3.flac'),
-          ],
-          index: 2,
-        ),
+    // -----------------------------------------------------------------------
+    // Completed at queue end (loop=off) stops; then play resets
+    // -----------------------------------------------------------------------
+    test('completed stops at queue end; then play restarts', () async {
+      // Start at last track.
+      await service.playQueue(
+        [trackA, trackB, trackC],
+        startIndex: 2,
+        resolveStreamUrl: (t) => 'https://example.com/${t.id}.flac',
       );
       await Future<void>.delayed(Duration.zero);
-      events.clear();
+      clearInteractions(player);
 
+      expect(service.currentTrack?.id, equals('3'));
+
+      // Fire completed at queue end.
       updateState((s) => s.copyWith(
             playing: true,
             completed: true,
             loop: Loop.off,
-            playlist: const Playlist(
-              [
-                Media('https://example.com/1.flac'),
-                Media('https://example.com/2.flac'),
-                Media('https://example.com/3.flac'),
-              ],
-              index: 2,
-            ),
           ));
-
       ctrls.completed.add(true);
       await Future<void>.delayed(Duration.zero);
-      final playFut = service.play();
 
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      await playFut;
+      // Handler stopped player and ended playback.
+      verify(() => player.stop()).called(1);
+      expect(service.currentTrack, isNull);
 
-      expect(
-        events,
-        containsAllInOrder([
-          'stop_start',
-          'stop_end',
-          'play_start',
-          'play_end',
-        ]),
-      );
-
-      final indexStopStart = events.indexOf('stop_start');
-      final indexStopEnd = events.indexOf('stop_end');
-      final indexPlayStart = events.indexOf('play_start');
-      final indexPlayEnd = events.indexOf('play_end');
-
-      expect(indexStopStart, lessThan(indexStopEnd));
-      expect(indexStopEnd, lessThan(indexPlayStart));
-      expect(indexPlayStart, lessThan(indexPlayEnd));
+      // Now play — should restart playback.
+      clearInteractions(player);
+      await service.play();
+      verify(() => player.play()).called(1);
     });
 
-    test('completed handler (jump) and seek run sequentially', () async {
+    // -----------------------------------------------------------------------
+    // Completed handler advances engine; then seek works independently
+    // -----------------------------------------------------------------------
+    test('completed handler advances engine; seek is independent', () async {
+      expect(service.currentTrack?.id, equals('1'));
+
+      // Fire completed at non-queue-end.
       updateState((s) => s.copyWith(
             playing: true,
             completed: true,
             loop: Loop.off,
-            playlist: const Playlist(
-              [
-                Media('https://example.com/1.flac'),
-                Media('https://example.com/2.flac'),
-                Media('https://example.com/3.flac'),
-              ],
-              index: 0,
-            ),
           ));
-
       ctrls.completed.add(true);
       await Future<void>.delayed(Duration.zero);
-      final seekFut = service.seek(const Duration(seconds: 10));
 
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      await seekFut;
+      // Handler advanced engine to index 1.
+      expect(service.currentTrack?.id, equals('2'));
 
-      expect(
-        events,
-        containsAllInOrder([
-          'jump_start_1',
-          'jump_end_1',
-          'seek_start_10000',
-          'seek_end_10000',
-        ]),
-      );
-
-      final indexJumpStart = events.indexOf('jump_start_1');
-      final indexJumpEnd = events.indexOf('jump_end_1');
-      final indexSeekStart = events.indexOf('seek_start_10000');
-      final indexSeekEnd = events.indexOf('seek_end_10000');
-
-      expect(indexJumpStart, lessThan(indexJumpEnd));
-      expect(indexJumpEnd, lessThan(indexSeekStart));
-      expect(indexSeekStart, lessThan(indexSeekEnd));
+      // Seek — independent operation, no jump/stop interaction.
+      clearInteractions(player);
+      await service.seek(const Duration(seconds: 10));
+      verify(() => player.seek(const Duration(seconds: 10))).called(1);
     });
   });
 }

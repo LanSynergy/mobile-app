@@ -38,13 +38,6 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
 
   _startPositionPolling(ref, svc);
 
-  // Set the TrackIdExtractor based on the active backend type so
-  // syncFromMpv can parse URLs correctly for the current backend.
-  final backend = ref.read(musicBackendProvider);
-  if (backend != null) {
-    svc.setTrackIdExtractorForServerType(backend.serverType);
-  }
-
   final errorSub = svc.errorStream.listen((error) {
     ref.read(playbackErrorProvider.notifier).state = error;
   });

@@ -209,9 +209,11 @@ void main() {
 
       test('reorder adjusts indices correctly', () {
         engine.replaceAll(tracks, 2);
+        // tracks = [1, 2, 3, 4, 5], currentIndex=2 (track '3')
         engine.reorder(0, 3); // Move track 0 to position 3
-        // After reorder: [2, 3, 1, 4, 5], currentIndex adjusted to 1 (track '3')
+        // After reorder: [2, 3, 1, 4, 5], currentIndex=1 (track '3')
         expect(engine.tracks[0].id, '2');
+        expect(engine.tracks[1].id, '3');
         expect(engine.tracks[2].id, '1');
         expect(engine.currentIndex, 1);
       });

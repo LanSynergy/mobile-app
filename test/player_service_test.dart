@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -15,8 +14,6 @@ class MockMethodChannel extends Mock implements MethodChannel {}
 typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater);
 
 /// Test helper that creates a fresh mock player + service + channel.
-///
-/// Returns the service, along with helpers for controlling state and streams.
 ({
   AfPlayerService service,
   NativeMediaSessionBridge bridge,
@@ -44,7 +41,8 @@ typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater)
   when(() => channel.invokeMethod(any())).thenAnswer((_) async => null);
   when(() => channel.invokeMethod(any(), any())).thenAnswer((_) async => null);
   when(() => channel.setMethodCallHandler(any())).thenAnswer((invocation) async {
-    handler = invocation.positionalArguments[0] as Future<dynamic> Function(MethodCall)?;
+    handler = invocation.positionalArguments[0]
+        as Future<dynamic> Function(MethodCall)?;
   });
 
   final bridge = NativeMediaSessionBridge(channel: channel);
@@ -70,7 +68,6 @@ void main() {
     late AfPlayerService service;
     late MockPlayer player;
     late StreamControllers ctrls;
-    late MockMethodChannel channel;
     late _StateUpdater updateState;
     Future<dynamic> Function(MethodCall)? handler;
 
@@ -110,7 +107,6 @@ void main() {
       service = fixture.service;
       player = fixture.player;
       ctrls = fixture.ctrls;
-      channel = fixture.channel;
       updateState = fixture.updateState;
       handler = fixture.handler;
     });
@@ -121,9 +117,9 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // 1. Play queue → track starts
+    // 1. playQueue uses openAll for small queues and emits currentTrack
     // -----------------------------------------------------------------------
-    test('playQueue emits currentTrack and pushes state to native', () async {
+    test('playQueue opens tracks and emits currentTrack', () async {
       AfTrack? changedTrack;
       service.onTrackChanged = (track) {
         changedTrack = track;
@@ -135,140 +131,81 @@ void main() {
         resolveStreamUrl: resolveStreamUrl,
       );
 
-      // Simulate mpv playlist event (fires after openAll in real plugin).
-      ctrls.playlist.add(
-        const Playlist(
-          [
-            Media('https://example.com/1.flac'),
-            Media('https://example.com/2.flac'),
-          ],
-          index: 0,
-        ),
-      );
+      // Should have opened all tracks in mpv (original design: openAll for ≤5).
+      verify(() => player.openAll(
+            any(that: hasLength(2)),
+            index: 0,
+            play: true,
+          )).called(1);
 
-      // Let stream handlers process.
-      await Future<void>.delayed(Duration.zero);
-
+      // Current track should be set immediately from Dart state.
       expect(service.currentTrack?.id, equals('1'));
       expect(service.currentTrack?.title, equals('Track A'));
-      expect(service.isPlaying, isFalse);
       expect(service.currentQueue.length, equals(2));
 
-      // onTrackChanged should have been called.
+      // onTrackChanged should fire.
       expect(changedTrack?.id, equals('1'));
     });
 
     // -----------------------------------------------------------------------
-    // 2. Track auto-advance on completion
+    // 2. playQueue with single track loads only 1 media
     // -----------------------------------------------------------------------
-    test('track auto-advances when current track completes', () async {
+    test('playQueue with single track opens 1 media', () async {
       await service.playQueue(
-        [trackA, trackB],
-        startIndex: 1, // Start at last track so we're at queue end.
+        [trackA],
+        startIndex: 0,
         resolveStreamUrl: resolveStreamUrl,
       );
 
-      ctrls.playlist.add(
-        const Playlist(
-          [
-            Media('https://example.com/1.flac'),
-            Media('https://example.com/2.flac'),
-          ],
-          index: 1,
-        ),
-      );
-      await Future<void>.delayed(Duration.zero);
-      expect(service.currentTrack?.id, equals('2'));
+      verify(() => player.openAll(
+            any(that: hasLength(1)),
+            index: 0,
+            play: true,
+          )).called(1);
 
-      // Set loop mode to file.
-      await service.setAfLoopMode(Loop.file);
-
-      // Simulate track completion while at queue end and loop=file.
-      // The completed handler should NOT advance; it should replay
-      // via mpv (which handles it internally).
-      updateState((s) => s.copyWith(
-            playing: true,
-            completed: false,
-            loop: Loop.file,
-            playlist: const Playlist(
-              [
-                Media('https://example.com/1.flac'),
-                Media('https://example.com/2.flac'),
-              ],
-              index: 1,
-            ),
-          ));
-
-      ctrls.completed.add(true);
-      await Future<void>.delayed(Duration.zero);
-
-      // Track should remain the same (file loop replays in place).
-      expect(service.currentTrack?.id, equals('2'));
+      expect(service.currentQueue.length, equals(1));
     });
 
     // -----------------------------------------------------------------------
-    // 4. Loop queue (wrap around)
+    // 3. Track auto-advance on completion advances engine state
     // -----------------------------------------------------------------------
-    test('loop queue wraps to first track at end', () async {
+    test('completed handler advances engine and emits next track', () async {
+      AfTrack? changedTrack;
+      service.onTrackChanged = (track) {
+        changedTrack = track;
+      };
+
       await service.playQueue(
         [trackA, trackB],
-        startIndex: 1, // Last track.
+        startIndex: 0,
         resolveStreamUrl: resolveStreamUrl,
       );
-
-      ctrls.playlist.add(
-        const Playlist(
-          [
-            Media('https://example.com/1.flac'),
-            Media('https://example.com/2.flac'),
-          ],
-          index: 1,
-        ),
-      );
       await Future<void>.delayed(Duration.zero);
-      expect(service.currentTrack?.id, equals('2'));
-
-      // Set loop mode to playlist.
-      await service.setAfLoopMode(Loop.playlist);
-
-      // Simulate completion at queue end with loop=playlist.
-      updateState((s) => s.copyWith(
-            playing: true,
-            completed: false,
-            loop: Loop.playlist,
-            playlist: const Playlist(
-              [
-                Media('https://example.com/1.flac'),
-                Media('https://example.com/2.flac'),
-              ],
-              index: 1,
-            ),
-          ));
-
-      ctrls.completed.add(true);
-      await Future<void>.delayed(Duration.zero);
-
-      // The completed handler should call player.jump(0) which wraps around.
-      // Simulate the resulting playlist event.
-      ctrls.playlist.add(
-        const Playlist(
-          [
-            Media('https://example.com/1.flac'),
-            Media('https://example.com/2.flac'),
-          ],
-          index: 0,
-        ),
-      );
-      await Future<void>.delayed(Duration.zero);
-
       expect(service.currentTrack?.id, equals('1'));
+
+      // Set state so we're not at queue end (length=2, index 0 → advance to 1)
+      updateState((s) => s.copyWith(
+            playing: true,
+            completed: false,
+            loop: Loop.off,
+          ));
+
+      ctrls.completed.add(true);
+      await Future<void>.delayed(Duration.zero);
+
+      // Engine advanced — current index should be 1 (track B).
+      expect(service.currentTrack?.id, equals('2'));
+      expect(changedTrack?.id, equals('2'));
+      // player.jump() is never called — _jumpAndPlay was removed.
+      verifyNever(() => player.jump(any()));
+      // player.play() not called because playingAtEvent is true.
+      verifyNever(() => player.play());
     });
 
     // -----------------------------------------------------------------------
-    // 5. Queue end behavior (no loop)
+    // 4. Completion at queue end with loop=off stops and clears track
     // -----------------------------------------------------------------------
-    test('queue end with loop=off stops playback and clears native state',
-        () async {
+    test('queue end with loop=off stops and clears track', () async {
       AfTrack? changedTrack;
       service.onTrackChanged = (track) {
         changedTrack = track;
@@ -279,132 +216,143 @@ void main() {
         startIndex: 0,
         resolveStreamUrl: resolveStreamUrl,
       );
-
-      ctrls.playlist.add(
-        const Playlist([Media('https://example.com/1.flac')], index: 0),
-      );
       await Future<void>.delayed(Duration.zero);
       expect(service.currentTrack?.id, equals('1'));
 
-      // Simulate completion at queue end with loop=off (default).
+      when(() => player.stop()).thenAnswer((_) async {});
+
+      // Simulate completion at queue end (nextIdx = 1, length = 1).
       updateState((s) => s.copyWith(
             playing: true,
             completed: false,
             loop: Loop.off,
-            playlist: const Playlist([Media('https://example.com/1.flac')], index: 0),
           ));
 
       ctrls.completed.add(true);
       await Future<void>.delayed(Duration.zero);
 
-      // Queue end with loop=off: service should stop, clear track.
-      expect(changedTrack, isNull); // onTrackChanged called with null.
+      // Queue end with loop=off: stop + endPlayback.
+      verify(() => player.stop()).called(1);
       expect(service.currentTrack, isNull);
-
-      // Simulate mpv reacting to stop() by setting playing=false on state.
-      // (the playing stream listener doesn't update _player.state.playing,
-      //  isPlaying reads it directly, so we update mutableState.)
-      updateState((s) => s.copyWith(playing: false));
-      expect(service.isPlaying, isFalse);
-
-      // Native channel should be called with 'clear' (or 'updateState').
-      verify(() => channel.invokeMethod('clear', any())).called(1);
+      expect(changedTrack, isNull);
+      // The track list is preserved but currentIndex goes to -1.
+      // (Real behavior: _engine.endPlayback() sets index to -1, doesn't clear tracks.)
     });
 
     // -----------------------------------------------------------------------
-    // 6. Generation counter prevents stale sync
+    // 5. Completion at queue end with loop=playlist wraps around
     // -----------------------------------------------------------------------
-    test('generation counter discards stale queue load', () async {
-      // First playQueue call starts but doesn't complete its lock action
-      // because the second call increments _queueLoadGen.
-      //
-      // playQueue uses _queueLock.run() which chains async operations.
-      // When the second call's _queueLoadGen check inside the lock fails,
-      // the first load's later operations become no-ops.
+    test('loop playlist wraps to first track at queue end', () async {
+      await service.playQueue(
+        [trackA, trackB],
+        startIndex: 1, // Start at last track.
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('2'));
 
-      // Start with an "in-flight" queue load (simulate by not awaiting).
-      // The first load's lock action will check _queueLoadGen which is 1
-      // after the first call increments it.
-      //
-      // Actually, playQueue increments _queueLoadGen at the start, then
-      // enters the lock. The second call also increments _queueLoadGen
-      // (to 2), then enters the lock. The first call's lock action
-      // checks `myGen != _queueLoadGen` → 1 != 2 → returns early.
-      // The second call's lock action proceeds normally.
+      await service.setAfLoopMode(Loop.playlist);
 
-      final fut1 = service.playQueue(
+      when(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
+          .thenAnswer((_) async {});
+
+      // Simulate completion at queue end with loop=playlist.
+      updateState((s) => s.copyWith(
+            playing: true,
+            completed: false,
+            loop: Loop.playlist,
+          ));
+
+      ctrls.completed.add(true);
+      await Future<void>.delayed(Duration.zero);
+
+      // Engine wrapped to index 0 via _rebuildWindow → openAll.
+      expect(service.currentTrack?.id, equals('1'));
+      verify(() => player.openAll(
+            any(that: hasLength(2)),
+            index: 0,
+            play: any(named: 'play'),
+          )).called(1);
+      verifyNever(() => player.jump(any()));
+    });
+
+    // -----------------------------------------------------------------------
+    // 6. Completion at queue end with loop=file replays in place
+    // -----------------------------------------------------------------------
+    test('loop file at queue end replays without track change', () async {
+      await service.playQueue(
+        [trackA],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('1'));
+
+      await service.setAfLoopMode(Loop.file);
+      when(() => player.play()).thenAnswer((_) async {});
+
+      // Simulate completion at queue end with loop=file.
+      updateState((s) => s.copyWith(
+            playing: false, // mpv stopped at end of file
+            completed: false,
+            loop: Loop.file,
+          ));
+
+      ctrls.completed.add(true);
+      await Future<void>.delayed(Duration.zero);
+
+      // Track stays the same; play() is called to restart.
+      expect(service.currentTrack?.id, equals('1'));
+      verify(() => player.play()).called(1);
+    });
+
+    // -----------------------------------------------------------------------
+    // 8. Queue mutations are pure Dart — 0 mpv calls
+    // -----------------------------------------------------------------------
+    test('queue mutations are pure Dart — 0 mpv calls', () async {
+      await service.playQueue(
         [trackA, trackB],
         startIndex: 0,
         resolveStreamUrl: resolveStreamUrl,
       );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentQueue.length, equals(2));
 
-      // Second load starts before first finishes.
-      await service.playQueue(
-        [trackC],
-        startIndex: 0,
-        resolveStreamUrl: resolveStreamUrl,
-      );
+      // insertIntoQueue at index 1 — verify Dart state change
+      await service.insertIntoQueue(1, trackC, resolveStreamUrl: resolveStreamUrl);
+      expect(service.currentQueue.length, equals(3));
+      expect(service.currentQueue[1].id, equals('3'));
 
-      await fut1; // First load's lock action is a no-op (stale gen).
+      // playNext inserts after current index (still 0)
+      await service.playNext(trackC, resolveStreamUrl: resolveStreamUrl);
+      expect(service.currentQueue.length, equals(4));
+      expect(service.currentQueue[1].id, equals('3'));
 
-      // Only the second queue's tracks should remain.
-      // The queue was loaded with [trackC], so that's what we have.
-      expect(service.currentQueue.length, equals(1));
-      expect(service.currentQueue[0].id, equals('3'));
+      // addToQueue appends
+      await service.addToQueue(trackC, resolveStreamUrl: resolveStreamUrl);
+      expect(service.currentQueue.length, equals(5));
+
+      // reorderQueue — verify Dart state change
+      await service.reorderQueue(4, 2);
+      expect(service.currentQueue[2].id, equals('3'));
+
+      // removeFromQueue (not currently playing — index 3 is not current 0)
+      final removed = await service.removeFromQueue(3);
+      expect(removed, isTrue);
+      expect(service.currentQueue.length, equals(4));
+
+      // remove currently playing index fails
+      final removedCurrent = await service.removeFromQueue(0);
+      expect(removedCurrent, isFalse);
+      expect(service.currentQueue.length, equals(4));
+
+      // 0 mpv calls for queue mutations.
+      verifyNever(() => player.sendRawCommand(any()));
     });
 
     // -----------------------------------------------------------------------
-    // 7. Shuffle reorder
+    // 9. Play/Pause respect disposed guard
     // -----------------------------------------------------------------------
-    test('shuffle reorders queue via mpv', () async {
-      await service.playQueue(
-        [trackA, trackB, trackC],
-        startIndex: 0,
-        resolveStreamUrl: resolveStreamUrl,
-      );
-
-      ctrls.playlist.add(
-        const Playlist(
-          [
-            Media('https://example.com/1.flac'),
-            Media('https://example.com/2.flac'),
-            Media('https://example.com/3.flac'),
-          ],
-          index: 0,
-        ),
-      );
-      await Future<void>.delayed(Duration.zero);
-
-      // Enable shuffle.
-      await service.setAfShuffleMode(true);
-
-      // Verify mpv's setShuffle was called.
-      verify(() => player.setShuffle(true)).called(1);
-
-      // Verify shuffle mode is reflected.
-      expect(service.isShuffleEnabled, isTrue);
-
-      // Simulate shuffle reorder by emitting a playlist with reordered items.
-      ctrls.playlist.add(
-        const Playlist(
-          [
-            Media('https://example.com/3.flac'),
-            Media('https://example.com/1.flac'),
-            Media('https://example.com/2.flac'),
-          ],
-          index: 0,
-        ),
-      );
-      await Future<void>.delayed(Duration.zero);
-
-      // Disable shuffle.
-      await service.setAfShuffleMode(false);
-
-      // setShuffle(false) is also called once during playQueue (non-shuffle path).
-      verify(() => player.setShuffle(false)).called(greaterThanOrEqualTo(1));
-      expect(service.isShuffleEnabled, isFalse);
-    });
-
     test('play and pause respect disposed guard', () async {
       await service.dispose();
       await service.play();
@@ -413,39 +361,45 @@ void main() {
       verifyNever(() => player.pause());
     });
 
-    test('seek, skipToNext, skipToPrevious, skipToQueueItem respect isLoadingQueue guard', () async {
-      final completer = Completer<void>();
+    // -----------------------------------------------------------------------
+    // 10. Seek/Skip work after playQueue; skipToQueueItem uses openAll
+    // -----------------------------------------------------------------------
+    test('seek, skipToNext, skipToPrevious, skipToQueueItem work after playQueue',
+        () async {
       when(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
-          .thenAnswer((_) => completer.future);
+          .thenAnswer((_) async {});
+      when(() => player.seek(any())).thenAnswer((_) async {});
+      when(() => player.next()).thenAnswer((_) async {});
+      when(() => player.previous()).thenAnswer((_) async {});
 
-      final playQueueFuture = service.playQueue(
+      await service.playQueue(
         [trackA, trackB],
         startIndex: 0,
         resolveStreamUrl: resolveStreamUrl,
       );
-
-      // Give event loop a chance to run so playQueue starts and sets _isLoadingQueue = true.
       await Future<void>.delayed(Duration.zero);
 
-      // Now call seek, next, previous, skipToQueueItem. They should do nothing and return.
       await service.seek(const Duration(seconds: 1));
-      verifyNever(() => player.seek(any()));
+      verify(() => player.seek(const Duration(seconds: 1))).called(1);
 
       await service.skipToNext();
-      verifyNever(() => player.next());
+      verify(() => player.next()).called(1);
 
       await service.skipToPrevious();
-      verifyNever(() => player.previous());
+      verify(() => player.previous()).called(1);
 
-      await service.skipToQueueItem(1);
-      verifyNever(() => player.jump(any()));
-
-      // Clean up by completing the openAll call.
-      completer.complete();
-      await playQueueFuture;
+      // skipToQueueItem now uses _rebuildWindow → openAll, not jump().
+      // Use called(>0) because openAll is also called by playQueue (both use
+      // index:0 — no distinguishing index matcher possible in this test).
+      await service.skipToQueueItem(0);
+      verify(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
+          .called(greaterThan(0));
     });
 
-    test('playQueue error recovery clears queue manager and stops player on failure', () async {
+    // -----------------------------------------------------------------------
+    // 11. playQueue error recovery
+    // -----------------------------------------------------------------------
+    test('playQueue error clears queue manager and stops player', () async {
       when(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
           .thenThrow(Exception('openAll failed'));
       when(() => player.stop()).thenAnswer((_) async {});
@@ -463,69 +417,56 @@ void main() {
       expect(service.currentQueue, isEmpty);
     });
 
-    test('removeFromQueue, insertIntoQueue, playNext, addToQueue, reorderQueue operate correctly', () async {
-      // First populate the queue
+    // -----------------------------------------------------------------------
+    // 12. skipToNext/Prev call mpv; skipToQueueItem uses openAll
+    // -----------------------------------------------------------------------
+    test('skipToNext, skipToPrevious call mpv; skipToQueueItem uses openAll',
+        () async {
+      await service.playQueue(
+        [trackA, trackB, trackC],
+        startIndex: 1, // Start at track B
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('2'));
+
+      when(() => player.next()).thenAnswer((_) async {});
+      when(() => player.previous()).thenAnswer((_) async {});
+      when(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
+          .thenAnswer((_) async {});
+
+      // skipToNext
+      await service.skipToNext();
+      verify(() => player.next()).called(1);
+
+      // skipToPrevious
+      await service.skipToPrevious();
+      verify(() => player.previous()).called(1);
+
+      // skipToQueueItem now uses _rebuildWindow → openAll, not jump().
+      // Both playQueue and skipToQueueItem reload window at mpv index 0,
+      // so use greaterThan(0) to verify openAll was called at least once.
+      await service.skipToQueueItem(0);
+      verify(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
+          .called(greaterThan(0));
+      verifyNever(() => player.jump(any()));
+    });
+
+    // -----------------------------------------------------------------------
+    // 13. Platform method calls invoke corresponding service methods
+    // -----------------------------------------------------------------------
+    test('platform method calls invoke corresponding service methods', () async {
+      expect(handler, isNotNull);
+
+      // Load 2 tracks so skipToNext/Previous have somewhere to go.
+      when(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
+          .thenAnswer((_) async {});
       await service.playQueue(
         [trackA, trackB],
         startIndex: 0,
         resolveStreamUrl: resolveStreamUrl,
       );
-
-      ctrls.playlist.add(
-        const Playlist([
-          Media('https://example.com/1.flac'),
-          Media('https://example.com/2.flac'),
-        ], index: 0),
-      );
       await Future<void>.delayed(Duration.zero);
-
-      // 1. insertIntoQueue
-      when(() => player.sendRawCommand(any())).thenAnswer((_) async {});
-      await service.insertIntoQueue(1, trackC, resolveStreamUrl: resolveStreamUrl);
-      verify(() => player.sendRawCommand([
-        'loadfile',
-        'https://example.com/3.flac',
-        'insert-at',
-        '1',
-      ])).called(1);
-      expect(service.currentQueue.length, equals(3));
-      expect(service.currentQueue[1].id, equals('3'));
-
-      // 2. playNext
-      await service.playNext(trackC, resolveStreamUrl: resolveStreamUrl);
-      // currentIndex is 0, so it inserts at 1.
-      verify(() => player.sendRawCommand([
-        'loadfile',
-        'https://example.com/3.flac',
-        'insert-at',
-        '1',
-      ])).called(1);
-
-      // 3. addToQueue
-      await service.addToQueue(trackC, resolveStreamUrl: resolveStreamUrl);
-      verify(() => player.sendRawCommand([
-        'loadfile',
-        'https://example.com/3.flac',
-        'append',
-      ])).called(1);
-
-      // 4. reorderQueue
-      await service.reorderQueue(1, 2);
-      verify(() => player.sendRawCommand(['playlist-move', '1', '1'])).called(1);
-
-      // 5. removeFromQueue
-      // Removing index 1 (trackB/trackC) should succeed (as long as it's not the currently playing index 0).
-      final removed = await service.removeFromQueue(1);
-      expect(removed, isTrue);
-      verify(() => player.sendRawCommand(['playlist-remove', '1'])).called(1);
-
-      // Removing current index (0) should fail
-      final removedCurrent = await service.removeFromQueue(0);
-      expect(removedCurrent, isFalse);
-    });
-
-    test('platform method calls invoke corresponding service methods', () async {
-      expect(handler, isNotNull);
 
       // Stub methods called by player_service
       when(() => player.play()).thenAnswer((_) async {});
@@ -534,7 +475,8 @@ void main() {
       when(() => player.next()).thenAnswer((_) async {});
       when(() => player.previous()).thenAnswer((_) async {});
       when(() => player.seek(any())).thenAnswer((_) async {});
-      when(() => player.jump(any())).thenAnswer((_) async {});
+      when(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
+          .thenAnswer((_) async {});
 
       await handler!(const MethodCall('play'));
       await Future<void>.delayed(Duration.zero);
@@ -560,9 +502,12 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       verify(() => player.seek(const Duration(milliseconds: 1234))).called(1);
 
+      // skipToQueueItem(5) uses _rebuildWindow → openAll, not jump().
+      // Distinguish from playQueue (2 tracks) by matching window length (1 track).
       await handler!(const MethodCall('skipTo', {'queueIndex': 5}));
       await Future<void>.delayed(Duration.zero);
-      verify(() => player.jump(5)).called(1);
+      verify(() => player.openAll(any(that: hasLength(1)), index: any(named: 'index'), play: any(named: 'play'))).called(1);
+      verifyNever(() => player.jump(any()));
 
       expect(
         () => handler!(const MethodCall('invalidMethod')),

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Media;
 
 import '../jellyfin/models/items.dart';
 import 'queue_engine.dart';

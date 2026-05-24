@@ -73,64 +73,6 @@ void main() {
       ctrls.dispose();
     });
 
-    group('isLoadingQueue guard', () {
-      test('skips settings actions when isLoadingQueue is true', () async {
-        service.isLoadingQueueForTesting = true;
-
-        await service.setAudioDevice(Device.auto);
-        verifyNever(() => player.setAudioDevice(any()));
-
-        await service.setAudioExclusive(true);
-        verifyNever(() => player.setAudioExclusive(any()));
-
-        await service.setAudioSampleRate(44100);
-        verifyNever(() => player.setAudioSampleRate(any()));
-
-        await service.setPrefetchPlaylist(true);
-        verifyNever(() => player.setPrefetchPlaylist(any()));
-
-        await service.setAfSpeed(1.5);
-        verifyNever(() => player.setRate(any()));
-
-        await service.setGapless(Gapless.weak);
-        verifyNever(() => player.setGapless(any()));
-
-        await service.setAfLoopMode(Loop.file);
-        verifyNever(() => player.setLoop(any()));
-
-        await service.setAfShuffleMode(true);
-        verifyNever(() => player.setShuffle(any()));
-      });
-
-      test('allows settings actions when isLoadingQueue is false', () async {
-        service.isLoadingQueueForTesting = false;
-
-        await service.setAudioDevice(Device.auto);
-        verify(() => player.setAudioDevice(Device.auto)).called(1);
-
-        await service.setAudioExclusive(true);
-        verify(() => player.setAudioExclusive(true)).called(1);
-
-        await service.setAudioSampleRate(44100);
-        verify(() => player.setAudioSampleRate(44100)).called(1);
-
-        await service.setPrefetchPlaylist(true);
-        verify(() => player.setPrefetchPlaylist(true)).called(1);
-
-        await service.setAfSpeed(1.5);
-        verify(() => player.setRate(1.5)).called(1);
-
-        await service.setGapless(Gapless.weak);
-        verify(() => player.setGapless(Gapless.weak)).called(1);
-
-        await service.setAfLoopMode(Loop.file);
-        verify(() => player.setLoop(Loop.file)).called(1);
-
-        await service.setAfShuffleMode(true);
-        verify(() => player.setShuffle(true)).called(1);
-      });
-    });
-
     group('disposed guard', () {
       test('skips settings actions when disposed is true', () async {
         service.disposedForTesting = true;
@@ -161,16 +103,6 @@ void main() {
       });
     });
 
-    group('combined priority guards', () {
-      test('disposed check takes priority over isLoadingQueue check', () async {
-        service.disposedForTesting = true;
-        service.isLoadingQueueForTesting = false;
 
-        await service.setAudioDevice(Device.auto);
-        expect(service.isDisposedForTesting, isTrue);
-        expect(service.isLoadingQueue, isFalse);
-        verifyNever(() => player.setAudioDevice(any()));
-      });
-    });
   });
 }

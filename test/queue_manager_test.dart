@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:aetherfin/core/audio/queue_manager.dart';
-import 'package:aetherfin/core/audio/queue_engine.dart';
 import 'package:aetherfin/core/jellyfin/models/items.dart';
 
 void main() {
