@@ -67,8 +67,14 @@ final _router = GoRouter(
     final effectiveMode = mode ?? (auth != null ? AppMode.server : null);
 
     // Server mode: redirect based on auth state
+    //
+    // IMPORTANT: only redirect from '/' (fresh app launch with restored auth).
+    // Do NOT redirect from within the onboarding flow (/onboarding/sign-in,
+    // /onboarding/scope, etc.) — those screens navigate explicitly with
+    // context.go().  A redirect there races with save(auth) → notifyAuthChanged
+    // and skips the library scope screen entirely.
     if (effectiveMode == AppMode.server) {
-      if (auth != null && inOnboarding && loc != '/onboarding/scope') {
+      if (auth != null && loc == '/') {
         return '/home';
       }
       if (auth == null && !inOnboarding) return '/onboarding/discover';
