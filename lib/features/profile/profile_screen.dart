@@ -104,11 +104,11 @@ class ProfileScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AfSpacing.s24),
-          SectionHeader(title: 'Pinned', uppercase: true),
+          const SectionHeader(title: 'Pinned', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
           _PinnedRow(albums: pinned),
           const SizedBox(height: AfSpacing.s24),
-          SectionHeader(title: 'Playlists', uppercase: true),
+          const SectionHeader(title: 'Playlists', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
           if (playlists.isEmpty)
             Padding(
@@ -148,7 +148,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ),
           const SizedBox(height: AfSpacing.s24),
-          SectionHeader(title: 'Account', uppercase: true),
+          const SectionHeader(title: 'Account', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
           ListTile(
             leading: const Icon(Icons.settings_outlined),
@@ -178,16 +178,16 @@ class ProfileScreen extends ConsumerWidget {
 }
 
 class _StatCard extends StatelessWidget {
+  const _StatCard({required this.label, required this.value});
   final String label;
   final String value;
-  const _StatCard({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(AfSpacing.s16),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AfColors.surfaceBase,
           borderRadius: AfRadii.borderMd,
         ),
@@ -210,8 +210,8 @@ class _StatCard extends StatelessWidget {
 }
 
 class _PinnedRow extends StatelessWidget {
-  final List<AfAlbum> albums;
   const _PinnedRow({required this.albums});
+  final List<AfAlbum> albums;
 
   @override
   Widget build(BuildContext context) {

@@ -9,12 +9,12 @@ import 'saf_picker.dart';
 /// Wraps [LocalDb] and [MetadataScanner] to provide a clean API for
 /// providers and UI code. Analogous to [MusicBackend] but for local files.
 class LocalLibrary {
-  final LocalDb _db;
-  late final MetadataScanner _scanner;
 
   LocalLibrary({AppDatabase? database}) : _db = LocalDb(database: database) {
     _scanner = MetadataScanner(_db);
   }
+  final LocalDb _db;
+  late final MetadataScanner _scanner;
 
   /// Expose the underlying DB for direct queries (e.g. smart playlists).
   LocalDb get db => _db;

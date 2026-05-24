@@ -25,13 +25,6 @@ import '../utils/display_error.dart';
 /// [displayError], which strips the `api_key` / `t` / `s` / `u` query
 /// params Dio embeds in `DioException.toString()`.
 class AsyncErrorView extends StatelessWidget {
-  final String label;
-  final Object error;
-  final VoidCallback onRetry;
-
-  /// When set, renders an inline row of exactly this height. When null,
-  /// renders a centered column with vertical breathing room.
-  final double? compactHeight;
 
   const AsyncErrorView({
     super.key,
@@ -47,6 +40,13 @@ class AsyncErrorView extends StatelessWidget {
     required this.onRetry,
     required double height,
   }) : compactHeight = height;
+  final String label;
+  final Object error;
+  final VoidCallback onRetry;
+
+  /// When set, renders an inline row of exactly this height. When null,
+  /// renders a centered column with vertical breathing room.
+  final double? compactHeight;
 
   @override
   Widget build(BuildContext context) {

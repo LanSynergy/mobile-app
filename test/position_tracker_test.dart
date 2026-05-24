@@ -14,7 +14,7 @@ void main() {
     registerFallbackValue(Loop.off);
     registerFallbackValue(Gapless.weak);
     registerFallbackValue(SpectrumSettings.defaults);
-    registerFallbackValue(Media(''));
+    registerFallbackValue(const Media(''));
   });
 
   group('AfPositionTracker', () {
@@ -41,7 +41,7 @@ void main() {
         // short-circuit before getRawProperty is called.
         when(() => player.state).thenReturn(const PlayerState(playing: true));
 
-        final shouldAdvance = false;
+        const shouldAdvance = false;
         final tracker = AfPositionTracker(
           player: player,
           shouldAdvancePosition: () => shouldAdvance,

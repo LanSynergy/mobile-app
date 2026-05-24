@@ -26,24 +26,6 @@ const _kClientName = 'Aetherfin';
 /// `t = md5(password + salt)`, `s = salt`, sent as query params on
 /// every request alongside `u`, `v`, `c`, `f=json`.
 class SubsonicClient implements MusicBackend {
-  final JellyfinServer server;
-  final String username;
-
-  /// UTF-8 bytes of the password, zeroed on [close] to minimise the
-  /// plaintext-residence window in native heap memory. Converted from the
-  /// constructor argument so the original [String] can be GC'd immediately.
-  /// Typed as [Uint8List] to clarify this is raw UTF-8 byte data.
-  final Uint8List _passwordBytes;
-
-  /// Aetherfin's running app version (e.g. `0.2.3`). Sent in `User-Agent`.
-  /// Loaded from `package_info_plus` in `main()` and injected through
-  /// [aetherfinVersionProvider] — never hardcoded here so a `pubspec.yaml`
-  /// bump can't leave stale strings in scrobbles or session logs.
-  final String clientVersion;
-
-  final Dio _dio;
-  final MemCacheStore _cacheStore;
-  final Random _rng = Random.secure();
 
   SubsonicClient({
     required this.server,
@@ -97,6 +79,24 @@ class SubsonicClient implements MusicBackend {
       );
     }
   }
+  final JellyfinServer server;
+  final String username;
+
+  /// UTF-8 bytes of the password, zeroed on [close] to minimise the
+  /// plaintext-residence window in native heap memory. Converted from the
+  /// constructor argument so the original [String] can be GC'd immediately.
+  /// Typed as [Uint8List] to clarify this is raw UTF-8 byte data.
+  final Uint8List _passwordBytes;
+
+  /// Aetherfin's running app version (e.g. `0.2.3`). Sent in `User-Agent`.
+  /// Loaded from `package_info_plus` in `main()` and injected through
+  /// [aetherfinVersionProvider] — never hardcoded here so a `pubspec.yaml`
+  /// bump can't leave stale strings in scrobbles or session logs.
+  final String clientVersion;
+
+  final Dio _dio;
+  final MemCacheStore _cacheStore;
+  final Random _rng = Random.secure();
 
   static String _buildBaseUrl(String baseUrl) {
     final b = baseUrl.endsWith('/') ? baseUrl : '$baseUrl/';
@@ -941,9 +941,9 @@ class _DigestCollector implements Sink<Digest> {
 
 /// Error returned by the Subsonic API (status != "ok").
 class SubsonicApiError implements Exception {
+  const SubsonicApiError(this.code, this.message);
   final int code;
   final String message;
-  const SubsonicApiError(this.code, this.message);
 
   @override
   String toString() => 'SubsonicApiError($code): $message';

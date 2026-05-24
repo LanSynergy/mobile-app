@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../design_tokens/tokens.dart';
 
 class SettingsLabel extends StatelessWidget {
-  final String label;
   const SettingsLabel(this.label, {super.key});
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -23,14 +23,14 @@ class SettingsLabel extends StatelessWidget {
 }
 
 class SettingsGroup extends StatelessWidget {
-  final List<Widget> children;
   const SettingsGroup({required this.children, super.key});
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AfColors.surfaceBase,
         borderRadius: AfRadii.borderLg,
       ),
@@ -54,12 +54,6 @@ class SettingsGroup extends StatelessWidget {
 }
 
 class SettingsTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String? subtitle;
-  final Widget? trailing;
-  final VoidCallback? onTap;
 
   const SettingsTile({
     super.key,
@@ -70,6 +64,12 @@ class SettingsTile extends StatelessWidget {
     this.trailing,
     this.onTap,
   });
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -124,12 +124,6 @@ class SettingsTile extends StatelessWidget {
 }
 
 class SettingsSwitchTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String? subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
 
   const SettingsSwitchTile({
     super.key,
@@ -140,6 +134,12 @@ class SettingsSwitchTile extends StatelessWidget {
     required this.value,
     required this.onChanged,
   });
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -196,10 +196,6 @@ class SettingsSwitchTile extends StatelessWidget {
 }
 
 class OptionTile extends StatelessWidget {
-  final String label;
-  final String? subtitle;
-  final bool isActive;
-  final VoidCallback onTap;
 
   const OptionTile({
     super.key,
@@ -208,6 +204,10 @@ class OptionTile extends StatelessWidget {
     required this.isActive,
     required this.onTap,
   });
+  final String label;
+  final String? subtitle;
+  final bool isActive;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

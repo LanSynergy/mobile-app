@@ -3,17 +3,6 @@ import 'quality.dart';
 
 /// A music album.
 class AfAlbum {
-  final String id;
-  final String name;
-  final String artistName;
-  final String? artistId;
-  final int trackCount;
-  final int? year;
-  final Duration totalDuration;
-  final String? imageUrl;
-  final TrackQuality? quality;
-  final DateTime? dateAdded;
-  final bool isFavorite;
 
   const AfAlbum({
     required this.id,
@@ -28,6 +17,17 @@ class AfAlbum {
     this.dateAdded,
     this.isFavorite = false,
   });
+  final String id;
+  final String name;
+  final String artistName;
+  final String? artistId;
+  final int trackCount;
+  final int? year;
+  final Duration totalDuration;
+  final String? imageUrl;
+  final TrackQuality? quality;
+  final DateTime? dateAdded;
+  final bool isFavorite;
 
   AfAlbum copyWith({
     String? id,
@@ -69,12 +69,6 @@ class AfAlbum {
 
 /// A music artist.
 class AfArtist {
-  final String id;
-  final String name;
-  final int albumCount;
-  final int trackCount;
-  final String? imageUrl;
-  final String? bio;
 
   const AfArtist({
     required this.id,
@@ -84,6 +78,12 @@ class AfArtist {
     this.imageUrl,
     this.bio,
   });
+  final String id;
+  final String name;
+  final int albumCount;
+  final int trackCount;
+  final String? imageUrl;
+  final String? bio;
 
   String get statLine {
     final albums = albumCount == 1 ? '1 Album' : '$albumCount Albums';
@@ -94,6 +94,23 @@ class AfArtist {
 
 /// A single audio track.
 class AfTrack {
+
+  const AfTrack({
+    required this.id,
+    required this.title,
+    required this.artistName,
+    required this.albumName,
+    this.albumId,
+    this.artistId,
+    this.trackNumber,
+    this.duration = Duration.zero,
+    this.quality,
+    this.imageUrl,
+    this.isFavorite = false,
+    this.isDownloaded = false,
+    this.dateAdded,
+    this.peaks,
+  });
   final String id;
   final String title;
   final String artistName;
@@ -115,23 +132,6 @@ class AfTrack {
   /// the model so an offline demo experience renders the *real* peak
   /// pattern instead of going through the fallback path.
   final List<int>? peaks;
-
-  const AfTrack({
-    required this.id,
-    required this.title,
-    required this.artistName,
-    required this.albumName,
-    this.albumId,
-    this.artistId,
-    this.trackNumber,
-    this.duration = Duration.zero,
-    this.quality,
-    this.imageUrl,
-    this.isFavorite = false,
-    this.isDownloaded = false,
-    this.dateAdded,
-    this.peaks,
-  });
 
   AfTrack copyWith({
     String? id,
@@ -180,13 +180,6 @@ class AfTrack {
 
 /// A user-owned playlist.
 class AfPlaylist {
-  final String id;
-  final String name;
-  final int trackCount;
-  final Duration duration;
-  final String? imageUrl;
-  final List<String>? mosaicImageUrls; // up to 4 cover images for the 4-quadrant montage
-  final bool isPublic;
 
   const AfPlaylist({
     required this.id,
@@ -197,6 +190,13 @@ class AfPlaylist {
     this.mosaicImageUrls,
     this.isPublic = false,
   });
+  final String id;
+  final String name;
+  final int trackCount;
+  final Duration duration;
+  final String? imageUrl;
+  final List<String>? mosaicImageUrls; // up to 4 cover images for the 4-quadrant montage
+  final bool isPublic;
 
   /// Singular/plural-aware subtitle ("1 track" / "12 tracks"). Used wherever
   /// playlists appear in lists so the labels stay grammatical for one-track
@@ -206,11 +206,11 @@ class AfPlaylist {
 }
 
 /// A music genre — used for the Genres row on Home and Library.
-class AfGenre {
+class AfGenre { // representative album art for this genre
+  const AfGenre(this.name, this.tint, {this.imageUrl});
   final String name;
   final String tint; // hex, used as fallback color
-  final String? imageUrl; // representative album art for this genre
-  const AfGenre(this.name, this.tint, {this.imageUrl});
+  final String? imageUrl;
 }
 
 /// Full song-level metadata + file details — backs the "Show details"
@@ -222,6 +222,20 @@ class AfGenre {
 /// every list row: container, file size, channels, playcount, full
 /// path, genres, etc.
 class AfTrackDetails {
+
+  const AfTrackDetails({
+    required this.track,
+    this.container,
+    this.sizeBytes,
+    this.channels,
+    this.sampleRateHz,
+    this.bitDepth,
+    this.bitrateBps,
+    this.path,
+    this.genres = const [],
+    this.playCount,
+    this.lastPlayedAt,
+  });
   /// Basic track surface (title, artist, album, duration, quality,
   /// favorite, etc.) — already populated everywhere else.
   final AfTrack track;
@@ -264,20 +278,6 @@ class AfTrackDetails {
 
   /// Last played time. Server-owned.
   final DateTime? lastPlayedAt;
-
-  const AfTrackDetails({
-    required this.track,
-    this.container,
-    this.sizeBytes,
-    this.channels,
-    this.sampleRateHz,
-    this.bitDepth,
-    this.bitrateBps,
-    this.path,
-    this.genres = const [],
-    this.playCount,
-    this.lastPlayedAt,
-  });
 
   /// `1.23 MB` / `512 KB` / `1.5 GB` formatting for [sizeBytes]. Uses
   /// 1024-based units (KiB/MiB) but renders the friendlier `MB` suffix

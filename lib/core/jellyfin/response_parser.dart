@@ -7,9 +7,9 @@ import 'url_builder.dart';
 /// Stateless — all methods take the raw JSON and return typed models.
 /// Requires a [JellyfinUrlBuilder] instance for image URL construction.
 class JellyfinResponseParser {
-  final JellyfinUrlBuilder _urlBuilder;
 
   JellyfinResponseParser(this._urlBuilder);
+  final JellyfinUrlBuilder _urlBuilder;
 
   static const trackFields =
       'PrimaryImageAspectRatio,MediaSources,RunTimeTicks,IndexNumber,ParentIndexNumber,ProductionYear,DateCreated,UserData';

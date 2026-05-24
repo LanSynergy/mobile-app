@@ -74,19 +74,19 @@ void main() {
     late _StateUpdater updateState;
     Future<dynamic> Function(MethodCall)? handler;
 
-    final trackA = const AfTrack(
+    const trackA = AfTrack(
       id: '1',
       title: 'Track A',
       artistName: 'Test Artist',
       albumName: 'Test Album',
     );
-    final trackB = const AfTrack(
+    const trackB = AfTrack(
       id: '2',
       title: 'Track B',
       artistName: 'Test Artist',
       albumName: 'Test Album',
     );
-    final trackC = const AfTrack(
+    const trackC = AfTrack(
       id: '3',
       title: 'Track C',
       artistName: 'Test Artist',
@@ -101,7 +101,7 @@ void main() {
       registerFallbackValue(Loop.off);
       registerFallbackValue(Gapless.weak);
       registerFallbackValue(SpectrumSettings.defaults);
-      registerFallbackValue(Media(''));
+      registerFallbackValue(const Media(''));
       registerFallbackValue(<Media>[]);
     });
 
@@ -137,7 +137,7 @@ void main() {
 
       // Simulate mpv playlist event (fires after openAll in real plugin).
       ctrls.playlist.add(
-        Playlist(
+        const Playlist(
           [
             Media('https://example.com/1.flac'),
             Media('https://example.com/2.flac'),
@@ -169,7 +169,7 @@ void main() {
       );
 
       ctrls.playlist.add(
-        Playlist(
+        const Playlist(
           [
             Media('https://example.com/1.flac'),
             Media('https://example.com/2.flac'),
@@ -190,7 +190,7 @@ void main() {
             playing: true,
             completed: false,
             loop: Loop.file,
-            playlist: Playlist(
+            playlist: const Playlist(
               [
                 Media('https://example.com/1.flac'),
                 Media('https://example.com/2.flac'),
@@ -217,7 +217,7 @@ void main() {
       );
 
       ctrls.playlist.add(
-        Playlist(
+        const Playlist(
           [
             Media('https://example.com/1.flac'),
             Media('https://example.com/2.flac'),
@@ -236,7 +236,7 @@ void main() {
             playing: true,
             completed: false,
             loop: Loop.playlist,
-            playlist: Playlist(
+            playlist: const Playlist(
               [
                 Media('https://example.com/1.flac'),
                 Media('https://example.com/2.flac'),
@@ -251,7 +251,7 @@ void main() {
       // The completed handler should call player.jump(0) which wraps around.
       // Simulate the resulting playlist event.
       ctrls.playlist.add(
-        Playlist(
+        const Playlist(
           [
             Media('https://example.com/1.flac'),
             Media('https://example.com/2.flac'),
@@ -281,7 +281,7 @@ void main() {
       );
 
       ctrls.playlist.add(
-        Playlist([Media('https://example.com/1.flac')], index: 0),
+        const Playlist([Media('https://example.com/1.flac')], index: 0),
       );
       await Future<void>.delayed(Duration.zero);
       expect(service.currentTrack?.id, equals('1'));
@@ -291,7 +291,7 @@ void main() {
             playing: true,
             completed: false,
             loop: Loop.off,
-            playlist: Playlist([Media('https://example.com/1.flac')], index: 0),
+            playlist: const Playlist([Media('https://example.com/1.flac')], index: 0),
           ));
 
       ctrls.completed.add(true);
@@ -364,7 +364,7 @@ void main() {
       );
 
       ctrls.playlist.add(
-        Playlist(
+        const Playlist(
           [
             Media('https://example.com/1.flac'),
             Media('https://example.com/2.flac'),
@@ -386,7 +386,7 @@ void main() {
 
       // Simulate shuffle reorder by emitting a playlist with reordered items.
       ctrls.playlist.add(
-        Playlist(
+        const Playlist(
           [
             Media('https://example.com/3.flac'),
             Media('https://example.com/1.flac'),
@@ -472,7 +472,7 @@ void main() {
       );
 
       ctrls.playlist.add(
-        Playlist([
+        const Playlist([
           Media('https://example.com/1.flac'),
           Media('https://example.com/2.flac'),
         ], index: 0),

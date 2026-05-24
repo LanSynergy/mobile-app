@@ -65,16 +65,16 @@ abstract final class AfColors {
 ///
 /// Three tokens for three uses — never collapse into a single color.
 @immutable
-class Spectral {
-  final Color energy; // waveform peak fill, lyric highlight, heart glow
-  final Color shadow; // Now Playing bottom gradient stop
-  final Color glow;   // play-button outer glow on Now Playing
+class Spectral {   // play-button outer glow on Now Playing
 
   const Spectral({
     required this.energy,
     required this.shadow,
     required this.glow,
   });
+  final Color energy; // waveform peak fill, lyric highlight, heart glow
+  final Color shadow; // Now Playing bottom gradient stop
+  final Color glow;
 
   /// Default — used until artwork is parsed, on data-saver, on cellular,
   /// or whenever extraction can't surface a chromatic sample.

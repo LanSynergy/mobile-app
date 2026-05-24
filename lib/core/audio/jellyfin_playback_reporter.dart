@@ -24,6 +24,11 @@ import 'player_service.dart';
 ///                                          player stops, or the reporter
 ///                                          is disposed
 class JellyfinPlaybackReporter {
+
+  JellyfinPlaybackReporter(this._player, this._clientGetter) {
+    _trackSub = _player.currentTrackStream.listen(_onTrackChanged);
+    _playingSub = _player.playingStream.listen(_onPlayingChanged);
+  }
   final AfPlayerService _player;
   final MusicBackend? Function() _clientGetter;
 
@@ -39,11 +44,6 @@ class JellyfinPlaybackReporter {
   // while audio keeps coming out the speaker. Set to false on every
   // intentional teardown (audio service stops, sign-out, app close).
   bool _shouldStopOnDispose = false;
-
-  JellyfinPlaybackReporter(this._player, this._clientGetter) {
-    _trackSub = _player.currentTrackStream.listen(_onTrackChanged);
-    _playingSub = _player.playingStream.listen(_onPlayingChanged);
-  }
 
   Future<void> _onTrackChanged(AfTrack? track) async {
     if (_disposed) return;

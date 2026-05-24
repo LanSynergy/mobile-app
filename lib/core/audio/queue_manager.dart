@@ -15,6 +15,9 @@ import 'track_id_extractor.dart';
 /// does not touch [Player] directly. The owning service calls these
 /// methods and is responsible for keeping mpv's playlist in sync.
 class AfQueueManager {
+
+  AfQueueManager({TrackIdExtractor? extractor})
+      : _extractor = extractor ?? const JellyfinTrackIdExtractor();
   final List<AfTrack> _trackQueue = <AfTrack>[];
   int _currentIndex = -1;
   List<AfTrack> _originalQueue = <AfTrack>[];
@@ -27,9 +30,6 @@ class AfQueueManager {
 
   int _activePlaylistSyncs = 0;
   late TrackIdExtractor _extractor;
-
-  AfQueueManager({TrackIdExtractor? extractor})
-      : _extractor = extractor ?? const JellyfinTrackIdExtractor();
 
   // ── Streams ────────────────────────────────────────────────────────
 

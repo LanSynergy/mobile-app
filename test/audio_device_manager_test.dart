@@ -9,11 +9,11 @@ void main() {
   setUpAll(() {
     registerFallbackValue(Duration.zero);
     registerFallbackValue(Device.auto);
-    registerFallbackValue(AudioEffects());
+    registerFallbackValue(const AudioEffects());
     registerFallbackValue(Loop.off);
     registerFallbackValue(Gapless.weak);
     registerFallbackValue(SpectrumSettings.defaults);
-    registerFallbackValue(Media(''));
+    registerFallbackValue(const Media(''));
   });
 
   group('AfAudioDeviceManager', () {
@@ -181,7 +181,7 @@ void main() {
 
         verify(
           () => player.setAudioDevice(
-            Device(name: 'opensles', description: 'OpenSL ES'),
+            const Device(name: 'opensles', description: 'OpenSL ES'),
           ),
         ).called(1);
       }, timeout: const Timeout(Duration(seconds: 5)));

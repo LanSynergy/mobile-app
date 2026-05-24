@@ -253,9 +253,9 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
 }
 
 class _ServerCard extends StatelessWidget {
+  const _ServerCard({required this.server, required this.onTap});
   final JellyfinServer server;
   final VoidCallback onTap;
-  const _ServerCard({required this.server, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

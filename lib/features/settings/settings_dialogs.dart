@@ -525,7 +525,7 @@ Future<bool> showOfflineCacheClearDialog(
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: Text(
+              child: const Text(
                 'Clear cache',
                 style: TextStyle(color: AfColors.semanticError),
               ),

@@ -13,11 +13,11 @@ import 'saf_picker.dart';
 /// Orchestrates scanning SAF folders: lists files → reads metadata → inserts
 /// into the local SQLite database. Reports progress via a callback.
 class MetadataScanner {
+
+  MetadataScanner(this.db);
   final LocalDb db;
   bool _isScanning = false;
   CoverCacheManager? _coverCacheManager;
-
-  MetadataScanner(this.db);
 
   /// Check scanning state to allow UI buttons to show progress or disable themselves.
   bool get isScanning => _isScanning;

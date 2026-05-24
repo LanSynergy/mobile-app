@@ -75,7 +75,7 @@ class SmartPlaylistListScreen extends ConsumerWidget {
                   // Grouped card container
                   Container(
                     clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: AfColors.surfaceBase,
                       borderRadius: AfRadii.borderLg,
                     ),
@@ -119,15 +119,15 @@ class SmartPlaylistListScreen extends ConsumerWidget {
 }
 
 class _PlaylistTile extends StatelessWidget {
-  final SmartPlaylist playlist;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
 
   const _PlaylistTile({
     required this.playlist,
     required this.onTap,
     required this.onDelete,
   });
+  final SmartPlaylist playlist;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -203,7 +203,7 @@ class _PlaylistTile extends StatelessWidget {
                   Navigator.pop(context);
                   onDelete();
                 },
-                child: Text('Delete',
+                child: const Text('Delete',
                     style: TextStyle(color: AfColors.semanticError)),
               ),
             ],

@@ -307,7 +307,7 @@ void main() {
       );
 
       // Case 2: Network artwork is downloaded
-      final remoteTrack = AfTrack(
+      const remoteTrack = AfTrack(
         id: 'track1',
         title: 'T',
         artistName: 'A',

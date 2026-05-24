@@ -8,9 +8,9 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 
 /// Create or edit a smart playlist — Samsung One UI style rule builder.
-class SmartPlaylistEditScreen extends ConsumerStatefulWidget {
-  final String? playlistId; // null = create new
+class SmartPlaylistEditScreen extends ConsumerStatefulWidget { // null = create new
   const SmartPlaylistEditScreen({super.key, this.playlistId});
+  final String? playlistId;
 
   @override
   ConsumerState<SmartPlaylistEditScreen> createState() =>
@@ -108,9 +108,9 @@ class _SmartPlaylistEditScreenState
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return Scaffold(
+      return const Scaffold(
         backgroundColor: AfColors.surfaceCanvas,
-        body: const Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -148,7 +148,7 @@ class _SmartPlaylistEditScreenState
           const SizedBox(height: AfSpacing.s8),
 
           // ── Name ─────────────────────────────────────────────────────
-          _SectionLabel('Name'),
+          const _SectionLabel('Name'),
           _SettingsGroup(
             children: [
               Padding(
@@ -176,7 +176,7 @@ class _SmartPlaylistEditScreenState
           const SizedBox(height: AfSpacing.s16),
 
           // ── Match mode ───────────────────────────────────────────────
-          _SectionLabel('Match mode'),
+          const _SectionLabel('Match mode'),
           _SettingsGroup(
             children: [
               Padding(
@@ -222,7 +222,7 @@ class _SmartPlaylistEditScreenState
           const SizedBox(height: AfSpacing.s16),
 
           // ── Rules ────────────────────────────────────────────────────
-          _SectionLabel('Rules'),
+          const _SectionLabel('Rules'),
           if (_rules.isNotEmpty)
             _SettingsGroup(
               children: [
@@ -253,7 +253,7 @@ class _SmartPlaylistEditScreenState
               style: OutlinedButton.styleFrom(
                 foregroundColor: AfColors.indigo400,
                 side: const BorderSide(color: AfColors.surfaceHigh),
-                shape: RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+                shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
                 padding: const EdgeInsets.symmetric(vertical: AfSpacing.s12),
               ),
             ),
@@ -262,7 +262,7 @@ class _SmartPlaylistEditScreenState
           const SizedBox(height: AfSpacing.s16),
 
           // ── Sort & Limit ─────────────────────────────────────────────
-          _SectionLabel('Sort & limit'),
+          const _SectionLabel('Sort & limit'),
           _SettingsGroup(
             children: [
               // Sort row
@@ -398,8 +398,8 @@ class _SmartPlaylistEditScreenState
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
-  final String label;
   const _SectionLabel(this.label);
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -418,14 +418,14 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _SettingsGroup extends StatelessWidget {
-  final List<Widget> children;
   const _SettingsGroup({required this.children});
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AfColors.surfaceBase,
         borderRadius: AfRadii.borderLg,
       ),
@@ -439,15 +439,15 @@ class _SettingsGroup extends StatelessWidget {
 
 /// A single rule row inside the grouped card.
 class _RuleRow extends StatelessWidget {
-  final SmartRule rule;
-  final ValueChanged<SmartRule> onChanged;
-  final VoidCallback onDelete;
 
   const _RuleRow({
     required this.rule,
     required this.onChanged,
     required this.onDelete,
   });
+  final SmartRule rule;
+  final ValueChanged<SmartRule> onChanged;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {

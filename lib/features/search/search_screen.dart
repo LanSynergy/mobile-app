@@ -212,12 +212,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 /// Horizontal filter chip row. Renders once a query is committed and
 /// scopes the results to a single category (lifting the per-type cap).
 class _SearchFilterChips extends StatelessWidget {
-  final SearchFilter selected;
-  final ValueChanged<SearchFilter> onChanged;
   const _SearchFilterChips({
     required this.selected,
     required this.onChanged,
   });
+  final SearchFilter selected;
+  final ValueChanged<SearchFilter> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -263,9 +263,9 @@ class _SearchFilterChips extends StatelessWidget {
 /// of stale data. Riverpod autoDispose.family cancels the in-flight request
 /// when the query key changes, preventing stale-result races.
 class _LiveSearchResults extends ConsumerWidget {
+  const _LiveSearchResults({required this.query, required this.filter});
   final String query;
   final SearchFilter filter;
-  const _LiveSearchResults({required this.query, required this.filter});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -366,16 +366,16 @@ class _SearchLoadingSkeleton extends StatelessWidget {
 }
 
 class _SkeletonBar extends StatelessWidget {
+  const _SkeletonBar({required this.width, required this.height});
   final double width;
   final double height;
-  const _SkeletonBar({required this.width, required this.height});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: width,
       height: height,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AfColors.surfaceBase,
         borderRadius: AfRadii.borderSm,
       ),
@@ -386,8 +386,8 @@ class _SkeletonBar extends StatelessWidget {
 /// Idle (empty query) panel — uses CustomScrollView + slivers to avoid
 /// the shrinkWrap GridView-inside-ListView layout penalty.
 class _SearchIdleState extends ConsumerWidget {
-  final void Function(String query) onRecent;
   const _SearchIdleState({required this.onRecent});
+  final void Function(String query) onRecent;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -412,7 +412,7 @@ class _SearchIdleState extends ConsumerWidget {
             sliver: SliverToBoxAdapter(
               child: Row(
                 children: [
-                  Expanded(
+                  const Expanded(
                     child: SectionHeader(
                       title: 'Recent',
                       uppercase: true,
@@ -447,7 +447,7 @@ class _SearchIdleState extends ConsumerWidget {
                     InputChip(
                       label: Text(q),
                       backgroundColor: AfColors.surfaceRaised,
-                      side: BorderSide(color: AfColors.surfaceHigh),
+                      side: const BorderSide(color: AfColors.surfaceHigh),
                       labelStyle: AfTypography.bodySmall.copyWith(
                         color: AfColors.textPrimary,
                       ),
@@ -463,8 +463,8 @@ class _SearchIdleState extends ConsumerWidget {
             ),
           ),
         ],
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+        const SliverPadding(
+          padding: EdgeInsets.symmetric(horizontal: AfSpacing.s16),
           sliver: SliverToBoxAdapter(
             child: SectionHeader(title: 'Genres', uppercase: true),
           ),
@@ -530,13 +530,6 @@ class _SearchIdleState extends ConsumerWidget {
 }
 
 class _SearchResults extends ConsumerWidget {
-  final List<AfTrack> tracks;
-  final List<AfAlbum> albums;
-  final List<AfArtist> artists;
-  final List<AfPlaylist> playlists;
-  /// When true, render every result of each type (no preview cap).
-  /// Set when a single-type filter chip is active.
-  final bool unbounded;
 
   const _SearchResults({
     required this.tracks,
@@ -545,6 +538,13 @@ class _SearchResults extends ConsumerWidget {
     required this.playlists,
     this.unbounded = false,
   });
+  final List<AfTrack> tracks;
+  final List<AfAlbum> albums;
+  final List<AfArtist> artists;
+  final List<AfPlaylist> playlists;
+  /// When true, render every result of each type (no preview cap).
+  /// Set when a single-type filter chip is active.
+  final bool unbounded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -557,7 +557,7 @@ class _SearchResults extends ConsumerWidget {
       ),
       children: [
         if (tracks.isNotEmpty) ...[
-          SectionHeader(title: 'Tracks', uppercase: true),
+          const SectionHeader(title: 'Tracks', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
           for (var i = 0;
               i < tracks.length && (unbounded || i < 20);
@@ -576,7 +576,7 @@ class _SearchResults extends ConsumerWidget {
           const SizedBox(height: AfSpacing.s16),
         ],
         if (albums.isNotEmpty) ...[
-          SectionHeader(title: 'Albums', uppercase: true),
+          const SectionHeader(title: 'Albums', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
           for (final a in unbounded ? albums : albums.take(10))
             ListTile(
@@ -599,7 +599,7 @@ class _SearchResults extends ConsumerWidget {
           const SizedBox(height: AfSpacing.s16),
         ],
         if (artists.isNotEmpty) ...[
-          SectionHeader(title: 'Artists', uppercase: true),
+          const SectionHeader(title: 'Artists', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
           for (final a in unbounded ? artists : artists.take(10))
             ListTile(
@@ -624,16 +624,16 @@ class _SearchResults extends ConsumerWidget {
           const SizedBox(height: AfSpacing.s16),
         ],
         if (playlists.isNotEmpty) ...[
-          SectionHeader(title: 'Playlists', uppercase: true),
+          const SectionHeader(title: 'Playlists', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
           for (final p in unbounded ? playlists : playlists.take(10))
             ListTile(
               leading: Container(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   borderRadius: AfRadii.borderSm,
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     colors: [AfColors.indigo700, AfColors.indigo900],
                   ),
                 ),

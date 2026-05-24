@@ -60,19 +60,19 @@ void main() {
     late _StateUpdater updateState;
     late List<String> events;
 
-    final trackA = const AfTrack(
+    const trackA = AfTrack(
       id: '1',
       title: 'Track A',
       artistName: 'Test Artist',
       albumName: 'Test Album',
     );
-    final trackB = const AfTrack(
+    const trackB = AfTrack(
       id: '2',
       title: 'Track B',
       artistName: 'Test Artist',
       albumName: 'Test Album',
     );
-    final trackC = const AfTrack(
+    const trackC = AfTrack(
       id: '3',
       title: 'Track C',
       artistName: 'Test Artist',
@@ -85,7 +85,7 @@ void main() {
       registerFallbackValue(Loop.off);
       registerFallbackValue(Gapless.weak);
       registerFallbackValue(SpectrumSettings.defaults);
-      registerFallbackValue(Media(''));
+      registerFallbackValue(const Media(''));
       registerFallbackValue(<Media>[]);
     });
 
@@ -121,9 +121,9 @@ void main() {
         ctrls.playlist.add(
           Playlist(
             [
-              Media('https://example.com/1.flac'),
-              Media('https://example.com/2.flac'),
-              Media('https://example.com/3.flac'),
+              const Media('https://example.com/1.flac'),
+              const Media('https://example.com/2.flac'),
+              const Media('https://example.com/3.flac'),
             ],
             index: index,
           ),
@@ -144,9 +144,9 @@ void main() {
         ctrls.playlist.add(
           Playlist(
             [
-              Media('https://example.com/1.flac'),
-              Media('https://example.com/2.flac'),
-              Media('https://example.com/3.flac'),
+              const Media('https://example.com/1.flac'),
+              const Media('https://example.com/2.flac'),
+              const Media('https://example.com/3.flac'),
             ],
             index: nextIndex,
           ),
@@ -167,9 +167,9 @@ void main() {
         ctrls.playlist.add(
           Playlist(
             [
-              Media('https://example.com/1.flac'),
-              Media('https://example.com/2.flac'),
-              Media('https://example.com/3.flac'),
+              const Media('https://example.com/1.flac'),
+              const Media('https://example.com/2.flac'),
+              const Media('https://example.com/3.flac'),
             ],
             index: prevIndex,
           ),
@@ -210,7 +210,7 @@ void main() {
       );
 
       ctrls.playlist.add(
-        Playlist(
+        const Playlist(
           [
             Media('https://example.com/1.flac'),
             Media('https://example.com/2.flac'),
@@ -234,7 +234,7 @@ void main() {
             playing: true,
             completed: true,
             loop: Loop.off,
-            playlist: Playlist(
+            playlist: const Playlist(
               [
                 Media('https://example.com/1.flac'),
                 Media('https://example.com/2.flac'),
@@ -276,7 +276,7 @@ void main() {
             playing: true,
             completed: true,
             loop: Loop.off,
-            playlist: Playlist(
+            playlist: const Playlist(
               [
                 Media('https://example.com/1.flac'),
                 Media('https://example.com/2.flac'),
@@ -315,7 +315,7 @@ void main() {
 
     test('completed handler (stop) and play run sequentially', () async {
       ctrls.playlist.add(
-        Playlist(
+        const Playlist(
           [
             Media('https://example.com/1.flac'),
             Media('https://example.com/2.flac'),
@@ -331,7 +331,7 @@ void main() {
             playing: true,
             completed: true,
             loop: Loop.off,
-            playlist: Playlist(
+            playlist: const Playlist(
               [
                 Media('https://example.com/1.flac'),
                 Media('https://example.com/2.flac'),
@@ -373,7 +373,7 @@ void main() {
             playing: true,
             completed: true,
             loop: Loop.off,
-            playlist: Playlist(
+            playlist: const Playlist(
               [
                 Media('https://example.com/1.flac'),
                 Media('https://example.com/2.flac'),

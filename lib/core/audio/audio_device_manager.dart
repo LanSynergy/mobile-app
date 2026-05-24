@@ -12,6 +12,8 @@ import '../../utils/log.dart';
 /// mpv rebuilds it. Re-issuing the current effects re-attaches the
 /// chain.
 class AfAudioDeviceManager {
+
+  AfAudioDeviceManager({required PlayerApi player}) : _player = player;
   final PlayerApi _player;
   bool _disposed = false;
 
@@ -22,8 +24,6 @@ class AfAudioDeviceManager {
   String? _lastObservedAudioDevice;
 
   static const _nudgeDelaysMs = [300, 1000, 2500];
-
-  AfAudioDeviceManager({required PlayerApi player}) : _player = player;
 
   /// Returns `true` when [deviceName] represents a *real* device change
   /// (not a duplicate emission from mpv polling).

@@ -33,9 +33,9 @@ void main() {
 
         // Reconcile / Sync
         final mpvItems = [
-          Media('https://example.com/track2'),
-          Media('https://example.com/track1'),
-          Media('https://example.com/track3'),
+          const Media('https://example.com/track2'),
+          const Media('https://example.com/track1'),
+          const Media('https://example.com/track3'),
         ];
         queueManager.rebuildUrlMap(mpvItems, [tracks[1], tracks[0], tracks[2]]);
         
@@ -72,7 +72,7 @@ void main() {
         };
 
         // Trigger a full sync failure by resolving 0 tracks
-        final mpvItems = [Media('https://example.com/unknown_url')];
+        final mpvItems = [const Media('https://example.com/unknown_url')];
         queueManager.syncFromMpv(mpvItems, 0);
 
         // Allow microtasks to process stream events
@@ -106,12 +106,12 @@ void main() {
 
         // 2 mpv items, only 1 resolvable — partial failure
         queueManager.rebuildUrlMap(
-          [Media('https://example.com/track1')],
+          [const Media('https://example.com/track1')],
           [tracks[0]],
         );
         final mpvItems = [
-          Media('https://example.com/track1'),
-          Media('https://example.com/unknown'),
+          const Media('https://example.com/track1'),
+          const Media('https://example.com/unknown'),
         ];
         queueManager.syncFromMpv(mpvItems, 0);
 
@@ -162,7 +162,7 @@ void main() {
       });
       
       test('rebuildUrlMap handles empty and mismatched lists in O(N)', () {
-        final urls = [Media('url1'), Media('url2')];
+        final urls = [const Media('url1'), const Media('url2')];
         final qTracks = [tracks[0], tracks[1], tracks[2]];
         queueManager.rebuildUrlMap(urls, qTracks);
         expect(queueManager.trackForUrl('url1'), tracks[0]);
@@ -225,7 +225,7 @@ void main() {
     group('Extractor dispatch', () {
       test('defaults to JellyfinTrackIdExtractor when none provided', () {
         final qm = AfQueueManager();
-        final track = const AfTrack(
+        const track = AfTrack(
           id: '999',
           title: 'Track',
           artistName: 'A',
@@ -235,7 +235,7 @@ void main() {
 
         // Jellyfin URL with ID 999 in path — extractor resolves '999',
         // then byId lookup finds the track.
-        final mpvItems = [Media('https://server.com/Audio/999/stream')];
+        final mpvItems = [const Media('https://server.com/Audio/999/stream')];
         qm.syncFromMpv(mpvItems, 0);
 
         expect(qm.currentQueue.length, 1);
@@ -244,7 +244,7 @@ void main() {
 
       test('custom SubsonicTrackIdExtractor resolves id query param', () {
         final qm = AfQueueManager(extractor: const SubsonicTrackIdExtractor());
-        final track = const AfTrack(
+        const track = AfTrack(
           id: 'abc',
           title: 'Track',
           artistName: 'A',
@@ -253,7 +253,7 @@ void main() {
         qm.replaceQueue([track], 0);
 
         final mpvItems = [
-          Media('https://server/rest/stream.view?id=abc&u=user&t=token'),
+          const Media('https://server/rest/stream.view?id=abc&u=user&t=token'),
         ];
         qm.syncFromMpv(mpvItems, 0);
 
@@ -263,7 +263,7 @@ void main() {
 
       test('setter switches extractor at runtime', () {
         final qm = AfQueueManager();
-        final track = const AfTrack(
+        const track = AfTrack(
           id: 'local-id',
           title: 'Track',
           artistName: 'A',
@@ -279,11 +279,11 @@ void main() {
         // which returns the URI. byId lookup uses the URI string which
         // doesn't match 'local-id', so we also pre-populate _urlToTrack.
         qm.rebuildUrlMap(
-          [Media('content://media/external/audio/media/local-id')],
+          [const Media('content://media/external/audio/media/local-id')],
           [track],
         );
 
-        final mpvItems = [Media('content://media/external/audio/media/local-id')];
+        final mpvItems = [const Media('content://media/external/audio/media/local-id')];
         qm.syncFromMpv(mpvItems, 0);
 
         expect(qm.currentQueue.length, 1);

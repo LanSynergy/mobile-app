@@ -9,16 +9,6 @@ import '../design_tokens/tokens.dart';
 /// every tappable element should wrap its target in [PressScale] (or its
 /// helper variants) so we keep press feedback consistent.
 class PressScale extends StatefulWidget {
-  final Widget child;
-  final VoidCallback? onTap;
-  final VoidCallback? onLongPress;
-  final Duration duration;
-  final double pressedScale;
-  final HitTestBehavior behavior;
-
-  /// Minimum hit-target enforcement. Defaults to true — every tap target
-  /// inflates to 48×48 dp via transparent padding.
-  final bool ensureHitTarget;
 
   const PressScale({
     super.key,
@@ -30,6 +20,16 @@ class PressScale extends StatefulWidget {
     this.behavior = HitTestBehavior.opaque,
     this.ensureHitTarget = true,
   });
+  final Widget child;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+  final Duration duration;
+  final double pressedScale;
+  final HitTestBehavior behavior;
+
+  /// Minimum hit-target enforcement. Defaults to true — every tap target
+  /// inflates to 48×48 dp via transparent padding.
+  final bool ensureHitTarget;
 
   @override
   State<PressScale> createState() => _PressScaleState();

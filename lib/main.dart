@@ -284,8 +284,8 @@ Future<String> _loadOrCreateFallbackDeviceId() async {
 /// on screen (shoulder-surfing, screenshots shared in bug reports).
 /// In debug builds: shows the full exception for developer diagnosis.
 class _RootErrorWidget extends StatelessWidget {
-  final FlutterErrorDetails details;
   const _RootErrorWidget({required this.details});
+  final FlutterErrorDetails details;
 
   @override
   Widget build(BuildContext context) {
@@ -326,11 +326,11 @@ class _RootErrorWidget extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text(
+                const Text(
                   kReleaseMode
                       ? 'Tap Restart on Android to retry.'
                       : 'Hot reload to retry.',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AfColors.textTertiary,
                     fontSize: 12,
                   ),

@@ -17,10 +17,6 @@ import 'press_scale.dart';
 ///    │  [▶ Play]                  │           │
 ///    └────────────────────────────┴───────────┘`
 class HeroAlbumCard extends StatelessWidget {
-  final AfAlbum album;
-  final String pillLabel;
-  final VoidCallback? onTap;
-  final VoidCallback? onPlay;
 
   const HeroAlbumCard({
     super.key,
@@ -29,6 +25,10 @@ class HeroAlbumCard extends StatelessWidget {
     this.onTap,
     this.onPlay,
   });
+  final AfAlbum album;
+  final String pillLabel;
+  final VoidCallback? onTap;
+  final VoidCallback? onPlay;
 
   @override
   Widget build(BuildContext context) {
@@ -38,8 +38,8 @@ class HeroAlbumCard extends StatelessWidget {
       child: Container(
         constraints: const BoxConstraints(minHeight: 168),
         margin: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [AfColors.indigo800, AfColors.indigo700],
@@ -126,8 +126,8 @@ class HeroAlbumCard extends StatelessWidget {
 }
 
 class _PlayPill extends StatelessWidget {
-  final VoidCallback? onTap;
   const _PlayPill({this.onTap});
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +139,7 @@ class _PlayPill extends StatelessWidget {
           horizontal: AfSpacing.s16,
           vertical: AfSpacing.s8,
         ),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AfColors.textOnPrimary,
           borderRadius: AfRadii.borderPill,
         ),

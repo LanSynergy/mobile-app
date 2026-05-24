@@ -11,8 +11,8 @@ import '../../widgets/track_row.dart';
 
 /// Shows the resolved tracks for a smart playlist — Samsung One UI style.
 class SmartPlaylistDetailScreen extends ConsumerWidget {
-  final String playlistId;
   const SmartPlaylistDetailScreen({super.key, required this.playlistId});
+  final String playlistId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -90,7 +90,7 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
                     horizontal: AfSpacing.s16,
                     vertical: AfSpacing.s12,
                   ),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AfColors.surfaceBase,
                     borderRadius: AfRadii.borderLg,
                   ),

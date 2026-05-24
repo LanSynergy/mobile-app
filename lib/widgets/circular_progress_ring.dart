@@ -17,16 +17,6 @@ import '../design_tokens/tokens.dart';
 /// directly to the single `Stream<Duration>` from the audio service so
 /// the ring tells audio time honestly.
 class CircularProgressRing extends StatelessWidget {
-  final double progress; // 0 .. 1
-  final Color trackColor;
-  final Color progressColor;
-  final double size;
-  final double strokeWidth;
-  final Widget child;
-
-  /// True when buffering / loading — renders the indeterminate variant
-  /// (90° arc rotating at 800ms per revolution, full-track at 30% alpha).
-  final bool isIndeterminate;
 
   const CircularProgressRing({
     super.key,
@@ -38,6 +28,16 @@ class CircularProgressRing extends StatelessWidget {
     this.strokeWidth = 2,
     this.isIndeterminate = false,
   });
+  final double progress; // 0 .. 1
+  final Color trackColor;
+  final Color progressColor;
+  final double size;
+  final double strokeWidth;
+  final Widget child;
+
+  /// True when buffering / loading — renders the indeterminate variant
+  /// (90° arc rotating at 800ms per revolution, full-track at 30% alpha).
+  final bool isIndeterminate;
 
   @override
   Widget build(BuildContext context) {
@@ -72,10 +72,6 @@ class CircularProgressRing extends StatelessWidget {
 }
 
 class _RingPainter extends CustomPainter {
-  final double progress;
-  final Color trackColor;
-  final Color progressColor;
-  final double strokeWidth;
 
   _RingPainter({
     required this.progress,
@@ -83,6 +79,10 @@ class _RingPainter extends CustomPainter {
     required this.progressColor,
     required this.strokeWidth,
   });
+  final double progress;
+  final Color trackColor;
+  final Color progressColor;
+  final double strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -129,10 +129,6 @@ class _RingPainter extends CustomPainter {
 }
 
 class _IndeterminateArc extends StatefulWidget {
-  final double size;
-  final double strokeWidth;
-  final Color trackColor;
-  final Color progressColor;
 
   const _IndeterminateArc({
     required this.size,
@@ -140,6 +136,10 @@ class _IndeterminateArc extends StatefulWidget {
     required this.trackColor,
     required this.progressColor,
   });
+  final double size;
+  final double strokeWidth;
+  final Color trackColor;
+  final Color progressColor;
 
   @override
   State<_IndeterminateArc> createState() => _IndeterminateArcState();
@@ -179,10 +179,6 @@ class _IndeterminateArcState extends State<_IndeterminateArc>
 }
 
 class _IndeterminatePainter extends CustomPainter {
-  final double value;
-  final Color trackColor;
-  final Color progressColor;
-  final double strokeWidth;
 
   _IndeterminatePainter({
     required this.value,
@@ -190,6 +186,10 @@ class _IndeterminatePainter extends CustomPainter {
     required this.progressColor,
     required this.strokeWidth,
   });
+  final double value;
+  final Color trackColor;
+  final Color progressColor;
+  final double strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {

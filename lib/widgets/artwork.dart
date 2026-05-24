@@ -18,12 +18,6 @@ import '../utils/url.dart';
 /// which means Jellyfin servers with auth-required image endpoints
 /// would 401 here without this wiring.
 class Artwork extends ConsumerWidget {
-  final String? url;
-  final double size;
-  final double? height;
-  final BorderRadius radius;
-  final BoxFit fit;
-  final String? semanticLabel;
 
   const Artwork({
     super.key,
@@ -34,6 +28,12 @@ class Artwork extends ConsumerWidget {
     this.fit = BoxFit.cover,
     this.semanticLabel,
   });
+  final String? url;
+  final double size;
+  final double? height;
+  final BorderRadius radius;
+  final BoxFit fit;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -130,9 +130,6 @@ class Artwork extends ConsumerWidget {
 
 /// Circular variant for artist tiles.
 class CircularArtwork extends StatelessWidget {
-  final String? url;
-  final double size;
-  final String? semanticLabel;
 
   const CircularArtwork({
     super.key,
@@ -140,6 +137,9 @@ class CircularArtwork extends StatelessWidget {
     this.size = 64,
     this.semanticLabel,
   });
+  final String? url;
+  final double size;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) => Artwork(

@@ -99,7 +99,7 @@ void main() {
     spectrumCtrl = fixture.spectrumCtrl;
     service = AfPlayerService.test(
       player: fixture.player,
-      bridge: NativeMediaSessionBridge(channel: MethodChannel('test')),
+      bridge: NativeMediaSessionBridge(channel: const MethodChannel('test')),
     );
   }
 
@@ -286,7 +286,7 @@ void main() {
       await tester.pumpWidget(_buildScrubber(
         progress: 0.0,
         height: 100,
-        onScrub: (p) => capturedProgresses.add(p),
+        onScrub: capturedProgresses.add,
         overrides: [playerServiceProvider.overrideWithValue(service!)],
       ));
 

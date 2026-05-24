@@ -38,7 +38,7 @@ class SettingsScreen extends ConsumerWidget {
         backgroundColor: AfColors.surfaceCanvas,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: FaIcon(FontAwesomeIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
+          icon: const FaIcon(FontAwesomeIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
           onPressed: () => context.pop(),
         ),
         title: Text('Settings', style: AfTypography.display),
@@ -105,7 +105,7 @@ class SettingsScreen extends ConsumerWidget {
                                 ),
                                 TextButton(
                                   onPressed: () => Navigator.pop(context, true),
-                                  child: Text(
+                                  child: const Text(
                                     'Sign out',
                                     style: TextStyle(color: AfColors.semanticError),
                                   ),
@@ -129,8 +129,8 @@ class SettingsScreen extends ConsumerWidget {
 
             // ── Music Folders (local mode only) ────────────────────────
             if (isLocal) ...[
-            SettingsLabel('Music folders'),
-            MusicFoldersCard(),
+            const SettingsLabel('Music folders'),
+            const MusicFoldersCard(),
             ],
 
             const SizedBox(height: AfSpacing.s16),
@@ -186,17 +186,17 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: AfSpacing.s16),
 
             // ── Appearance ─────────────────────────────────────────────
-            SettingsLabel('Appearance'),
-            SettingsGroup(
+            const SettingsLabel('Appearance'),
+            const SettingsGroup(
               children: [
-                const ArtworkPulseSwitch(),
+                ArtworkPulseSwitch(),
               ],
             ),
 
             const SizedBox(height: AfSpacing.s16),
 
             // ── Audio output ───────────────────────────────────────────
-            SettingsLabel('Audio output'),
+            const SettingsLabel('Audio output'),
             SettingsGroup(
               children: [
                 StreamBuilder<AudioParams>(
@@ -256,7 +256,7 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: AfSpacing.s16),
 
             // ── Network & cache ────────────────────────────────────────
-            SettingsLabel('Network & cache'),
+            const SettingsLabel('Network & cache'),
             SettingsGroup(
               children: [
                 SettingsTile(
@@ -307,7 +307,7 @@ class SettingsScreen extends ConsumerWidget {
 
             // ── Offline cache (server mode only) ───────────────────────
             if (!isLocal) ...[
-            SettingsLabel('Offline cache'),
+            const SettingsLabel('Offline cache'),
             SettingsGroup(
               children: [
                 Consumer(
@@ -348,7 +348,7 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: AfSpacing.s16),
 
             // ── Audio processing ───────────────────────────────────────
-            SettingsLabel('Audio processing'),
+            const SettingsLabel('Audio processing'),
             SettingsGroup(
               children: [
                 SettingsTile(
@@ -372,7 +372,7 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: AfSpacing.s16),
 
             // ── Advanced ───────────────────────────────────────────────
-            SettingsLabel('Advanced'),
+            const SettingsLabel('Advanced'),
             SettingsGroup(
               children: [
                 SettingsTile(
@@ -403,7 +403,7 @@ class SettingsScreen extends ConsumerWidget {
                               ),
                               TextButton(
                                 onPressed: () => Navigator.pop(context, true),
-                                child: Text(
+                                child: const Text(
                                   'Clear data',
                                   style: TextStyle(color: AfColors.semanticError),
                                 ),
@@ -442,7 +442,7 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: AfSpacing.s16),
 
             // ── About ──────────────────────────────────────────────────
-            SettingsLabel('About'),
+            const SettingsLabel('About'),
             SettingsGroup(
               children: [
                 FutureBuilder<PackageInfo>(

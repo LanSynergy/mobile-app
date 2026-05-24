@@ -17,30 +17,6 @@ import 'spectrum_settings.dart';
 
 /// Bridges [Player] (mpv_audio_kit) with a platform-native media session.
 class AfPlayerService {
-  final PlayerApi _player;
-  late final AfPositionTracker _positionTracker;
-  late final AfArtworkManager _artworkManager;
-  late final AfAudioDeviceManager _audioDeviceManager;
-  late final AfQueueManager _queueManager;
-
-  void Function(AfTrack? track)? onTrackChanged;
-  void Function(AfTrack track)? onTrackCompleted;
-  final List<StreamSubscription<dynamic>> _subs = <StreamSubscription<dynamic>>[];
-
-  bool _disposed = false;
-
-  NativeMediaSessionBridge _bridge = NativeMediaSessionBridge();
-
-  int _nudgeRetries = 0;
-  static const _maxNudgeRetries = 3;
-
-  int? _pendingPlayNudgeIdx;
-  bool _userPaused = false;
-  bool _isLoadingQueue = false;
-  int _shuffleGen = 0;
-  int _queueLoadGen = 0;
-  int _playlistHandlerGen = 0;
-  final AfAsyncLock _queueLock = AfAsyncLock();
 
   AfPlayerService() : _player = Player() {
     _positionTracker = AfPositionTracker(
@@ -127,6 +103,30 @@ class AfPlayerService {
     // _positionTracker.start() explicitly via a visibleForTesting helper.
     _bindStreams();
   }
+  final PlayerApi _player;
+  late final AfPositionTracker _positionTracker;
+  late final AfArtworkManager _artworkManager;
+  late final AfAudioDeviceManager _audioDeviceManager;
+  late final AfQueueManager _queueManager;
+
+  void Function(AfTrack? track)? onTrackChanged;
+  void Function(AfTrack track)? onTrackCompleted;
+  final List<StreamSubscription<dynamic>> _subs = <StreamSubscription<dynamic>>[];
+
+  bool _disposed = false;
+
+  NativeMediaSessionBridge _bridge = NativeMediaSessionBridge();
+
+  int _nudgeRetries = 0;
+  static const _maxNudgeRetries = 3;
+
+  int? _pendingPlayNudgeIdx;
+  bool _userPaused = false;
+  bool _isLoadingQueue = false;
+  int _shuffleGen = 0;
+  int _queueLoadGen = 0;
+  int _playlistHandlerGen = 0;
+  final AfAsyncLock _queueLock = AfAsyncLock();
 
   // ---------------------------------------------------------------------------
   // Public stream surface

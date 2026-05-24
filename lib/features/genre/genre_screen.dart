@@ -12,8 +12,8 @@ import '../../widgets/track_context_menu.dart';
 /// via [genreAlbumsProvider] so only albums actually tagged with this
 /// genre are shown.
 class GenreScreen extends ConsumerWidget {
-  final String genreName;
   const GenreScreen({super.key, required this.genreName});
+  final String genreName;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

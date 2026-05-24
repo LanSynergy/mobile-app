@@ -34,9 +34,6 @@ Future<T?> showBlurBottomSheet<T>({
 
 /// The actual Blur Bottom Sheet widget.
 class BlurBottomSheet extends StatelessWidget {
-  final Widget child;
-  final double topRadius;
-  final double blurSigma;
 
   const BlurBottomSheet({
     super.key,
@@ -44,6 +41,9 @@ class BlurBottomSheet extends StatelessWidget {
     this.topRadius = 24.0,
     this.blurSigma = 15.0,
   });
+  final Widget child;
+  final double topRadius;
+  final double blurSigma;
 
   @override
   Widget build(BuildContext context) {

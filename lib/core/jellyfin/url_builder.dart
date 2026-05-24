@@ -5,11 +5,6 @@ import '../../utils/url.dart';
 /// Extracted from [JellyfinClient] so URL-building logic is testable
 /// independently of the HTTP layer.
 class JellyfinUrlBuilder {
-  final String baseUrl;
-  final String? accessToken;
-  final String? userId;
-  final String deviceId;
-  final String clientVersion;
 
   JellyfinUrlBuilder({
     required this.baseUrl,
@@ -18,6 +13,11 @@ class JellyfinUrlBuilder {
     this.accessToken,
     this.userId,
   });
+  final String baseUrl;
+  final String? accessToken;
+  final String? userId;
+  final String deviceId;
+  final String clientVersion;
 
   void assertUser() {
     if (userId == null || userId!.isEmpty) {

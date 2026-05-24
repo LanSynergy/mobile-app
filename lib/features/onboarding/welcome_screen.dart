@@ -181,11 +181,6 @@ class WelcomeScreen extends ConsumerWidget {
 }
 
 class _ModeCard extends StatelessWidget {
-  final IconData icon;
-  final List<Color> iconGradient;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
 
   const _ModeCard({
     required this.icon,
@@ -194,6 +189,11 @@ class _ModeCard extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
   });
+  final IconData icon;
+  final List<Color> iconGradient;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

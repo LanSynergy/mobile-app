@@ -171,7 +171,7 @@ random non-LRC line
     });
 
     test('passes through URIs without sensitive params untouched', () {
-      final raw = 'https://example/path?foo=bar';
+      const raw = 'https://example/path?foo=bar';
       expect(redactSensitiveQueryParams(raw), raw);
     });
 

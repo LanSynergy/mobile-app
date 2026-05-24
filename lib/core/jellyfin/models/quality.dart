@@ -5,6 +5,16 @@
 /// `/Items/{id}/MediaInfo`. We carry the raw codec name + bitrate +
 /// the transcode flag and present them in the UI without spin.
 class TrackQuality {
+
+  const TrackQuality({
+    required this.sourceCodec,
+    this.bitrateKbps,
+    this.bitDepth,
+    this.sampleRateKhz,
+    this.isTranscoded = false,
+    this.transcodeCodec,
+    this.transcodeBitrateKbps,
+  });
   /// 'flac', 'aac', 'opus', etc. Lowercased, source codec.
   final String sourceCodec;
 
@@ -26,16 +36,6 @@ class TrackQuality {
 
   /// Transcode bitrate in kbps.
   final int? transcodeBitrateKbps;
-
-  const TrackQuality({
-    required this.sourceCodec,
-    this.bitrateKbps,
-    this.bitDepth,
-    this.sampleRateKhz,
-    this.isTranscoded = false,
-    this.transcodeCodec,
-    this.transcodeBitrateKbps,
-  });
 
   /// Display label for the quality chip.
   ///

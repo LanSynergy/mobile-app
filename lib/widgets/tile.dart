@@ -9,13 +9,6 @@ enum TileVariant { album, playlist, artist }
 /// Square-artwork tile — used everywhere we render a horizontal-scroll
 /// row of albums/playlists/artists, or in 2-col grids on Library / Search.
 class Tile extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  final String? imageUrl;
-  final double size;
-  final TileVariant variant;
-  final VoidCallback? onTap;
-  final VoidCallback? onLongPress;
 
   const Tile({
     super.key,
@@ -27,6 +20,13 @@ class Tile extends StatelessWidget {
     this.onTap,
     this.onLongPress,
   });
+  final String title;
+  final String? subtitle;
+  final String? imageUrl;
+  final double size;
+  final TileVariant variant;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -87,12 +87,6 @@ class Tile extends StatelessWidget {
 
 /// Genre tile — artwork background with gradient overlay, or solid color fallback.
 class GenreTile extends StatelessWidget {
-  final String name;
-  final Color tint;
-  final String? imageUrl;
-  final VoidCallback? onTap;
-  final double width;
-  final double height;
 
   const GenreTile({
     super.key,
@@ -103,6 +97,12 @@ class GenreTile extends StatelessWidget {
     this.width = 152,
     this.height = 96,
   });
+  final String name;
+  final Color tint;
+  final String? imageUrl;
+  final VoidCallback? onTap;
+  final double width;
+  final double height;
 
   @override
   Widget build(BuildContext context) {

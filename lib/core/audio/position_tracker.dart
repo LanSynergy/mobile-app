@@ -28,6 +28,14 @@ class _PositionAnchor {
 /// extrapolation when mpv returns 0 or when the same non-zero position
 /// repeats across several ticks (Samsung One UI freeze workaround).
 class AfPositionTracker {
+
+  AfPositionTracker({
+    required PlayerApi player,
+    required bool Function() shouldAdvancePosition,
+    bool Function()? isLoadingQueue,
+  })  : _player = player,
+        _shouldAdvancePosition = shouldAdvancePosition,
+        _isLoadingQueue = isLoadingQueue;
   final PlayerApi _player;
   final bool Function() _shouldAdvancePosition;
   final bool Function()? _isLoadingQueue;
@@ -48,14 +56,6 @@ class AfPositionTracker {
   static const _rawStaleAfterTicks = 4;
 
   bool _disposed = false;
-
-  AfPositionTracker({
-    required PlayerApi player,
-    required bool Function() shouldAdvancePosition,
-    bool Function()? isLoadingQueue,
-  })  : _player = player,
-        _shouldAdvancePosition = shouldAdvancePosition,
-        _isLoadingQueue = isLoadingQueue;
 
   void start() {
     _positionPollTimer =

@@ -23,15 +23,6 @@ enum TrackRowDensity { compact, comfortable, generous }
 /// Active rows render a 2dp left bar in `spectral.energy` and tint the
 /// background to `surface.base`.
 class TrackRow extends StatelessWidget {
-  final AfTrack track;
-  final TrackRowDensity density;
-  final bool isActive;
-  final Color? activeAccent;
-  final VoidCallback? onTap;
-  final VoidCallback? onLongPress;
-  final int? leadingNumber;
-  final bool showQualityChip;
-  final bool showHeart;
 
   const TrackRow({
     super.key,
@@ -45,6 +36,15 @@ class TrackRow extends StatelessWidget {
     this.showQualityChip = true,
     this.showHeart = true,
   });
+  final AfTrack track;
+  final TrackRowDensity density;
+  final bool isActive;
+  final Color? activeAccent;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+  final int? leadingNumber;
+  final bool showQualityChip;
+  final bool showHeart;
 
   @override
   Widget build(BuildContext context) {

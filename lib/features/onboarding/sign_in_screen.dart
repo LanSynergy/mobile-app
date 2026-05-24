@@ -14,13 +14,13 @@ import '../../utils/url.dart';
 import '../../widgets/server_pill.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
-  final JellyfinServer server;
-  final ServerType serverType;
   const SignInScreen({
     super.key,
     required this.server,
     this.serverType = ServerType.jellyfin,
   });
+  final JellyfinServer server;
+  final ServerType serverType;
 
   @override
   ConsumerState<SignInScreen> createState() => _SignInScreenState();
@@ -321,8 +321,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 /// terminate TLS), but the user should know what they're agreeing to before
 /// the access token rides over the wire in plain.
 class _CleartextWarning extends StatelessWidget {
-  final String baseUrl;
   const _CleartextWarning({required this.baseUrl});
+  final String baseUrl;
 
   @override
   Widget build(BuildContext context) {

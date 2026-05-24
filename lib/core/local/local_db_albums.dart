@@ -5,9 +5,9 @@ import '../jellyfin/models/items.dart';
 import 'app_database.dart';
 
 class AlbumRepository {
-  final AppDatabase db;
 
   AlbumRepository(this.db);
+  final AppDatabase db;
 
   Future<List<AfAlbum>> allAlbums({int? limit, int offset = 0}) async {
     final paginated = limit != null;

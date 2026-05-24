@@ -6,10 +6,10 @@ import 'app_database.dart';
 import 'local_db_tracks.dart';
 
 class PlaylistRepository {
-  final AppDatabase db;
-  final TrackRepository tracks;
 
   PlaylistRepository(this.db, this.tracks);
+  final AppDatabase db;
+  final TrackRepository tracks;
 
   Future<List<PlaylistEntity>> allPlaylists() {
     return (db.select(db.playlists)

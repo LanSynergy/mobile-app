@@ -14,11 +14,11 @@ import 'dart:ui';
 /// caller (e.g. `palette_generator` or a manual decode) so this file
 /// stays decoupled from image-loading.
 
-class OklchColor {
+class OklchColor { // 0–360 (degrees)
+  const OklchColor(this.l, this.c, this.h);
   final double l; // 0–1
   final double c; // ~0–0.4
-  final double h; // 0–360 (degrees)
-  const OklchColor(this.l, this.c, this.h);
+  final double h;
 
   Color toColor({int alpha = 255}) {
     final rgb = oklchToLinearSrgb(l, c, h);

@@ -24,7 +24,7 @@ void main() {
       registerFallbackValue(Loop.off);
       registerFallbackValue(Gapless.weak);
       registerFallbackValue(SpectrumSettings.defaults);
-      registerFallbackValue(Media(''));
+      registerFallbackValue(const Media(''));
     });
 
     setUp(() async {
@@ -47,7 +47,7 @@ void main() {
       when(() => player.setShuffle(any())).thenAnswer((_) async {});
 
       // Populate queue so settings actions are allowed
-      final track = const AfTrack(
+      const track = AfTrack(
         id: '1',
         title: 'Track A',
         artistName: 'Test Artist',
@@ -59,7 +59,7 @@ void main() {
         resolveStreamUrl: (t) => 'https://example.com/1.flac',
       );
       ctrls.playlist.add(
-        Playlist(
+        const Playlist(
           [Media('https://example.com/1.flac')],
           index: 0,
         ),

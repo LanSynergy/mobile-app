@@ -188,10 +188,6 @@ String _enqueueLabel(int count, String verbPhrase) {
 }
 
 class _MenuItem extends StatelessWidget {
-  final FaIconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool enabled;
 
   const _MenuItem({
     required this.icon,
@@ -199,6 +195,10 @@ class _MenuItem extends StatelessWidget {
     required this.onTap,
     this.enabled = true,
   });
+  final FaIconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {

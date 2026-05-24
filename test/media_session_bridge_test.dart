@@ -181,7 +181,7 @@ void main() {
       await bridge.handleMethodCall(
           const MethodCall('seek', {'positionMs': 5000}));
 
-      expect(seekedTo, Duration(seconds: 5));
+      expect(seekedTo, const Duration(seconds: 5));
     });
 
     test('platform skipTo call triggers onSkipToQueueItem with correct index',
@@ -283,7 +283,7 @@ void main() {
     // Throttle behavior
     // -----------------------------------------------------------------------
     test('pushState throttles rapid calls with unchanged state', () {
-      final state = const MediaSessionState(
+      const state = MediaSessionState(
         playing: true,
         buffering: false,
         position: Duration.zero,
@@ -356,7 +356,7 @@ void main() {
     });
 
     test('pushState sends after throttle window expires', () async {
-      final state = const MediaSessionState(
+      const state = MediaSessionState(
         playing: true,
         buffering: false,
         position: Duration.zero,

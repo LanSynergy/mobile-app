@@ -15,8 +15,8 @@ import '../../widgets/track_row.dart';
 
 /// Mockup 08 — Artist detail.
 class ArtistScreen extends ConsumerWidget {
-  final String artistId;
   const ArtistScreen({super.key, required this.artistId});
+  final String artistId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -122,7 +122,7 @@ class ArtistScreen extends ConsumerWidget {
                             )),
                         const SizedBox(height: AfSpacing.s24),
                       ],
-                      SectionHeader(title: 'Top songs', uppercase: true),
+                      const SectionHeader(title: 'Top songs', uppercase: true),
                       const SizedBox(height: AfSpacing.s12),
                       for (final t in topTracks)
                         Padding(
@@ -140,9 +140,9 @@ class ArtistScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              SliverToBoxAdapter(
+              const SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                       horizontal: AfSpacing.gutterGenerous),
                   child:
                       SectionHeader(title: 'Albums', uppercase: true),

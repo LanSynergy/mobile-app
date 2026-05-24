@@ -1241,7 +1241,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                   Navigator.pop(context);
                   _deletePreset(name);
                 },
-                child: Text(
+                child: const Text(
                   'Delete',
                   style: TextStyle(color: AfColors.semanticError),
                 ),

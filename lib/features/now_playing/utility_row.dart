@@ -39,7 +39,7 @@ class UtilityRow extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         UtilityIcon(
-          icon: FaIcon(
+          icon: const FaIcon(
             FontAwesomeIcons.alignLeft,
             size: 22,
             color: AfColors.textSecondary,
@@ -48,7 +48,7 @@ class UtilityRow extends ConsumerWidget {
           onTap: () => context.push('/lyrics'),
         ),
         UtilityIcon(
-          icon: FaIcon(
+          icon: const FaIcon(
             FontAwesomeIcons.chartSimple,
             size: 22,
             color: AfColors.textSecondary,
@@ -67,7 +67,7 @@ class UtilityRow extends ConsumerWidget {
           color: isSaved ? AfColors.indigo300 : null,
         ),
         UtilityIcon(
-          icon: FaIcon(
+          icon: const FaIcon(
             FontAwesomeIcons.listUl,
             size: 22,
             color: AfColors.textSecondary,
@@ -76,7 +76,7 @@ class UtilityRow extends ConsumerWidget {
           onTap: () => context.push('/queue'),
         ),
         UtilityIcon(
-          icon: FaIcon(
+          icon: const FaIcon(
             FontAwesomeIcons.ellipsis,
             size: 22,
             color: AfColors.textSecondary,
@@ -101,7 +101,7 @@ void showMoreSheet(BuildContext context, WidgetRef ref) {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         MoreItem(
-          icon: FaIcon(
+          icon: const FaIcon(
             FontAwesomeIcons.moon,
             size: 22,
             color: AfColors.textSecondary,
@@ -113,7 +113,7 @@ void showMoreSheet(BuildContext context, WidgetRef ref) {
           },
         ),
         MoreItem(
-          icon: FaIcon(
+          icon: const FaIcon(
             FontAwesomeIcons.gaugeHigh,
             size: 22,
             color: AfColors.textSecondary,
@@ -125,7 +125,7 @@ void showMoreSheet(BuildContext context, WidgetRef ref) {
           },
         ),
         MoreItem(
-          icon: Icon(
+          icon: const Icon(
             Icons.cast_outlined,
             size: 22,
             color: AfColors.textSecondary,
@@ -137,7 +137,7 @@ void showMoreSheet(BuildContext context, WidgetRef ref) {
           },
         ),
         MoreItem(
-          icon: FaIcon(
+          icon: const FaIcon(
             FontAwesomeIcons.volumeHigh,
             size: 22,
             color: AfColors.textSecondary,
@@ -149,7 +149,7 @@ void showMoreSheet(BuildContext context, WidgetRef ref) {
           },
         ),
         MoreItem(
-          icon: FaIcon(
+          icon: const FaIcon(
             FontAwesomeIcons.bluetooth,
             size: 22,
             color: AfColors.textSecondary,
@@ -161,7 +161,7 @@ void showMoreSheet(BuildContext context, WidgetRef ref) {
           },
         ),
         MoreItem(
-          icon: FaIcon(
+          icon: const FaIcon(
             FontAwesomeIcons.repeat,
             size: 22,
             color: AfColors.textSecondary,
@@ -173,7 +173,7 @@ void showMoreSheet(BuildContext context, WidgetRef ref) {
           },
         ),
         MoreItem(
-          icon: FaIcon(
+          icon: const FaIcon(
             FontAwesomeIcons.circleInfo,
             size: 22,
             color: AfColors.textSecondary,
@@ -573,10 +573,6 @@ class OutputDialogContent extends ConsumerWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class UtilityIcon extends StatelessWidget {
-  final Widget icon;
-  final String label;
-  final VoidCallback onTap;
-  final Color? color;
 
   const UtilityIcon({
     super.key,
@@ -585,6 +581,10 @@ class UtilityIcon extends StatelessWidget {
     required this.onTap,
     this.color,
   });
+  final Widget icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -614,9 +614,6 @@ class UtilityIcon extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class MoreItem extends StatelessWidget {
-  final Widget icon;
-  final String label;
-  final VoidCallback onTap;
 
   const MoreItem({
     super.key,
@@ -624,6 +621,9 @@ class MoreItem extends StatelessWidget {
     required this.label,
     required this.onTap,
   });
+  final Widget icon;
+  final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

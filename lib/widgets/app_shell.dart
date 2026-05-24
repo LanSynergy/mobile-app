@@ -17,26 +17,26 @@ import 'mini_player.dart';
 /// bottom nav so it floats independently of the tab content (per
 /// non-negotiable §4.1).
 class AppShell extends ConsumerWidget {
-  final StatefulNavigationShell shell;
   const AppShell({super.key, required this.shell});
+  final StatefulNavigationShell shell;
 
   static final _items = [
-    AfBottomNavItem(
+    const AfBottomNavItem(
       icon: FontAwesomeIcons.house,
       filledIcon: FontAwesomeIcons.house,
       label: 'Home',
     ),
-    AfBottomNavItem(
+    const AfBottomNavItem(
       icon: FontAwesomeIcons.magnifyingGlass,
       filledIcon: FontAwesomeIcons.magnifyingGlass,
       label: 'Search',
     ),
-    AfBottomNavItem(
+    const AfBottomNavItem(
       icon: FontAwesomeIcons.compactDisc,
       filledIcon: FontAwesomeIcons.compactDisc,
       label: 'Library',
     ),
-    AfBottomNavItem(
+    const AfBottomNavItem(
       icon: FontAwesomeIcons.user,
       filledIcon: FontAwesomeIcons.user,
       label: 'Profile',

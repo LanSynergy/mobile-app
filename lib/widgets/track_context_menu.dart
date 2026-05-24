@@ -277,10 +277,6 @@ void _addToQueue(WidgetRef ref, AfTrack track) {
 }
 
 class _MenuItem extends StatelessWidget {
-  final FaIconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final Color? iconColor;
 
   const _MenuItem({
     required this.icon,
@@ -288,6 +284,10 @@ class _MenuItem extends StatelessWidget {
     required this.onTap,
     this.iconColor,
   });
+  final FaIconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {

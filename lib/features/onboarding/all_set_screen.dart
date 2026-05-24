@@ -30,7 +30,7 @@ class _AllSetScreenState extends ConsumerState<AllSetScreen>
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    final library = const <AfAlbum>[];
+    const library = <AfAlbum>[];
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -113,15 +113,15 @@ class _AllSetScreenState extends ConsumerState<AllSetScreen>
 class _StatRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final tracks = 0;
-    final albums = 0;
+    const tracks = 0;
+    const albums = 0;
     final hours = (0 /
             60)
         .round();
     return Row(
       children: [
-        _Stat(label: 'Tracks', value: '$tracks'),
-        _Stat(label: 'Albums', value: '$albums'),
+        const _Stat(label: 'Tracks', value: '$tracks'),
+        const _Stat(label: 'Albums', value: '$albums'),
         _Stat(label: 'Hours', value: '$hours'),
       ],
     );
@@ -129,9 +129,9 @@ class _StatRow extends StatelessWidget {
 }
 
 class _Stat extends StatelessWidget {
+  const _Stat({required this.label, required this.value});
   final String label;
   final String value;
-  const _Stat({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +142,7 @@ class _Stat extends StatelessWidget {
           horizontal: AfSpacing.s12,
         ),
         margin: const EdgeInsets.only(right: 8),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AfColors.surfaceBase,
           borderRadius: AfRadii.borderMd,
         ),

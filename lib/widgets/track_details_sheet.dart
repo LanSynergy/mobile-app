@@ -47,13 +47,13 @@ void showTrackDetailsSheet(BuildContext context, WidgetRef ref, AfTrack track) {
 }
 
 class _TrackDetailsBody extends ConsumerWidget {
-  final AfTrack track;
-  final ScrollController scrollController;
 
   const _TrackDetailsBody({
     required this.track,
     required this.scrollController,
   });
+  final AfTrack track;
+  final ScrollController scrollController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -86,7 +86,7 @@ class _TrackDetailsBody extends ConsumerWidget {
         const SizedBox(height: AfSpacing.s16),
 
         // ── Song metadata ───────────────────────────────────────
-        _SectionTitle(label: 'Song info'),
+        const _SectionTitle(label: 'Song info'),
         _DetailRow(label: 'Title', value: track.title),
         _DetailRow(label: 'Artist', value: track.artistName),
         _DetailRow(label: 'Album', value: track.albumName),
@@ -131,7 +131,7 @@ class _TrackDetailsBody extends ConsumerWidget {
                 const SizedBox(height: AfSpacing.s16),
 
                 // ── File details ────────────────────────────────
-                _SectionTitle(label: 'File details'),
+                const _SectionTitle(label: 'File details'),
                 if (details.container != null)
                   _DetailRow(
                     label: 'Container',
@@ -176,8 +176,8 @@ class _TrackDetailsBody extends ConsumerWidget {
               ],
             );
           },
-          loading: () => Padding(
-            padding: const EdgeInsets.symmetric(vertical: AfSpacing.s24),
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: AfSpacing.s24),
             child: Center(
               child: SizedBox(
                 width: 20,
@@ -211,7 +211,7 @@ class _TrackDetailsBody extends ConsumerWidget {
         const SizedBox(height: AfSpacing.s16),
         const Divider(height: 1, color: AfColors.surfaceHigh),
         const SizedBox(height: AfSpacing.s16),
-        _SectionTitle(label: 'File details'),
+        const _SectionTitle(label: 'File details'),
         _DetailRow(label: 'Codec', value: q.sourceCodec.toUpperCase()),
         if (q.bitrateKbps != null)
           _DetailRow(label: 'Bitrate', value: '${q.bitrateKbps} kbps'),
@@ -234,8 +234,8 @@ class _TrackDetailsBody extends ConsumerWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  final String label;
   const _SectionTitle({required this.label});
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -254,15 +254,15 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool selectable;
 
   const _DetailRow({
     required this.label,
     required this.value,
     this.selectable = false,
   });
+  final String label;
+  final String value;
+  final bool selectable;
 
   @override
   Widget build(BuildContext context) {

@@ -90,12 +90,12 @@ class MockPlayerStream extends Mock implements PlayerStream {}
   when(() => player.getRawProperty(any())).thenAnswer((_) async => null);
 
   // Playback control stubs (override in specific tests)
-  when(() => player.play()).thenAnswer((_) async {});
-  when(() => player.pause()).thenAnswer((_) async {});
-  when(() => player.stop()).thenAnswer((_) async {});
+  when(player.play).thenAnswer((_) async {});
+  when(player.pause).thenAnswer((_) async {});
+  when(player.stop).thenAnswer((_) async {});
   when(() => player.seek(any())).thenAnswer((_) async {});
-  when(() => player.next()).thenAnswer((_) async {});
-  when(() => player.previous()).thenAnswer((_) async {});
+  when(player.next).thenAnswer((_) async {});
+  when(player.previous).thenAnswer((_) async {});
   when(() => player.jump(any())).thenAnswer((_) async {});
   when(
     () => player.open(any(), play: any(named: 'play')),
@@ -104,7 +104,7 @@ class MockPlayerStream extends Mock implements PlayerStream {}
     () => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')),
   ).thenAnswer((_) async {});
   when(() => player.add(any())).thenAnswer((_) async {});
-  when(() => player.dispose()).thenAnswer((_) async {});
+  when(player.dispose).thenAnswer((_) async {});
 
   final ctrls = StreamControllers(
     playing: playingCtrl,
@@ -125,17 +125,6 @@ class MockPlayerStream extends Mock implements PlayerStream {}
 
 /// Typed container for all stream controllers created by [createMockPlayer].
 class StreamControllers {
-  final StreamController<bool> playing;
-  final StreamController<bool> completed;
-  final StreamController<Playlist> playlist;
-  final StreamController<Duration> position;
-  final StreamController<double> rate;
-  final StreamController<Loop> loop;
-  final StreamController<bool> buffering;
-  final StreamController<Duration> duration;
-  final StreamController<bool> shuffle;
-  final StreamController<CoverArt?> coverArt;
-  final StreamController<Device> audioDevice;
 
   const StreamControllers({
     required this.playing,
@@ -150,6 +139,17 @@ class StreamControllers {
     required this.coverArt,
     required this.audioDevice,
   });
+  final StreamController<bool> playing;
+  final StreamController<bool> completed;
+  final StreamController<Playlist> playlist;
+  final StreamController<Duration> position;
+  final StreamController<double> rate;
+  final StreamController<Loop> loop;
+  final StreamController<bool> buffering;
+  final StreamController<Duration> duration;
+  final StreamController<bool> shuffle;
+  final StreamController<CoverArt?> coverArt;
+  final StreamController<Device> audioDevice;
 
   /// Close all controllers. Call in `tearDown`.
   void dispose() {

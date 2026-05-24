@@ -16,24 +16,6 @@ import 'url_builder.dart';
 /// Hand-rolled per design spec §11.1 — community Dart SDKs are stale and
 /// the surface we need is small.
 class JellyfinClient implements MusicBackend {
-  static final _genreSplitRe = RegExp(r'[,;]');
-
-  final JellyfinServer server;
-  final String? accessToken;
-  final String? userId;
-  final String deviceId;
-
-  /// Aetherfin's running app version (e.g. `0.2.3`). Sent verbatim in the
-  /// `MediaBrowser` Authorization `Version="…"` field and in the
-  /// `User-Agent` header. Loaded from `package_info_plus` in `main()` and
-  /// injected through [aetherfinVersionProvider] — never hardcoded here so
-  /// a `pubspec.yaml` bump can't leave stale strings in HTTP traffic.
-  final String clientVersion;
-
-  final Dio _dio;
-  final MemCacheStore _cacheStore;
-  final JellyfinUrlBuilder _urlBuilder;
-  late final JellyfinResponseParser _parser;
 
   JellyfinClient({
     required this.server,
@@ -143,6 +125,24 @@ class JellyfinClient implements MusicBackend {
       );
     }
   }
+  static final _genreSplitRe = RegExp(r'[,;]');
+
+  final JellyfinServer server;
+  final String? accessToken;
+  final String? userId;
+  final String deviceId;
+
+  /// Aetherfin's running app version (e.g. `0.2.3`). Sent verbatim in the
+  /// `MediaBrowser` Authorization `Version="…"` field and in the
+  /// `User-Agent` header. Loaded from `package_info_plus` in `main()` and
+  /// injected through [aetherfinVersionProvider] — never hardcoded here so
+  /// a `pubspec.yaml` bump can't leave stale strings in HTTP traffic.
+  final String clientVersion;
+
+  final Dio _dio;
+  final MemCacheStore _cacheStore;
+  final JellyfinUrlBuilder _urlBuilder;
+  late final JellyfinResponseParser _parser;
 
   @override
   ServerType get serverType => ServerType.jellyfin;

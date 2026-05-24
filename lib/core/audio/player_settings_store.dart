@@ -38,12 +38,12 @@ import 'player_service.dart';
 /// Pairs the string key with conversion functions so [PlayerSettingsStore]
 /// can read and write any supported type through a single generic path.
 class SettingsKey<T> {
-  final String key;
-  final T Function(dynamic) fromStorage;
-  final dynamic Function(T) toStorage;
 
   const SettingsKey(this.key,
       {required this.fromStorage, required this.toStorage});
+  final String key;
+  final T Function(dynamic) fromStorage;
+  final dynamic Function(T) toStorage;
 
   static SettingsKey<int> intKey(String k) =>
       SettingsKey<int>(k, fromStorage: (v) => (v as num).toInt(), toStorage: (v) => v);
@@ -108,13 +108,13 @@ class PlayerSettingsStore {
     final p = await _prefs();
     final stored = desc.toStorage(value);
     switch (stored) {
-      case int v:
+      case final int v:
         await p.setInt(desc.key, v);
-      case double v:
+      case final double v:
         await p.setDouble(desc.key, v);
-      case bool v:
+      case final bool v:
         await p.setBool(desc.key, v);
-      case String v:
+      case final String v:
         await p.setString(desc.key, v);
       default:
         throw ArgumentError('Unsupported type for key ${desc.key}: ${stored.runtimeType}');
@@ -573,21 +573,12 @@ class PlayerSettingsStore {
 
 /// A named EQ preset containing 18-band params + bass/treble shelves.
 class EqPreset {
-  final Map<String, double> bands;
-  final double bass;
-  final double treble;
 
   const EqPreset({
     required this.bands,
     this.bass = 0.0,
     this.treble = 0.0,
   });
-
-  Map<String, dynamic> toJson() => {
-        'bands': bands,
-        'bass': bass,
-        'treble': treble,
-      };
 
   factory EqPreset.fromJson(Map<String, dynamic> json) {
     final bandsRaw = json['bands'] as Map<String, dynamic>?;
@@ -601,4 +592,13 @@ class EqPreset {
       treble: (json['treble'] as num?)?.toDouble() ?? 0.0,
     );
   }
+  final Map<String, double> bands;
+  final double bass;
+  final double treble;
+
+  Map<String, dynamic> toJson() => {
+        'bands': bands,
+        'bass': bass,
+        'treble': treble,
+      };
 }

@@ -8,21 +8,6 @@ import '../../utils/log.dart';
 /// Immutable snapshot of playback state pushed to the Android native
 /// [MediaSessionService] via [NativeMediaSessionBridge].
 class MediaSessionState {
-  final bool playing;
-  final bool buffering;
-  final Duration position;
-  final Duration duration;
-  final double speed;
-  final String? title;
-  final String? artist;
-  final String? album;
-  final String? artPath;
-  final int? queueIndex;
-  final int queueSize;
-
-  /// When `true` the bridge will fire [NativeMediaSessionBridge.onArtworkNeeded]
-  /// so the owner can trigger remote artwork download for the current track.
-  final bool needsArtworkDownload;
 
   const MediaSessionState({
     required this.playing,
@@ -38,6 +23,21 @@ class MediaSessionState {
     required this.queueSize,
     this.needsArtworkDownload = false,
   });
+  final bool playing;
+  final bool buffering;
+  final Duration position;
+  final Duration duration;
+  final double speed;
+  final String? title;
+  final String? artist;
+  final String? album;
+  final String? artPath;
+  final int? queueIndex;
+  final int queueSize;
+
+  /// When `true` the bridge will fire [NativeMediaSessionBridge.onArtworkNeeded]
+  /// so the owner can trigger remote artwork download for the current track.
+  final bool needsArtworkDownload;
 }
 
 /// Owns the [MethodChannel] for `aetherfin.media_session` and handles all
@@ -55,6 +55,11 @@ class MediaSessionState {
 /// The owner ([AfPlayerService]) creates the bridge, wires callbacks, and
 /// calls [pushState] on every playback state change.
 class NativeMediaSessionBridge {
+
+  NativeMediaSessionBridge({MethodChannel? channel})
+      : _channel = channel ?? const MethodChannel('aetherfin.media_session') {
+    _channel.setMethodCallHandler(_handleMethodCall);
+  }
   final MethodChannel _channel;
 
   static const _throttleDuration = Duration(milliseconds: 100);
@@ -79,11 +84,6 @@ class NativeMediaSessionBridge {
   /// [MediaSessionState.needsArtworkDownload] is `true`. The owner should
   /// trigger a remote artwork download for the current track.
   VoidCallback? onArtworkNeeded;
-
-  NativeMediaSessionBridge({MethodChannel? channel})
-      : _channel = channel ?? const MethodChannel('aetherfin.media_session') {
-    _channel.setMethodCallHandler(_handleMethodCall);
-  }
 
   /// Push the current playback state to the native media session.
   ///

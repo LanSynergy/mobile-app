@@ -9,13 +9,13 @@ import 'models/server.dart';
 /// Persists the active [JellyfinAuth] in flutter_secure_storage so the
 /// access token survives app restarts and never lives in plain shared prefs.
 class AuthStorage {
+  AuthStorage([FlutterSecureStorage? storage])
+      : _storage = storage ?? const FlutterSecureStorage(aOptions: _options);
   static const _key = 'aetherfin.auth.v1';
   static const _deviceIdKey = 'aetherfin.deviceId.v1';
   static const _options = AndroidOptions(encryptedSharedPreferences: true);
 
   final FlutterSecureStorage _storage;
-  AuthStorage([FlutterSecureStorage? storage])
-      : _storage = storage ?? const FlutterSecureStorage(aOptions: _options);
 
   /// Returns the stable per-install device ID. Generated on first call and
   /// persisted to encrypted shared prefs so Jellyfin sees the same device

@@ -8,8 +8,8 @@ import '../jellyfin/models/items.dart';
 /// don't replicate the wiring (and so the spectral provider always
 /// updates first — per spec §3.4).
 class PlayActions {
-  final Ref ref;
   PlayActions(this.ref);
+  final Ref ref;
 
   /// Replace the queue with [tracks] and start playback at [startIndex].
   /// If shuffle mode is ON, the selected track plays first and the rest
@@ -115,4 +115,4 @@ class PlayActions {
   }
 }
 
-final playActionsProvider = Provider<PlayActions>((ref) => PlayActions(ref));
+final playActionsProvider = Provider<PlayActions>(PlayActions.new);

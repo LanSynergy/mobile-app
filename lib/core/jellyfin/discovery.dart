@@ -14,6 +14,8 @@ import 'models/server.dart';
 /// Jellyfin advertises itself on `_jellyfin._tcp.local` (HTTP) and
 /// `_jellyfin-server._tcp.local` (server-API). We listen on both.
 class JellyfinDiscovery {
+
+  JellyfinDiscovery({required this.clientVersion});
   static const _httpService = '_jellyfin._tcp.local';
   static const _serverService = '_jellyfin-server._tcp.local';
 
@@ -23,8 +25,6 @@ class JellyfinDiscovery {
   /// HTTP byte stamped consistently and prevents a `Aetherfin/0.0.0` from
   /// leaking into an admin's nginx logs.
   final String clientVersion;
-
-  JellyfinDiscovery({required this.clientVersion});
 
   /// Yields servers as they are resolved. The stream completes after
   /// [timeout] elapses; cancel the subscription early to stop scanning.

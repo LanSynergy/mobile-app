@@ -129,8 +129,8 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
 }
 
 class PrefetchToggle extends StatefulWidget {
-  final AfPlayerService svc;
   const PrefetchToggle({super.key, required this.svc});
+  final AfPlayerService svc;
 
   @override
   State<PrefetchToggle> createState() => PrefetchToggleState();

@@ -21,9 +21,9 @@ Future<T?> showBlurDialog<T>({
 
 /// The actual Blur Dialog widget.
 class _BlurDialog extends StatelessWidget {
-  final Widget child;
 
   const _BlurDialog({required this.child});
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {

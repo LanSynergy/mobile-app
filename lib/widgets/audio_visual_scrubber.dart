@@ -11,12 +11,6 @@ import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 
 class AudioVisualScrubber extends ConsumerStatefulWidget {
-  final double height;
-  final double progress;
-  final Color playedColor;
-  final Color unplayedColor;
-  final ValueChanged<double>? onScrub;
-  final ValueChanged<double>? onScrubEnd;
 
   const AudioVisualScrubber({
     super.key,
@@ -27,6 +21,12 @@ class AudioVisualScrubber extends ConsumerStatefulWidget {
     this.onScrub,
     this.onScrubEnd,
   });
+  final double height;
+  final double progress;
+  final Color playedColor;
+  final Color unplayedColor;
+  final ValueChanged<double>? onScrub;
+  final ValueChanged<double>? onScrubEnd;
 
   @override
   ConsumerState<AudioVisualScrubber> createState() =>
@@ -201,11 +201,11 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ScrubNotifier extends ChangeNotifier {
+
+  _ScrubNotifier({required double progress}) : _progress = progress;
   double _progress;
   bool   _dragging     = false;
   double _dragProgress = 0.0;
-
-  _ScrubNotifier({required double progress}) : _progress = progress;
 
   double get displayProgress =>
       _dragging ? _dragProgress : _progress.clamp(0.0, 1.0);
@@ -323,10 +323,6 @@ class _BlockNotifier extends ChangeNotifier {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _CombinedBarPainter extends CustomPainter {
-  final _BlockNotifier fftNotifier;
-  final _ScrubNotifier scrubNotifier;
-  final Color playedColor;
-  final Color unplayedColor;
 
   _CombinedBarPainter({
     required this.fftNotifier,
@@ -334,6 +330,10 @@ class _CombinedBarPainter extends CustomPainter {
     required this.playedColor,
     required this.unplayedColor,
   }) : super(repaint: Listenable.merge([fftNotifier, scrubNotifier]));
+  final _BlockNotifier fftNotifier;
+  final _ScrubNotifier scrubNotifier;
+  final Color playedColor;
+  final Color unplayedColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -407,6 +407,12 @@ class _CombinedBarPainter extends CustomPainter {
 }
 
 class _ScrubOverlayPainter extends CustomPainter {
+
+  _ScrubOverlayPainter({
+    required this.notifier,
+    required this.playedColor,
+    required this.unplayedColor,
+  }) : super(repaint: notifier);
   final _ScrubNotifier notifier;
   final Color playedColor;
   final Color unplayedColor;
@@ -414,12 +420,6 @@ class _ScrubOverlayPainter extends CustomPainter {
   double? _cachedFillW;
   Color? _cachedPlayedColor;
   Shader? _cachedShader;
-
-  _ScrubOverlayPainter({
-    required this.notifier,
-    required this.playedColor,
-    required this.unplayedColor,
-  }) : super(repaint: notifier);
 
   @override
   void paint(Canvas canvas, Size size) {

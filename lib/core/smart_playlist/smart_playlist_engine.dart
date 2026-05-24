@@ -34,7 +34,7 @@ class SmartPlaylistEngine {
 
     final rows = await d.customSelect(
       sql,
-      variables: where.args.map((a) => Variable(a)).toList(),
+      variables: where.args.map(Variable.new).toList(),
     ).get();
 
     // Parse back to drift's TrackEntity, then to AfTrack

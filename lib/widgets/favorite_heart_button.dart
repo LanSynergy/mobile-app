@@ -40,6 +40,12 @@ import '../utils/log.dart';
 /// `_busy` stays local because it gates *this* button's request, not
 /// the global toggle state.
 class FavoriteHeartButton extends ConsumerStatefulWidget {
+
+  const FavoriteHeartButton({
+    super.key,
+    required this.track,
+    this.size = 20,
+  });
   /// The track to favorite/unfavorite. Only `id` and `isFavorite` are
   /// read; the rest of the model is forwarded to `currentTrackProvider`
   /// when this row is the playing track.
@@ -48,12 +54,6 @@ class FavoriteHeartButton extends ConsumerStatefulWidget {
   /// Heart icon size in logical pixels (default 20, matching the
   /// previous inline `IconButton` styling in `TrackRow`).
   final double size;
-
-  const FavoriteHeartButton({
-    super.key,
-    required this.track,
-    this.size = 20,
-  });
 
   @override
   ConsumerState<FavoriteHeartButton> createState() =>

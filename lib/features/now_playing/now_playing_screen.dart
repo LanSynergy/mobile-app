@@ -98,8 +98,8 @@ class NowPlayingScreen extends ConsumerWidget {
 /// Watches spectral for the background gradient only.
 /// Rebuilds when artwork color changes — not on position ticks.
 class _ReactiveBackground extends ConsumerWidget {
-  final Widget child;
   const _ReactiveBackground({required this.child});
+  final Widget child;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -124,8 +124,8 @@ class _ReactiveBackground extends ConsumerWidget {
 /// Bin 0 (kick drum / sub-bass) drives a ±8% scale bump via asymmetric lerp.
 /// ValueNotifier + Transform.scale — no setState, no rebuild of parent.
 class _ReactiveArtwork extends ConsumerStatefulWidget {
-  final AfTrack track;
   const _ReactiveArtwork({required this.track});
+  final AfTrack track;
 
   @override
   ConsumerState<_ReactiveArtwork> createState() => _ReactiveArtworkState();
@@ -276,9 +276,9 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
 
 /// Static metadata row — only rebuilds when track changes (on skip).
 class _MetadataRow extends ConsumerWidget {
-  final AfTrack track;
 
   const _MetadataRow({required this.track});
+  final AfTrack track;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -356,10 +356,10 @@ class _MetadataRow extends ConsumerWidget {
 /// Scrolls [text] from right to left when it exceeds the available width.
 /// Falls back to a static [Text] when the content fits.
 class _MarqueeText extends StatefulWidget {
-  final String text;
-  final TextStyle style;
 
   const _MarqueeText({required this.text, required this.style});
+  final String text;
+  final TextStyle style;
 
   @override
   State<_MarqueeText> createState() => _MarqueeTextState();
@@ -522,8 +522,8 @@ class _AbLoopButton extends ConsumerWidget {
 ///   onScrub    → local preview only (no seek, no audio pipeline churn)
 ///   onScrubEnd → single committed seek
 class _ReactiveProgress extends ConsumerStatefulWidget {
-  final AfTrack track;
   const _ReactiveProgress({required this.track});
+  final AfTrack track;
 
   @override
   ConsumerState<_ReactiveProgress> createState() => _ReactiveProgressState();
@@ -628,8 +628,8 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
 
 /// Watches playing/shuffle/loop — rebuilds on transport state changes only.
 class _ReactiveTransport extends ConsumerWidget {
-  final AfTrack track;
   const _ReactiveTransport({required this.track});
+  final AfTrack track;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -679,8 +679,8 @@ class _ReactiveTransport extends ConsumerWidget {
 }
 
 class _TopBar extends ConsumerWidget {
-  final AfTrack track;
   const _TopBar({required this.track});
+  final AfTrack track;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -697,7 +697,7 @@ class _TopBar extends ConsumerWidget {
           child: Row(
             children: [
               IconButton(
-                icon: FaIcon(
+                icon: const FaIcon(
                   FontAwesomeIcons.angleDown,
                   color: AfColors.textPrimary,
                   size: 24,
@@ -832,8 +832,8 @@ enum _NowPlayingAction { startRadio, goToAlbum, goToArtist }
 ///     transcode / degradation.
 ///   • Neither (no timer + no quality info) → empty.
 class _NowPlayingMetaChip extends ConsumerWidget {
-  final TrackQuality? quality;
   const _NowPlayingMetaChip({required this.quality});
+  final TrackQuality? quality;
 
   static String _formatRemaining(Duration d) {
     if (d.isNegative) return '0:00';
@@ -857,7 +857,7 @@ class _NowPlayingMetaChip extends ConsumerWidget {
       final remaining = ref.watch(sleepTimerRemainingProvider);
       return Material(
         color: AfColors.surfaceHigh,
-        shape: RoundedRectangleBorder(borderRadius: AfRadii.borderPill),
+        shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderPill),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () {
@@ -903,16 +903,6 @@ class _NowPlayingMetaChip extends ConsumerWidget {
 }
 
 class _TransportRow extends StatelessWidget {
-  final bool isPlaying;
-  final Spectral spectral;
-  final bool shuffleOn;
-  final Loop loopMode;
-  final Color accent;
-  final VoidCallback onPlayPause;
-  final VoidCallback onPrev;
-  final VoidCallback onNext;
-  final VoidCallback onShuffle;
-  final VoidCallback onRepeat;
 
   const _TransportRow({
     required this.isPlaying,
@@ -926,6 +916,16 @@ class _TransportRow extends StatelessWidget {
     required this.onShuffle,
     required this.onRepeat,
   });
+  final bool isPlaying;
+  final Spectral spectral;
+  final bool shuffleOn;
+  final Loop loopMode;
+  final Color accent;
+  final VoidCallback onPlayPause;
+  final VoidCallback onPrev;
+  final VoidCallback onNext;
+  final VoidCallback onShuffle;
+  final VoidCallback onRepeat;
 
   @override
   Widget build(BuildContext context) {
@@ -942,7 +942,7 @@ class _TransportRow extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         _TransportButton(
-          icon: FaIcon(
+          icon: const FaIcon(
             FontAwesomeIcons.backwardStep,
             size: 28,
             color: AfColors.textPrimary,
@@ -957,7 +957,7 @@ class _TransportRow extends StatelessWidget {
         ),
         const SizedBox(width: 16),
         _TransportButton(
-          icon: FaIcon(
+          icon: const FaIcon(
             FontAwesomeIcons.forwardStep,
             size: 28,
             color: AfColors.textPrimary,
@@ -983,12 +983,12 @@ class _TransportRow extends StatelessWidget {
 }
 
 class _TransportButton extends StatelessWidget {
-  final Widget icon;
-  final VoidCallback onTap;
   const _TransportButton({
     required this.icon,
     required this.onTap,
   });
+  final Widget icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1004,15 +1004,15 @@ class _TransportButton extends StatelessWidget {
 }
 
 class _PlayButton extends StatelessWidget {
-  final bool isPlaying;
-  final Color color;
-  final VoidCallback onTap;
 
   const _PlayButton({
     required this.isPlaying,
     required this.color,
     required this.onTap,
   });
+  final bool isPlaying;
+  final Color color;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

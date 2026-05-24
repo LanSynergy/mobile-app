@@ -7,13 +7,6 @@ import '../design_tokens/tokens.dart';
 /// Section title + optional trailing action. 24dp top spacing,
 /// 12dp bottom spacing (callers handle the spacing wrappers).
 class SectionHeader extends StatelessWidget {
-  final String title;
-  final String? actionLabel;
-  final VoidCallback? onActionTap;
-
-  /// When true, the title is uppercased and rendered in `label` style
-  /// (used for sub-section headers like `PUBLIC PLAYLISTS`).
-  final bool uppercase;
 
   const SectionHeader({
     super.key,
@@ -22,6 +15,13 @@ class SectionHeader extends StatelessWidget {
     this.onActionTap,
     this.uppercase = false,
   });
+  final String title;
+  final String? actionLabel;
+  final VoidCallback? onActionTap;
+
+  /// When true, the title is uppercased and rendered in `label` style
+  /// (used for sub-section headers like `PUBLIC PLAYLISTS`).
+  final bool uppercase;
 
   @override
   Widget build(BuildContext context) {

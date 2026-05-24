@@ -53,10 +53,6 @@ void showSaveToPlaylistSheet(
 /// row at the top. Pure widget — no provider reads — so it can be
 /// embedded in any dialog / sheet / page.
 class SaveToPlaylistSheet extends StatefulWidget {
-  final AfTrack track;
-  final MusicBackend backend;
-  final VoidCallback onInvalidate;
-  final VoidCallback? onSaved;
 
   const SaveToPlaylistSheet({
     super.key,
@@ -65,6 +61,10 @@ class SaveToPlaylistSheet extends StatefulWidget {
     required this.onInvalidate,
     this.onSaved,
   });
+  final AfTrack track;
+  final MusicBackend backend;
+  final VoidCallback onInvalidate;
+  final VoidCallback? onSaved;
 
   @override
   State<SaveToPlaylistSheet> createState() => _SaveToPlaylistSheetState();

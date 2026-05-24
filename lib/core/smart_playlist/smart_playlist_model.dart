@@ -2,9 +2,6 @@ import 'dart:convert';
 
 /// A single filter rule in a smart playlist.
 class SmartRule {
-  final String field;
-  final String operator;
-  final dynamic value;
 
   const SmartRule({
     required this.field,
@@ -12,17 +9,20 @@ class SmartRule {
     required this.value,
   });
 
-  Map<String, dynamic> toJson() => {
-        'field': field,
-        'operator': operator,
-        'value': value,
-      };
-
   factory SmartRule.fromJson(Map<String, dynamic> json) => SmartRule(
         field: json['field'] as String,
         operator: json['operator'] as String,
         value: json['value'],
       );
+  final String field;
+  final String operator;
+  final dynamic value;
+
+  Map<String, dynamic> toJson() => {
+        'field': field,
+        'operator': operator,
+        'value': value,
+      };
 
   /// Human-readable summary (e.g. "Genre is Rock").
   String get summary {
@@ -59,15 +59,6 @@ class SmartRule {
 
 /// A smart playlist definition with rules, sort, and limit.
 class SmartPlaylist {
-  final String id;
-  final String name;
-  final String combinator; // 'all' (AND) or 'any' (OR)
-  final List<SmartRule> rules;
-  final String sort;
-  final String sortOrder; // 'asc' or 'desc'
-  final int? limit;
-  final DateTime createdAt;
-  final DateTime updatedAt;
 
   const SmartPlaylist({
     required this.id,
@@ -80,6 +71,15 @@ class SmartPlaylist {
     required this.createdAt,
     required this.updatedAt,
   });
+  final String id;
+  final String name;
+  final String combinator; // 'all' (AND) or 'any' (OR)
+  final List<SmartRule> rules;
+  final String sort;
+  final String sortOrder; // 'asc' or 'desc'
+  final int? limit;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   SmartPlaylist copyWith({
     String? id,

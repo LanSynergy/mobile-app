@@ -8,11 +8,6 @@ import 'music_backend_providers.dart';
 
 /// Holds pagination state for a paginated list.
 class PaginationState<T> {
-  final List<T> items;
-  final int currentPage;
-  final bool isLoadingMore;
-  final bool hasMore;
-  final String? error;
 
   const PaginationState({
     this.items = const [],
@@ -21,6 +16,11 @@ class PaginationState<T> {
     this.hasMore = true,
     this.error,
   });
+  final List<T> items;
+  final int currentPage;
+  final bool isLoadingMore;
+  final bool hasMore;
+  final String? error;
 
   PaginationState<T> copyWith({
     List<T>? items,
@@ -40,12 +40,12 @@ class PaginationState<T> {
 
 /// Manages paginated track loading via [MusicBackend.allTracks()].
 class TracksNotifier extends StateNotifier<PaginationState<AfTrack>> {
-  final Ref _ref;
-  static const _pageSize = 100;
 
   TracksNotifier(this._ref) : super(const PaginationState<AfTrack>()) {
-    Future.microtask(() => loadFirstPage());
+    Future.microtask(loadFirstPage);
   }
+  final Ref _ref;
+  static const _pageSize = 100;
 
   /// Fetch the first page of tracks.
   Future<void> loadFirstPage() async {

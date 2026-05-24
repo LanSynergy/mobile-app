@@ -21,8 +21,8 @@ import '../../widgets/track_row.dart';
 ///   • Rename playlist (appbar action)
 ///   • Delete playlist (appbar action)
 class PlaylistScreen extends ConsumerStatefulWidget {
-  final String playlistId;
   const PlaylistScreen({super.key, required this.playlistId});
+  final String playlistId;
 
   @override
   ConsumerState<PlaylistScreen> createState() => _PlaylistScreenState();
@@ -405,9 +405,9 @@ enum _PlaylistAction { rename, delete }
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
+  const _Header({required this.pl, required this.tracks});
   final AfPlaylist pl;
   final List<AfTrack> tracks;
-  const _Header({required this.pl, required this.tracks});
 
   @override
   Widget build(BuildContext context) {
@@ -420,9 +420,9 @@ class _Header extends StatelessWidget {
           Container(
             width: 96,
             height: 96,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               borderRadius: AfRadii.borderMd,
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [AfColors.indigo700, AfColors.indigo950],
@@ -456,11 +456,11 @@ class _Header extends StatelessWidget {
 }
 
 class _ActionRow extends StatelessWidget {
+  const _ActionRow(
+      {required this.tracks, required this.onPlay, required this.onShuffle});
   final List<AfTrack> tracks;
   final VoidCallback onPlay;
   final VoidCallback onShuffle;
-  const _ActionRow(
-      {required this.tracks, required this.onPlay, required this.onShuffle});
 
   @override
   Widget build(BuildContext context) {
@@ -473,7 +473,7 @@ class _ActionRow extends StatelessWidget {
               onTap: tracks.isEmpty ? null : onPlay,
               child: Container(
                 height: 48,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AfColors.indigo600,
                   borderRadius: AfRadii.borderPill,
                 ),

@@ -15,9 +15,6 @@ enum ServerPillState {
 /// Hidden when the user is connected to their default server. Visible only
 /// when the connection state warrants attention.
 class ServerPill extends StatelessWidget {
-  final ServerPillState state;
-  final String label;
-  final VoidCallback? onTap;
 
   const ServerPill({
     super.key,
@@ -25,6 +22,9 @@ class ServerPill extends StatelessWidget {
     required this.label,
     this.onTap,
   });
+  final ServerPillState state;
+  final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -74,9 +74,9 @@ class ServerPill extends StatelessWidget {
 }
 
 class _Dot extends StatefulWidget {
+  const _Dot({required this.color, required this.pulse});
   final Color color;
   final bool pulse;
-  const _Dot({required this.color, required this.pulse});
   @override
   State<_Dot> createState() => _DotState();
 }

@@ -223,7 +223,7 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
                   backgroundColor: AfColors.indigo600,
                   disabledBackgroundColor: AfColors.surfaceHigh,
                   padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
-                  shape: RoundedRectangleBorder(
+                  shape: const RoundedRectangleBorder(
                     borderRadius: AfRadii.borderMd,
                   ),
                 ),

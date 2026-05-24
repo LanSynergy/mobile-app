@@ -1,19 +1,19 @@
 /// A single timestamped lyric line.
 class LrcLine {
+  const LrcLine(this.start, this.text);
   final Duration start;
   final String text;
-  const LrcLine(this.start, this.text);
 }
 
 /// Parsed LRC payload.
 class Lrc {
+
+  const Lrc({this.lines = const [], this.meta = const {}});
   /// Lines sorted by [LrcLine.start].
   final List<LrcLine> lines;
 
   /// Track-level metadata (`[ti:..]`, `[ar:..]`, `[al:..]`).
   final Map<String, String> meta;
-
-  const Lrc({this.lines = const [], this.meta = const {}});
 
   bool get isEmpty => lines.isEmpty;
 

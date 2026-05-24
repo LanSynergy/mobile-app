@@ -25,8 +25,8 @@ import '../../widgets/track_row.dart';
 ///   speed (ScrollController-driven, not AnimationController-driven).
 ///   Below: title, artist, metadata line, action row, track list.
 class AlbumScreen extends ConsumerStatefulWidget {
-  final String albumId;
   const AlbumScreen({super.key, required this.albumId});
+  final String albumId;
 
   @override
   ConsumerState<AlbumScreen> createState() => _AlbumScreenState();
@@ -209,11 +209,6 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
 }
 
 class _OpacityAppBar extends StatelessWidget {
-  final double scrollOffset;
-  final double threshold;
-  final String title;
-  final VoidCallback onBack;
-  final VoidCallback onMore;
 
   const _OpacityAppBar({
     required this.scrollOffset,
@@ -222,6 +217,11 @@ class _OpacityAppBar extends StatelessWidget {
     required this.onBack,
     required this.onMore,
   });
+  final double scrollOffset;
+  final double threshold;
+  final String title;
+  final VoidCallback onBack;
+  final VoidCallback onMore;
 
   @override
   Widget build(BuildContext context) {
@@ -243,7 +243,7 @@ class _OpacityAppBar extends StatelessWidget {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: FaIcon(FontAwesomeIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
+                        icon: const FaIcon(FontAwesomeIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
                         onPressed: onBack,
                       ),
                       Expanded(
@@ -259,7 +259,7 @@ class _OpacityAppBar extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        icon: FaIcon(FontAwesomeIcons.ellipsis, color: AfColors.textPrimary, size: 24),
+                        icon: const FaIcon(FontAwesomeIcons.ellipsis, color: AfColors.textPrimary, size: 24),
                         onPressed: onMore,
                       ),
                     ],
@@ -276,7 +276,7 @@ class _OpacityAppBar extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(
-                    icon: FaIcon(FontAwesomeIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
+                    icon: const FaIcon(FontAwesomeIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
                     onPressed: onBack,
                   ),
                   Expanded(
@@ -292,7 +292,7 @@ class _OpacityAppBar extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    icon: FaIcon(FontAwesomeIcons.ellipsis, color: AfColors.textPrimary, size: 24),
+                    icon: const FaIcon(FontAwesomeIcons.ellipsis, color: AfColors.textPrimary, size: 24),
                     onPressed: onMore,
                   ),
                 ],
@@ -303,14 +303,14 @@ class _OpacityAppBar extends StatelessWidget {
 }
 
 class _ActionRow extends ConsumerStatefulWidget {
-  final VoidCallback onPlay;
-  final VoidCallback onMore;
-  final AfAlbum album;
   const _ActionRow({
     required this.onPlay,
     required this.onMore,
     required this.album,
   });
+  final VoidCallback onPlay;
+  final VoidCallback onMore;
+  final AfAlbum album;
 
   @override
   ConsumerState<_ActionRow> createState() => _ActionRowState();
@@ -382,7 +382,7 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: widget.onPlay,
-            icon: FaIcon(FontAwesomeIcons.play, color: AfColors.textOnPrimary, size: 22),
+            icon: const FaIcon(FontAwesomeIcons.play, color: AfColors.textOnPrimary, size: 22),
             label: const Text('Play'),
           ),
         ),
@@ -413,10 +413,10 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
 }
 
 class _IconCircle extends StatelessWidget {
+  const _IconCircle({required this.icon, required this.onTap, this.color});
   final FaIconData icon;
   final VoidCallback onTap;
   final Color? color;
-  const _IconCircle({required this.icon, required this.onTap, this.color});
 
   @override
   Widget build(BuildContext context) {

@@ -48,10 +48,6 @@ class SafPicker {
 
 /// A file discovered during SAF tree scan.
 class SafFile {
-  final String uri;
-  final String name;
-  final int size;
-  final int lastModified;
 
   const SafFile({
     required this.uri,
@@ -66,21 +62,14 @@ class SafFile {
         size: (m['size'] as int?) ?? 0,
         lastModified: (m['lastModified'] as int?) ?? 0,
       );
+  final String uri;
+  final String name;
+  final int size;
+  final int lastModified;
 }
 
 /// Metadata extracted from a single audio file.
 class SafMetadata {
-  final String? title;
-  final String? artist;
-  final String? album;
-  final String? albumArtist;
-  final String? trackNumber;
-  final String? duration;
-  final String? year;
-  final String? genre;
-  final String? bitrate;
-  final String? sampleRate;
-  final String? mimeType;
 
   const SafMetadata({
     this.title,
@@ -109,6 +98,17 @@ class SafMetadata {
         sampleRate: m['sampleRate'] as String?,
         mimeType: m['mimeType'] as String?,
       );
+  final String? title;
+  final String? artist;
+  final String? album;
+  final String? albumArtist;
+  final String? trackNumber;
+  final String? duration;
+  final String? year;
+  final String? genre;
+  final String? bitrate;
+  final String? sampleRate;
+  final String? mimeType;
 
   /// Parse duration string (milliseconds) to int.
   int get durationMs => int.tryParse(duration ?? '') ?? 0;

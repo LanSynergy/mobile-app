@@ -286,7 +286,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          SliverToBoxAdapter(
+          const SliverToBoxAdapter(
             child: SizedBox(
               height: AfSpacing.bottomInsetWithMiniAndNav,
             ),
@@ -319,8 +319,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 /// right edge — gives the user a clear affordance that the section is
 /// swipeable without needing explicit "swipe" hints.
 class _HeroAlbumCarousel extends ConsumerStatefulWidget {
-  final List<AfAlbum> albums;
   const _HeroAlbumCarousel({required this.albums});
+  final List<AfAlbum> albums;
 
   @override
   ConsumerState<_HeroAlbumCarousel> createState() => _HeroAlbumCarouselState();

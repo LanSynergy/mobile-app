@@ -49,9 +49,9 @@ final authProvider = StateNotifierProvider<AuthNotifier, JellyfinAuth?>((ref) {
 });
 
 class AuthNotifier extends StateNotifier<JellyfinAuth?> {
-  final AuthStorage _storage;
 
   AuthNotifier(this._storage, {JellyfinAuth? initial}) : super(initial);
+  final AuthStorage _storage;
 
   Future<void> save(JellyfinAuth auth) async {
     await _storage.save(auth);

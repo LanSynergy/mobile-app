@@ -23,8 +23,8 @@ enum LibrarySortOption {
   yearDesc('Year (Newest)'),
   yearAsc('Year (Oldest)');
 
-  final String label;
   const LibrarySortOption(this.label);
+  final String label;
 }
 
 /// Sections available in local mode (no server playlists, no liked — those are server concepts).
@@ -38,11 +38,11 @@ const _localSections = [
 ];
 
 class LibraryScreen extends ConsumerStatefulWidget {
+
+  const LibraryScreen({super.key, this.initialSection});
   /// When set, the screen opens directly on this tab instead of Albums.
   /// Used by deep-links from Home (genre tiles → Genres, artists → Artists).
   final LibrarySection? initialSection;
-
-  const LibraryScreen({super.key, this.initialSection});
 
   @override
   ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
@@ -179,7 +179,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   Text('Library', style: AfTypography.titleLarge),
                   const Spacer(),
                   PopupMenuButton<LibrarySortOption>(
-                    icon: FaIcon(FontAwesomeIcons.arrowDownShortWide, color: AfColors.textPrimary, size: 22),
+                    icon: const FaIcon(FontAwesomeIcons.arrowDownShortWide, color: AfColors.textPrimary, size: 22),
                     tooltip: 'Sort',
                     initialValue: _sortOption,
                     onSelected: (option) {
@@ -227,9 +227,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 }
 
 class _SegmentedPill extends ConsumerWidget {
+  const _SegmentedPill({required this.value, required this.onChanged});
   final LibrarySection value;
   final ValueChanged<LibrarySection> onChanged;
-  const _SegmentedPill({required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -290,11 +290,6 @@ class _SegmentedPill extends ConsumerWidget {
 }
 
 class _SectionBody extends ConsumerWidget {
-  final LibrarySection section;
-  final LibrarySortOption sortOption;
-  final List<AfAlbum> Function(List<AfAlbum>)? sortAlbums;
-  final List<AfArtist> Function(List<AfArtist>)? sortArtists;
-  final List<AfTrack> Function(List<AfTrack>)? sortTracks;
 
   const _SectionBody({
     required this.section,
@@ -303,10 +298,15 @@ class _SectionBody extends ConsumerWidget {
     this.sortArtists,
     this.sortTracks,
   });
+  final LibrarySection section;
+  final LibrarySortOption sortOption;
+  final List<AfAlbum> Function(List<AfAlbum>)? sortAlbums;
+  final List<AfArtist> Function(List<AfArtist>)? sortArtists;
+  final List<AfTrack> Function(List<AfTrack>)? sortTracks;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final padding = const EdgeInsets.symmetric(horizontal: AfSpacing.s16);
+    const padding = EdgeInsets.symmetric(horizontal: AfSpacing.s16);
     final mode = ref.watch(appModeProvider);
     final isLocal = mode == AppMode.local;
 
@@ -508,9 +508,9 @@ class _SectionBody extends ConsumerWidget {
                   leading: Container(
                     width: 48,
                     height: 48,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       borderRadius: AfRadii.borderSm,
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [AfColors.semanticWarning, AfColors.semanticError],
@@ -537,9 +537,9 @@ class _SectionBody extends ConsumerWidget {
                 leading: Container(
                   width: 48,
                   height: 48,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     borderRadius: AfRadii.borderSm,
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [AfColors.indigo800, AfColors.indigo950],

@@ -7,11 +7,6 @@ import '../design_tokens/tokens.dart';
 /// Per spec §8.2: "Your library is quiet. Add music to your Jellyfin
 /// server to see it here." This widget is the canonical layout.
 class EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? body;
-  final String? actionLabel;
-  final VoidCallback? onAction;
 
   const EmptyState({
     super.key,
@@ -21,6 +16,11 @@ class EmptyState extends StatelessWidget {
     this.actionLabel,
     this.onAction,
   });
+  final IconData icon;
+  final String title;
+  final String? body;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {

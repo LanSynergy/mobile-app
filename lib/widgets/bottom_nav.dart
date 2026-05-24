@@ -18,20 +18,17 @@ const _navBg = Color(0xB30B0B14);
 ///   - Pill slides between tabs with 240ms `easeStandard` animation.
 ///   - Inactive tabs show icon only; label appears only on the active tab.
 class AfBottomNavItem {
-  final FaIconData icon;
-  final FaIconData filledIcon;
-  final String label;
   const AfBottomNavItem({
     required this.icon,
     required this.filledIcon,
     required this.label,
   });
+  final FaIconData icon;
+  final FaIconData filledIcon;
+  final String label;
 }
 
 class AfBottomNav extends ConsumerStatefulWidget {
-  final int currentIndex;
-  final ValueChanged<int> onSelect;
-  final List<AfBottomNavItem> items;
 
   const AfBottomNav({
     super.key,
@@ -39,6 +36,9 @@ class AfBottomNav extends ConsumerStatefulWidget {
     required this.onSelect,
     required this.items,
   });
+  final int currentIndex;
+  final ValueChanged<int> onSelect;
+  final List<AfBottomNavItem> items;
 
   @override
   ConsumerState<AfBottomNav> createState() => _AfBottomNavState();

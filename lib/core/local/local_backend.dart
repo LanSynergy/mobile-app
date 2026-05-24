@@ -21,11 +21,11 @@ import 'local_library.dart';
 /// the LocalBackend through `musicBackendProvider` is what lets the
 /// existing UI flip from "server only" to "works in either mode".
 class LocalBackend implements MusicBackend {
+
+  LocalBackend({required this.library, required this.db});
   final LocalLibrary library;
   final LocalDb db;
   static const _uuid = Uuid();
-
-  LocalBackend({required this.library, required this.db});
 
   // ── Identification ────────────────────────────────────────────────
 

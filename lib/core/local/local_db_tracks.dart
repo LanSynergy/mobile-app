@@ -6,9 +6,9 @@ import '../jellyfin/models/quality.dart';
 import 'app_database.dart';
 
 class TrackRepository {
-  final AppDatabase db;
 
   TrackRepository(this.db);
+  final AppDatabase db;
 
   // ── CRUD ────────────────────────────────────────────────────────────────
 

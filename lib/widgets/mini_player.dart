@@ -23,6 +23,14 @@ import 'press_scale.dart';
 ///     matching Spotify / Apple Music / YouTube Music conventions —
 ///     while vertical drags are ignored entirely.
 class MiniPlayer extends ConsumerWidget {
+
+  const MiniPlayer({
+    super.key,
+    this.onTap,
+    this.onPlayPause,
+    this.onSkipNext,
+    this.onSkipPrevious,
+  });
   final VoidCallback? onTap;
   final VoidCallback? onPlayPause;
   final VoidCallback? onSkipNext;
@@ -32,14 +40,6 @@ class MiniPlayer extends ConsumerWidget {
   /// commits to a skip. Below this, the gesture is treated as a stray
   /// slide and ignored so the tap-to-open behaviour stays crisp.
   static const double _swipeVelocityThreshold = 600;
-
-  const MiniPlayer({
-    super.key,
-    this.onTap,
-    this.onPlayPause,
-    this.onSkipNext,
-    this.onSkipPrevious,
-  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -156,10 +156,6 @@ class MiniPlayer extends ConsumerWidget {
 }
 
 class _RingButton extends StatelessWidget {
-  final bool isPlaying;
-  final double progress;
-  final Color color;
-  final VoidCallback? onTap;
 
   const _RingButton({
     required this.isPlaying,
@@ -167,6 +163,10 @@ class _RingButton extends StatelessWidget {
     required this.color,
     this.onTap,
   });
+  final bool isPlaying;
+  final double progress;
+  final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -199,10 +199,10 @@ class _RingButton extends StatelessWidget {
 /// Scrolls [text] from right to left when it exceeds the available width.
 /// Falls back to a static [Text] when the content fits.
 class _MarqueeText extends StatefulWidget {
-  final String text;
-  final TextStyle style;
 
   const _MarqueeText({required this.text, required this.style});
+  final String text;
+  final TextStyle style;
 
   @override
   State<_MarqueeText> createState() => _MarqueeTextState();

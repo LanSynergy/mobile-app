@@ -18,9 +18,6 @@ import '../local/app_database.dart';
 /// The manifest is stored in the [CacheEntries] drift table (track ID,
 /// file size, last-played timestamp) for LRU eviction and stats.
 class OfflineCacheService {
-  final AppDatabase _db;
-  final Dio _dio;
-  String? _cacheDirPath;
 
   OfflineCacheService({required AppDatabase database})
       : _db = database,
@@ -29,6 +26,9 @@ class OfflineCacheService {
           receiveTimeout: const Duration(minutes: 5),
           headers: {'User-Agent': 'Aetherfin'},
         ));
+  final AppDatabase _db;
+  final Dio _dio;
+  String? _cacheDirPath;
 
   Future<void> init() async {
     final dir = await getApplicationSupportDirectory();
