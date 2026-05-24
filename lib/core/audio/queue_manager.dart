@@ -29,6 +29,7 @@ class AfQueueManager {
   final _queueController = StreamController<List<AfTrack>>.broadcast();
 
   int _activePlaylistSyncs = 0;
+  bool _playbackEnded = false;
   late TrackIdExtractor _extractor;
 
   // ── Streams ────────────────────────────────────────────────────────
@@ -52,6 +53,7 @@ class AfQueueManager {
       _currentIndex >= _trackQueue.length - 1;
 
   bool get isSyncingPlaylist => _activePlaylistSyncs != 0;
+  bool get playbackEnded => _playbackEnded;
 
   /// Returns `true` if the queue is not currently being modified by
   /// the owning service (playlist sync is inactive). The service sets
@@ -85,6 +87,7 @@ class AfQueueManager {
       ..clear()
       ..addAll(tracks);
     _currentIndex = startIndex.clamp(0, tracks.length - 1);
+    _playbackEnded = false;
     _queueController.add(List<AfTrack>.unmodifiable(_trackQueue));
   }
 
@@ -141,7 +144,10 @@ class AfQueueManager {
 
   /// Update internal queue state from an mpv playlist event.
   /// Returns true if the active track changed, false otherwise.
+  /// Returns false immediately when playback has ended so deferred
+  /// playlist events from mpv's stop() cannot reinstate the track.
   bool processPlaylistEvent(int newIndex) {
+    if (_playbackEnded) return false;
     if (newIndex < 0 || newIndex >= _trackQueue.length) return false;
 
     final previousTrackId =
@@ -274,6 +280,7 @@ class AfQueueManager {
   }
 
   void clear() {
+    _playbackEnded = false;
     _trackQueue.clear();
     _currentIndex = -1;
     _originalQueue = <AfTrack>[];
@@ -294,6 +301,7 @@ class AfQueueManager {
   /// original queue, URL map).
   void endPlayback() {
     _currentIndex = -1;
+    _playbackEnded = true;
     _trackController.add(null);
   }
 

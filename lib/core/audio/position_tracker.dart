@@ -238,8 +238,12 @@ class AfPositionTracker {
     try {
       final rawPos = await getRawPosition();
       final now = clock.now();
-      final playing = _player.state.playing;
-      final shouldAdvance = playing || _shouldAdvancePosition();
+      // Use the service-level advancement check as the single source of
+      // truth — it verifies a valid track is active and not at queue end.
+      // Do NOT fall back to _player.state.playing here: after stop(), mpv
+      // may still report playing=true (stale property) while no track is
+      // active, causing the position to keep extrapolating past the end.
+      final shouldAdvance = _shouldAdvancePosition();
 
       if (rawPos > Duration.zero) {
         final behind = rawPos.inMilliseconds + 1000 <

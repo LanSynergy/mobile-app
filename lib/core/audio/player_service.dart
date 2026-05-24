@@ -428,10 +428,21 @@ class AfPlayerService {
   /// True when UI/notification progress should keep advancing even if mpv's
   /// reported `playing` flag is temporarily stale/false on an OEM pipeline.
   bool get shouldAdvancePosition {
-    final hasTrack = currentTrack != null;
-    final completedAtQueueEnd =
-        _player.state.completed && _queueManager.isAtQueueEnd;
-    return hasTrack && !completedAtQueueEnd && !_userPaused && !_isLoadingQueue;
+    if (currentTrack == null) return false;
+    if (_userPaused || _isLoadingQueue) return false;
+    if (_player.state.completed && _queueManager.isAtQueueEnd) return false;
+
+    // Fallback completion detection: on some OEM pipelines / local files
+    // mpv's `end-of-file` property observation never fires, so the
+    // `completed` stream stays false.  When the queue has ended and mpv
+    // reports not-playing, stop advancing.  This also handles the case
+    // where the user seeks back after the track ends — a duration-based
+    // check would incorrectly keep advancing because pos < dur.
+    if (_queueManager.isAtQueueEnd && !_player.state.playing) {
+      return false;
+    }
+
+    return true;
   }
 
   bool get isShuffleEnabled => _queueManager.isShuffleEnabled;
@@ -1043,7 +1054,15 @@ class AfPlayerService {
         _updateMediaSession();
         if (playing) {
           _pendingPlayNudgeIdx = null;
-          _userPaused = false;
+          // Guard: only clear _userPaused when there's an active track.
+          // After endPlayback, currentTrack is null and mpv may still
+          // fire playing=true (stale property observation). Resetting
+          // _userPaused would re-enable position advancement and the
+          // nudge mechanism, causing the progress bar to keep moving
+          // and the QS play/pause button to be unresponsive.
+          if (_queueManager.currentTrack != null) {
+            _userPaused = false;
+          }
           _nudgeRetries = 0;
         } else if (!_userPaused &&
             _pendingPlayNudgeIdx != null &&
@@ -1087,45 +1106,54 @@ class AfPlayerService {
           final finishedTrack = _queueManager.currentTrack;
           final nextIdx = _queueManager.currentIndex + 1;
           final isAtEnd = nextIdx >= _queueManager.currentQueue.length;
-          if (!isAtEnd && loopAtEvent == Loop.file) {
-            if (!playingAtEvent) {
-              await _player.play();
+
+          // Suppress playlist listener during completion processing so
+          // mpv events fired by stop() / jump() cannot reinstate the
+          // track after endPlayback() clears it.
+          _queueManager.beginPlaylistSync();
+          try {
+            if (!isAtEnd && loopAtEvent == Loop.file) {
+              if (!playingAtEvent) {
+                await _player.play();
+              }
+              afLog('audio', 'completed: replay file (loop=file) — mpv handles internally');
+            } else if (!isAtEnd) {
+              if (playlistIndexAtEvent == _queueManager.currentIndex) {
+                await _jumpAndPlay(nextIdx);
+                afLog('audio', 'completed: jump+play to index=$nextIdx');
+              }
+            } else {
+              switch (loopAtEvent) {
+                case Loop.off:
+                  _userPaused = true;
+                  _pendingPlayNudgeIdx = null;
+                  _positionTracker.onStop();
+                  try {
+                    await _player.stop();
+                  } catch (e, stack) {
+                    afLog(
+                      'audio',
+                      'stop failed on queue completion',
+                      error: e,
+                      stackTrace: stack,
+                    );
+                  }
+                  _queueManager.endPlayback();
+                  onTrackChanged?.call(null);
+                  _updateMediaSession();
+                  afLog('audio', 'queue end, auto-stop (loop=off)');
+                case Loop.playlist:
+                  await _jumpAndPlay(0);
+                  afLog('audio', 'queue end, looping playlist');
+                case Loop.file:
+                  if (!playingAtEvent) {
+                    await _player.play();
+                  }
+                  afLog('audio', 'queue end, looping file — mpv handles internally');
+              }
             }
-            afLog('audio', 'completed: replay file (loop=file) — mpv handles internally');
-          } else if (!isAtEnd) {
-            if (playlistIndexAtEvent == _queueManager.currentIndex) {
-              await _jumpAndPlay(nextIdx);
-              afLog('audio', 'completed: jump+play to index=$nextIdx');
-            }
-          } else {
-            switch (loopAtEvent) {
-              case Loop.off:
-                _userPaused = true;
-                _pendingPlayNudgeIdx = null;
-                _positionTracker.onStop();
-                try {
-                  await _player.stop();
-                } catch (e, stack) {
-                  afLog(
-                    'audio',
-                    'stop failed on queue completion',
-                    error: e,
-                    stackTrace: stack,
-                  );
-                }
-                _queueManager.endPlayback();
-                onTrackChanged?.call(null);
-                _updateMediaSession();
-                afLog('audio', 'queue end, auto-stop (loop=off)');
-              case Loop.playlist:
-                await _jumpAndPlay(0);
-                afLog('audio', 'queue end, looping playlist');
-              case Loop.file:
-                if (!playingAtEvent) {
-                  await _player.play();
-                }
-                afLog('audio', 'queue end, looping file — mpv handles internally');
-            }
+          } finally {
+            _queueManager.endPlaylistSync();
           }
 
           if (finishedTrack != null) {
@@ -1194,8 +1222,16 @@ class AfPlayerService {
 
     final s = _player.state;
     final isQueueEnd = s.completed && _queueManager.isAtQueueEnd;
+    // Fallback track-end detection for when mpv's end-of-file property
+    // observation doesn't fire.  Overrides s.playing which may be
+    // transiently true even though the track has finished.
+    final trackEnded = !_userPaused &&
+        !_isLoadingQueue &&
+        _queueManager.isAtQueueEnd &&
+        s.duration > Duration.zero &&
+        _positionTracker.lastKnownPosition >= s.duration;
     final effectivePlaying =
-        isQueueEnd ? false : (s.playing || shouldAdvancePosition);
+        (isQueueEnd || trackEnded) ? false : (s.playing || shouldAdvancePosition);
 
     // Throttle — skip early when called too frequently, BUT always let
     // playing→stopped transitions through immediately. If we throttle
@@ -1219,7 +1255,7 @@ class AfPlayerService {
       buffering: s.buffering,
       position: _positionTracker.lastKnownPosition,
       duration: effectiveDuration,
-      speed: s.rate,
+      speed: effectivePlaying ? s.rate : 0.0,
       title: track.title,
       artist: track.artistName,
       album: track.albumName,

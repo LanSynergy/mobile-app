@@ -66,7 +66,7 @@ class CoverCacheManager {
   /// This should be called whenever a cached cover file is created or
   /// read, so that the eviction order reflects actual usage.
   void trackAccess(String path) {
-    _accessTimestamps[path] = DateTime.now().millisecondsSinceEpoch;
+    _accessTimestamps[path] = DateTime.now().microsecondsSinceEpoch;
     _dirty = true;
   }
 
