@@ -37,3 +37,15 @@ void afLog(
     stackTrace: stackTrace,
   );
 }
+
+/// Log a data-provenance event tagged `aetherfin:data`.
+///
+/// Usage:
+/// ```dart
+/// logData('allAlbums', source: 'live', extra: 'count=${res.length}');
+/// ```
+/// Produces: `aetherfin:data allAlbums source=live count=42`
+void logData(String feature, {required String source, String? extra}) {
+  final detail = extra == null || extra.isEmpty ? '' : ' $extra';
+  afLog('data', '$feature source=$source$detail');
+}
