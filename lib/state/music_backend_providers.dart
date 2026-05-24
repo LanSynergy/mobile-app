@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/backend/music_backend.dart';
 import '../core/jellyfin/client.dart';
-import '../core/jellyfin/models/server.dart';
 import '../core/local/local_backend.dart';
 import '../core/subsonic/client.dart';
 import '../utils/log.dart';

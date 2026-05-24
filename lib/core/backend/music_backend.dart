@@ -1,6 +1,12 @@
 import '../jellyfin/models/items.dart';
 import '../jellyfin/models/library.dart';
-import '../jellyfin/models/server.dart';
+
+/// Identifies which server backend is connected.
+///
+/// `local` is a sentinel for the on-device LocalBackend — it has no
+/// real "server" but it does implement [MusicBackend] so favorites and
+/// playlists work the same as in server mode.
+enum ServerType { jellyfin, subsonic, local }
 
 /// Abstract music-server backend.
 ///

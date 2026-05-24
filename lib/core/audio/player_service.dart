@@ -5,7 +5,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
-import '../jellyfin/models/server.dart';
+import '../backend/music_backend.dart';
 import 'artwork_manager.dart';
 import 'audio_device_manager.dart';
 import 'media_session_bridge.dart';

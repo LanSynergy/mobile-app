@@ -3,7 +3,6 @@ import 'package:uuid/uuid.dart';
 import '../backend/music_backend.dart';
 import '../jellyfin/models/items.dart';
 import '../jellyfin/models/library.dart';
-import '../jellyfin/models/server.dart';
 import 'local_db.dart';
 import 'local_library.dart';
 

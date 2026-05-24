@@ -1,3 +1,7 @@
+import 'package:aetherfin/core/backend/music_backend.dart';
+
+export 'package:aetherfin/core/backend/music_backend.dart' show ServerType;
+
 /// A Jellyfin server discovered via mDNS or entered manually.
 class JellyfinServer {
   /// Resolved base URL, e.g. `https://media.example.com:8920` (no trailing slash).
@@ -89,15 +93,3 @@ class JellyfinAuth {
     this.serverType = ServerType.jellyfin,
   });
 }
-
-/// Identifies which server backend is connected.
-///
-/// Re-exported from `backend/music_backend.dart` so existing imports
-/// of `models/server.dart` pick it up without an extra import.
-///
-/// `local` is a sentinel for the on-device LocalBackend — it has no
-/// real "server" but it does implement [MusicBackend] so favorites and
-/// playlists work the same as in server mode. Callers that branch on
-/// server type should treat `local` like a third backend, not as a
-/// "missing" server.
-enum ServerType { jellyfin, subsonic, local }
