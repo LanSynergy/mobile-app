@@ -423,13 +423,18 @@ class _MarqueeTextState extends State<_MarqueeText>
             builder: (context, child) {
               return Transform.translate(
                 offset: Offset(-_offset * _controller.value, 0),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(widget.text, maxLines: 1, style: widget.style),
-                    const SizedBox(width: 32),
-                    Text(widget.text, maxLines: 1, style: widget.style),
-                  ],
+                child: OverflowBox(
+                  minWidth: 0,
+                  maxWidth: double.infinity,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(widget.text, maxLines: 1, style: widget.style),
+                      const SizedBox(width: 32),
+                      Text(widget.text, maxLines: 1, style: widget.style),
+                    ],
+                  ),
                 ),
               );
             },
