@@ -614,12 +614,11 @@ class AfPlayerService {
     _queueManager.engine.setShuffle(enabled);
     _queueManager.emitQueue();
 
-    final track = _queueManager.currentTrack;
-    if (track != null) {
-      _queueManager.emitCurrentTrack(track);
-      onTrackChanged?.call(track);
-    }
-    _updateMediaSession();
+    // Don't emitCurrentTrack or fire onTrackChanged — the current track
+    // hasn't changed, only the remaining queue order has. Firing
+    // onTrackChanged would reset positionStreamProvider to Duration.zero
+    // and durationStreamProvider to metadata duration, causing the
+    // progress bar to blink between 00:00 and the real position.
 
     afLog(
       'data',
