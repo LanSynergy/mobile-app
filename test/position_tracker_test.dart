@@ -270,17 +270,15 @@ void main() {
       expect(await tracker.getRawDuration(), Duration.zero);
     });
 
-    test('pollAndEmitPosition bails early when seeking or loading queue', () {
+    test('pollAndEmitPosition bails early when seeking', () {
       fakeAsync((async) {
         // Simulate active playback so the poll-skip optimization allows
         // the poll to fire once isSeeking is cleared.
         when(() => player.state).thenReturn(const PlayerState(playing: true));
 
-        var isLoading = false;
         final tracker = AfPositionTracker(
           player: player,
           shouldAdvancePosition: () => false,
-          isLoadingQueue: () => isLoading,
         );
 
         subscription = tracker.positionStream.listen(emittedPositions.add);
@@ -311,15 +309,6 @@ void main() {
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
         expect(emittedPositions, contains(const Duration(seconds: 5)));
-
-        // 2. When loading queue, it emits zero and resets
-        isLoading = true;
-        emittedPositions.clear();
-
-        async.elapse(const Duration(milliseconds: 500));
-        async.flushMicrotasks();
-        expect(tracker.lastKnownPosition, Duration.zero);
-        expect(emittedPositions, [Duration.zero]);
 
         tracker.stop();
       });

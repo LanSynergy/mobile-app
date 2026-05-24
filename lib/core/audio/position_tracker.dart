@@ -32,13 +32,10 @@ class AfPositionTracker {
   AfPositionTracker({
     required PlayerApi player,
     required bool Function() shouldAdvancePosition,
-    bool Function()? isLoadingQueue,
   })  : _player = player,
-        _shouldAdvancePosition = shouldAdvancePosition,
-        _isLoadingQueue = isLoadingQueue;
+        _shouldAdvancePosition = shouldAdvancePosition;
   final PlayerApi _player;
   final bool Function() _shouldAdvancePosition;
-  final bool Function()? _isLoadingQueue;
 
   final StreamController<Duration> _positionController =
       StreamController<Duration>.broadcast();
@@ -212,12 +209,6 @@ class AfPositionTracker {
 
   Future<void> _pollAndEmitPosition() async {
     if (_isSeeking) return;
-    if (_isLoadingQueue?.call() ?? false) {
-      _positionAnchor.lastKnownPos = Duration.zero;
-      _positionAnchor.lastUpdateTime = clock.now();
-      _onZeroEmit();
-      return;
-    }
     // Skip poll when nothing is advancing — no need to hit the
     // MethodChannel for getRawProperty('time-pos').  UI reads from
     // positionStreamProvider which holds the last emitted value.
