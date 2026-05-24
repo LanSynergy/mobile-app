@@ -120,24 +120,28 @@ class AppShell extends ConsumerWidget {
         fit: StackFit.expand,
         children: [
           // Full-bleed gradient background
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF271640),
-                  Color(0xFF040319),
-                ],
-                stops: [0.0, 1.0],
+          const RepaintBoundary(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF271640),
+                    Color(0xFF040319),
+                  ],
+                  stops: [0.0, 1.0],
+                ),
               ),
             ),
           ),
 
           // Tab content — transparent so gradient shows through
-          KeyedSubtree(
-            key: const ValueKey('shell-content'),
-            child: shell,
+          RepaintBoundary(
+            child: KeyedSubtree(
+              key: const ValueKey('shell-content'),
+              child: shell,
+            ),
           ),
 
           // Sleep timer watcher — zero-sized, invisible.
