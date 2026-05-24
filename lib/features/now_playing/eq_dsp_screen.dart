@@ -53,6 +53,11 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   /// through to children and trigger spurious active states).
   bool _isScrollActive = false;
 
+  /// Safety timer: guarantees _isScrollActive is reset even when
+  /// ScrollEndNotification is missing (e.g. fast finger-lift at boundary
+  /// on Android 16 with slow system animation scale).
+  Timer? _scrollSafetyTimer;
+
   // ── Tone ──
   double _bass = 0.0;
   double _treble = 0.0;
@@ -241,6 +246,33 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     if (mounted) {
       setState(() => _userPresets = presets);
     }
+  }
+
+  @override
+  void dispose() {
+    _scrollSafetyTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Resets the scroll-active flag and cancels any pending safety timer.
+  /// Always call this instead of directly setting _isScrollActive = false.
+  void _resetScrollActive() {
+    _scrollSafetyTimer?.cancel();
+    _scrollSafetyTimer = null;
+    if (_isScrollActive) {
+      setState(() => _isScrollActive = false);
+    }
+  }
+
+  /// Arms a safety timer that resets _isScrollActive after [ms] milliseconds.
+  /// Called on every scroll event to keep the window alive while scrolling,
+  /// and fires a final reset if no ScrollEndNotification arrives in time
+  /// (e.g. fast finger-lift at boundary on Android 16 slow animations).
+  void _armScrollSafetyTimer({int ms = 300}) {
+    _scrollSafetyTimer?.cancel();
+    _scrollSafetyTimer = Timer(Duration(milliseconds: ms), () {
+      if (mounted) _resetScrollActive();
+    });
   }
 
   Future<void> _apply() async {
@@ -555,12 +587,23 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           duration: const Duration(milliseconds: 200),
           child: NotificationListener<ScrollNotification>(
             onNotification: (notification) {
-              if (notification is ScrollStartNotification &&
-                  !_isScrollActive) {
-                setState(() => _isScrollActive = true);
-              } else if (notification is ScrollEndNotification &&
-                  _isScrollActive) {
-                setState(() => _isScrollActive = false);
+              if (notification is ScrollStartNotification) {
+                // Cancel any pending safety reset and mark scroll as active.
+                _scrollSafetyTimer?.cancel();
+                if (!_isScrollActive) {
+                  setState(() => _isScrollActive = true);
+                }
+              } else if (notification is ScrollUpdateNotification) {
+                // Keep safety timer alive while the user is actively scrolling.
+                _armScrollSafetyTimer(ms: 300);
+              } else if (notification is ScrollEndNotification) {
+                // Normal end — reset immediately.
+                _resetScrollActive();
+              } else if (notification is UserScrollNotification &&
+                  notification.direction == ScrollDirection.idle) {
+                // Fired when user lifts finger even if ScrollEnd was missed
+                // (common at boundaries with ClampingScrollPhysics).
+                _resetScrollActive();
               }
               return false;
             },

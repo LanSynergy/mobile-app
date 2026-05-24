@@ -587,10 +587,19 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
               final newPos = Duration(
                 milliseconds: (p * duration.inMilliseconds).round(),
               );
+              final svc = ref.read(playerServiceProvider);
+              // Detect "seek after track completed" scenario:
+              // when the queue ended, _userPaused=true and player is stopped.
+              // Seeking alone won't resume — we need to call play() as well.
+              final wasCompletedAtEnd = svc.isCompleted && svc.isUserPaused;
               try {
-                await ref.read(playerServiceProvider).seek(newPos).timeout(
+                await svc.seek(newPos).timeout(
                   const Duration(seconds: 2),
                 );
+                // Resume playback only when the user seeks into a completed track.
+                if (wasCompletedAtEnd && mounted) {
+                  await svc.play().timeout(const Duration(seconds: 2));
+                }
               } catch (_) {
                 // Timeout or seek error — still release the drag lock.
               }
