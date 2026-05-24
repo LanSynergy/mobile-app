@@ -103,14 +103,18 @@ class AfPositionTracker {
     _resetRawPositionStaleDetector(Duration.zero);
   }
 
-  void onPlay() {}
+  void onPlay() {
+    _positionAnchor.lastUpdateTime = clock.now();
+  }
 
   void updateKnownPosition(Duration pos) {
     _positionAnchor.lastKnownPos = pos;
     _positionAnchor.lastUpdateTime = clock.now();
   }
 
-  void onPause() {}
+  void onPause() {
+    _positionAnchor.lastUpdateTime = clock.now();
+  }
 
   void onStop() {
     _positionAnchor.lastKnownPos = Duration.zero;

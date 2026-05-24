@@ -313,5 +313,64 @@ void main() {
         tracker.stop();
       });
     });
+
+    test('onPlay and onPause reset the anchor update time baseline', () {
+      fakeAsync((async) {
+        var shouldAdvance = false;
+        var isPlaying = false;
+        
+        when(() => player.state).thenAnswer((_) => 
+          PlayerState(playing: isPlaying, duration: const Duration(seconds: 10), rate: 1.0)
+        );
+
+        final tracker = AfPositionTracker(
+          player: player,
+          shouldAdvancePosition: () => shouldAdvance,
+        );
+
+        subscription = tracker.positionStream.listen(emittedPositions.add);
+        tracker.start();
+
+        // 1. Initial paused position
+        tracker.updateKnownPosition(const Duration(seconds: 5));
+
+        // 2. Wait 5 seconds while paused
+        async.elapse(const Duration(seconds: 5));
+
+        // 3. Resume play: update state and call onPlay
+        shouldAdvance = true;
+        isPlaying = true;
+        tracker.onPlay();
+
+        // 4. Elapse 1 second
+        async.elapse(const Duration(seconds: 1));
+        async.flushMicrotasks();
+
+        // The position should now be 5s + 1s = 6s.
+        expect(tracker.lastKnownPosition, const Duration(seconds: 6));
+
+        // 5. Pause: update state and call onPause
+        shouldAdvance = false;
+        isPlaying = false;
+        tracker.onPause();
+        
+        // 6. Elapse 2 seconds while paused
+        async.elapse(const Duration(seconds: 2));
+        
+        // 7. Resume play again
+        shouldAdvance = true;
+        isPlaying = true;
+        tracker.onPlay();
+        
+        // 8. Elapse 1 second
+        async.elapse(const Duration(seconds: 1));
+        async.flushMicrotasks();
+
+        // The position should be 6s + 1s = 7s.
+        expect(tracker.lastKnownPosition, const Duration(seconds: 7));
+
+        tracker.stop();
+      });
+    });
   });
 }

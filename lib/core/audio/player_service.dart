@@ -560,7 +560,7 @@ class AfPlayerService {
     unawaited(_reconfigureSpectrumOnTrackChange());
 
     try {
-      await _player.next();
+      await _rebuildWindow(nextTrack);
     } catch (e, stack) {
       afLog('audio', 'skipToNext failed', error: e, stackTrace: stack);
     }
@@ -580,7 +580,7 @@ class AfPlayerService {
     unawaited(_reconfigureSpectrumOnTrackChange());
 
     try {
-      await _player.previous();
+      await _rebuildWindow(prevTrack);
     } catch (e, stack) {
       afLog('audio', 'skipToPrevious failed', error: e, stackTrace: stack);
     }
@@ -611,8 +611,7 @@ class AfPlayerService {
     if (_queueManager.currentQueue.isEmpty) return;
     if (_queueManager.isShuffleEnabled == enabled) return;
 
-    _queueManager.engine.setShuffle(enabled);
-    _queueManager.emitQueue();
+    _queueManager.setShuffle(enabled);
 
     // Don't emitCurrentTrack or fire onTrackChanged — the current track
     // hasn't changed, only the remaining queue order has. Firing
@@ -807,6 +806,16 @@ class AfPlayerService {
           }
           _updateMediaSession();
           unawaited(_reconfigureSpectrumOnTrackChange());
+
+          final next = _queueManager.engine.nextTrack;
+          if (next != null && _resolveStreamUrl != null) {
+            try {
+              await _player.add(Media(_resolveStreamUrl!(next)));
+            } catch (e, stack) {
+              afLog('audio', 'completed: failed to add next track',
+                  error: e, stackTrace: stack);
+            }
+          }
 
           // If mpv stopped, restart playback to advance to next slot.
           if (!playingAtEvent && loopAtEvent != Loop.file) {

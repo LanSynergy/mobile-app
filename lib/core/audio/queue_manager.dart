@@ -52,6 +52,13 @@ class AfQueueManager {
 
   void replaceQueue(List<AfTrack> tracks, int startIndex) {
     _engine.replaceAll(tracks, startIndex);
+    _shuffleController.add(false);
+    _queueController.add(_engine.tracks);
+  }
+
+  void setShuffle(bool enabled) {
+    _engine.setShuffle(enabled);
+    _shuffleController.add(enabled);
     _queueController.add(_engine.tracks);
   }
 

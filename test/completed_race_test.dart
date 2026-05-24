@@ -152,7 +152,7 @@ void main() {
       // Now skip to next.
       await service.skipToNext();
       expect(service.currentTrack?.id, equals('3'));
-      verify(() => player.next()).called(1);
+      verify(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play'))).called(greaterThan(0));
       // No jump() call in 2-track model.
       verifyNever(() => player.jump(any()));
     });

@@ -383,10 +383,10 @@ void main() {
       verify(() => player.seek(const Duration(seconds: 1))).called(1);
 
       await service.skipToNext();
-      verify(() => player.next()).called(1);
+      verify(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play'))).called(greaterThan(0));
 
       await service.skipToPrevious();
-      verify(() => player.previous()).called(1);
+      verify(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play'))).called(greaterThan(0));
 
       // skipToQueueItem now uses _rebuildWindow → openAll, not jump().
       // Use called(>0) because openAll is also called by playQueue (both use
@@ -430,18 +430,16 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(service.currentTrack?.id, equals('2'));
 
-      when(() => player.next()).thenAnswer((_) async {});
-      when(() => player.previous()).thenAnswer((_) async {});
       when(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
           .thenAnswer((_) async {});
 
       // skipToNext
       await service.skipToNext();
-      verify(() => player.next()).called(1);
+      verify(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play'))).called(greaterThan(0));
 
       // skipToPrevious
       await service.skipToPrevious();
-      verify(() => player.previous()).called(1);
+      verify(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play'))).called(greaterThan(0));
 
       // skipToQueueItem now uses _rebuildWindow → openAll, not jump().
       // Both playQueue and skipToQueueItem reload window at mpv index 0,
@@ -488,11 +486,11 @@ void main() {
 
       await handler!(const MethodCall('next'));
       await Future<void>.delayed(Duration.zero);
-      verify(() => player.next()).called(1);
+      verify(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play'))).called(greaterThan(0));
 
       await handler!(const MethodCall('previous'));
       await Future<void>.delayed(Duration.zero);
-      verify(() => player.previous()).called(1);
+      verify(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play'))).called(greaterThan(0));
 
       await handler!(const MethodCall('stop'));
       await Future<void>.delayed(Duration.zero);
@@ -513,6 +511,50 @@ void main() {
         () => handler!(const MethodCall('invalidMethod')),
         throwsA(isA<PlatformException>()),
       );
+    });
+
+    test('completed handler appends next-next track to player playlist', () async {
+      when(() => player.add(any())).thenAnswer((_) async {});
+
+      await service.playQueue(
+        [trackA, trackB, trackC],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('1'));
+
+      updateState((s) => s.copyWith(
+            playing: true,
+            completed: false,
+            loop: Loop.off,
+          ));
+
+      ctrls.completed.add(true);
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => player.add(any(that: isA<Media>()))).called(1);
+    });
+
+    test('setAfShuffleMode emits updated shuffle status to stream', () async {
+      final shuffleStates = <bool>[];
+      final sub = service.shuffleModeStream.listen(shuffleStates.add);
+
+      await service.playQueue(
+        [trackA, trackB],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      await service.setAfShuffleMode(true);
+      await Future<void>.delayed(Duration.zero);
+      await service.setAfShuffleMode(false);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(shuffleStates, contains(true));
+      expect(shuffleStates, contains(false));
+      await sub.cancel();
     });
   });
 }
