@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design_tokens/tokens.dart';
 import '../sleep_timer/sleep_timer_screen.dart';
@@ -111,8 +111,8 @@ class SleepTimerDialogContentState
               ),
               child: Row(
                 children: [
-                  const FaIcon(
-                      FontAwesomeIcons.moon,
+                  const Icon(
+                      LucideIcons.moon,
                       color: AfColors.indigo300,
                       size: 18),
                   const SizedBox(width: AfSpacing.s8),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/audio/play_actions.dart';
@@ -91,9 +92,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ? ref.watch(localGenresProvider)
         : ref.watch(allGenresProvider);
 
-    return ColoredBox(
-      color: AfColors.surfaceCanvas,
-      child: SafeArea(
+    return SafeArea(
       child: RefreshIndicator(
         onRefresh: _onRefresh,
         color: AfColors.indigo300,
@@ -116,7 +115,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Text('Listen', style: AfTypography.titleLarge),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.cast_outlined),
+                    icon: const Icon(LucideIcons.cast),
                     onPressed: () => context.push('/cast'),
                     tooltip: 'Output',
                   ),
@@ -293,7 +292,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
         ],
-      ),
       ),
     ),
     );

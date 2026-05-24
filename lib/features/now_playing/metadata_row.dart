@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
@@ -115,7 +116,7 @@ class _AbLoopButton extends ConsumerWidget {
         ref.read(abLoopAProvider.notifier).state = pos;
       },
       child: Icon(
-        active ? Icons.repeat_one_on_rounded : Icons.repeat_one_rounded,
+        active ? LucideIcons.repeat1 : LucideIcons.repeat1,
         size: 20,
         color: active
             ? Theme.of(context).colorScheme.primary

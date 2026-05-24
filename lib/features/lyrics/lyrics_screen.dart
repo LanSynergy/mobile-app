@@ -135,17 +135,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
         ],
       ),
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AfColors.surfaceCanvas,
-              // ignore: deprecated_member_use
-              spectral.shadow.withValues(alpha: 0.5),
-            ],
-          ),
-        ),
+        color: AfColors.surfaceCanvas,
         child: SafeArea(
           child: lrcAsync.maybeWhen(
             loading: () => const LyricsSkeleton(),

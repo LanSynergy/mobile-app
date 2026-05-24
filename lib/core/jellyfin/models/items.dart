@@ -235,6 +235,11 @@ class AfTrackDetails {
     this.genres = const [],
     this.playCount,
     this.lastPlayedAt,
+    this.year,
+    this.discNumber,
+    this.albumArtist,
+    this.composer,
+    this.isTranscoded = false,
   });
   /// Basic track surface (title, artist, album, duration, quality,
   /// favorite, etc.) — already populated everywhere else.
@@ -278,6 +283,21 @@ class AfTrackDetails {
 
   /// Last played time. Server-owned.
   final DateTime? lastPlayedAt;
+
+  /// Release year (e.g. 2024).
+  final int? year;
+
+  /// Disc number (ParentIndexNumber in Jellyfin, discNumber in Subsonic).
+  final int? discNumber;
+
+  /// Album artist (AlbumArtist in Jellyfin, albumArtist in Subsonic).
+  final String? albumArtist;
+
+  /// Composer (Jellyfin: People → Composer; Subsonic: composer).
+  final String? composer;
+
+  /// Whether the server transcodes the stream (Jellyfin: TranscodingUrl present).
+  final bool isTranscoded;
 
   /// `1.23 MB` / `512 KB` / `1.5 GB` formatting for [sizeBytes]. Uses
   /// 1024-based units (KiB/MiB) but renders the friendlier `MB` suffix

@@ -743,7 +743,7 @@ class JellyfinClient implements MusicBackend {
       'Users/$userId/Items/$id',
       queryParameters: <String, dynamic>{
         'Fields':
-            'MediaSources,Genres,Path,DateCreated,ProductionYear,UserData,PrimaryImageAspectRatio,IndexNumber,ParentIndexNumber,RunTimeTicks',
+            'MediaSources,Genres,Path,DateCreated,ProductionYear,UserData,PrimaryImageAspectRatio,IndexNumber,ParentIndexNumber,RunTimeTicks,AlbumArtist,AlbumArtists,People',
       },
     );
     final data = res.data;
@@ -775,6 +775,27 @@ class JellyfinClient implements MusicBackend {
         const <String>[];
     final userData = (data['UserData'] as Map?)?.cast<String, dynamic>();
     final lastPlayed = userData?['LastPlayedDate'] as String?;
+    final albumArtists = data['AlbumArtists'] as List?;
+    String? albumArtist;
+    if (albumArtists != null && albumArtists.isNotEmpty) {
+      final first = albumArtists.firstWhere(
+        (a) => a is Map,
+        orElse: () => null,
+      );
+      if (first is Map) {
+        final fm = first.cast<String, dynamic>();
+        albumArtist = fm['Name'] as String?;
+      }
+    }
+    albumArtist ??= data['AlbumArtist'] as String?;
+    final composer = (data['People'] as List?)
+        ?.whereType<Map<String, dynamic>>()
+        .map((p) => p.cast<String, dynamic>())
+        .where((p) => p['Type'] == 'Composer')
+        .map((p) => p['Name'] as String?)
+        .whereType<String>()
+        .join(', ');
+    final hasTranscoding = src?['TranscodingUrl'] != null;
 
     return AfTrackDetails(
       track: track,
@@ -788,6 +809,11 @@ class JellyfinClient implements MusicBackend {
       genres: genres,
       playCount: userData?['PlayCount'] as int?,
       lastPlayedAt: lastPlayed != null ? DateTime.tryParse(lastPlayed) : null,
+      year: data['ProductionYear'] as int?,
+      discNumber: data['ParentIndexNumber'] as int?,
+      albumArtist: albumArtist,
+      composer: (composer != null && composer.isNotEmpty) ? composer : null,
+      isTranscoded: hasTranscoding,
     );
   }
 

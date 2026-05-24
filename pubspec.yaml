@@ -56,6 +56,8 @@ dependencies:
   drift: 2.33.0
   sqlite3_flutter_libs: 0.5.42
   clock: 1.1.2
+  lucide_icons: ^0.257.0
+  lucide_icons_flutter: ^3.1.14+1
 
 dev_dependencies:
   flutter_test:

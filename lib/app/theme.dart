@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../design_tokens/tokens.dart';
+import '../utils/oklch.dart';
 
 /// Builds the Aetherfin "Nocturne" (dark) theme.
 ///
@@ -9,39 +10,49 @@ import '../design_tokens/tokens.dart';
 ///   - Bouncy physics is OFF globally (use [ClampingScrollPhysics]).
 ///   - All text is theme-driven; no hard-coded colors in widgets.
 ThemeData buildNocturneTheme() {
+  return _buildTheme(AfColors.indigo600);
+}
+
+/// Same as [buildNocturneTheme] but substitutes the given [accent] colour
+/// as the primary accent instead of the static indigo palette. Used when
+/// a pastel colour from the current artwork is available.
+ThemeData buildNocturneThemeFromAccent(Color accent) {
+  // Convert accent to OKLCH and derive a full pastel palette from its hue.
+  final oklch = srgbToOklch(accent);
+  final triple = buildPastelTriple(oklch.h);
+  return _buildTheme(accent, secondaryAccent: triple.muted);
+}
+
+ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
+  final secondary = secondaryAccent ?? primary;
+
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
     scaffoldBackgroundColor: AfColors.surfaceCanvas,
     canvasColor: AfColors.surfaceCanvas,
 
-    colorScheme: const ColorScheme.dark(
-      primary: AfColors.indigo600,
+    colorScheme: ColorScheme.dark(
+      primary: primary,
       onPrimary: AfColors.textOnPrimary,
-      primaryContainer: AfColors.indigo800,
+      primaryContainer: primary.withValues(alpha: 0.25),
       onPrimaryContainer: AfColors.textOnPrimary,
-
-      secondary: AfColors.indigo300,
+      secondary: secondary,
       onSecondary: AfColors.surfaceCanvas,
-      secondaryContainer: AfColors.indigo900,
+      secondaryContainer: secondary.withValues(alpha: 0.20),
       onSecondaryContainer: AfColors.textPrimary,
-
-      tertiary: AfColors.indigo400,
+      tertiary: secondary,
       onTertiary: AfColors.textOnPrimary,
-
       surface: AfColors.surfaceBase,
       onSurface: AfColors.textPrimary,
       onSurfaceVariant: AfColors.textSecondary,
-
       surfaceContainerLowest: AfColors.surfaceCanvas,
       surfaceContainerLow: AfColors.surfaceLow,
       surfaceContainer: AfColors.surfaceBase,
       surfaceContainerHigh: AfColors.surfaceRaised,
       surfaceContainerHighest: AfColors.surfaceHigh,
-
       error: AfColors.semanticError,
       onError: AfColors.textOnPrimary,
-
       outline: AfColors.surfaceMax,
       outlineVariant: AfColors.surfaceHigh,
     ),
@@ -55,8 +66,6 @@ ThemeData buildNocturneTheme() {
     highlightColor: Colors.transparent,
     hoverColor: Colors.transparent,
 
-    // No bouncy physics on iOS-style scroll. Audio-coupled feel
-    // demands clamped motion.
     scrollbarTheme: const ScrollbarThemeData(
       thumbColor: WidgetStatePropertyAll(AfColors.surfaceMax),
       thickness: WidgetStatePropertyAll(3),
@@ -115,8 +124,8 @@ ThemeData buildNocturneTheme() {
       space: 0,
     ),
 
-    progressIndicatorTheme: const ProgressIndicatorThemeData(
-      color: AfColors.indigo300,
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: primary,
       linearTrackColor: AfColors.surfaceHigh,
       circularTrackColor: AfColors.surfaceHigh,
     ),
@@ -139,9 +148,9 @@ ThemeData buildNocturneTheme() {
         borderRadius: AfRadii.borderLg,
         borderSide: BorderSide(color: AfColors.surfaceHigh, width: 1),
       ),
-      focusedBorder: const OutlineInputBorder(
+      focusedBorder: OutlineInputBorder(
         borderRadius: AfRadii.borderLg,
-        borderSide: BorderSide(color: AfColors.indigo500, width: 1),
+        borderSide: BorderSide(color: primary, width: 1),
       ),
       errorBorder: const OutlineInputBorder(
         borderRadius: AfRadii.borderLg,
@@ -154,7 +163,7 @@ ThemeData buildNocturneTheme() {
 
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: AfColors.indigo600,
+        backgroundColor: primary,
         foregroundColor: AfColors.textOnPrimary,
         textStyle: AfTypography.titleSmall,
         elevation: 0,

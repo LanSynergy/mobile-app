@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
@@ -11,17 +12,6 @@ import 'artwork.dart';
 import 'circular_progress_ring.dart';
 import 'press_scale.dart';
 
-/// Floating mini-player (mockup 04+).
-///
-/// Per non-negotiable §4.1:
-///   - This is a **floating card**, NOT a bottom bar. 12dp side margins,
-///     16dp gap above the bottom nav.
-///   - Progress is a **circular ring around the play glyph**, NOT a
-///     linear bar.
-///   - Mini-player is NEVER swipe-to-dismiss. Horizontal swipes are
-///     instead repurposed as skip-next / skip-previous shortcuts —
-///     matching Spotify / Apple Music / YouTube Music conventions —
-///     while vertical drags are ignored entirely.
 class MiniPlayer extends ConsumerWidget {
 
   const MiniPlayer({
@@ -36,9 +26,6 @@ class MiniPlayer extends ConsumerWidget {
   final VoidCallback? onSkipNext;
   final VoidCallback? onSkipPrevious;
 
-  /// Velocity threshold (logical px/s) above which a horizontal drag
-  /// commits to a skip. Below this, the gesture is treated as a stray
-  /// slide and ignored so the tap-to-open behaviour stays crisp.
   static const double _swipeVelocityThreshold = 600;
 
   @override
@@ -50,7 +37,6 @@ class MiniPlayer extends ConsumerWidget {
           orElse: () => false,
         );
     final position = ref.watch(positionStreamProvider);
-    final spectral = ref.watch(currentSpectralProvider);
     final mpvDuration = ref.watch(durationStreamProvider);
     final duration = mpvDuration > Duration.zero ? mpvDuration : track.duration;
     final ringProgress = duration.inMilliseconds == 0
@@ -65,10 +51,6 @@ class MiniPlayer extends ConsumerWidget {
         label: 'Mini player. Now playing ${track.title} by ${track.artistName}.',
         button: true,
         child: GestureDetector(
-          // Horizontal-only drag detector. Vertical drags propagate to
-          // the surrounding scroll views; horizontal drags are caught
-          // here so the swipe-to-skip gesture wins over any ambient
-          // horizontal page scroll.
           behavior: HitTestBehavior.opaque,
           onHorizontalDragEnd: (details) {
             final vx = details.primaryVelocity ?? 0;
@@ -84,70 +66,109 @@ class MiniPlayer extends ConsumerWidget {
             ensureHitTarget: false,
             onTap: onTap,
             child: ClipRRect(
-            borderRadius: AfRadii.borderMd,
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-              child: Container(
-              height: AfSpacing.miniPlayerHeight,
-              decoration: BoxDecoration(
-                color: AfColors.surfaceRaised.withValues(alpha: 0.70),
-                borderRadius: AfRadii.borderMd,
-                border: Border.all(color: AfColors.surfaceHigh.withValues(alpha: 0.5), width: 1),
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AfSpacing.s8,
-                vertical: 4,
-              ),
-              child: Row(
-              children: [
-                Hero(
-                  tag: 'now-playing-artwork',
-                  child: Artwork(
-                    url: track.imageUrl,
-                    size: 40,
-                    radius: AfRadii.borderSm,
+              borderRadius: AfRadii.borderPill,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                child: Container(
+                  height: AfSpacing.miniPlayerHeight,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: AfRadii.borderPill,
+                    border: Border.all(
+                      color: AfColors.surfaceHigh.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
                   ),
-                ),
-                const SizedBox(width: AfSpacing.s12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  padding: const EdgeInsets.only(
+                    left: 4,
+                    right: AfSpacing.s8,
+                  ),
+                  child: Row(
                     children: [
-                      _MarqueeText(
-                        text: track.title,
-                        style: AfTypography.bodyMedium.copyWith(
-                          color: AfColors.textPrimary,
-                          fontWeight: FontWeight.w600,
+                      SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: CircularProgressRing(
+                          progress: ringProgress,
+                          progressColor: ref.watch(currentSpectralProvider).energy,
+                          size: 48,
+                          strokeWidth: 2,
+                          child: Hero(
+                            tag: 'now-playing-artwork',
+                            child: ClipRRect(
+                              borderRadius: AfRadii.borderPill,
+                              child: Artwork(
+                                url: track.imageUrl,
+                                size: 44,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      _MarqueeText(
-                        text: track.artistName,
-                        style: AfTypography.bodySmall.copyWith(
-                          color: AfColors.textSecondary,
+                      const SizedBox(width: AfSpacing.s12),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _MarqueeText(
+                              text: track.title,
+                              style: AfTypography.bodyMedium.copyWith(
+                                color: AfColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            _MarqueeText(
+                              text: track.artistName,
+                              style: AfTypography.bodySmall.copyWith(
+                                color: AfColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                      _MiniTransportButton(
+                        icon: const Icon(
+                          LucideIcons.skipBack,
+                          size: 24,
+                          color: AfColors.textPrimary,
+                        ),
+                        onTap: onSkipPrevious,
+                      ),
+                      PressScale(
+                        ensureHitTarget: false,
+                        onTap: onPlayPause,
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Icon(
+                              isPlaying
+                                  ? LucideIcons.pause
+                                  : LucideIcons.play,
+                              color: Colors.black,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ),
+                      _MiniTransportButton(
+                        icon: const Icon(
+                          LucideIcons.skipForward,
+                          size: 24,
+                          color: AfColors.textPrimary,
+                        ),
+                        onTap: onSkipNext,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: AfSpacing.s8),
-                _RingButton(
-                  isPlaying: isPlaying,
-                  progress: ringProgress,
-                  color: spectral.energy,
-                  onTap: onPlayPause,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.skip_next_rounded,
-                      color: AfColors.textPrimary),
-                  onPressed: onSkipNext,
-                  tooltip: 'Skip next',
-                ),
-              ],
+              ),
             ),
-            ),
-            ),
-          ),
           ),
         ),
       ),
@@ -155,49 +176,27 @@ class MiniPlayer extends ConsumerWidget {
   }
 }
 
-class _RingButton extends StatelessWidget {
-
-  const _RingButton({
-    required this.isPlaying,
-    required this.progress,
-    required this.color,
-    this.onTap,
+class _MiniTransportButton extends StatelessWidget {
+  const _MiniTransportButton({
+    required this.icon,
+    required this.onTap,
   });
-  final bool isPlaying;
-  final double progress;
-  final Color color;
+  final Widget icon;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return PressScale(
-      ensureHitTarget: false,
       onTap: onTap,
       child: SizedBox(
-        width: AfSpacing.minHitTarget,
-        height: AfSpacing.minHitTarget,
-        child: Center(
-          child: CircularProgressRing(
-            progress: progress,
-            progressColor: color,
-            size: 36,
-            strokeWidth: 2,
-            child: Icon(
-              isPlaying
-                  ? Icons.pause_rounded
-                  : Icons.play_arrow_rounded,
-              color: AfColors.textPrimary,
-              size: 22,
-            ),
-          ),
-        ),
+        width: 48,
+        height: 48,
+        child: Center(child: icon),
       ),
     );
   }
 }
 
-/// Scrolls [text] from right to left when it exceeds the available width.
-/// Falls back to a static [Text] when the content fits.
 class _MarqueeText extends StatefulWidget {
 
   const _MarqueeText({required this.text, required this.style});

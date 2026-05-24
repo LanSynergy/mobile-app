@@ -55,7 +55,7 @@ class BlurBottomSheet extends StatelessWidget {
           filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
           child: Container(
             decoration: BoxDecoration(
-              color: AfColors.surfaceRaised.withValues(alpha: 0.85),
+              color: Colors.white.withValues(alpha: 0.08),
               borderRadius: BorderRadius.vertical(top: Radius.circular(topRadius)),
             ),
             child: Column(

@@ -1,7 +1,6 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design_tokens/tokens.dart';
@@ -23,8 +22,8 @@ class AfBottomNavItem {
     required this.filledIcon,
     required this.label,
   });
-  final FaIconData icon;
-  final FaIconData filledIcon;
+  final IconData icon;
+  final IconData filledIcon;
   final String label;
 }
 
@@ -50,7 +49,6 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
@@ -68,10 +66,10 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
               children: List.generate(
                 widget.items.length,
                 (i) => _buildTab(i, widget.items[i], i == widget.currentIndex),
-              ),
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -94,7 +92,7 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
           children: [
             AnimatedSwitcher(
               duration: AfDurations.instant,
-              child: FaIcon(
+              child: Icon(
                 active ? item.filledIcon : item.icon,
                 key: ValueKey(active),
                 size: 24,

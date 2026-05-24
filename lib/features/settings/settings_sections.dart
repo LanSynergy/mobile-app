@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/audio/player_settings_store.dart';
@@ -99,25 +100,25 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
         else ...[
           for (final folder in _folders)
             SettingsTile(
-              icon: Icons.folder_rounded,
-              iconColor: AfColors.indigo400,
+              icon: LucideIcons.folder,
+              iconColor: AfColors.textSecondary,
               title: folder.displayPath,
               trailing: IconButton(
-                icon: const Icon(Icons.remove_circle_outline,
+                icon: const Icon(LucideIcons.circleMinus,
                     color: AfColors.semanticError, size: 20),
                 onPressed: () => _removeFolder(folder.uri),
               ),
             ),
           SettingsTile(
-            icon: Icons.add_rounded,
-            iconColor: AfColors.semanticSuccess,
+            icon: LucideIcons.plus,
+            iconColor: AfColors.textSecondary,
             title: 'Add folder',
             subtitle: 'Pick another music folder',
             onTap: _addFolder,
           ),
           SettingsTile(
-            icon: Icons.refresh_rounded,
-            iconColor: AfColors.semanticInfo,
+            icon: LucideIcons.refreshCcw,
+            iconColor: AfColors.textSecondary,
             title: 'Re-scan library',
             subtitle: 'Check for new or changed files',
             onTap: _rescan,
@@ -148,8 +149,8 @@ class PrefetchToggleState extends State<PrefetchToggle> {
   @override
   Widget build(BuildContext context) {
     return SettingsSwitchTile(
-      icon: Icons.download_rounded,
-      iconColor: AfColors.semanticSuccess,
+      icon: LucideIcons.download,
+      iconColor: AfColors.textSecondary,
       title: 'Prefetch next track',
       subtitle: 'Pre-load next playlist entry in background',
       value: _enabled,
@@ -169,8 +170,8 @@ class ArtworkPulseSwitch extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final enabled = ref.watch(artworkPulseEnabledProvider);
     return SettingsSwitchTile(
-      icon: Icons.animation_rounded,
-      iconColor: AfColors.semanticWarning,
+      icon: LucideIcons.sparkles,
+      iconColor: AfColors.textSecondary,
       title: 'Artwork pulse',
       subtitle: 'Scale artwork on kick drums',
       value: enabled,

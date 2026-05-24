@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../state/providers.dart';
 import '../utils/log.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -12,11 +14,11 @@ import 'theme.dart';
 ///
 /// Auth redirects are handled by [_authRefresh] inside router.dart, which
 /// is notified by a [ProviderContainer] listener wired in main.dart.
-class AetherfinApp extends StatelessWidget {
+class AetherfinApp extends ConsumerWidget {
   const AetherfinApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     afLog('boot', 'AetherfinApp.build');
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -27,12 +29,15 @@ class AetherfinApp extends StatelessWidget {
       ),
     );
 
+    final accent = ref.watch(pastelAccentColorProvider);
+    final theme = buildNocturneThemeFromAccent(accent);
+
     return MaterialApp.router(
       title: 'Aetherfin',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
-      darkTheme: buildNocturneTheme(),
-      theme: buildNocturneTheme(),
+      darkTheme: theme,
+      theme: theme,
       routerConfig: appRouter,
       builder: (context, child) {
         final mq = MediaQuery.of(context);

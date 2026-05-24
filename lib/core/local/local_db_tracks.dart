@@ -106,6 +106,8 @@ class TrackRepository {
       genres: row.genre.isNotEmpty ? [row.genre] : const [],
       playCount: null,
       lastPlayedAt: null,
+      year: row.year,
+      albumArtist: row.albumArtist.isNotEmpty ? row.albumArtist : null,
     );
   }
 

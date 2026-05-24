@@ -1,9 +1,10 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
@@ -83,9 +84,12 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+          icon: const Icon(LucideIcons.chevronDown),
           onPressed: () => Navigator.maybePop(context),
         ),
         title: Text('Queue', style: AfTypography.titleSmall),
@@ -97,7 +101,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                 );
             return IconButton(
               icon: Icon(
-                Icons.shuffle_rounded,
+                LucideIcons.shuffle,
                 color: shuffleOn
                     ? AfColors.indigo300
                     : AfColors.textPrimary,
@@ -110,19 +114,25 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
             );
           }),
           IconButton(
-            icon: const Icon(Icons.playlist_add_rounded),
+            icon: const Icon(LucideIcons.listPlus),
             onPressed: _items.isEmpty ? null : _saveQueueAsPlaylist,
             tooltip: 'Save queue as playlist',
           ),
-          IconButton(
-            icon: const Icon(Icons.lyrics_outlined),
-            onPressed: () => context.push('/lyrics'),
-            tooltip: 'Lyrics',
-          ),
         ],
       ),
-      body: SafeArea(
-        child: _items.isEmpty
+      body: Stack(
+        children: [
+          // Translucent blur background
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              child: Container(
+                color: Colors.white.withValues(alpha: 0.05),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: _items.isEmpty
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -186,7 +196,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                           horizontal: AfSpacing.s24),
                       color: AfColors.semanticError.withValues(alpha: 0.18),
                       child: const Icon(
-                        Icons.delete_outline_rounded,
+                        LucideIcons.trash2,
                         color: AfColors.semanticError,
                       ),
                     ),
@@ -241,40 +251,53 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TrackRow(
-                              track: t,
-                              density: TrackRowDensity.compact,
-                              isActive: active,
-                              showHeart: false,
-                              onTap: () {
-                                // Jump to and play the selected track
-                                final svc = ref.read(playerServiceProvider);
-                                svc.skipToQueueItem(i);
-                                svc.play();
-                              },
-                              onLongPress: () =>
-                                  showTrackContextMenu(context, ref, t),
+                      child: Container(
+                        decoration: active
+                            ? BoxDecoration(
+                                color: AfColors.surfaceBase,
+                                borderRadius: BorderRadius.circular(
+                                    AfRadii.md),
+                              )
+                            : null,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TrackRow(
+                                track: t,
+                                density: TrackRowDensity.compact,
+                                isActive: active,
+                                showHeart: false,
+                                onTap: () {
+                                  // Jump to and play the selected track
+                                  final svc =
+                                      ref.read(playerServiceProvider);
+                                  svc.skipToQueueItem(i);
+                                  svc.play();
+                                },
+                                onLongPress: () =>
+                                    showTrackContextMenu(
+                                        context, ref, t),
+                              ),
                             ),
-                          ),
-                          ReorderableDragStartListener(
-                            index: i,
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: AfSpacing.s8),
-                              child: Icon(Icons.drag_indicator_rounded,
-                                  color: AfColors.textTertiary),
+                            ReorderableDragStartListener(
+                              index: i,
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: AfSpacing.s8),
+                                child: Icon(LucideIcons.gripVertical,
+                                    color: AfColors.textTertiary),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   );
                 },
               ),
-      ),
+            ),
+          ],
+        ),
     );
   }
 

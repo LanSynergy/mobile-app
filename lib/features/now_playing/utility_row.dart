@@ -1,13 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
     show
         Device;
 
+import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/af_dialog.dart';
@@ -39,8 +41,8 @@ class UtilityRow extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         UtilityIcon(
-          icon: const FaIcon(
-            FontAwesomeIcons.alignLeft,
+          icon: const Icon(
+            LucideIcons.mic2,
             size: 22,
             color: AfColors.textSecondary,
           ),
@@ -48,8 +50,8 @@ class UtilityRow extends ConsumerWidget {
           onTap: () => context.push('/lyrics'),
         ),
         UtilityIcon(
-          icon: const FaIcon(
-            FontAwesomeIcons.chartSimple,
+          icon: const Icon(
+            LucideIcons.slidersHorizontal,
             size: 22,
             color: AfColors.textSecondary,
           ),
@@ -57,8 +59,8 @@ class UtilityRow extends ConsumerWidget {
           onTap: () => context.push('/eq-dsp'),
         ),
         UtilityIcon(
-          icon: FaIcon(
-            FontAwesomeIcons.plus,
+          icon: Icon(
+            LucideIcons.plus,
             size: 22,
             color: isSaved ? AfColors.indigo300 : AfColors.textSecondary,
           ),
@@ -67,8 +69,8 @@ class UtilityRow extends ConsumerWidget {
           color: isSaved ? AfColors.indigo300 : null,
         ),
         UtilityIcon(
-          icon: const FaIcon(
-            FontAwesomeIcons.listUl,
+          icon: const Icon(
+            LucideIcons.listMusic,
             size: 22,
             color: AfColors.textSecondary,
           ),
@@ -76,8 +78,8 @@ class UtilityRow extends ConsumerWidget {
           onTap: () => context.push('/queue'),
         ),
         UtilityIcon(
-          icon: const FaIcon(
-            FontAwesomeIcons.ellipsis,
+          icon: const Icon(
+            LucideIcons.slidersHorizontal,
             size: 22,
             color: AfColors.textSecondary,
           ),
@@ -94,102 +96,222 @@ class UtilityRow extends ConsumerWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 void showMoreSheet(BuildContext context, WidgetRef ref) {
+  final pageNotifier = ValueNotifier<_MorePage>(_MorePage.menu);
+
   showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Column(
+    builder: (dialogCtx) => ValueListenableBuilder<_MorePage>(
+      valueListenable: pageNotifier,
+      builder: (context, page, _) {
+        if (page == _MorePage.details) {
+          final track = ref.read(currentTrackProvider);
+          if (track == null) {
+            pageNotifier.value = _MorePage.menu;
+            return const SizedBox.shrink();
+          }
+          return _DetailsView(
+            track: track,
+            onBack: () => pageNotifier.value = _MorePage.menu,
+          );
+        }
+        return _MoreMenu(
+          dialogCtx: dialogCtx,
+          context: context,
+          ref: ref,
+          pageNotifier: pageNotifier,
+        );
+      },
+    ),
+  );
+}
+
+enum _MorePage { menu, details }
+
+class _MoreMenu extends StatelessWidget {
+  const _MoreMenu({
+    required this.dialogCtx,
+    required this.context,
+    required this.ref,
+    required this.pageNotifier,
+  });
+  final BuildContext dialogCtx;
+  final BuildContext context;
+  final WidgetRef ref;
+  final ValueNotifier<_MorePage> pageNotifier;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         MoreItem(
-          icon: const FaIcon(
-            FontAwesomeIcons.moon,
+          icon: const Icon(
+            LucideIcons.moon,
             size: 22,
             color: AfColors.textSecondary,
           ),
           label: 'Sleep timer',
           onTap: () {
             Navigator.of(dialogCtx).pop();
-            showSleepDialog(context, ref);
+            showSleepDialog(this.context, ref);
           },
         ),
         MoreItem(
-          icon: const FaIcon(
-            FontAwesomeIcons.gaugeHigh,
+          icon: const Icon(
+            LucideIcons.gauge,
             size: 22,
             color: AfColors.textSecondary,
           ),
           label: 'Playback speed',
           onTap: () {
             Navigator.of(dialogCtx).pop();
-            showSpeedDialog(context, ref);
+            showSpeedDialog(this.context, ref);
           },
         ),
         MoreItem(
           icon: const Icon(
-            Icons.cast_outlined,
+            LucideIcons.cast,
             size: 22,
             color: AfColors.textSecondary,
           ),
           label: 'Audio output',
           onTap: () {
             Navigator.of(dialogCtx).pop();
-            showOutputDialog(context, ref);
+            showOutputDialog(this.context, ref);
           },
         ),
         MoreItem(
-          icon: const FaIcon(
-            FontAwesomeIcons.volumeLow,
+          icon: const Icon(
+            LucideIcons.volume2,
             size: 22,
             color: AfColors.textSecondary,
           ),
           label: 'Volume',
           onTap: () {
             Navigator.of(dialogCtx).pop();
-            showVolumeDialog(context, ref);
+            showVolumeDialog(this.context, ref);
           },
         ),
         MoreItem(
-          icon: const FaIcon(
-            FontAwesomeIcons.bluetooth,
+          icon: const Icon(
+            LucideIcons.bluetooth,
             size: 22,
             color: AfColors.textSecondary,
           ),
           label: 'Audio delay',
           onTap: () {
             Navigator.of(dialogCtx).pop();
-            showAudioDelayDialog(context, ref);
+            showAudioDelayDialog(this.context, ref);
           },
         ),
         MoreItem(
-          icon: const FaIcon(
-            FontAwesomeIcons.repeat,
+          icon: const Icon(
+            LucideIcons.repeat,
             size: 22,
             color: AfColors.textSecondary,
           ),
           label: 'A-B Loop',
           onTap: () {
             Navigator.of(dialogCtx).pop();
-            showAbLoopDialog(context, ref);
+            showAbLoopDialog(this.context, ref);
           },
         ),
-        MoreItem(
-          icon: const FaIcon(
-            FontAwesomeIcons.circleInfo,
-            size: 22,
-            color: AfColors.textSecondary,
+        Padding(
+          padding: const EdgeInsets.only(
+            bottom: AfSpacing.s24,
           ),
-          label: 'Show details',
-          onTap: () {
-            Navigator.of(dialogCtx).pop();
-            final track = ref.read(currentTrackProvider);
-            if (track != null) {
-              showTrackDetailsSheet(context, ref, track);
-            }
-          },
+          child: MoreItem(
+            icon: const Icon(
+              LucideIcons.info,
+              size: 22,
+              color: AfColors.textSecondary,
+            ),
+            label: 'Show details',
+            onTap: () {
+              pageNotifier.value = _MorePage.details;
+            },
+          ),
         ),
       ],
-    ),
-  );
+    );
+  }
+}
+
+class _DetailsView extends ConsumerWidget {
+  const _DetailsView({
+    required this.track,
+    required this.onBack,
+  });
+  final AfTrack track;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return _TrackDetailsWrapper(track: track, onBack: onBack);
+  }
+}
+
+class _TrackDetailsWrapper extends StatefulWidget {
+  const _TrackDetailsWrapper({
+    required this.track,
+    required this.onBack,
+  });
+  final AfTrack track;
+  final VoidCallback onBack;
+
+  @override
+  State<_TrackDetailsWrapper> createState() => _TrackDetailsWrapperState();
+}
+
+class _TrackDetailsWrapperState extends State<_TrackDetailsWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    HapticFeedback.mediumImpact();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) widget.onBack();
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.s4,
+              vertical: AfSpacing.s4,
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(
+                    LucideIcons.arrowLeft,
+                    color: AfColors.textPrimary,
+                    size: 22,
+                  ),
+                  onPressed: widget.onBack,
+                ),
+                const SizedBox(width: AfSpacing.s8),
+                Text('Track Details', style: AfTypography.titleSmall),
+              ],
+            ),
+          ),
+          Flexible(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 400),
+              child: TrackDetailsBody(track: widget.track),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -212,10 +334,10 @@ void showVolumeDialog(BuildContext context, WidgetRef ref) {
               Text('Volume', style: AfTypography.titleMedium),
               const Spacer(),
               IconButton(
-                icon: FaIcon(
+                icon: Icon(
                   muted
-                      ? FontAwesomeIcons.volumeXmark
-                      : FontAwesomeIcons.volumeHigh,
+                      ? LucideIcons.volumeX
+                      : LucideIcons.volume2,
                   color: AfColors.textPrimary,
                   size: 24,
                 ),
@@ -555,7 +677,7 @@ class OutputDialogContent extends ConsumerWidget {
   Widget iconForDevice(String name, {required Color color}) {
     final n = name.toLowerCase();
     if (n.contains('bluetooth') || n.contains('bt')) {
-      return FaIcon(FontAwesomeIcons.bluetooth, color: color, size: 22);
+      return Icon(LucideIcons.bluetooth, color: color, size: 22);
     }
     if (n.contains('headphone') || n.contains('headset') ||
         n.contains('earphone') || n.contains('airpod')) {

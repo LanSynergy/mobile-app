@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../design_tokens/tokens.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
@@ -22,23 +22,23 @@ class AppShell extends ConsumerWidget {
 
   static final _items = [
     const AfBottomNavItem(
-      icon: FontAwesomeIcons.house,
-      filledIcon: FontAwesomeIcons.house,
+      icon: LucideIcons.home,
+      filledIcon: LucideIcons.home,
       label: 'Home',
     ),
     const AfBottomNavItem(
-      icon: FontAwesomeIcons.magnifyingGlass,
-      filledIcon: FontAwesomeIcons.magnifyingGlass,
+      icon: LucideIcons.search,
+      filledIcon: LucideIcons.search,
       label: 'Search',
     ),
     const AfBottomNavItem(
-      icon: FontAwesomeIcons.compactDisc,
-      filledIcon: FontAwesomeIcons.compactDisc,
+      icon: LucideIcons.disc3,
+      filledIcon: LucideIcons.disc3,
       label: 'Library',
     ),
     const AfBottomNavItem(
-      icon: FontAwesomeIcons.user,
-      filledIcon: FontAwesomeIcons.user,
+      icon: LucideIcons.user,
+      filledIcon: LucideIcons.user,
       label: 'Profile',
     ),
   ];
@@ -114,20 +114,35 @@ class AppShell extends ConsumerWidget {
   Widget _buildScaffold(
       BuildContext context, WidgetRef ref, bool hasMini, double miniBottom) {
     return Scaffold(
-      backgroundColor: AfColors.surfaceCanvas,
+      backgroundColor: Colors.transparent,
       extendBody: true,
-      // StackFit.expand ensures the Stack fills the Scaffold body even when
-      // all children are Positioned (no non-positioned child to size from).
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Tab content fills the entire body area.
-          // Must be first (bottom of stack) so overlays paint on top.
-          shell,
+          // Full-bleed gradient background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF271640),
+                  Color(0xFF040319),
+                ],
+                stops: [0.0, 1.0],
+              ),
+            ),
+          ),
+
+          // Tab content — transparent so gradient shows through
+          KeyedSubtree(
+            key: const ValueKey('shell-content'),
+            child: shell,
+          ),
 
           // Sleep timer watcher — zero-sized, invisible.
-          // Kept as Positioned so it doesn't affect Stack sizing.
           const Positioned(
+            key: ValueKey('sleep-timer-watcher'),
             width: 0,
             height: 0,
             child: SleepTimerWatcher(),
@@ -136,6 +151,7 @@ class AppShell extends ConsumerWidget {
           // Floating mini-player overlay.
           // Hidden when keyboard is open to avoid overlapping input fields.
           Positioned(
+              key: const ValueKey('mini-player'),
               left: 0,
               right: 0,
               bottom: miniBottom,

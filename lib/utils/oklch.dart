@@ -120,3 +120,32 @@ int _gammaEncodeChannel(double v) =>
   final glow = OklchColor(0.78, 0.10, hue).toColor();
   return (energy: energy, shadow: shadow, glow: glow);
 }
+
+/// Picks the most pastel (lowest reasonable chroma) non-grey hue from the
+/// palette samples. Prefers hues with chroma in [0.05, 0.12] and lightness
+/// in [0.30, 0.80]. Falls back to [pickSpectralHue], then null.
+({double l, double c, double h})? pickPastelHue(Iterable<Color> samples) {
+  final candidates = <OklchColor>[];
+  for (final color in samples) {
+    final oklch = srgbToOklch(color);
+    if (oklch.c < 0.03) continue;
+    if (oklch.l < 0.20) continue;
+    if (oklch.l > 0.85) continue;
+    candidates.add(oklch);
+  }
+  if (candidates.isEmpty) return pickSpectralHue(samples);
+  candidates.sort((a, b) => a.c.compareTo(b.c));
+  final pick = candidates.first;
+  return (l: pick.l, c: pick.c, h: pick.h);
+}
+
+/// Builds a pastel-optimised accent triple from a hue.
+/// accent:  L=0.78, C=0.08 — soft pastel for buttons & active elements
+/// muted:   L=0.55, C=0.10 — medium contrast for secondary surfaces
+/// shadow:  L=0.20, C=0.05 — dark background gradient stop
+({Color accent, Color muted, Color shadow}) buildPastelTriple(double hue) {
+  final accent = OklchColor(0.78, 0.08, hue).toColor();
+  final muted = OklchColor(0.55, 0.10, hue).toColor();
+  final shadow = OklchColor(0.20, 0.05, hue).toColor();
+  return (accent: accent, muted: muted, shadow: shadow);
+}

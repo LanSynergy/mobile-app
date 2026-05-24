@@ -4,7 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop;
 
 import '../../core/audio/play_actions.dart';
@@ -13,6 +13,7 @@ import '../../core/jellyfin/models/quality.dart';
 import '../../design_tokens/tokens.dart';
 import '../../features/sleep_timer/sleep_timer_screen.dart';
 import '../../state/providers.dart';
+import '../../utils/oklch.dart';
 import '../../utils/time_format.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/audio_visual_scrubber.dart';
@@ -104,17 +105,12 @@ class _ReactiveBackground extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final spectral = ref.watch(currentSpectralProvider);
+    final oklch = srgbToOklch(spectral.energy);
+    final background = OklchColor(0.35, 0.12, oklch.h).toColor();
     return AnimatedContainer(
       duration: AfDurations.expressive,
       curve: AfCurves.easeStandard,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [AfColors.surfaceCanvas, spectral.shadow],
-          stops: const [0.4, 1.0],
-        ),
-      ),
+      color: background,
       child: child,
     );
   }
@@ -321,8 +317,8 @@ class _MetadataRow extends ConsumerWidget {
         IconButton(
           icon: Icon(
             track.isFavorite
-                ? Icons.favorite
-                : Icons.favorite_border,
+                ? LucideIcons.heart
+                : LucideIcons.heart,
             color: track.isFavorite
                 ? AfColors.semanticError
                 : AfColors.textPrimary,
@@ -453,12 +449,10 @@ class _AbLoopButton extends ConsumerWidget {
     final fullyActive = loopA != null && loopB != null;
 
     return IconButton(
-      icon: FaIcon(
+      icon: Icon(
         loopA == null
-            ? FontAwesomeIcons.arrowsTurnToDots
-            : loopB == null
-                ? FontAwesomeIcons.a
-                : FontAwesomeIcons.b,
+            ? LucideIcons.arrowLeftRight
+            : LucideIcons.flag,
         color: fullyActive
             ? ref.watch(currentSpectralProvider).energy
             : active
@@ -658,7 +652,6 @@ class _ReactiveTransport extends ConsumerWidget {
 
     return _TransportRow(
       isPlaying: isPlaying,
-      spectral: spectral,
       shuffleOn: shuffleOn,
       loopMode: loopMode,
       accent: spectral.energy,
@@ -706,8 +699,8 @@ class _TopBar extends ConsumerWidget {
           child: Row(
             children: [
               IconButton(
-                icon: const FaIcon(
-                  FontAwesomeIcons.angleDown,
+                icon: const Icon(
+                  LucideIcons.chevronDown,
                   color: AfColors.textPrimary,
                   size: 24,
                 ),
@@ -745,10 +738,13 @@ class _TopBar extends ConsumerWidget {
                 ),
               ),
               PopupMenuButton<_NowPlayingAction>(
-                icon: const FaIcon(
-                  FontAwesomeIcons.ellipsis,
+                icon: const Icon(
+                  LucideIcons.ellipsis,
                   color: AfColors.textPrimary,
                   size: 24,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 onSelected: (action) async {
                   switch (action) {
@@ -779,8 +775,8 @@ class _TopBar extends ConsumerWidget {
                   const PopupMenuItem(
                     value: _NowPlayingAction.startRadio,
                     child: ListTile(
-                      leading: FaIcon(
-                        FontAwesomeIcons.wifi,
+                      leading: Icon(
+                        LucideIcons.radio,
                         color: AfColors.textSecondary,
                         size: 24,
                       ),
@@ -793,8 +789,8 @@ class _TopBar extends ConsumerWidget {
                     const PopupMenuItem(
                       value: _NowPlayingAction.goToAlbum,
                       child: ListTile(
-                        leading: FaIcon(
-                          FontAwesomeIcons.compactDisc,
+                        leading: Icon(
+                          LucideIcons.disc3,
                           color: AfColors.textSecondary,
                           size: 24,
                         ),
@@ -806,8 +802,8 @@ class _TopBar extends ConsumerWidget {
                     const PopupMenuItem(
                       value: _NowPlayingAction.goToArtist,
                       child: ListTile(
-                        leading: FaIcon(
-                          FontAwesomeIcons.user,
+                        leading: Icon(
+                          LucideIcons.user,
                           color: AfColors.textSecondary,
                           size: 24,
                         ),
@@ -883,8 +879,8 @@ class _NowPlayingMetaChip extends ConsumerWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const FaIcon(
-                  FontAwesomeIcons.moon,
+                const Icon(
+                  LucideIcons.moon,
                   size: 13,
                   color: AfColors.indigo300,
                 ),
@@ -912,10 +908,8 @@ class _NowPlayingMetaChip extends ConsumerWidget {
 }
 
 class _TransportRow extends StatelessWidget {
-
   const _TransportRow({
     required this.isPlaying,
-    required this.spectral,
     required this.shuffleOn,
     required this.loopMode,
     required this.accent,
@@ -926,7 +920,6 @@ class _TransportRow extends StatelessWidget {
     required this.onRepeat,
   });
   final bool isPlaying;
-  final Spectral spectral;
   final bool shuffleOn;
   final Loop loopMode;
   final Color accent;
@@ -938,55 +931,62 @@ class _TransportRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _TransportButton(
-          icon: FaIcon(
-            FontAwesomeIcons.shuffle,
-            size: 22,
-            color: shuffleOn ? accent : AfColors.textPrimary,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: AfRadii.borderPill,
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 4),
+          _TransportButton(
+            icon: Icon(
+              LucideIcons.shuffle,
+              size: 20,
+              color: shuffleOn ? accent : AfColors.textTertiary,
+            ),
+            onTap: onShuffle,
           ),
-          onTap: onShuffle,
-        ),
-        const SizedBox(width: 8),
-        _TransportButton(
-          icon: const FaIcon(
-            FontAwesomeIcons.backwardStep,
-            size: 28,
-            color: AfColors.textPrimary,
+          const Spacer(),
+          _TransportButton(
+            icon: const Icon(
+              LucideIcons.skipBack,
+              size: 24,
+              color: AfColors.textPrimary,
+            ),
+            onTap: onPrev,
           ),
-          onTap: onPrev,
-        ),
-        const SizedBox(width: 16),
-        _PlayButton(
-          isPlaying: isPlaying,
-          color: spectral.energy,
-          onTap: onPlayPause,
-        ),
-        const SizedBox(width: 16),
-        _TransportButton(
-          icon: const FaIcon(
-            FontAwesomeIcons.forwardStep,
-            size: 28,
-            color: AfColors.textPrimary,
+          const SizedBox(width: 12),
+          _PlayButton(
+            isPlaying: isPlaying,
+            onTap: onPlayPause,
           ),
-          onTap: onNext,
-        ),
-        const SizedBox(width: 8),
-        _TransportButton(
-          icon: FaIcon(
-            loopMode == Loop.file
-                ? FontAwesomeIcons.arrowsSpin
-                : FontAwesomeIcons.repeat,
-            size: 22,
-            color: loopMode == Loop.off
-                ? AfColors.textPrimary
-                : accent,
+          const SizedBox(width: 12),
+          _TransportButton(
+            icon: const Icon(
+              LucideIcons.skipForward,
+              size: 24,
+              color: AfColors.textPrimary,
+            ),
+            onTap: onNext,
           ),
-          onTap: onRepeat,
-        ),
-      ],
+          const Spacer(),
+          _TransportButton(
+            icon: Icon(
+              loopMode == Loop.file
+                  ? LucideIcons.repeat1
+                  : LucideIcons.repeat,
+              size: 20,
+              color: loopMode == Loop.off
+                  ? AfColors.textTertiary
+                  : accent,
+            ),
+            onTap: onRepeat,
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
     );
   }
 }
@@ -1004,8 +1004,8 @@ class _TransportButton extends StatelessWidget {
     return PressScale(
       onTap: onTap,
       child: SizedBox(
-        width: AfSpacing.minHitTarget,
-        height: AfSpacing.minHitTarget,
+        width: 44,
+        height: 44,
         child: Center(child: icon),
       ),
     );
@@ -1013,14 +1013,11 @@ class _TransportButton extends StatelessWidget {
 }
 
 class _PlayButton extends StatelessWidget {
-
   const _PlayButton({
     required this.isPlaying,
-    required this.color,
     required this.onTap,
   });
   final bool isPlaying;
-  final Color color;
   final VoidCallback onTap;
 
   @override
@@ -1029,27 +1026,19 @@ class _PlayButton extends StatelessWidget {
       ensureHitTarget: false,
       onTap: onTap,
       child: Container(
-        width: 72,
-        height: 72,
-        decoration: BoxDecoration(
-          color: color,
+        width: 60,
+        height: 60,
+        decoration: const BoxDecoration(
+          color: Colors.white,
           shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              // ignore: deprecated_member_use
-              color: color.withValues(alpha: 0.4),
-              blurRadius: 32,
-              spreadRadius: 4,
-            ),
-          ],
         ),
         child: Center(
-          child: FaIcon(
+          child: Icon(
             isPlaying
-                ? FontAwesomeIcons.pause
-                : FontAwesomeIcons.play,
-            color: AfColors.textOnPrimary,
-            size: 32,
+                ? LucideIcons.pause
+                : LucideIcons.play,
+            color: Colors.black,
+            size: 28,
           ),
         ),
       ),

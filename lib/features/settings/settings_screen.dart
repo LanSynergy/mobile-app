@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -38,7 +38,7 @@ class SettingsScreen extends ConsumerWidget {
         backgroundColor: AfColors.surfaceCanvas,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const FaIcon(FontAwesomeIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
+          icon: const Icon(LucideIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
           onPressed: () => context.pop(),
         ),
         title: Text('Settings', style: AfTypography.display),
@@ -56,30 +56,30 @@ class SettingsScreen extends ConsumerWidget {
             SettingsGroup(
               children: [
                 SettingsTile(
-                  icon: Icons.dns_outlined,
-                  iconColor: AfColors.indigo400,
+                  icon: LucideIcons.server,
+                  iconColor: AfColors.textSecondary,
                   title: auth?.server.name ?? 'Not connected',
                   subtitle: auth?.server.baseUrl,
                 ),
                 if (auth != null)
                   SettingsTile(
-                    icon: Icons.person_outline_rounded,
-                    iconColor: AfColors.semanticSuccess,
+                    icon: LucideIcons.user,
+                    iconColor: AfColors.textSecondary,
                     title: auth.userName,
                     subtitle: auth.serverType.name[0].toUpperCase() +
                         auth.serverType.name.substring(1),
                   ),
                 SettingsTile(
-                  icon: Icons.swap_horiz_rounded,
-                  iconColor: AfColors.semanticInfo,
+                  icon: LucideIcons.arrowLeftRight,
+                  iconColor: AfColors.textSecondary,
                   title: 'Switch server',
                   subtitle: 'Connect to a different server',
                   onTap: () => context.go('/onboarding/discover'),
                 ),
                 if (auth != null)
                   SettingsTile(
-                    icon: Icons.logout_rounded,
-                    iconColor: AfColors.semanticError,
+                    icon: LucideIcons.logOut,
+                    iconColor: AfColors.textSecondary,
                     title: 'Sign out',
                     subtitle: 'Disconnect from ${auth.server.name}',
                     onTap: () async {
@@ -139,8 +139,8 @@ class SettingsScreen extends ConsumerWidget {
             SettingsGroup(
               children: [
                 SettingsTile(
-                  icon: Icons.swap_horiz_rounded,
-                  iconColor: AfColors.semanticWarning,
+                  icon: LucideIcons.arrowLeftRight,
+                  iconColor: AfColors.textSecondary,
                   title: 'Switch mode',
                   subtitle: isLocal ? 'Currently: Local files' : 'Currently: Server',
                   onTap: () async {
@@ -209,8 +209,8 @@ class SettingsScreen extends ConsumerWidget {
                     final ch = params?.channelCount;
                     final hasData = rate != null && rate > 0;
                     return SettingsTile(
-                      icon: Icons.graphic_eq_rounded,
-                      iconColor: AfColors.semanticSuccess,
+                      icon: LucideIcons.waves,
+                      iconColor: AfColors.textSecondary,
                       title: 'Current output',
                       subtitle: hasData
                           ? '$rate Hz · ${fmt?.name ?? "auto"} · ${ch}ch'
@@ -219,15 +219,15 @@ class SettingsScreen extends ConsumerWidget {
                   },
                 ),
                 SettingsTile(
-                  icon: Icons.speed_rounded,
-                  iconColor: AfColors.indigo300,
+                  icon: LucideIcons.gauge,
+                  iconColor: AfColors.textSecondary,
                   title: 'Sample rate',
                   subtitle: 'Force output sample rate for DAC',
                   onTap: () => showSampleRateDialog(context, ref),
                 ),
                 SettingsTile(
-                  icon: Icons.memory_rounded,
-                  iconColor: AfColors.indigo300,
+                  icon: LucideIcons.cpu,
+                  iconColor: AfColors.textSecondary,
                   title: 'Bit depth',
                   subtitle: 'Force output format',
                   onTap: () => showFormatDialog(context, ref),
@@ -238,8 +238,8 @@ class SettingsScreen extends ConsumerWidget {
                   builder: (context, snap) {
                     final enabled = snap.data ?? false;
                     return SettingsSwitchTile(
-                      icon: Icons.lock_outline_rounded,
-                      iconColor: AfColors.semanticWarning,
+                      icon: LucideIcons.lock,
+                      iconColor: AfColors.textSecondary,
                       title: 'Exclusive mode',
                       subtitle: 'Bypass OS mixer for bit-perfect output',
                       value: enabled,
@@ -260,8 +260,8 @@ class SettingsScreen extends ConsumerWidget {
             SettingsGroup(
               children: [
                 SettingsTile(
-                  icon: Icons.high_quality_rounded,
-                  iconColor: AfColors.semanticInfo,
+                  icon: LucideIcons.music,
+                  iconColor: AfColors.textSecondary,
                   title: 'Streaming quality',
                   subtitle: ref.watch(maxBitrateProvider) == 0
                       ? 'Original / Lossless'
@@ -269,15 +269,15 @@ class SettingsScreen extends ConsumerWidget {
                   onTap: () => showStreamingQualityDialog(context, ref),
                 ),
                 SettingsTile(
-                  icon: Icons.cached_rounded,
-                  iconColor: AfColors.semanticInfo,
+                  icon: LucideIcons.rotateCcw,
+                  iconColor: AfColors.textSecondary,
                   title: 'Cache duration',
                   subtitle: 'How far ahead to buffer',
                   onTap: () => showCacheDurationDialog(context, ref),
                 ),
                 SettingsTile(
-                  icon: Icons.storage_rounded,
-                  iconColor: AfColors.semanticInfo,
+                  icon: LucideIcons.hardDrive,
+                  iconColor: AfColors.textSecondary,
                   title: 'Buffer size',
                   subtitle: 'Audio hardware buffer (latency vs stability)',
                   onTap: () => showAudioBufferDialog(context, ref),
@@ -288,8 +288,8 @@ class SettingsScreen extends ConsumerWidget {
                   builder: (context, snap) {
                     final enabled = snap.data ?? false;
                     return SettingsSwitchTile(
-                      icon: Icons.volume_up_rounded,
-                      iconColor: AfColors.semanticWarning,
+                      icon: LucideIcons.volume2,
+                      iconColor: AfColors.textSecondary,
                       title: 'Keep audio active on pause',
                       subtitle: 'Eliminates click/pop on resume',
                       value: enabled,
@@ -314,8 +314,8 @@ class SettingsScreen extends ConsumerWidget {
                   builder: (context, ref2, _) {
                     final enabled = ref2.watch(offlineCacheEnabledProvider);
                     return SettingsSwitchTile(
-                      icon: Icons.sd_storage_rounded,
-                      iconColor: AfColors.semanticSuccess,
+                      icon: LucideIcons.hardDrive,
+                      iconColor: AfColors.textSecondary,
                       title: 'Cache tracks offline',
                       subtitle: enabled
                           ? 'Save streamed tracks to device storage'
@@ -333,8 +333,8 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 _CacheUsageTile(),
                 SettingsTile(
-                  icon: Icons.storage_rounded,
-                  iconColor: AfColors.semanticInfo,
+                  icon: LucideIcons.hardDrive,
+                  iconColor: AfColors.textSecondary,
                   title: 'Max cache size',
                   subtitle: OfflineCacheService.formatSize(
                       ref.watch(offlineCacheMaxSizeProvider)),
@@ -352,15 +352,15 @@ class SettingsScreen extends ConsumerWidget {
             SettingsGroup(
               children: [
                 SettingsTile(
-                  icon: Icons.equalizer_rounded,
-                  iconColor: AfColors.indigo400,
+                  icon: LucideIcons.slidersHorizontal,
+                  iconColor: AfColors.textSecondary,
                   title: 'ReplayGain',
                   subtitle: 'Volume normalization across tracks',
                   onTap: () => showReplayGainDialog(context, ref),
                 ),
                 SettingsTile(
-                  icon: Icons.skip_next_rounded,
-                  iconColor: AfColors.indigo400,
+                  icon: LucideIcons.skipForward,
+                  iconColor: AfColors.textSecondary,
                   title: 'Gapless playback',
                   subtitle: 'Seamless transitions between tracks',
                   onTap: () => showGaplessDialog(context, ref),
@@ -376,8 +376,8 @@ class SettingsScreen extends ConsumerWidget {
             SettingsGroup(
               children: [
                 SettingsTile(
-                  icon: Icons.delete_forever_rounded,
-                  iconColor: AfColors.semanticError,
+                  icon: LucideIcons.trash2,
+                  iconColor: AfColors.textSecondary,
                   title: 'Clear app data',
                   subtitle: 'Reset app to initial state',
                   onTap: () async {
@@ -452,16 +452,16 @@ class SettingsScreen extends ConsumerWidget {
                         ? 'v${snap.data!.version}+${snap.data!.buildNumber} ($kBuildId)'
                         : '...';
                     return SettingsTile(
-                      icon: Icons.info_outline_rounded,
-                      iconColor: AfColors.textTertiary,
+                      icon: LucideIcons.info,
+                      iconColor: AfColors.textSecondary,
                       title: 'Aetherfin $version',
                       subtitle: 'Jellyfin-backed music player · FOSS',
                     );
                   },
                 ),
                 SettingsTile(
-                  icon: Icons.code_rounded,
-                  iconColor: AfColors.textTertiary,
+                  icon: LucideIcons.code,
+                  iconColor: AfColors.textSecondary,
                   title: 'Source code',
                   subtitle: 'github.com/Aetherfin/mobile-app',
                   trailing: const Icon(Icons.open_in_new_rounded,
@@ -470,8 +470,8 @@ class SettingsScreen extends ConsumerWidget {
                       launchSettingsUrl('https://github.com/Aetherfin/mobile-app'),
                 ),
                 SettingsTile(
-                  icon: Icons.description_outlined,
-                  iconColor: AfColors.textTertiary,
+                  icon: LucideIcons.fileText,
+                  iconColor: AfColors.textSecondary,
                   title: 'Licenses',
                   subtitle: 'Open-source licenses',
                   onTap: () => showLicensePage(
@@ -539,8 +539,8 @@ class _CacheUsageTileState extends ConsumerState<_CacheUsageTile> {
     final usedLabel = OfflineCacheService.formatSize(_cacheSize);
     final maxLabel = OfflineCacheService.formatSize(maxSize);
     return SettingsTile(
-      icon: Icons.space_dashboard_rounded,
-      iconColor: AfColors.semanticWarning,
+      icon: LucideIcons.database,
+      iconColor: AfColors.textSecondary,
       title: _loading ? 'Cache usage…' : 'Cache usage',
       subtitle: _loading ? null : '$_cacheCount tracks · $usedLabel / $maxLabel',
       trailing: _loading

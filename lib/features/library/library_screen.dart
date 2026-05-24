@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/models/items.dart';
@@ -158,10 +158,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: AfColors.surfaceCanvas,
-      child: SafeArea(
-        child: RefreshIndicator(
+    return SafeArea(
+      child: RefreshIndicator(
           onRefresh: _onRefresh,
           color: AfColors.indigo300,
           backgroundColor: AfColors.surfaceBase,
@@ -180,7 +178,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   Text('Library', style: AfTypography.titleLarge),
                   const Spacer(),
                   PopupMenuButton<LibrarySortOption>(
-                    icon: const FaIcon(FontAwesomeIcons.arrowDownShortWide, color: AfColors.textPrimary, size: 22),
+                    icon: const Icon(LucideIcons.arrowDownWideNarrow, color: AfColors.textPrimary, size: 22),
                     tooltip: 'Sort',
                     initialValue: _sortOption,
                     onSelected: (option) {
@@ -220,7 +218,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               ),
             ),
           ],
-        ),
         ),
       ),
     );

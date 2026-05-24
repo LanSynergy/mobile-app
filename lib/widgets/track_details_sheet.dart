@@ -46,7 +46,7 @@ void showTrackDetailsSheet(BuildContext context, WidgetRef ref, AfTrack track) {
                 Flexible(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxHeight: 400),
-                    child: _TrackDetailsBody(track: track),
+                    child: TrackDetailsBody(track: track),
                   ),
                 ),
               ],
@@ -58,9 +58,9 @@ void showTrackDetailsSheet(BuildContext context, WidgetRef ref, AfTrack track) {
   );
 }
 
-class _TrackDetailsBody extends ConsumerWidget {
+class TrackDetailsBody extends ConsumerWidget {
 
-  const _TrackDetailsBody({required this.track});
+  const TrackDetailsBody({super.key, required this.track});
   final AfTrack track;
 
   @override
@@ -93,7 +93,7 @@ class _TrackDetailsBody extends ConsumerWidget {
         const Divider(height: 1, color: AfColors.surfaceHigh),
         const SizedBox(height: AfSpacing.s16),
 
-        // ── Song metadata ───────────────────────────────────────
+        // ── Song info ───────────────────────────────────────────
         const _SectionTitle(label: 'Song info'),
         _DetailRow(label: 'Title', value: track.title),
         _DetailRow(label: 'Artist', value: track.artistName),
@@ -118,31 +118,64 @@ class _TrackDetailsBody extends ConsumerWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── More song info ──────────────────────────────
+                if (details.albumArtist != null &&
+                    details.albumArtist != track.artistName)
+                  _DetailRow(
+                    label: 'Album artist',
+                    value: details.albumArtist!,
+                  ),
+                if (details.composer != null &&
+                    details.composer != track.artistName)
+                  _DetailRow(
+                    label: 'Composer',
+                    value: details.composer!,
+                  ),
+                if (details.year != null)
+                  _DetailRow(label: 'Year', value: '${details.year}'),
+                if (details.discNumber != null)
+                  _DetailRow(
+                    label: 'Disc',
+                    value: '${details.discNumber}',
+                  ),
                 if (details.genres.isNotEmpty)
                   _DetailRow(
                     label: 'Genre',
                     value: details.genres.join(', '),
                   ),
-                if (details.playCount != null)
-                  _DetailRow(
-                    label: 'Play count',
-                    value: '${details.playCount}',
-                  ),
-                if (details.lastPlayedAt != null)
-                  _DetailRow(
-                    label: 'Last played',
-                    value: _formatDate(details.lastPlayedAt!),
+                if (details.isTranscoded)
+                  const _DetailRow(
+                    label: 'Transcoded',
+                    value: 'Yes (server-side)',
                   ),
 
+                // ── Listeners ───────────────────────────────────
+                if (details.playCount != null ||
+                    details.lastPlayedAt != null) ...[
+                  const SizedBox(height: AfSpacing.s16),
+                  const Divider(height: 1, color: AfColors.surfaceHigh),
+                  const SizedBox(height: AfSpacing.s16),
+                  const _SectionTitle(label: 'Listeners'),
+                  if (details.playCount != null)
+                    _DetailRow(
+                      label: 'Play count',
+                      value: '${details.playCount}',
+                    ),
+                  if (details.lastPlayedAt != null)
+                    _DetailRow(
+                      label: 'Last played',
+                      value: _formatDate(details.lastPlayedAt!),
+                    ),
+                ],
+
+                // ── File details ────────────────────────────────
                 const SizedBox(height: AfSpacing.s16),
                 const Divider(height: 1, color: AfColors.surfaceHigh),
                 const SizedBox(height: AfSpacing.s16),
-
-                // ── File details ────────────────────────────────
                 const _SectionTitle(label: 'File details'),
                 if (details.container != null)
                   _DetailRow(
-                    label: 'Container',
+                    label: 'Format',
                     value: details.container!.toUpperCase(),
                   ),
                 if (track.quality != null)
@@ -181,6 +214,8 @@ class _TrackDetailsBody extends ConsumerWidget {
                     value: details.path!,
                     selectable: true,
                   ),
+
+
               ],
             );
           },

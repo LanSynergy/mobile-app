@@ -428,6 +428,10 @@ class SubsonicClient implements MusicBackend {
         playCount: _asInt(data['playCount']),
         lastPlayedAt:
             lastPlayed != null ? DateTime.tryParse(lastPlayed) : null,
+        year: _asInt(data['year']),
+        discNumber: _asInt(data['discNumber']),
+        albumArtist: data['albumArtist'] as String?,
+        composer: data['composer'] as String?,
       );
     } catch (e) {
       afLog('subsonic', 'getSong failed for $id', error: e);

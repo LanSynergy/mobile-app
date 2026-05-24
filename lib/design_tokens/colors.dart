@@ -79,9 +79,9 @@ class Spectral {   // play-button outer glow on Now Playing
   /// Default — used until artwork is parsed, on data-saver, on cellular,
   /// or whenever extraction can't surface a chromatic sample.
   static const fallback = Spectral(
-    energy: AfColors.indigo500,
-    shadow: AfColors.indigo900,
-    glow: AfColors.indigo300,
+    energy: Color(0xFFA8A5B8),
+    shadow: Color(0xFF1E1E2E),
+    glow:   Color(0xFFC8C5D8),
   );
 
   @override

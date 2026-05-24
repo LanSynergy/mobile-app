@@ -64,11 +64,9 @@ class ProfileScreen extends ConsumerWidget {
       orElse: () => const <AfPlaylist>[],
     );
 
-    return ColoredBox(
-      color: AfColors.surfaceCanvas,
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
           children: [
           const SizedBox(height: AfSpacing.s24),
           Center(
@@ -161,7 +159,6 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
         ],
       ),
-    ),
     );
   }
 

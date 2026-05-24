@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+FLUTTER="${FLUTTER_HOME:-/home/aprxx/flutter}/bin/flutter"
+DART="${FLUTTER_HOME:-/home/aprxx/flutter}/bin/dart"
+
+MODE="release"
+SPLIT_PER_ABI=false
+INSTALL=false
+SKIP_ANALYZE=false
+SKIP_TEST=false
+SKIP_CODEGEN=false
+SKIP_BUILD_ID=false
+
+usage() {
+  cat <<'EOF'
+Usage: tools/build [options]
+
+Build script mirroring .github/workflows/build-apk.yml
+
+Options:
+  --debug             Build debug APK (default: release)
+  --profile           Build profile APK
+  --split-per-abi     Split APK per ABI (smaller per-device APKs)
+  --install           Install APK on connected device after build
+  --skip-analyze      Skip flutter analyze
+  --skip-test         Skip flutter test
+  --skip-codegen      Skip dart run build_runner
+  --skip-build-id     Skip build ID generation
+  --help              Show this help
+
+Environment:
+  FLUTTER_HOME        Flutter SDK root (default: /home/aprxx/flutter)
+EOF
+  exit 0
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --debug)    MODE="debug"; shift ;;
+    --profile)  MODE="profile"; shift ;;
+    --release)  MODE="release"; shift ;;
+    --split-per-abi) SPLIT_PER_ABI=true; shift ;;
+    --install)  INSTALL=true; shift ;;
+    --skip-analyze)  SKIP_ANALYZE=true; shift ;;
+    --skip-test)     SKIP_TEST=true; shift ;;
+    --skip-codegen)  SKIP_CODEGEN=true; shift ;;
+    --skip-build-id) SKIP_BUILD_ID=true; shift ;;
+    --help)     usage ;;
+    *) echo "Unknown option: $1"; usage ;;
+  esac
+done
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+echo "═══ Aetherfin Build ═══"
+echo "Mode:      $MODE"
+echo "Split ABI: $SPLIT_PER_ABI"
+echo ""
+
+# Show toolchain versions
+echo "--- Toolchain ---"
+"$FLUTTER" --version 2>&1 | head -3
+java -version 2>&1 | head -1
+"$DART" --version 2>&1 | head -1
+echo ""
+
+# Install dependencies
+echo "--- flutter pub get ---"
+"$FLUTTER" pub get
+echo ""
+
+# Code generation
+if [[ "$SKIP_CODEGEN" == false ]]; then
+  echo "--- build_runner ---"
+  "$DART" run build_runner build --delete-conflicting-outputs
+  echo ""
+fi
+
+# Analyze
+if [[ "$SKIP_ANALYZE" == false ]]; then
+  echo "--- flutter analyze ---"
+  "$FLUTTER" analyze --no-fatal-infos
+  echo ""
+fi
+
+# Test
+if [[ "$SKIP_TEST" == false ]]; then
+  echo "--- flutter test ---"
+  "$FLUTTER" test
+  echo ""
+fi
+
+# Generate build ID
+if [[ "$SKIP_BUILD_ID" == false ]]; then
+  echo "--- generate_build_id ---"
+  "$DART" run tool/generate_build_id.dart
+  echo ""
+fi
+
+# Build APK
+echo "--- flutter build apk ---"
+ARGS="--$MODE"
+if [[ "$SPLIT_PER_ABI" == true ]]; then
+  ARGS="$ARGS --split-per-abi"
+fi
+
+# Stop lingering Gradle daemon
+(cd android && ./gradlew --stop) 2>/dev/null || true
+
+echo "Running: flutter build apk $ARGS"
+"$FLUTTER" build apk $ARGS
+echo ""
+
+# Rename APKs with build ID for clarity
+BUILD_ID=$("$DART" run tool/generate_build_id.dart 2>/dev/null || echo "local")
+VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: *\([^+]*\)[+ ].*/\1/' | tr -d ' ')
+OUTDIR="build/app/outputs/flutter-apk"
+
+if [[ "$SPLIT_PER_ABI" == true ]]; then
+  for f in "$OUTDIR"/app-*-"$MODE".apk; do
+    stem="${f##*/app-}"
+    abi="${stem%-$MODE*}"
+    newname="$OUTDIR/Aetherfin-v${VERSION}-${abi}-${BUILD_ID}.apk"
+    echo "Renaming $(basename "$f") -> $(basename "$newname")"
+    mv "$f" "$newname"
+  done
+else
+  f="$OUTDIR/app-$MODE.apk"
+  if [[ -f "$f" ]]; then
+    newname="$OUTDIR/Aetherfin-v${VERSION}-${BUILD_ID}.apk"
+    echo "Renaming $(basename "$f") -> $(basename "$newname")"
+    mv "$f" "$newname"
+  fi
+fi
+echo ""
+
+# Install
+if [[ "$INSTALL" == true ]]; then
+  echo "--- install ---"
+  if [[ "$SPLIT_PER_ABI" == true ]]; then
+    # Detect device ABI; fall back to arm64-v8a (most common).
+    DETECTED_ABI=$(adb shell getprop ro.product.cpu.abi 2>/dev/null | tr -d '\r' || true)
+    for abi in "${DETECTED_ABI:-arm64-v8a}" arm64-v8a armeabi-v7a; do
+      APK_PATH="$OUTDIR/Aetherfin-v${VERSION}-${abi}-${BUILD_ID}.apk"
+      if [[ -f "$APK_PATH" ]]; then break; fi
+    done
+  else
+    APK_PATH="$OUTDIR/Aetherfin-v${VERSION}-${BUILD_ID}.apk"
+  fi
+  if [[ -f "$APK_PATH" ]]; then
+    echo "Installing $APK_PATH..."
+    adb install -r "$APK_PATH"
+  else
+    echo "No APK found to install."
+  fi
+fi
+
+echo ""
+echo "═══ Build complete ═══"

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
@@ -133,7 +134,7 @@ class _FavoriteHeartButtonState extends ConsumerState<FavoriteHeartButton> {
     final isFavorite = _isFavoriteFromOverrides(overrides);
     return IconButton(
       icon: Icon(
-        isFavorite ? Icons.favorite : Icons.favorite_border,
+        isFavorite ? LucideIcons.heart : LucideIcons.heart,
         color: isFavorite ? AfColors.semanticError : AfColors.textTertiary,
         size: widget.size,
       ),

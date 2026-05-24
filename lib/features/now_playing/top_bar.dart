@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
 import '../../core/jellyfin/models/items.dart';
 import '../../state/providers.dart';
 import '../../widgets/track_details_sheet.dart';
@@ -87,7 +89,7 @@ class TopBar extends ConsumerWidget {
             const PopupMenuItem(
               value: 'radio',
               child: ListTile(
-                leading: Icon(Icons.radio),
+                leading: Icon(LucideIcons.radio),
                 title: Text('Start radio'),
                 contentPadding: EdgeInsets.zero,
               ),
