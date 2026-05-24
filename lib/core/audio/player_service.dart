@@ -120,9 +120,12 @@ class AfPlayerService {
     _bridge.onSeek = (Duration pos) => unawaited(seek(pos));
     _bridge.onSkipToQueueItem = (int idx) => unawaited(skipToQueueItem(idx));
 
-    // Skip setAudioDriver, setAudioBuffer, Future.delayed in test mode
+    // Skip setAudioDriver, setAudioBuffer, Future.delayed in test mode.
+    // Also skips _positionTracker.start() — position polling creates a
+    // Timer.periodic that leaves pending timers in widget tests using
+    // FakeAsync. Tests that need position tracking should call
+    // _positionTracker.start() explicitly via a visibleForTesting helper.
     _bindStreams();
-    _positionTracker.start();
   }
 
   // ---------------------------------------------------------------------------
