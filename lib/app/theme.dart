@@ -79,20 +79,18 @@ ThemeData buildNocturneTheme() {
       centerTitle: true,
     ),
 
-    bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: AfColors.surfaceHigh.withValues(alpha: 0.85),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
-      modalBackgroundColor: AfColors.surfaceHigh.withValues(alpha: 0.85),
+      modalBackgroundColor: Colors.transparent,
       modalBarrierColor: AfColors.surfaceScrim,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
           topLeft: AfRadii.rXl,
           topRight: AfRadii.rXl,
         ),
       ),
-      showDragHandle: true,
-      dragHandleColor: AfColors.surfaceMax,
-      dragHandleSize: const Size(32, 4),
+      showDragHandle: false,
     ),
 
     dialogTheme: const DialogThemeData(

@@ -22,22 +22,32 @@ void showTrackDetailsSheet(BuildContext context, WidgetRef ref, AfTrack track) {
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
           decoration: const BoxDecoration(
-            color: AfColors.surfaceHigh,
+            color: Color(0xB30B0B14),
             border: Border(
               top: BorderSide(color: AfColors.surfaceLow, width: 1),
             ),
           ),
-          child: DraggableScrollableSheet(
-            initialChildSize: 0.55,
-            minChildSize: 0.3,
-            maxChildSize: 0.85,
-            expand: false,
-            builder: (_, scrollController) => SafeArea(
-              top: false,
-              child: _TrackDetailsBody(
-                track: track,
-                scrollController: scrollController,
-              ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: AfSpacing.s12),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AfColors.textTertiary.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AfSpacing.s12),
+                Expanded(
+                  child: _TrackDetailsBody(track: track),
+                ),
+              ],
             ),
           ),
         ),
@@ -48,22 +58,18 @@ void showTrackDetailsSheet(BuildContext context, WidgetRef ref, AfTrack track) {
 
 class _TrackDetailsBody extends ConsumerWidget {
 
-  const _TrackDetailsBody({
-    required this.track,
-    required this.scrollController,
-  });
+  const _TrackDetailsBody({required this.track});
   final AfTrack track;
-  final ScrollController scrollController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detailsAsync = ref.watch(trackDetailsProvider(track.id));
 
     return ListView(
-      controller: scrollController,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AfSpacing.gutterGenerous,
-        vertical: AfSpacing.s12,
+      padding: const EdgeInsets.only(
+        left: AfSpacing.gutterGenerous,
+        right: AfSpacing.gutterGenerous,
+        bottom: AfSpacing.s12,
       ),
       children: [
         // Header

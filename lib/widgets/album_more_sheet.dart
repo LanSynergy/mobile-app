@@ -48,6 +48,18 @@ void showAlbumMoreSheet(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AfColors.textTertiary.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AfSpacing.s12),
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AfSpacing.gutterGenerous,
