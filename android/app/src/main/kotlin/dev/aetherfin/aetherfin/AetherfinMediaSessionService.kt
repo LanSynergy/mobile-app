@@ -35,6 +35,9 @@ class AetherfinMediaSessionService : Service() {
         const val ACTION_TOGGLE_SHUFFLE = "dev.aetherfin.ACTION_TOGGLE_SHUFFLE"
         const val ACTION_CYCLE_REPEAT = "dev.aetherfin.ACTION_CYCLE_REPEAT"
         const val ACTION_TOGGLE_FAVORITE = "dev.aetherfin.ACTION_TOGGLE_FAVORITE"
+
+        @JvmStatic
+        var isServicePlaying = false
     }
 
     private var mediaSession: MediaSessionCompat? = null
@@ -151,6 +154,7 @@ class AetherfinMediaSessionService : Service() {
         if (intent != null && intent.action == ACTION_UPDATE_STATE) {
             val playing = intent.getBooleanExtra("playing", false)
             isCurrentlyPlaying = playing
+            isServicePlaying = playing
             val buffering = intent.getBooleanExtra("buffering", false)
             val positionMs = intent.getLongExtra("positionMs", 0L)
             val durationMs = intent.getLongExtra("durationMs", 0L)
@@ -521,6 +525,7 @@ class AetherfinMediaSessionService : Service() {
     }
 
     override fun onDestroy() {
+        isServicePlaying = false
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(NOTIFICATION_ID)
         abandonAudioFocus()
