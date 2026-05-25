@@ -24,7 +24,7 @@ typedef _StateUpdater =
   _StateUpdater updateState,
   Future<dynamic> Function(MethodCall)? handler,
 })
-_createFixture() {
+_createFixture({bool testingMode = true}) {
   final result = createMockPlayer();
   final player = result.player;
   final ctrls = result.ctrls;
@@ -51,7 +51,7 @@ _createFixture() {
   });
 
   final bridge = NativeMediaSessionBridge(channel: channel);
-  final service = AfPlayerService.test(player: player, bridge: bridge);
+  final service = AfPlayerService.test(player: player, bridge: bridge, testingMode: testingMode);
 
   return (
     service: service,
@@ -782,6 +782,47 @@ void main() {
       await handler!(const MethodCall('toggleFavorite'));
       await Future<void>.delayed(Duration.zero);
       expect(favoriteToggledCalled, isTrue);
+    });
+
+    test('sends live updates on track and position changes when testingMode is false', () async {
+      final liveUpdateCalls = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('aetherfin.live_update'),
+            (MethodCall call) async {
+              liveUpdateCalls.add(call);
+              if (call.method == 'isSupported') return true;
+              return true;
+            },
+          );
+
+      final fixture = _createFixture(testingMode: false);
+      final testService = fixture.service;
+
+      try {
+        await testService.playQueue(
+          [trackA],
+          startIndex: 0,
+          resolveStreamUrl: resolveStreamUrl,
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          liveUpdateCalls.any((c) => c.method == 'start'),
+          isTrue,
+        );
+
+        final startCall = liveUpdateCalls.firstWhere((c) => c.method == 'start');
+        expect(startCall.arguments['title'], 'Track A');
+        expect(startCall.arguments['artist'], 'Test Artist');
+      } finally {
+        await testService.dispose();
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('aetherfin.live_update'),
+              null,
+            );
+      }
     });
   });
 }
