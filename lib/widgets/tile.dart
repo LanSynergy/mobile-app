@@ -34,7 +34,7 @@ class Tile extends StatelessWidget {
         : Artwork(
             url: imageUrl,
             size: size,
-            radius: BorderRadius.circular(AfRadii.md),
+            radius: BorderRadius.circular(AfRadii.lg),
           );
 
     return PressScale(
