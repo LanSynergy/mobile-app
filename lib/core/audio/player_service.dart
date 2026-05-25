@@ -712,6 +712,7 @@ class AfPlayerService {
     if (_disposed) return;
     if (_queueManager.currentQueue.isEmpty) return;
     _queueManager.shuffleTail();
+    unawaited(_syncNextTrackInMpv());
     afLog(
       'data',
       'shuffleTail source=live '
@@ -725,6 +726,7 @@ class AfPlayerService {
     if (_queueManager.isShuffleEnabled == enabled) return;
 
     _queueManager.setShuffle(enabled);
+    unawaited(_syncNextTrackInMpv());
 
     // Don't emitCurrentTrack or fire onTrackChanged — the current track
     // hasn't changed, only the remaining queue order has. Firing
@@ -788,6 +790,7 @@ class AfPlayerService {
     if (!_queueManager.canReorder(oldIndex, newIndex)) return;
 
     _queueManager.reorder(oldIndex, newIndex);
+    unawaited(_syncNextTrackInMpv());
     afLog(
       'audio',
       'reorderQueue oldIndex=$oldIndex newIndex=$newIndex '
@@ -808,6 +811,7 @@ class AfPlayerService {
     }
 
     _queueManager.remove(index);
+    unawaited(_syncNextTrackInMpv());
     afLog(
       'audio',
       'removeFromQueue index=$index currentIndex=${_queueManager.currentIndex} '
@@ -822,7 +826,9 @@ class AfPlayerService {
     required String Function(AfTrack) resolveStreamUrl,
   }) async {
     if (_disposed) return;
+    _resolveStreamUrl = resolveStreamUrl;
     _queueManager.insert(index, track);
+    unawaited(_syncNextTrackInMpv());
     afLog(
       'audio',
       'insertIntoQueue "${track.title}" at index=$index '
@@ -835,6 +841,7 @@ class AfPlayerService {
     required String Function(AfTrack) resolveStreamUrl,
   }) async {
     if (_disposed) return;
+    _resolveStreamUrl = resolveStreamUrl;
     _queueManager.engine.insert(
       _queueManager.currentIndex >= 0
           ? _queueManager.currentIndex + 1
@@ -842,6 +849,7 @@ class AfPlayerService {
       track,
     );
     _queueManager.emitQueue();
+    unawaited(_syncNextTrackInMpv());
     afLog('audio', 'playNext "${track.title}"');
   }
 
@@ -850,8 +858,10 @@ class AfPlayerService {
     required String Function(AfTrack) resolveStreamUrl,
   }) async {
     if (_disposed) return;
+    _resolveStreamUrl = resolveStreamUrl;
     _queueManager.engine.append(track);
     _queueManager.emitQueue();
+    unawaited(_syncNextTrackInMpv());
     afLog('audio', 'addToQueue "${track.title}" at end');
   }
 
@@ -1264,6 +1274,37 @@ class AfPlayerService {
         artworkPath: artPath,
       );
     }
+  }
+
+  Future<void> _syncNextTrackInMpv() async {
+    if (_disposed) return;
+    if (_resolveStreamUrl == null) return;
+
+    return _queueLock.run(() async {
+      try {
+        final countStr = await _player.getRawProperty('playlist/count');
+        final currentStr = await _player.getRawProperty('playlist/current');
+        if (countStr != null && currentStr != null) {
+          final count = int.tryParse(countStr) ?? 0;
+          final current = int.tryParse(currentStr) ?? 0;
+
+          // Remove all items after the currently playing one
+          for (var i = count - 1; i > current; i--) {
+            await _player.sendRawCommand(['playlist-remove', '$i']);
+          }
+
+          final next = _queueManager.engine.nextTrack;
+          if (next != null) {
+            await _player.add(Media(_resolveStreamUrl!(next)));
+            afLog('audio', 'syncNextTrackInMpv: preloaded next track "${next.title}"');
+          } else {
+            afLog('audio', 'syncNextTrackInMpv: no next track to preload');
+          }
+        }
+      } catch (e, stack) {
+        afLog('audio', 'syncNextTrackInMpv failed', error: e, stackTrace: stack);
+      }
+    });
   }
 }
 

@@ -824,5 +824,33 @@ void main() {
             );
       }
     });
+
+    test('setAfShuffleMode syncs next track in mpv playlist', () async {
+      when(() => player.getRawProperty('playlist/count')).thenAnswer((_) async => '2');
+      when(() => player.getRawProperty('playlist/current')).thenAnswer((_) async => '0');
+      when(() => player.sendRawCommand(any())).thenAnswer((_) async {});
+      when(() => player.add(any())).thenAnswer((_) async {});
+
+      await service.playQueue(
+        [trackA, trackB, trackC],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      clearInteractions(player);
+
+      when(() => player.getRawProperty('playlist/count')).thenAnswer((_) async => '2');
+      when(() => player.getRawProperty('playlist/current')).thenAnswer((_) async => '0');
+      when(() => player.sendRawCommand(any())).thenAnswer((_) async {});
+      when(() => player.add(any())).thenAnswer((_) async {});
+      when(() => player.state).thenReturn(const PlayerState());
+
+      await service.setAfShuffleMode(true);
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => player.sendRawCommand(['playlist-remove', '1'])).called(1);
+      verify(() => player.add(any(that: isA<Media>()))).called(1);
+    });
   });
 }
