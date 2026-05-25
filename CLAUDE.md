@@ -672,7 +672,7 @@ Lives in `reactive_artwork.dart` (extracted from `now_playing_screen.dart`).
 ```bash
 flutter pub get
 flutter run --debug
-flutter analyze --no-fatal-infos   # 0 errors, 0 warnings
+flutter analyze   # 0 errors, 0 warnings
 flutter test
 flutter build apk --release
 flutter build apk --release --split-per-abi
@@ -732,7 +732,7 @@ dart format --output=none --set-exit-if-changed .
 dart format .
 
 # 2. Analyze
-flutter analyze --no-fatal-infos
+flutter analyze
 # If issues found: REPORT the violations (file:line), STOP. Do NOT commit.
 # Let the user decide whether to fix or override.
 
@@ -807,7 +807,7 @@ The format check runs BEFORE analysis in the verify gate pipeline:
 1. `dart format --output=none --set-exit-if-changed .` — dry-run check
 2. If exit code != 0: `dart format .` — auto-fix formatting
 3. Re-run `dart format --output=none --set-exit-if-changed .` — verify fix
-4. Only then proceed to `flutter analyze --no-fatal-infos`
+4. Only then proceed to `flutter analyze`
 
 This prevents formatting drift from accumulating across sessions.
 
@@ -872,7 +872,7 @@ This prevents formatting drift from accumulating across sessions.
 57. **"Skeleton screens need complex widget trees."** No. Each screen has a dedicated `*_skeleton.dart` widget in `lib/widgets/skeletons/`. They use the shared `ShimmerLayout` base widget from `skeleton.dart` with `LinearGradient` shimmer animation. Skeleton widgets sit in the `widgets/skeletons/` directory and are loaded during data fetch.
 58. **"Cover art caching needs no eviction policy."** No. `CoverCacheManager` (`lib/core/local/cover_cache_manager.dart`) manages an LRU-evicted disk cache for cover art. Temp files are cleaned up on startup. The eviction test must be robust against filesystem-dependent directory order.
 59. **"Hand-write save/load triples for each setting."** No. Use the `SettingsKey<T>` descriptor pattern (`player_settings_store.dart`). Each setting is a typed key with `keyName`, `defaultValue`, `encoder`, and `decoder`. This eliminates the error-prone hand-rolled save/load triples.
-60. **"info-level lints can be ignored."** No. All 363 info-level lints were fixed in a single pass (`9621d50`). `flutter analyze --no-fatal-infos` reports **0 issues** across the entire codebase. New code must maintain this.
+60. **"info-level lints can be ignored."** No. All 363 info-level lints were fixed in a single pass (`9621d50`). `flutter analyze` reports **0 issues** across the entire codebase. New code must maintain this.
 61. **"QS media session progress bar after queue end is correct."** No. After the queue ends, the QS progress bar can keep running because `playing=false` events are throttled (arriving <100ms apart) while a transient `playing=true` event at ~54ms pushes `playing=true` to native. Android QS then extrapolates position from the last known speed=1.0 forever. Fix: `trackEnded` fallback in `_updateMediaSession` overrides transient `playing=true` when position >= duration at queue end.
 
 ## 16. Glossary

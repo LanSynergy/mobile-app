@@ -158,8 +158,9 @@ class SmartPlaylistEngine {
     if (a == null && b == null) return 0;
     if (a == null) return -1;
     if (b == null) return 1;
-    if (a is String && b is String)
+    if (a is String && b is String) {
       return a.toLowerCase().compareTo(b.toLowerCase());
+    }
     if (a is num && b is num) return a.compareTo(b);
     if (a is DateTime && b is DateTime) return a.compareTo(b);
     return '$a'.compareTo('$b');

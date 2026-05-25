@@ -681,12 +681,15 @@ class OutputDialogContent extends ConsumerWidget {
         n.contains('airpod')) {
       return Icon(Icons.headphones_rounded, color: color, size: 22);
     }
-    if (n.contains('speaker'))
+    if (n.contains('speaker')) {
       return Icon(Icons.speaker_rounded, color: color, size: 22);
-    if (n.contains('hdmi'))
+    }
+    if (n.contains('hdmi')) {
       return Icon(Icons.tv_rounded, color: color, size: 22);
-    if (n.contains('usb'))
+    }
+    if (n.contains('usb')) {
       return Icon(Icons.usb_rounded, color: color, size: 22);
+    }
     return Icon(Icons.smartphone_rounded, color: color, size: 22);
   }
 }

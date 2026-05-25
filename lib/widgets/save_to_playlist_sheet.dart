@@ -93,17 +93,19 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
   Future<void> _load() async {
     try {
       final playlists = await widget.backend.playlists();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _playlists = playlists;
           _loading = false;
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = e.toString();
           _loading = false;
         });
+      }
     }
   }
 

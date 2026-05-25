@@ -110,8 +110,9 @@ class CastPickerScreen extends ConsumerWidget {
                       ),
                       onTap: () async {
                         await svc.setAudioDevice(device);
-                        if (context.mounted)
+                        if (context.mounted) {
                           unawaited(Navigator.maybePop(context));
+                        }
                       },
                     );
                   },

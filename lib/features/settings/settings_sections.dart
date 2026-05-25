@@ -37,11 +37,12 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
   Future<void> _loadFolders() async {
     final lib = ref.read(localLibraryProvider);
     final folders = await lib.getFolders();
-    if (mounted)
+    if (mounted) {
       setState(() {
         _folders = folders;
         _loading = false;
       });
+    }
   }
 
   void _onProgress(int completed, int total) {
