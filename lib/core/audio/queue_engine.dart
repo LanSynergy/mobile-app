@@ -22,6 +22,13 @@ class AfQueueEngine {
   List<int>? _shuffleOrder;
   int _windowStart = 0;
   bool _playbackEnded = false;
+
+  // ── forNtimes loop mode fields ────────────────────────────────────
+  bool _isForNtimes = false;
+  int _remainingRepeats = 0;
+  int _ntimesCount = 2;
+  bool _isTailShuffle = false;
+
   final Random _random;
 
   // ── Query helpers ──────────────────────────────────────────────────
@@ -40,6 +47,11 @@ class AfQueueEngine {
   int get windowStart => _windowStart;
   bool get isShuffleEnabled => _shuffleOrder != null;
   bool get playbackEnded => _playbackEnded;
+  bool get isForNtimes => _isForNtimes;
+  int get remainingRepeats => _remainingRepeats;
+  int get ntimesCount => _ntimesCount;
+  bool get isNtimesModeActive => _isForNtimes && _remainingRepeats > 0;
+  bool get isTailShuffle => _isTailShuffle;
 
   AfTrack? get currentTrack =>
       (_currentIndex >= 0 && _currentIndex < _tracks.length)
@@ -96,6 +108,7 @@ class AfQueueEngine {
       _windowStart = _currentIndex;
     }
     _playbackEnded = false;
+    _isTailShuffle = false;
     _shuffleOrder = null;
   }
 
@@ -103,6 +116,8 @@ class AfQueueEngine {
   void endPlayback() {
     _currentIndex = -1;
     _playbackEnded = true;
+    _isForNtimes = false;
+    _remainingRepeats = 0;
   }
 
   /// Clear all state.
@@ -112,6 +127,9 @@ class AfQueueEngine {
     _windowStart = 0;
     _shuffleOrder = null;
     _playbackEnded = false;
+    _isForNtimes = false;
+    _remainingRepeats = 0;
+    _isTailShuffle = false;
   }
 
   // ── Shuffle (Fisher-Yates index mapping) ───────────────────────────
@@ -129,6 +147,35 @@ class AfQueueEngine {
     } else {
       _windowStart = _currentIndex >= 0 ? _currentIndex : 0;
       _shuffleOrder = null;
+      _isTailShuffle = false;
+    }
+  }
+
+  /// Activate or deactivate forNtimes loop mode.
+  void setForNtimes(bool enabled) {
+    _isForNtimes = enabled;
+    _remainingRepeats = enabled ? _ntimesCount : 0;
+  }
+
+  /// Set the N value (how many repeats per track).
+  void setNtimesCount(int count) {
+    _ntimesCount = count > 0 ? count : 2;
+    if (_isForNtimes && _remainingRepeats > 0) {
+      _remainingRepeats = _ntimesCount;
+    }
+  }
+
+  /// Decrement remaining repeats (called on track completion).
+  void decrementRepeats() {
+    if (_remainingRepeats > 0) {
+      _remainingRepeats--;
+    }
+  }
+
+  /// Reset repeats counter to the configured N value.
+  void resetRepeats() {
+    if (_isForNtimes) {
+      _remainingRepeats = _ntimesCount;
     }
   }
 
@@ -154,6 +201,41 @@ class AfQueueEngine {
       indices.shuffle(_random);
     }
     _shuffleOrder = indices;
+  }
+
+  /// Shuffle only the tail — everything after the current logical position.
+  void shuffleTail() {
+    if (_tracks.isEmpty) return;
+
+    final logicalCurrent = currentIndex;
+    if (logicalCurrent < 0 || logicalCurrent >= _tracks.length - 1) return;
+
+    final tailStart = logicalCurrent + 1;
+    final tailLength = _tracks.length - tailStart;
+
+    _isTailShuffle = true;
+
+    if (_shuffleOrder == null) {
+      _shuffleOrder = List<int>.generate(_tracks.length, (i) => i);
+      final tail = _shuffleOrder!.sublist(tailStart);
+      tail.shuffle(_random);
+      _shuffleOrder = [
+        ..._shuffleOrder!.sublist(0, tailStart),
+        ...tail,
+      ];
+    } else {
+      final head = _shuffleOrder!.sublist(0, tailStart);
+      final tail = _shuffleOrder!.sublist(tailStart);
+      tail.shuffle(_random);
+      _shuffleOrder = [...head, ...tail];
+    }
+  }
+
+  /// Reset forNtimes repeats counter on track jump.
+  void _resetRepeatsOnJump() {
+    if (_isForNtimes) {
+      _remainingRepeats = _ntimesCount;
+    }
   }
 
   /// Map a logical queue index to the actual track.
@@ -183,6 +265,7 @@ class AfQueueEngine {
     final logicalIdx = currentIndex;
     if (logicalIdx < _tracks.length - 1) {
       _currentIndex = physicalIndex(logicalIdx + 1);
+      resetRepeats();
     }
     return currentIndex;
   }
@@ -193,6 +276,7 @@ class AfQueueEngine {
     final logicalIdx = currentIndex;
     if (logicalIdx > 0) {
       _currentIndex = physicalIndex(logicalIdx - 1);
+      resetRepeats();
     }
     return currentIndex;
   }
@@ -202,6 +286,7 @@ class AfQueueEngine {
     if (_tracks.isEmpty) return currentIndex;
     final clamped = logicalIndex.clamp(0, _tracks.length - 1);
     _currentIndex = physicalIndex(clamped);
+    _resetRepeatsOnJump();
     _windowStart = clamped;
     return currentIndex;
   }

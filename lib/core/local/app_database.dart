@@ -111,6 +111,24 @@ class CacheEntries extends Table {
   Set<Column> get primaryKey => {trackId};
 }
 
+/// Snapshot of a played queue — persisted so the user can restore
+/// previous play sessions. Added in schema v4.
+///
+/// Stores only track IDs and source metadata (not full track objects).
+/// Tracks are re-fetched from the active backend when restoring.
+@DataClassName('QueueHistoryEntity')
+class QueueHistory extends Table {
+  TextColumn get id => text()();           // uuid v4
+  TextColumn get trackIdsJson => text()(); // JSON array of track IDs
+  TextColumn get sourceLabel => text()();  // "Album: In Rainbows"
+  TextColumn get sourceType => text()();   // "album", "playlist", "artist", "manual"
+  TextColumn get sourceId => text().nullable()(); // nullable server/DB ID
+  IntColumn get createdAt => integer()();  // epoch ms
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Tracks,
@@ -120,6 +138,7 @@ class CacheEntries extends Table {
     Playlists,
     PlaylistEntries,
     CacheEntries,
+    QueueHistory,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -130,7 +149,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -148,6 +167,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) {
         await m.createTable(cacheEntries);
+      }
+      if (from < 4) {
+        await m.createTable(queueHistory);
       }
     },
   );

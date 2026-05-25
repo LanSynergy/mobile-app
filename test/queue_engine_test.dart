@@ -431,5 +431,133 @@ void main() {
         expect(engine.slotToReplace(1), 0);
       });
     });
+
+    group('forNtimes loop mode', () {
+      test('default state is inactive', () {
+        final engine = AfQueueEngine();
+        expect(engine.isForNtimes, false);
+        expect(engine.remainingRepeats, 0);
+        expect(engine.ntimesCount, 2);
+      });
+
+      test('setForNtimes(true) activates and sets remaining to ntimesCount', () {
+        final engine = AfQueueEngine();
+        engine.replaceAll(tracks, 0);
+        engine.setForNtimes(true);
+        expect(engine.isForNtimes, true);
+        expect(engine.remainingRepeats, 2);
+      });
+
+      test('decrementRepeats reduces remaining count', () {
+        final engine = AfQueueEngine();
+        engine.replaceAll(tracks, 0);
+        engine.setForNtimes(true);
+        engine.decrementRepeats();
+        expect(engine.remainingRepeats, 1);
+        engine.decrementRepeats();
+        expect(engine.remainingRepeats, 0);
+        engine.decrementRepeats();
+        expect(engine.remainingRepeats, 0);
+      });
+
+      test('setForNtimes(false) deactivates and resets', () {
+        final engine = AfQueueEngine();
+        engine.replaceAll(tracks, 0);
+        engine.setForNtimes(true);
+        engine.decrementRepeats();
+        engine.setForNtimes(false);
+        expect(engine.isForNtimes, false);
+        expect(engine.remainingRepeats, 0);
+      });
+
+      test('setNtimesCount changes N and resets remaining when active', () {
+        final engine = AfQueueEngine();
+        engine.replaceAll(tracks, 0);
+        engine.setForNtimes(true);
+        engine.setNtimesCount(5);
+        expect(engine.ntimesCount, 5);
+        expect(engine.remainingRepeats, 5);
+      });
+
+      test('resetRepeats resets to ntimesCount when active', () {
+        final engine = AfQueueEngine();
+        engine.replaceAll(tracks, 0);
+        engine.setForNtimes(true);
+        engine.decrementRepeats();
+        engine.decrementRepeats();
+        expect(engine.remainingRepeats, 0);
+        engine.resetRepeats();
+        expect(engine.remainingRepeats, 2);
+      });
+
+      test('resetRepeats is no-op when inactive', () {
+        final engine = AfQueueEngine();
+        engine.replaceAll(tracks, 0);
+        engine.resetRepeats();
+        expect(engine.remainingRepeats, 0);
+      });
+
+      test('clear() resets forNtimes state', () {
+        final engine = AfQueueEngine();
+        engine.replaceAll(tracks, 0);
+        engine.setForNtimes(true);
+        engine.clear();
+        expect(engine.isForNtimes, false);
+        expect(engine.remainingRepeats, 0);
+      });
+    });
+
+    group('shuffleTail', () {
+      test('shuffles only tracks after current index when shuffle is off', () {
+        final engine = AfQueueEngine();
+        engine.replaceAll(tracks, 0);
+        final currentTrackId = engine.currentTrack!.id;
+
+        engine.shuffleTail();
+
+        expect(engine.currentIndex, 0);
+        expect(engine.currentTrack!.id, currentTrackId);
+        expect(engine.isShuffleEnabled, true);
+        expect(engine.currentIndex, 0);
+      });
+
+      test('shuffles only tracks after current index when shuffle is already on', () {
+        final engine = AfQueueEngine();
+        engine.replaceAll(tracks, 0);
+        engine.setShuffle(true);
+        final currentTrackId = engine.currentTrack!.id;
+
+        engine.shuffleTail();
+
+        expect(engine.currentIndex, 0);
+        expect(engine.currentTrack!.id, currentTrackId);
+      });
+
+      test('no-op for empty queue', () {
+        final engine = AfQueueEngine();
+        engine.shuffleTail();
+        expect(engine.currentIndex, -1);
+      });
+
+      test('no-op for single-track queue', () {
+        final engine = AfQueueEngine();
+        engine.shuffleTail();
+        expect(engine.currentIndex, -1);
+      });
+
+      test('no-op when at end of queue', () {
+        final engine = AfQueueEngine();
+        engine.replaceAll(tracks, 4);
+        engine.shuffleTail();
+        expect(engine.isShuffleEnabled, false);
+      });
+
+      test('preserves head order when shuffle was off', () {
+        final engine = AfQueueEngine();
+        engine.replaceAll(tracks, 2);
+        engine.shuffleTail();
+        expect(engine.isShuffleEnabled, true);
+      });
+    });
   });
 }
