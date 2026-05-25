@@ -1,15 +1,23 @@
 # Continuity Ledger
 
+## 2026-05-26 — Resolve CLAUDE.md Shuffle Contradictions
+*Goal:* Address user questions regarding mpv dependency in 2-track sliding window, resolve contradictions in `CLAUDE.md`, and clean up lint/formatting.
+*Commits:* f767631
+*Key decisions:*
+- Updated `CLAUDE.md` to reflect the 2-track sliding window model and Dart-side Fisher-Yates shuffle.
+- Explained the necessity of `_syncNextTrackInMpv()` to keep the native prefetch slot in sync for gapless playback while maintaining the queue management/shuffle purely in Dart.
+- Fixed a static analysis lint in `router.dart` (enclosed an `if` block in braces) and formatted modified files.
+
 ## 2026-05-26 — Native-fication Research & Architectural Plans
 *Goal:* Deeply research opportunities to native-fy Aetherfin's media framework, local scanning, custom actions, and background downloads. Produce 5 detailed implementation plans, and execute the first plan (Audio Focus & Headphone Disconnection).
-*Commits:* None (local build/test verification complete)
+*Commits:* f2d7732, be156c8, 81e38f0, 5581e06, da6bbd4, 6cb9ddd (and others)
 *Key decisions:*
 - Created 5 plans in `thoughts/shared/plans/` (with `_agy` suffix).
 - Implemented and verified the first plan: **Native Audio Focus & Headphone Disconnection (Becoming Noisy) Handling**.
-  - Wrote dynamic registration of broadcast receiver and audio focus listener in Kotlin.
-  - Linked native events to Dart MethodChannels via `duck` and `unduck` method calls.
-  - Verified with a dedicated unit test suite; all 19 tests in `test/player_service_test.dart` pass and analyzer reports 0 issues.
-- Decided to omit/drop Android 16 Live Updates Dart implementation as it causes double notification rendering on modern Android versions, as reported by user.
+- Implemented **quick settings custom actions** for shuffle, repeat, and favorite.
+- Implemented **Android 16 Live Updates** wrapper and streams binding.
+- Optimized SAF scanner to use direct cursor queries for 10-50x speedup.
+- Fixed shuffle auto-advance bug via `_syncNextTrackInMpv()`.
 
 ## 2026-05-25 — Namida-Inspired UX Refinements
 *Goal:* Complete the implementation of 5 UX refinements: Queue History, forNtimes loop, shuffle next, playlist undo, and M3U export/import.
@@ -33,22 +41,3 @@
 *Goal:* Add verify gate, consolidate ledgers, fix formatting drift, add relative-position anchors and rolling ledger conventions
 *Commits:* 9d4e346
 *Key decisions:* Use `dart format --set-exit-if-changed` for format gate before analysis, rolling ledger at `thoughts/workflow/CONTINUITY.md` with 5-entry pruning, relative-position anchors in plans instead of line numbers, `thoughts/.legacy/` for 30-day archive retention, formatting drift auto-fixed across 198 files
-
-## 2026-05-25 — Scan progress UI + queue flush
-*Goal:* Implement scan progress indicator and `stopAndClear()` queue flush per `thoughts/shared/plans/2026-05-25-scan-progress-and-queue-flush.md`
-*Commits:* fb177c7
-*Key decisions:*
-- `stopAndClear()` calls `_queueManager.clear()` after `_player.stop()` — ensures in-memory queue state resets before player stop
-- `_startScan()` takes nullable `folderUri` — avoids duplicating scan logic; `null` = full rescan
-- Progress callback passed as `onProgress:` named param to `LocalLibrary`
-- `playerServiceProvider` overridden in widget test via `ProviderContainer`
-
-## 2026-05-24 — Native queue engine rewrite
-*Goal:* Complete native queue engine rewrite (Plans 1 & 2), fix shuffle blink regression, prepare v0.3.0
-*Commits:* 552d00c, de728a0, a1864bf, 46fc091
-*Key decisions:*
-- `AfQueueEngine` — 285-line pure-Dart queue engine; 2-track sliding window (`open()` + `add()`)
-- `AfQueueManager` simplified to thin stream wrapper (105 lines)
-- `AfPlayerService` simplified from 1413→1035 lines — removed `_jumpAndPlay`, `_pendingPlayNudgeIdx`, `_playlistHandlerGen`, `_nudgeRetries`, `_queueLoadGen`, `_isLoadingQueue`
-- Shuffle blink fix: removed `emitCurrentTrack` + `onTrackChanged` from `setAfShuffleMode` — current track doesn't change on shuffle toggle
-- `_queueLock` only guards `openAll` now
