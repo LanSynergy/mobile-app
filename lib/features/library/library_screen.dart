@@ -188,7 +188,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         onRefresh: _onRefresh,
         color: AfColors.indigo300,
         backgroundColor: AfColors.surfaceBase,
-        child: Column(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
@@ -304,7 +304,7 @@ class _SegmentedPill extends ConsumerWidget {
               curve: AfCurves.easeStandard,
               padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
               decoration: BoxDecoration(
-                color: selected ? AfColors.indigo600 : AfColors.surfaceBase,
+                color: selected ? AfColors.indigo600 : AfColors.surfaceRaised,
                 borderRadius: AfRadii.borderPill,
               ),
               alignment: Alignment.center,
@@ -350,8 +350,10 @@ class _SectionBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     const padding = EdgeInsets.symmetric(horizontal: AfSpacing.s16);
+    const songPadding = EdgeInsets.symmetric(horizontal: AfSpacing.s8);
     final mode = ref.watch(appModeProvider);
     final isLocal = mode == AppMode.local;
+    final activeId = ref.watch(currentTrackProvider)?.id;
 
     switch (section) {
       case LibrarySection.albums:
@@ -452,27 +454,26 @@ class _SectionBody extends ConsumerWidget {
               final sorted = sortTracks != null ? sortTracks!(list) : list;
               return RepaintBoundary(
                 child: ListView.builder(
-                  padding: padding.add(
+                  padding: songPadding.add(
                     const EdgeInsets.only(
                       bottom: AfSpacing.bottomInsetWithMiniAndNav,
                     ),
                   ),
                   itemCount: sorted.length,
-                  itemExtent: 68.0,
                   itemBuilder: (context, i) {
                     final t = sorted[i];
-                    return Column(
-                      children: [
-                        TrackRow(
-                          track: t,
-                          onTap: () => ref
-                              .read(playActionsProvider)
-                              .playQueue(sorted, startIndex: i),
-                          onLongPress: () =>
-                              showTrackContextMenu(context, ref, t),
-                        ),
-                        const SizedBox(height: 4),
-                      ],
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: TrackRow(
+                        track: t,
+                        steelBackground: true,
+                        isActive: t.id == activeId,
+                        onTap: () => ref
+                            .read(playActionsProvider)
+                            .playQueue(sorted, startIndex: i),
+                        onLongPress: () =>
+                            showTrackContextMenu(context, ref, t),
+                      ),
                     );
                   },
                 ),
@@ -521,7 +522,7 @@ class _SectionBody extends ConsumerWidget {
               return false;
             },
             child: ListView.separated(
-              padding: padding.add(
+              padding: songPadding.add(
                 const EdgeInsets.only(
                   bottom: AfSpacing.bottomInsetWithMiniAndNav,
                 ),
@@ -545,6 +546,8 @@ class _SectionBody extends ConsumerWidget {
                 final t = sorted[i];
                 return TrackRow(
                   track: t,
+                  steelBackground: true,
+                  isActive: t.id == activeId,
                   onTap: () => ref
                       .read(playActionsProvider)
                       .playQueue(sorted, startIndex: i),
@@ -581,18 +584,11 @@ class _SectionBody extends ConsumerWidget {
                       height: 48,
                       decoration: const BoxDecoration(
                         borderRadius: AfRadii.borderSm,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            AfColors.semanticWarning,
-                            AfColors.semanticError,
-                          ],
-                        ),
+                        color: AfColors.indigo900,
                       ),
                       child: const Icon(
                         Icons.auto_awesome_rounded,
-                        color: Colors.white,
+                        color: AfColors.indigo300,
                       ),
                     ),
                     title: Text(
@@ -605,7 +601,7 @@ class _SectionBody extends ConsumerWidget {
                         color: AfColors.textTertiary,
                       ),
                     ),
-                    tileColor: AfColors.surfaceBase,
+                    tileColor: AfColors.surfaceRaised,
                     shape: const RoundedRectangleBorder(
                       borderRadius: AfRadii.borderMd,
                     ),
@@ -619,11 +615,7 @@ class _SectionBody extends ConsumerWidget {
                     height: 48,
                     decoration: const BoxDecoration(
                       borderRadius: AfRadii.borderSm,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [AfColors.indigo800, AfColors.indigo950],
-                      ),
+                      color: AfColors.indigo800,
                     ),
                     child: const Icon(
                       Icons.playlist_play_rounded,
@@ -637,7 +629,7 @@ class _SectionBody extends ConsumerWidget {
                       color: AfColors.textTertiary,
                     ),
                   ),
-                  tileColor: AfColors.surfaceBase,
+                  tileColor: AfColors.surfaceRaised,
                   shape: const RoundedRectangleBorder(
                     borderRadius: AfRadii.borderMd,
                   ),
@@ -720,27 +712,26 @@ class _SectionBody extends ConsumerWidget {
                 )
               : RepaintBoundary(
                   child: ListView.builder(
-                    padding: padding.add(
+                    padding: songPadding.add(
                       const EdgeInsets.only(
                         bottom: AfSpacing.bottomInsetWithMiniAndNav,
                       ),
                     ),
                     itemCount: list.length,
-                    itemExtent: 68.0,
                     itemBuilder: (context, i) {
                       final t = list[i];
-                      return Column(
-                        children: [
-                          TrackRow(
-                            track: t,
-                            onTap: () => ref
-                                .read(playActionsProvider)
-                                .playQueue(list, startIndex: i),
-                            onLongPress: () =>
-                                showTrackContextMenu(context, ref, t),
-                          ),
-                          const SizedBox(height: 4),
-                        ],
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: TrackRow(
+                          track: t,
+                          steelBackground: true,
+                          isActive: t.id == activeId,
+                          onTap: () => ref
+                              .read(playActionsProvider)
+                              .playQueue(list, startIndex: i),
+                          onLongPress: () =>
+                              showTrackContextMenu(context, ref, t),
+                        ),
                       );
                     },
                   ),
