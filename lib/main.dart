@@ -116,6 +116,10 @@ Future<void> main() async {
       final artworkPulse = prefs.getBool('af.artwork_pulse_enabled') ?? true;
       _boot('artworkPulse=$artworkPulse');
 
+      final localOnboardingCompleted =
+          prefs.getBool('af.local_onboarding_completed') ?? false;
+      _boot('localOnboardingCompleted=$localOnboardingCompleted');
+
       // Load offline cache settings.
       final offlineCacheEnabled =
           prefs.getBool('af.offline_cache_enabled') ?? false;
@@ -171,6 +175,9 @@ Future<void> main() async {
             wirePlayerService(ref, handler);
             return handler;
           }),
+          localOnboardingCompletedProvider.overrideWith(
+            (ref) => localOnboardingCompleted,
+          ),
         ],
       );
 
@@ -190,7 +197,11 @@ Future<void> main() async {
 
       // Seed the router with the initial auth/mode so its redirect runs
       // correctly on the very first frame.
-      setRouterAuthState(auth: initialAuth, mode: persistedMode);
+      setRouterAuthState(
+        auth: initialAuth,
+        mode: persistedMode,
+        localOnboardingCompleted: localOnboardingCompleted,
+      );
 
       // Wire auth → router redirect. The subscription lives for the process
       // lifetime — it intentionally keeps `container` alive (which is fine
@@ -222,6 +233,20 @@ Future<void> main() async {
         }
         notifyAuthChanged();
       }, fireImmediately: false);
+
+      // Wire local onboarding completion → router redirect.
+      // ignore: unused_local_variable
+      final onboardingSub = container.listen<bool>(
+        localOnboardingCompletedProvider,
+        (prev, next) {
+          setRouterAuthState(
+            auth: container.read(authProvider),
+            localOnboardingCompleted: next,
+          );
+          notifyAuthChanged();
+        },
+        fireImmediately: false,
+      );
 
       runApp(
         UncontrolledProviderScope(

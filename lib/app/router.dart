@@ -50,6 +50,7 @@ final _authRefresh = _AuthRefreshListenable();
 /// the router has zero dependency on the Riverpod container API.
 JellyfinAuth? _auth;
 AppMode? _appMode;
+bool _localOnboardingCompleted = false;
 
 /// The single [GoRouter] instance. Created once; never recreated.
 final _router = GoRouter(
@@ -81,9 +82,15 @@ final _router = GoRouter(
     }
 
     // Local mode: redirect to home if onboarding is done.
-    // But allow /onboarding/local-setup to stay (user is picking a folder).
+    // Otherwise, redirect to local setup if we are in onboarding.
     if (effectiveMode == AppMode.local) {
-      if (inOnboarding && loc != '/onboarding/local-setup') return '/home';
+      if (inOnboarding) {
+        if (!_localOnboardingCompleted) {
+          if (loc != '/onboarding/local-setup') return '/onboarding/local-setup';
+        } else {
+          return '/home';
+        }
+      }
     }
 
     // No mode chosen yet and no auth: stay on onboarding
@@ -297,9 +304,16 @@ class _AuthRefreshListenable extends ChangeNotifier {
 /// NOTE: the `if (mode != null)` guard is intentional — it prevents
 /// `authSub` (which only passes auth) from accidentally clearing `_appMode`.
 /// To explicitly clear mode to null, use [resetRouterMode].
-void setRouterAuthState({JellyfinAuth? auth, AppMode? mode}) {
+void setRouterAuthState({
+  JellyfinAuth? auth,
+  AppMode? mode,
+  bool? localOnboardingCompleted,
+}) {
   _auth = auth;
   if (mode != null) _appMode = mode;
+  if (localOnboardingCompleted != null) {
+    _localOnboardingCompleted = localOnboardingCompleted;
+  }
 }
 
 /// Explicitly clear the router's mode snapshot to null.
@@ -307,6 +321,7 @@ void setRouterAuthState({JellyfinAuth? auth, AppMode? mode}) {
 /// doesn't read stale `_appMode` and skip onboarding.
 void resetRouterMode() {
   _appMode = null;
+  _localOnboardingCompleted = false;
 }
 
 /// Called from main.dart when auth/mode changes to trigger router redirect.

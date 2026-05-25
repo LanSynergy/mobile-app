@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
@@ -79,7 +80,14 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
       ref.invalidate(localArtistsProvider);
       ref.invalidate(localTracksProvider);
       ref.invalidate(localGenresProvider);
-      if (mounted) context.go('/home');
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('af.local_onboarding_completed', true);
+
+      if (mounted) {
+        ref.read(localOnboardingCompletedProvider.notifier).state = true;
+        context.go('/home');
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
