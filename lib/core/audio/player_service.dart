@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show VoidCallback, visibleForTesting;
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../utils/log.dart';
@@ -125,6 +125,23 @@ class AfPlayerService {
         _isDucked = false;
       }
     };
+    _bridge.onToggleShuffle = () {
+      unawaited(setAfShuffleMode(!_queueManager.isShuffleEnabled));
+      _updateMediaSession();
+    };
+    _bridge.onCycleRepeat = () {
+      final current = _player.state.loop;
+      final next = switch (current) {
+        Loop.off => Loop.playlist,
+        Loop.playlist => Loop.file,
+        Loop.file => Loop.off,
+      };
+      unawaited(setAfLoopMode(next));
+      _updateMediaSession();
+    };
+    _bridge.onToggleFavorite = () {
+      onFavoriteToggled?.call();
+    };
 
     // Skip setAudioDriver, setAudioBuffer, Future.delayed in test mode.
     // Also skips _positionTracker.start() — position polling creates a
@@ -143,6 +160,12 @@ class AfPlayerService {
 
   void Function(AfTrack? track)? onTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
+
+  /// Fired from the native lockscreen/QS when the user taps the favorite
+  /// custom action. The UI layer should toggle the current track's favorite
+  /// status and call [_updateMediaSession] afterwards.
+  VoidCallback? onFavoriteToggled;
+
   final List<StreamSubscription<dynamic>> _subs =
       <StreamSubscription<dynamic>>[];
 
@@ -1132,6 +1155,13 @@ class AfPlayerService {
         ? artUri.toFilePath()
         : null;
 
+    // Map mpv Loop enum to the string the native side expects
+    final loopModeStr = switch (_player.state.loop) {
+      Loop.file => 'one',
+      Loop.playlist => 'all',
+      Loop.off => 'off',
+    };
+
     _bridge.pushState(
       MediaSessionState(
         playing: effectivePlaying,
@@ -1149,6 +1179,9 @@ class AfPlayerService {
         queueSize: _queueManager.currentQueue.length,
         needsArtworkDownload:
             artUri == null && _artworkManager.needsRemoteArtwork(track),
+        shuffleEnabled: _queueManager.isShuffleEnabled,
+        loopMode: loopModeStr,
+        isFavorite: track.isFavorite,
       ),
     );
   }

@@ -21,6 +21,9 @@ class MediaSessionState {
     this.queueIndex,
     required this.queueSize,
     this.needsArtworkDownload = false,
+    this.shuffleEnabled = false,
+    this.loopMode = 'off',
+    this.isFavorite = false,
   });
   final bool playing;
   final bool buffering;
@@ -37,6 +40,15 @@ class MediaSessionState {
   /// When `true` the bridge will fire [NativeMediaSessionBridge.onArtworkNeeded]
   /// so the owner can trigger remote artwork download for the current track.
   final bool needsArtworkDownload;
+
+  /// Whether shuffle mode is currently active.
+  final bool shuffleEnabled;
+
+  /// Current loop mode: 'off', 'one', or 'all'.
+  final String loopMode;
+
+  /// Whether the current track is marked as a favorite.
+  final bool isFavorite;
 }
 
 /// Owns the [MethodChannel] for `aetherfin.media_session` and handles all
@@ -80,6 +92,15 @@ class NativeMediaSessionBridge {
   void Function(double)? onDuck;
   VoidCallback? onUnduck;
 
+  /// Fired from native when the user taps the shuffle custom action.
+  VoidCallback? onToggleShuffle;
+
+  /// Fired from native when the user taps the repeat custom action.
+  VoidCallback? onCycleRepeat;
+
+  /// Fired from native when the user taps the favorite custom action.
+  VoidCallback? onToggleFavorite;
+
   /// Fired by [pushState] when [MediaSessionState.artPath] is `null` and
   /// [MediaSessionState.needsArtworkDownload] is `true`. The owner should
   /// trigger a remote artwork download for the current track.
@@ -121,6 +142,9 @@ class NativeMediaSessionBridge {
       'artPath': state.artPath,
       'queueIndex': state.queueIndex,
       'queueSize': state.queueSize,
+      'shuffleEnabled': state.shuffleEnabled,
+      'loopMode': state.loopMode,
+      'isFavorite': state.isFavorite,
     };
 
     _channel.invokeMethod('updateState', args).catchError((Object e) {
@@ -173,6 +197,12 @@ class NativeMediaSessionBridge {
         onDuck?.call(volume);
       case 'unduck':
         onUnduck?.call();
+      case 'toggleShuffle':
+        onToggleShuffle?.call();
+      case 'cycleRepeat':
+        onCycleRepeat?.call();
+      case 'toggleFavorite':
+        onToggleFavorite?.call();
       default:
         throw PlatformException(
           code: 'Unimplemented',

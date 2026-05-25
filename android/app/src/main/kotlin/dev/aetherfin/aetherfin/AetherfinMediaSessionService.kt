@@ -30,6 +30,11 @@ class AetherfinMediaSessionService : Service() {
         const val ACTION_UPDATE_STATE = "dev.aetherfin.aetherfin.UPDATE_STATE"
         const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "dev.aetherfin.audio"
+
+        // Custom action keys for lockscreen/QS buttons (Android 13+)
+        const val ACTION_TOGGLE_SHUFFLE = "dev.aetherfin.ACTION_TOGGLE_SHUFFLE"
+        const val ACTION_CYCLE_REPEAT = "dev.aetherfin.ACTION_CYCLE_REPEAT"
+        const val ACTION_TOGGLE_FAVORITE = "dev.aetherfin.ACTION_TOGGLE_FAVORITE"
     }
 
     private var mediaSession: MediaSessionCompat? = null
@@ -38,6 +43,11 @@ class AetherfinMediaSessionService : Service() {
     private var focusRequest: AudioFocusRequest? = null
     private var hasAudioFocus = false
     private var isReceiverRegistered = false
+
+    // Custom action state tracked from Dart
+    private var isShuffleEnabled = false
+    private var loopMode = "off"   // "off", "one", "all"
+    private var isFavorite = false
 
     private val afChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
@@ -90,6 +100,14 @@ class AetherfinMediaSessionService : Service() {
         override fun onSkipToQueueItem(id: Long) {
             sendCommandToFlutter("skipTo", mapOf("queueIndex" to id.toInt()))
         }
+
+        override fun onCustomAction(action: String?, extras: android.os.Bundle?) {
+            when (action) {
+                ACTION_TOGGLE_SHUFFLE -> sendCommandToFlutter("toggleShuffle")
+                ACTION_CYCLE_REPEAT -> sendCommandToFlutter("cycleRepeat")
+                ACTION_TOGGLE_FAVORITE -> sendCommandToFlutter("toggleFavorite")
+            }
+        }
     }
 
     override fun onCreate() {
@@ -128,6 +146,11 @@ class AetherfinMediaSessionService : Service() {
             val artPath = intent.getStringExtra("artPath")
             val queueIndex = if (intent.hasExtra("queueIndex")) intent.getIntExtra("queueIndex", -1) else -1
             val queueSize = intent.getIntExtra("queueSize", 0)
+
+            // Custom action state from Dart
+            isShuffleEnabled = intent.getBooleanExtra("shuffleEnabled", false)
+            loopMode = intent.getStringExtra("loopMode") ?: "off"
+            isFavorite = intent.getBooleanExtra("isFavorite", false)
 
             updateMediaSessionState(playing, buffering, positionMs, durationMs, speed, queueIndex, queueSize)
             updateMediaSessionMetadata(title, artist, album, durationMs, artPath, queueIndex)
@@ -275,6 +298,50 @@ class AetherfinMediaSessionService : Service() {
         if (queueIndex >= 0) {
             stateBuilder.setActiveQueueItemId(queueIndex.toLong())
         }
+
+        // ── Custom actions for lockscreen/QS (Android 13+) ───────────────
+        // These show as extra icon buttons in the expanded media notification.
+        val shuffleIcon = if (isShuffleEnabled)
+            android.R.drawable.ic_menu_sort_by_size  // filled shuffle indicator
+        else
+            android.R.drawable.ic_menu_sort_by_size
+
+        val repeatIcon = when (loopMode) {
+            "one" -> android.R.drawable.ic_menu_revert
+            "all" -> android.R.drawable.ic_menu_rotate
+            else -> android.R.drawable.ic_menu_rotate
+        }
+
+        val favoriteIcon = if (isFavorite)
+            android.R.drawable.btn_star_big_on
+        else
+            android.R.drawable.btn_star_big_off
+
+        stateBuilder.addCustomAction(
+            PlaybackStateCompat.CustomAction.Builder(
+                ACTION_TOGGLE_SHUFFLE,
+                if (isShuffleEnabled) "Shuffle on" else "Shuffle off",
+                shuffleIcon
+            ).build()
+        )
+        stateBuilder.addCustomAction(
+            PlaybackStateCompat.CustomAction.Builder(
+                ACTION_CYCLE_REPEAT,
+                when (loopMode) {
+                    "one" -> "Repeat one"
+                    "all" -> "Repeat all"
+                    else -> "Repeat off"
+                },
+                repeatIcon
+            ).build()
+        )
+        stateBuilder.addCustomAction(
+            PlaybackStateCompat.CustomAction.Builder(
+                ACTION_TOGGLE_FAVORITE,
+                if (isFavorite) "Unfavorite" else "Favorite",
+                favoriteIcon
+            ).build()
+        )
 
         mediaSession?.setPlaybackState(stateBuilder.build())
     }

@@ -207,6 +207,39 @@ void main() {
       },
     );
 
+    test('platform toggleShuffle call triggers onToggleShuffle callback', () async {
+      var toggled = false;
+      bridge.onToggleShuffle = () {
+        toggled = true;
+      };
+
+      await bridge.handleMethodCall(const MethodCall('toggleShuffle'));
+
+      expect(toggled, isTrue);
+    });
+
+    test('platform cycleRepeat call triggers onCycleRepeat callback', () async {
+      var cycled = false;
+      bridge.onCycleRepeat = () {
+        cycled = true;
+      };
+
+      await bridge.handleMethodCall(const MethodCall('cycleRepeat'));
+
+      expect(cycled, isTrue);
+    });
+
+    test('platform toggleFavorite call triggers onToggleFavorite callback', () async {
+      var toggled = false;
+      bridge.onToggleFavorite = () {
+        toggled = true;
+      };
+
+      await bridge.handleMethodCall(const MethodCall('toggleFavorite'));
+
+      expect(toggled, isTrue);
+    });
+
     test('unknown platform method throws PlatformException', () async {
       expect(
         () => bridge.handleMethodCall(const MethodCall('unknownMethod')),

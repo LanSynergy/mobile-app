@@ -41,6 +41,9 @@ class MainActivity : FlutterActivity() {
                         putExtra("artPath", call.argument<String>("artPath"))
                         putExtra("queueIndex", call.argument<Int>("queueIndex"))
                         putExtra("queueSize", call.argument<Int>("queueSize") ?: 0)
+                        putExtra("shuffleEnabled", call.argument<Boolean>("shuffleEnabled") ?: false)
+                        putExtra("loopMode", call.argument<String>("loopMode") ?: "off")
+                        putExtra("isFavorite", call.argument<Boolean>("isFavorite") ?: false)
                     }
                     val playing = call.argument<Boolean>("playing") ?: false
                     if (playing) {
