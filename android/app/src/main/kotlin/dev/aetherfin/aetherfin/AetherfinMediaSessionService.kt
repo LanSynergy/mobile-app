@@ -174,6 +174,16 @@ class AetherfinMediaSessionService : Service() {
             updateMediaSessionState(playing, buffering, positionMs, durationMs, speed, queueIndex, queueSize)
             updateMediaSessionMetadata(title, artist, album, durationMs, artPath, queueIndex)
 
+            // Broadcast state update to the app widget provider
+            val widgetIntent = Intent(this, AetherfinAppWidgetProvider::class.java).apply {
+                action = ACTION_UPDATE_STATE
+                putExtra("title", title)
+                putExtra("artist", artist)
+                putExtra("playing", playing)
+                putExtra("artPath", artPath)
+            }
+            sendBroadcast(widgetIntent)
+
             val notification = buildNotification(title, artist, album, playing, artPath, queueIndex > 0, queueIndex < queueSize - 1)
             
             if (playing) {

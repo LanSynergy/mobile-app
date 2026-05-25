@@ -92,6 +92,20 @@
             </intent-filter>
         </receiver>
 
+        <!-- Home Screen App Widget -->
+        <receiver
+            android:name=".AetherfinAppWidgetProvider"
+            android:label="Aetherfin Playback"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="dev.aetherfin.aetherfin.UPDATE_STATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/aetherfin_widget_info" />
+        </receiver>
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
