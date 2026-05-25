@@ -188,29 +188,24 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                       itemCount: _items.length,
                       buildDefaultDragHandles: false,
                       onReorderItem: (oldIndex, newIndex) {
-                        // onReorderItem already adjusts newIndex for the removed
-                        // item, so no manual newIndex -= 1 needed here.
+                        // Flutter's _handleReorderItem already adjusted
+                        // newIndex (newIndex-- when newIndex > oldIndex),
+                        // so newIndex is correct for the post-removal list.
+                        // Engine.reorder does its OWN adjustment, so
+                        // compensate by passing the pre-adjustment value.
                         setState(() {
                           final item = _items.removeAt(oldIndex);
                           _items.insert(newIndex, item);
-                          // Keep `_lastQueueIds` in lockstep with the local
-                          // mirror so the player's echoed queue (same order,
-                          // arrives ~one frame later) doesn't trip the
-                          // "identity changed" branch above — which would
-                          // overwrite `_items` and re-fire the scroll-to-
-                          // active animation, yanking the viewport away from
-                          // whatever the user just dropped.
                           _lastQueueIds = _items
                               .map((t) => t.id)
                               .toList(growable: false);
                         });
-                        // Sync the player's ConcatenatingAudioSource so
-                        // skip-next/prev honour the new order. The adjusted
-                        // indices are passed directly — reorderQueue expects
-                        // the post-adjustment values.
                         ref
                             .read(playerServiceProvider)
-                            .reorderQueue(oldIndex, newIndex);
+                            .reorderQueue(
+                              oldIndex,
+                              oldIndex < newIndex ? newIndex + 1 : newIndex,
+                            );
                       },
                       itemBuilder: (context, i) {
                         final t = _items[i];
