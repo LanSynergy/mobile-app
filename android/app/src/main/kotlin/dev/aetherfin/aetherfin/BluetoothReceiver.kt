@@ -8,10 +8,10 @@ import android.os.Build
 
 class BluetoothReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val action = intent.action ?: return
+        val intentAction = intent.action ?: return
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
 
-        when (action) {
+        when (intentAction) {
             BluetoothDevice.ACTION_ACL_CONNECTED -> {
                 val autoPlay = prefs.getBoolean("flutter.autoPlayOnBluetooth", false)
                 if (autoPlay) {
