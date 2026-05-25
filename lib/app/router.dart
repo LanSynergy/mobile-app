@@ -11,6 +11,7 @@ import '../features/cast_picker/cast_picker_screen.dart';
 import '../features/genre/genre_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/library/library_screen.dart';
+import '../features/library/songs_screen.dart';
 import '../features/lyrics/lyrics_screen.dart';
 import '../features/now_playing/now_playing_screen.dart';
 import '../features/now_playing/eq_dsp_screen.dart';
@@ -154,9 +155,23 @@ final _router = GoRouter(
           navigatorKey: _shellBranch2Key,
           routes: [
             GoRoute(
-              path: '/search',
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: SearchScreen()),
+              path: '/library',
+              pageBuilder: (_, state) {
+                final raw = state.uri.queryParameters['section'];
+                if (raw != null) {
+                  final section = LibrarySection.values
+                      .where((s) => s.name == raw)
+                      .firstOrNull;
+                  return NoTransitionPage(
+                    child: LibraryScreen(
+                      initialSection: section,
+                    ),
+                  );
+                }
+                return const NoTransitionPage(
+                  child: SongsScreen(),
+                );
+              },
             ),
           ],
         ),
@@ -164,18 +179,9 @@ final _router = GoRouter(
           navigatorKey: _shellBranch3Key,
           routes: [
             GoRoute(
-              path: '/library',
-              pageBuilder: (_, state) {
-                final raw = state.uri.queryParameters['section'];
-                final section = raw == null
-                    ? null
-                    : LibrarySection.values
-                          .where((s) => s.name == raw)
-                          .firstOrNull;
-                return NoTransitionPage(
-                  child: LibraryScreen(initialSection: section),
-                );
-              },
+              path: '/search',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: SearchScreen()),
             ),
           ],
         ),
