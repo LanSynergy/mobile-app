@@ -267,14 +267,14 @@ void main() {
       () async {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(
-          const MethodChannel('aetherfin.media_session'),
-          (MethodCall call) async {
-            if (call.method == 'getShortcutAction') {
-              return 'search_music';
-            }
-            return null;
-          },
-        );
+              const MethodChannel('aetherfin.media_session'),
+              (MethodCall call) async {
+                if (call.method == 'getShortcutAction') {
+                  return 'search_music';
+                }
+                return null;
+              },
+            );
 
         final action = await bridge.getShortcutAction();
         expect(action, 'search_music');
