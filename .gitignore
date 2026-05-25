@@ -55,6 +55,7 @@ tool/build_local.sh
 AGENTS.md
 .antigravitycli/
 thoughts/
+handover.md
 .mindmodel/
 .ocx/
 .opencode/
