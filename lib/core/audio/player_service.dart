@@ -531,6 +531,25 @@ class AfPlayerService {
     }
   }
 
+  /// Full reset: stops playback, clears the queue, nulls the current track,
+  /// and dismisses the media-session notification.
+  ///
+  /// Used before folder mutations in local mode so stale track references
+  /// don't remain in the queue or now-playing screen.
+  Future<void> stopAndClear() async {
+    if (_disposed) return;
+    _userPaused = true;
+    _positionTracker.onStop();
+    try {
+      await _player.stop();
+    } catch (e, stack) {
+      afLog('audio', 'stop failed in stopAndClear', error: e, stackTrace: stack);
+    }
+    _queueManager.clear();
+    onTrackChanged?.call(null);
+    _updateMediaSession();
+  }
+
   Future<void> seek(Duration position) async {
     if (_disposed) return;
     _positionTracker.onSeek(position);

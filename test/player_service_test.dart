@@ -556,5 +556,50 @@ void main() {
       expect(shuffleStates, contains(false));
       await sub.cancel();
     });
+
+    // -----------------------------------------------------------------------
+    // stopAndClear clears queue, nulls track, calls stop
+    // -----------------------------------------------------------------------
+    test('stopAndClear clears queue and nulls current track', () async {
+      AfTrack? changedTrack;
+      service.onTrackChanged = (track) {
+        changedTrack = track;
+      };
+
+      // Load a queue first
+      await service.playQueue(
+        [trackA, trackB],
+        resolveStreamUrl: resolveStreamUrl,
+        startIndex: 0,
+      );
+
+      // Verify queue is populated
+      expect(service.currentQueue.length, 2);
+      expect(service.currentTrack, isNotNull);
+
+      // Track changed values before stopAndClear
+      changedTrack = null;
+
+      await service.stopAndClear();
+
+      // Queue is empty
+      expect(service.currentQueue, isEmpty);
+      expect(service.currentTrack, isNull);
+
+      // onTrackChanged was called with null
+      expect(changedTrack, isNull);
+
+      // player.stop() was called
+      verify(() => player.stop()).called(1);
+    });
+
+    test('stopAndClear is safe when already stopped', () async {
+      await service.stop();
+      // Second call should not throw
+      await service.stopAndClear();
+      // After stopAndClear, queue is empty
+      expect(service.currentQueue, isEmpty);
+      expect(service.currentTrack, isNull);
+    });
   });
 }

@@ -36,7 +36,7 @@ void main(List<String> args) {
 
 IconDeclaration? parseIconDeclaration(String line) {
   final match = RegExp(
-    r"^(\s*)static const IconData (\w+) = const IconData\((.+)\);\s*$",
+    r'^(\s*)static const IconData (\w+) = const IconData\((.+)\);\s*$',
   ).firstMatch(line);
 
   if (match == null) {

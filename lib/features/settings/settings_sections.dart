@@ -24,6 +24,9 @@ class MusicFoldersCard extends ConsumerStatefulWidget {
 class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
   List<({String uri, String displayPath})> _folders = [];
   bool _loading = true;
+  bool _scanning = false;
+  int _scannedCount = 0;
+  int _totalCount = 0;
 
   @override
   void initState() {
@@ -37,30 +40,73 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
     if (mounted) setState(() { _folders = folders; _loading = false; });
   }
 
+  void _onProgress(int completed, int total) {
+    if (mounted) {
+      setState(() {
+        _scannedCount = completed;
+        _totalCount = total;
+      });
+    }
+  }
+
+  /// Shared scan method — used by both _addFolder and _rescan.
+  /// When [folderUri] is null, scans all folders; otherwise scans the given folder.
+  Future<void> _startScan(String? folderUri) async {
+    if (!mounted) return;
+    setState(() {
+      _scanning = true;
+      _scannedCount = 0;
+      _totalCount = 0;
+    });
+
+    final lib = ref.read(localLibraryProvider);
+    try {
+      int count;
+      if (folderUri != null) {
+        count = await lib.scanFolder(folderUri, onProgress: _onProgress);
+      } else {
+        count = await lib.scanAll(onProgress: _onProgress);
+      }
+
+      if (!mounted) return;
+      ref.invalidate(localAlbumsProvider);
+      ref.invalidate(localArtistsProvider);
+      ref.invalidate(localTracksProvider);
+      ref.invalidate(localGenresProvider);
+
+      setState(() => _scanning = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Scan complete — $count tracks updated')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _scanning = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Scan failed: $e')),
+      );
+    }
+  }
+
   Future<void> _addFolder() async {
+    if (_scanning) return;
+    final svc = ref.read(playerServiceProvider);
+    await svc.stopAndClear();
+
     final lib = ref.read(localLibraryProvider);
     final uri = await lib.pickAndAddFolder();
     if (uri != null) {
       await _loadFolders();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Scanning new folder...')),
-        );
-        await lib.scanFolder(uri);
-        ref.invalidate(localAlbumsProvider);
-        ref.invalidate(localArtistsProvider);
-        ref.invalidate(localTracksProvider);
-        ref.invalidate(localGenresProvider);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Scan complete')),
-          );
-        }
-      }
+      await _startScan(uri);
     }
   }
 
   Future<void> _removeFolder(String uri) async {
+    if (_scanning) return;
+    final svc = ref.read(playerServiceProvider);
+    await svc.stopAndClear();
+
     final lib = ref.read(localLibraryProvider);
     await lib.removeFolder(uri);
     await _loadFolders();
@@ -71,21 +117,8 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
   }
 
   Future<void> _rescan() async {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Scanning all folders...')),
-    );
-    final lib = ref.read(localLibraryProvider);
-    final count = await lib.scanAll();
-    ref.invalidate(localAlbumsProvider);
-    ref.invalidate(localArtistsProvider);
-    ref.invalidate(localTracksProvider);
-    ref.invalidate(localGenresProvider);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Scan complete — $count tracks updated')),
-      );
-    }
+    if (_scanning) return;
+    await _startScan(null);
   }
 
   @override
@@ -97,6 +130,8 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
             padding: EdgeInsets.all(AfSpacing.s16),
             child: Center(child: CircularProgressIndicator()),
           )
+        else if (_scanning)
+          _buildProgressCard()
         else ...[
           for (final folder in _folders)
             SettingsTile(
@@ -125,6 +160,34 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildProgressCard() {
+    final progress = _totalCount > 0 ? _scannedCount / _totalCount : 0.0;
+    return Padding(
+      padding: const EdgeInsets.all(AfSpacing.s16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Scanning your music folder...',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AfColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: AfSpacing.s12),
+          LinearProgressIndicator(value: progress),
+          const SizedBox(height: AfSpacing.s8),
+          Text(
+            '$_scannedCount / $_totalCount files',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AfColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

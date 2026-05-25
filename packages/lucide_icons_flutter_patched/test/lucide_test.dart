@@ -25,8 +25,8 @@ void main() {
     });
 
     testWidgets('Icons can be customized', (WidgetTester tester) async {
-      const Color customColor = Colors.red;
-      const double customSize = 48.0;
+      const customColor = Colors.red;
+      const customSize = 48.0;
 
       await tester.pumpWidget(
         const MaterialApp(
@@ -45,7 +45,7 @@ void main() {
       expect(IconWidget, findsOneWidget);
 
       // Verify customization
-      final Icon icon = tester.widget(IconWidget);
+      final icon = tester.widget<Icon>(IconWidget);
       expect(icon.color, equals(customColor));
       expect(icon.size, equals(customSize));
     });
