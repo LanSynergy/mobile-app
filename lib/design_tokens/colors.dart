@@ -80,9 +80,9 @@ class Spectral {
   /// Default — used until artwork is parsed, on data-saver, on cellular,
   /// or whenever extraction can't surface a chromatic sample.
   static const fallback = Spectral(
-    energy: Color(0xFFA8A5B8),
+    energy: Color(0xFF8276E0), // AfColors.indigo400
     shadow: Color(0xFF1E1E2E),
-    glow: Color(0xFFC8C5D8),
+    glow: Color(0xFFA89DEC), // AfColors.indigo300
   );
 
   @override
