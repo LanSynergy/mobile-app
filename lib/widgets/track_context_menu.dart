@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../core/audio/play_actions.dart';
 import '../core/jellyfin/models/items.dart';
@@ -70,7 +70,7 @@ void showTrackContextMenu(
             const SizedBox(height: AfSpacing.s8),
             const Divider(height: 1, color: AfColors.surfaceHigh),
             _MenuItem(
-              icon: FontAwesomeIcons.heart,
+              icon: LucideIcons.heart,
               iconColor: isFavorite ? AfColors.indigo300 : null,
               label: isFavorite ? 'Remove from liked' : 'Add to liked',
               onTap: () async {
@@ -99,7 +99,7 @@ void showTrackContextMenu(
               },
             ),
             _MenuItem(
-              icon: FontAwesomeIcons.play,
+              icon: LucideIcons.play,
               label: 'Play next',
               onTap: () {
                 _playNext(innerRef, track);
@@ -112,7 +112,7 @@ void showTrackContextMenu(
               },
             ),
             _MenuItem(
-              icon: FontAwesomeIcons.listUl,
+              icon: LucideIcons.list,
               label: 'Add to queue',
               onTap: () {
                 _addToQueue(innerRef, track);
@@ -125,7 +125,7 @@ void showTrackContextMenu(
               },
             ),
             _MenuItem(
-              icon: FontAwesomeIcons.plus,
+              icon: LucideIcons.plus,
               label: 'Save to playlist',
               onTap: () {
                 Navigator.of(ctx).pop();
@@ -134,7 +134,7 @@ void showTrackContextMenu(
             ),
             if (track.albumId != null)
               _MenuItem(
-                icon: FontAwesomeIcons.compactDisc,
+                icon: LucideIcons.disc3,
                 label: 'Go to album',
                 onTap: () {
                   Navigator.of(ctx).pop();
@@ -143,7 +143,7 @@ void showTrackContextMenu(
               ),
             if (track.artistId != null)
               _MenuItem(
-                icon: FontAwesomeIcons.user,
+                icon: LucideIcons.user,
                 label: 'Go to artist',
                 onTap: () {
                   Navigator.of(ctx).pop();
@@ -151,7 +151,7 @@ void showTrackContextMenu(
                 },
               ),
             _MenuItem(
-              icon: FontAwesomeIcons.circleInfo,
+              icon: LucideIcons.info,
               label: 'Show details',
               onTap: () {
                 Navigator.of(ctx).pop();
@@ -207,7 +207,7 @@ void showAlbumContextMenu(
           const SizedBox(height: AfSpacing.s8),
           const Divider(height: 1, color: AfColors.surfaceHigh),
           _MenuItem(
-            icon: FontAwesomeIcons.play,
+            icon: LucideIcons.play,
             label: 'Play album',
             onTap: () async {
               Navigator.of(dialogCtx).pop();
@@ -220,7 +220,7 @@ void showAlbumContextMenu(
           ),
           if (album.artistId != null)
             _MenuItem(
-              icon: FontAwesomeIcons.user,
+              icon: LucideIcons.user,
               label: 'Go to artist',
               onTap: () {
                 Navigator.of(dialogCtx).pop();
@@ -286,7 +286,7 @@ class _MenuItem extends StatelessWidget {
     required this.onTap,
     this.iconColor,
   });
-  final FaIconData icon;
+  final IconData icon;
   final String label;
   final VoidCallback onTap;
   final Color? iconColor;
@@ -294,7 +294,7 @@ class _MenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: FaIcon(icon, color: iconColor ?? AfColors.textSecondary, size: 22),
+      leading: Icon(icon, color: iconColor ?? AfColors.textSecondary, size: 22),
       title: Text(label, style: AfTypography.bodyMedium),
       onTap: onTap,
       dense: true,

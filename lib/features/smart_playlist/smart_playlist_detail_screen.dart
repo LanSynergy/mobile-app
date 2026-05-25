@@ -160,23 +160,27 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
               ),
               // Track list
               Expanded(
-                child: ListView.separated(
+                child: ListView.builder(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AfSpacing.s16,
                   ).add(const EdgeInsets.only(
                       bottom: AfSpacing.bottomInsetWithMiniAndNav)),
                   itemCount: tracks.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: AfSpacing.s4),
+                  itemExtent: 68.0,
                   itemBuilder: (context, i) {
                     final t = tracks[i];
-                    return TrackRow(
-                      track: t,
-                      onTap: () => ref
-                          .read(playActionsProvider)
-                          .playQueue(tracks, startIndex: i),
-                      onLongPress: () =>
-                          showTrackContextMenu(context, ref, t),
+                    return Column(
+                      children: [
+                        TrackRow(
+                          track: t,
+                          onTap: () => ref
+                              .read(playActionsProvider)
+                              .playQueue(tracks, startIndex: i),
+                          onLongPress: () =>
+                              showTrackContextMenu(context, ref, t),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
                     );
                   },
                 ),

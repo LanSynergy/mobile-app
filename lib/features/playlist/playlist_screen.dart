@@ -172,25 +172,31 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                     ),
                   )
                 else
-                  SliverList.separated(
-                    itemCount: tracks.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: AfSpacing.s4),
-                    itemBuilder: (context, i) {
-                      final t = tracks[i];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: AfSpacing.s16),
-                        child: TrackRow(
-                          track: t,
-                          onTap: () => ref
-                              .read(playActionsProvider)
-                              .playQueue(tracks, startIndex: i),
-                          onLongPress: () =>
-                              showTrackContextMenu(context, ref, t),
-                        ),
-                      );
-                    },
+                  SliverFixedExtentList(
+                    itemExtent: 68.0,
+                    delegate: SliverChildBuilderDelegate(
+                      childCount: tracks.length,
+                      (context, i) {
+                        final t = tracks[i];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: AfSpacing.s16),
+                          child: Column(
+                            children: [
+                              TrackRow(
+                                track: t,
+                                onTap: () => ref
+                                    .read(playActionsProvider)
+                                    .playQueue(tracks, startIndex: i),
+                                onLongPress: () =>
+                                    showTrackContextMenu(context, ref, t),
+                              ),
+                              const SizedBox(height: 4),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
 
                 const SliverToBoxAdapter(

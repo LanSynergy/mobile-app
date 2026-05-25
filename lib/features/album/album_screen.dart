@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/models/items.dart';
@@ -244,7 +244,7 @@ class _OpacityAppBar extends StatelessWidget {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const FaIcon(FontAwesomeIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
+                        icon: const Icon(LucideIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
                         onPressed: onBack,
                       ),
                       Expanded(
@@ -260,7 +260,7 @@ class _OpacityAppBar extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        icon: const FaIcon(FontAwesomeIcons.ellipsis, color: AfColors.textPrimary, size: 24),
+                        icon: const Icon(LucideIcons.ellipsis, color: AfColors.textPrimary, size: 24),
                         onPressed: onMore,
                       ),
                     ],
@@ -277,7 +277,7 @@ class _OpacityAppBar extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const FaIcon(FontAwesomeIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
+                    icon: const Icon(LucideIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
                     onPressed: onBack,
                   ),
                   Expanded(
@@ -293,7 +293,7 @@ class _OpacityAppBar extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    icon: const FaIcon(FontAwesomeIcons.ellipsis, color: AfColors.textPrimary, size: 24),
+                    icon: const Icon(LucideIcons.ellipsis, color: AfColors.textPrimary, size: 24),
                     onPressed: onMore,
                   ),
                 ],
@@ -383,19 +383,19 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: widget.onPlay,
-            icon: const FaIcon(FontAwesomeIcons.play, color: AfColors.textOnPrimary, size: 22),
+            icon: const Icon(LucideIcons.play, color: AfColors.textOnPrimary, size: 22),
             label: const Text('Play'),
           ),
         ),
         const SizedBox(width: AfSpacing.s12),
         _IconCircle(
-          icon: FontAwesomeIcons.heart,
+          icon: LucideIcons.heart,
           color: _isFavorite ? AfColors.semanticError : null,
           onTap: _toggleFavorite,
         ),
         const SizedBox(width: AfSpacing.s8),
         _IconCircle(
-          icon: FontAwesomeIcons.download,
+          icon: LucideIcons.download,
           onTap: () => ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Offline downloads coming soon'),
@@ -405,7 +405,7 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
         ),
         const SizedBox(width: AfSpacing.s8),
         _IconCircle(
-          icon: FontAwesomeIcons.ellipsis,
+          icon: LucideIcons.ellipsis,
           onTap: widget.onMore,
         ),
       ],
@@ -415,7 +415,7 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
 
 class _IconCircle extends StatelessWidget {
   const _IconCircle({required this.icon, required this.onTap, this.color});
-  final FaIconData icon;
+  final IconData icon;
   final VoidCallback onTap;
   final Color? color;
 
@@ -432,7 +432,7 @@ class _IconCircle extends StatelessWidget {
           color: AfColors.surfaceBase,
           shape: BoxShape.circle,
         ),
-        child: FaIcon(icon, size: 22, color: color ?? AfColors.textPrimary),
+        child: Icon(icon, size: 22, color: color ?? AfColors.textPrimary),
       ),
     );
   }

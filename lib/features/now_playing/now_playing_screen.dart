@@ -351,6 +351,9 @@ class _MetadataRow extends ConsumerWidget {
 
 /// Scrolls [text] from right to left when it exceeds the available width.
 /// Falls back to a static [Text] when the content fits.
+/// Scrolls [text] from right to left when it exceeds the available width.
+/// Uses [ClipRect] + [SizedBox] to constrain parent layout — unlike
+/// [OverflowBox] which can break parent Row sizing.
 class _MarqueeText extends StatefulWidget {
 
   const _MarqueeText({required this.text, required this.style});
@@ -412,32 +415,35 @@ class _MarqueeTextState extends State<_MarqueeText>
         if (!_shouldScroll) {
           _shouldScroll = true;
           _offset = tp.width + 32.0;
-          final durationMs = (_offset / 60.0 * 1000).round().clamp(2000, 10000);
+          final durationMs = (_offset / 30.0 * 1000).round().clamp(4000, 20000);
           _controller.duration = Duration(milliseconds: durationMs);
           _controller.repeat();
         }
 
         return ClipRect(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(-_offset * _controller.value, 0),
-                child: OverflowBox(
-                  minWidth: 0,
-                  maxWidth: double.infinity,
-                  alignment: Alignment.centerLeft,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(widget.text, maxLines: 1, style: widget.style),
-                      const SizedBox(width: 32),
-                      Text(widget.text, maxLines: 1, style: widget.style),
-                    ],
-                  ),
+          child: SizedBox(
+            width: maxWidth,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) {
+                    return Transform.translate(
+                      offset: Offset(-_offset * _controller.value, 0),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(widget.text, maxLines: 1, style: widget.style),
+                          const SizedBox(width: 32),
+                          Text(widget.text, maxLines: 1, style: widget.style),
+                        ],
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
+              ],
+            ),
           ),
         );
       },

@@ -399,21 +399,25 @@ class _SectionBody extends ConsumerWidget {
             data: (list) {
               final sorted = sortTracks != null ? sortTracks!(list) : list;
               return RepaintBoundary(
-                child: ListView.separated(
+                child: ListView.builder(
                   padding: padding.add(const EdgeInsets.only(
                       bottom: AfSpacing.bottomInsetWithMiniAndNav)),
                   itemCount: sorted.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: AfSpacing.s4),
+                  itemExtent: 68.0,
                   itemBuilder: (context, i) {
                     final t = sorted[i];
-                    return TrackRow(
-                      track: t,
-                      onTap: () => ref
-                          .read(playActionsProvider)
-                          .playQueue(sorted, startIndex: i),
-                      onLongPress: () =>
-                          showTrackContextMenu(context, ref, t),
+                    return Column(
+                      children: [
+                        TrackRow(
+                          track: t,
+                          onTap: () => ref
+                              .read(playActionsProvider)
+                              .playQueue(sorted, startIndex: i),
+                          onLongPress: () =>
+                              showTrackContextMenu(context, ref, t),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
                     );
                   },
                 ),
@@ -638,21 +642,25 @@ class _SectionBody extends ConsumerWidget {
                   ],
                 )
               : RepaintBoundary(
-                  child: ListView.separated(
+                  child: ListView.builder(
                     padding: padding.add(const EdgeInsets.only(
                         bottom: AfSpacing.bottomInsetWithMiniAndNav)),
                     itemCount: list.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: AfSpacing.s4),
+                    itemExtent: 68.0,
                     itemBuilder: (context, i) {
                       final t = list[i];
-                      return TrackRow(
-                        track: t,
-                        onTap: () => ref
-                            .read(playActionsProvider)
-                            .playQueue(list, startIndex: i),
-                        onLongPress: () =>
-                            showTrackContextMenu(context, ref, t),
+                      return Column(
+                        children: [
+                          TrackRow(
+                            track: t,
+                            onTap: () => ref
+                                .read(playActionsProvider)
+                                .playQueue(list, startIndex: i),
+                            onLongPress: () =>
+                                showTrackContextMenu(context, ref, t),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
                       );
                     },
                   ),

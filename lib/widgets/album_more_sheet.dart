@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../core/audio/play_actions.dart';
 import '../core/jellyfin/models/items.dart';
@@ -54,7 +54,7 @@ void showAlbumMoreSheet(
           const SizedBox(height: AfSpacing.s8),
           const Divider(height: 1, color: AfColors.surfaceHigh),
           _MenuItem(
-            icon: FontAwesomeIcons.shuffle,
+            icon: LucideIcons.shuffle,
             label: 'Shuffle play',
             enabled: tracks.isNotEmpty,
             onTap: () async {
@@ -64,7 +64,7 @@ void showAlbumMoreSheet(
             },
           ),
           _MenuItem(
-            icon: FontAwesomeIcons.play,
+            icon: LucideIcons.play,
             label: 'Play next',
             enabled: tracks.isNotEmpty,
             onTap: () {
@@ -80,7 +80,7 @@ void showAlbumMoreSheet(
             },
           ),
           _MenuItem(
-            icon: FontAwesomeIcons.listUl,
+            icon: LucideIcons.list,
             label: 'Add to queue',
             enabled: tracks.isNotEmpty,
             onTap: () {
@@ -97,7 +97,7 @@ void showAlbumMoreSheet(
           ),
           if (album.artistId != null)
             _MenuItem(
-              icon: FontAwesomeIcons.user,
+              icon: LucideIcons.user,
               label: 'Go to artist',
               onTap: () {
                 Navigator.of(dialogCtx).pop();
@@ -168,7 +168,7 @@ class _MenuItem extends StatelessWidget {
     required this.onTap,
     this.enabled = true,
   });
-  final FaIconData icon;
+  final IconData icon;
   final String label;
   final VoidCallback onTap;
   final bool enabled;
@@ -176,7 +176,7 @@ class _MenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: FaIcon(
+      leading: Icon(
         icon,
         color: enabled
             ? AfColors.textSecondary

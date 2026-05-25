@@ -111,7 +111,7 @@ class ArtistScreen extends ConsumerWidget {
                     AfSpacing.gutterGenerous,
                     AfSpacing.s16,
                     AfSpacing.gutterGenerous,
-                    AfSpacing.s24,
+                    0,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,22 +125,31 @@ class ArtistScreen extends ConsumerWidget {
                       ],
                       const SectionHeader(title: 'Top songs', uppercase: true),
                       const SizedBox(height: AfSpacing.s12),
-                      for (final t in topTracks)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: TrackRow(
-                            track: t,
-                            onTap: () => ref
-                                .read(playActionsProvider)
-                                .playSingle(t),
-                            onLongPress: () =>
-                                showTrackContextMenu(context, ref, t),
-                          ),
-                        ),
                     ],
                   ),
                 ),
               ),
+              if (topTracks.isNotEmpty)
+                SliverList.separated(
+                  itemCount: topTracks.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 4),
+                  itemBuilder: (context, i) {
+                    final t = topTracks[i];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.gutterGenerous,
+                      ),
+                      child: TrackRow(
+                        track: t,
+                        onTap: () =>
+                            ref.read(playActionsProvider).playSingle(t),
+                        onLongPress: () =>
+                            showTrackContextMenu(context, ref, t),
+                      ),
+                    );
+                  },
+                ),
               const SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.symmetric(

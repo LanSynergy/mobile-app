@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import 'artwork.dart';
@@ -188,6 +189,37 @@ class _MiniTransportButton extends StatelessWidget {
   }
 }
 
+class _ReactiveProgressRing extends ConsumerWidget {
+  const _ReactiveProgressRing({
+    required this.track,
+    required this.child,
+  });
+
+  final AfTrack track;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final position = ref.watch(positionStreamProvider);
+    final mpvDuration = ref.watch(durationStreamProvider);
+    final duration = mpvDuration > Duration.zero ? mpvDuration : track.duration;
+    final ringProgress = duration.inMilliseconds == 0
+        ? 0.0
+        : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
+    final energyColor = ref.watch(currentSpectralProvider).energy;
+
+    return CircularProgressRing(
+      progress: ringProgress,
+      progressColor: energyColor,
+      size: 48,
+      strokeWidth: 2,
+      child: child,
+    );
+  }
+}
+
+/// Scrolls [text] when it overflows. Fixed layout — uses [ClipRect] +
+/// [SizedBox] + [Stack] so parent constraints are never broken.
 class _MarqueeText extends StatefulWidget {
 
   const _MarqueeText({required this.text, required this.style});
@@ -243,70 +275,47 @@ class _MarqueeTextState extends State<_MarqueeText>
             _controller.value = 0;
             _shouldScroll = false;
           }
-          return Text(widget.text, maxLines: 1, style: widget.style);
+          return SizedBox(
+            width: maxWidth,
+            child: Text(widget.text, maxLines: 1, style: widget.style),
+          );
         }
 
         if (!_shouldScroll) {
           _shouldScroll = true;
           _offset = tp.width + 32.0;
-          final durationMs = (_offset / 40.0 * 1000).round().clamp(4000, 16000);
+          final durationMs = (_offset / 25.0 * 1000).round().clamp(6000, 25000);
           _controller.duration = Duration(milliseconds: durationMs);
           _controller.repeat();
         }
 
         return ClipRect(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(-_offset * _controller.value, 0),
-                child: OverflowBox(
-                  minWidth: 0,
-                  maxWidth: double.infinity,
-                  alignment: Alignment.centerLeft,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(widget.text, maxLines: 1, style: widget.style),
-                      const SizedBox(width: 32),
-                      Text(widget.text, maxLines: 1, style: widget.style),
-                    ],
-                  ),
+          child: SizedBox(
+            width: maxWidth,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) {
+                    return Transform.translate(
+                      offset: Offset(-_offset * _controller.value, 0),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(widget.text, maxLines: 1, style: widget.style),
+                          const SizedBox(width: 32),
+                          Text(widget.text, maxLines: 1, style: widget.style),
+                        ],
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
+              ],
+            ),
           ),
         );
       },
-    );
-  }
-}
-
-class _ReactiveProgressRing extends ConsumerWidget {
-  const _ReactiveProgressRing({
-    required this.track,
-    required this.child,
-  });
-
-  final AfTrack track;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final position = ref.watch(positionStreamProvider);
-    final mpvDuration = ref.watch(durationStreamProvider);
-    final duration = mpvDuration > Duration.zero ? mpvDuration : track.duration;
-    final ringProgress = duration.inMilliseconds == 0
-        ? 0.0
-        : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
-    final energyColor = ref.watch(currentSpectralProvider).energy;
-
-    return CircularProgressRing(
-      progress: ringProgress,
-      progressColor: energyColor,
-      size: 48,
-      strokeWidth: 2,
-      child: child,
     );
   }
 }

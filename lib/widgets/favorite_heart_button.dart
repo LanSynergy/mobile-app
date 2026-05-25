@@ -130,8 +130,11 @@ class _FavoriteHeartButtonState extends ConsumerState<FavoriteHeartButton> {
 
   @override
   Widget build(BuildContext context) {
-    final overrides = ref.watch(trackFavoriteOverridesProvider);
-    final isFavorite = _isFavoriteFromOverrides(overrides);
+    final isFavorite = ref.watch(
+      trackFavoriteOverridesProvider.select(
+        (map) => map[widget.track.id] ?? widget.track.isFavorite,
+      ),
+    );
     return IconButton(
       icon: Icon(
         isFavorite ? LucideIcons.heart : LucideIcons.heart,
