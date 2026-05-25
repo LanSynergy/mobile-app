@@ -73,6 +73,13 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
       }
 
       if (!mounted) return;
+
+      // If we never got a progress callback, the total stayed at 0.
+      // This means no files were scanned — show a clearer message.
+      final msg = _totalCount == 0
+          ? 'No audio files found'
+          : 'Scan complete — $count tracks updated';
+
       ref.invalidate(localAlbumsProvider);
       ref.invalidate(localArtistsProvider);
       ref.invalidate(localTracksProvider);
@@ -80,9 +87,9 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
 
       setState(() => _scanning = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Scan complete — $count tracks updated')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
       }
     } catch (e) {
       if (!mounted) return;
@@ -171,7 +178,9 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
   }
 
   Widget _buildProgressCard() {
-    final progress = _totalCount > 0 ? _scannedCount / _totalCount : 0.0;
+    // Before the first progress callback, show an indeterminate state
+    // instead of "0 / 0 files" which looks broken.
+    final hasKnownTotal = _totalCount > 0;
     return Padding(
       padding: const EdgeInsets.all(AfSpacing.s16),
       child: Column(
@@ -179,20 +188,26 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Scanning your music folder...',
+            hasKnownTotal
+                ? 'Scanning your music folder...'
+                : 'Preparing to scan...',
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(color: AfColors.textPrimary),
           ),
           const SizedBox(height: AfSpacing.s12),
-          LinearProgressIndicator(value: progress),
-          const SizedBox(height: AfSpacing.s8),
-          Text(
-            '$_scannedCount / $_totalCount files',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: AfColors.textSecondary),
+          LinearProgressIndicator(
+            value: hasKnownTotal ? _scannedCount / _totalCount : null,
           ),
+          if (hasKnownTotal) ...[
+            const SizedBox(height: AfSpacing.s8),
+            Text(
+              '$_scannedCount / $_totalCount files',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AfColors.textSecondary),
+            ),
+          ],
         ],
       ),
     );
