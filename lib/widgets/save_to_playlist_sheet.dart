@@ -107,14 +107,16 @@ class _SaveToPlaylistSheetState extends ConsumerState<SaveToPlaylistSheet> {
     if (action == null) return;
     try {
       await backend.removeFromPlaylist(playlistId, action.trackIds);
-      _invalidate();
-      ref.invalidate(playlistDetailProvider(playlistId));
+      _invalidate(playlistId: playlistId);
     } catch (_) {}
   }
 
-  void _invalidate() {
+  void _invalidate({String? playlistId}) {
     ref.invalidate(allPlaylistsProvider);
     ref.invalidate(playlistTrackIdsProvider);
+    if (playlistId != null) {
+      ref.invalidate(playlistDetailProvider(playlistId));
+    }
   }
 
   void _onSaved() {
@@ -134,7 +136,7 @@ class _SaveToPlaylistSheetState extends ConsumerState<SaveToPlaylistSheet> {
         widget.track.id,
       ]);
 
-      _invalidate();
+      _invalidate(playlistId: playlist.id);
       _onSaved();
       if (mounted) {
         unawaited(Navigator.maybePop(context));
