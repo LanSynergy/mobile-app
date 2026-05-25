@@ -196,7 +196,12 @@ final _router = GoRouter(
     GoRoute(
       path: '/now-playing',
       parentNavigatorKey: _rootKey,
-      pageBuilder: (context, state) => _NowPlayingPage(),
+      pageBuilder: (context, state) {
+        final extra = state.extra;
+        return _NowPlayingPage(
+          miniRect: extra is Rect ? extra : null,
+        );
+      },
     ),
     GoRoute(
       path: '/lyrics',
@@ -328,8 +333,18 @@ void resetRouterMode() {
 void notifyAuthChanged() => _authRefresh._notify();
 
 class _NowPlayingPage extends Page<void> {
+  const _NowPlayingPage({this.miniRect});
+
+  /// Screen rect of the miniplayer at the moment this route was created.
+  /// Used as the start position for the slide-open animation.
+  final Rect? miniRect;
+
   @override
   Route<void> createRoute(BuildContext context) {
+    final fullRect = Offset.zero & MediaQuery.of(context).size;
+    final startRect = miniRect ??
+        Rect.fromLTWH(12, fullRect.height * 0.82, fullRect.width - 24, 56);
+
     return PageRouteBuilder<void>(
       settings: this,
       transitionDuration: AfDurations.expressive,
@@ -341,19 +356,33 @@ class _NowPlayingPage extends Page<void> {
         if (reduced) {
           return FadeTransition(opacity: animation, child: child);
         }
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: AfCurves.easeEmphasized,
-          reverseCurve: AfCurves.easeEmphasized,
-        );
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 1),
-            end: Offset.zero,
-          ).animate(curved),
+
+        return AnimatedBuilder(
+          animation: animation,
+          builder: (context, child) {
+            final t = AfCurves.easeEmphasized.transform(animation.value);
+            final rect = Rect.lerp(startRect, fullRect, t)!;
+            return ClipRect(
+              clipper: _RectClipper(rect),
+              child: SizedBox.expand(child: child),
+            );
+          },
           child: child,
         );
       },
     );
   }
+}
+
+/// Clips to [rect]. Used by [_NowPlayingPage] to animate from the
+/// miniplayer rect to the full screen.
+class _RectClipper extends CustomClipper<Rect> {
+  const _RectClipper(this.rect);
+  final Rect rect;
+
+  @override
+  Rect getClip(Size size) => rect;
+
+  @override
+  bool shouldReclip(covariant _RectClipper old) => old.rect != rect;
 }

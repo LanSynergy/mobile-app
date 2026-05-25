@@ -175,7 +175,13 @@ class AppShell extends ConsumerWidget {
                 child: IgnorePointer(
                   ignoring: !hasMini,
                   child: MiniPlayer(
-                    onTap: () => context.push('/now-playing'),
+                    onTap: () {
+                      final size = MediaQuery.of(context).size;
+                      final bottom = MediaQuery.of(context).padding.bottom;
+                      final miniY = size.height - (72 + bottom + 16 + 56);
+                      final rect = Rect.fromLTWH(12, miniY, size.width - 24, 56);
+                      context.push('/now-playing', extra: rect);
+                    },
                     onPlayPause: () {
                       // Toggle off mpv's own `playing` state — the only
                       // signal that stays correct in the first ~250 ms
