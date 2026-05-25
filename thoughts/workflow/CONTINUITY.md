@@ -1,5 +1,13 @@
 # Continuity Ledger
 
+## 2026-05-25 — Info-level lint cleanup + fatal info lints in CI
+*Goal:* Fix all 8 `curly_braces_in_flow_control_structures` info-level lints and make `flutter analyze` report info issues as fatal (remove `--no-fatal-infos`)
+*Commits:* 53ef709
+*Key decisions:*
+- Removed `--no-fatal-infos` from all 4 references in CLAUDE.md — info lints now block CI
+- Fixed 8 lint violations across 5 files: `smart_playlist_engine.dart`, `cast_picker_screen.dart`, `utility_row.dart`, `settings_sections.dart`, `save_to_playlist_sheet.dart`
+- Verify gate: `dart format` (dry-run) → `flutter analyze` → `flutter test` — all pass clean
+
 ## 2026-05-25 — Workflow pipeline optimization
 *Goal:* Add verify gate, consolidate ledgers, fix formatting drift, add relative-position anchors and rolling ledger conventions
 *Commits:* 9d4e346
@@ -32,8 +40,3 @@
 - Added `LIMIT/OFFSET` support in `LocalDb._queryTracks()` for pagination
 - Removed `_positionTracker.start()` from `AfPlayerService.test()` constructor — prevents `FakeAsync` timer error in widget tests
 - Replaced all `pumpAndSettle()` with `pump()` in scrubber tests — vsync ticker never settles
-
-## 2026-05-24 — Deep review follow-up (minor sessions)
-*Goal:* Multiple small follow-up sessions from the Deep Review recommendations
-*Key decisions:*
-- Consolidated 3 small sessions covering queue engine edge cases, test fixes, and post-merge verification
