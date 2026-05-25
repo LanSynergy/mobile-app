@@ -123,19 +123,12 @@ class GenreTile extends StatelessWidget {
                 radius: BorderRadius.zero,
                 fit: BoxFit.cover,
               ),
-            // Gradient overlay for text readability
+            // Solid scrim for text readability
             Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    tint.withValues(alpha: imageUrl != null ? 0.7 : 0.0),
-                    tint.withValues(alpha: imageUrl != null ? 0.9 : 0.0),
-                  ],
-                  stops: const [0.0, 0.6, 1.0],
-                ),
+                color: imageUrl != null
+                    ? tint.withValues(alpha: 0.65)
+                    : Colors.transparent,
               ),
             ),
             // Genre name
