@@ -57,6 +57,24 @@ class PlayActions {
             : (backend?.authHeaders ?? const {}),
       );
       ref.read(currentTrackProvider.notifier).state = tracks[safeIndex];
+
+      // Save to queue history (non-critical — log warnings, don't throw)
+      try {
+        final repo = ref.read(queueHistoryRepositoryProvider);
+        final sourceLabel = _computeSourceLabel(tracks);
+        final sourceType = _computeSourceType();
+        final sourceId = tracks.isNotEmpty
+            ? tracks[0].albumId ?? tracks[0].artistId
+            : null;
+        await repo.save(
+          trackIds: tracks.map((t) => t.id).toList(),
+          sourceLabel: sourceLabel,
+          sourceType: sourceType,
+          sourceId: sourceId,
+        );
+      } catch (e) {
+        afLog('data', 'queueHistory save failed', error: e);
+      }
     } catch (e, stack) {
       afLog('audio', 'playQueue failed', error: e, stackTrace: stack);
       rethrow;
@@ -101,6 +119,19 @@ class PlayActions {
       // Best-effort fallback: at least play the seed track.
       await playSingle(seed);
     }
+  }
+
+  String _computeSourceLabel(List<AfTrack> tracks) {
+    if (tracks.isEmpty) return 'Unknown';
+    final first = tracks.first;
+    if (first.albumName.isNotEmpty) return 'Album: ${first.albumName}';
+    if (first.artistName.isNotEmpty) return 'Artist: ${first.artistName}';
+    if (tracks.length == 1) return 'Single: ${first.title}';
+    return 'Queue (${tracks.length} tracks)';
+  }
+
+  String _computeSourceType() {
+    return 'manual';
   }
 }
 

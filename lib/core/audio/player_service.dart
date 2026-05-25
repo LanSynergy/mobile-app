@@ -434,6 +434,7 @@ class AfPlayerService {
   }
 
   bool get isShuffleEnabled => _queueManager.isShuffleEnabled;
+  bool get isTailShuffle => _queueManager.isTailShuffle;
   Loop get loopMode => _player.state.loop;
   double get speed => _player.state.rate;
 
@@ -586,6 +587,7 @@ class AfPlayerService {
 
     _userPaused = false;
     _queueManager.engine.advanceIndex();
+    _queueManager.engine.resetRepeats();
     final nextTrack = _queueManager.currentTrack;
     if (nextTrack == null) return;
 
@@ -607,6 +609,7 @@ class AfPlayerService {
 
     _userPaused = false;
     _queueManager.engine.retreatIndex();
+    _queueManager.engine.resetRepeats();
     final prevTrack = _queueManager.currentTrack;
     if (prevTrack == null) return;
 
@@ -628,6 +631,7 @@ class AfPlayerService {
 
     _userPaused = false;
     _queueManager.engine.jumpTo(index);
+    _queueManager.engine.resetRepeats();
     final targetTrack = _queueManager.currentTrack;
     if (targetTrack == null) return;
 
@@ -642,6 +646,19 @@ class AfPlayerService {
     } catch (e, stack) {
       afLog('audio', 'skipToQueueItem failed', error: e, stackTrace: stack);
     }
+  }
+
+  /// Shuffle only the tail of the queue — everything after the current
+  /// logical position. The current track keeps its position.
+  Future<void> setAfShuffleTail() async {
+    if (_disposed) return;
+    if (_queueManager.currentQueue.isEmpty) return;
+    _queueManager.shuffleTail();
+    afLog(
+      'data',
+      'shuffleTail source=live '
+          'queueSize=${_queueManager.currentQueue.length}',
+    );
   }
 
   Future<void> setAfShuffleMode(bool enabled) async {
@@ -675,6 +692,29 @@ class AfPlayerService {
       }
     });
   }
+
+  /// Enable or disable N-times repeat mode.
+  /// When enabled, each track repeats [_queueManager.engine.ntimesCount]
+  /// times before advancing to the next track.
+  Future<void> setAfForNtimes(bool enabled) async {
+    if (_disposed) return;
+    _queueManager.engine.setForNtimes(enabled);
+    afLog(
+      'data',
+      'forNtimes source=live enabled=$enabled '
+          'ntimesCount=${_queueManager.engine.ntimesCount}',
+    );
+  }
+
+  /// Update the N value for forNtimes repeat mode.
+  Future<void> setAfNtimesCount(int count) async {
+    if (_disposed) return;
+    _queueManager.engine.setNtimesCount(count);
+    afLog('data', 'forNtimesCount source=live count=$count');
+  }
+
+  /// Whether forNtimes mode is currently active.
+  bool get isForNtimesMode => _queueManager.engine.isForNtimes;
 
   /// Set playback speed. Intentionally bypasses `_queueLock` because
   /// `setRate` is a simple mpv property setter — it doesn't touch the
@@ -836,6 +876,33 @@ class AfPlayerService {
 
           final loopAtEvent = _player.state.loop;
           final playingAtEvent = _player.state.playing;
+
+          // Check for N-times repeat before advancing or ending
+          if (loopAtEvent == Loop.off &&
+              _queueManager.engine.isForNtimes &&
+              _queueManager.engine.remainingRepeats > 0) {
+            _queueManager.engine.decrementRepeats();
+            afLog(
+              'audio',
+              'forNtimes: restarting track, '
+                  '${_queueManager.engine.remainingRepeats} repeats remaining',
+            );
+            try {
+              await _player.seek(Duration.zero);
+              if (!playingAtEvent) {
+                await _player.play();
+              }
+            } catch (e, stack) {
+              afLog(
+                'audio',
+                'forNtimes: seek(0) failed',
+                error: e,
+                stackTrace: stack,
+              );
+            }
+            _updateMediaSession();
+            return;
+          }
 
           if (!_queueManager.engine.isAtQueueEnd) {
             // Advance engine state

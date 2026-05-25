@@ -1,13 +1,4 @@
-import 'dart:collection';
-
 class M3UEntry {
-  final String? title;
-  final String? artist;
-  final Duration? duration;
-  final String path;
-  final String? comment;
-  final Map<String, String> tags;
-
   const M3UEntry({
     this.title,
     this.artist,
@@ -16,6 +7,13 @@ class M3UEntry {
     this.comment,
     this.tags = const {},
   });
+
+  final String? title;
+  final String? artist;
+  final Duration? duration;
+  final String path;
+  final String? comment;
+  final Map<String, String> tags;
 
   @override
   bool operator ==(Object other) =>
@@ -36,20 +34,17 @@ class M3UEntry {
 }
 
 class M3uWriteOptions {
+  const M3uWriteOptions({this.includeExtInf = true, this.commentPrefix});
+
   final bool includeExtInf;
   final String? commentPrefix;
-
-  const M3uWriteOptions({
-    this.includeExtInf = true,
-    this.commentPrefix,
-  });
 }
 
 class M3uParseException implements Exception {
+  const M3uParseException(this.message, this.lineNumber);
+
   final String message;
   final int lineNumber;
-
-  const M3uParseException(this.message, this.lineNumber);
 
   @override
   String toString() => 'M3uParseException(line $lineNumber: $message)';
@@ -138,13 +133,15 @@ class M3uParser {
       if (path.isEmpty) continue;
 
       if (pendingEntry != null) {
-        entries.add(M3UEntry(
-          title: pendingEntry.title,
-          artist: pendingEntry.artist,
-          duration: pendingEntry.duration,
-          path: path,
-          tags: pendingEntry.tags,
-        ));
+        entries.add(
+          M3UEntry(
+            title: pendingEntry.title,
+            artist: pendingEntry.artist,
+            duration: pendingEntry.duration,
+            path: path,
+            tags: pendingEntry.tags,
+          ),
+        );
         pendingEntry = null;
       } else {
         entries.add(M3UEntry(path: path));

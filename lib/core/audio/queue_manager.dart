@@ -30,11 +30,22 @@ class AfQueueManager {
   // ── State queries (delegated to engine) ──────────────────────────
 
   bool get isShuffleEnabled => _engine.isShuffleEnabled;
+  bool get isTailShuffle => _engine.isTailShuffle;
   List<AfTrack> get currentQueue => _engine.tracks;
   int get currentIndex => _engine.currentIndex;
   AfTrack? get currentTrack => _engine.currentTrack;
   bool get isAtQueueEnd => _engine.isAtQueueEnd;
   bool get playbackEnded => _engine.playbackEnded;
+
+  // ── forNtimes passthrough ────────────────────────────────────────
+
+  bool get isForNtimes => _engine.isForNtimes;
+  int get remainingRepeats => _engine.remainingRepeats;
+  int get ntimesCount => _engine.ntimesCount;
+
+  void setNtimesCount(int count) => _engine.setNtimesCount(count);
+  void decrementRepeats() => _engine.decrementRepeats();
+  void resetRepeats() => _engine.resetRepeats();
 
   // ── Track change ────────────────────────────────────────────────
 
@@ -57,6 +68,12 @@ class AfQueueManager {
   void setShuffle(bool enabled) {
     _engine.setShuffle(enabled);
     _shuffleController.add(enabled);
+    _queueController.add(_engine.tracks);
+  }
+
+  void shuffleTail() {
+    _engine.shuffleTail();
+    _shuffleController.add(true);
     _queueController.add(_engine.tracks);
   }
 

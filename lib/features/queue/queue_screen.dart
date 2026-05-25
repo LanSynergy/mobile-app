@@ -94,28 +94,54 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         ),
         title: Text('Queue', style: AfTypography.titleSmall),
         actions: [
-          Consumer(
-            builder: (context, ref, _) {
-              final shuffleOn = ref
-                  .watch(shuffleModeProvider)
-                  .maybeWhen(data: (v) => v, orElse: () => false);
-              return IconButton(
-                icon: Icon(
-                  LucideIcons.shuffle,
-                  color: shuffleOn ? AfColors.indigo300 : AfColors.textPrimary,
-                ),
-                tooltip: shuffleOn ? 'Shuffle on' : 'Shuffle',
-                onPressed: () {
+          PopupMenuButton<QueueAction>(
+            icon: const Icon(
+              LucideIcons.ellipsisVertical,
+              color: AfColors.textPrimary,
+            ),
+            onSelected: (action) async {
+              switch (action) {
+                case QueueAction.shuffleAll:
                   final svc = ref.read(playerServiceProvider);
-                  svc.setAfShuffleMode(!svc.isShuffleEnabled);
-                },
-              );
+                  await svc.setAfShuffleMode(true);
+                  break;
+                case QueueAction.shuffleNext:
+                  final svc = ref.read(playerServiceProvider);
+                  await svc.setAfShuffleTail();
+                  break;
+                case QueueAction.saveAsPlaylist:
+                  await _saveQueueAsPlaylist();
+                  break;
+              }
             },
-          ),
-          IconButton(
-            icon: const Icon(LucideIcons.listPlus),
-            onPressed: _items.isEmpty ? null : _saveQueueAsPlaylist,
-            tooltip: 'Save queue as playlist',
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: QueueAction.shuffleAll,
+                child: ListTile(
+                  leading: Icon(LucideIcons.shuffle, size: 20),
+                  title: Text('Shuffle all'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: QueueAction.shuffleNext,
+                child: ListTile(
+                  leading: Icon(LucideIcons.arrowDownWideNarrow, size: 20),
+                  title: Text('Shuffle next'),
+                  subtitle: Text('Shuffle only upcoming tracks'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: QueueAction.saveAsPlaylist,
+                enabled: _items.isNotEmpty,
+                child: const ListTile(
+                  leading: Icon(LucideIcons.listPlus, size: 20),
+                  title: Text('Save as playlist'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -445,3 +471,5 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     }
   }
 }
+
+enum QueueAction { shuffleAll, shuffleNext, saveAsPlaylist }

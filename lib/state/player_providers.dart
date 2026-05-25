@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
     show Loop, FftFrame, MpvPlayerError;
 
+import '../core/audio/af_loop_mode.dart';
 import '../core/audio/jellyfin_playback_reporter.dart';
-import '../core/jellyfin/models/items.dart';
 import '../core/audio/player_service.dart';
+import '../core/audio/shuffle_mode.dart';
+import '../core/jellyfin/models/items.dart';
 import 'app_mode_providers.dart';
 import 'auth_providers.dart';
 import 'music_backend_providers.dart';
@@ -181,20 +183,47 @@ final playingStreamProvider = StreamProvider.autoDispose<bool>((ref) {
   return svc.playingStream;
 });
 
-final shuffleModeProvider = StreamProvider.autoDispose<bool>((ref) {
+final shuffleModeProvider = StreamProvider.autoDispose<ShuffleMode>((ref) {
   final svc = ref.watch(playerServiceProvider);
-  return Stream<bool>.multi((controller) {
-    controller.add(svc.isShuffleEnabled);
-    final sub = svc.shuffleModeStream.listen(controller.add);
+  return Stream<ShuffleMode>.multi((controller) {
+    controller.add(
+      svc.isShuffleEnabled
+          ? (svc.isTailShuffle ? ShuffleMode.tail : ShuffleMode.all)
+          : ShuffleMode.off,
+    );
+    final sub = svc.shuffleModeStream.listen((enabled) {
+      controller.add(
+        enabled
+            ? (svc.isTailShuffle ? ShuffleMode.tail : ShuffleMode.all)
+            : ShuffleMode.off,
+      );
+    });
     controller.onCancel = sub.cancel;
   });
 });
 
-final loopModeProvider = StreamProvider.autoDispose<Loop>((ref) {
+AfLoopMode _loopToAfLoopMode(Loop loop) {
+  switch (loop) {
+    case Loop.off:
+      return AfLoopMode.off;
+    case Loop.file:
+      return AfLoopMode.file;
+    case Loop.playlist:
+      return AfLoopMode.playlist;
+  }
+}
+
+final loopModeProvider = StreamProvider.autoDispose<AfLoopMode>((ref) {
   final svc = ref.watch(playerServiceProvider);
-  return Stream<Loop>.multi((controller) {
-    controller.add(svc.loopMode);
-    final sub = svc.loopModeStream.listen(controller.add);
+  final forNtimesActive = ref.watch(forNtimesModeProvider);
+  if (forNtimesActive) {
+    return Stream.value(AfLoopMode.forNtimes);
+  }
+  return Stream<AfLoopMode>.multi((controller) {
+    controller.add(_loopToAfLoopMode(svc.loopMode));
+    final sub = svc.loopModeStream.listen((loop) {
+      controller.add(_loopToAfLoopMode(loop));
+    });
     controller.onCancel = sub.cancel;
   });
 });
@@ -214,6 +243,14 @@ final fftSpectrumProvider = StreamProvider.autoDispose<FftFrame>((ref) {
 });
 
 final currentTrackProvider = StateProvider<AfTrack?>((ref) => null);
+
+final ntimesCountProvider = StateProvider<int>((ref) => 2);
+
+/// The current N value for forNtimes repeat mode. Defaults to 2.
+final repeatCountProvider = StateProvider<int>((ref) => 2);
+
+/// Whether forNtimes loop mode is currently active.
+final forNtimesModeProvider = StateProvider<bool>((ref) => false);
 
 final hasActivePlaybackProvider = Provider<bool>((ref) {
   return ref.watch(currentTrackProvider) != null;

@@ -688,5 +688,44 @@ void main() {
       expect(service.currentQueue, isEmpty);
       expect(service.currentTrack, isNull);
     });
+
+    test(
+      'setAfForNtimes and setAfNtimesCount configure engine correctly',
+      () async {
+        expect(service.isForNtimesMode, isFalse);
+
+        await service.setAfForNtimes(true);
+        expect(service.isForNtimesMode, isTrue);
+      },
+    );
+
+    test(
+      'forNtimes loop mode repeats the track and seeks to zero instead of advancing',
+      () async {
+        await service.playQueue(
+          [trackA, trackB],
+          startIndex: 0,
+          resolveStreamUrl: resolveStreamUrl,
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(service.currentTrack?.id, equals('1'));
+
+        await service.setAfForNtimes(true);
+        await service.setAfNtimesCount(2);
+
+        updateState(
+          (s) => s.copyWith(playing: true, completed: false, loop: Loop.off),
+        );
+
+        when(() => player.seek(Duration.zero)).thenAnswer((_) async {});
+
+        // First completion: repeats remaining = 2 -> 1, seeks, doesn't advance
+        ctrls.completed.add(true);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(service.currentTrack?.id, equals('1')); // still track A!
+        verify(() => player.seek(Duration.zero)).called(1);
+      },
+    );
   });
 }

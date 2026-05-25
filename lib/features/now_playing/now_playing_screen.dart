@@ -8,6 +8,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop;
 
 import '../../core/audio/play_actions.dart';
+import '../../core/audio/af_loop_mode.dart';
+import '../../core/audio/shuffle_mode.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../core/jellyfin/models/quality.dart';
 import '../../design_tokens/tokens.dart';
@@ -643,18 +645,20 @@ class _ReactiveTransport extends ConsumerWidget {
     final isPlaying = ref
         .watch(playingStreamProvider)
         .maybeWhen(data: (v) => v, orElse: () => false);
-    final shuffleOn = ref
+    final shuffleMode = ref
         .watch(shuffleModeProvider)
-        .maybeWhen(data: (v) => v, orElse: () => false);
+        .maybeWhen(data: (v) => v, orElse: () => ShuffleMode.off);
     final loopMode = ref
         .watch(loopModeProvider)
-        .maybeWhen(data: (v) => v, orElse: () => Loop.off);
+        .maybeWhen(data: (v) => v, orElse: () => AfLoopMode.off);
     final spectral = ref.watch(currentSpectralProvider);
 
     return _TransportRow(
       isPlaying: isPlaying,
-      shuffleOn: shuffleOn,
+      shuffleOn: shuffleMode != ShuffleMode.off,
+      shuffleMode: shuffleMode,
       loopMode: loopMode,
+      repeatCount: ref.watch(repeatCountProvider),
       accent: spectral.energy,
       onShuffle: () {
         final svc = ref.read(playerServiceProvider);
@@ -662,14 +666,29 @@ class _ReactiveTransport extends ConsumerWidget {
           svc.setAfShuffleMode(!svc.isShuffleEnabled).catchError((_) {}),
         );
       },
+      onShuffleLongPress: () => _showShuffleOptions(context, ref),
       onRepeat: () {
         final svc = ref.read(playerServiceProvider);
-        final next = switch (svc.loopMode) {
-          Loop.off => Loop.playlist,
-          Loop.playlist => Loop.file,
-          Loop.file => Loop.off,
-        };
-        unawaited(svc.setAfLoopMode(next).catchError((_) {}));
+        final currentMode = ref
+            .read(loopModeProvider)
+            .maybeWhen(data: (v) => v, orElse: () => AfLoopMode.off);
+        switch (currentMode) {
+          case AfLoopMode.off:
+            unawaited(svc.setAfLoopMode(Loop.playlist).catchError((_) {}));
+            break;
+          case AfLoopMode.playlist:
+            unawaited(svc.setAfLoopMode(Loop.file).catchError((_) {}));
+            break;
+          case AfLoopMode.file:
+            ref.read(forNtimesModeProvider.notifier).state = true;
+            unawaited(svc.setAfForNtimes(true).catchError((_) {}));
+            break;
+          case AfLoopMode.forNtimes:
+            ref.read(forNtimesModeProvider.notifier).state = false;
+            unawaited(svc.setAfForNtimes(false).catchError((_) {}));
+            unawaited(svc.setAfLoopMode(Loop.off).catchError((_) {}));
+            break;
+        }
       },
       onPlayPause: () {
         final svc = ref.read(playerServiceProvider);
@@ -677,6 +696,37 @@ class _ReactiveTransport extends ConsumerWidget {
       },
       onPrev: () => ref.read(playerServiceProvider).skipToPrevious(),
       onNext: () => ref.read(playerServiceProvider).skipToNext(),
+    );
+  }
+
+  void _showShuffleOptions(BuildContext context, WidgetRef ref) {
+    showBlurDialog(
+      context: context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Shuffle options', style: AfTypography.titleMedium),
+          const SizedBox(height: AfSpacing.s16),
+          ListTile(
+            leading: const Icon(LucideIcons.shuffle),
+            title: const Text('Shuffle all'),
+            onTap: () {
+              Navigator.of(context).pop();
+              ref.read(playerServiceProvider).setAfShuffleMode(true);
+            },
+          ),
+          ListTile(
+            leading: const Icon(LucideIcons.arrowDownWideNarrow),
+            title: const Text('Shuffle next'),
+            subtitle: const Text('Only upcoming tracks'),
+            onTap: () {
+              Navigator.of(context).pop();
+              ref.read(playerServiceProvider).setAfShuffleTail();
+            },
+          ),
+        ],
+      ),
     );
   }
 }
@@ -918,23 +968,42 @@ class _TransportRow extends StatelessWidget {
   const _TransportRow({
     required this.isPlaying,
     required this.shuffleOn,
+    required this.shuffleMode,
     required this.loopMode,
+    required this.repeatCount,
     required this.accent,
     required this.onPlayPause,
     required this.onPrev,
     required this.onNext,
     required this.onShuffle,
+    required this.onShuffleLongPress,
     required this.onRepeat,
   });
   final bool isPlaying;
   final bool shuffleOn;
-  final Loop loopMode;
+  final ShuffleMode shuffleMode;
+  final AfLoopMode loopMode;
+  final int repeatCount;
   final Color accent;
   final VoidCallback onPlayPause;
   final VoidCallback onPrev;
   final VoidCallback onNext;
   final VoidCallback onShuffle;
+  final VoidCallback onShuffleLongPress;
   final VoidCallback onRepeat;
+
+  static IconData _loopIcon(AfLoopMode mode) {
+    return switch (mode) {
+      AfLoopMode.file => LucideIcons.repeat1,
+      AfLoopMode.playlist => LucideIcons.repeat,
+      AfLoopMode.off => LucideIcons.repeat,
+      AfLoopMode.forNtimes => LucideIcons.repeat,
+    };
+  }
+
+  static Color _loopColor(AfLoopMode mode, Color accent) {
+    return mode == AfLoopMode.off ? AfColors.textTertiary : accent;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -947,13 +1016,18 @@ class _TransportRow extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: 4),
-          _TransportButton(
-            icon: Icon(
-              LucideIcons.shuffle,
-              size: 20,
-              color: shuffleOn ? accent : AfColors.textTertiary,
+          GestureDetector(
+            onLongPress: onShuffleLongPress,
+            child: _TransportButton(
+              icon: Icon(
+                shuffleMode == ShuffleMode.tail
+                    ? LucideIcons.arrowDownWideNarrow
+                    : LucideIcons.shuffle,
+                size: 20,
+                color: shuffleOn ? accent : AfColors.textTertiary,
+              ),
+              onTap: onShuffle,
             ),
-            onTap: onShuffle,
           ),
           const Spacer(),
           _TransportButton(
@@ -977,10 +1051,35 @@ class _TransportRow extends StatelessWidget {
           ),
           const Spacer(),
           _TransportButton(
-            icon: Icon(
-              loopMode == Loop.file ? LucideIcons.repeat1 : LucideIcons.repeat,
-              size: 20,
-              color: loopMode == Loop.off ? AfColors.textTertiary : accent,
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  _loopIcon(loopMode),
+                  size: 20,
+                  color: _loopColor(loopMode, accent),
+                ),
+                if (loopMode == AfLoopMode.forNtimes)
+                  Positioned(
+                    right: -6,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: AfColors.indigo400,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '$repeatCount',
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             onTap: onRepeat,
           ),

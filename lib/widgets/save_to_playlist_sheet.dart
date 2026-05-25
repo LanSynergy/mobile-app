@@ -53,7 +53,7 @@ void showSaveToPlaylistSheet(
 /// Inline list of existing playlists with an optional "New playlist"
 /// row at the top. Pure widget — no provider reads — so it can be
 /// embedded in any dialog / sheet / page.
-class SaveToPlaylistSheet extends StatefulWidget {
+class SaveToPlaylistSheet extends ConsumerStatefulWidget {
   const SaveToPlaylistSheet({
     super.key,
     required this.track,
@@ -67,10 +67,11 @@ class SaveToPlaylistSheet extends StatefulWidget {
   final VoidCallback? onSaved;
 
   @override
-  State<SaveToPlaylistSheet> createState() => _SaveToPlaylistSheetState();
+  ConsumerState<SaveToPlaylistSheet> createState() =>
+      _SaveToPlaylistSheetState();
 }
 
-class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
+class _SaveToPlaylistSheetState extends ConsumerState<SaveToPlaylistSheet> {
   List<AfPlaylist>? _playlists;
   bool _loading = true;
   bool _saving = false;
@@ -109,18 +110,50 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
     }
   }
 
+  Future<void> _undoAdd(
+    String playlistId,
+    List<String> trackIds,
+    MusicBackend backend,
+  ) async {
+    final action = ref.read(playlistUndoBufferProvider).pop(playlistId);
+    if (action == null) return;
+    try {
+      await backend.removeFromPlaylist(playlistId, action.trackIds);
+      widget.onInvalidate();
+      ref.invalidate(playlistDetailProvider(playlistId));
+      ref.invalidate(allPlaylistsProvider);
+      ref.invalidate(playlistTrackIdsProvider);
+    } catch (e) {
+      // Ignore or log error
+    }
+  }
+
   Future<void> _addTo(AfPlaylist playlist) async {
     if (_saving) return;
     setState(() => _saving = true);
     try {
       await widget.backend.addToPlaylist(playlist.id, [widget.track.id]);
+
+      ref.read(playlistUndoBufferProvider).pushAdd(playlist.id, [
+        widget.track.id,
+      ]);
+
       widget.onInvalidate();
       widget.onSaved?.call();
       if (mounted) {
         unawaited(Navigator.maybePop(context));
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Added to ${playlist.name}')));
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(
+              content: Text('Added to ${playlist.name}'),
+              action: SnackBarAction(
+                label: 'Undo',
+                onPressed: () =>
+                    _undoAdd(playlist.id, [widget.track.id], widget.backend),
+              ),
+            ),
+          );
       }
     } catch (e) {
       if (mounted) {

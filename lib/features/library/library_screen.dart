@@ -12,6 +12,7 @@ import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/skeletons/library_skeleton.dart';
+import '../playlist/import_m3u_dialog.dart';
 
 enum LibrarySection { albums, artists, songs, playlists, genres, liked }
 
@@ -201,6 +202,18 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 children: [
                   Text('Library', style: AfTypography.titleLarge),
                   const Spacer(),
+                  if (_section == LibrarySection.playlists)
+                    IconButton(
+                      icon: const Icon(
+                        LucideIcons.listPlus,
+                        color: AfColors.indigo400,
+                        size: 22,
+                      ),
+                      tooltip: 'Import M3U',
+                      onPressed: () => ref
+                          .read(importM3UActionProvider)
+                          .import(context: context),
+                    ),
                   PopupMenuButton<LibrarySortOption>(
                     icon: const Icon(
                       LucideIcons.arrowDownWideNarrow,

@@ -87,7 +87,7 @@ subdir/file3.mp3''';
     group('write', () {
       test('writes M3U with EXTINF entries by default', () {
         final entries = [
-          M3UEntry(
+          const M3UEntry(
             title: 'Karma Police',
             artist: 'Radiohead',
             duration: Duration(seconds: 301),
@@ -101,10 +101,11 @@ subdir/file3.mp3''';
       });
 
       test('writes M3U without EXTINF when disabled', () {
-        final entries = [
-          M3UEntry(path: '/radiohead/karma_police.mp3'),
-        ];
-        final result = M3uParser.write(entries, options: const M3uWriteOptions(includeExtInf: false));
+        final entries = [const M3UEntry(path: '/radiohead/karma_police.mp3')];
+        final result = M3uParser.write(
+          entries,
+          options: const M3uWriteOptions(includeExtInf: false),
+        );
         expect(result, contains('#EXTM3U'));
         expect(result, contains('/radiohead/karma_police.mp3'));
         expect(result, isNot(contains('#EXTINF')));
@@ -112,13 +113,13 @@ subdir/file3.mp3''';
 
       test('round-trip: write then parse produces same data', () {
         final originalEntries = [
-          M3UEntry(
+          const M3UEntry(
             title: 'Karma Police',
             artist: 'Radiohead',
             duration: Duration(seconds: 301),
             path: '/radiohead/karma_police.mp3',
           ),
-          M3UEntry(
+          const M3UEntry(
             title: 'Lovers Rock',
             artist: 'TV Girl',
             duration: Duration(seconds: 209),
@@ -130,7 +131,10 @@ subdir/file3.mp3''';
         expect(parsed.length, originalEntries.length);
         expect(parsed[0].title, originalEntries[0].title);
         expect(parsed[0].artist, originalEntries[0].artist);
-        expect(parsed[0].duration?.inSeconds, originalEntries[0].duration?.inSeconds);
+        expect(
+          parsed[0].duration?.inSeconds,
+          originalEntries[0].duration?.inSeconds,
+        );
         expect(parsed[0].path, originalEntries[0].path);
       });
     });

@@ -110,6 +110,7 @@ class AfQueueEngine {
     _playbackEnded = false;
     _isTailShuffle = false;
     _shuffleOrder = null;
+    resetRepeats();
   }
 
   /// End playback: set currentIndex to -1 without clearing the queue.
@@ -211,7 +212,6 @@ class AfQueueEngine {
     if (logicalCurrent < 0 || logicalCurrent >= _tracks.length - 1) return;
 
     final tailStart = logicalCurrent + 1;
-    final tailLength = _tracks.length - tailStart;
 
     _isTailShuffle = true;
 
@@ -219,10 +219,7 @@ class AfQueueEngine {
       _shuffleOrder = List<int>.generate(_tracks.length, (i) => i);
       final tail = _shuffleOrder!.sublist(tailStart);
       tail.shuffle(_random);
-      _shuffleOrder = [
-        ..._shuffleOrder!.sublist(0, tailStart),
-        ...tail,
-      ];
+      _shuffleOrder = [..._shuffleOrder!.sublist(0, tailStart), ...tail];
     } else {
       final head = _shuffleOrder!.sublist(0, tailStart);
       final tail = _shuffleOrder!.sublist(tailStart);

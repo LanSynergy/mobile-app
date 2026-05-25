@@ -440,13 +440,16 @@ void main() {
         expect(engine.ntimesCount, 2);
       });
 
-      test('setForNtimes(true) activates and sets remaining to ntimesCount', () {
-        final engine = AfQueueEngine();
-        engine.replaceAll(tracks, 0);
-        engine.setForNtimes(true);
-        expect(engine.isForNtimes, true);
-        expect(engine.remainingRepeats, 2);
-      });
+      test(
+        'setForNtimes(true) activates and sets remaining to ntimesCount',
+        () {
+          final engine = AfQueueEngine();
+          engine.replaceAll(tracks, 0);
+          engine.setForNtimes(true);
+          expect(engine.isForNtimes, true);
+          expect(engine.remainingRepeats, 2);
+        },
+      );
 
       test('decrementRepeats reduces remaining count', () {
         final engine = AfQueueEngine();
@@ -521,17 +524,20 @@ void main() {
         expect(engine.currentIndex, 0);
       });
 
-      test('shuffles only tracks after current index when shuffle is already on', () {
-        final engine = AfQueueEngine();
-        engine.replaceAll(tracks, 0);
-        engine.setShuffle(true);
-        final currentTrackId = engine.currentTrack!.id;
+      test(
+        'shuffles only tracks after current index when shuffle is already on',
+        () {
+          final engine = AfQueueEngine();
+          engine.replaceAll(tracks, 0);
+          engine.setShuffle(true);
+          final currentTrackId = engine.currentTrack!.id;
 
-        engine.shuffleTail();
+          engine.shuffleTail();
 
-        expect(engine.currentIndex, 0);
-        expect(engine.currentTrack!.id, currentTrackId);
-      });
+          expect(engine.currentIndex, 0);
+          expect(engine.currentTrack!.id, currentTrackId);
+        },
+      );
 
       test('no-op for empty queue', () {
         final engine = AfQueueEngine();

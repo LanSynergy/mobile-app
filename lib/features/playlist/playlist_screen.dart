@@ -14,6 +14,7 @@ import '../../widgets/press_scale.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/skeletons/playlist_skeleton.dart';
+import 'export_m3u_dialog.dart';
 
 /// Playlist detail screen with full management:
 ///   • Play / Shuffle
@@ -59,6 +60,14 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                   child: ListTile(
                     leading: Icon(Icons.edit_outlined),
                     title: Text('Rename'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: _PlaylistAction.exportM3U,
+                  child: ListTile(
+                    leading: Icon(Icons.download_rounded),
+                    title: Text('Export M3U'),
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
@@ -324,15 +333,52 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
       // Pass the track ID as the entry ID. Jellyfin's playlist endpoint
       // accepts both track IDs and per-entry IDs for non-duplicate playlists.
       await client.removeFromPlaylist(playlistId, [removed.id]);
+
+      ref
+          .read(playlistUndoBufferProvider)
+          .pushRemove(playlistId, [removed.id], [removed.id]);
+
       // Invalidate only after the server confirms the delete so the
       // refetch sees the updated list, not the pre-delete snapshot.
       ref.invalidate(playlistDetailProvider(widget.playlistId));
       ref.invalidate(allPlaylistsProvider);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(
+              content: Text('Removed "${removed.title}"'),
+              action: SnackBarAction(
+                label: 'Undo',
+                onPressed: () => _undoRemove(playlistId, client),
+              ),
+            ),
+          );
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _localTracks = tracks);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(displayError(e, prefix: 'Could not remove'))),
+        );
+      }
+    }
+  }
+
+  Future<void> _undoRemove(String playlistId, MusicBackend client) async {
+    final action = ref.read(playlistUndoBufferProvider).pop(playlistId);
+    if (action == null) return;
+    try {
+      await client.addToPlaylist(playlistId, action.trackIds);
+      ref.invalidate(playlistDetailProvider(playlistId));
+      ref.invalidate(allPlaylistsProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(displayError(e, prefix: 'Could not undo removal')),
+          ),
         );
       }
     }
@@ -362,6 +408,25 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(displayError(e, prefix: 'Could not rename')),
+              ),
+            );
+          }
+        }
+
+      case _PlaylistAction.exportM3U:
+        try {
+          await ref
+              .read(exportM3UActionProvider)
+              .export(
+                tracks: detail.tracks,
+                playlistName: detail.playlist.name,
+                context: context,
+              );
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(displayError(e, prefix: 'Could not export')),
               ),
             );
           }
@@ -460,7 +525,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   }
 }
 
-enum _PlaylistAction { rename, delete }
+enum _PlaylistAction { rename, exportM3U, delete }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-widgets

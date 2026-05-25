@@ -27,29 +27,33 @@ void main() {
 
     test('insert and read QueueHistory entries', () async {
       final now = DateTime.now().millisecondsSinceEpoch;
-      await db.into(db.queueHistory).insert(
-        QueueHistoryCompanion.insert(
-          id: 'test-uuid-1',
-          trackIdsJson: '["track1","track2"]',
-          sourceLabel: 'Album: Test Album',
-          sourceType: 'album',
-          sourceId: Value('album-123'),
-          createdAt: now - 1000,
-        ),
-      );
-      await db.into(db.queueHistory).insert(
-        QueueHistoryCompanion.insert(
-          id: 'test-uuid-2',
-          trackIdsJson: '["track3"]',
-          sourceLabel: 'Playlist: My Favorites',
-          sourceType: 'playlist',
-          createdAt: now,
-        ),
-      );
+      await db
+          .into(db.queueHistory)
+          .insert(
+            QueueHistoryCompanion.insert(
+              id: 'test-uuid-1',
+              trackIdsJson: '["track1","track2"]',
+              sourceLabel: 'Album: Test Album',
+              sourceType: 'album',
+              sourceId: const Value('album-123'),
+              createdAt: now - 1000,
+            ),
+          );
+      await db
+          .into(db.queueHistory)
+          .insert(
+            QueueHistoryCompanion.insert(
+              id: 'test-uuid-2',
+              trackIdsJson: '["track3"]',
+              sourceLabel: 'Playlist: My Favorites',
+              sourceType: 'playlist',
+              createdAt: now,
+            ),
+          );
 
-      final rows = await (db.select(db.queueHistory)
-            ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
-          .get();
+      final rows = await (db.select(
+        db.queueHistory,
+      )..orderBy([(t) => OrderingTerm.desc(t.createdAt)])).get();
 
       expect(rows.length, 2);
       expect(rows[0].id, 'test-uuid-2');
@@ -69,15 +73,17 @@ void main() {
     test('loadRecent returns limited entries in desc order', () async {
       final now = DateTime.now().millisecondsSinceEpoch;
       for (var i = 0; i < 15; i++) {
-        await db.into(db.queueHistory).insert(
-          QueueHistoryCompanion.insert(
-            id: 'uuid-$i',
-            trackIdsJson: '["t$i"]',
-            sourceLabel: 'Playlist $i',
-            sourceType: 'playlist',
-            createdAt: now + i,
-          ),
-        );
+        await db
+            .into(db.queueHistory)
+            .insert(
+              QueueHistoryCompanion.insert(
+                id: 'uuid-$i',
+                trackIdsJson: '["t$i"]',
+                sourceLabel: 'Playlist $i',
+                sourceType: 'playlist',
+                createdAt: now + i,
+              ),
+            );
       }
       final all = await (db.select(db.queueHistory)).get();
       expect(all.length, 15);
@@ -85,24 +91,30 @@ void main() {
 
     test('delete works correctly', () async {
       final now = DateTime.now().millisecondsSinceEpoch;
-      await db.into(db.queueHistory).insert(
-        QueueHistoryCompanion.insert(
-          id: 'to-delete',
-          trackIdsJson: '[]',
-          sourceLabel: 'Delete me',
-          sourceType: 'manual',
-          createdAt: now,
-        ),
-      );
+      await db
+          .into(db.queueHistory)
+          .insert(
+            QueueHistoryCompanion.insert(
+              id: 'to-delete',
+              trackIdsJson: '[]',
+              sourceLabel: 'Delete me',
+              sourceType: 'manual',
+              createdAt: now,
+            ),
+          );
       expect(
-        (await (db.select(db.queueHistory)..where((t) => t.id.equals('to-delete'))).get())
-            .length,
+        (await (db.select(
+          db.queueHistory,
+        )..where((t) => t.id.equals('to-delete'))).get()).length,
         1,
       );
-      await (db.delete(db.queueHistory)..where((t) => t.id.equals('to-delete'))).go();
+      await (db.delete(
+        db.queueHistory,
+      )..where((t) => t.id.equals('to-delete'))).go();
       expect(
-        (await (db.select(db.queueHistory)..where((t) => t.id.equals('to-delete'))).get())
-            .length,
+        (await (db.select(
+          db.queueHistory,
+        )..where((t) => t.id.equals('to-delete'))).get()).length,
         0,
       );
     });

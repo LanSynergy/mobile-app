@@ -134,5 +134,66 @@ void main() {
         await sub.cancel();
       });
     });
+
+    group('shuffleTail', () {
+      test('shuffleTail emits updated queue', () async {
+        final manager = AfQueueManager();
+        final tracks = List.generate(
+          5,
+          (i) => AfTrack(
+            id: 't$i',
+            title: 'Track $i',
+            artistName: 'Artist',
+            albumName: 'Album',
+            duration: const Duration(seconds: 60),
+          ),
+        );
+        manager.replaceQueue(tracks, 0);
+
+        final emitted = <List<AfTrack>>[];
+        final sub = manager.queueStream.listen(emitted.add);
+
+        manager.shuffleTail();
+
+        // Allow async emission
+        await Future.delayed(Duration.zero);
+        expect(emitted.length, greaterThanOrEqualTo(1));
+        expect(emitted.last.length, 5);
+
+        await sub.cancel();
+      });
+    });
+
+    group('forNtimes passthrough', () {
+      test('passthrough methods delegate correctly', () {
+        final manager = AfQueueManager();
+        final tracks = List.generate(
+          3,
+          (i) => AfTrack(
+            id: 't$i',
+            title: 'Track $i',
+            artistName: 'Artist',
+            albumName: 'Album',
+            duration: const Duration(seconds: 60),
+          ),
+        );
+        manager.replaceQueue(tracks, 0);
+
+        // Test forNtimes passthrough
+        manager.setNtimesCount(5);
+        expect(manager.ntimesCount, 5);
+        expect(manager.isForNtimes, false);
+
+        manager.engine.setForNtimes(true);
+        expect(manager.isForNtimes, true);
+        expect(manager.remainingRepeats, 5);
+
+        manager.decrementRepeats();
+        expect(manager.remainingRepeats, 4);
+
+        manager.resetRepeats();
+        expect(manager.remainingRepeats, 5);
+      });
+    });
   });
 }

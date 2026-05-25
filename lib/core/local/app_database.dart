@@ -118,12 +118,13 @@ class CacheEntries extends Table {
 /// Tracks are re-fetched from the active backend when restoring.
 @DataClassName('QueueHistoryEntity')
 class QueueHistory extends Table {
-  TextColumn get id => text()();           // uuid v4
+  TextColumn get id => text()(); // uuid v4
   TextColumn get trackIdsJson => text()(); // JSON array of track IDs
-  TextColumn get sourceLabel => text()();  // "Album: In Rainbows"
-  TextColumn get sourceType => text()();   // "album", "playlist", "artist", "manual"
+  TextColumn get sourceLabel => text()(); // "Album: In Rainbows"
+  TextColumn get sourceType =>
+      text()(); // "album", "playlist", "artist", "manual"
   TextColumn get sourceId => text().nullable()(); // nullable server/DB ID
-  IntColumn get createdAt => integer()();  // epoch ms
+  IntColumn get createdAt => integer()(); // epoch ms
 
   @override
   Set<Column> get primaryKey => {id};
