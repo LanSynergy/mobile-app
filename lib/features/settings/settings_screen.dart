@@ -439,6 +439,10 @@ class SettingsScreen extends ConsumerWidget {
                       const secureStorage = FlutterSecureStorage();
                       await secureStorage.deleteAll();
 
+                      // Close the database connection before deleting the file!
+                      final db = ref.read(appDatabaseProvider);
+                      await db.close();
+
                       final dbFolder = await getApplicationDocumentsDirectory();
                       final dbFile = File(
                         p.join(dbFolder.path, 'aetherfin_drift.db'),
@@ -446,6 +450,9 @@ class SettingsScreen extends ConsumerWidget {
                       if (dbFile.existsSync()) {
                         await dbFile.delete();
                       }
+
+                      // Invalidate the provider so a fresh database is opened on next request.
+                      ref.invalidate(appDatabaseProvider);
 
                       await AppModeStore.clear();
                       ref.read(appModeProvider.notifier).state = null;
