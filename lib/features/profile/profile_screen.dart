@@ -18,7 +18,7 @@ import '../../widgets/section_header.dart';
 /// / Marrow Bay") demo strings:
 ///   • Stats        ← allAlbumsProvider.length + allTracksProvider.length
 ///   • Pinned       ← favoriteAlbumsProvider (falls back to recently-added)
-///   • Playlists    ← allPlaylistsProvider
+///   • Playlists    ← allPlaylistsProvider (removed — now in Playlist tab)
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -41,8 +41,6 @@ class ProfileScreen extends ConsumerWidget {
     // sorts by MAX(last_modified) so this fallback actually surfaces
     // newly-imported music instead of the alphabetically-first album.
     final recentAlbumsAsync = ref.watch(recentlyAddedAlbumsProvider);
-    final playlistsAsync = ref.watch(allPlaylistsProvider);
-
     String fmtCount<T>(AsyncValue<List<T>> async) =>
         async.maybeWhen(data: (list) => _fmt(list.length), orElse: () => '—');
 
@@ -55,11 +53,6 @@ class ProfileScreen extends ConsumerWidget {
               orElse: () => const <AfAlbum>[],
             ),
       orElse: () => const <AfAlbum>[],
-    );
-
-    final playlists = playlistsAsync.maybeWhen(
-      data: (list) => list,
-      orElse: () => const <AfPlaylist>[],
     );
 
     return SafeArea(
@@ -104,52 +97,6 @@ class ProfileScreen extends ConsumerWidget {
           const SectionHeader(title: 'Pinned', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
           _PinnedRow(albums: pinned),
-          const SizedBox(height: AfSpacing.s24),
-          const SectionHeader(title: 'Playlists', uppercase: true),
-          const SizedBox(height: AfSpacing.s8),
-          if (playlists.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: AfSpacing.s16,
-                horizontal: AfSpacing.s4,
-              ),
-              child: Text(
-                playlistsAsync.isLoading
-                    ? 'Loading playlists…'
-                    : 'No playlists yet.',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
-                ),
-              ),
-            )
-          else
-            for (final p in playlists)
-              Padding(
-                padding: const EdgeInsets.only(bottom: AfSpacing.s4),
-                child: ListTile(
-                  leading: const Icon(
-                    Icons.playlist_play_rounded,
-                    color: AfColors.indigo300,
-                  ),
-                  title: Text(p.name),
-                  subtitle: Text(
-                    '${p.trackCount} '
-                    '${p.trackCount == 1 ? "track" : "tracks"}'
-                    '${p.isPublic ? "  •  Public" : ""}',
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textTertiary,
-                    ),
-                  ),
-                  tileColor: AfColors.surfaceBase,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: AfRadii.borderMd,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AfSpacing.s16,
-                  ),
-                  onTap: () => context.push('/playlist/${p.id}'),
-                ),
-              ),
           const SizedBox(height: AfSpacing.s24),
           const SectionHeader(title: 'Account', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
