@@ -7,14 +7,15 @@ import 'smart_playlist_model.dart';
 /// Storage for smart playlist definitions.
 /// Refactored to wrap Drift's [AppDatabase].
 class SmartPlaylistDb {
-
   SmartPlaylistDb({AppDatabase? database}) : db = database ?? AppDatabase();
   final AppDatabase db;
 
   // ── CRUD ────────────────────────────────────────────────────────────────
 
   Future<List<SmartPlaylist>> getAll() async {
-    final rows = await (db.select(db.smartPlaylists)..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
+    final rows = await (db.select(
+      db.smartPlaylists,
+    )..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
     return rows.map(_rowToPlaylist).toList();
   }
 
@@ -33,21 +34,24 @@ class SmartPlaylistDb {
       createdAt: isNew ? DateTime.now() : playlist.createdAt,
       updatedAt: DateTime.now(),
     );
-    
-    await db.into(db.smartPlaylists).insert(
-        SmartPlaylistsCompanion.insert(
-          id: updated.id,
-          name: updated.name,
-          combinator: Value(updated.combinator),
-          rulesJson: Value(updated.rulesJson),
-          sort: Value(updated.sort),
-          sortOrder: Value(updated.sortOrder),
-          maxLimit: Value(updated.limit),
-          createdAt: updated.createdAt.millisecondsSinceEpoch,
-          updatedAt: updated.updatedAt.millisecondsSinceEpoch,
-        ),
-        mode: InsertMode.replace);
-    
+
+    await db
+        .into(db.smartPlaylists)
+        .insert(
+          SmartPlaylistsCompanion.insert(
+            id: updated.id,
+            name: updated.name,
+            combinator: Value(updated.combinator),
+            rulesJson: Value(updated.rulesJson),
+            sort: Value(updated.sort),
+            sortOrder: Value(updated.sortOrder),
+            maxLimit: Value(updated.limit),
+            createdAt: updated.createdAt.millisecondsSinceEpoch,
+            updatedAt: updated.updatedAt.millisecondsSinceEpoch,
+          ),
+          mode: InsertMode.replace,
+        );
+
     return updated;
   }
 

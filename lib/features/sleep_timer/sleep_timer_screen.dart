@@ -90,15 +90,16 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
     if (_selectedMinutes == 0) {
       // End of track — set a sentinel far in the future; the watcher
       // checks for track completion separately.
-      ref.read(sleepTimerProvider.notifier).state =
-          DateTime.now().add(const Duration(days: 1));
+      ref.read(sleepTimerProvider.notifier).state = DateTime.now().add(
+        const Duration(days: 1),
+      );
       ref.read(sleepTimerRemainingProvider.notifier).state = null;
     } else {
-      final target =
-          DateTime.now().add(Duration(minutes: _selectedMinutes!));
+      final target = DateTime.now().add(Duration(minutes: _selectedMinutes!));
       ref.read(sleepTimerProvider.notifier).state = target;
-      ref.read(sleepTimerRemainingProvider.notifier).state =
-          Duration(minutes: _selectedMinutes!);
+      ref.read(sleepTimerRemainingProvider.notifier).state = Duration(
+        minutes: _selectedMinutes!,
+      );
     }
     Navigator.maybePop(context);
   }
@@ -121,7 +122,8 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
     final activeTimer = ref.watch(sleepTimerProvider);
     final remaining = ref.watch(sleepTimerRemainingProvider);
     final isEndOfTrack =
-        activeTimer != null && activeTimer.difference(DateTime.now()).inHours > 12;
+        activeTimer != null &&
+        activeTimer.difference(DateTime.now()).inHours > 12;
     final isActive = activeTimer != null;
 
     return Scaffold(
@@ -135,7 +137,8 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -155,8 +158,11 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.bedtime_rounded,
-                          color: AfColors.indigo300, size: 20),
+                      const Icon(
+                        Icons.bedtime_rounded,
+                        color: AfColors.indigo300,
+                        size: 20,
+                      ),
                       const SizedBox(width: AfSpacing.s12),
                       Expanded(
                         child: Text(
@@ -200,8 +206,7 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
                     ChoiceChip(
                       label: Text('$m min'),
                       selected: _selectedMinutes == m,
-                      onSelected: (_) =>
-                          setState(() => _selectedMinutes = m),
+                      onSelected: (_) => setState(() => _selectedMinutes = m),
                       selectedColor: AfColors.indigo600,
                       backgroundColor: AfColors.surfaceBase,
                       labelStyle: AfTypography.bodyMedium.copyWith(
@@ -213,8 +218,7 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
                   ChoiceChip(
                     label: const Text('End of track'),
                     selected: _selectedMinutes == 0,
-                    onSelected: (_) =>
-                        setState(() => _selectedMinutes = 0),
+                    onSelected: (_) => setState(() => _selectedMinutes = 0),
                     selectedColor: AfColors.indigo600,
                     backgroundColor: AfColors.surfaceBase,
                     labelStyle: AfTypography.bodyMedium.copyWith(
@@ -295,8 +299,7 @@ class _SleepTimerWatcherState extends ConsumerState<SleepTimerWatcher> {
     // armed so we can detect when mpv moves on (auto-advance OR stop).
     final target = ref.read(sleepTimerProvider);
     if (target != null && target.difference(DateTime.now()).inHours > 12) {
-      _endOfTrackAnchorId =
-          ref.read(playerServiceProvider).currentTrack?.id;
+      _endOfTrackAnchorId = ref.read(playerServiceProvider).currentTrack?.id;
     } else {
       _endOfTrackAnchorId = null;
     }

@@ -23,7 +23,10 @@ void main(List<String> args) {
   });
 
   final resultList = jsonMap.entries
-      .map((entry) => <String, dynamic>{'name': entry.key, ...entry.value as Map<String, dynamic>})
+      .map((entry) => <String, dynamic>{
+            'name': entry.key,
+            ...entry.value as Map<String, dynamic>
+          })
       .toList();
   // stdout.write("info message1 ${resultList}");
   // final c = parse(content);

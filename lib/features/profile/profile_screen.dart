@@ -43,10 +43,8 @@ class ProfileScreen extends ConsumerWidget {
     final recentAlbumsAsync = ref.watch(recentlyAddedAlbumsProvider);
     final playlistsAsync = ref.watch(allPlaylistsProvider);
 
-    String fmtCount<T>(AsyncValue<List<T>> async) => async.maybeWhen(
-          data: (list) => _fmt(list.length),
-          orElse: () => '—',
-        );
+    String fmtCount<T>(AsyncValue<List<T>> async) =>
+        async.maybeWhen(data: (list) => _fmt(list.length), orElse: () => '—');
 
     // Favourites first, else most-recently-added so the row is never empty.
     final pinned = favAlbumsAsync.maybeWhen(
@@ -67,7 +65,7 @@ class ProfileScreen extends ConsumerWidget {
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-          children: [
+        children: [
           const SizedBox(height: AfSpacing.s24),
           Center(
             child: Column(
@@ -87,8 +85,9 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Text(
                   serverName,
-                  style: AfTypography.bodySmall
-                      .copyWith(color: AfColors.textTertiary),
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
                 ),
               ],
             ),
@@ -118,8 +117,9 @@ class ProfileScreen extends ConsumerWidget {
                 playlistsAsync.isLoading
                     ? 'Loading playlists…'
                     : 'No playlists yet.',
-                style: AfTypography.bodySmall
-                    .copyWith(color: AfColors.textTertiary),
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textTertiary,
+                ),
               ),
             )
           else
@@ -127,21 +127,26 @@ class ProfileScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: AfSpacing.s4),
                 child: ListTile(
-                  leading: const Icon(Icons.playlist_play_rounded,
-                      color: AfColors.indigo300),
+                  leading: const Icon(
+                    Icons.playlist_play_rounded,
+                    color: AfColors.indigo300,
+                  ),
                   title: Text(p.name),
                   subtitle: Text(
                     '${p.trackCount} '
                     '${p.trackCount == 1 ? "track" : "tracks"}'
                     '${p.isPublic ? "  •  Public" : ""}',
-                    style: AfTypography.bodySmall
-                        .copyWith(color: AfColors.textTertiary),
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
+                    ),
                   ),
                   tileColor: AfColors.surfaceBase,
                   shape: const RoundedRectangleBorder(
-                      borderRadius: AfRadii.borderMd),
+                    borderRadius: AfRadii.borderMd,
+                  ),
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: AfSpacing.s16),
+                    horizontal: AfSpacing.s16,
+                  ),
                   onTap: () => context.push('/playlist/${p.id}'),
                 ),
               ),
@@ -152,8 +157,7 @@ class ProfileScreen extends ConsumerWidget {
             leading: const Icon(Icons.settings_outlined),
             title: const Text('Settings'),
             tileColor: AfColors.surfaceBase,
-            shape: const RoundedRectangleBorder(
-                borderRadius: AfRadii.borderMd),
+            shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderMd),
             onTap: () => context.push('/settings'),
           ),
           const SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
@@ -218,8 +222,9 @@ class _PinnedRow extends StatelessWidget {
         child: Center(
           child: Text(
             'Heart an album to pin it here.',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textTertiary,
+            ),
           ),
         ),
       );
@@ -229,7 +234,8 @@ class _PinnedRow extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: albums.length,
-        separatorBuilder: (context, index) => const SizedBox(width: AfSpacing.s12),
+        separatorBuilder: (context, index) =>
+            const SizedBox(width: AfSpacing.s12),
         itemBuilder: (context, i) {
           final a = albums[i];
           return GestureDetector(
@@ -238,11 +244,7 @@ class _PinnedRow extends StatelessWidget {
               width: 120,
               child: Stack(
                 children: [
-                  Artwork(
-                    url: a.imageUrl,
-                    size: 120,
-                    radius: AfRadii.borderMd,
-                  ),
+                  Artwork(url: a.imageUrl, size: 120, radius: AfRadii.borderMd),
                   Positioned.fill(
                     child: Container(
                       decoration: BoxDecoration(

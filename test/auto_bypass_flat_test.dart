@@ -61,10 +61,7 @@ void main() {
 
     test('superequalizer: enabled flips to false when params is empty', () {
       final fx = const AudioEffects().copyWith(
-        superequalizer: const SuperequalizerSettings(
-          enabled: true,
-          params: {},
-        ),
+        superequalizer: const SuperequalizerSettings(enabled: true, params: {}),
       );
       final out = autoBypassFlat(fx);
       expect(out.superequalizer.enabled, isFalse);
@@ -113,12 +110,7 @@ void main() {
 
     test('deesser: in-range params pass through unchanged', () {
       final fx = const AudioEffects().copyWith(
-        deesser: const DeesserSettings(
-          enabled: true,
-          f: 0.5,
-          i: 0.3,
-          m: 0.75,
-        ),
+        deesser: const DeesserSettings(enabled: true, f: 0.5, i: 0.3, m: 0.75),
       );
       final out = autoBypassFlat(fx);
       expect(out.deesser.f, 0.5);

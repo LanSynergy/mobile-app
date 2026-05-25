@@ -7,10 +7,7 @@ void main() {
     const extractor = JellyfinTrackIdExtractor();
 
     test('extracts ID from /Audio/{id}/stream path', () {
-      expect(
-        extractor.extractId('https://server.com/Audio/123/stream'),
-        '123',
-      );
+      expect(extractor.extractId('https://server.com/Audio/123/stream'), '123');
     });
 
     test('extracts ID from /Audio/{id}/stream with query params', () {
@@ -28,10 +25,7 @@ void main() {
     });
 
     test('returns null for unrecognized URLs', () {
-      expect(
-        extractor.extractId('https://server.com/not-audio/123'),
-        isNull,
-      );
+      expect(extractor.extractId('https://server.com/not-audio/123'), isNull);
     });
 
     test('returns null for empty string', () {

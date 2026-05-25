@@ -28,7 +28,6 @@ class AfBottomNavItem {
 }
 
 class AfBottomNav extends ConsumerStatefulWidget {
-
   const AfBottomNav({
     super.key,
     required this.currentIndex,
@@ -66,10 +65,10 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
               children: List.generate(
                 widget.items.length,
                 (i) => _buildTab(i, widget.items[i], i == widget.currentIndex),
+              ),
             ),
           ),
         ),
-      ),
       ),
     );
   }

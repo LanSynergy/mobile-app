@@ -4,5 +4,6 @@ enum AppMode { server, local }
 
 final appModeProvider = StateProvider<AppMode?>((ref) => null);
 
-final localScanProgressProvider =
-    StateProvider<({int completed, int total})?>((ref) => null);
+final localScanProgressProvider = StateProvider<({int completed, int total})?>(
+  (ref) => null,
+);

@@ -34,19 +34,19 @@ abstract final class AfCurves {
 /// See `aetherfin-motion.md` §3.
 abstract final class AfDurations {
   /// 80 ms — color/opacity micro-feedback (icon press tint).
-  static const Duration instant    = Duration(milliseconds: 80);
+  static const Duration instant = Duration(milliseconds: 80);
 
   /// 160 ms — small element transitions, hover states, heart pop.
-  static const Duration quick      = Duration(milliseconds: 160);
+  static const Duration quick = Duration(milliseconds: 160);
 
   /// 240 ms — default page/sheet transitions.
-  static const Duration standard   = Duration(milliseconds: 240);
+  static const Duration standard = Duration(milliseconds: 240);
 
   /// 400 ms — Now Playing expand, hero handoff.
   static const Duration expressive = Duration(milliseconds: 400);
 
   /// 600 ms — onboarding intro animation only.
-  static const Duration long       = Duration(milliseconds: 600);
+  static const Duration long = Duration(milliseconds: 600);
 }
 
 /// Stagger conventions for grid / list reveals.

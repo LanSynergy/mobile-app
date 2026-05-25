@@ -26,18 +26,15 @@ import 'helpers/fake_player.dart';
   MockPlayer player,
   StreamControllers ctrls,
   StreamController<FftFrame> spectrumCtrl,
-}) _createSpectrumPlayer() {
+})
+_createSpectrumPlayer() {
   final base = createMockPlayer();
   final spectrumCtrl = StreamController<FftFrame>.broadcast();
   final stream = base.player.stream as MockPlayerStream;
 
   when(() => stream.spectrum).thenAnswer((_) => spectrumCtrl.stream);
 
-  return (
-    player: base.player,
-    ctrls: base.ctrls,
-    spectrumCtrl: spectrumCtrl,
-  );
+  return (player: base.player, ctrls: base.ctrls, spectrumCtrl: spectrumCtrl);
 }
 
 /// Builds the scrubber inside the minimal widget tree it needs.
@@ -79,17 +76,19 @@ void main() {
     registerFallbackValue(Gapless.weak);
     registerFallbackValue(const Media(''));
     registerFallbackValue(Device.auto);
-    registerFallbackValue(const SpectrumSettings(
-      fftSize: 2048,
-      bandCount: 64,
-      bandLowHz: 20.0,
-      bandHighHz: 20000.0,
-      attackSmoothing: 0.8,
-      releaseSmoothing: 0.1,
-      minDb: -105.0,
-      maxDb: 35.0,
-      emitInterval: Duration(milliseconds: 8),
-    ));
+    registerFallbackValue(
+      const SpectrumSettings(
+        fftSize: 2048,
+        bandCount: 64,
+        bandLowHz: 20.0,
+        bandHighHz: 20000.0,
+        attackSmoothing: 0.8,
+        releaseSmoothing: 0.1,
+        minDb: -105.0,
+        maxDb: 35.0,
+        emitInterval: Duration(milliseconds: 8),
+      ),
+    );
   });
 
   /// Set up a fresh fixture: creates mock player, [spectrumCtrl], and a
@@ -106,11 +105,13 @@ void main() {
   group('AudioVisualScrubber — baseline rendering', () {
     testWidgets('renders with default colors and progress', (tester) async {
       setupFixture();
-      await tester.pumpWidget(_buildScrubber(
-        progress: 0.5,
-        height: 120,
-        overrides: [playerServiceProvider.overrideWithValue(service!)],
-      ));
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.5,
+          height: 120,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
       await tester.pump();
 
       // The widget should fill the horizontal space at the given height.
@@ -128,12 +129,14 @@ void main() {
 
     testWidgets('renders with custom colors', (tester) async {
       setupFixture();
-      await tester.pumpWidget(_buildScrubber(
-        progress: 0.25,
-        playedColor: Colors.blue,
-        unplayedColor: Colors.amber,
-        overrides: [playerServiceProvider.overrideWithValue(service!)],
-      ));
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.25,
+          playedColor: Colors.blue,
+          unplayedColor: Colors.amber,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
       await tester.pump();
 
       // Just confirm the widget is present with custom colors — CustomPaint
@@ -143,10 +146,12 @@ void main() {
 
     testWidgets('renders at zero progress', (tester) async {
       setupFixture();
-      await tester.pumpWidget(_buildScrubber(
-        progress: 0.0,
-        overrides: [playerServiceProvider.overrideWithValue(service!)],
-      ));
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.0,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
       await tester.pump();
 
       expect(find.byType(AudioVisualScrubber), findsOneWidget);
@@ -154,10 +159,12 @@ void main() {
 
     testWidgets('renders at full progress', (tester) async {
       setupFixture();
-      await tester.pumpWidget(_buildScrubber(
-        progress: 1.0,
-        overrides: [playerServiceProvider.overrideWithValue(service!)],
-      ));
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 1.0,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
       await tester.pump();
 
       expect(find.byType(AudioVisualScrubber), findsOneWidget);
@@ -167,10 +174,12 @@ void main() {
   group('AudioVisualScrubber — FFT spectrum ingestion', () {
     testWidgets('receives FFT frames and updates visualizer', (tester) async {
       setupFixture();
-      await tester.pumpWidget(_buildScrubber(
-        progress: 0.3,
-        overrides: [playerServiceProvider.overrideWithValue(service!)],
-      ));
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.3,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
 
       // Let initState + addPostFrameCallback fire.
       await tester.pump();
@@ -181,14 +190,16 @@ void main() {
       for (var i = 0; i < 64; i++) {
         bands[i] = 0.5;
       }
-      spectrumCtrl.add(FftFrame(
-        bins: bands,
-        bands: bands,
-        timestamp: Duration.zero,
-        sampleRate: 44100,
-        bandLowHz: 20.0,
-        bandHighHz: 20000.0,
-      ));
+      spectrumCtrl.add(
+        FftFrame(
+          bins: bands,
+          bands: bands,
+          timestamp: Duration.zero,
+          sampleRate: 44100,
+          bandLowHz: 20.0,
+          bandHighHz: 20000.0,
+        ),
+      );
 
       // Pump a frame for the ticker to call flush().
       await tester.pump(const Duration(milliseconds: 16));
@@ -201,24 +212,28 @@ void main() {
 
     testWidgets('handles zero-energy bands gracefully', (tester) async {
       setupFixture();
-      await tester.pumpWidget(_buildScrubber(
-        progress: 0.3,
-        overrides: [playerServiceProvider.overrideWithValue(service!)],
-      ));
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.3,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
 
       await tester.pump();
       await tester.pump();
 
       // All bands at zero.
       final bands = Float32List(64);
-      spectrumCtrl.add(FftFrame(
-        bins: bands,
-        bands: bands,
-        timestamp: Duration.zero,
-        sampleRate: 44100,
-        bandLowHz: 20.0,
-        bandHighHz: 20000.0,
-      ));
+      spectrumCtrl.add(
+        FftFrame(
+          bins: bands,
+          bands: bands,
+          timestamp: Duration.zero,
+          sampleRate: 44100,
+          bandLowHz: 20.0,
+          bandHighHz: 20000.0,
+        ),
+      );
 
       await tester.pump(const Duration(milliseconds: 16));
       await tester.pump();
@@ -228,22 +243,26 @@ void main() {
 
     testWidgets('handles empty band list gracefully', (tester) async {
       setupFixture();
-      await tester.pumpWidget(_buildScrubber(
-        progress: 0.3,
-        overrides: [playerServiceProvider.overrideWithValue(service!)],
-      ));
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.3,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
 
       await tester.pump();
       await tester.pump();
 
-      spectrumCtrl.add(FftFrame(
-        bins: Float32List(0),
-        bands: Float32List(0),
-        timestamp: Duration.zero,
-        sampleRate: 44100,
-        bandLowHz: 20.0,
-        bandHighHz: 20000.0,
-      ));
+      spectrumCtrl.add(
+        FftFrame(
+          bins: Float32List(0),
+          bands: Float32List(0),
+          timestamp: Duration.zero,
+          sampleRate: 44100,
+          bandLowHz: 20.0,
+          bandHighHz: 20000.0,
+        ),
+      );
 
       await tester.pump(const Duration(milliseconds: 16));
       await tester.pump();
@@ -257,12 +276,14 @@ void main() {
       setupFixture();
 
       double? capturedProgress;
-      await tester.pumpWidget(_buildScrubber(
-        progress: 0.0,
-        height: 100,
-        onScrubEnd: (p) => capturedProgress = p,
-        overrides: [playerServiceProvider.overrideWithValue(service!)],
-      ));
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.0,
+          height: 100,
+          onScrubEnd: (p) => capturedProgress = p,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
 
       await tester.pump();
       await tester.pump();
@@ -283,21 +304,20 @@ void main() {
       setupFixture();
 
       final capturedProgresses = <double>[];
-      await tester.pumpWidget(_buildScrubber(
-        progress: 0.0,
-        height: 100,
-        onScrub: capturedProgresses.add,
-        overrides: [playerServiceProvider.overrideWithValue(service!)],
-      ));
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.0,
+          height: 100,
+          onScrub: capturedProgresses.add,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
 
       await tester.pump();
       await tester.pump();
 
       // Drag from left to right across the widget.
-      await tester.drag(
-        find.byType(AudioVisualScrubber),
-        const Offset(200, 0),
-      );
+      await tester.drag(find.byType(AudioVisualScrubber), const Offset(200, 0));
       await tester.pump();
 
       // During a drag, onScrub is called via _handleDragUpdate.
@@ -312,20 +332,19 @@ void main() {
       setupFixture();
 
       double? capturedEnd;
-      await tester.pumpWidget(_buildScrubber(
-        progress: 0.0,
-        height: 100,
-        onScrubEnd: (p) => capturedEnd = p,
-        overrides: [playerServiceProvider.overrideWithValue(service!)],
-      ));
-
-      await tester.pump();
-      await tester.pump();
-
-      await tester.drag(
-        find.byType(AudioVisualScrubber),
-        const Offset(150, 0),
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.0,
+          height: 100,
+          onScrubEnd: (p) => capturedEnd = p,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
       );
+
+      await tester.pump();
+      await tester.pump();
+
+      await tester.drag(find.byType(AudioVisualScrubber), const Offset(150, 0));
       await tester.pump();
 
       expect(capturedEnd, isNotNull);
@@ -338,37 +357,46 @@ void main() {
     testWidgets('consumes and reflects updated progress', (tester) async {
       setupFixture();
 
-      await tester.pumpWidget(_buildScrubber(
-        progress: 0.0,
-        overrides: [playerServiceProvider.overrideWithValue(service!)],
-      ));
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.0,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
       await tester.pump();
 
       // Rebuild with new progress. Since _ScrubNotifier.update calls
       // notifyListeners, the scrub overlay painter repaints.
-      await tester.pumpWidget(_buildScrubber(
-        progress: 0.75,
-        overrides: [playerServiceProvider.overrideWithValue(service!)],
-      ));
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.75,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
       await tester.pump();
 
       expect(find.byType(AudioVisualScrubber), findsOneWidget);
     });
 
-    testWidgets('handles rapid progress updates without crashing',
-        (tester) async {
+    testWidgets('handles rapid progress updates without crashing', (
+      tester,
+    ) async {
       setupFixture();
 
-      await tester.pumpWidget(_buildScrubber(
-        progress: 0.0,
-        overrides: [playerServiceProvider.overrideWithValue(service!)],
-      ));
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.0,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
 
       for (var i = 0; i < 20; i++) {
-        await tester.pumpWidget(_buildScrubber(
-          progress: i / 19.0,
-          overrides: [playerServiceProvider.overrideWithValue(service!)],
-        ));
+        await tester.pumpWidget(
+          _buildScrubber(
+            progress: i / 19.0,
+            overrides: [playerServiceProvider.overrideWithValue(service!)],
+          ),
+        );
         await tester.pump(const Duration(milliseconds: 16));
       }
 

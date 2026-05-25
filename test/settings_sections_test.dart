@@ -19,7 +19,8 @@ class MockMethodChannel extends Mock implements MethodChannel {}
   ProviderContainer container,
   MockPlayer player,
   StreamControllers ctrls,
-}) _createSettingsFixture() {
+})
+_createSettingsFixture() {
   final result = createMockPlayer();
   final player = result.player;
   final ctrls = result.ctrls;
@@ -40,23 +41,13 @@ class MockMethodChannel extends Mock implements MethodChannel {}
   when(() => channel.invokeMethod(any(), any())).thenAnswer((_) async => null);
 
   final bridge = NativeMediaSessionBridge(channel: channel);
-  final service = AfPlayerService.test(
-    player: player,
-    bridge: bridge,
-  );
+  final service = AfPlayerService.test(player: player, bridge: bridge);
 
   final container = ProviderContainer(
-    overrides: [
-      playerServiceProvider.overrideWithValue(service),
-    ],
+    overrides: [playerServiceProvider.overrideWithValue(service)],
   );
 
-  return (
-    service: service,
-    container: container,
-    player: player,
-    ctrls: ctrls,
-  );
+  return (service: service, container: container, player: player, ctrls: ctrls);
 }
 
 void main() {
@@ -96,18 +87,16 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: const MaterialApp(
-            home: Scaffold(
-              body: MusicFoldersCard(),
-            ),
-          ),
+          child: const MaterialApp(home: Scaffold(body: MusicFoldersCard())),
         ),
       );
       // Should not throw — loading state is shown initially
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('stopAndClear is called before folder operations', (tester) async {
+    testWidgets('stopAndClear is called before folder operations', (
+      tester,
+    ) async {
       // Verify the method exists and can be called
       await service.stopAndClear();
       verify(() => player.stop()).called(1);

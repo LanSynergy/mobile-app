@@ -43,18 +43,21 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
     setState(() => _scanning = true);
     ref.read(discoveredServersProvider.notifier).state = const [];
     _sub?.cancel();
-    _sub = JellyfinDiscovery(
-      clientVersion: ref.read(aetherfinVersionProvider),
-    ).scan().listen(
-      (s) {
-        final current = ref.read(discoveredServersProvider);
-        if (!current.contains(s)) {
-          ref.read(discoveredServersProvider.notifier).state = [...current, s];
-        }
-      },
-      onError: (_) {},
-      onDone: () => mounted ? setState(() => _scanning = false) : null,
-    );
+    _sub = JellyfinDiscovery(clientVersion: ref.read(aetherfinVersionProvider))
+        .scan()
+        .listen(
+          (s) {
+            final current = ref.read(discoveredServersProvider);
+            if (!current.contains(s)) {
+              ref.read(discoveredServersProvider.notifier).state = [
+                ...current,
+                s,
+              ];
+            }
+          },
+          onError: (_) {},
+          onDone: () => mounted ? setState(() => _scanning = false) : null,
+        );
     Future.delayed(const Duration(seconds: 6), () {
       if (mounted) setState(() => _scanning = false);
     });
@@ -89,7 +92,8 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
     // when Dio joins relative paths.
     final basePath = uri.path.replaceAll(RegExp(r'/+$'), '');
     final server = JellyfinServer(
-      baseUrl: '${uri.scheme}://${uri.host}'
+      baseUrl:
+          '${uri.scheme}://${uri.host}'
           '${uri.hasPort ? ':${uri.port}' : ''}'
           '$basePath',
       name: uri.host,
@@ -127,25 +131,25 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
         // Expected — wrong/empty creds but the Subsonic envelope arrived
       }
       testClient.close();
-      _continueWith(server.copyWith(
-        name: 'Navidrome',
-        isReachable: true,
-      ), serverType: ServerType.subsonic);
-    } catch (e, stack) {
-      afLog(
-        'error',
-        'server discovery failed',
-        error: e,
-        stackTrace: stack,
+      _continueWith(
+        server.copyWith(name: 'Navidrome', isReachable: true),
+        serverType: ServerType.subsonic,
       );
-      setState(() =>
-          _manualError = 'Couldn’t reach ${server.baseUrl}. $e');
+    } catch (e, stack) {
+      afLog('error', 'server discovery failed', error: e, stackTrace: stack);
+      setState(() => _manualError = 'Couldn’t reach ${server.baseUrl}. $e');
     }
   }
 
-  void _continueWith(JellyfinServer s, {ServerType serverType = ServerType.jellyfin}) {
+  void _continueWith(
+    JellyfinServer s, {
+    ServerType serverType = ServerType.jellyfin,
+  }) {
     ref.read(discoveredServersProvider.notifier).state = [s];
-    context.go('/onboarding/sign-in', extra: (server: s, serverType: serverType));
+    context.go(
+      '/onboarding/sign-in',
+      extra: (server: s, serverType: serverType),
+    );
   }
 
   @override
@@ -173,10 +177,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
             }
           },
         ),
-        title: Text(
-          'Find your server',
-          style: AfTypography.titleMedium,
-        ),
+        title: Text('Find your server', style: AfTypography.titleMedium),
       ),
       body: SafeArea(
         child: Padding(
@@ -288,8 +289,10 @@ class _ServerCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                color: AfColors.textTertiary),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AfColors.textTertiary,
+            ),
           ],
         ),
       ),

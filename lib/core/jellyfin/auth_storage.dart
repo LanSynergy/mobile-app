@@ -10,7 +10,7 @@ import 'models/server.dart';
 /// access token survives app restarts and never lives in plain shared prefs.
 class AuthStorage {
   AuthStorage([FlutterSecureStorage? storage])
-      : _storage = storage ?? const FlutterSecureStorage(aOptions: _options);
+    : _storage = storage ?? const FlutterSecureStorage(aOptions: _options);
   static const _key = 'aetherfin.auth.v1';
   static const _deviceIdKey = 'aetherfin.deviceId.v1';
   static const _options = AndroidOptions(encryptedSharedPreferences: true);
@@ -87,7 +87,8 @@ class AuthStorage {
       return JellyfinAuth(
         server: JellyfinServer(
           baseUrl: baseUrl,
-          name: m['name'] as String? ??
+          name:
+              m['name'] as String? ??
               (serverType == ServerType.subsonic ? 'Navidrome' : 'Jellyfin'),
           version: m['version'] as String?,
           id: m['id'] as String?,
@@ -99,8 +100,12 @@ class AuthStorage {
         serverType: serverType,
       );
     } catch (e, stack) {
-      afLog('error', 'auth blob deserialization failed; discarding',
-          error: e, stackTrace: stack);
+      afLog(
+        'error',
+        'auth blob deserialization failed; discarding',
+        error: e,
+        stackTrace: stack,
+      );
       return null;
     }
   }

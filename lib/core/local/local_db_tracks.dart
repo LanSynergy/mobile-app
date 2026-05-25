@@ -6,24 +6,24 @@ import '../jellyfin/models/quality.dart';
 import 'app_database.dart';
 
 class TrackRepository {
-
   TrackRepository(this.db);
   final AppDatabase db;
 
   // ── CRUD ────────────────────────────────────────────────────────────────
 
   Future<void> upsertTrack(Map<String, dynamic> track) async {
-    await db.into(db.tracks).insert(
-        _trackMapToCompanion(track),
-        mode: InsertMode.replace);
+    await db
+        .into(db.tracks)
+        .insert(_trackMapToCompanion(track), mode: InsertMode.replace);
   }
 
   Future<void> upsertTracks(List<Map<String, dynamic>> tracks) async {
     await db.batch((batch) {
       batch.insertAll(
-          db.tracks,
-          tracks.map(_trackMapToCompanion),
-          mode: InsertMode.replace);
+        db.tracks,
+        tracks.map(_trackMapToCompanion),
+        mode: InsertMode.replace,
+      );
     });
   }
 
@@ -53,11 +53,13 @@ class TrackRepository {
   }
 
   Future<List<String>> trackIdsByPrefix(String prefix) async {
-    final rows = await db.customSelect(
-      'SELECT id FROM tracks WHERE id LIKE ?1 ESCAPE \'\\\'',
-      variables: [Variable<String>('${escapeSqlLike(prefix)}%')],
-      readsFrom: {db.tracks},
-    ).get();
+    final rows = await db
+        .customSelect(
+          'SELECT id FROM tracks WHERE id LIKE ?1 ESCAPE \'\\\'',
+          variables: [Variable<String>('${escapeSqlLike(prefix)}%')],
+          readsFrom: {db.tracks},
+        )
+        .get();
     return rows.map((r) => r.read<String>('id')).toList();
   }
 
@@ -74,23 +76,31 @@ class TrackRepository {
   // ── Query ───────────────────────────────────────────────────────────────
 
   Future<List<AfTrack>> allTracks({int limit = 100, int offset = 0}) async {
-    final rows = await (db.select(db.tracks)
-          ..orderBy([(t) => OrderingTerm(expression: t.title.collate(Collate.noCase), mode: OrderingMode.asc)])
-          ..limit(limit, offset: offset > 0 ? offset : null))
-        .get();
+    final rows =
+        await (db.select(db.tracks)
+              ..orderBy([
+                (t) => OrderingTerm(
+                  expression: t.title.collate(Collate.noCase),
+                  mode: OrderingMode.asc,
+                ),
+              ])
+              ..limit(limit, offset: offset > 0 ? offset : null))
+            .get();
     return rows.map(rowToTrack).toList();
   }
 
   Future<AfTrack?> trackById(String id) async {
-    final row = await (db.select(db.tracks)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final row = await (db.select(
+      db.tracks,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null) return null;
     return rowToTrack(row);
   }
 
   Future<AfTrackDetails?> trackDetailsById(String id) async {
-    final row = await (db.select(db.tracks)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final row = await (db.select(
+      db.tracks,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null) return null;
     final track = rowToTrack(row);
     final codec = row.codec;
@@ -111,42 +121,61 @@ class TrackRepository {
     );
   }
 
-  Future<List<AfTrack>> tracksByAlbum(String albumName, String artistName) async {
-    final rows = await (db.select(db.tracks)
-          ..where((t) => t.album.equals(albumName) & (t.artist.equals(artistName) | t.albumArtist.equals(artistName)))
-          ..orderBy([
-            (t) => OrderingTerm.asc(t.trackNumber),
-            (t) => OrderingTerm.asc(t.title),
-          ]))
-        .get();
+  Future<List<AfTrack>> tracksByAlbum(
+    String albumName,
+    String artistName,
+  ) async {
+    final rows =
+        await (db.select(db.tracks)
+              ..where(
+                (t) =>
+                    t.album.equals(albumName) &
+                    (t.artist.equals(artistName) |
+                        t.albumArtist.equals(artistName)),
+              )
+              ..orderBy([
+                (t) => OrderingTerm.asc(t.trackNumber),
+                (t) => OrderingTerm.asc(t.title),
+              ]))
+            .get();
     return rows.map(rowToTrack).toList();
   }
 
   Future<List<AfTrack>> tracksByArtist(String artistName) async {
-    final rows = await (db.select(db.tracks)
-          ..where((t) => t.artist.equals(artistName) | t.albumArtist.equals(artistName))
-          ..orderBy([
-            (t) => OrderingTerm.asc(t.album),
-            (t) => OrderingTerm.asc(t.trackNumber),
-          ]))
-        .get();
+    final rows =
+        await (db.select(db.tracks)
+              ..where(
+                (t) =>
+                    t.artist.equals(artistName) |
+                    t.albumArtist.equals(artistName),
+              )
+              ..orderBy([
+                (t) => OrderingTerm.asc(t.album),
+                (t) => OrderingTerm.asc(t.trackNumber),
+              ]))
+            .get();
     return rows.map(rowToTrack).toList();
   }
 
   Future<List<AfTrack>> tracksByGenre(String genre) async {
-    final rows = await (db.select(db.tracks)
-          ..where((t) => t.genre.equals(genre))
-          ..orderBy([
-            (t) => OrderingTerm(expression: t.title.collate(Collate.noCase), mode: OrderingMode.asc)
-          ]))
-        .get();
+    final rows =
+        await (db.select(db.tracks)
+              ..where((t) => t.genre.equals(genre))
+              ..orderBy([
+                (t) => OrderingTerm(
+                  expression: t.title.collate(Collate.noCase),
+                  mode: OrderingMode.asc,
+                ),
+              ]))
+            .get();
     return rows.map(rowToTrack).toList();
   }
 
   Future<List<AfTrack>> searchTracks(String query) async {
     final like = '%${escapeSqlLike(query)}%';
-    final rows = await db.customSelect(
-      r'''
+    final rows = await db
+        .customSelect(
+          r'''
         SELECT * FROM tracks
         WHERE title  LIKE ?1 ESCAPE '\'
            OR artist LIKE ?1 ESCAPE '\'
@@ -154,9 +183,10 @@ class TrackRepository {
         ORDER BY title COLLATE NOCASE ASC
         LIMIT 50
       ''',
-      variables: [Variable<String>(like)],
-      readsFrom: {db.tracks},
-    ).get();
+          variables: [Variable<String>(like)],
+          readsFrom: {db.tracks},
+        )
+        .get();
     return rows.map((r) {
       final entity = db.tracks.map(r.data);
       return rowToTrack(entity);

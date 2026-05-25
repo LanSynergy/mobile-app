@@ -18,9 +18,10 @@ class SafPicker {
   /// Recursively lists all audio files under a SAF tree URI.
   /// Returns a list of [SafFile] with uri, name, size, lastModified.
   static Future<List<SafFile>> listAudioFiles(String treeUri) async {
-    final result = await _channel.invokeMethod<List<dynamic>>('listAudioFiles', {
-      'uri': treeUri,
-    });
+    final result = await _channel.invokeMethod<List<dynamic>>(
+      'listAudioFiles',
+      {'uri': treeUri},
+    );
     if (result == null) return const [];
     return result
         .cast<Map<dynamic, dynamic>>()
@@ -30,9 +31,10 @@ class SafPicker {
 
   /// Reads metadata tags from a single audio file via MediaMetadataRetriever.
   static Future<SafMetadata> readMetadata(String fileUri) async {
-    final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('readMetadata', {
-      'uri': fileUri,
-    });
+    final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+      'readMetadata',
+      {'uri': fileUri},
+    );
     if (result == null) return const SafMetadata();
     return SafMetadata.fromMap(result.cast<String, dynamic>());
   }
@@ -48,7 +50,6 @@ class SafPicker {
 
 /// A file discovered during SAF tree scan.
 class SafFile {
-
   const SafFile({
     required this.uri,
     required this.name,
@@ -57,11 +58,11 @@ class SafFile {
   });
 
   factory SafFile.fromMap(Map<String, dynamic> m) => SafFile(
-        uri: (m['uri'] as String?) ?? '',
-        name: (m['name'] as String?) ?? '',
-        size: (m['size'] as int?) ?? 0,
-        lastModified: (m['lastModified'] as int?) ?? 0,
-      );
+    uri: (m['uri'] as String?) ?? '',
+    name: (m['name'] as String?) ?? '',
+    size: (m['size'] as int?) ?? 0,
+    lastModified: (m['lastModified'] as int?) ?? 0,
+  );
   final String uri;
   final String name;
   final int size;
@@ -70,7 +71,6 @@ class SafFile {
 
 /// Metadata extracted from a single audio file.
 class SafMetadata {
-
   const SafMetadata({
     this.title,
     this.artist,
@@ -86,18 +86,18 @@ class SafMetadata {
   });
 
   factory SafMetadata.fromMap(Map<String, dynamic> m) => SafMetadata(
-        title: m['title'] as String?,
-        artist: m['artist'] as String?,
-        album: m['album'] as String?,
-        albumArtist: m['albumArtist'] as String?,
-        trackNumber: m['trackNumber'] as String?,
-        duration: m['duration'] as String?,
-        year: m['year'] as String?,
-        genre: m['genre'] as String?,
-        bitrate: m['bitrate'] as String?,
-        sampleRate: m['sampleRate'] as String?,
-        mimeType: m['mimeType'] as String?,
-      );
+    title: m['title'] as String?,
+    artist: m['artist'] as String?,
+    album: m['album'] as String?,
+    albumArtist: m['albumArtist'] as String?,
+    trackNumber: m['trackNumber'] as String?,
+    duration: m['duration'] as String?,
+    year: m['year'] as String?,
+    genre: m['genre'] as String?,
+    bitrate: m['bitrate'] as String?,
+    sampleRate: m['sampleRate'] as String?,
+    mimeType: m['mimeType'] as String?,
+  );
   final String? title;
   final String? artist;
   final String? album;

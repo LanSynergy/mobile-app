@@ -25,11 +25,7 @@ import 'track_details_sheet.dart';
 ///   - Go to album
 ///   - Go to artist
 ///   - Show details
-void showTrackContextMenu(
-  BuildContext context,
-  WidgetRef ref,
-  AfTrack track,
-) {
+void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
   HapticFeedback.mediumImpact();
   showBlurDialog<void>(
     context: context,
@@ -80,9 +76,11 @@ void showTrackContextMenu(
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(isFavorite
-                            ? 'Removed from liked songs'
-                            : 'Added to liked songs'),
+                        content: Text(
+                          isFavorite
+                              ? 'Removed from liked songs'
+                              : 'Added to liked songs',
+                        ),
                       ),
                     );
                   }
@@ -90,8 +88,7 @@ void showTrackContextMenu(
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content:
-                            Text(displayError(e, prefix: 'Failed')),
+                        content: Text(displayError(e, prefix: 'Failed')),
                       ),
                     );
                   }
@@ -105,9 +102,7 @@ void showTrackContextMenu(
                 _playNext(innerRef, track);
                 Navigator.of(ctx).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content:
-                          Text('"${track.title}" will play next')),
+                  SnackBar(content: Text('"${track.title}" will play next')),
                 );
               },
             ),
@@ -118,9 +113,7 @@ void showTrackContextMenu(
                 _addToQueue(innerRef, track);
                 Navigator.of(ctx).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content:
-                          Text('"${track.title}" added to queue')),
+                  SnackBar(content: Text('"${track.title}" added to queue')),
                 );
               },
             ),
@@ -166,11 +159,7 @@ void showTrackContextMenu(
 }
 
 /// Shows an album context menu as a popup dialog.
-void showAlbumContextMenu(
-  BuildContext context,
-  WidgetRef ref,
-  AfAlbum album,
-) {
+void showAlbumContextMenu(BuildContext context, WidgetRef ref, AfAlbum album) {
   HapticFeedback.mediumImpact();
   showBlurDialog<void>(
     context: context,
@@ -212,7 +201,8 @@ void showAlbumContextMenu(
             onTap: () async {
               Navigator.of(dialogCtx).pop();
               final detail = await ref.read(
-                  albumDetailProvider(album.id).future);
+                albumDetailProvider(album.id).future,
+              );
               if (detail != null) {
                 await ref.read(playActionsProvider).playAlbum(detail.tracks);
               }
@@ -256,30 +246,32 @@ String Function(AfTrack)? _streamResolver(WidgetRef ref) {
       if (cachedUri != null) return cachedUri;
     }
     final maxBitrate = ref.read(maxBitrateProvider);
-    return backend.trackStreamUrl(t.id, maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate);
+    return backend.trackStreamUrl(
+      t.id,
+      maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate,
+    );
   };
 }
 
 void _playNext(WidgetRef ref, AfTrack track) {
   final resolve = _streamResolver(ref);
   if (resolve == null) return;
-  unawaited(ref.read(playerServiceProvider).playNext(
-    track,
-    resolveStreamUrl: resolve,
-  ));
+  unawaited(
+    ref.read(playerServiceProvider).playNext(track, resolveStreamUrl: resolve),
+  );
 }
 
 void _addToQueue(WidgetRef ref, AfTrack track) {
   final resolve = _streamResolver(ref);
   if (resolve == null) return;
-  unawaited(ref.read(playerServiceProvider).addToQueue(
-    track,
-    resolveStreamUrl: resolve,
-  ));
+  unawaited(
+    ref
+        .read(playerServiceProvider)
+        .addToQueue(track, resolveStreamUrl: resolve),
+  );
 }
 
 class _MenuItem extends StatelessWidget {
-
   const _MenuItem({
     required this.icon,
     required this.label,

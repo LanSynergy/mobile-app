@@ -1,7 +1,8 @@
 import 'dart:async' show unawaited;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop, FftFrame, MpvPlayerError;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart'
+    show Loop, FftFrame, MpvPlayerError;
 
 import '../core/audio/jellyfin_playback_reporter.dart';
 import '../core/jellyfin/models/items.dart';
@@ -15,10 +16,11 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
   svc.onTrackChanged = (track) {
     ref.read(currentTrackProvider.notifier).state = track;
     ref.read(positionStreamProvider.notifier).state = Duration.zero;
-    ref.read(durationStreamProvider.notifier).state =
-        (track != null && track.duration > Duration.zero)
-            ? track.duration
-            : Duration.zero;
+    ref
+        .read(durationStreamProvider.notifier)
+        .state = (track != null && track.duration > Duration.zero)
+        ? track.duration
+        : Duration.zero;
     ref.read(abLoopAProvider.notifier).state = null;
     ref.read(abLoopBProvider.notifier).state = null;
   };
@@ -32,7 +34,10 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     if (backend == null) return;
     final cache = ref.read(offlineCacheServiceProvider);
     final maxBitrate = ref.read(maxBitrateProvider);
-    final url = backend.trackStreamUrl(track.id, maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate);
+    final url = backend.trackStreamUrl(
+      track.id,
+      maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate,
+    );
     unawaited(cache.cacheTrack(track.id, url, headers: backend.authHeaders));
   };
 

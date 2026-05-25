@@ -716,12 +716,100 @@ PII (usernames, server URLs) must be redacted in release builds.
 - **Subsonic API gaps:** `resumeItems()` returns empty list (no Subsonic
   equivalent). `movePlaylistItem()` is a no-op (logs warning).
 
-## 14. PR & CI rules
+## 14. Workflow pipeline and conventions
 
-- Run `flutter analyze --no-fatal-infos` and `flutter test` before pushing.
-- Do **not** force-push to `main`.
-- Do **not** disable plugins or change the auth header shape to "fix" a 500.
-- CI is manual trigger only (`workflow_dispatch`). Gradle daemon is stopped before the build step to prevent file-watcher collisions.
+The execution plan (design → plan → implement → verify → commit) follows a
+strict pipeline with automated gates at the verify stage.
+
+### 14.1 Verify gate
+
+After all implementation batches complete and BEFORE committing, run:
+
+```bash
+# 1. Format check
+dart format --output=none --set-exit-if-changed .
+# If exitCode != 0, auto-fix with:
+dart format .
+
+# 2. Analyze
+flutter analyze --no-fatal-infos
+# If issues found: REPORT the violations (file:line), STOP. Do NOT commit.
+# Let the user decide whether to fix or override.
+
+# 3. Test
+flutter test
+# If any failure: REPORT the failing test name and assertion. STOP. Do NOT commit.
+
+# 4. Commit (only if all gates pass)
+git add -A
+git commit -m "type(scope): description"
+git push
+```
+
+Rules:
+- **Format drift:** Auto-fix with `dart format .`, then re-run the check. Only fail if formatting can't be resolved.
+- **Analyze fails:** Report violations with exact file:line. Do not commit broken code.
+- **Test fails:** Report the failing test name and assertion line. Do not commit.
+- **Ledger update:** After the final commit, append a dated entry to `thoughts/workflow/CONTINUITY.md` and prune to the 5 most recent entries (see §14.3).
+
+### 14.2 Relative-position anchors in plans
+
+Plan tasks describe insertion/reference points by **method or member adjacency**, not by line numbers. Line numbers become stale the moment any prior code moves.
+
+**Bad (line numbers):**
+```
+Insert `stopAndClear()` after `stop()` at line 532.
+```
+
+**Good (relative anchors):**
+```
+Insert `stopAndClear()` immediately after the `stop()` method in `AfPlayerService`.
+```
+
+**Disambiguation rules:**
+- **Method adjacency:** "Insert `stopAndClear()` after the `stop()` method"
+- **Member adjacency:** "Add the `_buildProgressCard()` method after `_buildBody()` in `MusicFoldersCardState`"
+- **Class context:** If two methods share a name, include the class: "In `MusicFoldersCardState`, add `_startScan()` before `_addFolder()`"
+- **Getters/setters:** "Add the `replayGainMode` getter after the `audioEffects` getter in `PlayerSettingsStore`"
+
+Design documents and plan documents MUST use relative-position anchors. The
+plans folder (`thoughts/shared/plans/`) follows this convention.
+
+### 14.3 Rolling ledger consolidation
+
+Session continuity is tracked in a single rolling ledger instead of scattered
+files. This replaces the old per-session `thoughts/ledgers/CONTINUITY_ses_*.md`
+pattern.
+
+**Ledger location:** `thoughts/workflow/CONTINUITY.md`
+
+**Format:**
+```markdown
+# Continuity Ledger
+
+## 2026-05-25 — Workflow optimization + lint fixes
+*Goal:* Add verify gate, consolidate ledgers, fix lucide_icons info-level lints
+*Commits:* fb177c7
+*Key decisions:* Use ast_grep_replace for pattern edits, relative anchors in plans
+```
+
+**Rules:**
+- Append a new entry after every session that produces commits.
+- Keep only the **5 most recent entries**. Prune older entries when adding a new one.
+- Archived entries go to `thoughts/.legacy/`.
+- If `thoughts/workflow/CONTINUITY.md` is missing (fresh clone), create it on first append.
+- The `ledger-creator` agent may still create per-session files; the rolling ledger PRUNES on each append.
+
+### 14.4 Format gate
+
+The format check runs BEFORE analysis in the verify gate pipeline:
+
+1. `dart format --output=none --set-exit-if-changed .` — dry-run check
+2. If exit code != 0: `dart format .` — auto-fix formatting
+3. Re-run `dart format --output=none --set-exit-if-changed .` — verify fix
+4. Only then proceed to `flutter analyze --no-fatal-infos`
+
+This prevents formatting drift from accumulating across sessions.
 
 ## 15. Things AI agents have gotten wrong before
 

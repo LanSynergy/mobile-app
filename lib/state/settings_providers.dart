@@ -13,7 +13,9 @@ final reducedMotionProvider = Provider.autoDispose<bool>((ref) {
   }
 });
 
-final discoveredServersProvider = StateProvider<List<JellyfinServer>>((ref) => const <JellyfinServer>[]);
+final discoveredServersProvider = StateProvider<List<JellyfinServer>>(
+  (ref) => const <JellyfinServer>[],
+);
 
 final artworkPulseEnabledProvider = StateProvider<bool>((ref) => true);
 

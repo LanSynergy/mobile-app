@@ -21,7 +21,6 @@ import 'local_library.dart';
 /// the LocalBackend through `musicBackendProvider` is what lets the
 /// existing UI flip from "server only" to "works in either mode".
 class LocalBackend implements MusicBackend {
-
   LocalBackend({required this.library, required this.db});
   final LocalLibrary library;
   final LocalDb db;
@@ -77,15 +76,16 @@ class LocalBackend implements MusicBackend {
       db.allPlaylistsWithStats(limit: limit);
 
   @override
-  Future<List<AfAlbum>> allAlbums(
-          {int limit = 500, int startIndex = 0}) =>
+  Future<List<AfAlbum>> allAlbums({int limit = 500, int startIndex = 0}) =>
       // Paginate at the SQL layer instead of returning every album
       // and slicing in Dart.
       db.allAlbums(limit: limit, offset: startIndex);
 
   @override
-  Future<List<AfTrack>> allTracks(
-      {int limit = 1000, int startIndex = 0}) async {
+  Future<List<AfTrack>> allTracks({
+    int limit = 1000,
+    int startIndex = 0,
+  }) async {
     // SQL OFFSET; the previous (limit + startIndex) + sublist pattern
     // grew the loaded row count with the scroll position.
     final slice = await db.allTracks(limit: limit, offset: startIndex);
@@ -128,21 +128,25 @@ class LocalBackend implements MusicBackend {
     final tracks = await library.tracksByAlbum(parsed.name, parsed.artist);
     final favIds = await db.favoriteIds();
     if (tracks.isEmpty) return null;
-    final album = albumMeta ??
+    final album =
+        albumMeta ??
         AfAlbum(
           id: id,
           name: parsed.name,
           artistName: parsed.artist,
           trackCount: tracks.length,
           totalDuration: tracks.fold<Duration>(
-              Duration.zero, (acc, t) => acc + t.duration),
+            Duration.zero,
+            (acc, t) => acc + t.duration,
+          ),
         );
     final hydrated = favIds.isEmpty
         ? tracks
         : tracks
-            .map((t) =>
-                favIds.contains(t.id) ? t.copyWith(isFavorite: true) : t)
-            .toList();
+              .map(
+                (t) => favIds.contains(t.id) ? t.copyWith(isFavorite: true) : t,
+              )
+              .toList();
     return (
       album: album.copyWith(isFavorite: favIds.contains(id)),
       tracks: hydrated,
@@ -162,8 +166,7 @@ class LocalBackend implements MusicBackend {
   Future<AfTrackDetails?> trackDetails(String id) => db.trackDetailsById(id);
 
   @override
-  Future<List<AfAlbum>> artistAlbums(String artistId,
-      {int limit = 100}) async {
+  Future<List<AfAlbum>> artistAlbums(String artistId, {int limit = 100}) async {
     final name = _parseArtistId(artistId);
     if (name == null) return const [];
     // Push the artist filter down to SQL instead of GROUP BYing every
@@ -172,8 +175,10 @@ class LocalBackend implements MusicBackend {
   }
 
   @override
-  Future<List<AfTrack>> artistTopTracks(String artistId,
-      {int limit = 5}) async {
+  Future<List<AfTrack>> artistTopTracks(
+    String artistId, {
+    int limit = 5,
+  }) async {
     final name = _parseArtistId(artistId);
     if (name == null) return const [];
     final tracks = await library.tracksByArtist(name);
@@ -181,8 +186,7 @@ class LocalBackend implements MusicBackend {
   }
 
   @override
-  Future<List<AfAlbum>> albumsByGenre(String genre,
-          {int limit = 200}) =>
+  Future<List<AfAlbum>> albumsByGenre(String genre, {int limit = 200}) =>
       // Genre is per-track in local mode; the SQL aggregation in
       // [LocalDb.albumsByGenre] groups by the same (album, album-artist
       // ?? artist) key as [LocalDb.allAlbums] so trackCount / totalDuration
@@ -191,7 +195,8 @@ class LocalBackend implements MusicBackend {
 
   @override
   Future<({AfPlaylist playlist, List<AfTrack> tracks})?> playlist(
-      String id) async {
+    String id,
+  ) async {
     final p = await db.getPlaylist(id);
     if (p == null) return null;
     final entries = await db.playlistTracks(id);
@@ -202,7 +207,9 @@ class LocalBackend implements MusicBackend {
         name: p.name,
         trackCount: tracks.length,
         duration: tracks.fold<Duration>(
-            Duration.zero, (acc, t) => acc + t.duration),
+          Duration.zero,
+          (acc, t) => acc + t.duration,
+        ),
       ),
       tracks: tracks,
     );
@@ -212,12 +219,14 @@ class LocalBackend implements MusicBackend {
 
   @override
   Future<
-      ({
-        List<AfTrack> tracks,
-        List<AfAlbum> albums,
-        List<AfArtist> artists,
-        List<AfPlaylist> playlists,
-      })> search(String query) async {
+    ({
+      List<AfTrack> tracks,
+      List<AfAlbum> albums,
+      List<AfArtist> artists,
+      List<AfPlaylist> playlists,
+    })
+  >
+  search(String query) async {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) {
       return (
@@ -268,14 +277,15 @@ class LocalBackend implements MusicBackend {
       db.addToPlaylist(playlistId, trackIds, makeEntryId: () => _uuid.v4());
 
   @override
-  Future<void> removeFromPlaylist(
-          String playlistId, List<String> entryIds) =>
+  Future<void> removeFromPlaylist(String playlistId, List<String> entryIds) =>
       db.removePlaylistEntries(playlistId, entryIds);
 
   @override
   Future<void> movePlaylistItem(
-          String playlistId, String itemId, int newIndex) =>
-      db.movePlaylistEntry(playlistId, itemId, newIndex);
+    String playlistId,
+    String itemId,
+    int newIndex,
+  ) => db.movePlaylistEntry(playlistId, itemId, newIndex);
 
   @override
   Future<void> deletePlaylist(String playlistId) =>
@@ -350,9 +360,7 @@ class LocalBackend implements MusicBackend {
     final favIds = await db.favoriteIds();
     if (favIds.isEmpty) return tracks;
     return tracks
-        .map((t) => favIds.contains(t.id)
-            ? t.copyWith(isFavorite: true)
-            : t)
+        .map((t) => favIds.contains(t.id) ? t.copyWith(isFavorite: true) : t)
         .toList();
   }
 

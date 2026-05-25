@@ -65,9 +65,9 @@ void main() {
     group('reapplyPersistedEffects', () {
       test('re-applies current audio effects via setAudioEffects', () async {
         const effects = AudioEffects();
-        when(() => player.state).thenReturn(
-          const PlayerState(audioEffects: effects),
-        );
+        when(
+          () => player.state,
+        ).thenReturn(const PlayerState(audioEffects: effects));
 
         await manager.reapplyPersistedEffects();
 
@@ -82,7 +82,9 @@ void main() {
       });
 
       test('handles setAudioEffects failure gracefully', () async {
-        when(() => player.setAudioEffects(any())).thenThrow(Exception('mpv error'));
+        when(
+          () => player.setAudioEffects(any()),
+        ).thenThrow(Exception('mpv error'));
 
         // Should not throw — method catches internally
         await manager.reapplyPersistedEffects();
@@ -97,94 +99,126 @@ void main() {
         when(() => player.state).thenReturn(
           const PlayerState(
             audioDevice: Device(name: 'aaudio', description: 'AAudio'),
-            audioDevices: [Device(name: 'auto', description: 'Auto'), Device(name: 'aaudio', description: 'AAudio')],
+            audioDevices: [
+              Device(name: 'auto', description: 'Auto'),
+              Device(name: 'aaudio', description: 'AAudio'),
+            ],
           ),
         );
       });
 
-      test('fires setAudioDevice at least once within 1 second', () async {
-        manager.nudge();
-        await Future<void>.delayed(const Duration(milliseconds: 500));
+      test(
+        'fires setAudioDevice at least once within 1 second',
+        () async {
+          manager.nudge();
+          await Future<void>.delayed(const Duration(milliseconds: 500));
 
-        verify(() => player.setAudioDevice(any())).called(1);
-      }, timeout: const Timeout(Duration(seconds: 5)));
+          verify(() => player.setAudioDevice(any())).called(1);
+        },
+        timeout: const Timeout(Duration(seconds: 5)),
+      );
 
-      test('bails early and does not retry when already playing', () async {
-        when(() => player.state).thenReturn(
-          const PlayerState(
-            playing: true,
-            audioDevice: Device(name: 'aaudio', description: 'AAudio'),
-            audioDevices: [Device(name: 'auto', description: 'Auto'), Device(name: 'aaudio', description: 'AAudio')],
-          ),
-        );
+      test(
+        'bails early and does not retry when already playing',
+        () async {
+          when(() => player.state).thenReturn(
+            const PlayerState(
+              playing: true,
+              audioDevice: Device(name: 'aaudio', description: 'AAudio'),
+              audioDevices: [
+                Device(name: 'auto', description: 'Auto'),
+                Device(name: 'aaudio', description: 'AAudio'),
+              ],
+            ),
+          );
 
-        manager.nudge();
-        // Wait for first attempt (300ms) + some buffer
-        await Future<void>.delayed(const Duration(seconds: 2));
+          manager.nudge();
+          // Wait for first attempt (300ms) + some buffer
+          await Future<void>.delayed(const Duration(seconds: 2));
 
-        // Should fire exactly once and not retry (playing bail)
-        verify(() => player.setAudioDevice(any())).called(1);
-      }, timeout: const Timeout(Duration(seconds: 10)));
+          // Should fire exactly once and not retry (playing bail)
+          verify(() => player.setAudioDevice(any())).called(1);
+        },
+        timeout: const Timeout(Duration(seconds: 10)),
+      );
 
-      test('retries when not playing — at least 2 calls within 2 seconds', () async {
-        when(() => player.state).thenReturn(
-          const PlayerState(
-            playing: false,
-            audioDevice: Device(name: 'aaudio', description: 'AAudio'),
-            audioDevices: [Device(name: 'auto', description: 'Auto'), Device(name: 'aaudio', description: 'AAudio')],
-          ),
-        );
+      test(
+        'retries when not playing — at least 2 calls within 2 seconds',
+        () async {
+          when(() => player.state).thenReturn(
+            const PlayerState(
+              playing: false,
+              audioDevice: Device(name: 'aaudio', description: 'AAudio'),
+              audioDevices: [
+                Device(name: 'auto', description: 'Auto'),
+                Device(name: 'aaudio', description: 'AAudio'),
+              ],
+            ),
+          );
 
-        manager.nudge();
-        // Wait for first (300ms) + second (1000ms) = 1300ms
-        await Future<void>.delayed(const Duration(seconds: 2));
+          manager.nudge();
+          // Wait for first (300ms) + second (1000ms) = 1300ms
+          await Future<void>.delayed(const Duration(seconds: 2));
 
-        expect(
-          verify(() => player.setAudioDevice(any())).callCount,
-          greaterThanOrEqualTo(2),
-        );
-      }, timeout: const Timeout(Duration(seconds: 10)));
+          expect(
+            verify(() => player.setAudioDevice(any())).callCount,
+            greaterThanOrEqualTo(2),
+          );
+        },
+        timeout: const Timeout(Duration(seconds: 10)),
+      );
 
-      test('all 3 retries fire within 5 seconds when not playing', () async {
-        when(() => player.state).thenReturn(
-          const PlayerState(
-            playing: false,
-            audioDevice: Device(name: 'aaudio', description: 'AAudio'),
-            audioDevices: [Device(name: 'auto', description: 'Auto'), Device(name: 'aaudio', description: 'AAudio')],
-          ),
-        );
+      test(
+        'all 3 retries fire within 5 seconds when not playing',
+        () async {
+          when(() => player.state).thenReturn(
+            const PlayerState(
+              playing: false,
+              audioDevice: Device(name: 'aaudio', description: 'AAudio'),
+              audioDevices: [
+                Device(name: 'auto', description: 'Auto'),
+                Device(name: 'aaudio', description: 'AAudio'),
+              ],
+            ),
+          );
 
-        manager.nudge();
-        // Wait for all 3 retries (300 + 1000 + 2500 = 3800ms)
-        await Future<void>.delayed(const Duration(seconds: 5));
+          manager.nudge();
+          // Wait for all 3 retries (300 + 1000 + 2500 = 3800ms)
+          await Future<void>.delayed(const Duration(seconds: 5));
 
-        expect(
-          verify(() => player.setAudioDevice(any())).callCount,
-          greaterThanOrEqualTo(2),
-        );
-      }, timeout: const Timeout(Duration(seconds: 10)));
+          expect(
+            verify(() => player.setAudioDevice(any())).callCount,
+            greaterThanOrEqualTo(2),
+          );
+        },
+        timeout: const Timeout(Duration(seconds: 10)),
+      );
 
-      test('selects non-auto device when current device is auto', () async {
-        when(() => player.state).thenReturn(
-          const PlayerState(
-            playing: false,
-            audioDevice: Device(name: 'auto', description: 'Autoselect'),
-            audioDevices: [
-              Device(name: 'auto', description: 'Autoselect'),
-              Device(name: 'opensles', description: 'OpenSL ES'),
-            ],
-          ),
-        );
+      test(
+        'selects non-auto device when current device is auto',
+        () async {
+          when(() => player.state).thenReturn(
+            const PlayerState(
+              playing: false,
+              audioDevice: Device(name: 'auto', description: 'Autoselect'),
+              audioDevices: [
+                Device(name: 'auto', description: 'Autoselect'),
+                Device(name: 'opensles', description: 'OpenSL ES'),
+              ],
+            ),
+          );
 
-        manager.nudge();
-        await Future<void>.delayed(const Duration(milliseconds: 500));
+          manager.nudge();
+          await Future<void>.delayed(const Duration(milliseconds: 500));
 
-        verify(
-          () => player.setAudioDevice(
-            const Device(name: 'opensles', description: 'OpenSL ES'),
-          ),
-        ).called(1);
-      }, timeout: const Timeout(Duration(seconds: 5)));
+          verify(
+            () => player.setAudioDevice(
+              const Device(name: 'opensles', description: 'OpenSL ES'),
+            ),
+          ).called(1);
+        },
+        timeout: const Timeout(Duration(seconds: 5)),
+      );
 
       test('does nothing after dispose', () async {
         manager.dispose();

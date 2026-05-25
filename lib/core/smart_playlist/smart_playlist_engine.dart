@@ -14,14 +14,11 @@ import 'smart_playlist_model.dart';
 /// - Server mode: filters a pre-fetched track list client-side
 class SmartPlaylistEngine {
   /// Resolve against the local SQLite database (fastest path).
-  Future<List<AfTrack>> resolveLocal(
-    SmartPlaylist playlist,
-    LocalDb db,
-  ) async {
+  Future<List<AfTrack>> resolveLocal(SmartPlaylist playlist, LocalDb db) async {
     final d = db.db;
     final where = _buildSqlWhere(playlist);
     final orderBy = _buildSqlOrderBy(playlist);
-    
+
     var sql = 'SELECT * FROM tracks';
     if (where.clause.isNotEmpty) {
       sql += ' WHERE ${where.clause}';
@@ -32,10 +29,9 @@ class SmartPlaylistEngine {
       where.args.add(playlist.limit);
     }
 
-    final rows = await d.customSelect(
-      sql,
-      variables: where.args.map(Variable.new).toList(),
-    ).get();
+    final rows = await d
+        .customSelect(sql, variables: where.args.map(Variable.new).toList())
+        .get();
 
     // Parse back to drift's TrackEntity, then to AfTrack
     return rows.map((r) {
@@ -86,18 +82,18 @@ class SmartPlaylistEngine {
   }
 
   dynamic _getField(AfTrack track, String field) => switch (field) {
-        'title' => track.title,
-        'artist' => track.artistName,
-        'album' => track.albumName,
-        'genre' => '', // Genre not on AfTrack model — always matches
-        'year' => track.dateAdded?.year,
-        'duration' => track.duration.inSeconds,
-        'codec' => track.quality?.sourceCodec ?? '',
-        'bitrate' => track.quality?.bitrateKbps,
-        'dateAdded' => track.dateAdded,
-        'isFavorite' => track.isFavorite,
-        _ => null,
-      };
+    'title' => track.title,
+    'artist' => track.artistName,
+    'album' => track.albumName,
+    'genre' => '', // Genre not on AfTrack model — always matches
+    'year' => track.dateAdded?.year,
+    'duration' => track.duration.inSeconds,
+    'codec' => track.quality?.sourceCodec ?? '',
+    'bitrate' => track.quality?.bitrateKbps,
+    'dateAdded' => track.dateAdded,
+    'isFavorite' => track.isFavorite,
+    _ => null,
+  };
 
   bool _eq(dynamic field, dynamic value) {
     if (field is String && value is String) {
@@ -162,7 +158,8 @@ class SmartPlaylistEngine {
     if (a == null && b == null) return 0;
     if (a == null) return -1;
     if (b == null) return 1;
-    if (a is String && b is String) return a.toLowerCase().compareTo(b.toLowerCase());
+    if (a is String && b is String)
+      return a.toLowerCase().compareTo(b.toLowerCase());
     if (a is num && b is num) return a.compareTo(b);
     if (a is DateTime && b is DateTime) return a.compareTo(b);
     return '$a'.compareTo('$b');
@@ -237,16 +234,16 @@ class SmartPlaylistEngine {
   }
 
   String? _fieldToColumn(String field) => switch (field) {
-        'title' => 'title',
-        'artist' => 'artist',
-        'album' => 'album',
-        'genre' => 'genre',
-        'year' => 'year',
-        'duration' => 'duration_ms',
-        'codec' => 'codec',
-        'bitrate' => 'bitrate',
-        'dateAdded' => 'last_modified',
-        'isFavorite' => null, // Not in local DB
-        _ => null,
-      };
+    'title' => 'title',
+    'artist' => 'artist',
+    'album' => 'album',
+    'genre' => 'genre',
+    'year' => 'year',
+    'duration' => 'duration_ms',
+    'codec' => 'codec',
+    'bitrate' => 'bitrate',
+    'dateAdded' => 'last_modified',
+    'isFavorite' => null, // Not in local DB
+    _ => null,
+  };
 }

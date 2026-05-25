@@ -21,10 +21,7 @@ class SheetSkeleton extends StatelessWidget {
           child: Row(
             children: [
               // Leading icon area
-              SizedBox(
-                width: 40,
-                height: 40,
-              ),
+              SizedBox(width: 40, height: 40),
               SizedBox(width: AfSpacing.s12),
               Expanded(
                 child: Column(

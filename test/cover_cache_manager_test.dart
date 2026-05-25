@@ -14,10 +14,8 @@ void main() {
     tmpDir.deleteSync(recursive: true);
   });
 
-  CoverCacheManager createManager({int? maxBytes}) => CoverCacheManager(
-        cacheDir: tmpDir.path,
-        maxBytes: maxBytes ?? 1000,
-      );
+  CoverCacheManager createManager({int? maxBytes}) =>
+      CoverCacheManager(cacheDir: tmpDir.path, maxBytes: maxBytes ?? 1000);
 
   group('CoverCacheManager', () {
     test('tracks access timestamps', () {
@@ -91,8 +89,11 @@ void main() {
       // Only the metadata file should remain (it's not a cache file)
       final files = tmpDir.listSync().whereType<File>().toList();
       for (final f in files) {
-        expect(f.path.endsWith('_access_meta.json'), isTrue,
-            reason: 'only metadata file should survive clear');
+        expect(
+          f.path.endsWith('_access_meta.json'),
+          isTrue,
+          reason: 'only metadata file should survive clear',
+        );
       }
     });
 

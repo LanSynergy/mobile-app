@@ -44,13 +44,15 @@ String redactSensitiveQueryParams(Object uri) {
     return original;
   }
   if (parsed.queryParameters.isEmpty) return original;
-  final hasSensitive =
-      parsed.queryParameters.keys.any(_sensitiveQueryKeys.contains);
+  final hasSensitive = parsed.queryParameters.keys.any(
+    _sensitiveQueryKeys.contains,
+  );
   if (!hasSensitive) return original;
   final scrubbed = <String, String>{
     for (final entry in parsed.queryParameters.entries)
-      entry.key:
-          _sensitiveQueryKeys.contains(entry.key) ? '[REDACTED]' : entry.value,
+      entry.key: _sensitiveQueryKeys.contains(entry.key)
+          ? '[REDACTED]'
+          : entry.value,
   };
   return parsed.replace(queryParameters: scrubbed).toString();
 }
@@ -77,8 +79,9 @@ String redactSensitiveQueryParams(Object uri) {
 String stableImageCacheKey(String url) {
   final parsed = Uri.tryParse(url);
   if (parsed == null || parsed.queryParameters.isEmpty) return url;
-  final hasSensitive =
-      parsed.queryParameters.keys.any(_sensitiveQueryKeys.contains);
+  final hasSensitive = parsed.queryParameters.keys.any(
+    _sensitiveQueryKeys.contains,
+  );
   if (!hasSensitive) return url;
   final cleaned = <String, String>{
     for (final entry in parsed.queryParameters.entries)

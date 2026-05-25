@@ -24,7 +24,6 @@ import 'player_service.dart';
 ///                                          player stops, or the reporter
 ///                                          is disposed
 class JellyfinPlaybackReporter {
-
   JellyfinPlaybackReporter(this._player, this._clientGetter) {
     _trackSub = _player.currentTrackStream.listen(_onTrackChanged);
     _playingSub = _player.playingStream.listen(_onPlayingChanged);
@@ -69,10 +68,15 @@ class JellyfinPlaybackReporter {
           afLog(
             'data',
             'playbackStop source=live track=$previousId '
-            'positionMs=${position.inMilliseconds}',
+                'positionMs=${position.inMilliseconds}',
           );
         } catch (e, stack) {
-          afLog('error', 'reportPlaybackStop failed', error: e, stackTrace: stack);
+          afLog(
+            'error',
+            'reportPlaybackStop failed',
+            error: e,
+            stackTrace: stack,
+          );
         }
       }
     }
@@ -115,10 +119,15 @@ class JellyfinPlaybackReporter {
       afLog(
         'data',
         'playbackProgress source=live track=$trackId '
-        'positionMs=${position.inMilliseconds} paused=${!isPlaying}',
+            'positionMs=${position.inMilliseconds} paused=${!isPlaying}',
       );
     } catch (e, stack) {
-      afLog('error', 'reportProgress (transition) failed', error: e, stackTrace: stack);
+      afLog(
+        'error',
+        'reportProgress (transition) failed',
+        error: e,
+        stackTrace: stack,
+      );
     }
     if (isPlaying) {
       _startProgressTimer();
@@ -166,10 +175,15 @@ class JellyfinPlaybackReporter {
         afLog(
           'data',
           'playbackProgress source=live track=$trackId '
-          'positionMs=${position.inMilliseconds} (tick)',
+              'positionMs=${position.inMilliseconds} (tick)',
         );
       } catch (e, stack) {
-        afLog('error', 'reportProgress (tick) failed', error: e, stackTrace: stack);
+        afLog(
+          'error',
+          'reportProgress (tick) failed',
+          error: e,
+          stackTrace: stack,
+        );
         // Continue loop — a single failed tick shouldn't stop reporting.
       }
     }
@@ -198,10 +212,15 @@ class JellyfinPlaybackReporter {
       afLog(
         'data',
         'playbackStop source=live track=$trackId '
-        'positionMs=${position.inMilliseconds} (reporter disposed)',
+            'positionMs=${position.inMilliseconds} (reporter disposed)',
       );
     } catch (e, stack) {
-      afLog('error', 'reportPlaybackStop (dispose) failed', error: e, stackTrace: stack);
+      afLog(
+        'error',
+        'reportPlaybackStop (dispose) failed',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 

@@ -4,14 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('ShimmerWrap', () {
-    testWidgets('creates AnimationController and renders child',
-        (tester) async {
+    testWidgets('creates AnimationController and renders child', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: ShimmerWrap(
-              child: SizedBox(width: 100, height: 20),
-            ),
+            body: ShimmerWrap(child: SizedBox(width: 100, height: 20)),
           ),
         ),
       );
@@ -26,9 +25,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: ShimmerWrap(
-              child: SizedBox(width: 0, height: 0),
-            ),
+            body: ShimmerWrap(child: SizedBox(width: 0, height: 0)),
           ),
         ),
       );
@@ -40,9 +37,7 @@ void main() {
   group('SkeletonBar', () {
     testWidgets('renders with default dimensions', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(body: SkeletonBar()),
-        ),
+        const MaterialApp(home: Scaffold(body: SkeletonBar())),
       );
       // Default height=14, no explicit width (fills parent)
       final container = tester.widget<Container>(
@@ -55,8 +50,9 @@ void main() {
       expect(container.decoration, isNotNull);
     });
 
-    testWidgets('accepts custom width, height, borderRadius, color',
-        (tester) async {
+    testWidgets('accepts custom width, height, borderRadius, color', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -71,10 +67,12 @@ void main() {
       );
       // Find the inner Container
       final container = tester.widget<Container>(
-        find.descendant(
-          of: find.byType(SkeletonBar),
-          matching: find.byType(Container),
-        ).last,
+        find
+            .descendant(
+              of: find.byType(SkeletonBar),
+              matching: find.byType(Container),
+            )
+            .last,
       );
       expect(container.decoration, isNotNull);
     });
@@ -84,9 +82,7 @@ void main() {
     testWidgets('renders with required dimensions', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: SkeletonBlock(width: 200, height: 200),
-          ),
+          home: Scaffold(body: SkeletonBlock(width: 200, height: 200)),
         ),
       );
       expect(find.byType(SkeletonBlock), findsOneWidget);
@@ -96,11 +92,7 @@ void main() {
   group('SkeletonCircle', () {
     testWidgets('renders circle shape', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SkeletonCircle(size: 48),
-          ),
-        ),
+        const MaterialApp(home: Scaffold(body: SkeletonCircle(size: 48))),
       );
       expect(find.byType(SkeletonCircle), findsOneWidget);
     });

@@ -9,7 +9,6 @@ import '../design_tokens/tokens.dart';
 /// every tappable element should wrap its target in [PressScale] (or its
 /// helper variants) so we keep press feedback consistent.
 class PressScale extends StatefulWidget {
-
   const PressScale({
     super.key,
     required this.child,
@@ -48,10 +47,7 @@ class _PressScaleState extends State<PressScale>
   late final Animation<double> _scale = Tween<double>(
     begin: 1,
     end: widget.pressedScale,
-  ).animate(CurvedAnimation(
-    parent: _ctrl,
-    curve: AfCurves.easeStandard,
-  ));
+  ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeStandard));
 
   @override
   void dispose() {

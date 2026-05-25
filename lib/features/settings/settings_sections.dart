@@ -37,7 +37,11 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
   Future<void> _loadFolders() async {
     final lib = ref.read(localLibraryProvider);
     final folders = await lib.getFolders();
-    if (mounted) setState(() { _folders = folders; _loading = false; });
+    if (mounted)
+      setState(() {
+        _folders = folders;
+        _loading = false;
+      });
   }
 
   void _onProgress(int completed, int total) {
@@ -83,9 +87,9 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _scanning = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Scan failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Scan failed: $e')));
     }
   }
 
@@ -139,8 +143,11 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
               iconColor: AfColors.textSecondary,
               title: folder.displayPath,
               trailing: IconButton(
-                icon: const Icon(LucideIcons.circleMinus,
-                    color: AfColors.semanticError, size: 20),
+                icon: const Icon(
+                  LucideIcons.circleMinus,
+                  color: AfColors.semanticError,
+                  size: 20,
+                ),
                 onPressed: () => _removeFolder(folder.uri),
               ),
             ),
@@ -173,18 +180,18 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
         children: [
           Text(
             'Scanning your music folder...',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AfColors.textPrimary,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AfColors.textPrimary),
           ),
           const SizedBox(height: AfSpacing.s12),
           LinearProgressIndicator(value: progress),
           const SizedBox(height: AfSpacing.s8),
           Text(
             '$_scannedCount / $_totalCount files',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AfColors.textSecondary,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AfColors.textSecondary),
           ),
         ],
       ),

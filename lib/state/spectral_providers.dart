@@ -20,20 +20,20 @@ final currentSpectralProvider = Provider<Spectral>((ref) {
   return async.maybeWhen(data: (s) => s, orElse: () => Spectral.fallback);
 });
 
-final spectralFromUrlProvider =
-    FutureProvider.autoDispose.family<Spectral, String?>((ref, imageUrl) async {
-  if (imageUrl == null) return Spectral.fallback;
-  final backend = ref.watch(musicBackendProvider);
-  final headers = backend?.authHeaders;
-  try {
-    return await ref
-        .watch(spectralExtractorProvider)
-        .fromImageUrl(imageUrl, headers: headers);
-  } catch (e) {
-    afLog('spectral', 'spectral extraction failed', error: e);
-    return Spectral.fallback;
-  }
-});
+final spectralFromUrlProvider = FutureProvider.autoDispose
+    .family<Spectral, String?>((ref, imageUrl) async {
+      if (imageUrl == null) return Spectral.fallback;
+      final backend = ref.watch(musicBackendProvider);
+      final headers = backend?.authHeaders;
+      try {
+        return await ref
+            .watch(spectralExtractorProvider)
+            .fromImageUrl(imageUrl, headers: headers);
+      } catch (e) {
+        afLog('spectral', 'spectral extraction failed', error: e);
+        return Spectral.fallback;
+      }
+    });
 
 /// Pastel accent colour derived from the current artwork's spectral energy.
 /// Converts the vibrant energy to OKLCH, then shifts it to a pastel profile

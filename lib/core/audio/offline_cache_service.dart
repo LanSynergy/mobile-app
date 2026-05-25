@@ -18,14 +18,15 @@ import '../local/app_database.dart';
 /// The manifest is stored in the [CacheEntries] drift table (track ID,
 /// file size, last-played timestamp) for LRU eviction and stats.
 class OfflineCacheService {
-
   OfflineCacheService({required AppDatabase database})
-      : _db = database,
-        _dio = Dio(BaseOptions(
+    : _db = database,
+      _dio = Dio(
+        BaseOptions(
           connectTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(minutes: 5),
           headers: {'User-Agent': 'Aetherfin'},
-        ));
+        ),
+      );
   final AppDatabase _db;
   final Dio _dio;
   String? _cacheDirPath;
@@ -98,20 +99,26 @@ class OfflineCacheService {
       await tempFile.rename(realFile.path);
       final now = DateTime.now().millisecondsSinceEpoch;
 
-      await _db.into(_db.cacheEntries).insertOnConflictUpdate(
-        CacheEntriesCompanion.insert(
-          trackId: trackId,
-          fileSize: fileSize,
-          lastPlayedAt: now,
-        ),
-      );
+      await _db
+          .into(_db.cacheEntries)
+          .insertOnConflictUpdate(
+            CacheEntriesCompanion.insert(
+              trackId: trackId,
+              fileSize: fileSize,
+              lastPlayedAt: now,
+            ),
+          );
 
       afLog('cache', 'cached $trackId (${_formatBytes(fileSize)})');
 
       await evictLRU();
     } catch (e, stack) {
-      afLog('cache', 'cacheTrack failed for $trackId',
-          error: e, stackTrace: stack);
+      afLog(
+        'cache',
+        'cacheTrack failed for $trackId',
+        error: e,
+        stackTrace: stack,
+      );
       if (tempFile.existsSync()) {
         await tempFile.delete();
       }
@@ -138,9 +145,9 @@ class OfflineCacheService {
         totalSize -= entry.fileSize;
         evicted++;
       }
-      await (_db.delete(_db.cacheEntries)
-            ..where((t) => t.trackId.equals(entry.trackId)))
-          .go();
+      await (_db.delete(
+        _db.cacheEntries,
+      )..where((t) => t.trackId.equals(entry.trackId))).go();
     }
 
     if (evicted > 0) {

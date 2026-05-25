@@ -40,9 +40,9 @@ void showSaveToPlaylistSheet(
         backend: backend,
         onInvalidate: () => ref.invalidate(allPlaylistsProvider),
         onSaved: () {
-          ref.read(savedTrackIdsProvider.notifier).update(
-                (ids) => {...ids, track.id},
-              );
+          ref
+              .read(savedTrackIdsProvider.notifier)
+              .update((ids) => {...ids, track.id});
           ref.invalidate(playlistTrackIdsProvider);
         },
       ),
@@ -54,7 +54,6 @@ void showSaveToPlaylistSheet(
 /// row at the top. Pure widget — no provider reads — so it can be
 /// embedded in any dialog / sheet / page.
 class SaveToPlaylistSheet extends StatefulWidget {
-
   const SaveToPlaylistSheet({
     super.key,
     required this.track,
@@ -94,9 +93,17 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
   Future<void> _load() async {
     try {
       final playlists = await widget.backend.playlists();
-      if (mounted) setState(() { _playlists = playlists; _loading = false; });
+      if (mounted)
+        setState(() {
+          _playlists = playlists;
+          _loading = false;
+        });
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
     }
   }
 
@@ -109,9 +116,9 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
       widget.onSaved?.call();
       if (mounted) {
         unawaited(Navigator.maybePop(context));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Added to ${playlist.name}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Added to ${playlist.name}')));
       }
     } catch (e) {
       if (mounted) {
@@ -154,113 +161,124 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-          Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
-            child: Text('Save to playlist', style: AfTypography.titleSmall),
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.gutterGenerous,
           ),
-          const SizedBox(height: AfSpacing.s8),
-          if (_loading)
-            const Padding(
-              padding: EdgeInsets.all(AfSpacing.s24),
-              child: SheetSkeleton(),
-            )
-          else if (_error != null)
-            Padding(
-              padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
-              child: Column(
-                children: [
-                  Text(
-                    _error!,
-                    style: AfTypography.bodySmall
-                        .copyWith(color: AfColors.semanticError),
+          child: Text('Save to playlist', style: AfTypography.titleSmall),
+        ),
+        const SizedBox(height: AfSpacing.s8),
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.all(AfSpacing.s24),
+            child: SheetSkeleton(),
+          )
+        else if (_error != null)
+          Padding(
+            padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
+            child: Column(
+              children: [
+                Text(
+                  _error!,
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.semanticError,
                   ),
-                  const SizedBox(height: AfSpacing.s12),
+                ),
+                const SizedBox(height: AfSpacing.s12),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _error = null;
+                      _loading = true;
+                    });
+                    _load();
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          )
+        else ...[
+          if (_showNewPlaylist)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AfSpacing.gutterGenerous,
+                0,
+                AfSpacing.gutterGenerous,
+                AfSpacing.s8,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _newNameCtl,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        hintText: 'Playlist name',
+                      ),
+                      onSubmitted: (_) => _createAndAdd(),
+                    ),
+                  ),
+                  const SizedBox(width: AfSpacing.s8),
                   TextButton(
-                    onPressed: () {
-                      setState(() { _error = null; _loading = true; });
-                      _load();
-                    },
-                    child: const Text('Retry'),
+                    onPressed: _saving ? null : _createAndAdd,
+                    child: const Text('Create'),
                   ),
                 ],
               ),
             )
-          else ...[
-            if (_showNewPlaylist)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AfSpacing.gutterGenerous,
-                    0,
-                    AfSpacing.gutterGenerous,
-                    AfSpacing.s8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _newNameCtl,
-                        autofocus: true,
-                        decoration:
-                            const InputDecoration(hintText: 'Playlist name'),
-                        onSubmitted: (_) => _createAndAdd(),
-                      ),
-                    ),
-                    const SizedBox(width: AfSpacing.s8),
-                    TextButton(
-                      onPressed: _saving ? null : _createAndAdd,
-                      child: const Text('Create'),
-                    ),
-                  ],
+          else
+            ListTile(
+              leading: const Icon(Icons.add_rounded, color: AfColors.indigo300),
+              title: Text(
+                'New playlist',
+                style: AfTypography.bodyMedium.copyWith(
+                  color: AfColors.indigo300,
                 ),
-              )
-            else
-              ListTile(
-                leading: const Icon(Icons.add_rounded, color: AfColors.indigo300),
-                title: Text(
-                  'New playlist',
-                  style: AfTypography.bodyMedium
-                      .copyWith(color: AfColors.indigo300),
-                ),
-                onTap: () => setState(() => _showNewPlaylist = true),
               ),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 300),
-              child: _playlists != null && _playlists!.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: AfSpacing.s24),
-                        child: Text(
-                          'No playlists yet',
-                          style: AfTypography.bodySmall
-                              .copyWith(color: AfColors.textTertiary),
+              onTap: () => setState(() => _showNewPlaylist = true),
+            ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 300),
+            child: _playlists != null && _playlists!.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AfSpacing.s24,
+                      ),
+                      child: Text(
+                        'No playlists yet',
+                        style: AfTypography.bodySmall.copyWith(
+                          color: AfColors.textTertiary,
                         ),
                       ),
-                    )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: _playlists?.length ?? 0,
-                      itemBuilder: (context, i) {
-                        final p = _playlists![i];
-                        return ListTile(
-                          leading: const Icon(
-                            Icons.playlist_play_rounded,
-                            color: AfColors.indigo300,
-                          ),
-                          title: Text(p.name, style: AfTypography.bodyMedium),
-                          subtitle: Text(
-                            p.trackCountLabel,
-                            style: AfTypography.bodySmall
-                                .copyWith(color: AfColors.textTertiary),
-                          ),
-                          onTap: _saving ? null : () => _addTo(p),
-                        );
-                      },
                     ),
-            ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _playlists?.length ?? 0,
+                    itemBuilder: (context, i) {
+                      final p = _playlists![i];
+                      return ListTile(
+                        leading: const Icon(
+                          Icons.playlist_play_rounded,
+                          color: AfColors.indigo300,
+                        ),
+                        title: Text(p.name, style: AfTypography.bodyMedium),
+                        subtitle: Text(
+                          p.trackCountLabel,
+                          style: AfTypography.bodySmall.copyWith(
+                            color: AfColors.textTertiary,
+                          ),
+                        ),
+                        onTap: _saving ? null : () => _addTo(p),
+                      );
+                    },
+                  ),
+          ),
+        ],
+        const SizedBox(height: AfSpacing.s12),
       ],
-      const SizedBox(height: AfSpacing.s12),
-    ],
-  );
+    );
   }
 }

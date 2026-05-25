@@ -181,7 +181,6 @@ class WelcomeScreen extends ConsumerWidget {
 }
 
 class _ModeCard extends StatelessWidget {
-
   const _ModeCard({
     required this.icon,
     required this.iconGradient,
@@ -206,10 +205,7 @@ class _ModeCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(AfSpacing.s16),
           decoration: BoxDecoration(
-            border: Border.all(
-              color: AfColors.surfaceHigh,
-              width: 1,
-            ),
+            border: Border.all(color: AfColors.surfaceHigh, width: 1),
             borderRadius: AfRadii.borderLg,
           ),
           child: Row(

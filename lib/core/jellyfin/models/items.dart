@@ -3,7 +3,6 @@ import 'quality.dart';
 
 /// A music album.
 class AfAlbum {
-
   const AfAlbum({
     required this.id,
     required this.name,
@@ -41,20 +40,19 @@ class AfAlbum {
     TrackQuality? quality,
     DateTime? dateAdded,
     bool? isFavorite,
-  }) =>
-      AfAlbum(
-        id: id ?? this.id,
-        name: name ?? this.name,
-        artistName: artistName ?? this.artistName,
-        artistId: artistId ?? this.artistId,
-        trackCount: trackCount ?? this.trackCount,
-        year: year ?? this.year,
-        totalDuration: totalDuration ?? this.totalDuration,
-        imageUrl: imageUrl ?? this.imageUrl,
-        quality: quality ?? this.quality,
-        dateAdded: dateAdded ?? this.dateAdded,
-        isFavorite: isFavorite ?? this.isFavorite,
-      );
+  }) => AfAlbum(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    artistName: artistName ?? this.artistName,
+    artistId: artistId ?? this.artistId,
+    trackCount: trackCount ?? this.trackCount,
+    year: year ?? this.year,
+    totalDuration: totalDuration ?? this.totalDuration,
+    imageUrl: imageUrl ?? this.imageUrl,
+    quality: quality ?? this.quality,
+    dateAdded: dateAdded ?? this.dateAdded,
+    isFavorite: isFavorite ?? this.isFavorite,
+  );
 
   String get metadataLine {
     final parts = <String>[];
@@ -69,7 +67,6 @@ class AfAlbum {
 
 /// A music artist.
 class AfArtist {
-
   const AfArtist({
     required this.id,
     required this.name,
@@ -94,7 +91,6 @@ class AfArtist {
 
 /// A single audio track.
 class AfTrack {
-
   const AfTrack({
     required this.id,
     required this.title,
@@ -124,6 +120,7 @@ class AfTrack {
   final bool isFavorite;
   final bool isDownloaded;
   final DateTime? dateAdded;
+
   /// Per-bar waveform peaks for the visualiser. Currently populated only
   /// by [DemoLibrary] tracks — Jellyfin does not expose audio peak data
   /// in its API. For Jellyfin tracks this is always `null` and the Now
@@ -148,23 +145,22 @@ class AfTrack {
     bool? isDownloaded,
     DateTime? dateAdded,
     List<int>? peaks,
-  }) =>
-      AfTrack(
-        id: id ?? this.id,
-        title: title ?? this.title,
-        artistName: artistName ?? this.artistName,
-        albumName: albumName ?? this.albumName,
-        albumId: albumId ?? this.albumId,
-        artistId: artistId ?? this.artistId,
-        trackNumber: trackNumber ?? this.trackNumber,
-        duration: duration ?? this.duration,
-        quality: quality ?? this.quality,
-        imageUrl: imageUrl ?? this.imageUrl,
-        isFavorite: isFavorite ?? this.isFavorite,
-        isDownloaded: isDownloaded ?? this.isDownloaded,
-        dateAdded: dateAdded ?? this.dateAdded,
-        peaks: peaks ?? this.peaks,
-      );
+  }) => AfTrack(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    artistName: artistName ?? this.artistName,
+    albumName: albumName ?? this.albumName,
+    albumId: albumId ?? this.albumId,
+    artistId: artistId ?? this.artistId,
+    trackNumber: trackNumber ?? this.trackNumber,
+    duration: duration ?? this.duration,
+    quality: quality ?? this.quality,
+    imageUrl: imageUrl ?? this.imageUrl,
+    isFavorite: isFavorite ?? this.isFavorite,
+    isDownloaded: isDownloaded ?? this.isDownloaded,
+    dateAdded: dateAdded ?? this.dateAdded,
+    peaks: peaks ?? this.peaks,
+  );
 
   /// "Artist · Album · 3:42" — the standard subtitle for a track row.
   /// For tracks longer than an hour (live sets, mixes) [formatTrackDuration]
@@ -180,7 +176,6 @@ class AfTrack {
 
 /// A user-owned playlist.
 class AfPlaylist {
-
   const AfPlaylist({
     required this.id,
     required this.name,
@@ -195,7 +190,8 @@ class AfPlaylist {
   final int trackCount;
   final Duration duration;
   final String? imageUrl;
-  final List<String>? mosaicImageUrls; // up to 4 cover images for the 4-quadrant montage
+  final List<String>?
+  mosaicImageUrls; // up to 4 cover images for the 4-quadrant montage
   final bool isPublic;
 
   /// Singular/plural-aware subtitle ("1 track" / "12 tracks"). Used wherever
@@ -206,7 +202,8 @@ class AfPlaylist {
 }
 
 /// A music genre — used for the Genres row on Home and Library.
-class AfGenre { // representative album art for this genre
+class AfGenre {
+  // representative album art for this genre
   const AfGenre(this.name, this.tint, {this.imageUrl});
   final String name;
   final String tint; // hex, used as fallback color
@@ -222,7 +219,6 @@ class AfGenre { // representative album art for this genre
 /// every list row: container, file size, channels, playcount, full
 /// path, genres, etc.
 class AfTrackDetails {
-
   const AfTrackDetails({
     required this.track,
     this.container,
@@ -241,6 +237,7 @@ class AfTrackDetails {
     this.composer,
     this.isTranscoded = false,
   });
+
   /// Basic track surface (title, artist, album, duration, quality,
   /// favorite, etc.) — already populated everywhere else.
   final AfTrack track;

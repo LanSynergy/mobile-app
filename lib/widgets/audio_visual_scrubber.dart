@@ -11,12 +11,11 @@ import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 
 class AudioVisualScrubber extends ConsumerStatefulWidget {
-
   const AudioVisualScrubber({
     super.key,
-    this.height        = 120,
+    this.height = 120,
     required this.progress,
-    this.playedColor   = AfColors.indigo300,
+    this.playedColor = AfColors.indigo300,
     this.unplayedColor = AfColors.textTertiary,
     this.onScrub,
     this.onScrubEnd,
@@ -51,11 +50,14 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
   @override
   void initState() {
     super.initState();
-    _fftNotifier   = _BlockNotifier();
+    _fftNotifier = _BlockNotifier();
     _scrubNotifier = _ScrubNotifier(progress: widget.progress);
 
     _lifecycle = AppLifecycleListener(
-      onPause:  () { _isAppBackground = true; _ticker.stop(); },
+      onPause: () {
+        _isAppBackground = true;
+        _ticker.stop();
+      },
       onResume: () {
         _isAppBackground = false;
         if (_fftNotifier.hasEnergy) _ticker.repeat();
@@ -65,29 +67,28 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
     // Ticker drives repaints at vsync (60 fps). Stream events just update
     // data; the ticker ensures frame-aligned rendering so the visualizer
     // doesn't stutter from async stream timing misalignment.
-    _ticker = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 16),
-    )..addListener(() {
-        if (mounted) _fftNotifier.flush();
-      });
+    _ticker =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 16),
+        )..addListener(() {
+          if (mounted) _fftNotifier.flush();
+        });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _fftSub = ref.read(playerServiceProvider).spectrumStream.listen(
-        (frame) {
-          if (!_shouldRender) return;
-          _silenceTimer?.cancel();
-          // Update data only — ticker handles the repaint on vsync.
-          _fftNotifier.ingest(frame.bands);
-          if (!_ticker.isAnimating) _ticker.repeat();
-          _silenceTimer = Timer(const Duration(milliseconds: 300), () {
-            if (mounted && _shouldRender) {
-              _fftNotifier.startFadeOut();
-            }
-          });
-        },
-      );
+      _fftSub = ref.read(playerServiceProvider).spectrumStream.listen((frame) {
+        if (!_shouldRender) return;
+        _silenceTimer?.cancel();
+        // Update data only — ticker handles the repaint on vsync.
+        _fftNotifier.ingest(frame.bands);
+        if (!_ticker.isAnimating) _ticker.repeat();
+        _silenceTimer = Timer(const Duration(milliseconds: 300), () {
+          if (mounted && _shouldRender) {
+            _fftNotifier.startFadeOut();
+          }
+        });
+      });
     });
   }
 
@@ -151,13 +152,15 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
       behavior: HitTestBehavior.opaque,
       onHorizontalDragStart: (d) {
         HapticFeedback.selectionClick();
-        _handleDragUpdate(DragUpdateDetails(
-          globalPosition: d.globalPosition,
-          localPosition:  d.localPosition,
-        ));
+        _handleDragUpdate(
+          DragUpdateDetails(
+            globalPosition: d.globalPosition,
+            localPosition: d.localPosition,
+          ),
+        );
       },
       onHorizontalDragUpdate: _handleDragUpdate,
-      onHorizontalDragEnd:    _handleDragEnd,
+      onHorizontalDragEnd: _handleDragEnd,
       onTapDown: (d) {
         HapticFeedback.selectionClick();
         final p = _toProgress(d.localPosition.dx);
@@ -166,16 +169,16 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
       },
       child: SizedBox(
         height: widget.height,
-        width:  double.infinity,
+        width: double.infinity,
         child: Stack(
           fit: StackFit.expand,
           children: [
             RepaintBoundary(
               child: CustomPaint(
                 painter: _CombinedBarPainter(
-                  fftNotifier:   _fftNotifier,
+                  fftNotifier: _fftNotifier,
                   scrubNotifier: _scrubNotifier,
-                  playedColor:   widget.playedColor,
+                  playedColor: widget.playedColor,
                   unplayedColor: widget.unplayedColor,
                 ),
               ),
@@ -183,8 +186,8 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
             RepaintBoundary(
               child: CustomPaint(
                 painter: _ScrubOverlayPainter(
-                  notifier:      _scrubNotifier,
-                  playedColor:   widget.playedColor,
+                  notifier: _scrubNotifier,
+                  playedColor: widget.playedColor,
                   unplayedColor: widget.unplayedColor,
                 ),
               ),
@@ -201,16 +204,15 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ScrubNotifier extends ChangeNotifier {
-
   _ScrubNotifier({required double progress}) : _progress = progress;
   double _progress;
-  bool   _dragging     = false;
+  bool _dragging = false;
   double _dragProgress = 0.0;
 
   double get displayProgress =>
       _dragging ? _dragProgress : _progress.clamp(0.0, 1.0);
-  bool   get dragging      => _dragging;
-  double get dragProgress  => _dragProgress;
+  bool get dragging => _dragging;
+  double get dragProgress => _dragProgress;
 
   void update(double progress) {
     _progress = progress;
@@ -218,7 +220,7 @@ class _ScrubNotifier extends ChangeNotifier {
   }
 
   void setDrag(bool dragging, double progress) {
-    _dragging     = dragging;
+    _dragging = dragging;
     _dragProgress = progress;
     notifyListeners();
   }
@@ -323,7 +325,6 @@ class _BlockNotifier extends ChangeNotifier {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _CombinedBarPainter extends CustomPainter {
-
   _CombinedBarPainter({
     required this.fftNotifier,
     required this.scrubNotifier,
@@ -339,37 +340,37 @@ class _CombinedBarPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (size.width <= 0 || size.height <= 0) return;
 
-    final double midY    = size.height / 2;
-    final double slotW   = size.width / _BlockNotifier.bins;
-    final double barW    = (slotW * 0.7).clamp(1.0, 8.0);
+    final double midY = size.height / 2;
+    final double slotW = size.width / _BlockNotifier.bins;
+    final double barW = (slotW * 0.7).clamp(1.0, 8.0);
     final double rawFillX = scrubNotifier.displayProgress * size.width;
     // When FFT bars are active (music is playing), ensure at least the
     // first bar slot is colored so the visualizer doesn't go fully grey
     // when position briefly resets to 0 during track transitions.
-    final double fillX   = fftNotifier.hasEnergy
+    final double fillX = fftNotifier.hasEnergy
         ? math.max(rawFillX, slotW * 0.75)
         : (fftNotifier.totalEnergy > 0 ? rawFillX : 0.0);
     final double maxBarH = midY * 0.8;
-    final barRadius      = Radius.circular(barW / 2);
+    final barRadius = Radius.circular(barW / 2);
 
     final paint = Paint()..style = PaintingStyle.fill;
 
     // Path batching: 4 distinct paint states to prevent breaking the
     // Skia pipeline batch. Grouping by color avoids ~128 individual
     // drawRRect calls that thrash the GPU state.
-    final topPlayedPath    = Path();
-    final topUnplayedPath  = Path();
-    final refPlayedPath    = Path();
-    final refUnplayedPath  = Path();
+    final topPlayedPath = Path();
+    final topUnplayedPath = Path();
+    final refPlayedPath = Path();
+    final refUnplayedPath = Path();
 
     for (var i = 0; i < _BlockNotifier.bins; i++) {
       final level = fftNotifier.smoothed[i];
       if (level < 0.01) continue;
 
-      final cx   = (i + 0.5) * slotW;
-      final x    = cx - barW / 2;
+      final cx = (i + 0.5) * slotW;
+      final x = cx - barW / 2;
       final barH = (level * maxBarH).clamp(2.0, maxBarH);
-      
+
       // Fix: Calculates play state natively by comparing bar center to scrub position
       final isPlayed = cx <= fillX;
 
@@ -395,19 +396,21 @@ class _CombinedBarPainter extends CustomPainter {
     canvas.drawPath(topPlayedPath, paint..color = playedColor);
     canvas.drawPath(topUnplayedPath, paint..color = unplayedColor);
     canvas.drawPath(
-        refPlayedPath, paint..color = playedColor.withValues(alpha: 0.35));
+      refPlayedPath,
+      paint..color = playedColor.withValues(alpha: 0.35),
+    );
     canvas.drawPath(
-        refUnplayedPath, paint..color = unplayedColor.withValues(alpha: 0.35));
+      refUnplayedPath,
+      paint..color = unplayedColor.withValues(alpha: 0.35),
+    );
   }
 
   @override
   bool shouldRepaint(covariant _CombinedBarPainter old) =>
-      old.playedColor != playedColor ||
-      old.unplayedColor != unplayedColor;
+      old.playedColor != playedColor || old.unplayedColor != unplayedColor;
 }
 
 class _ScrubOverlayPainter extends CustomPainter {
-
   _ScrubOverlayPainter({
     required this.notifier,
     required this.playedColor,
@@ -425,8 +428,11 @@ class _ScrubOverlayPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (size.width <= 0 || size.height <= 0) return;
 
-    final midY  = size.height / 2;
-    final fillW = (notifier.displayProgress * size.width).clamp(0.0, size.width);
+    final midY = size.height / 2;
+    final fillW = (notifier.displayProgress * size.width).clamp(
+      0.0,
+      size.width,
+    );
 
     // 1. Track background.
     canvas.drawRRect(
@@ -446,10 +452,7 @@ class _ScrubOverlayPainter extends CustomPainter {
         _cachedFillW = fillW;
         _cachedPlayedColor = playedColor;
         _cachedShader = LinearGradient(
-          colors: [
-            playedColor.withValues(alpha: 0.0),
-            playedColor,
-          ],
+          colors: [playedColor.withValues(alpha: 0.0), playedColor],
         ).createShader(Rect.fromLTWH(0, midY - 1.5, fillW, 3));
       }
 
@@ -468,7 +471,7 @@ class _ScrubOverlayPainter extends CustomPainter {
     {
       // Ensure the playhead center is at least the core radius from the
       // left edge so glow effects aren't clipped by Stack.hardEdge.
-      final cx     = math.max(fillW, 2.5);
+      final cx = math.max(fillW, 2.5);
       final isDrag = notifier.dragging;
 
       // Outer ambient glow (soft, wide).
@@ -477,7 +480,10 @@ class _ScrubOverlayPainter extends CustomPainter {
         isDrag ? 28.0 : 16.0,
         Paint()
           ..color = playedColor.withValues(alpha: isDrag ? 0.35 : 0.20)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, isDrag ? 14.0 : 10.0),
+          ..maskFilter = MaskFilter.blur(
+            BlurStyle.normal,
+            isDrag ? 14.0 : 10.0,
+          ),
       );
 
       // Horizontal light streak — the main "shine" ray.

@@ -19,59 +19,68 @@ typedef SearchResults = ({
   List<AfPlaylist> playlists,
 });
 
-final searchProvider =
-    FutureProvider.autoDispose.family<SearchResults, String>((ref, raw) async {
-  final query = raw.trim();
-  if (query.isEmpty) {
-    return (
-      tracks: const <AfTrack>[],
-      albums: const <AfAlbum>[],
-      artists: const <AfArtist>[],
-      playlists: const <AfPlaylist>[],
+final searchProvider = FutureProvider.autoDispose.family<SearchResults, String>(
+  (ref, raw) async {
+    final query = raw.trim();
+    if (query.isEmpty) {
+      return (
+        tracks: const <AfTrack>[],
+        albums: const <AfAlbum>[],
+        artists: const <AfArtist>[],
+        playlists: const <AfPlaylist>[],
+      );
+    }
+
+    final mode = ref.watch(appModeProvider);
+    if (mode == AppMode.local) {
+      final lib = ref.read(localLibraryProvider);
+      final tracks = await lib.search(query);
+      _logData(
+        'search',
+        source: 'local',
+        extra: 'query="$query" tracks=${tracks.length}',
+      );
+      return (
+        tracks: tracks,
+        albums: const <AfAlbum>[],
+        artists: const <AfArtist>[],
+        playlists: const <AfPlaylist>[],
+      );
+    }
+
+    final backend = ref.watch(musicBackendProvider);
+    if (backend == null) {
+      _logData('search', source: 'none', extra: 'query="$query" (no backend)');
+      return (
+        tracks: const <AfTrack>[],
+        albums: const <AfAlbum>[],
+        artists: const <AfArtist>[],
+        playlists: const <AfPlaylist>[],
+      );
+    }
+
+    final res = await backend.search(query);
+    _logData(
+      'search',
+      source: 'live',
+      extra:
+          'query="$query" tracks=${res.tracks.length} '
+          'albums=${res.albums.length} artists=${res.artists.length} '
+          'playlists=${res.playlists.length}',
     );
-  }
-
-  final mode = ref.watch(appModeProvider);
-  if (mode == AppMode.local) {
-    final lib = ref.read(localLibraryProvider);
-    final tracks = await lib.search(query);
-    _logData('search', source: 'local', extra: 'query="$query" tracks=${tracks.length}');
     return (
-      tracks: tracks,
-      albums: const <AfAlbum>[],
-      artists: const <AfArtist>[],
-      playlists: const <AfPlaylist>[],
+      tracks: res.tracks,
+      albums: res.albums,
+      artists: res.artists,
+      playlists: res.playlists,
     );
-  }
+  },
+);
 
-  final backend = ref.watch(musicBackendProvider);
-  if (backend == null) {
-    _logData('search', source: 'none', extra: 'query="$query" (no backend)');
-    return (
-      tracks: const <AfTrack>[],
-      albums: const <AfAlbum>[],
-      artists: const <AfArtist>[],
-      playlists: const <AfPlaylist>[],
-    );
-  }
-
-  final res = await backend.search(query);
-  _logData(
-    'search',
-    source: 'live',
-    extra: 'query="$query" tracks=${res.tracks.length} '
-        'albums=${res.albums.length} artists=${res.artists.length} '
-        'playlists=${res.playlists.length}',
-  );
-  return (
-    tracks: res.tracks,
-    albums: res.albums,
-    artists: res.artists,
-    playlists: res.playlists,
-  );
-});
-
-final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((ref, trackId) async {
+final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((
+  ref,
+  trackId,
+) async {
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
     _logData('lyrics', source: 'demo', extra: 'trackId=$trackId (signed out)');
@@ -85,6 +94,10 @@ final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((ref, tra
   }
 
   final parsed = parseLrc(raw);
-  _logData('lyrics', source: 'live', extra: 'trackId=$trackId lines=${parsed.lines.length}');
+  _logData(
+    'lyrics',
+    source: 'live',
+    extra: 'trackId=$trackId lines=${parsed.lines.length}',
+  );
   return parsed;
 });

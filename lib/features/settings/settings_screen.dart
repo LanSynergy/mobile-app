@@ -38,7 +38,11 @@ class SettingsScreen extends ConsumerWidget {
         backgroundColor: AfColors.surfaceCanvas,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
+          icon: const Icon(
+            LucideIcons.arrowLeft,
+            color: AfColors.textPrimary,
+            size: 24,
+          ),
           onPressed: () => context.pop(),
         ),
         title: Text('Settings', style: AfTypography.display),
@@ -53,84 +57,92 @@ class SettingsScreen extends ConsumerWidget {
 
             // ── Server (server mode) / Music Folders (local mode) ──────
             if (!isLocal) ...[
-            SettingsGroup(
-              children: [
-                SettingsTile(
-                  icon: LucideIcons.server,
-                  iconColor: AfColors.textSecondary,
-                  title: auth?.server.name ?? 'Not connected',
-                  subtitle: auth?.server.baseUrl,
-                ),
-                if (auth != null)
+              SettingsGroup(
+                children: [
                   SettingsTile(
-                    icon: LucideIcons.user,
+                    icon: LucideIcons.server,
                     iconColor: AfColors.textSecondary,
-                    title: auth.userName,
-                    subtitle: auth.serverType.name[0].toUpperCase() +
-                        auth.serverType.name.substring(1),
+                    title: auth?.server.name ?? 'Not connected',
+                    subtitle: auth?.server.baseUrl,
                   ),
-                SettingsTile(
-                  icon: LucideIcons.arrowLeftRight,
-                  iconColor: AfColors.textSecondary,
-                  title: 'Switch server',
-                  subtitle: 'Connect to a different server',
-                  onTap: () => context.go('/onboarding/discover'),
-                ),
-                if (auth != null)
+                  if (auth != null)
+                    SettingsTile(
+                      icon: LucideIcons.user,
+                      iconColor: AfColors.textSecondary,
+                      title: auth.userName,
+                      subtitle:
+                          auth.serverType.name[0].toUpperCase() +
+                          auth.serverType.name.substring(1),
+                    ),
                   SettingsTile(
-                    icon: LucideIcons.logOut,
+                    icon: LucideIcons.arrowLeftRight,
                     iconColor: AfColors.textSecondary,
-                    title: 'Sign out',
-                    subtitle: 'Disconnect from ${auth.server.name}',
-                    onTap: () async {
-                      final confirmed = await showBlurDialog<bool>(
-                        context: context,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text('Sign out?', style: AfTypography.titleMedium),
-                            const SizedBox(height: AfSpacing.s12),
-                            Text(
-                              'You will be disconnected from ${auth.server.name}.',
-                              style: AfTypography.bodyMedium,
-                            ),
-                            const SizedBox(height: AfSpacing.s24),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text(
-                                    'Sign out',
-                                    style: TextStyle(color: AfColors.semanticError),
+                    title: 'Switch server',
+                    subtitle: 'Connect to a different server',
+                    onTap: () => context.go('/onboarding/discover'),
+                  ),
+                  if (auth != null)
+                    SettingsTile(
+                      icon: LucideIcons.logOut,
+                      iconColor: AfColors.textSecondary,
+                      title: 'Sign out',
+                      subtitle: 'Disconnect from ${auth.server.name}',
+                      onTap: () async {
+                        final confirmed = await showBlurDialog<bool>(
+                          context: context,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                'Sign out?',
+                                style: AfTypography.titleMedium,
+                              ),
+                              const SizedBox(height: AfSpacing.s12),
+                              Text(
+                                'You will be disconnected from ${auth.server.name}.',
+                                style: AfTypography.bodyMedium,
+                              ),
+                              const SizedBox(height: AfSpacing.s24),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text('Cancel'),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirmed == true && context.mounted) {
-                        await ref.read(authProvider.notifier).clear();
-                        await AppModeStore.clear();
-                        ref.read(appModeProvider.notifier).state = null;
-                        if (context.mounted) context.go('/');
-                      }
-                    },
-                  ),
-              ],
-            ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text(
+                                      'Sign out',
+                                      style: TextStyle(
+                                        color: AfColors.semanticError,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true && context.mounted) {
+                          await ref.read(authProvider.notifier).clear();
+                          await AppModeStore.clear();
+                          ref.read(appModeProvider.notifier).state = null;
+                          if (context.mounted) context.go('/');
+                        }
+                      },
+                    ),
+                ],
+              ),
             ],
 
             // ── Music Folders (local mode only) ────────────────────────
             if (isLocal) ...[
-            const SettingsLabel('Music folders'),
-            const MusicFoldersCard(),
+              const SettingsLabel('Music folders'),
+              const MusicFoldersCard(),
             ],
 
             const SizedBox(height: AfSpacing.s16),
@@ -142,7 +154,9 @@ class SettingsScreen extends ConsumerWidget {
                   icon: LucideIcons.arrowLeftRight,
                   iconColor: AfColors.textSecondary,
                   title: 'Switch mode',
-                  subtitle: isLocal ? 'Currently: Local files' : 'Currently: Server',
+                  subtitle: isLocal
+                      ? 'Currently: Local files'
+                      : 'Currently: Server',
                   onTap: () async {
                     final confirmed = await showBlurDialog<bool>(
                       context: context,
@@ -191,11 +205,7 @@ class SettingsScreen extends ConsumerWidget {
 
             // ── Appearance ─────────────────────────────────────────────
             const SettingsLabel('Appearance'),
-            const SettingsGroup(
-              children: [
-                ArtworkPulseSwitch(),
-              ],
-            ),
+            const SettingsGroup(children: [ArtworkPulseSwitch()]),
 
             const SizedBox(height: AfSpacing.s16),
 
@@ -311,42 +321,42 @@ class SettingsScreen extends ConsumerWidget {
 
             // ── Offline cache (server mode only) ───────────────────────
             if (!isLocal) ...[
-            const SettingsLabel('Offline cache'),
-            SettingsGroup(
-              children: [
-                Consumer(
-                  builder: (context, ref2, _) {
-                    final enabled = ref2.watch(offlineCacheEnabledProvider);
-                    return SettingsSwitchTile(
-                      icon: LucideIcons.hardDrive,
-                      iconColor: AfColors.textSecondary,
-                      title: 'Cache tracks offline',
-                      subtitle: enabled
-                          ? 'Save streamed tracks to device storage'
-                          : 'Always stream from server',
-                      value: enabled,
-                      onChanged: (v) {
-                        ref
-                            .read(offlineCacheEnabledProvider.notifier)
-                            .state = v;
-                        unawaited(
-                            PlayerSettingsStore.saveOfflineCacheEnabled(v));
-                      },
-                    );
-                  },
-                ),
-                _CacheUsageTile(),
-                SettingsTile(
-                  icon: LucideIcons.hardDrive,
-                  iconColor: AfColors.textSecondary,
-                  title: 'Max cache size',
-                  subtitle: OfflineCacheService.formatSize(
-                      ref.watch(offlineCacheMaxSizeProvider)),
-                  onTap: () =>
-                      showOfflineCacheSizeDialog(context, ref),
-                ),
-              ],
-            ),
+              const SettingsLabel('Offline cache'),
+              SettingsGroup(
+                children: [
+                  Consumer(
+                    builder: (context, ref2, _) {
+                      final enabled = ref2.watch(offlineCacheEnabledProvider);
+                      return SettingsSwitchTile(
+                        icon: LucideIcons.hardDrive,
+                        iconColor: AfColors.textSecondary,
+                        title: 'Cache tracks offline',
+                        subtitle: enabled
+                            ? 'Save streamed tracks to device storage'
+                            : 'Always stream from server',
+                        value: enabled,
+                        onChanged: (v) {
+                          ref.read(offlineCacheEnabledProvider.notifier).state =
+                              v;
+                          unawaited(
+                            PlayerSettingsStore.saveOfflineCacheEnabled(v),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                  _CacheUsageTile(),
+                  SettingsTile(
+                    icon: LucideIcons.hardDrive,
+                    iconColor: AfColors.textSecondary,
+                    title: 'Max cache size',
+                    subtitle: OfflineCacheService.formatSize(
+                      ref.watch(offlineCacheMaxSizeProvider),
+                    ),
+                    onTap: () => showOfflineCacheSizeDialog(context, ref),
+                  ),
+                ],
+              ),
             ],
 
             const SizedBox(height: AfSpacing.s16),
@@ -391,7 +401,10 @@ class SettingsScreen extends ConsumerWidget {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text('Clear app data?', style: AfTypography.titleMedium),
+                          Text(
+                            'Clear app data?',
+                            style: AfTypography.titleMedium,
+                          ),
                           const SizedBox(height: AfSpacing.s12),
                           Text(
                             'This will wipe all local data, settings, and downloaded metadata. You will need to set up the app again.',
@@ -409,7 +422,9 @@ class SettingsScreen extends ConsumerWidget {
                                 onPressed: () => Navigator.pop(context, true),
                                 child: const Text(
                                   'Clear data',
-                                  style: TextStyle(color: AfColors.semanticError),
+                                  style: TextStyle(
+                                    color: AfColors.semanticError,
+                                  ),
                                 ),
                               ),
                             ],
@@ -425,7 +440,9 @@ class SettingsScreen extends ConsumerWidget {
                       await secureStorage.deleteAll();
 
                       final dbFolder = await getApplicationDocumentsDirectory();
-                      final dbFile = File(p.join(dbFolder.path, 'aetherfin_drift.db'));
+                      final dbFile = File(
+                        p.join(dbFolder.path, 'aetherfin_drift.db'),
+                      );
                       if (dbFile.existsSync()) {
                         await dbFile.delete();
                       }
@@ -468,10 +485,14 @@ class SettingsScreen extends ConsumerWidget {
                   iconColor: AfColors.textSecondary,
                   title: 'Source code',
                   subtitle: 'github.com/Aetherfin/mobile-app',
-                  trailing: const Icon(Icons.open_in_new_rounded,
-                      color: AfColors.textTertiary, size: 16),
-                  onTap: () =>
-                      launchSettingsUrl('https://github.com/Aetherfin/mobile-app'),
+                  trailing: const Icon(
+                    Icons.open_in_new_rounded,
+                    color: AfColors.textTertiary,
+                    size: 16,
+                  ),
+                  onTap: () => launchSettingsUrl(
+                    'https://github.com/Aetherfin/mobile-app',
+                  ),
                 ),
                 SettingsTile(
                   icon: LucideIcons.fileText,
@@ -530,9 +551,9 @@ class _CacheUsageTileState extends ConsumerState<_CacheUsageTile> {
       await ref.read(offlineCacheServiceProvider).clearCache();
       await _load();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cache cleared')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Cache cleared')));
       }
     }
   }
@@ -546,7 +567,9 @@ class _CacheUsageTileState extends ConsumerState<_CacheUsageTile> {
       icon: LucideIcons.database,
       iconColor: AfColors.textSecondary,
       title: _loading ? 'Cache usage…' : 'Cache usage',
-      subtitle: _loading ? null : '$_cacheCount tracks · $usedLabel / $maxLabel',
+      subtitle: _loading
+          ? null
+          : '$_cacheCount tracks · $usedLabel / $maxLabel',
       trailing: _loading
           ? null
           : TextButton(

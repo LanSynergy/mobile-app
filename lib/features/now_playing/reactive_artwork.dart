@@ -25,68 +25,67 @@ class _ReactiveArtworkState extends ConsumerState<ReactiveArtwork>
   Timer? _silenceTimer;
 
   double _bassAverage = 0.0;
-  double _prevBass    = 0.0;
-  int    _cooldown    = 0;
+  double _prevBass = 0.0;
+  int _cooldown = 0;
 
   @override
   void initState() {
     super.initState();
-    _ticker = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 16),
-    )..addListener(() {
-        if (_scale.value > 1.001) {
-          _scale.value = 1.0 + (_scale.value - 1.0) * 0.85;
-        } else {
-          _scale.value = 1.0;
-          _ticker.stop();
-        }
-      });
+    _ticker =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 16),
+        )..addListener(() {
+          if (_scale.value > 1.001) {
+            _scale.value = 1.0 + (_scale.value - 1.0) * 0.85;
+          } else {
+            _scale.value = 1.0;
+            _ticker.stop();
+          }
+        });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final pulseEnabled = ref.read(artworkPulseEnabledProvider);
       if (!pulseEnabled) return;
 
-      _fftSub = ref.read(playerServiceProvider).spectrumStream.listen(
-        (frame) {
-          if (!mounted) return;
-          if (frame.bands.isEmpty) return;
-          _silenceTimer?.cancel();
+      _fftSub = ref.read(playerServiceProvider).spectrumStream.listen((frame) {
+        if (!mounted) return;
+        if (frame.bands.isEmpty) return;
+        _silenceTimer?.cancel();
 
-          final int hi = frame.bands.length < 7 ? frame.bands.length : 7;
-          double rawBass = 0.0;
-          for (var i = 1; i < hi; i++) {
-            final v = frame.bands[i].abs();
-            if (v > rawBass) rawBass = v;
-          }
+        final int hi = frame.bands.length < 7 ? frame.bands.length : 7;
+        double rawBass = 0.0;
+        for (var i = 1; i < hi; i++) {
+          final v = frame.bands[i].abs();
+          if (v > rawBass) rawBass = v;
+        }
 
-          final delta = rawBass - _prevBass;
-          _prevBass = rawBass;
+        final delta = rawBass - _prevBass;
+        _prevBass = rawBass;
 
-          _bassAverage += (rawBass - _bassAverage) *
-              (rawBass < _bassAverage ? 0.12 : 0.03);
+        _bassAverage +=
+            (rawBass - _bassAverage) * (rawBass < _bassAverage ? 0.12 : 0.03);
 
-          if (_cooldown > 0) {
-            _cooldown--;
-          } else if ((rawBass > _bassAverage * 1.12 || delta > 0.04) &&
-                     rawBass > 0.015) {
-            _scale.value = 1.06;
-            _cooldown    = 15;
-            if (!_ticker.isAnimating) _ticker.repeat();
-          }
+        if (_cooldown > 0) {
+          _cooldown--;
+        } else if ((rawBass > _bassAverage * 1.12 || delta > 0.04) &&
+            rawBass > 0.015) {
+          _scale.value = 1.06;
+          _cooldown = 15;
+          if (!_ticker.isAnimating) _ticker.repeat();
+        }
 
-          _silenceTimer?.cancel();
-          if (mounted) {
-            _silenceTimer = Timer(const Duration(milliseconds: 300), () {
-              if (mounted) {
-                _bassAverage = 0.0;
-                _prevBass = 0.0;
-              }
-            });
-          }
-        },
-      );
+        _silenceTimer?.cancel();
+        if (mounted) {
+          _silenceTimer = Timer(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              _bassAverage = 0.0;
+              _prevBass = 0.0;
+            }
+          });
+        }
+      });
     });
   }
 

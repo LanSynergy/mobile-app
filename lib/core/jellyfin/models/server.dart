@@ -4,7 +4,6 @@ export 'package:aetherfin/core/backend/music_backend.dart' show ServerType;
 
 /// A Jellyfin server discovered via mDNS or entered manually.
 class JellyfinServer {
-
   const JellyfinServer({
     required this.baseUrl,
     required this.name,
@@ -13,6 +12,7 @@ class JellyfinServer {
     this.isLocal = false,
     this.isReachable = true,
   });
+
   /// Resolved base URL, e.g. `https://media.example.com:8920` (no trailing slash).
   final String baseUrl;
 
@@ -38,15 +38,14 @@ class JellyfinServer {
     String? id,
     bool? isLocal,
     bool? isReachable,
-  }) =>
-      JellyfinServer(
-        baseUrl: baseUrl ?? this.baseUrl,
-        name: name ?? this.name,
-        version: version ?? this.version,
-        id: id ?? this.id,
-        isLocal: isLocal ?? this.isLocal,
-        isReachable: isReachable ?? this.isReachable,
-      );
+  }) => JellyfinServer(
+    baseUrl: baseUrl ?? this.baseUrl,
+    name: name ?? this.name,
+    version: version ?? this.version,
+    id: id ?? this.id,
+    isLocal: isLocal ?? this.isLocal,
+    isReachable: isReachable ?? this.isReachable,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -70,7 +69,6 @@ class JellyfinServer {
 /// encrypted secure storage — needed to compute the per-request
 /// `md5(password + salt)` token).
 class JellyfinAuth {
-
   const JellyfinAuth({
     required this.server,
     required this.userId,

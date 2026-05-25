@@ -7,7 +7,6 @@ import '../design_tokens/tokens.dart';
 /// Per spec §8.2: "Your library is quiet. Add music to your Jellyfin
 /// server to see it here." This widget is the canonical layout.
 class EmptyState extends StatelessWidget {
-
   const EmptyState({
     super.key,
     required this.icon,
@@ -54,10 +53,7 @@ class EmptyState extends StatelessWidget {
           ],
           if (actionLabel != null) ...[
             const SizedBox(height: AfSpacing.s24),
-            ElevatedButton(
-              onPressed: onAction,
-              child: Text(actionLabel!),
-            ),
+            ElevatedButton(onPressed: onAction, child: Text(actionLabel!)),
           ],
         ],
       ),

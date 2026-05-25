@@ -9,7 +9,7 @@
 String escapeSqlLike(String s) {
   final buf = StringBuffer();
   for (final r in s.runes) {
-    if (r == 0x5C /* \ */ || r == 0x25 /* % */ || r == 0x5F /* _ */) {
+    if (r == 0x5C /* \ */ || r == 0x25 /* % */ || r == 0x5F /* _ */ ) {
       buf.write(r'\');
     }
     buf.writeCharCode(r);

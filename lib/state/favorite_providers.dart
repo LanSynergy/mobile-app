@@ -12,8 +12,9 @@ void _logData(String feature, {required String source, String? extra}) {
 }
 
 /// Track-level favorite overrides written immediately on heart toggle.
-final trackFavoriteOverridesProvider =
-    StateProvider<Map<String, bool>>((ref) => const {});
+final trackFavoriteOverridesProvider = StateProvider<Map<String, bool>>(
+  (ref) => const {},
+);
 
 final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
   /// Serializer: any previous in-flight toggle must resolve before the
@@ -26,7 +27,9 @@ final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
 
   return (AfTrack track) async {
     while (pending != null) {
-      try { await pending!; } catch (_) {}
+      try {
+        await pending!;
+      } catch (_) {}
     }
 
     final backend = ref.read(musicBackendProvider);
@@ -39,21 +42,27 @@ final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
     if (current?.id == track.id) {
       ref.read(currentTrackProvider.notifier).state = updated;
     }
-    ref.read(trackFavoriteOverridesProvider.notifier).update(
-          (s) => {...s, track.id: next},
-        );
+    ref
+        .read(trackFavoriteOverridesProvider.notifier)
+        .update((s) => {...s, track.id: next});
 
     if (backend == null) {
-      _logData('favoriteToggle',
-          source: 'demo', extra: '(signed out) id=${track.id} isFavorite=$next');
+      _logData(
+        'favoriteToggle',
+        source: 'demo',
+        extra: '(signed out) id=${track.id} isFavorite=$next',
+      );
       return;
     }
 
     pending = (() async {
       try {
         await backend.setFavorite(track.id, next);
-        _logData('favoriteToggle',
-            source: 'live', extra: 'id=${track.id} isFavorite=$next');
+        _logData(
+          'favoriteToggle',
+          source: 'live',
+          extra: 'id=${track.id} isFavorite=$next',
+        );
         ref.invalidate(favoriteAlbumsProvider);
         ref.invalidate(favoriteTracksProvider);
         ref.invalidate(recentlyPlayedTracksProvider);
@@ -62,9 +71,9 @@ final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
         if (current?.id == track.id) {
           ref.read(currentTrackProvider.notifier).state = track;
         }
-        ref.read(trackFavoriteOverridesProvider.notifier).update(
-              (s) => {...s, track.id: wasFavorite},
-            );
+        ref
+            .read(trackFavoriteOverridesProvider.notifier)
+            .update((s) => {...s, track.id: wasFavorite});
         rethrow;
       }
     })();

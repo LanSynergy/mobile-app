@@ -112,7 +112,11 @@ class AppShell extends ConsumerWidget {
   }
 
   Widget _buildScaffold(
-      BuildContext context, WidgetRef ref, bool hasMini, double miniBottom) {
+    BuildContext context,
+    WidgetRef ref,
+    bool hasMini,
+    double miniBottom,
+  ) {
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
@@ -126,10 +130,7 @@ class AppShell extends ConsumerWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF271640),
-                    Color(0xFF040319),
-                  ],
+                  colors: [Color(0xFF271640), Color(0xFF040319)],
                   stops: [0.0, 1.0],
                 ),
               ),
@@ -155,47 +156,49 @@ class AppShell extends ConsumerWidget {
           // Floating mini-player overlay.
           // Hidden when keyboard is open to avoid overlapping input fields.
           Positioned(
-              key: const ValueKey('mini-player'),
-              left: 0,
-              right: 0,
-              bottom: miniBottom,
-              child: AnimatedSlide(
-                offset: (hasMini && MediaQuery.of(context).viewInsets.bottom == 0)
-                    ? Offset.zero
-                    : const Offset(0, 2),
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                child: AnimatedOpacity(
-                  opacity: (hasMini && MediaQuery.of(context).viewInsets.bottom == 0)
-                      ? 1.0
-                      : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: IgnorePointer(
-                    ignoring: !hasMini,
-                    child: MiniPlayer(
-                      onTap: () => context.push('/now-playing'),
-                      onPlayPause: () {
-                        // Toggle off mpv's own `playing` state — the only
-                        // signal that stays correct in the first ~250 ms
-                        // of a freshly-started track. The previous check
-                        // (`position == Duration.zero`) would silently
-                        // upgrade a tap-to-pause into a redundant play()
-                        // whenever the user caught the track at 0:00.
-                        final svc = ref.read(playerServiceProvider);
-                        if (svc.isPlaying) {
-                          svc.pause();
-                        } else {
-                          svc.play();
-                        }
-                      },
-                      onSkipNext: () => ref.read(playerServiceProvider).skipToNext(),
-                      onSkipPrevious: () =>
-                          ref.read(playerServiceProvider).skipToPrevious(),
-                    ),
+            key: const ValueKey('mini-player'),
+            left: 0,
+            right: 0,
+            bottom: miniBottom,
+            child: AnimatedSlide(
+              offset: (hasMini && MediaQuery.of(context).viewInsets.bottom == 0)
+                  ? Offset.zero
+                  : const Offset(0, 2),
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              child: AnimatedOpacity(
+                opacity:
+                    (hasMini && MediaQuery.of(context).viewInsets.bottom == 0)
+                    ? 1.0
+                    : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: IgnorePointer(
+                  ignoring: !hasMini,
+                  child: MiniPlayer(
+                    onTap: () => context.push('/now-playing'),
+                    onPlayPause: () {
+                      // Toggle off mpv's own `playing` state — the only
+                      // signal that stays correct in the first ~250 ms
+                      // of a freshly-started track. The previous check
+                      // (`position == Duration.zero`) would silently
+                      // upgrade a tap-to-pause into a redundant play()
+                      // whenever the user caught the track at 0:00.
+                      final svc = ref.read(playerServiceProvider);
+                      if (svc.isPlaying) {
+                        svc.pause();
+                      } else {
+                        svc.play();
+                      }
+                    },
+                    onSkipNext: () =>
+                        ref.read(playerServiceProvider).skipToNext(),
+                    onSkipPrevious: () =>
+                        ref.read(playerServiceProvider).skipToPrevious(),
                   ),
                 ),
               ),
             ),
+          ),
         ],
       ),
       bottomNavigationBar: AfBottomNav(

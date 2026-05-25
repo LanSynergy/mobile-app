@@ -15,9 +15,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(
-        database: AppDatabase.forTesting(NativeDatabase.memory()),
-      );
+      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
       // 5 albums (each 2 tracks) — easy to reason about pages of 2.
       final tracks = <Map<String, dynamic>>[];
       // Track titles sort alphabetically as: T01 .. T10.

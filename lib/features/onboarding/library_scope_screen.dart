@@ -10,8 +10,7 @@ class LibraryScopeScreen extends ConsumerStatefulWidget {
   const LibraryScopeScreen({super.key});
 
   @override
-  ConsumerState<LibraryScopeScreen> createState() =>
-      _LibraryScopeScreenState();
+  ConsumerState<LibraryScopeScreen> createState() => _LibraryScopeScreenState();
 }
 
 class _LibraryScopeScreenState extends ConsumerState<LibraryScopeScreen> {

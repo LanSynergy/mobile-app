@@ -39,8 +39,8 @@ const _localSections = [
 ];
 
 class LibraryScreen extends ConsumerStatefulWidget {
-
   const LibraryScreen({super.key, this.initialSection});
+
   /// When set, the screen opens directly on this tab instead of Albums.
   /// Used by deep-links from Home (genre tiles → Genres, artists → Artists).
   final LibrarySection? initialSection;
@@ -64,16 +64,26 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final sorted = List<AfAlbum>.from(list);
     switch (_sortOption) {
       case LibrarySortOption.nameAsc:
-        sorted.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        sorted.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
         break;
       case LibrarySortOption.nameDesc:
-        sorted.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+        sorted.sort(
+          (a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()),
+        );
         break;
       case LibrarySortOption.artistAsc:
-        sorted.sort((a, b) => a.artistName.toLowerCase().compareTo(b.artistName.toLowerCase()));
+        sorted.sort(
+          (a, b) =>
+              a.artistName.toLowerCase().compareTo(b.artistName.toLowerCase()),
+        );
         break;
       case LibrarySortOption.artistDesc:
-        sorted.sort((a, b) => b.artistName.toLowerCase().compareTo(a.artistName.toLowerCase()));
+        sorted.sort(
+          (a, b) =>
+              b.artistName.toLowerCase().compareTo(a.artistName.toLowerCase()),
+        );
         break;
       case LibrarySortOption.yearDesc:
         sorted.sort((a, b) => (b.year ?? 0).compareTo(a.year ?? 0));
@@ -90,10 +100,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final sorted = List<AfArtist>.from(list);
     switch (_sortOption) {
       case LibrarySortOption.nameAsc:
-        sorted.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        sorted.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
         break;
       case LibrarySortOption.nameDesc:
-        sorted.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+        sorted.sort(
+          (a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()),
+        );
         break;
       case LibrarySortOption.artistAsc:
       case LibrarySortOption.artistDesc:
@@ -112,16 +126,26 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final sorted = List<AfTrack>.from(list);
     switch (_sortOption) {
       case LibrarySortOption.nameAsc:
-        sorted.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        sorted.sort(
+          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+        );
         break;
       case LibrarySortOption.nameDesc:
-        sorted.sort((a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
+        sorted.sort(
+          (a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()),
+        );
         break;
       case LibrarySortOption.artistAsc:
-        sorted.sort((a, b) => a.artistName.toLowerCase().compareTo(b.artistName.toLowerCase()));
+        sorted.sort(
+          (a, b) =>
+              a.artistName.toLowerCase().compareTo(b.artistName.toLowerCase()),
+        );
         break;
       case LibrarySortOption.artistDesc:
-        sorted.sort((a, b) => b.artistName.toLowerCase().compareTo(a.artistName.toLowerCase()));
+        sorted.sort(
+          (a, b) =>
+              b.artistName.toLowerCase().compareTo(a.artistName.toLowerCase()),
+        );
         break;
       case LibrarySortOption.yearDesc:
       case LibrarySortOption.yearAsc:
@@ -160,10 +184,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: RefreshIndicator(
-          onRefresh: _onRefresh,
-          color: AfColors.indigo300,
-          backgroundColor: AfColors.surfaceBase,
-          child: Column(
+        onRefresh: _onRefresh,
+        color: AfColors.indigo300,
+        backgroundColor: AfColors.surfaceBase,
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
@@ -178,26 +202,39 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   Text('Library', style: AfTypography.titleLarge),
                   const Spacer(),
                   PopupMenuButton<LibrarySortOption>(
-                    icon: const Icon(LucideIcons.arrowDownWideNarrow, color: AfColors.textPrimary, size: 22),
+                    icon: const Icon(
+                      LucideIcons.arrowDownWideNarrow,
+                      color: AfColors.textPrimary,
+                      size: 22,
+                    ),
                     tooltip: 'Sort',
                     initialValue: _sortOption,
                     onSelected: (option) {
                       setState(() => _sortOption = option);
                     },
                     itemBuilder: (context) => LibrarySortOption.values
-                        .map((option) => PopupMenuItem<LibrarySortOption>(
-                              value: option,
-                              child: Row(
-                                children: [
-                                  if (_sortOption == option)
-                                    const Icon(Icons.check, size: 18, color: AfColors.indigo400)
-                                  else
-                                    const SizedBox(width: 18),
-                                  const SizedBox(width: 8),
-                                  Text(option.label, style: AfTypography.bodyMedium),
-                                ],
-                              ),
-                            ))
+                        .map(
+                          (option) => PopupMenuItem<LibrarySortOption>(
+                            value: option,
+                            child: Row(
+                              children: [
+                                if (_sortOption == option)
+                                  const Icon(
+                                    Icons.check,
+                                    size: 18,
+                                    color: AfColors.indigo400,
+                                  )
+                                else
+                                  const SizedBox(width: 18),
+                                const SizedBox(width: 8),
+                                Text(
+                                  option.label,
+                                  style: AfTypography.bodyMedium,
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
                         .toList(),
                   ),
                 ],
@@ -252,13 +289,9 @@ class _SegmentedPill extends ConsumerWidget {
             child: AnimatedContainer(
               duration: AfDurations.quick,
               curve: AfCurves.easeStandard,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AfSpacing.s16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
               decoration: BoxDecoration(
-                color: selected
-                    ? AfColors.indigo600
-                    : AfColors.surfaceBase,
+                color: selected ? AfColors.indigo600 : AfColors.surfaceBase,
                 borderRadius: AfRadii.borderPill,
               ),
               alignment: Alignment.center,
@@ -278,17 +311,16 @@ class _SegmentedPill extends ConsumerWidget {
   }
 
   String _label(LibrarySection s) => switch (s) {
-        LibrarySection.albums => 'Albums',
-        LibrarySection.artists => 'Artists',
-        LibrarySection.songs => 'Songs',
-        LibrarySection.playlists => 'Playlists',
-        LibrarySection.genres => 'Genres',
-        LibrarySection.liked => 'Liked',
-      };
+    LibrarySection.albums => 'Albums',
+    LibrarySection.artists => 'Artists',
+    LibrarySection.songs => 'Songs',
+    LibrarySection.playlists => 'Playlists',
+    LibrarySection.genres => 'Genres',
+    LibrarySection.liked => 'Liked',
+  };
 }
 
 class _SectionBody extends ConsumerWidget {
-
   const _SectionBody({
     required this.section,
     required this.sortOption,
@@ -310,19 +342,22 @@ class _SectionBody extends ConsumerWidget {
 
     switch (section) {
       case LibrarySection.albums:
-        final albumsProvider =
-            isLocal ? localAlbumsProvider : allAlbumsProvider;
+        final albumsProvider = isLocal
+            ? localAlbumsProvider
+            : allAlbumsProvider;
         final albums = ref.watch(albumsProvider);
         return albums.when(
           data: (list) {
             final sorted = sortAlbums != null ? sortAlbums!(list) : list;
             return RepaintBoundary(
               child: GridView.builder(
-                padding: padding.add(const EdgeInsets.only(
-                    bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+                padding: padding.add(
+                  const EdgeInsets.only(
+                    bottom: AfSpacing.bottomInsetWithMiniAndNav,
+                  ),
+                ),
                 itemCount: sorted.length,
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   mainAxisExtent: 220,
                   crossAxisSpacing: AfSpacing.s16,
@@ -337,14 +372,14 @@ class _SectionBody extends ConsumerWidget {
                     imageUrl: a.imageUrl,
                     size: double.infinity,
                     onTap: () => context.push('/album/${a.id}'),
-                    onLongPress: () =>
-                        showAlbumContextMenu(context, ref, a),
+                    onLongPress: () => showAlbumContextMenu(context, ref, a),
                   );
                 },
               ),
             );
           },
-          loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.albums),
+          loading: () =>
+              const LibrarySkeleton(mode: LibrarySkeletonMode.albums),
           error: (e, _) => AsyncErrorView(
             label: 'Couldn\u2019t load albums',
             error: e,
@@ -352,19 +387,22 @@ class _SectionBody extends ConsumerWidget {
           ),
         );
       case LibrarySection.artists:
-        final artistsProvider =
-            isLocal ? localArtistsProvider : allArtistsProvider;
+        final artistsProvider = isLocal
+            ? localArtistsProvider
+            : allArtistsProvider;
         final artists = ref.watch(artistsProvider);
         return artists.when(
           data: (list) {
             final sorted = sortArtists != null ? sortArtists!(list) : list;
             return RepaintBoundary(
               child: GridView.builder(
-                padding: padding.add(const EdgeInsets.only(
-                    bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+                padding: padding.add(
+                  const EdgeInsets.only(
+                    bottom: AfSpacing.bottomInsetWithMiniAndNav,
+                  ),
+                ),
                 itemCount: sorted.length,
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   mainAxisExtent: 180,
                   crossAxisSpacing: AfSpacing.s12,
@@ -384,7 +422,8 @@ class _SectionBody extends ConsumerWidget {
               ),
             );
           },
-          loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.artists),
+          loading: () =>
+              const LibrarySkeleton(mode: LibrarySkeletonMode.artists),
           error: (e, _) => AsyncErrorView(
             label: 'Couldn\u2019t load artists',
             error: e,
@@ -400,8 +439,11 @@ class _SectionBody extends ConsumerWidget {
               final sorted = sortTracks != null ? sortTracks!(list) : list;
               return RepaintBoundary(
                 child: ListView.builder(
-                  padding: padding.add(const EdgeInsets.only(
-                      bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+                  padding: padding.add(
+                    const EdgeInsets.only(
+                      bottom: AfSpacing.bottomInsetWithMiniAndNav,
+                    ),
+                  ),
                   itemCount: sorted.length,
                   itemExtent: 68.0,
                   itemBuilder: (context, i) {
@@ -423,7 +465,8 @@ class _SectionBody extends ConsumerWidget {
                 ),
               );
             },
-            loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.songs),
+            loading: () =>
+                const LibrarySkeleton(mode: LibrarySkeletonMode.songs),
             error: (e, _) => AsyncErrorView(
               label: 'Couldn\u2019t load songs',
               error: e,
@@ -448,8 +491,9 @@ class _SectionBody extends ConsumerWidget {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final sorted =
-            sortTracks != null ? sortTracks!(tracksState.items) : tracksState.items;
+        final sorted = sortTracks != null
+            ? sortTracks!(tracksState.items)
+            : tracksState.items;
 
         return RepaintBoundary(
           child: NotificationListener<ScrollNotification>(
@@ -459,15 +503,16 @@ class _SectionBody extends ConsumerWidget {
                       notification.metrics.maxScrollExtent - 200 &&
                   tracksState.hasMore &&
                   !tracksState.isLoadingMore) {
-                ref
-                    .read(tracksPaginationProvider.notifier)
-                    .loadNextPage();
+                ref.read(tracksPaginationProvider.notifier).loadNextPage();
               }
               return false;
             },
             child: ListView.separated(
-              padding: padding.add(const EdgeInsets.only(
-                  bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+              padding: padding.add(
+                const EdgeInsets.only(
+                  bottom: AfSpacing.bottomInsetWithMiniAndNav,
+                ),
+              ),
               itemCount: sorted.length + (tracksState.isLoadingMore ? 1 : 0),
               separatorBuilder: (context, index) =>
                   const SizedBox(height: AfSpacing.s4),
@@ -490,8 +535,7 @@ class _SectionBody extends ConsumerWidget {
                   onTap: () => ref
                       .read(playActionsProvider)
                       .playQueue(sorted, startIndex: i),
-                  onLongPress: () =>
-                      showTrackContextMenu(context, ref, t),
+                  onLongPress: () => showTrackContextMenu(context, ref, t),
                 );
               },
             ),
@@ -507,8 +551,11 @@ class _SectionBody extends ConsumerWidget {
         return playlists.when(
           data: (list) => RepaintBoundary(
             child: ListView.separated(
-              padding: padding.add(const EdgeInsets.only(
-                  bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+              padding: padding.add(
+                const EdgeInsets.only(
+                  bottom: AfSpacing.bottomInsetWithMiniAndNav,
+                ),
+              ),
               itemCount: list.length + 1, // +1 for smart playlists tile
               separatorBuilder: (context, index) =>
                   const SizedBox(height: AfSpacing.s8),
@@ -524,13 +571,21 @@ class _SectionBody extends ConsumerWidget {
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [AfColors.semanticWarning, AfColors.semanticError],
+                          colors: [
+                            AfColors.semanticWarning,
+                            AfColors.semanticError,
+                          ],
                         ),
                       ),
-                      child: const Icon(Icons.auto_awesome_rounded,
-                          color: Colors.white),
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Colors.white,
+                      ),
                     ),
-                    title: Text('Smart Playlists', style: AfTypography.titleSmall),
+                    title: Text(
+                      'Smart Playlists',
+                      style: AfTypography.titleSmall,
+                    ),
                     subtitle: Text(
                       '$smartCount playlists',
                       style: AfTypography.bodySmall.copyWith(
@@ -539,7 +594,8 @@ class _SectionBody extends ConsumerWidget {
                     ),
                     tileColor: AfColors.surfaceBase,
                     shape: const RoundedRectangleBorder(
-                        borderRadius: AfRadii.borderMd),
+                      borderRadius: AfRadii.borderMd,
+                    ),
                     onTap: () => context.push('/smart-playlists'),
                   );
                 }
@@ -556,8 +612,10 @@ class _SectionBody extends ConsumerWidget {
                         colors: [AfColors.indigo800, AfColors.indigo950],
                       ),
                     ),
-                    child: const Icon(Icons.playlist_play_rounded,
-                        color: AfColors.indigo300),
+                    child: const Icon(
+                      Icons.playlist_play_rounded,
+                      color: AfColors.indigo300,
+                    ),
                   ),
                   title: Text(p.name, style: AfTypography.titleSmall),
                   subtitle: Text(
@@ -568,13 +626,15 @@ class _SectionBody extends ConsumerWidget {
                   ),
                   tileColor: AfColors.surfaceBase,
                   shape: const RoundedRectangleBorder(
-                      borderRadius: AfRadii.borderMd),
+                    borderRadius: AfRadii.borderMd,
+                  ),
                   onTap: () => context.push('/playlist/${p.id}'),
                 );
               },
             ),
           ),
-          loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.playlists),
+          loading: () =>
+              const LibrarySkeleton(mode: LibrarySkeletonMode.playlists),
           error: (e, _) => AsyncErrorView(
             label: 'Couldn\u2019t load playlists',
             error: e,
@@ -582,17 +642,20 @@ class _SectionBody extends ConsumerWidget {
           ),
         );
       case LibrarySection.genres:
-        final genresProvider =
-            isLocal ? localGenresProvider : allGenresProvider;
+        final genresProvider = isLocal
+            ? localGenresProvider
+            : allGenresProvider;
         final genresAsync = ref.watch(genresProvider);
         return genresAsync.when(
           data: (genres) => RepaintBoundary(
             child: GridView.builder(
-              padding: padding.add(const EdgeInsets.only(
-                  bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+              padding: padding.add(
+                const EdgeInsets.only(
+                  bottom: AfSpacing.bottomInsetWithMiniAndNav,
+                ),
+              ),
               itemCount: genres.length,
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 mainAxisExtent: 96,
                 crossAxisSpacing: AfSpacing.s12,
@@ -600,20 +663,21 @@ class _SectionBody extends ConsumerWidget {
               ),
               itemBuilder: (context, i) {
                 final g = genres[i];
-                final tint = Color(int.parse(
-                    g.tint.replaceFirst('#', '0xFF')));
+                final tint = Color(int.parse(g.tint.replaceFirst('#', '0xFF')));
                 return GenreTile(
                   name: g.name,
                   tint: tint,
                   imageUrl: g.imageUrl,
                   width: double.infinity,
                   height: double.infinity,
-                  onTap: () => context.push('/genre/${Uri.encodeComponent(g.name)}'),
+                  onTap: () =>
+                      context.push('/genre/${Uri.encodeComponent(g.name)}'),
                 );
               },
             ),
           ),
-          loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.genres),
+          loading: () =>
+              const LibrarySkeleton(mode: LibrarySkeletonMode.genres),
           error: (e, _) => AsyncErrorView(
             label: 'Couldn\u2019t load genres',
             error: e,
@@ -643,8 +707,11 @@ class _SectionBody extends ConsumerWidget {
                 )
               : RepaintBoundary(
                   child: ListView.builder(
-                    padding: padding.add(const EdgeInsets.only(
-                        bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+                    padding: padding.add(
+                      const EdgeInsets.only(
+                        bottom: AfSpacing.bottomInsetWithMiniAndNav,
+                      ),
+                    ),
                     itemCount: list.length,
                     itemExtent: 68.0,
                     itemBuilder: (context, i) {

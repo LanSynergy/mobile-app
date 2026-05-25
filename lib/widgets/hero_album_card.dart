@@ -17,7 +17,6 @@ import 'press_scale.dart';
 ///    │  [▶ Play]                  │           │
 ///    └────────────────────────────┴───────────┘`
 class HeroAlbumCard extends StatelessWidget {
-
   const HeroAlbumCard({
     super.key,
     required this.album,

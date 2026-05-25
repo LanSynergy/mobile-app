@@ -12,15 +12,17 @@ void main() {
       expect(formatTrackDuration(Duration.zero), '00:00');
       expect(formatTrackDuration(const Duration(seconds: 7)), '00:07');
       expect(formatTrackDuration(const Duration(seconds: 75)), '01:15');
-      expect(formatTrackDuration(const Duration(minutes: 42, seconds: 9)),
-          '42:09');
+      expect(
+        formatTrackDuration(const Duration(minutes: 42, seconds: 9)),
+        '42:09',
+      );
     });
 
     test('hh:mm:ss once hours are present', () {
       expect(
-          formatTrackDuration(
-              const Duration(hours: 1, minutes: 2, seconds: 3)),
-          '01:02:03');
+        formatTrackDuration(const Duration(hours: 1, minutes: 2, seconds: 3)),
+        '01:02:03',
+      );
       expect(formatTrackDuration(const Duration(hours: 13)), '13:00:00');
     });
 
@@ -176,14 +178,15 @@ random non-LRC line
     });
 
     test('passes through plain strings without query params', () {
-      expect(redactSensitiveQueryParams('https://example/path'),
-          'https://example/path');
+      expect(
+        redactSensitiveQueryParams('https://example/path'),
+        'https://example/path',
+      );
     });
   });
 
   group('stableImageCacheKey', () {
-    test('produces the same key for two Subsonic URLs with different salts',
-        () {
+    test('produces the same key for two Subsonic URLs with different salts', () {
       // Real Subsonic getCoverArt URLs look like this — the only
       // difference between two requests for the same artwork is the
       // (u, t, s) triple. The cache key must collapse that to one slot.
@@ -207,8 +210,10 @@ random non-LRC line
           'https://nav.example/rest/getCoverArt.view?u=alice&t=h&s=s&id=al-42&size=120';
       const large =
           'https://nav.example/rest/getCoverArt.view?u=alice&t=h&s=s&id=al-42&size=480';
-      expect(stableImageCacheKey(small),
-          isNot(equals(stableImageCacheKey(large))));
+      expect(
+        stableImageCacheKey(small),
+        isNot(equals(stableImageCacheKey(large))),
+      );
     });
 
     test('strips Jellyfin api_key while keeping cover-art path + tag', () {
@@ -284,11 +289,14 @@ random non-LRC line
     });
 
     test('non-Dio errors pass through unchanged', () {
-      expect(displayError(const FormatException('bad number'),
-              prefix: 'Could not parse'),
-          'Could not parse: FormatException: bad number');
       expect(
-          displayError(StateError('nope')), 'Bad state: nope');
+        displayError(
+          const FormatException('bad number'),
+          prefix: 'Could not parse',
+        ),
+        'Could not parse: FormatException: bad number',
+      );
+      expect(displayError(StateError('nope')), 'Bad state: nope');
     });
   });
 }

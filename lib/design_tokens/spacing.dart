@@ -9,8 +9,8 @@ abstract final class AfSpacing {
   /// 4dp base unit. Multiply for everything else.
   static const double unit = 4;
 
-  static const double s4  = 4;
-  static const double s8  = 8;
+  static const double s4 = 4;
+  static const double s8 = 8;
   static const double s12 = 12;
   static const double s16 = 16;
   static const double s20 = 20;
@@ -59,9 +59,11 @@ abstract final class AfSpacing {
   static const double bottomInsetWithMiniAndNav = s136;
 
   /// Padding presets.
-  static const EdgeInsets pageHorizontal =
-      EdgeInsets.symmetric(horizontal: s16);
+  static const EdgeInsets pageHorizontal = EdgeInsets.symmetric(
+    horizontal: s16,
+  );
 
-  static const EdgeInsets pageHorizontalGenerous =
-      EdgeInsets.symmetric(horizontal: s24);
+  static const EdgeInsets pageHorizontalGenerous = EdgeInsets.symmetric(
+    horizontal: s24,
+  );
 }

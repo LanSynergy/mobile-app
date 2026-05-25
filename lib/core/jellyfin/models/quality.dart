@@ -5,7 +5,6 @@
 /// `/Items/{id}/MediaInfo`. We carry the raw codec name + bitrate +
 /// the transcode flag and present them in the UI without spin.
 class TrackQuality {
-
   const TrackQuality({
     required this.sourceCodec,
     this.bitrateKbps,
@@ -15,6 +14,7 @@ class TrackQuality {
     this.transcodeCodec,
     this.transcodeBitrateKbps,
   });
+
   /// 'flac', 'aac', 'opus', etc. Lowercased, source codec.
   final String sourceCodec;
 

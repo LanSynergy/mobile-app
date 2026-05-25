@@ -10,9 +10,7 @@ import 'queue_engine.dart';
 /// All state lives in [AfQueueEngine]; this class only adds
 /// stream emission on top of engine mutations.
 class AfQueueManager {
-
-  AfQueueManager({AfQueueEngine? engine})
-      : _engine = engine ?? AfQueueEngine();
+  AfQueueManager({AfQueueEngine? engine}) : _engine = engine ?? AfQueueEngine();
 
   final AfQueueEngine _engine;
   final _shuffleController = StreamController<bool>.broadcast();

@@ -13,14 +13,13 @@ import '../../utils/log.dart';
 /// because all callers (scanner, display) already use sync patterns for
 /// cover files.
 class CoverCacheManager {
-
   /// Create manager with cache at [cacheDir] and max size [maxBytes].
   CoverCacheManager({
     required String cacheDir,
     int maxBytes = _kDefaultMaxBytes,
-  })  : _cacheDir = cacheDir,
-        _maxBytes = maxBytes,
-        _metaPath = '$cacheDir${Platform.pathSeparator}_access_meta.json' {
+  }) : _cacheDir = cacheDir,
+       _maxBytes = maxBytes,
+       _metaPath = '$cacheDir${Platform.pathSeparator}_access_meta.json' {
     _loadMeta();
   }
   final String _cacheDir;

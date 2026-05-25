@@ -127,9 +127,11 @@ class SpectralExtractor {
       // URLs), and Jellyfin image URLs may carry `api_key` too. Without
       // this, a logcat capture from a server-side image failure would
       // emit the token verbatim.
-      afLog('spectral',
-          'palette extraction failed for ${redactSensitiveQueryParams(imageUrl)}',
-          error: e);
+      afLog(
+        'spectral',
+        'palette extraction failed for ${redactSensitiveQueryParams(imageUrl)}',
+        error: e,
+      );
       return Spectral.fallback;
     }
   }

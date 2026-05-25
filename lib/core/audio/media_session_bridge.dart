@@ -8,7 +8,6 @@ import '../../utils/log.dart';
 /// Immutable snapshot of playback state pushed to the Android native
 /// [MediaSessionService] via [NativeMediaSessionBridge].
 class MediaSessionState {
-
   const MediaSessionState({
     required this.playing,
     required this.buffering,
@@ -55,9 +54,8 @@ class MediaSessionState {
 /// The owner ([AfPlayerService]) creates the bridge, wires callbacks, and
 /// calls [pushState] on every playback state change.
 class NativeMediaSessionBridge {
-
   NativeMediaSessionBridge({MethodChannel? channel})
-      : _channel = channel ?? const MethodChannel('aetherfin.media_session') {
+    : _channel = channel ?? const MethodChannel('aetherfin.media_session') {
     _channel.setMethodCallHandler(_handleMethodCall);
   }
   final MethodChannel _channel;
@@ -91,7 +89,8 @@ class NativeMediaSessionBridge {
   /// state to at most one update per [_throttleDuration] (~100ms).
   void pushState(MediaSessionState state) {
     final now = DateTime.now();
-    final stateChanged = _lastPushedPlaying != state.playing ||
+    final stateChanged =
+        _lastPushedPlaying != state.playing ||
         _lastPushedBuffering != state.buffering;
 
     if (!stateChanged && now.difference(_lastPush) < _throttleDuration) {
@@ -143,8 +142,7 @@ class NativeMediaSessionBridge {
   /// Exposed for testing. Sends a simulated platform method call through
   /// the method call handler as if it came from the native side.
   @visibleForTesting
-  Future<dynamic> handleMethodCall(MethodCall call) =>
-      _handleMethodCall(call);
+  Future<dynamic> handleMethodCall(MethodCall call) => _handleMethodCall(call);
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     switch (call.method) {

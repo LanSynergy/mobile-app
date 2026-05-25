@@ -28,12 +28,11 @@ class TopBar extends ConsumerWidget {
             child: Text(
               track.albumName,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.6),
-                    decoration: TextDecoration.underline,
-                  ),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+                decoration: TextDecoration.underline,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -52,11 +51,9 @@ class TopBar extends ConsumerWidget {
               case 'details':
                 showTrackDetailsSheet(context, ref, track);
               case 'radio':
-                ref.read(playerServiceProvider).playQueue(
-                      [],
-                      startIndex: 0,
-                      resolveStreamUrl: (_) => '',
-                    );
+                ref
+                    .read(playerServiceProvider)
+                    .playQueue([], startIndex: 0, resolveStreamUrl: (_) => '');
             }
           },
           itemBuilder: (context) => [
@@ -100,4 +97,3 @@ class TopBar extends ConsumerWidget {
     );
   }
 }
-

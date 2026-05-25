@@ -14,21 +14,12 @@ class AlbumCardSkeleton extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: SkeletonBlock(
-            width: double.infinity,
-            height: double.infinity,
-          ),
+          child: SkeletonBlock(width: double.infinity, height: double.infinity),
         ),
         SizedBox(height: AfSpacing.s8),
-        FractionallySizedBox(
-          widthFactor: 0.7,
-          child: SkeletonBar(height: 14),
-        ),
+        FractionallySizedBox(widthFactor: 0.7, child: SkeletonBar(height: 14)),
         SizedBox(height: AfSpacing.s4),
-        FractionallySizedBox(
-          widthFactor: 0.5,
-          child: SkeletonBar(height: 12),
-        ),
+        FractionallySizedBox(widthFactor: 0.5, child: SkeletonBar(height: 12)),
       ],
     );
   }

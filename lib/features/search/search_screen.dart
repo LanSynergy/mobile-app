@@ -44,12 +44,12 @@ enum SearchFilter { all, tracks, albums, artists, playlists }
 
 extension on SearchFilter {
   String get label => switch (this) {
-        SearchFilter.all => 'All',
-        SearchFilter.tracks => 'Tracks',
-        SearchFilter.albums => 'Albums',
-        SearchFilter.artists => 'Artists',
-        SearchFilter.playlists => 'Playlists',
-      };
+    SearchFilter.all => 'All',
+    SearchFilter.tracks => 'Tracks',
+    SearchFilter.albums => 'Albums',
+    SearchFilter.artists => 'Artists',
+    SearchFilter.playlists => 'Playlists',
+  };
 }
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -105,9 +105,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       // Persist the committed query as a recent search. We push on
       // debounce-commit (not every keystroke) so the history only
       // captures queries the user actually waited on a result for.
-      unawaited(
-        ref.read(searchHistoryProvider.notifier).push(normalized),
-      );
+      unawaited(ref.read(searchHistoryProvider.notifier).push(normalized));
     });
   }
 
@@ -118,91 +116,90 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void _runRecent(String query) {
     _debounceTimer?.cancel();
     _controller.text = query;
-    _controller.selection =
-        TextSelection.collapsed(offset: query.length);
+    _controller.selection = TextSelection.collapsed(offset: query.length);
     _queryNotifier.value = query;
-    unawaited(
-      ref.read(searchHistoryProvider.notifier).push(query),
-    );
+    unawaited(ref.read(searchHistoryProvider.notifier).push(query));
   }
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AfSpacing.s16,
-                AfSpacing.s8,
-                AfSpacing.s16,
-                AfSpacing.s16,
-              ),
-              child: Row(
-                children: [
-                  Text('Search', style: AfTypography.titleLarge),
-                  const Spacer(),
-                  const SizedBox(width: 48), // match icon width for alignment
-                ],
-              ),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AfSpacing.s16,
+              AfSpacing.s8,
+              AfSpacing.s16,
+              AfSpacing.s16,
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-              child: TextField(
-                controller: _controller,
-                autofocus: false,
-                textInputAction: TextInputAction.search,
-                decoration: const InputDecoration(
-                  hintText: 'Artists, albums, tracks…',
-                  prefixIcon: Icon(LucideIcons.search, color: AfColors.textTertiary, size: 22),
+            child: Row(
+              children: [
+                Text('Search', style: AfTypography.titleLarge),
+                const Spacer(),
+                const SizedBox(width: 48), // match icon width for alignment
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+            child: TextField(
+              controller: _controller,
+              autofocus: false,
+              textInputAction: TextInputAction.search,
+              decoration: const InputDecoration(
+                hintText: 'Artists, albums, tracks…',
+                prefixIcon: Icon(
+                  LucideIcons.search,
+                  color: AfColors.textTertiary,
+                  size: 22,
                 ),
-                onChanged: _onChanged,
-                onSubmitted: (_) {
-                  // Commit immediately on keyboard search action.
-                  _debounceTimer?.cancel();
-                  final normalized = _controller.text.trim().toLowerCase();
-                  if (normalized.length >= _kMinQueryLength) {
-                    _queryNotifier.value = normalized;
-                    unawaited(
-                      ref
-                          .read(searchHistoryProvider.notifier)
-                          .push(normalized),
-                    );
-                  }
-                },
               ),
-            ),
-            const SizedBox(height: AfSpacing.s12),
-            // Filter chips — only visible once a query is committed.
-            ValueListenableBuilder<String>(
-              valueListenable: _queryNotifier,
-              builder: (context, query, _) {
-                if (query.isEmpty) return const SizedBox.shrink();
-                return ValueListenableBuilder<SearchFilter>(
-                  valueListenable: _filterNotifier,
-                  builder: (context, filter, _) => _SearchFilterChips(
-                    selected: filter,
-                    onChanged: (next) => _filterNotifier.value = next,
-                  ),
-                );
+              onChanged: _onChanged,
+              onSubmitted: (_) {
+                // Commit immediately on keyboard search action.
+                _debounceTimer?.cancel();
+                final normalized = _controller.text.trim().toLowerCase();
+                if (normalized.length >= _kMinQueryLength) {
+                  _queryNotifier.value = normalized;
+                  unawaited(
+                    ref.read(searchHistoryProvider.notifier).push(normalized),
+                  );
+                }
               },
             ),
-            Expanded(
-              // ValueListenableBuilder: only this subtree rebuilds on query change.
-              child: ValueListenableBuilder<String>(
-                valueListenable: _queryNotifier,
-                builder: (context, query, _) => query.isEmpty
-                    ? _SearchIdleState(onRecent: _runRecent)
-                    : ValueListenableBuilder<SearchFilter>(
-                        valueListenable: _filterNotifier,
-                        builder: (context, filter, _) =>
-                            _LiveSearchResults(query: query, filter: filter),
-                      ),
-              ),
+          ),
+          const SizedBox(height: AfSpacing.s12),
+          // Filter chips — only visible once a query is committed.
+          ValueListenableBuilder<String>(
+            valueListenable: _queryNotifier,
+            builder: (context, query, _) {
+              if (query.isEmpty) return const SizedBox.shrink();
+              return ValueListenableBuilder<SearchFilter>(
+                valueListenable: _filterNotifier,
+                builder: (context, filter, _) => _SearchFilterChips(
+                  selected: filter,
+                  onChanged: (next) => _filterNotifier.value = next,
+                ),
+              );
+            },
+          ),
+          Expanded(
+            // ValueListenableBuilder: only this subtree rebuilds on query change.
+            child: ValueListenableBuilder<String>(
+              valueListenable: _queryNotifier,
+              builder: (context, query, _) => query.isEmpty
+                  ? _SearchIdleState(onRecent: _runRecent)
+                  : ValueListenableBuilder<SearchFilter>(
+                      valueListenable: _filterNotifier,
+                      builder: (context, filter, _) =>
+                          _LiveSearchResults(query: query, filter: filter),
+                    ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -210,10 +207,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 /// Horizontal filter chip row. Renders once a query is committed and
 /// scopes the results to a single category (lifting the per-type cap).
 class _SearchFilterChips extends StatelessWidget {
-  const _SearchFilterChips({
-    required this.selected,
-    required this.onChanged,
-  });
+  const _SearchFilterChips({required this.selected, required this.onChanged});
   final SearchFilter selected;
   final ValueChanged<SearchFilter> onChanged;
 
@@ -247,7 +241,9 @@ class _SearchFilterChips extends StatelessWidget {
             ),
             showCheckmark: false,
             padding: const EdgeInsets.symmetric(
-                horizontal: AfSpacing.s8, vertical: 0),
+              horizontal: AfSpacing.s8,
+              vertical: 0,
+            ),
           );
         },
       ),
@@ -280,32 +276,31 @@ class _LiveSearchResults extends ConsumerWidget {
           // params Dio includes in `DioException.toString()` — those
           // would otherwise land on screen verbatim on a search failure.
           displayError(e, prefix: 'Search failed'),
-          style: AfTypography.bodySmall.copyWith(
-            color: AfColors.semanticError,
-          ),
+          style: AfTypography.bodySmall.copyWith(color: AfColors.semanticError),
         ),
       ),
       data: (res) {
         // Scope the buckets to the active filter so the list view
         // only renders the requested category. SearchFilter.all keeps
         // the original top-N preview layout.
-        final tracks = filter == SearchFilter.all ||
-                filter == SearchFilter.tracks
+        final tracks =
+            filter == SearchFilter.all || filter == SearchFilter.tracks
             ? res.tracks
             : const <AfTrack>[];
-        final albums = filter == SearchFilter.all ||
-                filter == SearchFilter.albums
+        final albums =
+            filter == SearchFilter.all || filter == SearchFilter.albums
             ? res.albums
             : const <AfAlbum>[];
-        final artists = filter == SearchFilter.all ||
-                filter == SearchFilter.artists
+        final artists =
+            filter == SearchFilter.all || filter == SearchFilter.artists
             ? res.artists
             : const <AfArtist>[];
-        final playlists = filter == SearchFilter.all ||
-                filter == SearchFilter.playlists
+        final playlists =
+            filter == SearchFilter.all || filter == SearchFilter.playlists
             ? res.playlists
             : const <AfPlaylist>[];
-        final empty = tracks.isEmpty &&
+        final empty =
+            tracks.isEmpty &&
             albums.isEmpty &&
             artists.isEmpty &&
             playlists.isEmpty;
@@ -368,10 +363,7 @@ class _SearchIdleState extends ConsumerWidget {
               child: Row(
                 children: [
                   const Expanded(
-                    child: SectionHeader(
-                      title: 'Recent',
-                      uppercase: true,
-                    ),
+                    child: SectionHeader(title: 'Recent', uppercase: true),
                   ),
                   TextButton(
                     onPressed: () =>
@@ -409,9 +401,8 @@ class _SearchIdleState extends ConsumerWidget {
                       deleteIcon: const Icon(Icons.close_rounded, size: 16),
                       deleteIconColor: AfColors.textTertiary,
                       onPressed: () => onRecent(q),
-                      onDeleted: () => ref
-                          .read(searchHistoryProvider.notifier)
-                          .remove(q),
+                      onDeleted: () =>
+                          ref.read(searchHistoryProvider.notifier).remove(q),
                     ),
                 ],
               ),
@@ -485,7 +476,6 @@ class _SearchIdleState extends ConsumerWidget {
 }
 
 class _SearchResults extends ConsumerWidget {
-
   const _SearchResults({
     required this.tracks,
     required this.albums,
@@ -497,6 +487,7 @@ class _SearchResults extends ConsumerWidget {
   final List<AfAlbum> albums;
   final List<AfArtist> artists;
   final List<AfPlaylist> playlists;
+
   /// When true, render every result of each type (no preview cap).
   /// Set when a single-type filter chip is active.
   final bool unbounded;
@@ -514,9 +505,7 @@ class _SearchResults extends ConsumerWidget {
         if (tracks.isNotEmpty) ...[
           const SectionHeader(title: 'Tracks', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
-          for (var i = 0;
-              i < tracks.length && (unbounded || i < 20);
-              i++)
+          for (var i = 0; i < tracks.length && (unbounded || i < 20); i++)
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: TrackRow(
@@ -592,8 +581,10 @@ class _SearchResults extends ConsumerWidget {
                     colors: [AfColors.indigo700, AfColors.indigo900],
                   ),
                 ),
-                child: const Icon(Icons.playlist_play_rounded,
-                    color: AfColors.indigo300),
+                child: const Icon(
+                  Icons.playlist_play_rounded,
+                  color: AfColors.indigo300,
+                ),
               ),
               title: Text(p.name, style: AfTypography.bodyMedium),
               subtitle: Text(

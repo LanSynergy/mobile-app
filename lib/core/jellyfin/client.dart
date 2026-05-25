@@ -16,61 +16,65 @@ import 'url_builder.dart';
 /// Hand-rolled per design spec §11.1 — community Dart SDKs are stale and
 /// the surface we need is small.
 class JellyfinClient implements MusicBackend {
-
   JellyfinClient({
     required this.server,
     required this.deviceId,
     required this.clientVersion,
     this.accessToken,
     this.userId,
-  })  : _cacheStore = MemCacheStore(maxSize: 20 * 1024 * 1024, maxEntrySize: 1 * 1024 * 1024),
-        _urlBuilder = JellyfinUrlBuilder(
-          baseUrl: server.baseUrl,
-          deviceId: deviceId,
-          clientVersion: clientVersion,
-          accessToken: accessToken,
-          userId: userId,
-        ),
-        _dio = Dio(BaseOptions(
-          // Trailing slash is REQUIRED so Dio's Uri.resolve preserves the
-          // server's base path (e.g. https://example.com/jellyfin/). All
-          // paths below are written WITHOUT a leading slash for the same
-          // reason.
-          baseUrl: server.baseUrl.endsWith('/')
-              ? server.baseUrl
-              : '${server.baseUrl}/',
-          connectTimeout: const Duration(seconds: 5),
-          sendTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 15),
-          // Header shape mirrors UnicornsOnLSD/finamp's getAuthHeader()
-          // (lib/services/jellyfin_api.dart line 408) which is the most
-          // battle-tested Flutter client. Key differences from our old
-          // implementation:
-          //   • Token field is OMITTED entirely when not authenticated
-          //     (vs sending `Token=""`). Some Jellyfin plugins read the
-          //     header into a struct that treats empty-string and missing
-          //     differently, and the official Jellyfin docs example also
-          //     omits the field during initial auth.
-          //   • Only `Authorization` is sent — Finamp does not send
-          //     `X-Emby-Authorization` and Jellyfin's parser consumes only
-          //     one of them. Sending both is redundant and a known cause
-          //     of confused middleware in plugin-heavy installs.
-          //   • `Content-Type: application/json` is set explicitly here
-          //     so it doesn't depend on Dio's auto-content-type logic
-          //     (which only fires when there's a body — meaning GETs go
-          //     out without Content-Type, and some plugins choke on that).
-          headers: {
-            'Authorization': JellyfinUrlBuilder.buildAuthHeader(
-              deviceId: deviceId,
-              token: accessToken,
-              userId: userId,
-              clientVersion: clientVersion,
-            ),
-            'Content-Type': 'application/json',
-            'User-Agent': JellyfinUrlBuilder.userAgentFor(clientVersion),
-            'Accept': 'application/json',
-          },
-        )) {
+  }) : _cacheStore = MemCacheStore(
+         maxSize: 20 * 1024 * 1024,
+         maxEntrySize: 1 * 1024 * 1024,
+       ),
+       _urlBuilder = JellyfinUrlBuilder(
+         baseUrl: server.baseUrl,
+         deviceId: deviceId,
+         clientVersion: clientVersion,
+         accessToken: accessToken,
+         userId: userId,
+       ),
+       _dio = Dio(
+         BaseOptions(
+           // Trailing slash is REQUIRED so Dio's Uri.resolve preserves the
+           // server's base path (e.g. https://example.com/jellyfin/). All
+           // paths below are written WITHOUT a leading slash for the same
+           // reason.
+           baseUrl: server.baseUrl.endsWith('/')
+               ? server.baseUrl
+               : '${server.baseUrl}/',
+           connectTimeout: const Duration(seconds: 5),
+           sendTimeout: const Duration(seconds: 10),
+           receiveTimeout: const Duration(seconds: 15),
+           // Header shape mirrors UnicornsOnLSD/finamp's getAuthHeader()
+           // (lib/services/jellyfin_api.dart line 408) which is the most
+           // battle-tested Flutter client. Key differences from our old
+           // implementation:
+           //   • Token field is OMITTED entirely when not authenticated
+           //     (vs sending `Token=""`). Some Jellyfin plugins read the
+           //     header into a struct that treats empty-string and missing
+           //     differently, and the official Jellyfin docs example also
+           //     omits the field during initial auth.
+           //   • Only `Authorization` is sent — Finamp does not send
+           //     `X-Emby-Authorization` and Jellyfin's parser consumes only
+           //     one of them. Sending both is redundant and a known cause
+           //     of confused middleware in plugin-heavy installs.
+           //   • `Content-Type: application/json` is set explicitly here
+           //     so it doesn't depend on Dio's auto-content-type logic
+           //     (which only fires when there's a body — meaning GETs go
+           //     out without Content-Type, and some plugins choke on that).
+           headers: {
+             'Authorization': JellyfinUrlBuilder.buildAuthHeader(
+               deviceId: deviceId,
+               token: accessToken,
+               userId: userId,
+               clientVersion: clientVersion,
+             ),
+             'Content-Type': 'application/json',
+             'User-Agent': JellyfinUrlBuilder.userAgentFor(clientVersion),
+             'Accept': 'application/json',
+           },
+         ),
+       ) {
     _parser = JellyfinResponseParser(_urlBuilder);
     _dio.interceptors.add(
       DioCacheInterceptor(
@@ -90,18 +94,22 @@ class JellyfinClient implements MusicBackend {
         InterceptorsWrapper(
           onRequest: (options, handler) {
             final redactedHeaders = Map<String, dynamic>.from(options.headers)
-              ..updateAll((k, v) =>
-                  k.toLowerCase().contains('auth') ? '<redacted>' : v);
-            afLog('http',
-                '→ ${options.method} ${JellyfinUrlBuilder.redactUrl(options.uri)}');
+              ..updateAll(
+                (k, v) => k.toLowerCase().contains('auth') ? '<redacted>' : v,
+              );
+            afLog(
+              'http',
+              '→ ${options.method} ${JellyfinUrlBuilder.redactUrl(options.uri)}',
+            );
             afLog('http', 'headers: $redactedHeaders');
             // For auth-sensitive endpoints, redact the body too.
-            final isAuth =
-                options.uri.path.toLowerCase().contains('authenticate');
+            final isAuth = options.uri.path.toLowerCase().contains(
+              'authenticate',
+            );
             afLog(
               'http',
               'body: '
-              '${isAuth ? '<redacted ${options.data is Map ? (options.data as Map).keys.toList() : options.data.runtimeType}>' : options.data}',
+                  '${isAuth ? '<redacted ${options.data is Map ? (options.data as Map).keys.toList() : options.data.runtimeType}>' : options.data}',
             );
             handler.next(options);
           },
@@ -109,7 +117,7 @@ class JellyfinClient implements MusicBackend {
             afLog(
               'http',
               '← ${response.statusCode} '
-              '${response.requestOptions.method} ${JellyfinUrlBuilder.redactUrl(response.requestOptions.uri)}',
+                  '${response.requestOptions.method} ${JellyfinUrlBuilder.redactUrl(response.requestOptions.uri)}',
             );
             handler.next(response);
           },
@@ -117,7 +125,7 @@ class JellyfinClient implements MusicBackend {
             afLog(
               'http',
               '✕ ${err.response?.statusCode ?? '?'} '
-              '${err.requestOptions.method} ${JellyfinUrlBuilder.redactUrl(err.requestOptions.uri)}',
+                  '${err.requestOptions.method} ${JellyfinUrlBuilder.redactUrl(err.requestOptions.uri)}',
             );
             handler.next(err);
           },
@@ -190,7 +198,9 @@ class JellyfinClient implements MusicBackend {
     }
     final rawUser = data['User'];
     if (rawUser is! Map) {
-      throw StateError('Authentication failed: invalid or missing User object.');
+      throw StateError(
+        'Authentication failed: invalid or missing User object.',
+      );
     }
     final user = rawUser.cast<String, dynamic>();
     final userId = user['Id'];
@@ -199,7 +209,9 @@ class JellyfinClient implements MusicBackend {
     }
     final accessToken = data['AccessToken'];
     if (accessToken is! String) {
-      throw StateError('Authentication failed: missing or invalid AccessToken.');
+      throw StateError(
+        'Authentication failed: missing or invalid AccessToken.',
+      );
     }
     return JellyfinAuth(
       server: server,
@@ -226,22 +238,24 @@ class JellyfinClient implements MusicBackend {
     // Build a temporary client carrying the API key in the Authorization
     // header. We can't just swap headers on `_dio` because that would
     // mutate state shared with other callers.
-    final probe = Dio(BaseOptions(
-      baseUrl: _dio.options.baseUrl,
-      connectTimeout: const Duration(seconds: 5),
-      sendTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 15),
-      headers: {
-        'Authorization': JellyfinUrlBuilder.buildAuthHeader(
-          deviceId: deviceId,
-          token: apiKey,
-          clientVersion: clientVersion,
-        ),
-        'Content-Type': 'application/json',
-        'User-Agent': JellyfinUrlBuilder.userAgentFor(clientVersion),
-        'Accept': 'application/json',
-      },
-    ));
+    final probe = Dio(
+      BaseOptions(
+        baseUrl: _dio.options.baseUrl,
+        connectTimeout: const Duration(seconds: 5),
+        sendTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
+        headers: {
+          'Authorization': JellyfinUrlBuilder.buildAuthHeader(
+            deviceId: deviceId,
+            token: apiKey,
+            clientVersion: clientVersion,
+          ),
+          'Content-Type': 'application/json',
+          'User-Agent': JellyfinUrlBuilder.userAgentFor(clientVersion),
+          'Accept': 'application/json',
+        },
+      ),
+    );
     try {
       final res = await probe.get<List<dynamic>>('Users');
       final users = (res.data ?? const []).whereType<Map<String, dynamic>>();
@@ -274,12 +288,14 @@ class JellyfinClient implements MusicBackend {
     final items = (res.data?['Items'] as List? ?? const [])
         .whereType<Map<String, dynamic>>();
     return items
-        .map((m) => LibraryView(
-              id: m['Id'] as String,
-              name: m['Name'] as String,
-              collectionType: (m['CollectionType'] as String? ?? 'unknown')
-                  .toLowerCase(),
-            ))
+        .map(
+          (m) => LibraryView(
+            id: m['Id'] as String,
+            name: m['Name'] as String,
+            collectionType: (m['CollectionType'] as String? ?? 'unknown')
+                .toLowerCase(),
+          ),
+        )
         .toList(growable: false);
   }
 
@@ -335,10 +351,7 @@ class JellyfinClient implements MusicBackend {
     _urlBuilder.assertUser();
     await _dio.post(
       'Sessions/Playing/Stopped',
-      data: {
-        'ItemId': trackId,
-        'PositionTicks': position.inMicroseconds * 10,
-      },
+      data: {'ItemId': trackId, 'PositionTicks': position.inMicroseconds * 10},
     );
   }
 
@@ -368,7 +381,10 @@ class JellyfinClient implements MusicBackend {
         'Fields': JellyfinResponseParser.trackFields,
       },
     );
-    return _parser.parseItemList(res.data).map(_parser.parseTrack).toList(growable: false);
+    return _parser
+        .parseItemList(res.data)
+        .map(_parser.parseTrack)
+        .toList(growable: false);
   }
 
   @override
@@ -383,7 +399,10 @@ class JellyfinClient implements MusicBackend {
         'EnableImages': true,
       },
     );
-    return _parser.parseRawItemList(res.data).map(_parser.parseAlbum).toList(growable: false);
+    return _parser
+        .parseRawItemList(res.data)
+        .map(_parser.parseAlbum)
+        .toList(growable: false);
   }
 
   @override
@@ -402,7 +421,10 @@ class JellyfinClient implements MusicBackend {
         'EnableImages': true,
       },
     );
-    return _parser.parseItemList(res.data).map(_parser.parseTrack).toList(growable: false);
+    return _parser
+        .parseItemList(res.data)
+        .map(_parser.parseTrack)
+        .toList(growable: false);
   }
 
   @override
@@ -421,7 +443,10 @@ class JellyfinClient implements MusicBackend {
         'EnableImageTypes': 'Primary',
       },
     );
-    return _parser.parseItemList(res.data).map(_parser.parseArtist).toList(growable: false);
+    return _parser
+        .parseItemList(res.data)
+        .map(_parser.parseArtist)
+        .toList(growable: false);
   }
 
   @override
@@ -439,7 +464,10 @@ class JellyfinClient implements MusicBackend {
         'EnableImages': true,
       },
     );
-    return _parser.parseItemList(res.data).map(_parser.parsePlaylist).toList(growable: false);
+    return _parser
+        .parseItemList(res.data)
+        .map(_parser.parsePlaylist)
+        .toList(growable: false);
   }
 
   @override
@@ -458,8 +486,14 @@ class JellyfinClient implements MusicBackend {
     );
     final items = _parser.parseItemList(res.data);
     const palette = <String>[
-      '#5644C9', '#A89DEC', '#3FD18C', '#FF7A59',
-      '#F8C42D', '#FF6FB5', '#3DB6FF', '#FF4D6D',
+      '#5644C9',
+      '#A89DEC',
+      '#3FD18C',
+      '#FF7A59',
+      '#F8C42D',
+      '#FF6FB5',
+      '#3DB6FF',
+      '#FF4D6D',
     ];
     final seen = <String>{};
     final result = <AfGenre>[];
@@ -489,11 +523,13 @@ class JellyfinClient implements MusicBackend {
         if (token.isEmpty) continue;
         final key = token.toLowerCase();
         if (seen.add(key)) {
-          result.add(AfGenre(
-            token,
-            palette[result.length % palette.length],
-            imageUrl: imageUrl,
-          ));
+          result.add(
+            AfGenre(
+              token,
+              palette[result.length % palette.length],
+              imageUrl: imageUrl,
+            ),
+          );
         }
       }
     }
@@ -516,7 +552,10 @@ class JellyfinClient implements MusicBackend {
         'EnableImages': true,
       },
     );
-    return _parser.parseItemList(res.data).map(_parser.parseAlbum).toList(growable: false);
+    return _parser
+        .parseItemList(res.data)
+        .map(_parser.parseAlbum)
+        .toList(growable: false);
   }
 
   @override
@@ -535,14 +574,14 @@ class JellyfinClient implements MusicBackend {
         'EnableImages': true,
       },
     );
-    return _parser.parseItemList(res.data).map(_parser.parseTrack).toList(growable: false);
+    return _parser
+        .parseItemList(res.data)
+        .map(_parser.parseTrack)
+        .toList(growable: false);
   }
 
   @override
-  Future<List<AfAlbum>> allAlbums({
-    int limit = 500,
-    int startIndex = 0,
-  }) async {
+  Future<List<AfAlbum>> allAlbums({int limit = 500, int startIndex = 0}) async {
     _urlBuilder.assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
       'Users/$userId/Items',
@@ -557,7 +596,10 @@ class JellyfinClient implements MusicBackend {
         'EnableImages': true,
       },
     );
-    return _parser.parseItemList(res.data).map(_parser.parseAlbum).toList(growable: false);
+    return _parser
+        .parseItemList(res.data)
+        .map(_parser.parseAlbum)
+        .toList(growable: false);
   }
 
   @override
@@ -579,12 +621,16 @@ class JellyfinClient implements MusicBackend {
         'EnableImages': true,
       },
     );
-    return _parser.parseItemList(res.data).map(_parser.parseTrack).toList(growable: false);
+    return _parser
+        .parseItemList(res.data)
+        .map(_parser.parseTrack)
+        .toList(growable: false);
   }
 
   @override
   Future<({AfPlaylist playlist, List<AfTrack> tracks})?> playlist(
-      String id) async {
+    String id,
+  ) async {
     _urlBuilder.assertUser();
     final responses = await Future.wait<Response<Map<String, dynamic>>>([
       _dio.get<Map<String, dynamic>>(
@@ -605,7 +651,8 @@ class JellyfinClient implements MusicBackend {
     final header = responses[0].data;
     if (header == null || header.isEmpty) return null;
     final pl = _parser.parsePlaylist(header);
-    final tracks = _parser.parseItemList(responses[1].data)
+    final tracks = _parser
+        .parseItemList(responses[1].data)
         .map(_parser.parseTrack)
         .toList(growable: false);
     return (playlist: pl, tracks: tracks);
@@ -640,25 +687,26 @@ class JellyfinClient implements MusicBackend {
 
   @override
   Future<void> removeFromPlaylist(
-      String playlistId, List<String> entryIds) async {
+    String playlistId,
+    List<String> entryIds,
+  ) async {
     _urlBuilder.assertUser();
     await _dio.delete<void>(
       'Playlists/$playlistId/Items',
-      queryParameters: <String, dynamic>{
-        'EntryIds': entryIds.join(','),
-      },
+      queryParameters: <String, dynamic>{'EntryIds': entryIds.join(',')},
     );
   }
 
   @override
   Future<void> movePlaylistItem(
-      String playlistId, String itemId, int newIndex) async {
+    String playlistId,
+    String itemId,
+    int newIndex,
+  ) async {
     _urlBuilder.assertUser();
     await _dio.post<void>(
       'Playlists/$playlistId/Items/Move/$itemId',
-      queryParameters: <String, dynamic>{
-        'NewIndex': newIndex,
-      },
+      queryParameters: <String, dynamic>{'NewIndex': newIndex},
     );
   }
 
@@ -671,10 +719,7 @@ class JellyfinClient implements MusicBackend {
   @override
   Future<void> renamePlaylist(String playlistId, String newName) async {
     _urlBuilder.assertUser();
-    await _dio.post<void>(
-      'Items/$playlistId',
-      data: {'Name': newName},
-    );
+    await _dio.post<void>('Items/$playlistId', data: {'Name': newName});
   }
 
   @override
@@ -689,7 +734,10 @@ class JellyfinClient implements MusicBackend {
         'EnableImages': true,
       },
     );
-    return _parser.parseItemList(res.data).map(_parser.parseTrack).toList(growable: false);
+    return _parser
+        .parseItemList(res.data)
+        .map(_parser.parseTrack)
+        .toList(growable: false);
   }
 
   @override
@@ -716,7 +764,8 @@ class JellyfinClient implements MusicBackend {
     final albumData = responses[0].data;
     if (albumData == null || albumData.isEmpty) return null;
     final album = _parser.parseAlbum(albumData);
-    final tracks = _parser.parseItemList(responses[1].data)
+    final tracks = _parser
+        .parseItemList(responses[1].data)
         .map(_parser.parseTrack)
         .toList(growable: false);
     return (album: album, tracks: tracks);
@@ -727,9 +776,7 @@ class JellyfinClient implements MusicBackend {
     _urlBuilder.assertUser();
     final res = await _dio.get<Map<String, dynamic>>(
       'Users/$userId/Items/$id',
-      queryParameters: <String, dynamic>{
-        'Fields': 'Overview,ChildCount',
-      },
+      queryParameters: <String, dynamic>{'Fields': 'Overview,ChildCount'},
     );
     final data = res.data;
     if (data == null || data.isEmpty) return null;
@@ -754,24 +801,22 @@ class JellyfinClient implements MusicBackend {
     Map<String, dynamic>? src;
     Map<String, dynamic>? audio;
     if (sources != null && sources.isNotEmpty) {
-      final rawFirst = sources.firstWhere(
-        (s) => s is Map,
-        orElse: () => null,
-      );
+      final rawFirst = sources.firstWhere((s) => s is Map, orElse: () => null);
       if (rawFirst is Map) src = rawFirst.cast<String, dynamic>();
       if (src != null) {
-      final streams = (src['MediaStreams'] as List? ?? const [])
-          .whereType<Map<String, dynamic>>()
-          .map((s) => s.cast<String, dynamic>())
-          .where((s) => (s['Type'] as String?) == 'Audio')
-          .toList();
-      if (streams.isNotEmpty) audio = streams.first;
+        final streams = (src['MediaStreams'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map((s) => s.cast<String, dynamic>())
+            .where((s) => (s['Type'] as String?) == 'Audio')
+            .toList();
+        if (streams.isNotEmpty) audio = streams.first;
       }
     }
 
-    final genres = (data['Genres'] as List?)
-            ?.whereType<String>()
-            .toList(growable: false) ??
+    final genres =
+        (data['Genres'] as List?)?.whereType<String>().toList(
+          growable: false,
+        ) ??
         const <String>[];
     final userData = (data['UserData'] as Map?)?.cast<String, dynamic>();
     final lastPlayed = userData?['LastPlayedDate'] as String?;
@@ -832,7 +877,10 @@ class JellyfinClient implements MusicBackend {
         'Fields': JellyfinResponseParser.albumFields,
       },
     );
-    return _parser.parseItemList(res.data).map(_parser.parseAlbum).toList(growable: false);
+    return _parser
+        .parseItemList(res.data)
+        .map(_parser.parseAlbum)
+        .toList(growable: false);
   }
 
   @override
@@ -851,7 +899,10 @@ class JellyfinClient implements MusicBackend {
         'EnableImages': true,
       },
     );
-    return _parser.parseItemList(res.data).map(_parser.parseAlbum).toList(growable: false);
+    return _parser
+        .parseItemList(res.data)
+        .map(_parser.parseAlbum)
+        .toList(growable: false);
   }
 
   @override
@@ -873,12 +924,22 @@ class JellyfinClient implements MusicBackend {
         'EnableImages': true,
       },
     );
-    return _parser.parseItemList(res.data).map(_parser.parseTrack).toList(growable: false);
+    return _parser
+        .parseItemList(res.data)
+        .map(_parser.parseTrack)
+        .toList(growable: false);
   }
 
   @override
-  Future<({List<AfTrack> tracks, List<AfAlbum> albums, List<AfArtist> artists, List<AfPlaylist> playlists})>
-      search(String query) async {
+  Future<
+    ({
+      List<AfTrack> tracks,
+      List<AfAlbum> albums,
+      List<AfArtist> artists,
+      List<AfPlaylist> playlists,
+    })
+  >
+  search(String query) async {
     _urlBuilder.assertUser();
     final q = query.trim();
     if (q.isEmpty) {
@@ -917,7 +978,12 @@ class JellyfinClient implements MusicBackend {
           playlists.add(_parser.parsePlaylist(m));
       }
     }
-    return (tracks: tracks, albums: albums, artists: artists, playlists: playlists);
+    return (
+      tracks: tracks,
+      albums: albums,
+      artists: artists,
+      playlists: playlists,
+    );
   }
 
   /// `GET /Audio/{trackId}/Lyrics` — returns the LRC text blob if the
@@ -925,9 +991,7 @@ class JellyfinClient implements MusicBackend {
   @override
   Future<String?> lyrics(String trackId) async {
     try {
-      final res = await _dio.get<Map<String, dynamic>>(
-        'Audio/$trackId/Lyrics',
-      );
+      final res = await _dio.get<Map<String, dynamic>>('Audio/$trackId/Lyrics');
       final lyricsList = (res.data?['Lyrics'] as List? ?? const [])
           .whereType<Map<String, dynamic>>();
       if (lyricsList.isEmpty) return null;

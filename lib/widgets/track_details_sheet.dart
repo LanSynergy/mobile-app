@@ -59,7 +59,6 @@ void showTrackDetailsSheet(BuildContext context, WidgetRef ref, AfTrack track) {
 }
 
 class TrackDetailsBody extends ConsumerWidget {
-
   const TrackDetailsBody({super.key, required this.track});
   final AfTrack track;
 
@@ -84,7 +83,9 @@ class TrackDetailsBody extends ConsumerWidget {
         const SizedBox(height: 2),
         Text(
           track.artistName,
-          style: AfTypography.bodyMedium.copyWith(color: AfColors.textSecondary),
+          style: AfTypography.bodyMedium.copyWith(
+            color: AfColors.textSecondary,
+          ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -106,10 +107,7 @@ class TrackDetailsBody extends ConsumerWidget {
             value: formatTrackDuration(track.duration),
           ),
         if (track.dateAdded != null)
-          _DetailRow(
-            label: 'Date added',
-            value: _formatDate(track.dateAdded!),
-          ),
+          _DetailRow(label: 'Date added', value: _formatDate(track.dateAdded!)),
 
         // ── Extended details (async) ────────────────────────────
         detailsAsync.when(
@@ -127,22 +125,13 @@ class TrackDetailsBody extends ConsumerWidget {
                   ),
                 if (details.composer != null &&
                     details.composer != track.artistName)
-                  _DetailRow(
-                    label: 'Composer',
-                    value: details.composer!,
-                  ),
+                  _DetailRow(label: 'Composer', value: details.composer!),
                 if (details.year != null)
                   _DetailRow(label: 'Year', value: '${details.year}'),
                 if (details.discNumber != null)
-                  _DetailRow(
-                    label: 'Disc',
-                    value: '${details.discNumber}',
-                  ),
+                  _DetailRow(label: 'Disc', value: '${details.discNumber}'),
                 if (details.genres.isNotEmpty)
-                  _DetailRow(
-                    label: 'Genre',
-                    value: details.genres.join(', '),
-                  ),
+                  _DetailRow(label: 'Genre', value: details.genres.join(', ')),
                 if (details.isTranscoded)
                   const _DetailRow(
                     label: 'Transcoded',
@@ -204,18 +193,13 @@ class TrackDetailsBody extends ConsumerWidget {
                     value: details.formattedChannels!,
                   ),
                 if (details.formattedSize != null)
-                  _DetailRow(
-                    label: 'File size',
-                    value: details.formattedSize!,
-                  ),
+                  _DetailRow(label: 'File size', value: details.formattedSize!),
                 if (details.path != null)
                   _DetailRow(
                     label: 'Path',
                     value: details.path!,
                     selectable: true,
                   ),
-
-
               ],
             );
           },
@@ -238,7 +222,9 @@ class TrackDetailsBody extends ConsumerWidget {
         // ── Quality badge fallback (when no extended details) ───
         if (track.quality != null)
           detailsAsync.maybeWhen(
-            data: (d) => d != null ? const SizedBox.shrink() : _qualityFallback(track.quality!),
+            data: (d) => d != null
+                ? const SizedBox.shrink()
+                : _qualityFallback(track.quality!),
             orElse: () => const SizedBox.shrink(),
           ),
 
@@ -297,7 +283,6 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-
   const _DetailRow({
     required this.label,
     required this.value,

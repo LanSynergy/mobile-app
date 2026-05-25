@@ -26,25 +26,28 @@ const _kClientName = 'Aetherfin';
 /// `t = md5(password + salt)`, `s = salt`, sent as query params on
 /// every request alongside `u`, `v`, `c`, `f=json`.
 class SubsonicClient implements MusicBackend {
-
   SubsonicClient({
     required this.server,
     required this.username,
     required String password,
     required this.clientVersion,
-  })  : _passwordBytes = utf8.encode(password),
-        _cacheStore = MemCacheStore(
-            maxSize: 20 * 1024 * 1024, maxEntrySize: 1 * 1024 * 1024),
-        _dio = Dio(BaseOptions(
-          baseUrl: _buildBaseUrl(server.baseUrl),
-          connectTimeout: const Duration(seconds: 5),
-          sendTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 15),
-          headers: {
-            'User-Agent': 'Aetherfin/$clientVersion (Android)',
-            'Accept': 'application/json',
-          },
-        )) {
+  }) : _passwordBytes = utf8.encode(password),
+       _cacheStore = MemCacheStore(
+         maxSize: 20 * 1024 * 1024,
+         maxEntrySize: 1 * 1024 * 1024,
+       ),
+       _dio = Dio(
+         BaseOptions(
+           baseUrl: _buildBaseUrl(server.baseUrl),
+           connectTimeout: const Duration(seconds: 5),
+           sendTimeout: const Duration(seconds: 10),
+           receiveTimeout: const Duration(seconds: 15),
+           headers: {
+             'User-Agent': 'Aetherfin/$clientVersion (Android)',
+             'Accept': 'application/json',
+           },
+         ),
+       ) {
     _dio.interceptors.add(
       DioCacheInterceptor(
         options: CacheOptions(
@@ -65,14 +68,12 @@ class SubsonicClient implements MusicBackend {
           },
           onResponse: (response, handler) {
             final redacted = _redactUri(response.requestOptions.uri);
-            afLog('http',
-                '← ${response.statusCode} $redacted');
+            afLog('http', '← ${response.statusCode} $redacted');
             handler.next(response);
           },
           onError: (err, handler) {
             final redacted = _redactUri(err.requestOptions.uri);
-            afLog('http',
-                '✕ ${err.response?.statusCode ?? '?'} $redacted');
+            afLog('http', '✕ ${err.response?.statusCode ?? '?'} $redacted');
             handler.next(err);
           },
         ),
@@ -130,8 +131,10 @@ class SubsonicClient implements MusicBackend {
   String _generateSalt([int length = 16]) {
     const chars =
         'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    return List.generate(length, (_) => chars[_rng.nextInt(chars.length)])
-        .join();
+    return List.generate(
+      length,
+      (_) => chars[_rng.nextInt(chars.length)],
+    ).join();
   }
 
   /// Redact sensitive Subsonic auth params from a URI before logging.
@@ -166,7 +169,9 @@ class SubsonicClient implements MusicBackend {
       );
       final root = res.data?['subsonic-response'] as Map<String, dynamic>?;
       if (root == null) {
-        throw StateError('Subsonic response missing subsonic-response envelope');
+        throw StateError(
+          'Subsonic response missing subsonic-response envelope',
+        );
       }
       final status = root['status'] as String?;
       if (status != 'ok') {
@@ -225,10 +230,7 @@ class SubsonicClient implements MusicBackend {
 
   @override
   Future<List<AfAlbum>> recentlyAddedAlbums({int limit = 20}) async {
-    final root = await _get('getAlbumList2', {
-      'type': 'newest',
-      'size': limit,
-    });
+    final root = await _get('getAlbumList2', {'type': 'newest', 'size': limit});
     return _parseAlbumList(root['albumList2'] as Map<String, dynamic>?);
   }
 
@@ -237,10 +239,7 @@ class SubsonicClient implements MusicBackend {
     // Subsonic has no direct "recently played tracks" endpoint.
     // Use getAlbumList2 type=recent (recently played albums) and fetch
     // their tracks, or return empty for now.
-    final root = await _get('getAlbumList2', {
-      'type': 'recent',
-      'size': limit,
-    });
+    final root = await _get('getAlbumList2', {'type': 'recent', 'size': limit});
     final albums = _parseAlbumList(root['albumList2'] as Map<String, dynamic>?);
     if (albums.isEmpty) return const [];
     // Fetch tracks from the first few albums to approximate recently played
@@ -250,7 +249,11 @@ class SubsonicClient implements MusicBackend {
         final detail = await album(a.id);
         if (detail != null) tracks.addAll(detail.tracks);
       } catch (e) {
-        afLog('subsonic', 'recentlyPlayed album fetch failed id=${a.id}', error: e);
+        afLog(
+          'subsonic',
+          'recentlyPlayed album fetch failed id=${a.id}',
+          error: e,
+        );
       }
     }
     return tracks.take(limit).toList(growable: false);
@@ -268,7 +271,7 @@ class SubsonicClient implements MusicBackend {
     final artistsData = root['artists'] as Map<String, dynamic>?;
     final indices =
         (artistsData?['index'] as List?)?.cast<Map<String, dynamic>>() ??
-            const [];
+        const [];
     final result = <AfArtist>[];
     for (final idx in indices) {
       final artistList =
@@ -285,20 +288,14 @@ class SubsonicClient implements MusicBackend {
   Future<List<AfPlaylist>> playlists({int limit = 200}) async {
     final root = await _get('getPlaylists');
     final playlistsData = root['playlists'] as Map<String, dynamic>?;
-    final list = (playlistsData?['playlist'] as List?)
-            ?.cast<Map<String, dynamic>>() ??
+    final list =
+        (playlistsData?['playlist'] as List?)?.cast<Map<String, dynamic>>() ??
         const [];
-    return list
-        .take(limit)
-        .map(_parsePlaylist)
-        .toList(growable: false);
+    return list.take(limit).map(_parsePlaylist).toList(growable: false);
   }
 
   @override
-  Future<List<AfAlbum>> allAlbums({
-    int limit = 500,
-    int startIndex = 0,
-  }) async {
+  Future<List<AfAlbum>> allAlbums({int limit = 500, int startIndex = 0}) async {
     final root = await _get('getAlbumList2', {
       'type': 'alphabeticalByName',
       'size': limit,
@@ -335,8 +332,14 @@ class SubsonicClient implements MusicBackend {
     if (list == null || list.isEmpty) return const [];
 
     const palette = <String>[
-      '#5644C9', '#A89DEC', '#3FD18C', '#FF7A59',
-      '#F8C42D', '#FF6FB5', '#3DB6FF', '#FF4D6D',
+      '#5644C9',
+      '#A89DEC',
+      '#3FD18C',
+      '#FF7A59',
+      '#F8C42D',
+      '#FF6FB5',
+      '#3DB6FF',
+      '#FF4D6D',
     ];
     // Walk the input once and assign palette colours by output index so
     // the colour sequence matches the Jellyfin backend (which also keys
@@ -384,9 +387,8 @@ class SubsonicClient implements MusicBackend {
     final albumData = root['album'] as Map<String, dynamic>?;
     if (albumData == null) return null;
     final albumObj = _parseAlbumDetail(albumData);
-    final songs = (albumData['song'] as List?)
-            ?.cast<Map<String, dynamic>>() ??
-        const [];
+    final songs =
+        (albumData['song'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
     final tracks = songs.map(_parseTrack).toList(growable: false);
     return (album: albumObj, tracks: tracks);
   }
@@ -426,8 +428,7 @@ class SubsonicClient implements MusicBackend {
         path: data['path'] as String?,
         genres: genre != null ? [genre] : const [],
         playCount: _asInt(data['playCount']),
-        lastPlayedAt:
-            lastPlayed != null ? DateTime.tryParse(lastPlayed) : null,
+        lastPlayedAt: lastPlayed != null ? DateTime.tryParse(lastPlayed) : null,
         year: _asInt(data['year']),
         discNumber: _asInt(data['discNumber']),
         albumArtist: data['albumArtist'] as String?,
@@ -440,22 +441,20 @@ class SubsonicClient implements MusicBackend {
   }
 
   @override
-  Future<List<AfAlbum>> artistAlbums(String artistId,
-      {int limit = 100}) async {
+  Future<List<AfAlbum>> artistAlbums(String artistId, {int limit = 100}) async {
     final root = await _get('getArtist', {'id': artistId});
     final data = root['artist'] as Map<String, dynamic>?;
     if (data == null) return const [];
     final albums =
         (data['album'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
-    return albums
-        .take(limit)
-        .map(_parseAlbumDetail)
-        .toList(growable: false);
+    return albums.take(limit).map(_parseAlbumDetail).toList(growable: false);
   }
 
   @override
-  Future<List<AfTrack>> artistTopTracks(String artistId,
-      {int limit = 5}) async {
+  Future<List<AfTrack>> artistTopTracks(
+    String artistId, {
+    int limit = 5,
+  }) async {
     // Get artist name first, then use getTopSongs
     final artistObj = await artist(artistId);
     if (artistObj == null) return const [];
@@ -465,8 +464,8 @@ class SubsonicClient implements MusicBackend {
         'count': limit,
       });
       final topSongs = root['topSongs'] as Map<String, dynamic>?;
-      final songs = (topSongs?['song'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
+      final songs =
+          (topSongs?['song'] as List?)?.cast<Map<String, dynamic>>() ??
           const [];
       return songs.map(_parseTrack).toList(growable: false);
     } catch (e) {
@@ -474,16 +473,16 @@ class SubsonicClient implements MusicBackend {
       // getTopSongs may not be supported; fall back to search
       try {
         final root = await _get('search3', {
-        'query': artistObj.name,
-        'songCount': limit,
-        'albumCount': 0,
-        'artistCount': 0,
-      });
-      final results = root['searchResult3'] as Map<String, dynamic>?;
-      final songs = (results?['song'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
-          const [];
-      return songs.map(_parseTrack).toList(growable: false);
+          'query': artistObj.name,
+          'songCount': limit,
+          'albumCount': 0,
+          'artistCount': 0,
+        });
+        final results = root['searchResult3'] as Map<String, dynamic>?;
+        final songs =
+            (results?['song'] as List?)?.cast<Map<String, dynamic>>() ??
+            const [];
+        return songs.map(_parseTrack).toList(growable: false);
       } catch (e2) {
         afLog('subsonic', 'search3 fallback also failed', error: e2);
         return const [];
@@ -503,7 +502,8 @@ class SubsonicClient implements MusicBackend {
 
   @override
   Future<({AfPlaylist playlist, List<AfTrack> tracks})?> playlist(
-      String id) async {
+    String id,
+  ) async {
     final root = await _get('getPlaylist', {'id': id});
     final data = root['playlist'] as Map<String, dynamic>?;
     if (data == null) return null;
@@ -518,12 +518,14 @@ class SubsonicClient implements MusicBackend {
 
   @override
   Future<
-      ({
-        List<AfTrack> tracks,
-        List<AfAlbum> albums,
-        List<AfArtist> artists,
-        List<AfPlaylist> playlists,
-      })> search(String query) async {
+    ({
+      List<AfTrack> tracks,
+      List<AfAlbum> albums,
+      List<AfArtist> artists,
+      List<AfPlaylist> playlists,
+    })
+  >
+  search(String query) async {
     final q = query.trim();
     if (q.isEmpty) {
       return (
@@ -546,11 +548,10 @@ class SubsonicClient implements MusicBackend {
     final albumsList =
         (results?['album'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
     final artistsList =
-        (results?['artist'] as List?)?.cast<Map<String, dynamic>>() ??
-            const [];
+        (results?['artist'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
     final playlistsList =
         (results?['playlist'] as List?)?.cast<Map<String, dynamic>>() ??
-            const [];
+        const [];
     return (
       tracks: songs.map(_parseTrack).toList(growable: false),
       albums: albumsList.map(_parseAlbumDetail).toList(growable: false),
@@ -573,8 +574,7 @@ class SubsonicClient implements MusicBackend {
   // ── Playlists ─────────────────────────────────────────────────────────
 
   @override
-  Future<void> addToPlaylist(
-      String playlistId, List<String> trackIds) async {
+  Future<void> addToPlaylist(String playlistId, List<String> trackIds) async {
     final params = <String, dynamic>{'playlistId': playlistId};
     // Subsonic takes multiple songIdToAdd params; Dio handles list values
     params['songIdToAdd'] = trackIds;
@@ -582,8 +582,7 @@ class SubsonicClient implements MusicBackend {
   }
 
   @override
-  Future<String?> createPlaylist(
-      String name, List<String> trackIds) async {
+  Future<String?> createPlaylist(String name, List<String> trackIds) async {
     final params = <String, dynamic>{
       'name': name,
       if (trackIds.isNotEmpty) 'songId': trackIds,
@@ -595,7 +594,9 @@ class SubsonicClient implements MusicBackend {
 
   @override
   Future<void> removeFromPlaylist(
-      String playlistId, List<String> entryIds) async {
+    String playlistId,
+    List<String> entryIds,
+  ) async {
     // The MusicBackend contract (mirroring JellyfinClient + the only
     // caller, playlist_screen._removeTrack) is `entryIds = list of track
     // IDs to remove`. Subsonic's `updatePlaylist`, however, takes 0-based
@@ -636,11 +637,15 @@ class SubsonicClient implements MusicBackend {
 
   @override
   Future<void> movePlaylistItem(
-      String playlistId, String itemId, int newIndex) async {
+    String playlistId,
+    String itemId,
+    int newIndex,
+  ) async {
     // Subsonic API has no playlist-reorder endpoint. Throwing lets the UI
     // catch this and show a toast instead of silently discarding the move.
     throw UnsupportedError(
-        'Subsonic API does not support playlist item reordering');
+      'Subsonic API does not support playlist item reordering',
+    );
   }
 
   @override
@@ -650,10 +655,7 @@ class SubsonicClient implements MusicBackend {
 
   @override
   Future<void> renamePlaylist(String playlistId, String newName) async {
-    await _get('updatePlaylist', {
-      'playlistId': playlistId,
-      'name': newName,
-    });
+    await _get('updatePlaylist', {'playlistId': playlistId, 'name': newName});
   }
 
   // ── Similar songs ─────────────────────────────────────────────────────
@@ -666,9 +668,8 @@ class SubsonicClient implements MusicBackend {
         'count': limit,
       });
       final data = root['similarSongs2'] as Map<String, dynamic>?;
-      final songs = (data?['song'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
-          const [];
+      final songs =
+          (data?['song'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
       return songs.map(_parseTrack).toList(growable: false);
     } catch (e) {
       afLog('subsonic', 'getSimilarSongs2 failed', error: e);
@@ -685,7 +686,8 @@ class SubsonicClient implements MusicBackend {
       // Try OpenSubsonic getLyricsBySongId first
       final root = await _get('getLyricsBySongId', {'id': trackId});
       final lyricsData = root['lyricsList'] as Map<String, dynamic>?;
-      final structured = (lyricsData?['structuredLyrics'] as List?)
+      final structured =
+          (lyricsData?['structuredLyrics'] as List?)
               ?.cast<Map<String, dynamic>>() ??
           const [];
       if (structured.isEmpty) return null;
@@ -722,10 +724,7 @@ class SubsonicClient implements MusicBackend {
 
   @override
   String trackStreamUrl(String trackId, {int? maxBitrateKbps}) {
-    final params = <String, String>{
-      ..._authParams(),
-      'id': trackId,
-    };
+    final params = <String, String>{..._authParams(), 'id': trackId};
     if (maxBitrateKbps != null) {
       // Request transcoding at the specified max bitrate.
       // 'format=mp3' tells Navidrome to transcode; without it the
@@ -769,10 +768,7 @@ class SubsonicClient implements MusicBackend {
   @override
   Future<void> reportPlaybackStart(String trackId) async {
     try {
-      await _get('scrobble', {
-        'id': trackId,
-        'submission': false,
-      });
+      await _get('scrobble', {'id': trackId, 'submission': false});
     } catch (e) {
       afLog('subsonic', 'reportPlaybackStart scrobble failed', error: e);
     }
@@ -816,11 +812,7 @@ class SubsonicClient implements MusicBackend {
     // Subsonic doesn't have the concept of user views like Jellyfin.
     // Return a single "Music" view as a reasonable default.
     return const [
-      LibraryView(
-        id: 'music',
-        name: 'Music',
-        collectionType: 'music',
-      ),
+      LibraryView(id: 'music', name: 'Music', collectionType: 'music'),
     ];
   }
 
@@ -839,7 +831,8 @@ class SubsonicClient implements MusicBackend {
     final starred = m['starred'] as String?;
     return AfAlbum(
       id: id,
-      name: (m['name'] as String?) ??
+      name:
+          (m['name'] as String?) ??
           (m['album'] as String?) ??
           (m['title'] as String?) ??
           'Unknown',
@@ -859,7 +852,9 @@ class SubsonicClient implements MusicBackend {
       id: (m['id'] ?? '').toString(),
       name: (m['name'] as String?) ?? 'Unknown',
       albumCount: _asInt(m['albumCount']) ?? 0,
-      imageUrl: coverArtUrl(m['coverArt']?.toString() ?? m['artistImageUrl']?.toString()),
+      imageUrl: coverArtUrl(
+        m['coverArt']?.toString() ?? m['artistImageUrl']?.toString(),
+      ),
     );
   }
 
@@ -870,7 +865,9 @@ class SubsonicClient implements MusicBackend {
       id: (m['id'] ?? '').toString(),
       name: (m['name'] as String?) ?? 'Unknown',
       albumCount: albums.length,
-      imageUrl: coverArtUrl(m['coverArt']?.toString() ?? m['artistImageUrl']?.toString()),
+      imageUrl: coverArtUrl(
+        m['coverArt']?.toString() ?? m['artistImageUrl']?.toString(),
+      ),
     );
   }
 

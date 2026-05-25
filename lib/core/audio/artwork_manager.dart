@@ -44,6 +44,7 @@ class AfArtworkManager {
       // Best-effort; directory may not be accessible.
     }
   }
+
   /// Called when artwork is persisted or downloaded so the owner can
   /// update the native notification artwork.
   void Function()? onArtworkChanged;

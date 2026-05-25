@@ -72,7 +72,8 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         if (activeIdx < 0) return;
         // Each item is ~48dp (compact row 44dp + 4dp vertical padding).
         const itemExtent = 48.0;
-        final targetOffset = (activeIdx * itemExtent) -
+        final targetOffset =
+            (activeIdx * itemExtent) -
             (_scrollController.position.viewportDimension * 0.3);
         _scrollController.animateTo(
           targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
@@ -93,25 +94,24 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         ),
         title: Text('Queue', style: AfTypography.titleSmall),
         actions: [
-          Consumer(builder: (context, ref, _) {
-            final shuffleOn = ref.watch(shuffleModeProvider).maybeWhen(
-                  data: (v) => v,
-                  orElse: () => false,
-                );
-            return IconButton(
-              icon: Icon(
-                LucideIcons.shuffle,
-                color: shuffleOn
-                    ? AfColors.indigo300
-                    : AfColors.textPrimary,
-              ),
-              tooltip: shuffleOn ? 'Shuffle on' : 'Shuffle',
-              onPressed: () {
-                final svc = ref.read(playerServiceProvider);
-                svc.setAfShuffleMode(!svc.isShuffleEnabled);
-              },
-            );
-          }),
+          Consumer(
+            builder: (context, ref, _) {
+              final shuffleOn = ref
+                  .watch(shuffleModeProvider)
+                  .maybeWhen(data: (v) => v, orElse: () => false);
+              return IconButton(
+                icon: Icon(
+                  LucideIcons.shuffle,
+                  color: shuffleOn ? AfColors.indigo300 : AfColors.textPrimary,
+                ),
+                tooltip: shuffleOn ? 'Shuffle on' : 'Shuffle',
+                onPressed: () {
+                  final svc = ref.read(playerServiceProvider);
+                  svc.setAfShuffleMode(!svc.isShuffleEnabled);
+                },
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(LucideIcons.listPlus),
             onPressed: _items.isEmpty ? null : _saveQueueAsPlaylist,
@@ -129,10 +129,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0xFF271640),
-                      Color(0xFF040319),
-                    ],
+                    colors: [Color(0xFF271640), Color(0xFF040319)],
                     stops: [0.0, 1.0],
                   ),
                 ),
@@ -141,170 +138,180 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
           ),
           SafeArea(
             child: _items.isEmpty
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AfSpacing.gutterGenerous,
-                  ),
-                  child: Text(
-                    'Queue is empty. Pick an album or track to start playback.',
-                    style: AfTypography.bodyMedium.copyWith(
-                      color: AfColors.textTertiary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              )
-            : RepaintBoundary(
-                child: ReorderableListView.builder(
-                  scrollController: _scrollController,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
-                  itemCount: _items.length,
-                  buildDefaultDragHandles: false,
-                  onReorderItem: (oldIndex, newIndex) {
-                    // onReorderItem already adjusts newIndex for the removed
-                    // item, so no manual newIndex -= 1 needed here.
-                    setState(() {
-                      final item = _items.removeAt(oldIndex);
-                      _items.insert(newIndex, item);
-                      // Keep `_lastQueueIds` in lockstep with the local
-                      // mirror so the player's echoed queue (same order,
-                      // arrives ~one frame later) doesn't trip the
-                      // "identity changed" branch above — which would
-                      // overwrite `_items` and re-fire the scroll-to-
-                      // active animation, yanking the viewport away from
-                      // whatever the user just dropped.
-                      _lastQueueIds = _items
-                          .map((t) => t.id)
-                          .toList(growable: false);
-                    });
-                    // Sync the player's ConcatenatingAudioSource so
-                    // skip-next/prev honour the new order. The adjusted
-                    // indices are passed directly — reorderQueue expects
-                    // the post-adjustment values.
-                    ref
-                        .read(playerServiceProvider)
-                        .reorderQueue(oldIndex, newIndex);
-                  },
-                  itemBuilder: (context, i) {
-                    final t = _items[i];
-                    final active = current?.id == t.id;
-                    // Dismissible handles horizontal swipe; the
-                    // ReorderableDragStartListener handles vertical drag —
-                    // they never compete because the gestures are on
-                    // perpendicular axes.
-                    return Dismissible(
-                      key: ValueKey('q-${t.id}-$i'),
-                      direction: active
-                          ? DismissDirection.none
-                          : DismissDirection.endToStart,
-                      background: Container(
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: AfSpacing.s24),
-                        color: AfColors.semanticError.withValues(alpha: 0.18),
-                        child: const Icon(
-                          LucideIcons.trash2,
-                          color: AfColors.semanticError,
-                        ),
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.gutterGenerous,
                       ),
-                      confirmDismiss: (_) async {
-                        if (active) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  'Skip to remove the currently playing track.'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                          return false;
-                        }
-                        unawaited(HapticFeedback.lightImpact());
-                        return true;
-                      },
-                      onDismissed: (_) {
-                        final removed = t;
-                        // Resolve the actual index from the player's
-                        // current queue — the closure index `i` may be
-                        // stale if the queue changed between build and
-                        // dismiss (e.g. track advanced, reorder).
-                        final svc = ref.read(playerServiceProvider);
-                        final actualIndex = svc.currentQueue.indexWhere(
-                          (q) => q.id == removed.id,
-                        );
-                        if (actualIndex < 0) return;
-
-                        // Optimistic local update so the swipe animation
-                        // completes without the row springing back.
+                      child: Text(
+                        'Queue is empty. Pick an album or track to start playback.',
+                        style: AfTypography.bodyMedium.copyWith(
+                          color: AfColors.textTertiary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  )
+                : RepaintBoundary(
+                    child: ReorderableListView.builder(
+                      scrollController: _scrollController,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.s16,
+                        vertical: AfSpacing.s8,
+                      ),
+                      itemCount: _items.length,
+                      buildDefaultDragHandles: false,
+                      onReorderItem: (oldIndex, newIndex) {
+                        // onReorderItem already adjusts newIndex for the removed
+                        // item, so no manual newIndex -= 1 needed here.
                         setState(() {
-                          _items.removeAt(i);
+                          final item = _items.removeAt(oldIndex);
+                          _items.insert(newIndex, item);
+                          // Keep `_lastQueueIds` in lockstep with the local
+                          // mirror so the player's echoed queue (same order,
+                          // arrives ~one frame later) doesn't trip the
+                          // "identity changed" branch above — which would
+                          // overwrite `_items` and re-fire the scroll-to-
+                          // active animation, yanking the viewport away from
+                          // whatever the user just dropped.
                           _lastQueueIds = _items
                               .map((t) => t.id)
                               .toList(growable: false);
                         });
-                        unawaited(svc.removeFromQueue(actualIndex));
-                        ScaffoldMessenger.of(context)
-                          ..clearSnackBars()
-                          ..showSnackBar(
-                            SnackBar(
-                              content: Text('Removed "${removed.title}"'),
-                              duration: const Duration(seconds: 4),
-                              action: SnackBarAction(
-                                label: 'Undo',
-                                onPressed: () =>
-                                    _undoRemove(actualIndex, removed),
+                        // Sync the player's ConcatenatingAudioSource so
+                        // skip-next/prev honour the new order. The adjusted
+                        // indices are passed directly — reorderQueue expects
+                        // the post-adjustment values.
+                        ref
+                            .read(playerServiceProvider)
+                            .reorderQueue(oldIndex, newIndex);
+                      },
+                      itemBuilder: (context, i) {
+                        final t = _items[i];
+                        final active = current?.id == t.id;
+                        // Dismissible handles horizontal swipe; the
+                        // ReorderableDragStartListener handles vertical drag —
+                        // they never compete because the gestures are on
+                        // perpendicular axes.
+                        return Dismissible(
+                          key: ValueKey('q-${t.id}-$i'),
+                          direction: active
+                              ? DismissDirection.none
+                              : DismissDirection.endToStart,
+                          background: Container(
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AfSpacing.s24,
+                            ),
+                            color: AfColors.semanticError.withValues(
+                              alpha: 0.18,
+                            ),
+                            child: const Icon(
+                              LucideIcons.trash2,
+                              color: AfColors.semanticError,
+                            ),
+                          ),
+                          confirmDismiss: (_) async {
+                            if (active) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Skip to remove the currently playing track.',
+                                  ),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              return false;
+                            }
+                            unawaited(HapticFeedback.lightImpact());
+                            return true;
+                          },
+                          onDismissed: (_) {
+                            final removed = t;
+                            // Resolve the actual index from the player's
+                            // current queue — the closure index `i` may be
+                            // stale if the queue changed between build and
+                            // dismiss (e.g. track advanced, reorder).
+                            final svc = ref.read(playerServiceProvider);
+                            final actualIndex = svc.currentQueue.indexWhere(
+                              (q) => q.id == removed.id,
+                            );
+                            if (actualIndex < 0) return;
+
+                            // Optimistic local update so the swipe animation
+                            // completes without the row springing back.
+                            setState(() {
+                              _items.removeAt(i);
+                              _lastQueueIds = _items
+                                  .map((t) => t.id)
+                                  .toList(growable: false);
+                            });
+                            unawaited(svc.removeFromQueue(actualIndex));
+                            ScaffoldMessenger.of(context)
+                              ..clearSnackBars()
+                              ..showSnackBar(
+                                SnackBar(
+                                  content: Text('Removed "${removed.title}"'),
+                                  duration: const Duration(seconds: 4),
+                                  action: SnackBarAction(
+                                    label: 'Undo',
+                                    onPressed: () =>
+                                        _undoRemove(actualIndex, removed),
+                                  ),
+                                ),
+                              );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Container(
+                              decoration: active
+                                  ? BoxDecoration(
+                                      color: AfColors.surfaceBase,
+                                      borderRadius: BorderRadius.circular(
+                                        AfRadii.md,
+                                      ),
+                                    )
+                                  : null,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: TrackRow(
+                                      track: t,
+                                      density: TrackRowDensity.compact,
+                                      isActive: active,
+                                      showHeart: false,
+                                      onTap: () {
+                                        // Jump to and play the selected track
+                                        final svc = ref.read(
+                                          playerServiceProvider,
+                                        );
+                                        svc.skipToQueueItem(i);
+                                        svc.play();
+                                      },
+                                      onLongPress: () =>
+                                          showTrackContextMenu(context, ref, t),
+                                    ),
+                                  ),
+                                  ReorderableDragStartListener(
+                                    index: i,
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: AfSpacing.s8,
+                                      ),
+                                      child: Icon(
+                                        LucideIcons.gripVertical,
+                                        color: AfColors.textTertiary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          );
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Container(
-                          decoration: active
-                              ? BoxDecoration(
-                                  color: AfColors.surfaceBase,
-                                  borderRadius: BorderRadius.circular(
-                                      AfRadii.md),
-                                )
-                              : null,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TrackRow(
-                                  track: t,
-                                  density: TrackRowDensity.compact,
-                                  isActive: active,
-                                  showHeart: false,
-                                  onTap: () {
-                                    // Jump to and play the selected track
-                                    final svc =
-                                        ref.read(playerServiceProvider);
-                                    svc.skipToQueueItem(i);
-                                    svc.play();
-                                  },
-                                  onLongPress: () =>
-                                      showTrackContextMenu(
-                                          context, ref, t),
-                                ),
-                              ),
-                              ReorderableDragStartListener(
-                                index: i,
-                                child: const Padding(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: AfSpacing.s8),
-                                  child: Icon(LucideIcons.gripVertical,
-                                      color: AfColors.textTertiary),
-                                ),
-                              ),
-                            ],
                           ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+                        );
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -338,17 +345,18 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
       }
       if (backend != null) {
         final maxBitrate = ref.read(maxBitrateProvider);
-        return backend.trackStreamUrl(t.id, maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate);
+        return backend.trackStreamUrl(
+          t.id,
+          maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate,
+        );
       }
       return 'about:blank';
     }
 
     unawaited(
-      ref.read(playerServiceProvider).insertIntoQueue(
-            index,
-            track,
-            resolveStreamUrl: resolve,
-          ),
+      ref
+          .read(playerServiceProvider)
+          .insertIntoQueue(index, track, resolveStreamUrl: resolve),
     );
   }
 
@@ -425,9 +433,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
       ref.invalidate(allPlaylistsProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Saved as "$name" · ${snapshot.length} tracks'),
-        ),
+        SnackBar(content: Text('Saved as "$name" · ${snapshot.length} tracks')),
       );
     } catch (e) {
       if (!mounted) return;

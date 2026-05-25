@@ -7,7 +7,6 @@ import 'url_builder.dart';
 /// Stateless — all methods take the raw JSON and return typed models.
 /// Requires a [JellyfinUrlBuilder] instance for image URL construction.
 class JellyfinResponseParser {
-
   JellyfinResponseParser(this._urlBuilder);
   final JellyfinUrlBuilder _urlBuilder;
 
@@ -30,11 +29,10 @@ class JellyfinResponseParser {
   List<Map<String, dynamic>> parseRawItemList(List<dynamic>? data) =>
       normaliseItems(data ?? const []);
 
-  List<Map<String, dynamic>> normaliseItems(Iterable<dynamic> items) =>
-      items
-          .whereType<Map<String, dynamic>>()
-          .map((m) => m.cast<String, dynamic>())
-          .toList(growable: false);
+  List<Map<String, dynamic>> normaliseItems(Iterable<dynamic> items) => items
+      .whereType<Map<String, dynamic>>()
+      .map((m) => m.cast<String, dynamic>())
+      .toList(growable: false);
 
   AfAlbum parseAlbum(Map<String, dynamic> m) {
     final id = (m['Id'] as String?) ?? '';
@@ -87,11 +85,14 @@ class JellyfinResponseParser {
       artistName: trackArtistName(m),
       albumName: (m['Album'] as String?) ?? '',
       albumId: m['AlbumId'] as String?,
-      artistId: (artistIds != null && artistIds.isNotEmpty) ? artistIds.first : null,
+      artistId: (artistIds != null && artistIds.isNotEmpty)
+          ? artistIds.first
+          : null,
       trackNumber: m['IndexNumber'] as int?,
       duration: duration,
       quality: parseQuality(m),
-      imageUrl: _urlBuilder.imageUrlFor(m, 'Primary', maxWidth: 480) ??
+      imageUrl:
+          _urlBuilder.imageUrlFor(m, 'Primary', maxWidth: 480) ??
           _urlBuilder.albumImageUrl(m, maxWidth: 480),
       isFavorite: (userData?['IsFavorite'] as bool?) ?? false,
       dateAdded: dateCreated != null ? DateTime.tryParse(dateCreated) : null,
@@ -116,10 +117,7 @@ class JellyfinResponseParser {
   TrackQuality? parseQuality(Map<String, dynamic> m) {
     final sources = m['MediaSources'] as List?;
     if (sources == null || sources.isEmpty) return null;
-    final rawSrc = sources.firstWhere(
-      (s) => s is Map,
-      orElse: () => null,
-    );
+    final rawSrc = sources.firstWhere((s) => s is Map, orElse: () => null);
     if (rawSrc is! Map) return null;
     final src = rawSrc.cast<String, dynamic>();
     final streams = (src['MediaStreams'] as List? ?? const [])
@@ -129,8 +127,9 @@ class JellyfinResponseParser {
         .toList();
     if (streams.isEmpty) return null;
     final audio = streams.first;
-    final codec = ((audio['Codec'] as String?) ?? (src['Container'] as String?) ?? '')
-        .toLowerCase();
+    final codec =
+        ((audio['Codec'] as String?) ?? (src['Container'] as String?) ?? '')
+            .toLowerCase();
     final bitrate = audio['BitRate'] as int? ?? src['Bitrate'] as int?;
     final sampleRate = audio['SampleRate'] as int?;
     final bitDepth = audio['BitDepth'] as int?;
@@ -139,33 +138,31 @@ class JellyfinResponseParser {
       sourceCodec: codec,
       bitrateKbps: !isLossless && bitrate != null ? bitrate ~/ 1000 : null,
       bitDepth: isLossless ? bitDepth : null,
-      sampleRateKhz: isLossless && sampleRate != null ? sampleRate ~/ 1000 : null,
+      sampleRateKhz: isLossless && sampleRate != null
+          ? sampleRate ~/ 1000
+          : null,
     );
   }
 
   String albumArtistName(Map<String, dynamic> m) {
     final artists = m['AlbumArtists'] as List?;
     if (artists != null && artists.isNotEmpty) {
-      final first = artists.firstWhere(
-        (a) => a is Map,
-        orElse: () => null,
-      );
+      final first = artists.firstWhere((a) => a is Map, orElse: () => null);
       if (first is Map) {
         final fm = first.cast<String, dynamic>();
         final name = fm['Name'] as String?;
         if (name != null && name.isNotEmpty) return name;
       }
     }
-    return (m['AlbumArtist'] as String?) ?? (m['Artists'] as List?)?.cast<String>().join(', ') ?? '';
+    return (m['AlbumArtist'] as String?) ??
+        (m['Artists'] as List?)?.cast<String>().join(', ') ??
+        '';
   }
 
   String? albumArtistId(Map<String, dynamic> m) {
     final artists = m['AlbumArtists'] as List?;
     if (artists != null && artists.isNotEmpty) {
-      final first = artists.firstWhere(
-        (a) => a is Map,
-        orElse: () => null,
-      );
+      final first = artists.firstWhere((a) => a is Map, orElse: () => null);
       if (first is Map) {
         final fm = first.cast<String, dynamic>();
         return fm['Id'] as String?;

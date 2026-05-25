@@ -101,7 +101,11 @@ class MockPlayerStream extends Mock implements PlayerStream {}
     () => player.open(any(), play: any(named: 'play')),
   ).thenAnswer((_) async {});
   when(
-    () => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')),
+    () => player.openAll(
+      any(),
+      index: any(named: 'index'),
+      play: any(named: 'play'),
+    ),
   ).thenAnswer((_) async {});
   when(() => player.add(any())).thenAnswer((_) async {});
   when(player.dispose).thenAnswer((_) async {});
@@ -125,7 +129,6 @@ class MockPlayerStream extends Mock implements PlayerStream {}
 
 /// Typed container for all stream controllers created by [createMockPlayer].
 class StreamControllers {
-
   const StreamControllers({
     required this.playing,
     required this.completed,

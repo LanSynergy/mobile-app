@@ -17,7 +17,6 @@ import '../design_tokens/tokens.dart';
 /// directly to the single `Stream<Duration>` from the audio service so
 /// the ring tells audio time honestly.
 class CircularProgressRing extends StatelessWidget {
-
   const CircularProgressRing({
     super.key,
     required this.progress,
@@ -72,7 +71,6 @@ class CircularProgressRing extends StatelessWidget {
 }
 
 class _RingPainter extends CustomPainter {
-
   _RingPainter({
     required this.progress,
     required this.trackColor,
@@ -129,7 +127,6 @@ class _RingPainter extends CustomPainter {
 }
 
 class _IndeterminateArc extends StatefulWidget {
-
   const _IndeterminateArc({
     required this.size,
     required this.strokeWidth,
@@ -179,7 +176,6 @@ class _IndeterminateArcState extends State<_IndeterminateArc>
 }
 
 class _IndeterminatePainter extends CustomPainter {
-
   _IndeterminatePainter({
     required this.value,
     required this.trackColor,

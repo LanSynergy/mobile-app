@@ -13,7 +13,6 @@ import 'saf_picker.dart';
 /// Orchestrates scanning SAF folders: lists files → reads metadata → inserts
 /// into the local SQLite database. Reports progress via a callback.
 class MetadataScanner {
-
   MetadataScanner(this.db);
   final LocalDb db;
   bool _isScanning = false;
@@ -69,7 +68,9 @@ class MetadataScanner {
 
           // 4. Extract cover art (if not already cached)
           String? coverPath;
-          final coverFile = File(p.join(coverCacheDir, _coverFilename(file.uri)));
+          final coverFile = File(
+            p.join(coverCacheDir, _coverFilename(file.uri)),
+          );
           if (!await coverFile.exists()) {
             final artBytes = await SafPicker.readCoverArt(file.uri);
             if (artBytes != null && artBytes.isNotEmpty) {

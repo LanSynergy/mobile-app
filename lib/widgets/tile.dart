@@ -9,7 +9,6 @@ enum TileVariant { album, playlist, artist }
 /// Square-artwork tile — used everywhere we render a horizontal-scroll
 /// row of albums/playlists/artists, or in 2-col grids on Library / Search.
 class Tile extends StatelessWidget {
-
   const Tile({
     super.key,
     required this.title,
@@ -87,7 +86,6 @@ class Tile extends StatelessWidget {
 
 /// Genre tile — artwork background with gradient overlay, or solid color fallback.
 class GenreTile extends StatelessWidget {
-
   const GenreTile({
     super.key,
     required this.name,
@@ -113,10 +111,7 @@ class GenreTile extends StatelessWidget {
         width: width,
         height: height,
         clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: tint,
-          borderRadius: AfRadii.borderMd,
-        ),
+        decoration: BoxDecoration(color: tint, borderRadius: AfRadii.borderMd),
         child: Stack(
           fit: StackFit.expand,
           children: [

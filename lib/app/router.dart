@@ -93,10 +93,7 @@ final _router = GoRouter(
   },
   routes: [
     // Onboarding
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const WelcomeScreen(),
-    ),
+    GoRoute(path: '/', builder: (context, state) => const WelcomeScreen()),
     GoRoute(
       path: '/onboarding/discover',
       builder: (context, state) => const ServerDiscoveryScreen(),
@@ -113,7 +110,10 @@ final _router = GoRouter(
           return SignInScreen(server: extra);
         }
         if (extra is ({JellyfinServer server, ServerType serverType})) {
-          return SignInScreen(server: extra.server, serverType: extra.serverType);
+          return SignInScreen(
+            server: extra.server,
+            serverType: extra.serverType,
+          );
         }
         return const Scaffold(
           body: Center(child: Text('Missing server information.')),
@@ -163,8 +163,8 @@ final _router = GoRouter(
                 final section = raw == null
                     ? null
                     : LibrarySection.values
-                        .where((s) => s.name == raw)
-                        .firstOrNull;
+                          .where((s) => s.name == raw)
+                          .firstOrNull;
                 return NoTransitionPage(
                   child: LibraryScreen(initialSection: section),
                 );
@@ -226,8 +226,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/album/:id',
       parentNavigatorKey: _rootKey,
-      builder: (_, state) =>
-          AlbumScreen(albumId: state.pathParameters['id']!),
+      builder: (_, state) => AlbumScreen(albumId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/artist/:id',
@@ -254,21 +253,21 @@ final _router = GoRouter(
     GoRoute(
       path: '/smart-playlist/:id',
       parentNavigatorKey: _rootKey,
-      builder: (_, state) => SmartPlaylistDetailScreen(
-          playlistId: state.pathParameters['id']!),
+      builder: (_, state) =>
+          SmartPlaylistDetailScreen(playlistId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/smart-playlist/:id/edit',
       parentNavigatorKey: _rootKey,
-      builder: (_, state) => SmartPlaylistEditScreen(
-          playlistId: state.pathParameters['id']!),
+      builder: (_, state) =>
+          SmartPlaylistEditScreen(playlistId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/genre/:name',
       parentNavigatorKey: _rootKey,
       builder: (_, state) => GenreScreen(
-          genreName:
-              Uri.decodeComponent(state.pathParameters['name']!)),
+        genreName: Uri.decodeComponent(state.pathParameters['name']!),
+      ),
     ),
   ],
 );

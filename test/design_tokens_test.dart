@@ -26,16 +26,13 @@ void main() {
       // Linear is intentionally the same Curves.linear instance, but we
       // still expose it under our token namespace so audio-coupled UIs
       // import from a single surface.
-      expect(
-        const [
-          AfCurves.easeStandard,
-          AfCurves.easeEmphasized,
-          AfCurves.easeOut,
-          AfCurves.easeIn,
-          AfCurves.linear,
-        ],
-        hasLength(5),
-      );
+      expect(const [
+        AfCurves.easeStandard,
+        AfCurves.easeEmphasized,
+        AfCurves.easeOut,
+        AfCurves.easeIn,
+        AfCurves.linear,
+      ], hasLength(5));
     });
   });
 

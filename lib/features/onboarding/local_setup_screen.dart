@@ -44,19 +44,23 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
     });
 
     try {
-      final count = await ref.read(localLibraryProvider).scanFolder(
-        _folderUri!,
-        onProgress: (completed, total) {
-          if (mounted) {
-            setState(() {
-              _scannedCount = completed;
-              _totalCount = total;
-            });
-            ref.read(localScanProgressProvider.notifier).state =
-                (completed: completed, total: total);
-          }
-        },
-      );
+      final count = await ref
+          .read(localLibraryProvider)
+          .scanFolder(
+            _folderUri!,
+            onProgress: (completed, total) {
+              if (mounted) {
+                setState(() {
+                  _scannedCount = completed;
+                  _totalCount = total;
+                });
+                ref.read(localScanProgressProvider.notifier).state = (
+                  completed: completed,
+                  total: total,
+                );
+              }
+            },
+          );
 
       if (!mounted) return;
       ref.read(localScanProgressProvider.notifier).state = null;
@@ -139,8 +143,10 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
                             color: AfColors.indigo500.withValues(alpha: 0.15),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.folder_open_rounded,
-                              color: AfColors.indigo400),
+                          child: const Icon(
+                            Icons.folder_open_rounded,
+                            color: AfColors.indigo400,
+                          ),
                         ),
                         const SizedBox(width: AfSpacing.s12),
                         Expanded(
@@ -166,11 +172,15 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
                           ),
                         ),
                         if (_folderUri == null)
-                          const Icon(Icons.add_rounded,
-                              color: AfColors.textTertiary),
+                          const Icon(
+                            Icons.add_rounded,
+                            color: AfColors.textTertiary,
+                          ),
                         if (_folderUri != null)
-                          const Icon(Icons.check_circle_rounded,
-                              color: AfColors.semanticSuccess),
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            color: AfColors.semanticSuccess,
+                          ),
                       ],
                     ),
                   ),
@@ -184,8 +194,7 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
                 LinearProgressIndicator(
                   value: _totalCount > 0 ? _scannedCount / _totalCount : null,
                   backgroundColor: AfColors.surfaceHigh,
-                  valueColor:
-                      const AlwaysStoppedAnimation(AfColors.indigo500),
+                  valueColor: const AlwaysStoppedAnimation(AfColors.indigo500),
                   borderRadius: BorderRadius.circular(2),
                 ),
                 const SizedBox(height: AfSpacing.s8),
@@ -216,9 +225,7 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
 
               // Scan button
               FilledButton(
-                onPressed: _folderUri != null && !_scanning
-                    ? _startScan
-                    : null,
+                onPressed: _folderUri != null && !_scanning ? _startScan : null,
                 style: FilledButton.styleFrom(
                   backgroundColor: AfColors.indigo600,
                   disabledBackgroundColor: AfColors.surfaceHigh,

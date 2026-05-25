@@ -23,10 +23,7 @@ Future<T?> showBlurBottomSheet<T>({
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        child: BlurBottomSheet(
-          topRadius: topRadius,
-          child: builder(context),
-        ),
+        child: BlurBottomSheet(topRadius: topRadius, child: builder(context)),
       );
     },
   );
@@ -34,7 +31,6 @@ Future<T?> showBlurBottomSheet<T>({
 
 /// The actual Blur Bottom Sheet widget.
 class BlurBottomSheet extends StatelessWidget {
-
   const BlurBottomSheet({
     super.key,
     required this.child,
@@ -56,7 +52,9 @@ class BlurBottomSheet extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(topRadius)),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(topRadius),
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,

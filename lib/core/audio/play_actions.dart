@@ -14,10 +14,7 @@ class PlayActions {
   /// Replace the queue with [tracks] and start playback at [startIndex].
   /// If shuffle mode is ON, the selected track plays first and the rest
   /// are shuffled below it.
-  Future<void> playQueue(
-    List<AfTrack> tracks, {
-    int startIndex = 0,
-  }) async {
+  Future<void> playQueue(List<AfTrack> tracks, {int startIndex = 0}) async {
     if (tracks.isEmpty) return;
     final svc = ref.read(playerServiceProvider);
     final mode = ref.read(appModeProvider);
@@ -34,7 +31,10 @@ class PlayActions {
       }
       if (backend != null) {
         final maxBitrate = ref.read(maxBitrateProvider);
-        return backend.trackStreamUrl(t.id, maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate);
+        return backend.trackStreamUrl(
+          t.id,
+          maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate,
+        );
       }
       return 'about:blank';
     }
@@ -58,20 +58,14 @@ class PlayActions {
       );
       ref.read(currentTrackProvider.notifier).state = tracks[safeIndex];
     } catch (e, stack) {
-      afLog(
-        'audio',
-        'playQueue failed',
-        error: e,
-        stackTrace: stack,
-      );
+      afLog('audio', 'playQueue failed', error: e, stackTrace: stack);
       rethrow;
     }
   }
 
   Future<void> playAlbum(List<AfTrack> tracks) => playQueue(tracks);
 
-  Future<void> playSingle(AfTrack track) =>
-      playQueue([track], startIndex: 0);
+  Future<void> playSingle(AfTrack track) => playQueue([track], startIndex: 0);
 
   /// Replace the queue with the seed track followed by [Jellyfin's Instant
   /// Mix](https://api.jellyfin.org/#tag/InstantMix/operation/GetInstantMixFromItem)
@@ -99,16 +93,11 @@ class PlayActions {
       afLog(
         'audio',
         'instantMix seed=${seed.id} '
-        'queue=${queue.length} (from server: ${mix.length})',
+            'queue=${queue.length} (from server: ${mix.length})',
       );
       await playQueue(queue);
     } catch (e, stack) {
-      afLog(
-        'audio',
-        'instantMix failed',
-        error: e,
-        stackTrace: stack,
-      );
+      afLog('audio', 'instantMix failed', error: e, stackTrace: stack);
       // Best-effort fallback: at least play the seed track.
       await playSingle(seed);
     }

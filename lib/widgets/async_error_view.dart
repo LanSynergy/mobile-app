@@ -25,7 +25,6 @@ import '../utils/display_error.dart';
 /// [displayError], which strips the `api_key` / `t` / `s` / `u` query
 /// params Dio embeds in `DioException.toString()`.
 class AsyncErrorView extends StatelessWidget {
-
   const AsyncErrorView({
     super.key,
     required this.label,
@@ -90,10 +89,7 @@ class AsyncErrorView extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AfSpacing.s8),
-              TextButton(
-                onPressed: onRetry,
-                child: const Text('Retry'),
-              ),
+              TextButton(onPressed: onRetry, child: const Text('Retry')),
             ],
           ),
         ),
@@ -131,10 +127,7 @@ class AsyncErrorView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AfSpacing.s16),
-            FilledButton.tonal(
-              onPressed: onRetry,
-              child: const Text('Retry'),
-            ),
+            FilledButton.tonal(onPressed: onRetry, child: const Text('Retry')),
           ],
         ),
       ),

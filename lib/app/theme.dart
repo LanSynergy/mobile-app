@@ -73,10 +73,7 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
       crossAxisMargin: 2,
     ),
 
-    iconTheme: const IconThemeData(
-      color: AfColors.textPrimary,
-      size: 24,
-    ),
+    iconTheme: const IconThemeData(color: AfColors.textPrimary, size: 24),
 
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.transparent,
@@ -106,9 +103,7 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: AfRadii.borderXl,
-      ),
+      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderXl),
     ),
 
     snackBarTheme: SnackBarThemeData(
@@ -133,9 +128,7 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AfColors.surfaceBase,
-      hintStyle: AfTypography.bodyLarge.copyWith(
-        color: AfColors.textTertiary,
-      ),
+      hintStyle: AfTypography.bodyLarge.copyWith(color: AfColors.textTertiary),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AfSpacing.s16,
         vertical: AfSpacing.s16,
@@ -168,9 +161,7 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
         textStyle: AfTypography.titleSmall,
         elevation: 0,
         shadowColor: Colors.transparent,
-        shape: const RoundedRectangleBorder(
-          borderRadius: AfRadii.borderPill,
-        ),
+        shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderPill),
         padding: const EdgeInsets.symmetric(
           horizontal: AfSpacing.s24,
           vertical: AfSpacing.s16,
@@ -183,9 +174,7 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
       style: TextButton.styleFrom(
         foregroundColor: AfColors.textPrimary,
         textStyle: AfTypography.titleSmall,
-        shape: const RoundedRectangleBorder(
-          borderRadius: AfRadii.borderPill,
-        ),
+        shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderPill),
         padding: const EdgeInsets.symmetric(
           horizontal: AfSpacing.s16,
           vertical: AfSpacing.s12,
@@ -213,7 +202,7 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
         TargetPlatform.android: _AfHorizontalSlideTransition(),
-        TargetPlatform.iOS:     _AfHorizontalSlideTransition(),
+        TargetPlatform.iOS: _AfHorizontalSlideTransition(),
         TargetPlatform.fuchsia: _AfHorizontalSlideTransition(),
       },
     ),

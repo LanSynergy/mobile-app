@@ -5,14 +5,7 @@ import 'package:aetherfin/widgets/skeletons/track_row_skeleton.dart';
 import 'package:aetherfin/widgets/skeletons/album_card_skeleton.dart';
 
 /// Which library section to show a skeleton for.
-enum LibrarySkeletonMode {
-  albums,
-  artists,
-  songs,
-  playlists,
-  genres,
-  liked,
-}
+enum LibrarySkeletonMode { albums, artists, songs, playlists, genres, liked }
 
 /// Shimmer skeleton for the library screen tabs.
 class LibrarySkeleton extends StatelessWidget {
@@ -38,7 +31,9 @@ class _AlbumGridSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AfSpacing.bottomInsetWithMiniAndNav),
+      padding: const EdgeInsets.only(
+        bottom: AfSpacing.bottomInsetWithMiniAndNav,
+      ),
       child: GridView.count(
         crossAxisCount: 3,
         shrinkWrap: true,
@@ -58,7 +53,9 @@ class _ArtistListSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AfSpacing.bottomInsetWithMiniAndNav),
+      padding: const EdgeInsets.only(
+        bottom: AfSpacing.bottomInsetWithMiniAndNav,
+      ),
       child: ListView(
         padding: AfSpacing.pageHorizontal,
         children: List.generate(10, (_) {
@@ -98,7 +95,9 @@ class _TrackListSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AfSpacing.bottomInsetWithMiniAndNav),
+      padding: const EdgeInsets.only(
+        bottom: AfSpacing.bottomInsetWithMiniAndNav,
+      ),
       child: ListView(
         padding: AfSpacing.pageHorizontal,
         children: List.generate(10, (_) => const TrackRowSkeleton()),
@@ -112,7 +111,9 @@ class _PlaylistListSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AfSpacing.bottomInsetWithMiniAndNav),
+      padding: const EdgeInsets.only(
+        bottom: AfSpacing.bottomInsetWithMiniAndNav,
+      ),
       child: ListView(
         padding: AfSpacing.pageHorizontal,
         children: List.generate(10, (_) {

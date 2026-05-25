@@ -179,11 +179,7 @@ class SkeletonBlock extends StatelessWidget {
 ///
 /// Use for artist avatars, user profile pictures, and icon placeholders.
 class SkeletonCircle extends StatelessWidget {
-  const SkeletonCircle({
-    super.key,
-    required this.size,
-    this.color,
-  });
+  const SkeletonCircle({super.key, required this.size, this.color});
 
   /// Diameter of the circle.
   final double size;

@@ -40,8 +40,9 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(() => _scrollOffset.value =
-        _scroll.hasClients ? _scroll.offset : 0.0);
+    _scroll.addListener(
+      () => _scrollOffset.value = _scroll.hasClients ? _scroll.offset : 0.0,
+    );
   }
 
   @override
@@ -114,7 +115,8 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: AfSpacing.gutterGenerous),
+                        horizontal: AfSpacing.gutterGenerous,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -127,8 +129,8 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                           const SizedBox(height: AfSpacing.s4),
                           GestureDetector(
                             onTap: album.artistId != null
-                                ? () => context.push(
-                                    '/artist/${album.artistId}')
+                                ? () =>
+                                      context.push('/artist/${album.artistId}')
                                 : null,
                             child: Text(
                               album.artistName,
@@ -147,25 +149,26 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                           const SizedBox(height: AfSpacing.s16),
                           _ActionRow(
                             album: album,
-                            onPlay: () => ref
-                                .read(playActionsProvider)
-                                .playAlbum(tracks),
-                            onMore: () => showAlbumMoreSheet(
-                                context, ref, album, tracks),
+                            onPlay: () =>
+                                ref.read(playActionsProvider).playAlbum(tracks),
+                            onMore: () =>
+                                showAlbumMoreSheet(context, ref, album, tracks),
                           ),
                         ],
                       ),
                     ),
                   ),
                   const SliverToBoxAdapter(
-                      child: SizedBox(height: AfSpacing.s24)),
+                    child: SizedBox(height: AfSpacing.s24),
+                  ),
                   SliverList.separated(
                     itemCount: tracks.length,
                     separatorBuilder: (context, index) =>
                         const SizedBox(height: AfSpacing.s4),
                     itemBuilder: (context, i) => Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: AfSpacing.s16),
+                        horizontal: AfSpacing.s16,
+                      ),
                       child: TrackRow(
                         track: tracks[i],
                         leadingNumber: i + 1,
@@ -179,7 +182,8 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                   ),
                   const SliverToBoxAdapter(
                     child: SizedBox(
-                        height: AfSpacing.bottomInsetWithMiniAndNav),
+                      height: AfSpacing.bottomInsetWithMiniAndNav,
+                    ),
                   ),
                 ],
               ),
@@ -210,7 +214,6 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
 }
 
 class _OpacityAppBar extends StatelessWidget {
-
   const _OpacityAppBar({
     required this.scrollOffset,
     required this.threshold,
@@ -238,13 +241,19 @@ class _OpacityAppBar extends StatelessWidget {
               filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: Container(
                 color: bg,
-                padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top,
+                ),
                 child: SizedBox(
                   height: kToolbarHeight,
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(LucideIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
+                        icon: const Icon(
+                          LucideIcons.arrowLeft,
+                          color: AfColors.textPrimary,
+                          size: 24,
+                        ),
                         onPressed: onBack,
                       ),
                       Expanded(
@@ -260,7 +269,11 @@ class _OpacityAppBar extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(LucideIcons.ellipsis, color: AfColors.textPrimary, size: 24),
+                        icon: const Icon(
+                          LucideIcons.ellipsis,
+                          color: AfColors.textPrimary,
+                          size: 24,
+                        ),
                         onPressed: onMore,
                       ),
                     ],
@@ -277,7 +290,11 @@ class _OpacityAppBar extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(LucideIcons.arrowLeft, color: AfColors.textPrimary, size: 24),
+                    icon: const Icon(
+                      LucideIcons.arrowLeft,
+                      color: AfColors.textPrimary,
+                      size: 24,
+                    ),
                     onPressed: onBack,
                   ),
                   Expanded(
@@ -293,7 +310,11 @@ class _OpacityAppBar extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(LucideIcons.ellipsis, color: AfColors.textPrimary, size: 24),
+                    icon: const Icon(
+                      LucideIcons.ellipsis,
+                      color: AfColors.textPrimary,
+                      size: 24,
+                    ),
                     onPressed: onMore,
                   ),
                 ],
@@ -354,7 +375,7 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
       afLog(
         'data',
         'albumFavorite source=live '
-        'id=${widget.album.id} isFavorite=$_isFavorite',
+            'id=${widget.album.id} isFavorite=$_isFavorite',
       );
       // Force the Home screen's "Favorite albums" row to re-fetch so it
       // reflects the toggle on the next frame instead of waiting for the
@@ -368,7 +389,9 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
       setState(() => _isFavorite = !_isFavorite);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(displayError(e, prefix: 'Could not update favorite'))),
+          SnackBar(
+            content: Text(displayError(e, prefix: 'Could not update favorite')),
+          ),
         );
       }
     } finally {
@@ -383,7 +406,11 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: widget.onPlay,
-            icon: const Icon(LucideIcons.play, color: AfColors.textOnPrimary, size: 22),
+            icon: const Icon(
+              LucideIcons.play,
+              color: AfColors.textOnPrimary,
+              size: 22,
+            ),
             label: const Text('Play'),
           ),
         ),
@@ -404,10 +431,7 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
           ),
         ),
         const SizedBox(width: AfSpacing.s8),
-        _IconCircle(
-          icon: LucideIcons.ellipsis,
-          onTap: widget.onMore,
-        ),
+        _IconCircle(icon: LucideIcons.ellipsis, onTap: widget.onMore),
       ],
     );
   }

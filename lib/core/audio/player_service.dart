@@ -23,14 +23,12 @@ import 'spectrum_settings.dart';
 /// - [AfAsyncLock] is only used around [openAll] calls in playQueue
 ///   and setAfLoopMode, not for play/pause/seek.
 class AfPlayerService {
-
   AfPlayerService() : _player = Player() {
     _positionTracker = AfPositionTracker(
       player: _player,
       shouldAdvancePosition: () => shouldAdvancePosition,
     );
-    _artworkManager = AfArtworkManager()
-      ..onArtworkChanged = _pushStateToNative;
+    _artworkManager = AfArtworkManager()..onArtworkChanged = _pushStateToNative;
     _audioDeviceManager = AfAudioDeviceManager(player: _player);
     _queueManager = AfQueueManager();
 
@@ -52,7 +50,10 @@ class AfPlayerService {
     });
 
     // 200 ms keeps background playback stable under Android Doze.
-    _player.setAudioBuffer(const Duration(milliseconds: 200)).catchError((Object e, StackTrace? stack) {
+    _player.setAudioBuffer(const Duration(milliseconds: 200)).catchError((
+      Object e,
+      StackTrace? stack,
+    ) {
       afLog('error', 'setAudioBuffer failed', error: e, stackTrace: stack);
     });
     _bindStreams();
@@ -84,8 +85,7 @@ class AfPlayerService {
       player: player,
       shouldAdvancePosition: () => shouldAdvancePosition,
     );
-    _artworkManager = AfArtworkManager()
-      ..onArtworkChanged = _pushStateToNative;
+    _artworkManager = AfArtworkManager()..onArtworkChanged = _pushStateToNative;
     _audioDeviceManager = AfAudioDeviceManager(player: player);
     _queueManager = AfQueueManager();
 
@@ -115,7 +115,8 @@ class AfPlayerService {
 
   void Function(AfTrack? track)? onTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
-  final List<StreamSubscription<dynamic>> _subs = <StreamSubscription<dynamic>>[];
+  final List<StreamSubscription<dynamic>> _subs =
+      <StreamSubscription<dynamic>>[];
 
   bool _disposed = false;
 
@@ -243,7 +244,8 @@ class AfPlayerService {
   bool get audioExclusive => _player.state.audioExclusive;
   Stream<bool> get audioExclusiveStream => _player.stream.audioExclusive;
   bool get audioStreamSilence => _player.state.audioStreamSilence;
-  Stream<bool> get audioStreamSilenceStream => _player.stream.audioStreamSilence;
+  Stream<bool> get audioStreamSilenceStream =>
+      _player.stream.audioStreamSilence;
   Duration get audioBuffer => _player.state.audioBuffer;
   Stream<Duration> get audioBufferStream => _player.stream.audioBuffer;
 
@@ -255,7 +257,8 @@ class AfPlayerService {
       _player.stream.playbackState;
   Stream<bool> get bufferingStream => _player.stream.buffering;
   bool get isBuffering => _player.state.buffering;
-  Stream<double> get bufferingPercentageStream => _player.stream.bufferingPercentage;
+  Stream<double> get bufferingPercentageStream =>
+      _player.stream.bufferingPercentage;
   double get bufferingPercentage => _player.state.bufferingPercentage;
 
   Stream<double> get volumeStream => _player.stream.volume;
@@ -331,7 +334,9 @@ class AfPlayerService {
     afLog('audio', 'audioEffects set');
   }
 
-  Future<void> updateAudioEffects(AudioEffects Function(AudioEffects) mapper) async {
+  Future<void> updateAudioEffects(
+    AudioEffects Function(AudioEffects) mapper,
+  ) async {
     await _player.updateAudioEffects((current) {
       final updated = mapper(current);
       return autoBypassFlat(updated);
@@ -490,7 +495,12 @@ class AfPlayerService {
         try {
           await _player.stop();
         } catch (err, st) {
-          afLog('audio', 'stop failed on playQueue cleanup', error: err, stackTrace: st);
+          afLog(
+            'audio',
+            'stop failed on playQueue cleanup',
+            error: err,
+            stackTrace: st,
+          );
         }
         rethrow;
       }
@@ -543,7 +553,12 @@ class AfPlayerService {
     try {
       await _player.stop();
     } catch (e, stack) {
-      afLog('audio', 'stop failed in stopAndClear', error: e, stackTrace: stack);
+      afLog(
+        'audio',
+        'stop failed in stopAndClear',
+        error: e,
+        stackTrace: stack,
+      );
     }
     _queueManager.clear();
     onTrackChanged?.call(null);
@@ -564,7 +579,8 @@ class AfPlayerService {
 
   Future<void> skipToNext() async {
     if (_disposed) return;
-    if (_queueManager.engine.isAtQueueEnd && _player.state.loop != Loop.playlist) {
+    if (_queueManager.engine.isAtQueueEnd &&
+        _player.state.loop != Loop.playlist) {
       return;
     }
 
@@ -686,7 +702,10 @@ class AfPlayerService {
   Future<bool> removeFromQueue(int index) async {
     if (_disposed) return false;
     if (!_queueManager.canRemove(index)) {
-      afLog('audio', 'removeFromQueue refused index=$index (currently playing)');
+      afLog(
+        'audio',
+        'removeFromQueue refused index=$index (currently playing)',
+      );
       return false;
     }
 
@@ -718,9 +737,12 @@ class AfPlayerService {
     required String Function(AfTrack) resolveStreamUrl,
   }) async {
     if (_disposed) return;
-    _queueManager.engine.insert(_queueManager.currentIndex >= 0
-        ? _queueManager.currentIndex + 1
-        : _queueManager.currentQueue.length, track);
+    _queueManager.engine.insert(
+      _queueManager.currentIndex >= 0
+          ? _queueManager.currentIndex + 1
+          : _queueManager.currentQueue.length,
+      track,
+    );
     _queueManager.emitQueue();
     afLog('audio', 'playNext "${track.title}"');
   }
@@ -750,8 +772,6 @@ class AfPlayerService {
   void _pushStateToNative() {
     _updateMediaSession();
   }
-
-  
 
   Future<void> _reconfigureSpectrumOnTrackChange() async {
     if (_disposed) return;
@@ -792,129 +812,176 @@ class AfPlayerService {
   // ---------------------------------------------------------------------------
 
   void _bindStreams() {
-    _subs.add(_player.stream.playing.listen((playing) async {
-      try {
-        _updateMediaSession();
-        if (playing && _queueManager.currentTrack != null) {
-          _userPaused = false;
+    _subs.add(
+      _player.stream.playing.listen((playing) async {
+        try {
+          _updateMediaSession();
+          if (playing && _queueManager.currentTrack != null) {
+            _userPaused = false;
+          }
+        } catch (e, stack) {
+          afLog('audio', 'playing handler failed', error: e, stackTrace: stack);
         }
-      } catch (e, stack) {
-        afLog('audio', 'playing handler failed', error: e, stackTrace: stack);
-      }
-    }));
+      }),
+    );
 
     _subs.add(_player.stream.buffering.listen((_) => _updateMediaSession()));
 
-    _subs.add(_player.stream.completed.listen((completed) async {
-      try {
-        if (_disposed) return;
-        _updateMediaSession();
-        if (!completed) return;
-
-        final loopAtEvent = _player.state.loop;
-        final playingAtEvent = _player.state.playing;
-
-        if (!_queueManager.engine.isAtQueueEnd) {
-          // Advance engine state
-          _queueManager.engine.advanceIndex();
-          _queueManager.engine.advanceWindow();
-          _positionTracker.onTrackChanged();
-
-          // Notify and emit
-          final current = _queueManager.currentTrack;
-          if (current != null) {
-            _queueManager.emitCurrentTrack(current);
-            onTrackChanged?.call(current);
-            unawaited(Future.microtask(() => onTrackCompleted?.call(current)));
-          }
+    _subs.add(
+      _player.stream.completed.listen((completed) async {
+        try {
+          if (_disposed) return;
           _updateMediaSession();
-          unawaited(_reconfigureSpectrumOnTrackChange());
+          if (!completed) return;
 
-          final next = _queueManager.engine.nextTrack;
-          if (next != null && _resolveStreamUrl != null) {
-            try {
-              await _player.add(Media(_resolveStreamUrl!(next)));
-            } catch (e, stack) {
-              afLog('audio', 'completed: failed to add next track',
-                  error: e, stackTrace: stack);
-            }
-          }
+          final loopAtEvent = _player.state.loop;
+          final playingAtEvent = _player.state.playing;
 
-          // If mpv stopped, restart playback to advance to next slot.
-          if (!playingAtEvent && loopAtEvent != Loop.file) {
-            try {
-              await _player.play();
-            } catch (e, stack) {
-              afLog('audio', 'completed: play() after advance failed',
-                  error: e, stackTrace: stack);
+          if (!_queueManager.engine.isAtQueueEnd) {
+            // Advance engine state
+            _queueManager.engine.advanceIndex();
+            _queueManager.engine.advanceWindow();
+            _positionTracker.onTrackChanged();
+
+            // Notify and emit
+            final current = _queueManager.currentTrack;
+            if (current != null) {
+              _queueManager.emitCurrentTrack(current);
+              onTrackChanged?.call(current);
+              unawaited(
+                Future.microtask(() => onTrackCompleted?.call(current)),
+              );
             }
-          }
-        } else {
-          // End of queue
-          switch (loopAtEvent) {
-            case Loop.off:
-              _userPaused = true;
-              _positionTracker.onStop();
+            _updateMediaSession();
+            unawaited(_reconfigureSpectrumOnTrackChange());
+
+            final next = _queueManager.engine.nextTrack;
+            if (next != null && _resolveStreamUrl != null) {
               try {
-                await _player.stop();
+                await _player.add(Media(_resolveStreamUrl!(next)));
               } catch (e, stack) {
-                afLog('audio', 'stop failed on queue completion',
-                    error: e, stackTrace: stack);
+                afLog(
+                  'audio',
+                  'completed: failed to add next track',
+                  error: e,
+                  stackTrace: stack,
+                );
               }
-              _queueManager.endPlayback();
-              onTrackChanged?.call(null);
-              _updateMediaSession();
-              afLog('audio', 'queue end, auto-stop (loop=off)');
-            case Loop.playlist:
-              _queueManager.engine.jumpTo(0);
-              _positionTracker.onTrackChanged();
-              await _rebuildWindow(_queueManager.currentTrack!);
-              _updateMediaSession();
-              afLog('audio', 'queue end, looping playlist');
-            case Loop.file:
-              _positionTracker.onTrackChanged();
-              if (!playingAtEvent) {
+            }
+
+            // If mpv stopped, restart playback to advance to next slot.
+            if (!playingAtEvent && loopAtEvent != Loop.file) {
+              try {
                 await _player.play();
+              } catch (e, stack) {
+                afLog(
+                  'audio',
+                  'completed: play() after advance failed',
+                  error: e,
+                  stackTrace: stack,
+                );
               }
-              afLog('audio', 'queue end, looping file — mpv handles internally');
+            }
+          } else {
+            // End of queue
+            switch (loopAtEvent) {
+              case Loop.off:
+                _userPaused = true;
+                _positionTracker.onStop();
+                try {
+                  await _player.stop();
+                } catch (e, stack) {
+                  afLog(
+                    'audio',
+                    'stop failed on queue completion',
+                    error: e,
+                    stackTrace: stack,
+                  );
+                }
+                _queueManager.endPlayback();
+                onTrackChanged?.call(null);
+                _updateMediaSession();
+                afLog('audio', 'queue end, auto-stop (loop=off)');
+              case Loop.playlist:
+                _queueManager.engine.jumpTo(0);
+                _positionTracker.onTrackChanged();
+                await _rebuildWindow(_queueManager.currentTrack!);
+                _updateMediaSession();
+                afLog('audio', 'queue end, looping playlist');
+              case Loop.file:
+                _positionTracker.onTrackChanged();
+                if (!playingAtEvent) {
+                  await _player.play();
+                }
+                afLog(
+                  'audio',
+                  'queue end, looping file — mpv handles internally',
+                );
+            }
           }
+        } catch (e, stack) {
+          afLog(
+            'audio',
+            'completed handler failed',
+            error: e,
+            stackTrace: stack,
+          );
         }
-      } catch (e, stack) {
-        afLog('audio', 'completed handler failed', error: e, stackTrace: stack);
-      }
-    }));
+      }),
+    );
 
     _subs.add(_player.stream.rate.listen((_) => _updateMediaSession()));
-    _subs.add(_player.stream.duration.listen((dur) {
-      if (dur > Duration.zero) {
-        _updateMediaSession();
-      }
-    }));
-    _subs.add(_player.stream.coverArt.listen((raw) async {
-      try {
-        try {
-          await _artworkManager.persistCover(raw);
-        } catch (e, stack) {
-          afLog('audio', 'persistCover failed', error: e, stackTrace: stack);
+    _subs.add(
+      _player.stream.duration.listen((dur) {
+        if (dur > Duration.zero) {
+          _updateMediaSession();
         }
-        _updateMediaSession();
-      } catch (e, stack) {
-        afLog('audio', 'coverArt handler failed', error: e, stackTrace: stack);
-      }
-    }));
+      }),
+    );
+    _subs.add(
+      _player.stream.coverArt.listen((raw) async {
+        try {
+          try {
+            await _artworkManager.persistCover(raw);
+          } catch (e, stack) {
+            afLog('audio', 'persistCover failed', error: e, stackTrace: stack);
+          }
+          _updateMediaSession();
+        } catch (e, stack) {
+          afLog(
+            'audio',
+            'coverArt handler failed',
+            error: e,
+            stackTrace: stack,
+          );
+        }
+      }),
+    );
 
-    _subs.add(_player.stream.audioDevice.listen((newDevice) async {
-      try {
-        if (!_audioDeviceManager.isRealDeviceChange(newDevice.name)) return;
+    _subs.add(
+      _player.stream.audioDevice.listen((newDevice) async {
         try {
-          await _audioDeviceManager.reapplyPersistedEffects();
+          if (!_audioDeviceManager.isRealDeviceChange(newDevice.name)) return;
+          try {
+            await _audioDeviceManager.reapplyPersistedEffects();
+          } catch (e, stack) {
+            afLog(
+              'audio',
+              'reapplyPersistedEffects failed',
+              error: e,
+              stackTrace: stack,
+            );
+          }
         } catch (e, stack) {
-          afLog('audio', 'reapplyPersistedEffects failed', error: e, stackTrace: stack);
+          afLog(
+            'audio',
+            'audioDevice handler failed',
+            error: e,
+            stackTrace: stack,
+          );
         }
-      } catch (e, stack) {
-        afLog('audio', 'audioDevice handler failed', error: e, stackTrace: stack);
-      }
-    }));
+      }),
+    );
   }
 
   int _lastMediaSessionUpdateMs = 0;
@@ -942,12 +1009,14 @@ class AfPlayerService {
     // Fallback track-end detection for when mpv's end-of-file property
     // observation doesn't fire.  Overrides s.playing which may be
     // transiently true even though the track has finished.
-    final trackEnded = !_userPaused &&
+    final trackEnded =
+        !_userPaused &&
         _queueManager.isAtQueueEnd &&
         s.duration > Duration.zero &&
         _positionTracker.lastKnownPosition >= s.duration;
-    final effectivePlaying =
-        (isQueueEnd || trackEnded) ? false : (s.playing || shouldAdvancePosition);
+    final effectivePlaying = (isQueueEnd || trackEnded)
+        ? false
+        : (s.playing || shouldAdvancePosition);
 
     // Throttle — skip early when called too frequently, BUT always let
     // playing→stopped transitions through immediately. If we throttle
@@ -959,28 +1028,34 @@ class AfPlayerService {
     _lastMediaSessionUpdateMs = nowMs;
     _lastEffectivePlaying = effectivePlaying;
 
-    final effectiveDuration = s.duration > Duration.zero ? s.duration : track.duration;
+    final effectiveDuration = s.duration > Duration.zero
+        ? s.duration
+        : track.duration;
 
     final artUri = _artworkManager.artUri(track);
-    final artPath =
-        artUri != null && artUri.isScheme('file') ? artUri.toFilePath() : null;
+    final artPath = artUri != null && artUri.isScheme('file')
+        ? artUri.toFilePath()
+        : null;
 
-    _bridge.pushState(MediaSessionState(
-      playing: effectivePlaying,
-      buffering: s.buffering,
-      position: _positionTracker.lastKnownPosition,
-      duration: effectiveDuration,
-      speed: effectivePlaying ? s.rate : 0.0,
-      title: track.title,
-      artist: track.artistName,
-      album: track.albumName,
-      artPath: artPath,
-      queueIndex:
-          _queueManager.currentIndex >= 0 ? _queueManager.currentIndex : null,
-      queueSize: _queueManager.currentQueue.length,
-      needsArtworkDownload:
-          artUri == null && _artworkManager.needsRemoteArtwork(track),
-    ));
+    _bridge.pushState(
+      MediaSessionState(
+        playing: effectivePlaying,
+        buffering: s.buffering,
+        position: _positionTracker.lastKnownPosition,
+        duration: effectiveDuration,
+        speed: effectivePlaying ? s.rate : 0.0,
+        title: track.title,
+        artist: track.artistName,
+        album: track.albumName,
+        artPath: artPath,
+        queueIndex: _queueManager.currentIndex >= 0
+            ? _queueManager.currentIndex
+            : null,
+        queueSize: _queueManager.currentQueue.length,
+        needsArtworkDownload:
+            artUri == null && _artworkManager.needsRemoteArtwork(track),
+      ),
+    );
   }
 }
 
@@ -1026,15 +1101,12 @@ class AfPlayerService {
 @visibleForTesting
 AudioEffects autoBypassFlat(AudioEffects fx) {
   return fx.copyWith(
-    bass: fx.bass.copyWith(
-      enabled: fx.bass.enabled && fx.bass.g.abs() > 0.001,
-    ),
+    bass: fx.bass.copyWith(enabled: fx.bass.enabled && fx.bass.g.abs() > 0.001),
     treble: fx.treble.copyWith(
       enabled: fx.treble.enabled && fx.treble.g.abs() > 0.001,
     ),
     superequalizer: fx.superequalizer.copyWith(
-      enabled:
-          fx.superequalizer.enabled && fx.superequalizer.params.isNotEmpty,
+      enabled: fx.superequalizer.enabled && fx.superequalizer.params.isNotEmpty,
     ),
     deesser: fx.deesser.copyWith(
       // Every deesser knob is a 0..1 ratio in libmpv. Clamp on the
@@ -1052,18 +1124,23 @@ class AfAsyncLock {
 
   Future<T> run<T>(Future<T> Function() action) {
     final completer = Completer<T>();
-    _chain = _chain.then(
-      (_) async {
-        try {
-          final result = await action();
-          completer.complete(result);
-        } catch (e, st) {
-          completer.completeError(e, st);
-        }
-      },
-    ).catchError((Object error, StackTrace stack) {
-      afLog('error', 'AfAsyncLock chain error', error: error, stackTrace: stack);
-    });
+    _chain = _chain
+        .then((_) async {
+          try {
+            final result = await action();
+            completer.complete(result);
+          } catch (e, st) {
+            completer.completeError(e, st);
+          }
+        })
+        .catchError((Object error, StackTrace stack) {
+          afLog(
+            'error',
+            'AfAsyncLock chain error',
+            error: error,
+            stackTrace: stack,
+          );
+        });
     return completer.future;
   }
 }

@@ -41,12 +41,8 @@ import '../utils/log.dart';
 /// `_busy` stays local because it gates *this* button's request, not
 /// the global toggle state.
 class FavoriteHeartButton extends ConsumerStatefulWidget {
+  const FavoriteHeartButton({super.key, required this.track, this.size = 20});
 
-  const FavoriteHeartButton({
-    super.key,
-    required this.track,
-    this.size = 20,
-  });
   /// The track to favorite/unfavorite. Only `id` and `isFavorite` are
   /// read; the rest of the model is forwarded to `currentTrackProvider`
   /// when this row is the playing track.
@@ -82,16 +78,17 @@ class _FavoriteHeartButtonState extends ConsumerState<FavoriteHeartButton> {
 
     // Optimistic global flip — every heart for this track id rebuilds
     // immediately, including this one (via the `ref.watch` in `build`).
-    ref.read(trackFavoriteOverridesProvider.notifier).update(
-          (s) => {...s, widget.track.id: next},
-        );
+    ref
+        .read(trackFavoriteOverridesProvider.notifier)
+        .update((s) => {...s, widget.track.id: next});
 
     // Keep `currentTrackProvider` in sync if this is the playing track,
     // so Now Playing's icon doesn't lag a list-screen toggle.
     final current = ref.read(currentTrackProvider);
     if (current?.id == widget.track.id) {
-      ref.read(currentTrackProvider.notifier).state =
-          current!.copyWith(isFavorite: next);
+      ref.read(currentTrackProvider.notifier).state = current!.copyWith(
+        isFavorite: next,
+      );
     }
 
     try {
@@ -106,21 +103,24 @@ class _FavoriteHeartButtonState extends ConsumerState<FavoriteHeartButton> {
       ref.invalidate(favoriteTracksProvider);
       ref.invalidate(recentlyPlayedTracksProvider);
     } catch (e, stack) {
-      afLog('error', 'trackFavorite toggle failed',
-          error: e, stackTrace: stack);
+      afLog(
+        'error',
+        'trackFavorite toggle failed',
+        error: e,
+        stackTrace: stack,
+      );
       if (!mounted) return;
       // Roll the override back to the pre-toggle value (which itself
       // might have been an earlier override or the model default).
-      ref.read(trackFavoriteOverridesProvider.notifier).update(
-            (s) => {...s, widget.track.id: wasFavorite},
-          );
+      ref
+          .read(trackFavoriteOverridesProvider.notifier)
+          .update((s) => {...s, widget.track.id: wasFavorite});
       if (current?.id == widget.track.id) {
         ref.read(currentTrackProvider.notifier).state = current;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text(displayError(e, prefix: 'Could not update favorite')),
+          content: Text(displayError(e, prefix: 'Could not update favorite')),
         ),
       );
     } finally {

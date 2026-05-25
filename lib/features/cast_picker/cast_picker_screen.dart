@@ -43,8 +43,11 @@ class CastPickerScreen extends ConsumerWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.speaker_outlined,
-                              size: 48, color: AfColors.textTertiary),
+                          const Icon(
+                            Icons.speaker_outlined,
+                            size: 48,
+                            color: AfColors.textTertiary,
+                          ),
                           const SizedBox(height: AfSpacing.s16),
                           Text(
                             'No audio devices found.\nStart playback first.',
@@ -61,7 +64,9 @@ class CastPickerScreen extends ConsumerWidget {
 
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: AfSpacing.s16, vertical: AfSpacing.s8),
+                    horizontal: AfSpacing.s16,
+                    vertical: AfSpacing.s8,
+                  ),
                   itemCount: devices.length,
                   separatorBuilder: (context, index) =>
                       const SizedBox(height: AfSpacing.s8),
@@ -70,9 +75,11 @@ class CastPickerScreen extends ConsumerWidget {
                     final isActive = active?.name == device.name;
                     return ListTile(
                       leading: Icon(
-                        _iconForDevice(device.description.isNotEmpty
-                            ? device.description
-                            : device.name),
+                        _iconForDevice(
+                          device.description.isNotEmpty
+                              ? device.description
+                              : device.name,
+                        ),
                         color: isActive
                             ? AfColors.indigo300
                             : AfColors.textSecondary,
@@ -92,15 +99,19 @@ class CastPickerScreen extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       trailing: isActive
-                          ? const Icon(Icons.check_rounded,
-                              color: AfColors.indigo300)
+                          ? const Icon(
+                              Icons.check_rounded,
+                              color: AfColors.indigo300,
+                            )
                           : null,
                       tileColor: AfColors.surfaceBase,
                       shape: const RoundedRectangleBorder(
-                          borderRadius: AfRadii.borderMd),
+                        borderRadius: AfRadii.borderMd,
+                      ),
                       onTap: () async {
                         await svc.setAudioDevice(device);
-                        if (context.mounted) unawaited(Navigator.maybePop(context));
+                        if (context.mounted)
+                          unawaited(Navigator.maybePop(context));
                       },
                     );
                   },
@@ -114,11 +125,14 @@ class CastPickerScreen extends ConsumerWidget {
   }
 
   IconData _iconForDevice(String name) {
-    final n = name.toLowerCase();    if (n.contains('bluetooth') || n.contains('bt')) {
+    final n = name.toLowerCase();
+    if (n.contains('bluetooth') || n.contains('bt')) {
       return Icons.bluetooth_audio_rounded;
     }
-    if (n.contains('headphone') || n.contains('headset') ||
-        n.contains('earphone') || n.contains('airpod')) {
+    if (n.contains('headphone') ||
+        n.contains('headset') ||
+        n.contains('earphone') ||
+        n.contains('airpod')) {
       return Icons.headphones_rounded;
     }
     if (n.contains('speaker')) return Icons.speaker_rounded;

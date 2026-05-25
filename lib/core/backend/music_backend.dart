@@ -42,7 +42,6 @@ abstract class MusicBackend {
   /// list endpoints only carries display fields.
   Future<AfTrackDetails?> trackDetails(String id);
 
-
   Future<List<AfAlbum>> artistAlbums(String artistId, {int limit = 100});
   Future<List<AfTrack>> artistTopTracks(String artistId, {int limit = 5});
   Future<List<AfAlbum>> albumsByGenre(String genre, {int limit = 200});
@@ -50,8 +49,15 @@ abstract class MusicBackend {
 
   // ── Search ──────────────────────────────────────────────────────────
 
-  Future<({List<AfTrack> tracks, List<AfAlbum> albums, List<AfArtist> artists, List<AfPlaylist> playlists})>
-      search(String query);
+  Future<
+    ({
+      List<AfTrack> tracks,
+      List<AfAlbum> albums,
+      List<AfArtist> artists,
+      List<AfPlaylist> playlists,
+    })
+  >
+  search(String query);
 
   // ── Favorites ───────────────────────────────────────────────────────
 
@@ -62,8 +68,7 @@ abstract class MusicBackend {
   Future<void> addToPlaylist(String playlistId, List<String> trackIds);
   Future<String?> createPlaylist(String name, List<String> trackIds);
   Future<void> removeFromPlaylist(String playlistId, List<String> entryIds);
-  Future<void> movePlaylistItem(
-      String playlistId, String itemId, int newIndex);
+  Future<void> movePlaylistItem(String playlistId, String itemId, int newIndex);
   Future<void> deletePlaylist(String playlistId);
   Future<void> renamePlaylist(String playlistId, String newName);
 

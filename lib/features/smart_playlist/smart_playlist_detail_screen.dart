@@ -33,8 +33,10 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
         ),
-        title: Text(playlist?.name ?? 'Smart Playlist',
-            style: AfTypography.display),
+        title: Text(
+          playlist?.name ?? 'Smart Playlist',
+          style: AfTypography.display,
+        ),
         centerTitle: false,
         titleSpacing: 0,
         actions: [
@@ -59,8 +61,11 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
                       color: AfColors.textTertiary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.music_off_rounded,
-                        size: 36, color: AfColors.textTertiary),
+                    child: const Icon(
+                      Icons.music_off_rounded,
+                      size: 36,
+                      color: AfColors.textTertiary,
+                    ),
                   ),
                   const SizedBox(height: AfSpacing.s16),
                   Text(
@@ -104,8 +109,11 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
                           color: AfColors.indigo500.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.auto_awesome_rounded,
-                            size: 20, color: AfColors.indigo400),
+                        child: const Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 20,
+                          color: AfColors.indigo400,
+                        ),
                       ),
                       const SizedBox(width: AfSpacing.s12),
                       Expanded(
@@ -113,8 +121,10 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('${tracks.length} tracks',
-                                style: AfTypography.bodyMedium),
+                            Text(
+                              '${tracks.length} tracks',
+                              style: AfTypography.bodyMedium,
+                            ),
                             if (playlist != null)
                               Padding(
                                 padding: const EdgeInsets.only(top: 2),
@@ -161,10 +171,12 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
               // Track list
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AfSpacing.s16,
-                  ).add(const EdgeInsets.only(
-                      bottom: AfSpacing.bottomInsetWithMiniAndNav)),
+                  padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16)
+                      .add(
+                        const EdgeInsets.only(
+                          bottom: AfSpacing.bottomInsetWithMiniAndNav,
+                        ),
+                      ),
                   itemCount: tracks.length,
                   itemExtent: 68.0,
                   itemBuilder: (context, i) {

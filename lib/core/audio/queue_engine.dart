@@ -30,19 +30,21 @@ class AfQueueEngine {
     if (_shuffleOrder == null) return List<AfTrack>.unmodifiable(_tracks);
     return List<AfTrack>.unmodifiable(_shuffleOrder!.map((i) => _tracks[i]));
   }
+
   int get currentIndex {
     if (_shuffleOrder == null) return _currentIndex;
     if (_currentIndex == -1) return -1;
     return _shuffleOrder!.indexOf(_currentIndex);
   }
+
   int get windowStart => _windowStart;
   bool get isShuffleEnabled => _shuffleOrder != null;
   bool get playbackEnded => _playbackEnded;
 
   AfTrack? get currentTrack =>
       (_currentIndex >= 0 && _currentIndex < _tracks.length)
-          ? _tracks[_currentIndex]
-          : null;
+      ? _tracks[_currentIndex]
+      : null;
 
   /// Track at mpv slot 0 (the currently-playing slot).
   AfTrack? get windowSlot0 {
@@ -77,6 +79,7 @@ class AfQueueEngine {
     if (_tracks.isEmpty) return true;
     return currentIndex >= _tracks.length - 1;
   }
+
   bool get isEmpty => _tracks.isEmpty;
   int get length => _tracks.length;
 
@@ -163,9 +166,7 @@ class AfQueueEngine {
 
   /// Convert a logical index to physical (_tracks) index.
   int physicalIndex(int logicalIndex) {
-    return _shuffleOrder != null
-        ? _shuffleOrder![logicalIndex]
-        : logicalIndex;
+    return _shuffleOrder != null ? _shuffleOrder![logicalIndex] : logicalIndex;
   }
 
   /// Convert a physical (_tracks) index to logical (queue) index.

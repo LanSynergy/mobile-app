@@ -48,8 +48,11 @@ class SmartPlaylistListScreen extends ConsumerWidget {
                         color: AfColors.indigo500.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.auto_awesome_rounded,
-                          size: 36, color: AfColors.indigo400),
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 36,
+                        color: AfColors.indigo400,
+                      ),
                     ),
                     const SizedBox(height: AfSpacing.s16),
                     Text(
@@ -86,8 +89,9 @@ class SmartPlaylistListScreen extends ConsumerWidget {
                         for (int i = 0; i < playlists.length; i++) ...[
                           _PlaylistTile(
                             playlist: playlists[i],
-                            onTap: () => context
-                                .push('/smart-playlist/${playlists[i].id}'),
+                            onTap: () => context.push(
+                              '/smart-playlist/${playlists[i].id}',
+                            ),
                             onDelete: () async {
                               final db = ref.read(smartPlaylistDbProvider);
                               await db.delete(playlists[i].id);
@@ -120,7 +124,6 @@ class SmartPlaylistListScreen extends ConsumerWidget {
 }
 
 class _PlaylistTile extends StatelessWidget {
-
   const _PlaylistTile({
     required this.playlist,
     required this.onTap,
@@ -149,8 +152,11 @@ class _PlaylistTile extends StatelessWidget {
                 color: AfColors.indigo500.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.auto_awesome_rounded,
-                  size: 20, color: AfColors.indigo400),
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                size: 20,
+                color: AfColors.indigo400,
+              ),
             ),
             const SizedBox(width: AfSpacing.s12),
             Expanded(
@@ -173,8 +179,11 @@ class _PlaylistTile extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                color: AfColors.textTertiary, size: 20),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AfColors.textTertiary,
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -204,8 +213,10 @@ class _PlaylistTile extends StatelessWidget {
                   Navigator.pop(context);
                   onDelete();
                 },
-                child: const Text('Delete',
-                    style: TextStyle(color: AfColors.semanticError)),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: AfColors.semanticError),
+                ),
               ),
             ],
           ),

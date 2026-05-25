@@ -22,64 +22,90 @@ final smartPlaylistDbProvider = Provider<SmartPlaylistDb>((ref) {
   return SmartPlaylistDb(database: appDb);
 });
 
-final smartPlaylistsProvider =
-    FutureProvider.autoDispose<List<SmartPlaylist>>((ref) {
+final smartPlaylistsProvider = FutureProvider.autoDispose<List<SmartPlaylist>>((
+  ref,
+) {
   final db = ref.watch(smartPlaylistDbProvider);
   return db.getAll();
 });
 
-final smartPlaylistTracksProvider =
-    FutureProvider.autoDispose.family<List<AfTrack>, String>((ref, playlistId) async {
-  final db = ref.read(smartPlaylistDbProvider);
-  final playlist = await db.getById(playlistId);
-  if (playlist == null) return const <AfTrack>[];
+final smartPlaylistTracksProvider = FutureProvider.autoDispose
+    .family<List<AfTrack>, String>((ref, playlistId) async {
+      final db = ref.read(smartPlaylistDbProvider);
+      final playlist = await db.getById(playlistId);
+      if (playlist == null) return const <AfTrack>[];
 
-  final engine = SmartPlaylistEngine();
-  final mode = ref.read(appModeProvider);
+      final engine = SmartPlaylistEngine();
+      final mode = ref.read(appModeProvider);
 
-  if (mode == AppMode.local) {
-    final localLib = ref.read(localLibraryProvider);
-    return engine.resolveLocal(playlist, localLib.db);
-  }
+      if (mode == AppMode.local) {
+        final localLib = ref.read(localLibraryProvider);
+        return engine.resolveLocal(playlist, localLib.db);
+      }
 
-  final allTracks = await ref.read(allTracksProvider.future);
-  return engine.resolveFromList(playlist, allTracks);
-});
+      final allTracks = await ref.read(allTracksProvider.future);
+      return engine.resolveFromList(playlist, allTracks);
+    });
 
 final playlistDetailProvider = FutureProvider.autoDispose
-    .family<({AfPlaylist playlist, List<AfTrack> tracks})?, String>(
-        (ref, id) async {
-  final backend = ref.watch(musicBackendProvider);
-  if (backend == null) {
-    _logData('playlistDetail', source: 'demo', extra: 'id=$id (signed out)');
-    return null;
-  }
-  final res = await backend.playlist(id);
-  _logData('playlistDetail',
-      source: 'live', extra: 'id=$id tracks=${res?.tracks.length ?? 0}');
-  return res;
-});
+    .family<({AfPlaylist playlist, List<AfTrack> tracks})?, String>((
+      ref,
+      id,
+    ) async {
+      final backend = ref.watch(musicBackendProvider);
+      if (backend == null) {
+        _logData(
+          'playlistDetail',
+          source: 'demo',
+          extra: 'id=$id (signed out)',
+        );
+        return null;
+      }
+      final res = await backend.playlist(id);
+      _logData(
+        'playlistDetail',
+        source: 'live',
+        extra: 'id=$id tracks=${res?.tracks.length ?? 0}',
+      );
+      return res;
+    });
 
-final instantMixProvider =
-    FutureProvider.autoDispose.family<List<AfTrack>, String>((ref, seedId) async {
-  final backend = ref.watch(musicBackendProvider);
-  if (backend == null) {
-    _logData('instantMix', source: 'demo', extra: 'seedId=$seedId (signed out)');
-    return const <AfTrack>[];
-  }
-  final res = await backend.instantMix(seedId);
-  _logData('instantMix', source: 'live', extra: 'seedId=$seedId count=${res.length}');
-  return res;
-});
+final instantMixProvider = FutureProvider.autoDispose
+    .family<List<AfTrack>, String>((ref, seedId) async {
+      final backend = ref.watch(musicBackendProvider);
+      if (backend == null) {
+        _logData(
+          'instantMix',
+          source: 'demo',
+          extra: 'seedId=$seedId (signed out)',
+        );
+        return const <AfTrack>[];
+      }
+      final res = await backend.instantMix(seedId);
+      _logData(
+        'instantMix',
+        source: 'live',
+        extra: 'seedId=$seedId count=${res.length}',
+      );
+      return res;
+    });
 
-final genreAlbumsProvider =
-    FutureProvider.autoDispose.family<List<AfAlbum>, String>((ref, genre) async {
-  final backend = ref.watch(musicBackendProvider);
-  if (backend == null) {
-    _logData('genreAlbums', source: 'demo', extra: 'genre=$genre (signed out)');
-    return const <AfAlbum>[];
-  }
-  final res = await backend.albumsByGenre(genre);
-  _logData('genreAlbums', source: 'live', extra: 'genre=$genre count=${res.length}');
-  return res;
-});
+final genreAlbumsProvider = FutureProvider.autoDispose
+    .family<List<AfAlbum>, String>((ref, genre) async {
+      final backend = ref.watch(musicBackendProvider);
+      if (backend == null) {
+        _logData(
+          'genreAlbums',
+          source: 'demo',
+          extra: 'genre=$genre (signed out)',
+        );
+        return const <AfAlbum>[];
+      }
+      final res = await backend.albumsByGenre(genre);
+      _logData(
+        'genreAlbums',
+        source: 'live',
+        extra: 'genre=$genre count=${res.length}',
+      );
+      return res;
+    });

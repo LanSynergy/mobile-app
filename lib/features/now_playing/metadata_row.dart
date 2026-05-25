@@ -20,9 +20,9 @@ class MetadataRow extends ConsumerWidget {
       children: [
         Text(
           track.title,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
           maxLines: 1,
@@ -39,11 +39,10 @@ class MetadataRow extends ConsumerWidget {
                 child: Text(
                   track.artistName,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.7),
-                      ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   maxLines: 1,
@@ -60,11 +59,10 @@ class MetadataRow extends ConsumerWidget {
                   child: Text(
                     track.albumName,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.7),
-                        ),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                     maxLines: 1,
@@ -120,10 +118,7 @@ class _AbLoopButton extends ConsumerWidget {
         size: 20,
         color: active
             ? Theme.of(context).colorScheme.primary
-            : Theme.of(context)
-                .colorScheme
-                .onSurface
-                .withValues(alpha: 0.5),
+            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
       ),
     );
   }

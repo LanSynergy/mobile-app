@@ -14,7 +14,6 @@ import 'models/server.dart';
 /// Jellyfin advertises itself on `_jellyfin._tcp.local` (HTTP) and
 /// `_jellyfin-server._tcp.local` (server-API). We listen on both.
 class JellyfinDiscovery {
-
   JellyfinDiscovery({required this.clientVersion});
   static const _httpService = '_jellyfin._tcp.local';
   static const _serverService = '_jellyfin-server._tcp.local';
@@ -31,19 +30,24 @@ class JellyfinDiscovery {
   Stream<JellyfinServer> scan({
     Duration timeout = const Duration(seconds: 6),
   }) async* {
-    final client = MDnsClient(rawDatagramSocketFactory:
-        (dynamic host, int port,
-                {bool reuseAddress = true,
-                bool reusePort = false,
-                int ttl = 1}) {
-      return RawDatagramSocket.bind(
-        host,
-        port,
-        reuseAddress: reuseAddress,
-        reusePort: false, // Android disallows reusePort
-        ttl: ttl,
-      );
-    });
+    final client = MDnsClient(
+      rawDatagramSocketFactory:
+          (
+            dynamic host,
+            int port, {
+            bool reuseAddress = true,
+            bool reusePort = false,
+            int ttl = 1,
+          }) {
+            return RawDatagramSocket.bind(
+              host,
+              port,
+              reuseAddress: reuseAddress,
+              reusePort: false, // Android disallows reusePort
+              ttl: ttl,
+            );
+          },
+    );
     try {
       await client.start();
       final seen = <String>{};
@@ -108,7 +112,10 @@ class JellyfinDiscovery {
   /// handshake failure, refusal, or timeout we fall back to plain http
   /// which is what mDNS advertises by default.
   static Future<String> _resolveBaseUrl(
-      String addr, int port, String clientVersion) async {
+    String addr,
+    int port,
+    String clientVersion,
+  ) async {
     final https = 'https://$addr:$port';
     try {
       final probe = JellyfinClient(
@@ -143,5 +150,3 @@ class JellyfinDiscovery {
 
   static final Random _rng = Random.secure();
 }
-
-

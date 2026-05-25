@@ -15,9 +15,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(
-        database: AppDatabase.forTesting(NativeDatabase.memory()),
-      );
+      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks([
         // Album "Coastlines" by "Una" — 2 tracks.
         {
@@ -127,11 +125,11 @@ void main() {
         await db.createPlaylist('local:playlist:1', 'Roadtrip 2024');
         await db.createPlaylist('local:playlist:2', 'Workout');
         var entryIdCounter = 0;
-        await db.addToPlaylist(
-          'local:playlist:1',
-          ['content://uri/c1', 'content://uri/c2', 'content://uri/m1'],
-          makeEntryId: () => 'test_entry_${entryIdCounter++}',
-        );
+        await db.addToPlaylist('local:playlist:1', [
+          'content://uri/c1',
+          'content://uri/c2',
+          'content://uri/m1',
+        ], makeEntryId: () => 'test_entry_${entryIdCounter++}');
       });
 
       test('matches by name + computes count/duration in one query', () async {

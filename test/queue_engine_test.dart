@@ -10,11 +10,36 @@ void main() {
     setUp(() {
       engine = AfQueueEngine();
       tracks = [
-        const AfTrack(id: '1', title: 'Track 1', artistName: 'A', albumName: 'B'),
-        const AfTrack(id: '2', title: 'Track 2', artistName: 'A', albumName: 'B'),
-        const AfTrack(id: '3', title: 'Track 3', artistName: 'A', albumName: 'B'),
-        const AfTrack(id: '4', title: 'Track 4', artistName: 'A', albumName: 'B'),
-        const AfTrack(id: '5', title: 'Track 5', artistName: 'A', albumName: 'B'),
+        const AfTrack(
+          id: '1',
+          title: 'Track 1',
+          artistName: 'A',
+          albumName: 'B',
+        ),
+        const AfTrack(
+          id: '2',
+          title: 'Track 2',
+          artistName: 'A',
+          albumName: 'B',
+        ),
+        const AfTrack(
+          id: '3',
+          title: 'Track 3',
+          artistName: 'A',
+          albumName: 'B',
+        ),
+        const AfTrack(
+          id: '4',
+          title: 'Track 4',
+          artistName: 'A',
+          albumName: 'B',
+        ),
+        const AfTrack(
+          id: '5',
+          title: 'Track 5',
+          artistName: 'A',
+          albumName: 'B',
+        ),
       ];
     });
 
@@ -139,22 +164,25 @@ void main() {
         expect(engine.isAtQueueEnd, isTrue);
       });
 
-      test('nextTrack, nextNextTrack, windowSlot0, windowSlot1 work logically', () {
-        engine.replaceAll(tracks, 2);
-        engine.setShuffle(true);
-        // logical order starts with track '3' at index 0. windowStart is 0.
-        expect(engine.windowSlot0?.id, '3');
-        expect(engine.windowSlot1?.id, engine.tracks[1].id);
-        expect(engine.nextTrack?.id, engine.tracks[1].id);
-        expect(engine.nextNextTrack?.id, engine.tracks[2].id);
+      test(
+        'nextTrack, nextNextTrack, windowSlot0, windowSlot1 work logically',
+        () {
+          engine.replaceAll(tracks, 2);
+          engine.setShuffle(true);
+          // logical order starts with track '3' at index 0. windowStart is 0.
+          expect(engine.windowSlot0?.id, '3');
+          expect(engine.windowSlot1?.id, engine.tracks[1].id);
+          expect(engine.nextTrack?.id, engine.tracks[1].id);
+          expect(engine.nextNextTrack?.id, engine.tracks[2].id);
 
-        // advance window logically
-        engine.advanceWindow();
-        expect(engine.windowStart, 1);
-        expect(engine.windowSlot0?.id, engine.tracks[1].id);
-        expect(engine.windowSlot1?.id, engine.tracks[2].id);
-        expect(engine.nextNextTrack?.id, engine.tracks[3].id);
-      });
+          // advance window logically
+          engine.advanceWindow();
+          expect(engine.windowStart, 1);
+          expect(engine.windowSlot0?.id, engine.tracks[1].id);
+          expect(engine.windowSlot1?.id, engine.tracks[2].id);
+          expect(engine.nextNextTrack?.id, engine.tracks[3].id);
+        },
+      );
 
       test('remove works logically under shuffle', () {
         engine.replaceAll(tracks, 2);
@@ -175,7 +203,12 @@ void main() {
       test('insert works logically under shuffle', () {
         engine.replaceAll(tracks, 2);
         engine.setShuffle(true);
-        const newTrack = AfTrack(id: 'new', title: 'New', artistName: 'X', albumName: 'Y');
+        const newTrack = AfTrack(
+          id: 'new',
+          title: 'New',
+          artistName: 'X',
+          albumName: 'Y',
+        );
         // currentIndex is logical 0, windowStart is 0
         engine.insert(1, newTrack);
         expect(engine.length, 6);
@@ -192,7 +225,12 @@ void main() {
       test('append works logically under shuffle', () {
         engine.replaceAll(tracks, 2);
         engine.setShuffle(true);
-        const newTrack = AfTrack(id: 'new', title: 'New', artistName: 'X', albumName: 'Y');
+        const newTrack = AfTrack(
+          id: 'new',
+          title: 'New',
+          artistName: 'X',
+          albumName: 'Y',
+        );
         engine.append(newTrack);
         expect(engine.length, 6);
         expect(engine.tracks.last.id, 'new');
@@ -307,7 +345,12 @@ void main() {
 
       test('insert inserts track and adjusts currentIndex', () {
         engine.replaceAll(tracks, 1);
-        const newTrack = AfTrack(id: 'new', title: 'New', artistName: 'X', albumName: 'Y');
+        const newTrack = AfTrack(
+          id: 'new',
+          title: 'New',
+          artistName: 'X',
+          albumName: 'Y',
+        );
         engine.insert(3, newTrack);
         expect(engine.length, 6);
         expect(engine.tracks[3].id, 'new');
@@ -317,7 +360,12 @@ void main() {
 
       test('insert before currentIndex increments it', () {
         engine.replaceAll(tracks, 2);
-        const newTrack = AfTrack(id: 'new', title: 'New', artistName: 'X', albumName: 'Y');
+        const newTrack = AfTrack(
+          id: 'new',
+          title: 'New',
+          artistName: 'X',
+          albumName: 'Y',
+        );
         engine.insert(0, newTrack);
         expect(engine.currentIndex, 3);
         expect(engine.windowStart, 3);
@@ -325,7 +373,12 @@ void main() {
 
       test('append adds to end', () {
         engine.replaceAll(tracks, 0);
-        const newTrack = AfTrack(id: 'new', title: 'New', artistName: 'X', albumName: 'Y');
+        const newTrack = AfTrack(
+          id: 'new',
+          title: 'New',
+          artistName: 'X',
+          albumName: 'Y',
+        );
         engine.append(newTrack);
         expect(engine.length, 6);
         expect(engine.tracks.last.id, 'new');

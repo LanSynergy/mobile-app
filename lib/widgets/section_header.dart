@@ -7,7 +7,6 @@ import '../design_tokens/tokens.dart';
 /// Section title + optional trailing action. 24dp top spacing,
 /// 12dp bottom spacing (callers handle the spacing wrappers).
 class SectionHeader extends StatelessWidget {
-
   const SectionHeader({
     super.key,
     required this.title,

@@ -4,7 +4,7 @@ import '../design_tokens/tokens.dart';
 
 /// Connection state for the server pill in the top app bar.
 enum ServerPillState {
-  hidden,        // connected to default server — pill not rendered
+  hidden, // connected to default server — pill not rendered
   connectedOther,
   reconnecting,
   offline,
@@ -15,7 +15,6 @@ enum ServerPillState {
 /// Hidden when the user is connected to their default server. Visible only
 /// when the connection state warrants attention.
 class ServerPill extends StatelessWidget {
-
   const ServerPill({
     super.key,
     required this.state,
@@ -48,10 +47,7 @@ class ServerPill extends StatelessWidget {
           horizontal: AfSpacing.s12,
           vertical: 6,
         ),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: AfRadii.borderPill,
-        ),
+        decoration: BoxDecoration(color: bg, borderRadius: AfRadii.borderPill),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -69,8 +65,7 @@ class ServerPill extends StatelessWidget {
     );
   }
 
-  String _truncate(String s) =>
-      s.length > 12 ? '${s.substring(0, 12)}…' : s;
+  String _truncate(String s) => s.length > 12 ? '${s.substring(0, 12)}…' : s;
 }
 
 class _Dot extends StatefulWidget {

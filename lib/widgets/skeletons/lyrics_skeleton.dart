@@ -14,22 +14,46 @@ class LyricsSkeleton extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Lines 1-4
-          FractionallySizedBox(widthFactor: 0.90, child: SkeletonBar(height: 16)),
+          FractionallySizedBox(
+            widthFactor: 0.90,
+            child: SkeletonBar(height: 16),
+          ),
           SizedBox(height: AfSpacing.s12),
-          FractionallySizedBox(widthFactor: 0.75, child: SkeletonBar(height: 16)),
+          FractionallySizedBox(
+            widthFactor: 0.75,
+            child: SkeletonBar(height: 16),
+          ),
           SizedBox(height: AfSpacing.s12),
-          FractionallySizedBox(widthFactor: 0.85, child: SkeletonBar(height: 16)),
+          FractionallySizedBox(
+            widthFactor: 0.85,
+            child: SkeletonBar(height: 16),
+          ),
           SizedBox(height: AfSpacing.s12),
-          FractionallySizedBox(widthFactor: 0.60, child: SkeletonBar(height: 16)),
+          FractionallySizedBox(
+            widthFactor: 0.60,
+            child: SkeletonBar(height: 16),
+          ),
           SizedBox(height: AfSpacing.s24), // stanza break
           // Lines 5-8
-          FractionallySizedBox(widthFactor: 0.95, child: SkeletonBar(height: 16)),
+          FractionallySizedBox(
+            widthFactor: 0.95,
+            child: SkeletonBar(height: 16),
+          ),
           SizedBox(height: AfSpacing.s12),
-          FractionallySizedBox(widthFactor: 0.70, child: SkeletonBar(height: 16)),
+          FractionallySizedBox(
+            widthFactor: 0.70,
+            child: SkeletonBar(height: 16),
+          ),
           SizedBox(height: AfSpacing.s12),
-          FractionallySizedBox(widthFactor: 0.80, child: SkeletonBar(height: 16)),
+          FractionallySizedBox(
+            widthFactor: 0.80,
+            child: SkeletonBar(height: 16),
+          ),
           SizedBox(height: AfSpacing.s12),
-          FractionallySizedBox(widthFactor: 0.65, child: SkeletonBar(height: 16)),
+          FractionallySizedBox(
+            widthFactor: 0.65,
+            child: SkeletonBar(height: 16),
+          ),
         ],
       ),
     );

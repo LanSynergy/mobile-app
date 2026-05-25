@@ -17,8 +17,12 @@ abstract final class BatteryOpt {
       );
       return result ?? false;
     } on PlatformException catch (e, stack) {
-      afLog('boot', 'BatteryOpt.isIgnoring failed: ${e.message}',
-          error: e, stackTrace: stack);
+      afLog(
+        'boot',
+        'BatteryOpt.isIgnoring failed: ${e.message}',
+        error: e,
+        stackTrace: stack,
+      );
       return false;
     }
   }
@@ -35,8 +39,12 @@ abstract final class BatteryOpt {
       afLog('boot', 'BatteryOpt.requestIgnore dispatched=${result ?? false}');
       return result ?? false;
     } on PlatformException catch (e, stack) {
-      afLog('boot', 'BatteryOpt.requestIgnore failed: ${e.message}',
-          error: e, stackTrace: stack);
+      afLog(
+        'boot',
+        'BatteryOpt.requestIgnore failed: ${e.message}',
+        error: e,
+        stackTrace: stack,
+      );
       return false;
     }
   }

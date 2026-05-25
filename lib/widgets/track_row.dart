@@ -23,7 +23,6 @@ enum TrackRowDensity { compact, comfortable, generous }
 /// Active rows render a 2dp left bar in `spectral.energy` and tint the
 /// background to `surface.base`.
 class TrackRow extends StatelessWidget {
-
   const TrackRow({
     super.key,
     required this.track,
@@ -135,7 +134,10 @@ class TrackRow extends StatelessWidget {
             ),
             if (showQualityChip && track.quality != null) ...[
               const SizedBox(width: AfSpacing.s8),
-              QualityChip(quality: track.quality!, compact: density == TrackRowDensity.compact),
+              QualityChip(
+                quality: track.quality!,
+                compact: density == TrackRowDensity.compact,
+              ),
             ],
             if (showHeart) ...[
               const SizedBox(width: AfSpacing.s4),

@@ -1,6 +1,5 @@
 /// A library "view" returned by `/Users/{userId}/Views`.
 class LibraryView {
-
   const LibraryView({
     required this.id,
     required this.name,
@@ -14,5 +13,6 @@ class LibraryView {
   final int trackCount;
   final int albumCount;
 
-  bool get hasAudio => collectionType == 'music' || collectionType == 'audiobooks';
+  bool get hasAudio =>
+      collectionType == 'music' || collectionType == 'audiobooks';
 }

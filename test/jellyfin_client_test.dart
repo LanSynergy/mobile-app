@@ -24,26 +24,41 @@ void main() {
       // FFmpeg's HTTP client rejects the MediaBrowser Authorization header
       // because it contains commas (used as field separators). Jellyfin
       // accepts api_key as an equivalent auth mechanism for media streams.
-      final url = _client(token: 't-abc', userId: 'u-1')
-          .trackStreamUrl('track-1', maxBitrateKbps: 320);
-      expect(url.contains('api_key=t-abc'), isTrue,
-          reason: 'Token must be embedded as api_key for libmpv compatibility.');
+      final url = _client(
+        token: 't-abc',
+        userId: 'u-1',
+      ).trackStreamUrl('track-1', maxBitrateKbps: 320);
+      expect(
+        url.contains('api_key=t-abc'),
+        isTrue,
+        reason: 'Token must be embedded as api_key for libmpv compatibility.',
+      );
       expect(url.contains('Static=true'), isTrue);
       expect(url.contains('Audio/track-1/stream'), isTrue);
       expect(url.contains('MaxStreamingBitrate=320000'), isTrue);
     });
 
-    test('omits MaxStreamingBitrate when maxBitrateKbps is null (Original / Lossless)', () {
-      final url = _client(token: 't-abc', userId: 'u-1')
-          .trackStreamUrl('track-1', maxBitrateKbps: null);
-      expect(url.contains('MaxStreamingBitrate'), isFalse);
-    });
+    test(
+      'omits MaxStreamingBitrate when maxBitrateKbps is null (Original / Lossless)',
+      () {
+        final url = _client(
+          token: 't-abc',
+          userId: 'u-1',
+        ).trackStreamUrl('track-1', maxBitrateKbps: null);
+        expect(url.contains('MaxStreamingBitrate'), isFalse);
+      },
+    );
 
-    test('sets MaxStreamingBitrate correctly for other bitrates (e.g. 192 kbps)', () {
-      final url = _client(token: 't-abc', userId: 'u-1')
-          .trackStreamUrl('track-1', maxBitrateKbps: 192);
-      expect(url.contains('MaxStreamingBitrate=192000'), isTrue);
-    });
+    test(
+      'sets MaxStreamingBitrate correctly for other bitrates (e.g. 192 kbps)',
+      () {
+        final url = _client(
+          token: 't-abc',
+          userId: 'u-1',
+        ).trackStreamUrl('track-1', maxBitrateKbps: 192);
+        expect(url.contains('MaxStreamingBitrate=192000'), isTrue);
+      },
+    );
 
     test('URL-encodes path + query values', () {
       // Track IDs with `+` `=` `&` are unusual but exist in some libraries.
@@ -53,31 +68,42 @@ void main() {
       expect(uri.queryParameters['UserId'], 'a+b=c&d');
       // Raw query string must NOT contain the unencoded `+` / `=` / `&`
       // in the middle of the value.
-      expect(uri.query.contains('UserId=a+b=c'), isFalse,
-          reason: 'Plus / equals must be percent-encoded.');
+      expect(
+        uri.query.contains('UserId=a+b=c'),
+        isFalse,
+        reason: 'Plus / equals must be percent-encoded.',
+      );
     });
 
     test('preserves nested base path (e.g. /jellyfin)', () {
-      final url = _client(baseUrl: 'https://host.tld/jellyfin', userId: 'u-1')
-          .trackStreamUrl('track-2');
-      expect(url.startsWith('https://host.tld/jellyfin/Audio/track-2/stream'),
-          isTrue,
-          reason: 'Server-relative base path must survive Uri.replace.');
+      final url = _client(
+        baseUrl: 'https://host.tld/jellyfin',
+        userId: 'u-1',
+      ).trackStreamUrl('track-2');
+      expect(
+        url.startsWith('https://host.tld/jellyfin/Audio/track-2/stream'),
+        isTrue,
+        reason: 'Server-relative base path must survive Uri.replace.',
+      );
     });
 
     test('handles trailing slash on baseUrl', () {
-      final url = _client(baseUrl: 'https://host.tld/', userId: 'u-1')
-          .trackStreamUrl('track-3');
+      final url = _client(
+        baseUrl: 'https://host.tld/',
+        userId: 'u-1',
+      ).trackStreamUrl('track-3');
       expect(url.startsWith('https://host.tld/Audio/track-3/stream'), isTrue);
-      expect(url.contains('//Audio'), isFalse,
-          reason: 'Must not produce `//Audio` from a trailing slash.');
+      expect(
+        url.contains('//Audio'),
+        isFalse,
+        reason: 'Must not produce `//Audio` from a trailing slash.',
+      );
     });
   });
 
   group('authHeaders', () {
     test('returns Authorization with all required fields when authed', () {
-      final headers =
-          _client(token: 't-abc', userId: 'u-1').authHeaders;
+      final headers = _client(token: 't-abc', userId: 'u-1').authHeaders;
       final auth = headers['Authorization'] ?? '';
       expect(auth.startsWith('MediaBrowser '), isTrue);
       expect(auth.contains('UserId="u-1"'), isTrue);
@@ -101,14 +127,18 @@ void main() {
     test('escapes quote / backslash / CR / LF in user-supplied values', () {
       // A malicious server returns a userId with `"` so the attacker
       // could inject Token="…", Client="evil" if we didn't escape.
-      final auth = _client(token: 'safe', userId: r'evil",X="y')
-          .authHeaders['Authorization']!;
+      final auth = _client(
+        token: 'safe',
+        userId: r'evil",X="y',
+      ).authHeaders['Authorization']!;
       // Must not introduce a real `X="y` field — the injection should be
       // neutralized by escaping the inner quotes.
       expect(auth.contains(', X="y'), isFalse);
       // Newlines must be stripped so header smuggling is impossible.
-      final crlf = _client(token: "abc\r\nX-Evil: hi", userId: 'u')
-          .authHeaders['Authorization']!;
+      final crlf = _client(
+        token: "abc\r\nX-Evil: hi",
+        userId: 'u',
+      ).authHeaders['Authorization']!;
       expect(crlf.contains('\n'), isFalse);
       expect(crlf.contains('\r'), isFalse);
     });

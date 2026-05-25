@@ -7,8 +7,8 @@ class LrcLine {
 
 /// Parsed LRC payload.
 class Lrc {
-
   const Lrc({this.lines = const [], this.meta = const {}});
+
   /// Lines sorted by [LrcLine.start].
   final List<LrcLine> lines;
 
@@ -77,17 +77,17 @@ Lrc parseLrc(String src) {
       final fragRaw = tag.group(3) ?? '0';
       final fragInt = int.tryParse(fragRaw);
       if (fragInt == null) continue;
-      final ms = (fragInt *
-              (fragRaw.length == 3
-                  ? 1
-                  : fragRaw.length == 2
+      final ms =
+          (fragInt *
+                  (fragRaw.length == 3
+                      ? 1
+                      : fragRaw.length == 2
                       ? 10
                       : 100))
-          .clamp(0, 999);
-      lines.add(LrcLine(
-        Duration(minutes: mm, seconds: ss, milliseconds: ms),
-        text,
-      ));
+              .clamp(0, 999);
+      lines.add(
+        LrcLine(Duration(minutes: mm, seconds: ss, milliseconds: ms), text),
+      );
     }
   }
   lines.sort((a, b) => a.start.compareTo(b.start));

@@ -10,7 +10,8 @@ import 'helpers/fake_player.dart';
 
 class MockMethodChannel extends Mock implements MethodChannel {}
 
-typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater);
+typedef _StateUpdater =
+    void Function(PlayerState Function(PlayerState) updater);
 
 ({
   AfPlayerService service,
@@ -19,7 +20,8 @@ typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater)
   StreamControllers ctrls,
   MockMethodChannel channel,
   _StateUpdater updateState,
-}) _createFixture() {
+})
+_createFixture() {
   final result = createMockPlayer();
   final player = result.player;
   final ctrls = result.ctrls;
@@ -36,10 +38,7 @@ typedef _StateUpdater = void Function(PlayerState Function(PlayerState) updater)
   when(() => channel.setMethodCallHandler(any())).thenAnswer((_) async {});
 
   final bridge = NativeMediaSessionBridge(channel: channel);
-  final service = AfPlayerService.test(
-    player: player,
-    bridge: bridge,
-  );
+  final service = AfPlayerService.test(player: player, bridge: bridge);
 
   return (
     service: service,
@@ -112,8 +111,13 @@ void main() {
       when(() => player.next()).thenAnswer((_) async {});
       when(() => player.previous()).thenAnswer((_) async {});
       when(() => player.seek(any())).thenAnswer((_) async {});
-      when(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
-          .thenAnswer((_) async {});
+      when(
+        () => player.openAll(
+          any(),
+          index: any(named: 'index'),
+          play: any(named: 'play'),
+        ),
+      ).thenAnswer((_) async {});
 
       // Populate queue
       await service.playQueue(
@@ -133,58 +137,69 @@ void main() {
     // -----------------------------------------------------------------------
     // Completed handler + skipToNext — both advance engine, no lock needed
     // -----------------------------------------------------------------------
-    test('completed handler advances engine; then skipToNext advances again',
-        () async {
-      expect(service.currentTrack?.id, equals('1'));
+    test(
+      'completed handler advances engine; then skipToNext advances again',
+      () async {
+        expect(service.currentTrack?.id, equals('1'));
 
-      // Fire completed at non-queue-end (index 0 of 3).
-      updateState((s) => s.copyWith(
-            playing: true,
-            completed: true,
-            loop: Loop.off,
-          ));
-      ctrls.completed.add(true);
-      await Future<void>.delayed(Duration.zero);
+        // Fire completed at non-queue-end (index 0 of 3).
+        updateState(
+          (s) => s.copyWith(playing: true, completed: true, loop: Loop.off),
+        );
+        ctrls.completed.add(true);
+        await Future<void>.delayed(Duration.zero);
 
-      // Handler advanced engine to index 1.
-      expect(service.currentTrack?.id, equals('2'));
+        // Handler advanced engine to index 1.
+        expect(service.currentTrack?.id, equals('2'));
 
-      // Now skip to next.
-      await service.skipToNext();
-      expect(service.currentTrack?.id, equals('3'));
-      verify(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play'))).called(greaterThan(0));
-      // No jump() call in 2-track model.
-      verifyNever(() => player.jump(any()));
-    });
+        // Now skip to next.
+        await service.skipToNext();
+        expect(service.currentTrack?.id, equals('3'));
+        verify(
+          () => player.openAll(
+            any(),
+            index: any(named: 'index'),
+            play: any(named: 'play'),
+          ),
+        ).called(greaterThan(0));
+        // No jump() call in 2-track model.
+        verifyNever(() => player.jump(any()));
+      },
+    );
 
     // -----------------------------------------------------------------------
     // Completed handler + skipToQueueItem — both rebuild window
     // -----------------------------------------------------------------------
-    test('completed handler advances engine; then skipToQueueItem jumps',
-        () async {
-      expect(service.currentTrack?.id, equals('1'));
+    test(
+      'completed handler advances engine; then skipToQueueItem jumps',
+      () async {
+        expect(service.currentTrack?.id, equals('1'));
 
-      // Fire completed at non-queue-end.
-      updateState((s) => s.copyWith(
-            playing: true,
-            completed: true,
-            loop: Loop.off,
-          ));
-      ctrls.completed.add(true);
-      await Future<void>.delayed(Duration.zero);
+        // Fire completed at non-queue-end.
+        updateState(
+          (s) => s.copyWith(playing: true, completed: true, loop: Loop.off),
+        );
+        ctrls.completed.add(true);
+        await Future<void>.delayed(Duration.zero);
 
-      // Handler advanced engine to index 1.
-      expect(service.currentTrack?.id, equals('2'));
+        // Handler advanced engine to index 1.
+        expect(service.currentTrack?.id, equals('2'));
 
-      // Now skip to queue item 2 (track C).
-      clearInteractions(player);
-      await service.skipToQueueItem(2);
-      expect(service.currentTrack?.id, equals('3'));
-      // skipToQueueItem uses _rebuildWindow → openAll, not jump().
-      verify(() => player.openAll(any(), index: any(named: 'index'), play: any(named: 'play')))
-          .called(1);
-      verifyNever(() => player.jump(any()));
-    });
+        // Now skip to queue item 2 (track C).
+        clearInteractions(player);
+        await service.skipToQueueItem(2);
+        expect(service.currentTrack?.id, equals('3'));
+        // skipToQueueItem uses _rebuildWindow → openAll, not jump().
+        verify(
+          () => player.openAll(
+            any(),
+            index: any(named: 'index'),
+            play: any(named: 'play'),
+          ),
+        ).called(1);
+        verifyNever(() => player.jump(any()));
+      },
+    );
 
     // -----------------------------------------------------------------------
     // Completed at queue end (loop=off) stops; then play resets
@@ -202,11 +217,9 @@ void main() {
       expect(service.currentTrack?.id, equals('3'));
 
       // Fire completed at queue end.
-      updateState((s) => s.copyWith(
-            playing: true,
-            completed: true,
-            loop: Loop.off,
-          ));
+      updateState(
+        (s) => s.copyWith(playing: true, completed: true, loop: Loop.off),
+      );
       ctrls.completed.add(true);
       await Future<void>.delayed(Duration.zero);
 
@@ -227,11 +240,9 @@ void main() {
       expect(service.currentTrack?.id, equals('1'));
 
       // Fire completed at non-queue-end.
-      updateState((s) => s.copyWith(
-            playing: true,
-            completed: true,
-            loop: Loop.off,
-          ));
+      updateState(
+        (s) => s.copyWith(playing: true, completed: true, loop: Loop.off),
+      );
       ctrls.completed.add(true);
       await Future<void>.delayed(Duration.zero);
 

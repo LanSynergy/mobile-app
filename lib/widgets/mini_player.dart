@@ -14,7 +14,6 @@ import 'circular_progress_ring.dart';
 import 'press_scale.dart';
 
 class MiniPlayer extends ConsumerWidget {
-
   const MiniPlayer({
     super.key,
     this.onTap,
@@ -33,17 +32,17 @@ class MiniPlayer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final track = ref.watch(currentTrackProvider);
     if (track == null) return const SizedBox.shrink();
-    final isPlaying = ref.watch(playingStreamProvider).maybeWhen(
-          data: (v) => v,
-          orElse: () => false,
-        );
+    final isPlaying = ref
+        .watch(playingStreamProvider)
+        .maybeWhen(data: (v) => v, orElse: () => false);
 
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AfSpacing.miniPlayerSideMargin,
       ),
       child: Semantics(
-        label: 'Mini player. Now playing ${track.title} by ${track.artistName}.',
+        label:
+            'Mini player. Now playing ${track.title} by ${track.artistName}.',
         button: true,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -74,10 +73,7 @@ class MiniPlayer extends ConsumerWidget {
                       width: 1,
                     ),
                   ),
-                  padding: const EdgeInsets.only(
-                    left: 4,
-                    right: AfSpacing.s8,
-                  ),
+                  padding: const EdgeInsets.only(left: 4, right: AfSpacing.s8),
                   child: Row(
                     children: [
                       SizedBox(
@@ -89,10 +85,7 @@ class MiniPlayer extends ConsumerWidget {
                             tag: 'now-playing-artwork',
                             child: ClipRRect(
                               borderRadius: AfRadii.borderPill,
-                              child: Artwork(
-                                url: track.imageUrl,
-                                size: 44,
-                              ),
+                              child: Artwork(url: track.imageUrl, size: 44),
                             ),
                           ),
                         ),
@@ -139,9 +132,7 @@ class MiniPlayer extends ConsumerWidget {
                           ),
                           child: Center(
                             child: Icon(
-                              isPlaying
-                                  ? LucideIcons.pause
-                                  : LucideIcons.play,
+                              isPlaying ? LucideIcons.pause : LucideIcons.play,
                               color: Colors.black,
                               size: 24,
                             ),
@@ -169,10 +160,7 @@ class MiniPlayer extends ConsumerWidget {
 }
 
 class _MiniTransportButton extends StatelessWidget {
-  const _MiniTransportButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _MiniTransportButton({required this.icon, required this.onTap});
   final Widget icon;
   final VoidCallback? onTap;
 
@@ -180,20 +168,13 @@ class _MiniTransportButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return PressScale(
       onTap: onTap,
-      child: SizedBox(
-        width: 48,
-        height: 48,
-        child: Center(child: icon),
-      ),
+      child: SizedBox(width: 48, height: 48, child: Center(child: icon)),
     );
   }
 }
 
 class _ReactiveProgressRing extends ConsumerWidget {
-  const _ReactiveProgressRing({
-    required this.track,
-    required this.child,
-  });
+  const _ReactiveProgressRing({required this.track, required this.child});
 
   final AfTrack track;
   final Widget child;
@@ -221,7 +202,6 @@ class _ReactiveProgressRing extends ConsumerWidget {
 /// Scrolls [text] when it overflows. Fixed layout — uses [ClipRect] +
 /// [SizedBox] + [Stack] so parent constraints are never broken.
 class _MarqueeText extends StatefulWidget {
-
   const _MarqueeText({required this.text, required this.style});
   final String text;
   final TextStyle style;

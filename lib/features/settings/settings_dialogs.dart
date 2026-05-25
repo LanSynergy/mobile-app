@@ -41,7 +41,8 @@ void showSampleRateDialog(BuildContext context, WidgetRef ref) {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Text('Sample rate', style: AfTypography.titleSmall),
         ),
         const SizedBox(height: AfSpacing.s8),
@@ -52,7 +53,8 @@ void showSampleRateDialog(BuildContext context, WidgetRef ref) {
             isActive: rate == activeRate,
             onTap: () {
               unawaited(
-                  ref.read(playerServiceProvider).setAudioSampleRate(rate));
+                ref.read(playerServiceProvider).setAudioSampleRate(rate),
+              );
               unawaited(PlayerSettingsStore.saveSampleRate(rate));
               Navigator.of(dialogCtx).pop();
             },
@@ -68,9 +70,10 @@ void showFormatDialog(BuildContext context, WidgetRef ref) {
   final activeFormat = currentFormat ?? Format.auto;
 
   final formats = <(Format, String)>[
-    (Format.auto, currentFormat != null
-        ? 'Auto (currently $formatName)'
-        : 'Auto (default)'),
+    (
+      Format.auto,
+      currentFormat != null ? 'Auto (currently $formatName)' : 'Auto (default)',
+    ),
     (Format.s16, '16-bit signed'),
     (Format.s32, '32-bit signed'),
     (Format.float32, '32-bit float'),
@@ -85,7 +88,8 @@ void showFormatDialog(BuildContext context, WidgetRef ref) {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Text('Bit depth', style: AfTypography.titleSmall),
         ),
         const SizedBox(height: AfSpacing.s8),
@@ -95,8 +99,7 @@ void showFormatDialog(BuildContext context, WidgetRef ref) {
             subtitle: format == Format.auto ? 'Matches the source file' : null,
             isActive: format == activeFormat,
             onTap: () {
-              unawaited(
-                  ref.read(playerServiceProvider).setAudioFormat(format));
+              unawaited(ref.read(playerServiceProvider).setAudioFormat(format));
               unawaited(PlayerSettingsStore.saveFormat(format));
               Navigator.of(dialogCtx).pop();
             },
@@ -115,7 +118,11 @@ void showCacheDurationDialog(BuildContext context, WidgetRef ref) {
     (300, '5 minutes'),
   ];
 
-  final currentSecs = ref.read(playerServiceProvider).cacheSettings.secs.inSeconds;
+  final currentSecs = ref
+      .read(playerServiceProvider)
+      .cacheSettings
+      .secs
+      .inSeconds;
   final effectiveSecs = currentSecs > 0 ? currentSecs : 30;
 
   showBlurBottomSheet<void>(
@@ -126,17 +133,20 @@ void showCacheDurationDialog(BuildContext context, WidgetRef ref) {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Text('Cache duration', style: AfTypography.titleSmall),
         ),
         const SizedBox(height: AfSpacing.s4),
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Text(
             'How far ahead to buffer audio from the server.',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textTertiary,
+            ),
           ),
         ),
         const SizedBox(height: AfSpacing.s8),
@@ -146,12 +156,14 @@ void showCacheDurationDialog(BuildContext context, WidgetRef ref) {
             isActive: secs == effectiveSecs,
             onTap: () {
               final svc = ref.read(playerServiceProvider);
-              unawaited(svc.setCache(
-                svc.cacheSettings.copyWith(
-                  mode: Cache.yes,
-                  secs: Duration(seconds: secs),
+              unawaited(
+                svc.setCache(
+                  svc.cacheSettings.copyWith(
+                    mode: Cache.yes,
+                    secs: Duration(seconds: secs),
+                  ),
                 ),
-              ));
+              );
               unawaited(PlayerSettingsStore.saveCacheSecs(secs));
               Navigator.of(dialogCtx).pop();
             },
@@ -181,17 +193,20 @@ void showAudioBufferDialog(BuildContext context, WidgetRef ref) {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Text('Audio buffer', style: AfTypography.titleSmall),
         ),
         const SizedBox(height: AfSpacing.s4),
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Text(
             'Lower = less latency. Higher = more stable on slow networks.',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textTertiary,
+            ),
           ),
         ),
         const SizedBox(height: AfSpacing.s8),
@@ -200,9 +215,11 @@ void showAudioBufferDialog(BuildContext context, WidgetRef ref) {
             label: label,
             isActive: ms == effectiveMs,
             onTap: () {
-              unawaited(ref.read(playerServiceProvider).setAudioBuffer(
-                    Duration(milliseconds: ms),
-                  ));
+              unawaited(
+                ref
+                    .read(playerServiceProvider)
+                    .setAudioBuffer(Duration(milliseconds: ms)),
+              );
               unawaited(PlayerSettingsStore.saveBufferMs(ms));
               Navigator.of(dialogCtx).pop();
             },
@@ -230,18 +247,20 @@ void showGaplessDialog(BuildContext context, WidgetRef ref) {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
-          child:
-              Text('Gapless playback', style: AfTypography.titleSmall),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
+          child: Text('Gapless playback', style: AfTypography.titleSmall),
         ),
         const SizedBox(height: AfSpacing.s4),
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Text(
             'Controls how the player handles track transitions.',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textTertiary,
+            ),
           ),
         ),
         const SizedBox(height: AfSpacing.s8),
@@ -318,17 +337,20 @@ class _ReplayGainDialogContentState
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Text('ReplayGain', style: AfTypography.titleSmall),
         ),
         const SizedBox(height: AfSpacing.s4),
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Text(
             'Normalize volume so all tracks play at a similar loudness.',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textTertiary,
+            ),
           ),
         ),
         const SizedBox(height: AfSpacing.s8),
@@ -342,99 +364,107 @@ class _ReplayGainDialogContentState
               _apply();
             },
           ),
-          if (_mode != ReplayGain.no) ...[
-            const SizedBox(height: AfSpacing.s8),
-            const Divider(height: 1, color: AfColors.surfaceHigh),
-            const SizedBox(height: AfSpacing.s8),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous),
-              child: Row(
-                children: [
-                  Text('Pre-amp', style: AfTypography.bodyMedium),
-                  const Spacer(),
-                  Text(
-                    '${_preamp >= 0 ? "+" : ""}${_preamp.toStringAsFixed(1)} dB',
-                    style: AfTypography.mono
-                        .copyWith(color: AfColors.textTertiary),
-                  ),
-                ],
-              ),
+        if (_mode != ReplayGain.no) ...[
+          const SizedBox(height: AfSpacing.s8),
+          const Divider(height: 1, color: AfColors.surfaceHigh),
+          const SizedBox(height: AfSpacing.s8),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous,
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous),
-              child: Slider(
-                value: _preamp,
-                min: -15,
-                max: 15,
-                divisions: 30,
-                activeColor: AfColors.indigo400,
-                onChanged: (v) => setState(() => _preamp = v),
-                onChangeEnd: (_) => _apply(),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous),
-              child: Row(
-                children: [
-                  Text('Fallback gain', style: AfTypography.bodyMedium),
-                  const Spacer(),
-                  Text(
-                    '${_fallback.toStringAsFixed(1)} dB',
-                    style: AfTypography.mono
-                        .copyWith(color: AfColors.textTertiary),
+            child: Row(
+              children: [
+                Text('Pre-amp', style: AfTypography.bodyMedium),
+                const Spacer(),
+                Text(
+                  '${_preamp >= 0 ? "+" : ""}${_preamp.toStringAsFixed(1)} dB',
+                  style: AfTypography.mono.copyWith(
+                    color: AfColors.textTertiary,
                   ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Slider(
-                    value: _fallback,
-                    min: -15,
-                    max: 0,
-                    divisions: 30,
-                    activeColor: AfColors.indigo400,
-                    onChanged: (v) => setState(() => _fallback = v),
-                    onChangeEnd: (_) => _apply(),
-                  ),
-                  Text(
-                    'Applied to files without ReplayGain tags',
-                    style: AfTypography.caption
-                        .copyWith(color: AfColors.textTertiary),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous),
-              child: SwitchListTile.adaptive(
-                value: !_clip,
-                onChanged: (v) {
-                  setState(() => _clip = !v);
-                  _apply();
-                },
-                title: Text('Prevent clipping',
-                    style: AfTypography.bodyMedium),
-                subtitle: Text(
-                  'Peak-limit output to avoid distortion',
-                  style: AfTypography.bodySmall
-                      .copyWith(color: AfColors.textTertiary),
                 ),
-                activeThumbColor: AfColors.indigo500,
-                contentPadding: EdgeInsets.zero,
-              ),
+              ],
             ),
-          ],
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous,
+            ),
+            child: Slider(
+              value: _preamp,
+              min: -15,
+              max: 15,
+              divisions: 30,
+              activeColor: AfColors.indigo400,
+              onChanged: (v) => setState(() => _preamp = v),
+              onChangeEnd: (_) => _apply(),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous,
+            ),
+            child: Row(
+              children: [
+                Text('Fallback gain', style: AfTypography.bodyMedium),
+                const Spacer(),
+                Text(
+                  '${_fallback.toStringAsFixed(1)} dB',
+                  style: AfTypography.mono.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Slider(
+                  value: _fallback,
+                  min: -15,
+                  max: 0,
+                  divisions: 30,
+                  activeColor: AfColors.indigo400,
+                  onChanged: (v) => setState(() => _fallback = v),
+                  onChangeEnd: (_) => _apply(),
+                ),
+                Text(
+                  'Applied to files without ReplayGain tags',
+                  style: AfTypography.caption.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.gutterGenerous,
+            ),
+            child: SwitchListTile.adaptive(
+              value: !_clip,
+              onChanged: (v) {
+                setState(() => _clip = !v);
+                _apply();
+              },
+              title: Text('Prevent clipping', style: AfTypography.bodyMedium),
+              subtitle: Text(
+                'Peak-limit output to avoid distortion',
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textTertiary,
+                ),
+              ),
+              activeThumbColor: AfColors.indigo500,
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
         ],
-      );
+      ],
+    );
   }
 }
 
@@ -459,17 +489,20 @@ void showOfflineCacheSizeDialog(BuildContext context, WidgetRef ref) {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Text('Max cache size', style: AfTypography.titleSmall),
         ),
         const SizedBox(height: AfSpacing.s4),
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Text(
             'Currently: $label',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textTertiary,
+            ),
           ),
         ),
         const SizedBox(height: AfSpacing.s8),
@@ -493,7 +526,9 @@ void showOfflineCacheSizeDialog(BuildContext context, WidgetRef ref) {
 
 /// Confirmation dialog for clearing the offline cache.
 Future<bool> showOfflineCacheClearDialog(
-    BuildContext context, WidgetRef ref) async {
+  BuildContext context,
+  WidgetRef ref,
+) async {
   final cache = ref.read(offlineCacheServiceProvider);
   final size = await cache.cacheSize();
   final count = await cache.cachedCount();
@@ -541,7 +576,11 @@ Future<bool> showOfflineCacheClearDialog(
 /// Bottom sheet to pick streaming quality (max bitrate).
 void showStreamingQualityDialog(BuildContext context, WidgetRef ref) {
   const options = <(int, String, String?)>[
-    (0, 'Original / Lossless', 'Stream original audio files without transcoding'),
+    (
+      0,
+      'Original / Lossless',
+      'Stream original audio files without transcoding',
+    ),
     (320, '320 kbps', 'High quality compressed stream'),
     (256, '256 kbps', 'Very good balance of quality and speed'),
     (192, '192 kbps', 'Medium quality, standard compression'),
@@ -559,17 +598,20 @@ void showStreamingQualityDialog(BuildContext context, WidgetRef ref) {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Text('Streaming quality', style: AfTypography.titleSmall),
         ),
         const SizedBox(height: AfSpacing.s4),
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous),
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Text(
             'Limits the stream bitrate. Transcoding is performed on-the-fly by the server if needed.',
-            style: AfTypography.bodySmall
-                .copyWith(color: AfColors.textTertiary),
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textTertiary,
+            ),
           ),
         ),
         const SizedBox(height: AfSpacing.s8),

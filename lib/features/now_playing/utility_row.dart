@@ -5,9 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart'
-    show
-        Device;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Device;
 
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
@@ -30,11 +28,11 @@ class UtilityRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final track = ref.watch(currentTrackProvider);
     final savedIds = ref.watch(savedTrackIdsProvider);
-    final serverIds = ref.watch(playlistTrackIdsProvider).maybeWhen(
-          data: (ids) => ids,
-          orElse: () => const <String>{},
-        );
-    final isSaved = track != null &&
+    final serverIds = ref
+        .watch(playlistTrackIdsProvider)
+        .maybeWhen(data: (ids) => ids, orElse: () => const <String>{});
+    final isSaved =
+        track != null &&
         (savedIds.contains(track.id) || serverIds.contains(track.id));
 
     return Row(
@@ -218,9 +216,7 @@ class _MoreMenu extends StatelessWidget {
           },
         ),
         Padding(
-          padding: const EdgeInsets.only(
-            bottom: AfSpacing.s24,
-          ),
+          padding: const EdgeInsets.only(bottom: AfSpacing.s24),
           child: MoreItem(
             icon: const Icon(
               LucideIcons.info,
@@ -239,10 +235,7 @@ class _MoreMenu extends StatelessWidget {
 }
 
 class _DetailsView extends ConsumerWidget {
-  const _DetailsView({
-    required this.track,
-    required this.onBack,
-  });
+  const _DetailsView({required this.track, required this.onBack});
   final AfTrack track;
   final VoidCallback onBack;
 
@@ -253,10 +246,7 @@ class _DetailsView extends ConsumerWidget {
 }
 
 class _TrackDetailsWrapper extends StatefulWidget {
-  const _TrackDetailsWrapper({
-    required this.track,
-    required this.onBack,
-  });
+  const _TrackDetailsWrapper({required this.track, required this.onBack});
   final AfTrack track;
   final VoidCallback onBack;
 
@@ -335,9 +325,7 @@ void showVolumeDialog(BuildContext context, WidgetRef ref) {
               const Spacer(),
               IconButton(
                 icon: Icon(
-                  muted
-                      ? LucideIcons.volumeX
-                      : LucideIcons.volume2,
+                  muted ? LucideIcons.volumeX : LucideIcons.volume2,
                   color: AfColors.textPrimary,
                   size: 24,
                 ),
@@ -391,7 +379,9 @@ void showAudioDelayDialog(BuildContext context, WidgetRef ref) {
           const SizedBox(height: AfSpacing.s12),
           Text(
             'Shift audio timing for Bluetooth sync',
-            style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textTertiary,
+            ),
           ),
           const SizedBox(height: AfSpacing.s16),
           Slider(
@@ -497,9 +487,9 @@ void showAbLoopDialog(BuildContext context, WidgetRef ref) {
             ref.read(abLoopBProvider.notifier).state = null;
             if (context.mounted) Navigator.pop(context);
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('A-B loop cleared')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('A-B loop cleared')));
             }
           },
           icon: const Icon(Icons.clear_rounded, size: 18),
@@ -624,7 +614,8 @@ class OutputDialogContent extends ConsumerWidget {
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AfSpacing.gutterGenerous),
+                      horizontal: AfSpacing.gutterGenerous,
+                    ),
                     child: Text('Output', style: AfTypography.titleSmall),
                   ),
                   const SizedBox(height: AfSpacing.s8),
@@ -633,8 +624,9 @@ class OutputDialogContent extends ConsumerWidget {
                       padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
                       child: Text(
                         'No audio devices found.\nStart playback first.',
-                        style: AfTypography.bodyMedium
-                            .copyWith(color: AfColors.textTertiary),
+                        style: AfTypography.bodyMedium.copyWith(
+                          color: AfColors.textTertiary,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     )
@@ -642,12 +634,13 @@ class OutputDialogContent extends ConsumerWidget {
                     ...devices.map((device) {
                       final isActive = active?.name == device.name;
                       return ListTile(
-                        leading: iconForDevice(device.description.isNotEmpty
-                            ? device.description
-                            : device.name,
-                            color: isActive
-                                ? AfColors.indigo300
-                                : AfColors.textSecondary,
+                        leading: iconForDevice(
+                          device.description.isNotEmpty
+                              ? device.description
+                              : device.name,
+                          color: isActive
+                              ? AfColors.indigo300
+                              : AfColors.textSecondary,
                         ),
                         title: Text(
                           device.description.isNotEmpty
@@ -656,8 +649,11 @@ class OutputDialogContent extends ConsumerWidget {
                           style: AfTypography.bodyMedium,
                         ),
                         trailing: isActive
-                            ? const Icon(Icons.check_rounded,
-                                color: AfColors.indigo300, size: 20)
+                            ? const Icon(
+                                Icons.check_rounded,
+                                color: AfColors.indigo300,
+                                size: 20,
+                              )
                             : null,
                         onTap: () async {
                           await svc.setAudioDevice(device);
@@ -679,13 +675,18 @@ class OutputDialogContent extends ConsumerWidget {
     if (n.contains('bluetooth') || n.contains('bt')) {
       return Icon(LucideIcons.bluetooth, color: color, size: 22);
     }
-    if (n.contains('headphone') || n.contains('headset') ||
-        n.contains('earphone') || n.contains('airpod')) {
+    if (n.contains('headphone') ||
+        n.contains('headset') ||
+        n.contains('earphone') ||
+        n.contains('airpod')) {
       return Icon(Icons.headphones_rounded, color: color, size: 22);
     }
-    if (n.contains('speaker')) return Icon(Icons.speaker_rounded, color: color, size: 22);
-    if (n.contains('hdmi')) return Icon(Icons.tv_rounded, color: color, size: 22);
-    if (n.contains('usb')) return Icon(Icons.usb_rounded, color: color, size: 22);
+    if (n.contains('speaker'))
+      return Icon(Icons.speaker_rounded, color: color, size: 22);
+    if (n.contains('hdmi'))
+      return Icon(Icons.tv_rounded, color: color, size: 22);
+    if (n.contains('usb'))
+      return Icon(Icons.usb_rounded, color: color, size: 22);
     return Icon(Icons.smartphone_rounded, color: color, size: 22);
   }
 }
@@ -695,7 +696,6 @@ class OutputDialogContent extends ConsumerWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class UtilityIcon extends StatelessWidget {
-
   const UtilityIcon({
     super.key,
     required this.icon,
@@ -736,7 +736,6 @@ class UtilityIcon extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class MoreItem extends StatelessWidget {
-
   const MoreItem({
     super.key,
     required this.icon,
@@ -759,11 +758,7 @@ class MoreItem extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(
-              width: 22,
-              height: 22,
-              child: Center(child: icon),
-            ),
+            SizedBox(width: 22, height: 22, child: Center(child: icon)),
             const SizedBox(width: AfSpacing.s16),
             SizedBox(
               height: 20,

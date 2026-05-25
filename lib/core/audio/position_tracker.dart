@@ -28,12 +28,11 @@ class _PositionAnchor {
 /// extrapolation when mpv returns 0 or when the same non-zero position
 /// repeats across several ticks (Samsung One UI freeze workaround).
 class AfPositionTracker {
-
   AfPositionTracker({
     required PlayerApi player,
     required bool Function() shouldAdvancePosition,
-  })  : _player = player,
-        _shouldAdvancePosition = shouldAdvancePosition;
+  }) : _player = player,
+       _shouldAdvancePosition = shouldAdvancePosition;
   final PlayerApi _player;
   final bool Function() _shouldAdvancePosition;
 
@@ -55,8 +54,7 @@ class AfPositionTracker {
   bool _disposed = false;
 
   void start() {
-    _positionPollTimer =
-        Timer.periodic(const Duration(milliseconds: 500), (_) {
+    _positionPollTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
       if (_disposed) return;
       _pollAndEmitPosition();
     });
@@ -202,7 +200,8 @@ class AfPositionTracker {
     }
     final elapsed = now.difference(_positionAnchor.lastUpdateTime);
     final speed = _player.state.rate;
-    final extrapolated = _positionAnchor.lastKnownPos +
+    final extrapolated =
+        _positionAnchor.lastKnownPos +
         Duration(milliseconds: (elapsed.inMilliseconds * speed).round());
     final durCap = dur > Duration.zero ? dur : const Duration(hours: 1);
     final capped = extrapolated > durCap ? durCap : extrapolated;
@@ -241,10 +240,10 @@ class AfPositionTracker {
       final shouldAdvance = _shouldAdvancePosition();
 
       if (rawPos > Duration.zero) {
-        final behind = rawPos.inMilliseconds + 1000 <
+        final behind =
+            rawPos.inMilliseconds + 1000 <
             _positionAnchor.lastKnownPos.inMilliseconds;
-        final rawBehindAnchor =
-            shouldAdvance && behind;
+        final rawBehindAnchor = shouldAdvance && behind;
         final rawStale =
             shouldAdvance && (_isRawPositionStale(rawPos) || rawBehindAnchor);
 
@@ -256,8 +255,10 @@ class AfPositionTracker {
         }
 
         if (_staleRawPollTicks == _rawStaleAfterTicks || rawBehindAnchor) {
-          afLog('audio',
-              'raw time-pos stale at ${rawPos.inMilliseconds}ms; using extrapolated position');
+          afLog(
+            'audio',
+            'raw time-pos stale at ${rawPos.inMilliseconds}ms; using extrapolated position',
+          );
         }
       }
 

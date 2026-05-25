@@ -2,7 +2,6 @@ import 'dart:convert';
 
 /// A single filter rule in a smart playlist.
 class SmartRule {
-
   const SmartRule({
     required this.field,
     required this.operator,
@@ -10,19 +9,19 @@ class SmartRule {
   });
 
   factory SmartRule.fromJson(Map<String, dynamic> json) => SmartRule(
-        field: json['field'] as String,
-        operator: json['operator'] as String,
-        value: json['value'],
-      );
+    field: json['field'] as String,
+    operator: json['operator'] as String,
+    value: json['value'],
+  );
   final String field;
   final String operator;
   final dynamic value;
 
   Map<String, dynamic> toJson() => {
-        'field': field,
-        'operator': operator,
-        'value': value,
-      };
+    'field': field,
+    'operator': operator,
+    'value': value,
+  };
 
   /// Human-readable summary (e.g. "Genre is Rock").
   String get summary {
@@ -43,23 +42,22 @@ class SmartRule {
   }
 
   static String _fieldLabel(String field) => switch (field) {
-        'title' => 'Title',
-        'artist' => 'Artist',
-        'album' => 'Album',
-        'genre' => 'Genre',
-        'year' => 'Year',
-        'duration' => 'Duration',
-        'codec' => 'Codec',
-        'bitrate' => 'Bitrate',
-        'dateAdded' => 'Date added',
-        'isFavorite' => 'Favorite',
-        _ => field,
-      };
+    'title' => 'Title',
+    'artist' => 'Artist',
+    'album' => 'Album',
+    'genre' => 'Genre',
+    'year' => 'Year',
+    'duration' => 'Duration',
+    'codec' => 'Codec',
+    'bitrate' => 'Bitrate',
+    'dateAdded' => 'Date added',
+    'isFavorite' => 'Favorite',
+    _ => field,
+  };
 }
 
 /// A smart playlist definition with rules, sort, and limit.
 class SmartPlaylist {
-
   const SmartPlaylist({
     required this.id,
     required this.name,
@@ -91,18 +89,17 @@ class SmartPlaylist {
     int? limit,
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) =>
-      SmartPlaylist(
-        id: id ?? this.id,
-        name: name ?? this.name,
-        combinator: combinator ?? this.combinator,
-        rules: rules ?? this.rules,
-        sort: sort ?? this.sort,
-        sortOrder: sortOrder ?? this.sortOrder,
-        limit: limit ?? this.limit,
-        createdAt: createdAt ?? this.createdAt,
-        updatedAt: updatedAt ?? this.updatedAt,
-      );
+  }) => SmartPlaylist(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    combinator: combinator ?? this.combinator,
+    rules: rules ?? this.rules,
+    sort: sort ?? this.sort,
+    sortOrder: sortOrder ?? this.sortOrder,
+    limit: limit ?? this.limit,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 
   /// Encode rules to JSON string for DB storage.
   String get rulesJson => jsonEncode(rules.map((r) => r.toJson()).toList());
@@ -148,11 +145,11 @@ const kBoolOperators = ['is'];
 
 /// Returns the appropriate operators for a given field.
 List<String> operatorsForField(String field) => switch (field) {
-      'year' || 'duration' || 'bitrate' => kNumericOperators,
-      'dateAdded' => kDateOperators,
-      'isFavorite' => kBoolOperators,
-      _ => kStringOperators,
-    };
+  'year' || 'duration' || 'bitrate' => kNumericOperators,
+  'dateAdded' => kDateOperators,
+  'isFavorite' => kBoolOperators,
+  _ => kStringOperators,
+};
 
 /// Available sort options.
 const kSmartSortOptions = <String, String>{

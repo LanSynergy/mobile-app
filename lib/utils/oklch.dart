@@ -14,7 +14,8 @@ import 'dart:ui';
 /// caller (e.g. `palette_generator` or a manual decode) so this file
 /// stays decoupled from image-loading.
 
-class OklchColor { // 0–360 (degrees)
+class OklchColor {
+  // 0–360 (degrees)
   const OklchColor(this.l, this.c, this.h);
   final double l; // 0–1
   final double c; // ~0–0.4
@@ -84,8 +85,9 @@ List<double> oklchToLinearSrgb(double l, double c, double h) {
 double _gammaDecode(double v) =>
     v <= 0.04045 ? v / 12.92 : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
 
-double _gammaEncodeLinear(double v) =>
-    v <= 0.0031308 ? 12.92 * v : 1.055 * math.pow(v, 1 / 2.4).toDouble() - 0.055;
+double _gammaEncodeLinear(double v) => v <= 0.0031308
+    ? 12.92 * v
+    : 1.055 * math.pow(v, 1 / 2.4).toDouble() - 0.055;
 
 int _gammaEncodeChannel(double v) =>
     (_gammaEncodeLinear(v.clamp(0, 1)) * 255).round().clamp(0, 255);
@@ -99,9 +101,9 @@ int _gammaEncodeChannel(double v) =>
   final candidates = <OklchColor>[];
   for (final color in samples) {
     final oklch = srgbToOklch(color);
-    if (oklch.c < 0.05) continue;            // grey
-    if (oklch.l < 0.15) continue;            // near-black
-    if (oklch.l > 0.85) continue;            // near-white
+    if (oklch.c < 0.05) continue; // grey
+    if (oklch.l < 0.15) continue; // near-black
+    if (oklch.l > 0.85) continue; // near-white
     candidates.add(oklch);
   }
   if (candidates.isEmpty) return null;

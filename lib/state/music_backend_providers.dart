@@ -25,7 +25,8 @@ final musicBackendProvider = Provider.autoDispose<MusicBackend?>((ref) {
   logData(
     'musicBackend',
     source: 'live',
-    extra: 'type=${auth.serverType.name} '
+    extra:
+        'type=${auth.serverType.name} '
         'server=${kReleaseMode ? '<redacted>' : auth.server.baseUrl} '
         'user=${kReleaseMode ? '<redacted>' : auth.userName}',
   );
@@ -33,27 +34,29 @@ final musicBackendProvider = Provider.autoDispose<MusicBackend?>((ref) {
   final clientVersion = ref.watch(aetherfinVersionProvider);
 
   switch (auth.serverType) {
-    case ServerType.subsonic: {
-      final client = SubsonicClient(
-        server: auth.server,
-        username: auth.userName,
-        password: auth.accessToken,
-        clientVersion: clientVersion,
-      );
-      ref.onDispose(client.close);
-      return client;
-    }
-    case ServerType.jellyfin: {
-      final client = JellyfinClient(
-        server: auth.server,
-        deviceId: ref.watch(deviceIdProvider),
-        accessToken: auth.accessToken,
-        userId: auth.userId,
-        clientVersion: clientVersion,
-      );
-      ref.onDispose(client.close);
-      return client;
-    }
+    case ServerType.subsonic:
+      {
+        final client = SubsonicClient(
+          server: auth.server,
+          username: auth.userName,
+          password: auth.accessToken,
+          clientVersion: clientVersion,
+        );
+        ref.onDispose(client.close);
+        return client;
+      }
+    case ServerType.jellyfin:
+      {
+        final client = JellyfinClient(
+          server: auth.server,
+          deviceId: ref.watch(deviceIdProvider),
+          accessToken: auth.accessToken,
+          userId: auth.userId,
+          clientVersion: clientVersion,
+        );
+        ref.onDispose(client.close);
+        return client;
+      }
     case ServerType.local:
       final lib = ref.watch(localLibraryProvider);
       return LocalBackend(library: lib, db: lib.db);

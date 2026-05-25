@@ -10,9 +10,7 @@ import 'local_db_tracks.dart';
 /// Local database for caching scanned music metadata.
 /// Refactored to wrap Drift's [AppDatabase].
 class LocalDb {
-
-  LocalDb({AppDatabase? database})
-      : db = database ?? AppDatabase() {
+  LocalDb({AppDatabase? database}) : db = database ?? AppDatabase() {
     tracks = TrackRepository(db);
     albums = AlbumRepository(db);
     playlists = PlaylistRepository(db, tracks);
@@ -26,13 +24,16 @@ class LocalDb {
   // ── Folders ─────────────────────────────────────────────────────────────
 
   Future<void> addFolder(String uri, String displayPath) async {
-    await db.into(db.folders).insert(
-        FoldersCompanion.insert(
-          uri: uri,
-          displayPath: displayPath,
-          addedAt: DateTime.now().millisecondsSinceEpoch,
-        ),
-        mode: InsertMode.replace);
+    await db
+        .into(db.folders)
+        .insert(
+          FoldersCompanion.insert(
+            uri: uri,
+            displayPath: displayPath,
+            addedAt: DateTime.now().millisecondsSinceEpoch,
+          ),
+          mode: InsertMode.replace,
+        );
   }
 
   Future<void> removeFolder(String uri) async {
@@ -46,12 +47,18 @@ class LocalDb {
   }
 
   Future<List<Map<String, dynamic>>> getFolders() async {
-    final folders = await (db.select(db.folders)..orderBy([(t) => OrderingTerm.asc(t.addedAt)])).get();
-    return folders.map((f) => {
-      'uri': f.uri,
-      'display_path': f.displayPath,
-      'added_at': f.addedAt,
-    }).toList();
+    final folders = await (db.select(
+      db.folders,
+    )..orderBy([(t) => OrderingTerm.asc(t.addedAt)])).get();
+    return folders
+        .map(
+          (f) => {
+            'uri': f.uri,
+            'display_path': f.displayPath,
+            'added_at': f.addedAt,
+          },
+        )
+        .toList();
   }
 
   // ── Tracks CRUD ─────────────────────────────────────────────────────────
@@ -107,8 +114,7 @@ class LocalDb {
   Future<List<AfAlbum>> albumsByGenre(String genre, {int limit = 200}) =>
       albums.albumsByGenre(genre, limit: limit);
 
-  Future<List<AfAlbum>> albumsByArtist(String artistName,
-          {int limit = 200}) =>
+  Future<List<AfAlbum>> albumsByArtist(String artistName, {int limit = 200}) =>
       albums.albumsByArtist(artistName, limit: limit);
 
   Future<AfAlbum?> albumByKey(String name, String artistName) =>
@@ -137,14 +143,17 @@ class LocalDb {
         id: 'local:artist:$name',
         name: name,
         albumCount: r.read<int?>('album_count') ?? 0,
-        imageUrl: r.read<String?>('cover_path') != null ? 'file://${r.read<String>('cover_path')}' : null,
+        imageUrl: r.read<String?>('cover_path') != null
+            ? 'file://${r.read<String>('cover_path')}'
+            : null,
       );
     }).toList();
   }
 
   Future<AfArtist?> artistByName(String name) async {
-    final rows = await db.customSelect(
-      r'''
+    final rows = await db
+        .customSelect(
+          r'''
       SELECT artist, COUNT(DISTINCT album) as album_count,
              MIN(cover_path) as cover_path
       FROM tracks
@@ -153,9 +162,10 @@ class LocalDb {
       GROUP BY artist
       LIMIT 1
       ''',
-      variables: [Variable<String>(name)],
-      readsFrom: {db.tracks},
-    ).get();
+          variables: [Variable<String>(name)],
+          readsFrom: {db.tracks},
+        )
+        .get();
     if (rows.isEmpty) return null;
     final r = rows.first;
     final resolved = r.read<String?>('artist') ?? 'Unknown';
@@ -171,8 +181,9 @@ class LocalDb {
 
   Future<List<AfArtist>> searchArtists(String query, {int limit = 50}) async {
     final like = '%${escapeSqlLike(query)}%';
-    final rows = await db.customSelect(
-      r'''
+    final rows = await db
+        .customSelect(
+          r'''
       SELECT artist, COUNT(DISTINCT album) as album_count,
              MIN(cover_path) as cover_path
       FROM tracks
@@ -182,9 +193,10 @@ class LocalDb {
       ORDER BY artist COLLATE NOCASE ASC
       LIMIT ?2
       ''',
-      variables: [Variable<String>(like), Variable<int>(limit)],
-      readsFrom: {db.tracks},
-    ).get();
+          variables: [Variable<String>(like), Variable<int>(limit)],
+          readsFrom: {db.tracks},
+        )
+        .get();
     return rows.map((r) {
       final name = r.read<String?>('artist') ?? 'Unknown';
       return AfArtist(
@@ -209,19 +221,29 @@ class LocalDb {
       ORDER BY genre COLLATE NOCASE ASC
     ''').get();
     const palette = <String>[
-      '#5644C9', '#A89DEC', '#3FD18C', '#FF7A59',
-      '#F8C42D', '#FF6FB5', '#3DB6FF', '#FF4D6D',
+      '#5644C9',
+      '#A89DEC',
+      '#3FD18C',
+      '#FF7A59',
+      '#F8C42D',
+      '#FF6FB5',
+      '#3DB6FF',
+      '#FF4D6D',
     ];
     int index = 0;
     final results = <AfGenre>[];
     for (final r in rows) {
       final name = r.read<String?>('genre') ?? '';
       if (name.isEmpty) continue;
-      results.add(AfGenre(
-        name,
-        palette[index % palette.length],
-        imageUrl: r.read<String?>('cover_path') != null ? 'file://${r.read<String>('cover_path')}' : null,
-      ));
+      results.add(
+        AfGenre(
+          name,
+          palette[index % palette.length],
+          imageUrl: r.read<String?>('cover_path') != null
+              ? 'file://${r.read<String>('cover_path')}'
+              : null,
+        ),
+      );
       index++;
     }
     return results;
@@ -230,9 +252,9 @@ class LocalDb {
   // ── Favorites ─────────────────────────────────────────────────────────
 
   Future<bool> isFavorite(String itemId) async {
-    final row = await (db.select(db.favorites)
-          ..where((f) => f.itemId.equals(itemId)))
-        .getSingleOrNull();
+    final row = await (db.select(
+      db.favorites,
+    )..where((f) => f.itemId.equals(itemId))).getSingleOrNull();
     return row != null;
   }
 
@@ -243,7 +265,9 @@ class LocalDb {
 
   Future<void> setFavorite(String itemId, bool isFavorite) async {
     if (isFavorite) {
-      await db.into(db.favorites).insert(
+      await db
+          .into(db.favorites)
+          .insert(
             FavoritesCompanion.insert(
               itemId: itemId,
               addedAt: DateTime.now().millisecondsSinceEpoch,
@@ -251,24 +275,26 @@ class LocalDb {
             mode: InsertMode.replace,
           );
     } else {
-      await (db.delete(db.favorites)
-            ..where((f) => f.itemId.equals(itemId)))
-          .go();
+      await (db.delete(
+        db.favorites,
+      )..where((f) => f.itemId.equals(itemId))).go();
     }
   }
 
   Future<List<AfTrack>> favoriteTracks({int limit = 500}) async {
     final favIds = await favoriteIds();
     if (favIds.isEmpty) return const [];
-    final rows = await (db.select(db.tracks)
-          ..where((t) => t.id.isIn(favIds))
-          ..orderBy([
-            (t) => OrderingTerm(
-                expression: t.title.collate(Collate.noCase),
-                mode: OrderingMode.asc),
-          ])
-          ..limit(limit))
-        .get();
+    final rows =
+        await (db.select(db.tracks)
+              ..where((t) => t.id.isIn(favIds))
+              ..orderBy([
+                (t) => OrderingTerm(
+                  expression: t.title.collate(Collate.noCase),
+                  mode: OrderingMode.asc,
+                ),
+              ])
+              ..limit(limit))
+            .get();
     return rows.map((r) => tracks.rowToTrack(r, isFavorite: true)).toList();
   }
 
@@ -290,23 +316,25 @@ class LocalDb {
       playlists.playlistStats(playlistId);
 
   Future<List<({String entryId, AfTrack track})>> playlistTracks(
-          String playlistId) =>
-      playlists.playlistTracks(playlistId);
+    String playlistId,
+  ) => playlists.playlistTracks(playlistId);
 
   Future<void> addToPlaylist(
     String playlistId,
     List<String> trackIds, {
     required String Function() makeEntryId,
-  }) =>
-      playlists.addToPlaylist(playlistId, trackIds, makeEntryId: makeEntryId);
+  }) => playlists.addToPlaylist(playlistId, trackIds, makeEntryId: makeEntryId);
 
   Future<void> removePlaylistEntries(
-          String playlistId, List<String> entryIds) =>
-      playlists.removePlaylistEntries(playlistId, entryIds);
+    String playlistId,
+    List<String> entryIds,
+  ) => playlists.removePlaylistEntries(playlistId, entryIds);
 
   Future<void> movePlaylistEntry(
-          String playlistId, String entryId, int newIndex) =>
-      playlists.movePlaylistEntry(playlistId, entryId, newIndex);
+    String playlistId,
+    String entryId,
+    int newIndex,
+  ) => playlists.movePlaylistEntry(playlistId, entryId, newIndex);
 
   Future<List<AfPlaylist>> allPlaylistsWithStats({int limit = 200}) =>
       playlists.allPlaylistsWithStats(limit: limit);

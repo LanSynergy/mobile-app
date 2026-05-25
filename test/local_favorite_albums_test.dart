@@ -15,9 +15,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(
-        database: AppDatabase.forTesting(NativeDatabase.memory()),
-      );
+      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks([
         {
           'id': 'content://uri/c1',
@@ -90,16 +88,18 @@ void main() {
       expect(r.first.totalDuration, const Duration(milliseconds: 380000));
     });
 
-    test('honors compilation album-artist fallback (album_artist empty)',
-        () async {
-      // The Compilation album_artist is empty → its synthetic id is
-      // local:album:Compilation:Tres. The SQL must reconstruct that
-      // via COALESCE(NULLIF(album_artist,''), artist).
-      await db.setFavorite('local:album:Compilation:Tres', true);
-      final r = await db.favoriteAlbums();
-      expect(r.map((a) => a.name), ['Compilation']);
-      expect(r.first.id, 'local:album:Compilation:Tres');
-    });
+    test(
+      'honors compilation album-artist fallback (album_artist empty)',
+      () async {
+        // The Compilation album_artist is empty → its synthetic id is
+        // local:album:Compilation:Tres. The SQL must reconstruct that
+        // via COALESCE(NULLIF(album_artist,''), artist).
+        await db.setFavorite('local:album:Compilation:Tres', true);
+        final r = await db.favoriteAlbums();
+        expect(r.map((a) => a.name), ['Compilation']);
+        expect(r.first.id, 'local:album:Compilation:Tres');
+      },
+    );
 
     test('id stable with allAlbums', () async {
       await db.setFavorite('local:album:Coastlines:Una', true);

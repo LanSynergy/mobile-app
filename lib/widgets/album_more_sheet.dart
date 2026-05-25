@@ -72,9 +72,7 @@ void showAlbumMoreSheet(
               _enqueue(ref, tracks, atFront: true);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(
-                    _enqueueLabel(tracks.length, 'will play next'),
-                  ),
+                  content: Text(_enqueueLabel(tracks.length, 'will play next')),
                 ),
               );
             },
@@ -88,9 +86,7 @@ void showAlbumMoreSheet(
               _enqueue(ref, tracks, atFront: false);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(
-                    _enqueueLabel(tracks.length, 'added to queue'),
-                  ),
+                  content: Text(_enqueueLabel(tracks.length, 'added to queue')),
                 ),
               );
             },
@@ -128,7 +124,10 @@ String Function(AfTrack)? _streamResolver(WidgetRef ref) {
       if (cachedUri != null) return cachedUri;
     }
     final maxBitrate = ref.read(maxBitrateProvider);
-    return backend.trackStreamUrl(t.id, maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate);
+    return backend.trackStreamUrl(
+      t.id,
+      maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate,
+    );
   };
 }
 
@@ -161,7 +160,6 @@ String _enqueueLabel(int count, String verbPhrase) {
 }
 
 class _MenuItem extends StatelessWidget {
-
   const _MenuItem({
     required this.icon,
     required this.label,

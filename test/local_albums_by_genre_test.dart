@@ -21,16 +21,13 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(
-        database: AppDatabase.forTesting(NativeDatabase.memory()),
-      );
+      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks(_fixture);
     });
 
     tearDown(() => db.close());
 
-    test('returns only albums whose tracks tag the requested genre',
-        () async {
+    test('returns only albums whose tracks tag the requested genre', () async {
       final pop = await db.albumsByGenre('Pop');
       expect(pop.map((a) => a.name), unorderedEquals(['Coastlines']));
 
@@ -43,8 +40,7 @@ void main() {
       expect(res, isEmpty);
     });
 
-    test(
-        'compilation albums keep album_artist as their artistName so the '
+    test('compilation albums keep album_artist as their artistName so the '
         'id matches LocalDb.allAlbums', () async {
       final pop = await db.albumsByGenre('Pop');
       expect(pop, hasLength(1));

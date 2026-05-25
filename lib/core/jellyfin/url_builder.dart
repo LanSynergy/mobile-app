@@ -5,7 +5,6 @@ import '../../utils/url.dart';
 /// Extracted from [JellyfinClient] so URL-building logic is testable
 /// independently of the HTTP layer.
 class JellyfinUrlBuilder {
-
   JellyfinUrlBuilder({
     required this.baseUrl,
     required this.deviceId,
@@ -74,15 +73,24 @@ class JellyfinUrlBuilder {
 
   /// Build a Primary image URL for an item, using its image tag if available
   /// so the URL is cacheable. Returns null when the item has no image.
-  String? imageUrlFor(Map<String, dynamic> m, String imageType,
-      {int maxWidth = 480, int quality = 90}) {
+  String? imageUrlFor(
+    Map<String, dynamic> m,
+    String imageType, {
+    int maxWidth = 480,
+    int quality = 90,
+  }) {
     final tags = m['ImageTags'] as Map?;
     final tag = (tags?[imageType] as String?) ?? '';
     if (tag.isEmpty) return null;
     final id = m['Id'];
     if (id is! String) return null;
-    return buildImageUrl(id, imageType,
-        tag: tag, maxWidth: maxWidth, quality: quality);
+    return buildImageUrl(
+      id,
+      imageType,
+      tag: tag,
+      maxWidth: maxWidth,
+      quality: quality,
+    );
   }
 
   /// For tracks without their own primary image, fall back to the parent
@@ -94,8 +102,13 @@ class JellyfinUrlBuilder {
     return buildImageUrl(id, 'Primary', tag: tag, maxWidth: maxWidth);
   }
 
-  String buildImageUrl(String itemId, String imageType,
-      {required String tag, int maxWidth = 480, int quality = 90}) {
+  String buildImageUrl(
+    String itemId,
+    String imageType, {
+    required String tag,
+    int maxWidth = 480,
+    int quality = 90,
+  }) {
     final qp = <String, String>{
       'maxWidth': '$maxWidth',
       'quality': '$quality',
@@ -150,8 +163,7 @@ class JellyfinUrlBuilder {
     return 'MediaBrowser ${parts.join(", ")}';
   }
 
-  static String userAgentFor(String version) =>
-      'Aetherfin/$version (Android)';
+  static String userAgentFor(String version) => 'Aetherfin/$version (Android)';
 
   static String escapeHeaderValue(String v) {
     return v

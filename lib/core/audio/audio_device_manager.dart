@@ -12,7 +12,6 @@ import '../../utils/log.dart';
 /// mpv rebuilds it. Re-issuing the current effects re-attaches the
 /// chain.
 class AfAudioDeviceManager {
-
   AfAudioDeviceManager({required PlayerApi player}) : _player = player;
   final PlayerApi _player;
   bool _disposed = false;

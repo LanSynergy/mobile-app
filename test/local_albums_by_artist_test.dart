@@ -15,9 +15,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(
-        database: AppDatabase.forTesting(NativeDatabase.memory()),
-      );
+      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks([
         // "Una" → albums "Coastlines" (2020) and "Sands" (2018).
         {

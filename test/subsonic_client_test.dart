@@ -19,21 +19,27 @@ SubsonicClient _client({
 
 void main() {
   group('trackStreamUrl', () {
-    test('uses format=raw and omits maxBitRate when maxBitrateKbps is null (Original / Lossless)', () {
-      final url = _client().trackStreamUrl('track-1', maxBitrateKbps: null);
-      final uri = Uri.parse(url);
-      expect(uri.queryParameters['id'], 'track-1');
-      expect(uri.queryParameters['format'], 'raw');
-      expect(uri.queryParameters.containsKey('maxBitRate'), isFalse);
-    });
+    test(
+      'uses format=raw and omits maxBitRate when maxBitrateKbps is null (Original / Lossless)',
+      () {
+        final url = _client().trackStreamUrl('track-1', maxBitrateKbps: null);
+        final uri = Uri.parse(url);
+        expect(uri.queryParameters['id'], 'track-1');
+        expect(uri.queryParameters['format'], 'raw');
+        expect(uri.queryParameters.containsKey('maxBitRate'), isFalse);
+      },
+    );
 
-    test('uses format=mp3 and sets maxBitRate when maxBitrateKbps is specified', () {
-      final url = _client().trackStreamUrl('track-1', maxBitrateKbps: 256);
-      final uri = Uri.parse(url);
-      expect(uri.queryParameters['id'], 'track-1');
-      expect(uri.queryParameters['format'], 'mp3');
-      expect(uri.queryParameters['maxBitRate'], '256');
-    });
+    test(
+      'uses format=mp3 and sets maxBitRate when maxBitrateKbps is specified',
+      () {
+        final url = _client().trackStreamUrl('track-1', maxBitrateKbps: 256);
+        final uri = Uri.parse(url);
+        expect(uri.queryParameters['id'], 'track-1');
+        expect(uri.queryParameters['format'], 'mp3');
+        expect(uri.queryParameters['maxBitRate'], '256');
+      },
+    );
 
     test('includes standard subsonic query parameters (u, v, c, f, t, s)', () {
       final url = _client().trackStreamUrl('track-1');

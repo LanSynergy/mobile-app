@@ -10,7 +10,11 @@ class SettingsLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AfSpacing.s16, 0, AfSpacing.s4, AfSpacing.s8),
+        AfSpacing.s16,
+        0,
+        AfSpacing.s4,
+        AfSpacing.s8,
+      ),
       child: Text(
         label,
         style: AfTypography.bodySmall.copyWith(
@@ -54,7 +58,6 @@ class SettingsGroup extends StatelessWidget {
 }
 
 class SettingsTile extends StatelessWidget {
-
   const SettingsTile({
     super.key,
     required this.icon,
@@ -124,7 +127,6 @@ class SettingsTile extends StatelessWidget {
 }
 
 class SettingsSwitchTile extends StatelessWidget {
-
   const SettingsSwitchTile({
     super.key,
     required this.icon,
@@ -196,7 +198,6 @@ class SettingsSwitchTile extends StatelessWidget {
 }
 
 class OptionTile extends StatelessWidget {
-
   const OptionTile({
     super.key,
     required this.label,

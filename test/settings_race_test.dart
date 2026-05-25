@@ -59,10 +59,7 @@ void main() {
         resolveStreamUrl: (t) => 'https://example.com/1.flac',
       );
       ctrls.playlist.add(
-        const Playlist(
-          [Media('https://example.com/1.flac')],
-          index: 0,
-        ),
+        const Playlist([Media('https://example.com/1.flac')], index: 0),
       );
       await Future<void>.delayed(Duration.zero);
       clearInteractions(player);
@@ -102,7 +99,5 @@ void main() {
         verifyNever(() => player.setShuffle(any()));
       });
     });
-
-
   });
 }

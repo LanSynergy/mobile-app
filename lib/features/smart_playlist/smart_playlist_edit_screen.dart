@@ -9,7 +9,8 @@ import '../../state/providers.dart';
 import '../../widgets/skeletons/track_row_skeleton.dart';
 
 /// Create or edit a smart playlist — Samsung One UI style rule builder.
-class SmartPlaylistEditScreen extends ConsumerStatefulWidget { // null = create new
+class SmartPlaylistEditScreen extends ConsumerStatefulWidget {
+  // null = create new
   const SmartPlaylistEditScreen({super.key, this.playlistId});
   final String? playlistId;
 
@@ -59,15 +60,15 @@ class _SmartPlaylistEditScreenState
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name is required')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Name is required')));
       return;
     }
     if (_rules.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add at least one rule')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Add at least one rule')));
       return;
     }
 
@@ -90,11 +91,9 @@ class _SmartPlaylistEditScreenState
 
   void _addRule() {
     setState(() {
-      _rules.add(const SmartRule(
-        field: 'artist',
-        operator: 'contains',
-        value: '',
-      ));
+      _rules.add(
+        const SmartRule(field: 'artist', operator: 'contains', value: ''),
+      );
     });
   }
 
@@ -144,8 +143,10 @@ class _SmartPlaylistEditScreenState
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
         ),
-        title: Text(isEdit ? 'Edit Playlist' : 'New Smart Playlist',
-            style: AfTypography.display),
+        title: Text(
+          isEdit ? 'Edit Playlist' : 'New Smart Playlist',
+          style: AfTypography.display,
+        ),
         centerTitle: false,
         titleSpacing: 0,
         actions: [
@@ -212,8 +213,11 @@ class _SmartPlaylistEditScreenState
                         color: AfColors.semanticInfo.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.filter_list_rounded,
-                          size: 20, color: AfColors.semanticInfo),
+                      child: const Icon(
+                        Icons.filter_list_rounded,
+                        size: 20,
+                        color: AfColors.semanticInfo,
+                      ),
                     ),
                     const SizedBox(width: AfSpacing.s12),
                     Text('Match', style: AfTypography.bodyMedium),
@@ -272,7 +276,9 @@ class _SmartPlaylistEditScreenState
               style: OutlinedButton.styleFrom(
                 foregroundColor: AfColors.indigo400,
                 side: const BorderSide(color: AfColors.surfaceHigh),
-                shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: AfRadii.borderLg,
+                ),
                 padding: const EdgeInsets.symmetric(vertical: AfSpacing.s12),
               ),
             ),
@@ -296,12 +302,14 @@ class _SmartPlaylistEditScreenState
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color:
-                            AfColors.semanticSuccess.withValues(alpha: 0.15),
+                        color: AfColors.semanticSuccess.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.sort_rounded,
-                          size: 20, color: AfColors.semanticSuccess),
+                      child: const Icon(
+                        Icons.sort_rounded,
+                        size: 20,
+                        color: AfColors.semanticSuccess,
+                      ),
                     ),
                     const SizedBox(width: AfSpacing.s12),
                     Text('Sort by', style: AfTypography.bodyMedium),
@@ -314,11 +322,14 @@ class _SmartPlaylistEditScreenState
                         color: AfColors.indigo300,
                       ),
                       items: kSmartSortOptions.entries
-                          .map((e) => DropdownMenuItem(
-                              value: e.key, child: Text(e.value)))
+                          .map(
+                            (e) => DropdownMenuItem(
+                              value: e.key,
+                              child: Text(e.value),
+                            ),
+                          )
                           .toList(),
-                      onChanged: (v) =>
-                          setState(() => _sort = v ?? 'title'),
+                      onChanged: (v) => setState(() => _sort = v ?? 'title'),
                     ),
                     IconButton(
                       icon: Icon(
@@ -328,13 +339,15 @@ class _SmartPlaylistEditScreenState
                         size: 20,
                         color: AfColors.textSecondary,
                       ),
-                      onPressed: () => setState(() =>
-                          _sortOrder = _sortOrder == 'asc' ? 'desc' : 'asc'),
-                      tooltip:
-                          _sortOrder == 'asc' ? 'Ascending' : 'Descending',
+                      onPressed: () => setState(
+                        () => _sortOrder = _sortOrder == 'asc' ? 'desc' : 'asc',
+                      ),
+                      tooltip: _sortOrder == 'asc' ? 'Ascending' : 'Descending',
                       padding: EdgeInsets.zero,
-                      constraints:
-                          const BoxConstraints(minWidth: 36, minHeight: 36),
+                      constraints: const BoxConstraints(
+                        minWidth: 36,
+                        minHeight: 36,
+                      ),
                     ),
                   ],
                 ),
@@ -357,12 +370,14 @@ class _SmartPlaylistEditScreenState
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color:
-                            AfColors.semanticWarning.withValues(alpha: 0.15),
+                        color: AfColors.semanticWarning.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.playlist_remove_rounded,
-                          size: 20, color: AfColors.semanticWarning),
+                      child: const Icon(
+                        Icons.playlist_remove_rounded,
+                        size: 20,
+                        color: AfColors.semanticWarning,
+                      ),
                     ),
                     const SizedBox(width: AfSpacing.s12),
                     Text('Limit to', style: AfTypography.bodyMedium),
@@ -372,7 +387,8 @@ class _SmartPlaylistEditScreenState
                       child: TextField(
                         keyboardType: TextInputType.number,
                         controller: TextEditingController(
-                            text: _limit?.toString() ?? ''),
+                          text: _limit?.toString() ?? '',
+                        ),
                         textAlign: TextAlign.center,
                         style: AfTypography.bodyMedium.copyWith(
                           color: AfColors.indigo300,
@@ -390,15 +406,20 @@ class _SmartPlaylistEditScreenState
                           ),
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 8),
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
                         ),
                         onChanged: (v) => _limit = int.tryParse(v),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text('tracks',
-                        style: AfTypography.bodySmall
-                            .copyWith(color: AfColors.textTertiary)),
+                    Text(
+                      'tracks',
+                      style: AfTypography.bodySmall.copyWith(
+                        color: AfColors.textTertiary,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -424,7 +445,11 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AfSpacing.s16, 0, AfSpacing.s4, AfSpacing.s8),
+        AfSpacing.s16,
+        0,
+        AfSpacing.s4,
+        AfSpacing.s8,
+      ),
       child: Text(
         label,
         style: AfTypography.bodySmall.copyWith(
@@ -448,17 +473,13 @@ class _SettingsGroup extends StatelessWidget {
         color: AfColors.surfaceBase,
         borderRadius: AfRadii.borderLg,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: children,
-      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
   }
 }
 
 /// A single rule row inside the grouped card.
 class _RuleRow extends StatelessWidget {
-
   const _RuleRow({
     required this.rule,
     required this.onChanged,
@@ -471,8 +492,9 @@ class _RuleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final operators = operatorsForField(rule.field);
-    final effectiveOp =
-        operators.contains(rule.operator) ? rule.operator : operators.first;
+    final effectiveOp = operators.contains(rule.operator)
+        ? rule.operator
+        : operators.first;
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -487,8 +509,10 @@ class _RuleRow extends StatelessWidget {
               // Field
               Expanded(
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AfColors.surfaceHigh,
                     borderRadius: BorderRadius.circular(8),
@@ -501,17 +525,23 @@ class _RuleRow extends StatelessWidget {
                     dropdownColor: AfColors.surfaceRaised,
                     style: AfTypography.bodySmall,
                     items: kSmartFields.entries
-                        .map((e) => DropdownMenuItem(
-                            value: e.key, child: Text(e.value)))
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e.key,
+                            child: Text(e.value),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) {
                       if (v == null) return;
                       final newOps = operatorsForField(v);
-                      onChanged(SmartRule(
-                        field: v,
-                        operator: newOps.first,
-                        value: v == 'isFavorite' ? true : '',
-                      ));
+                      onChanged(
+                        SmartRule(
+                          field: v,
+                          operator: newOps.first,
+                          value: v == 'isFavorite' ? true : '',
+                        ),
+                      );
                     },
                   ),
                 ),
@@ -520,8 +550,10 @@ class _RuleRow extends StatelessWidget {
               // Operator
               Expanded(
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AfColors.surfaceHigh,
                     borderRadius: BorderRadius.circular(8),
@@ -534,16 +566,22 @@ class _RuleRow extends StatelessWidget {
                     dropdownColor: AfColors.surfaceRaised,
                     style: AfTypography.bodySmall,
                     items: operators
-                        .map((op) => DropdownMenuItem(
-                            value: op, child: Text(_opLabel(op))))
+                        .map(
+                          (op) => DropdownMenuItem(
+                            value: op,
+                            child: Text(_opLabel(op)),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) {
                       if (v == null) return;
-                      onChanged(SmartRule(
-                        field: rule.field,
-                        operator: v,
-                        value: rule.value,
-                      ));
+                      onChanged(
+                        SmartRule(
+                          field: rule.field,
+                          operator: v,
+                          value: rule.value,
+                        ),
+                      );
                     },
                   ),
                 ),
@@ -559,8 +597,11 @@ class _RuleRow extends StatelessWidget {
                     color: AfColors.semanticError.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.close_rounded,
-                      size: 16, color: AfColors.semanticError),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    size: 16,
+                    color: AfColors.semanticError,
+                  ),
                 ),
               ),
             ],
@@ -581,11 +622,9 @@ class _RuleRow extends StatelessWidget {
           const Spacer(),
           Switch.adaptive(
             value: rule.value == true,
-            onChanged: (v) => onChanged(SmartRule(
-              field: rule.field,
-              operator: rule.operator,
-              value: v,
-            )),
+            onChanged: (v) => onChanged(
+              SmartRule(field: rule.field, operator: rule.operator, value: v),
+            ),
             activeTrackColor: AfColors.indigo500,
           ),
         ],
@@ -606,20 +645,24 @@ class _RuleRow extends StatelessWidget {
             : TextInputType.text,
         decoration: InputDecoration(
           hintText: _isNumericField(rule.field) ? '0' : 'Enter value...',
-          hintStyle:
-              AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
+          hintStyle: AfTypography.bodySmall.copyWith(
+            color: AfColors.textTertiary,
+          ),
           isDense: true,
           border: InputBorder.none,
           contentPadding: EdgeInsets.zero,
         ),
         onChanged: (v) {
-          final parsed =
-              _isNumericField(rule.field) ? (int.tryParse(v) ?? v) : v;
-          onChanged(SmartRule(
-            field: rule.field,
-            operator: rule.operator,
-            value: parsed,
-          ));
+          final parsed = _isNumericField(rule.field)
+              ? (int.tryParse(v) ?? v)
+              : v;
+          onChanged(
+            SmartRule(
+              field: rule.field,
+              operator: rule.operator,
+              value: parsed,
+            ),
+          );
         },
       ),
     );
@@ -632,14 +675,14 @@ class _RuleRow extends StatelessWidget {
       field == 'dateAdded';
 
   String _opLabel(String op) => switch (op) {
-        'is' => 'is',
-        'isNot' => 'is not',
-        'contains' => 'contains',
-        'notContains' => 'not contains',
-        'gt' => 'greater than',
-        'lt' => 'less than',
-        'inTheRange' => 'between',
-        'inTheLast' => 'last N days',
-        _ => op,
-      };
+    'is' => 'is',
+    'isNot' => 'is not',
+    'contains' => 'contains',
+    'notContains' => 'not contains',
+    'gt' => 'greater than',
+    'lt' => 'less than',
+    'inTheRange' => 'between',
+    'inTheLast' => 'last N days',
+    _ => op,
+  };
 }

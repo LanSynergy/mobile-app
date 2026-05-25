@@ -5,7 +5,6 @@ import '../jellyfin/models/items.dart';
 import 'app_database.dart';
 
 class AlbumRepository {
-
   AlbumRepository(this.db);
   final AppDatabase db;
 
@@ -33,8 +32,9 @@ class AlbumRepository {
   }
 
   Future<List<AfAlbum>> recentlyAddedAlbums({int limit = 20}) async {
-    final rows = await db.customSelect(
-      '''
+    final rows = await db
+        .customSelect(
+          '''
       SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
              COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
              MIN(year) as year,
@@ -45,14 +45,16 @@ class AlbumRepository {
       ORDER BY max_last_modified DESC, album COLLATE NOCASE ASC
       LIMIT ?
       ''',
-      variables: [Variable<int>(limit)],
-    ).get();
+          variables: [Variable<int>(limit)],
+        )
+        .get();
     return rows.map(_rowToAlbum).toList();
   }
 
   Future<List<AfAlbum>> albumsByGenre(String genre, {int limit = 200}) async {
-    final rows = await db.customSelect(
-      '''
+    final rows = await db
+        .customSelect(
+          '''
       SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
              COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
              MIN(year) as year
@@ -62,15 +64,19 @@ class AlbumRepository {
       ORDER BY album COLLATE NOCASE ASC
       LIMIT ?
       ''',
-      variables: [Variable<String>(genre), Variable<int>(limit)],
-    ).get();
+          variables: [Variable<String>(genre), Variable<int>(limit)],
+        )
+        .get();
     return rows.map(_rowToAlbum).toList();
   }
 
-  Future<List<AfAlbum>> albumsByArtist(String artistName,
-      {int limit = 200}) async {
-    final rows = await db.customSelect(
-      '''
+  Future<List<AfAlbum>> albumsByArtist(
+    String artistName, {
+    int limit = 200,
+  }) async {
+    final rows = await db
+        .customSelect(
+          '''
       SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
              COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
              MIN(year) as year
@@ -81,15 +87,17 @@ class AlbumRepository {
       ORDER BY year ASC, album COLLATE NOCASE ASC
       LIMIT ?2
       ''',
-      variables: [Variable<String>(artistName), Variable<int>(limit)],
-      readsFrom: {db.tracks},
-    ).get();
+          variables: [Variable<String>(artistName), Variable<int>(limit)],
+          readsFrom: {db.tracks},
+        )
+        .get();
     return rows.map(_rowToAlbum).toList();
   }
 
   Future<AfAlbum?> albumByKey(String name, String artistName) async {
-    final rows = await db.customSelect(
-      '''
+    final rows = await db
+        .customSelect(
+          '''
       SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
              COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
              MIN(year) as year
@@ -99,20 +107,19 @@ class AlbumRepository {
       GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
       LIMIT 1
       ''',
-      variables: [
-        Variable<String>(name),
-        Variable<String>(artistName),
-      ],
-      readsFrom: {db.tracks},
-    ).get();
+          variables: [Variable<String>(name), Variable<String>(artistName)],
+          readsFrom: {db.tracks},
+        )
+        .get();
     if (rows.isEmpty) return null;
     return _rowToAlbum(rows.first);
   }
 
   Future<List<AfAlbum>> searchAlbums(String query, {int limit = 50}) async {
     final like = '%${escapeSqlLike(query)}%';
-    final rows = await db.customSelect(
-      r'''
+    final rows = await db
+        .customSelect(
+          r'''
       SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
              COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
              MIN(year) as year
@@ -125,9 +132,10 @@ class AlbumRepository {
       ORDER BY album COLLATE NOCASE ASC
       LIMIT ?2
       ''',
-      variables: [Variable<String>(like), Variable<int>(limit)],
-      readsFrom: {db.tracks},
-    ).get();
+          variables: [Variable<String>(like), Variable<int>(limit)],
+          readsFrom: {db.tracks},
+        )
+        .get();
     return rows.map((r) {
       final albumName = r.read<String?>('album') ?? 'Unknown';
       final artistName = (r.read<String?>('album_artist'))?.isNotEmpty == true
@@ -139,8 +147,9 @@ class AlbumRepository {
         artistName: artistName,
         trackCount: r.read<int?>('track_count') ?? 0,
         year: r.read<int?>('year'),
-        totalDuration:
-            Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+        totalDuration: Duration(
+          milliseconds: r.read<int?>('total_duration_ms') ?? 0,
+        ),
         imageUrl: r.read<String?>('cover_path') != null
             ? 'file://${r.read<String>('cover_path')}'
             : null,
@@ -149,8 +158,9 @@ class AlbumRepository {
   }
 
   Future<List<AfAlbum>> favoriteAlbums({int limit = 30}) async {
-    final rows = await db.customSelect(
-      '''
+    final rows = await db
+        .customSelect(
+          '''
       SELECT album, artist, album_artist, MIN(cover_path) as cover_path,
              COUNT(*) as track_count, SUM(duration_ms) as total_duration_ms,
              MIN(year) as year
@@ -163,9 +173,10 @@ class AlbumRepository {
       ORDER BY album COLLATE NOCASE ASC
       LIMIT ?1
       ''',
-      variables: [Variable<int>(limit)],
-      readsFrom: {db.tracks, db.favorites},
-    ).get();
+          variables: [Variable<int>(limit)],
+          readsFrom: {db.tracks, db.favorites},
+        )
+        .get();
     return rows.map((r) {
       final albumName = r.read<String?>('album') ?? 'Unknown';
       final albumArtist = (r.read<String?>('album_artist'))?.isNotEmpty == true
@@ -177,8 +188,9 @@ class AlbumRepository {
         artistName: albumArtist,
         trackCount: r.read<int?>('track_count') ?? 0,
         year: r.read<int?>('year'),
-        totalDuration:
-            Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+        totalDuration: Duration(
+          milliseconds: r.read<int?>('total_duration_ms') ?? 0,
+        ),
         imageUrl: r.read<String?>('cover_path') != null
             ? 'file://${r.read<String>('cover_path')}'
             : null,
@@ -198,8 +210,9 @@ class AlbumRepository {
       artistName: artistName,
       trackCount: r.read<int?>('track_count') ?? 0,
       year: r.read<int?>('year'),
-      totalDuration:
-          Duration(milliseconds: r.read<int?>('total_duration_ms') ?? 0),
+      totalDuration: Duration(
+        milliseconds: r.read<int?>('total_duration_ms') ?? 0,
+      ),
       imageUrl: r.read<String?>('cover_path') != null
           ? 'file://${r.read<String>('cover_path')}'
           : null,

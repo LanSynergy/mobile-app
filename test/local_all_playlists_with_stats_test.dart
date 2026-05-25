@@ -14,9 +14,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(
-        database: AppDatabase.forTesting(NativeDatabase.memory()),
-      );
+      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks([
         {
           'id': 'content://uri/1',
@@ -56,18 +54,17 @@ void main() {
       String mkEntry() => 'e${++n}';
 
       await db.createPlaylist('local:playlist:b', 'B Workout');
-      await db.addToPlaylist(
-        'local:playlist:b',
-        ['content://uri/1', 'content://uri/3'],
-        makeEntryId: mkEntry,
-      );
+      await db.addToPlaylist('local:playlist:b', [
+        'content://uri/1',
+        'content://uri/3',
+      ], makeEntryId: mkEntry);
 
       await db.createPlaylist('local:playlist:a', 'A Roadtrip');
-      await db.addToPlaylist(
-        'local:playlist:a',
-        ['content://uri/1', 'content://uri/2', 'content://uri/3'],
-        makeEntryId: mkEntry,
-      );
+      await db.addToPlaylist('local:playlist:a', [
+        'content://uri/1',
+        'content://uri/2',
+        'content://uri/3',
+      ], makeEntryId: mkEntry);
 
       // An intentionally empty playlist.
       await db.createPlaylist('local:playlist:e', 'Empty');
@@ -75,11 +72,13 @@ void main() {
 
     tearDown(() => db.close());
 
-    test('sorted by name (case-insensitive) and includes empty playlists',
-        () async {
-      final r = await db.allPlaylistsWithStats();
-      expect(r.map((p) => p.name), ['A Roadtrip', 'B Workout', 'Empty']);
-    });
+    test(
+      'sorted by name (case-insensitive) and includes empty playlists',
+      () async {
+        final r = await db.allPlaylistsWithStats();
+        expect(r.map((p) => p.name), ['A Roadtrip', 'B Workout', 'Empty']);
+      },
+    );
 
     test('computes track count and total duration in one query', () async {
       final r = await db.allPlaylistsWithStats();

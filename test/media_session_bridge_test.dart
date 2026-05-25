@@ -14,21 +14,21 @@ void main() {
     recordedCalls = <MethodCall>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('aetherfin.media_session'),
-      (MethodCall call) async {
-        recordedCalls.add(call);
-        return null;
-      },
-    );
+          const MethodChannel('aetherfin.media_session'),
+          (MethodCall call) async {
+            recordedCalls.add(call);
+            return null;
+          },
+        );
   });
 
   tearDown(() {
     bridge.dispose();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('aetherfin.media_session'),
-      null,
-    );
+          const MethodChannel('aetherfin.media_session'),
+          null,
+        );
   });
 
   group('NativeMediaSessionBridge', () {
@@ -36,19 +36,21 @@ void main() {
     // pushState
     // -----------------------------------------------------------------------
     test('pushState sends updateState with correct arguments', () {
-      bridge.pushState(const MediaSessionState(
-        playing: true,
-        buffering: false,
-        position: Duration(seconds: 30),
-        duration: Duration(seconds: 200),
-        speed: 1.0,
-        title: 'Test Song',
-        artist: 'Test Artist',
-        album: 'Test Album',
-        artPath: '/tmp/cover.jpg',
-        queueIndex: 0,
-        queueSize: 10,
-      ));
+      bridge.pushState(
+        const MediaSessionState(
+          playing: true,
+          buffering: false,
+          position: Duration(seconds: 30),
+          duration: Duration(seconds: 200),
+          speed: 1.0,
+          title: 'Test Song',
+          artist: 'Test Artist',
+          album: 'Test Album',
+          artPath: '/tmp/cover.jpg',
+          queueIndex: 0,
+          queueSize: 10,
+        ),
+      );
 
       expect(recordedCalls, hasLength(1));
       final call = recordedCalls.first;
@@ -67,14 +69,16 @@ void main() {
     });
 
     test('pushState handles minimal state (no metadata)', () {
-      bridge.pushState(const MediaSessionState(
-        playing: false,
-        buffering: true,
-        position: Duration.zero,
-        duration: Duration.zero,
-        speed: 1.0,
-        queueSize: 0,
-      ));
+      bridge.pushState(
+        const MediaSessionState(
+          playing: false,
+          buffering: true,
+          position: Duration.zero,
+          duration: Duration.zero,
+          speed: 1.0,
+          queueSize: 0,
+        ),
+      );
 
       expect(recordedCalls, hasLength(1));
       final call = recordedCalls.first;
@@ -89,15 +93,17 @@ void main() {
     });
 
     test('pushState handles null queueIndex', () {
-      bridge.pushState(const MediaSessionState(
-        playing: true,
-        buffering: false,
-        position: Duration.zero,
-        duration: Duration(seconds: 100),
-        speed: 1.0,
-        title: 'No Index',
-        queueSize: 5,
-      ));
+      bridge.pushState(
+        const MediaSessionState(
+          playing: true,
+          buffering: false,
+          position: Duration.zero,
+          duration: Duration(seconds: 100),
+          speed: 1.0,
+          title: 'No Index',
+          queueSize: 5,
+        ),
+      );
 
       expect(recordedCalls, hasLength(1));
       expect(recordedCalls.first.arguments['queueIndex'], isNull);
@@ -179,32 +185,38 @@ void main() {
       };
 
       await bridge.handleMethodCall(
-          const MethodCall('seek', {'positionMs': 5000}));
+        const MethodCall('seek', {'positionMs': 5000}),
+      );
 
       expect(seekedTo, const Duration(seconds: 5));
     });
 
-    test('platform skipTo call triggers onSkipToQueueItem with correct index',
-        () async {
-      int? skipToIdx;
-      bridge.onSkipToQueueItem = (idx) {
-        skipToIdx = idx;
-      };
+    test(
+      'platform skipTo call triggers onSkipToQueueItem with correct index',
+      () async {
+        int? skipToIdx;
+        bridge.onSkipToQueueItem = (idx) {
+          skipToIdx = idx;
+        };
 
-      await bridge.handleMethodCall(
-          const MethodCall('skipTo', {'queueIndex': 3}));
+        await bridge.handleMethodCall(
+          const MethodCall('skipTo', {'queueIndex': 3}),
+        );
 
-      expect(skipToIdx, 3);
-    });
+        expect(skipToIdx, 3);
+      },
+    );
 
     test('unknown platform method throws PlatformException', () async {
       expect(
         () => bridge.handleMethodCall(const MethodCall('unknownMethod')),
-        throwsA(isA<PlatformException>().having(
-          (PlatformException e) => e.code,
-          'code',
-          'Unimplemented',
-        )),
+        throwsA(
+          isA<PlatformException>().having(
+            (PlatformException e) => e.code,
+            'code',
+            'Unimplemented',
+          ),
+        ),
       );
     });
 
@@ -212,27 +224,30 @@ void main() {
     // onArtworkNeeded
     // -----------------------------------------------------------------------
     test(
-        'pushState fires onArtworkNeeded when artPath is null and needsArtworkDownload',
-        () {
-      var artworkNeeded = false;
-      bridge.onArtworkNeeded = () {
-        artworkNeeded = true;
-      };
+      'pushState fires onArtworkNeeded when artPath is null and needsArtworkDownload',
+      () {
+        var artworkNeeded = false;
+        bridge.onArtworkNeeded = () {
+          artworkNeeded = true;
+        };
 
-      bridge.pushState(const MediaSessionState(
-        playing: true,
-        buffering: false,
-        position: Duration.zero,
-        duration: Duration(seconds: 100),
-        speed: 1.0,
-        title: 'No Art',
-        artist: 'Test',
-        queueSize: 1,
-        needsArtworkDownload: true,
-      ));
+        bridge.pushState(
+          const MediaSessionState(
+            playing: true,
+            buffering: false,
+            position: Duration.zero,
+            duration: Duration(seconds: 100),
+            speed: 1.0,
+            title: 'No Art',
+            artist: 'Test',
+            queueSize: 1,
+            needsArtworkDownload: true,
+          ),
+        );
 
-      expect(artworkNeeded, isTrue);
-    });
+        expect(artworkNeeded, isTrue);
+      },
+    );
 
     test('pushState does NOT fire onArtworkNeeded when artPath is present', () {
       var artworkNeeded = false;
@@ -240,44 +255,49 @@ void main() {
         artworkNeeded = true;
       };
 
-      bridge.pushState(const MediaSessionState(
-        playing: true,
-        buffering: false,
-        position: Duration.zero,
-        duration: Duration(seconds: 100),
-        speed: 1.0,
-        title: 'Has Art',
-        artist: 'Test',
-        artPath: '/tmp/cover.jpg',
-        queueSize: 1,
-        needsArtworkDownload: true,
-      ));
+      bridge.pushState(
+        const MediaSessionState(
+          playing: true,
+          buffering: false,
+          position: Duration.zero,
+          duration: Duration(seconds: 100),
+          speed: 1.0,
+          title: 'Has Art',
+          artist: 'Test',
+          artPath: '/tmp/cover.jpg',
+          queueSize: 1,
+          needsArtworkDownload: true,
+        ),
+      );
 
       expect(artworkNeeded, isFalse);
     });
 
     test(
-        'pushState does NOT fire onArtworkNeeded when needsArtworkDownload is false',
-        () {
-      var artworkNeeded = false;
-      bridge.onArtworkNeeded = () {
-        artworkNeeded = true;
-      };
+      'pushState does NOT fire onArtworkNeeded when needsArtworkDownload is false',
+      () {
+        var artworkNeeded = false;
+        bridge.onArtworkNeeded = () {
+          artworkNeeded = true;
+        };
 
-      bridge.pushState(const MediaSessionState(
-        playing: true,
-        buffering: false,
-        position: Duration.zero,
-        duration: Duration(seconds: 100),
-        speed: 1.0,
-        title: 'No Art Needed',
-        artist: 'Test',
-        queueSize: 1,
-        needsArtworkDownload: false,
-      ));
+        bridge.pushState(
+          const MediaSessionState(
+            playing: true,
+            buffering: false,
+            position: Duration.zero,
+            duration: Duration(seconds: 100),
+            speed: 1.0,
+            title: 'No Art Needed',
+            artist: 'Test',
+            queueSize: 1,
+            needsArtworkDownload: false,
+          ),
+        );
 
-      expect(artworkNeeded, isFalse);
-    });
+        expect(artworkNeeded, isFalse);
+      },
+    );
 
     // -----------------------------------------------------------------------
     // Throttle behavior
@@ -304,53 +324,61 @@ void main() {
     });
 
     test('pushState sends immediately on playing state change', () {
-      bridge.pushState(const MediaSessionState(
-        playing: true,
-        buffering: false,
-        position: Duration.zero,
-        duration: Duration(seconds: 200),
-        speed: 1.0,
-        title: 'State Change',
-        artist: 'Test',
-        queueSize: 5,
-      ));
+      bridge.pushState(
+        const MediaSessionState(
+          playing: true,
+          buffering: false,
+          position: Duration.zero,
+          duration: Duration(seconds: 200),
+          speed: 1.0,
+          title: 'State Change',
+          artist: 'Test',
+          queueSize: 5,
+        ),
+      );
 
-      bridge.pushState(const MediaSessionState(
-        playing: false, // changed
-        buffering: false,
-        position: Duration.zero,
-        duration: Duration(seconds: 200),
-        speed: 1.0,
-        title: 'State Change',
-        artist: 'Test',
-        queueSize: 5,
-      ));
+      bridge.pushState(
+        const MediaSessionState(
+          playing: false, // changed
+          buffering: false,
+          position: Duration.zero,
+          duration: Duration(seconds: 200),
+          speed: 1.0,
+          title: 'State Change',
+          artist: 'Test',
+          queueSize: 5,
+        ),
+      );
 
       expect(recordedCalls, hasLength(2));
     });
 
     test('pushState sends immediately on buffering state change', () {
-      bridge.pushState(const MediaSessionState(
-        playing: true,
-        buffering: false,
-        position: Duration.zero,
-        duration: Duration(seconds: 200),
-        speed: 1.0,
-        title: 'Buffer Change',
-        artist: 'Test',
-        queueSize: 5,
-      ));
+      bridge.pushState(
+        const MediaSessionState(
+          playing: true,
+          buffering: false,
+          position: Duration.zero,
+          duration: Duration(seconds: 200),
+          speed: 1.0,
+          title: 'Buffer Change',
+          artist: 'Test',
+          queueSize: 5,
+        ),
+      );
 
-      bridge.pushState(const MediaSessionState(
-        playing: true,
-        buffering: true, // changed
-        position: Duration.zero,
-        duration: Duration(seconds: 200),
-        speed: 1.0,
-        title: 'Buffer Change',
-        artist: 'Test',
-        queueSize: 5,
-      ));
+      bridge.pushState(
+        const MediaSessionState(
+          playing: true,
+          buffering: true, // changed
+          position: Duration.zero,
+          duration: Duration(seconds: 200),
+          speed: 1.0,
+          title: 'Buffer Change',
+          artist: 'Test',
+          queueSize: 5,
+        ),
+      );
 
       expect(recordedCalls, hasLength(2));
     });
@@ -383,35 +411,41 @@ void main() {
     // -----------------------------------------------------------------------
     test('dispose does not crash and nulls the method call handler', () {
       // Pre-dispose push works.
-      bridge.pushState(const MediaSessionState(
-        playing: true,
-        buffering: false,
-        position: Duration.zero,
-        duration: Duration(seconds: 100),
-        speed: 1.0,
-        queueSize: 0,
-      ));
+      bridge.pushState(
+        const MediaSessionState(
+          playing: true,
+          buffering: false,
+          position: Duration.zero,
+          duration: Duration(seconds: 100),
+          speed: 1.0,
+          queueSize: 0,
+        ),
+      );
 
       bridge.dispose();
 
       // Post-dispose operations must not throw.
-      bridge.pushState(const MediaSessionState(
-        playing: false,
-        buffering: false,
-        position: Duration.zero,
-        duration: Duration.zero,
-        speed: 1.0,
-        queueSize: 0,
-      ));
+      bridge.pushState(
+        const MediaSessionState(
+          playing: false,
+          buffering: false,
+          position: Duration.zero,
+          duration: Duration.zero,
+          speed: 1.0,
+          queueSize: 0,
+        ),
+      );
       bridge.clear();
-      bridge.pushState(const MediaSessionState(
-        playing: true,
-        buffering: false,
-        position: Duration.zero,
-        duration: Duration.zero,
-        speed: 1.0,
-        queueSize: 0,
-      ));
+      bridge.pushState(
+        const MediaSessionState(
+          playing: true,
+          buffering: false,
+          position: Duration.zero,
+          duration: Duration.zero,
+          speed: 1.0,
+          queueSize: 0,
+        ),
+      );
       // No crash = pass.
     });
 
@@ -420,9 +454,11 @@ void main() {
       await bridge.handleMethodCall(const MethodCall('play'));
       await bridge.handleMethodCall(const MethodCall('pause'));
       await bridge.handleMethodCall(
-          const MethodCall('seek', {'positionMs': 1000}));
+        const MethodCall('seek', {'positionMs': 1000}),
+      );
       await bridge.handleMethodCall(
-          const MethodCall('skipTo', {'queueIndex': 0}));
+        const MethodCall('skipTo', {'queueIndex': 0}),
+      );
 
       // No assertions — must complete without error.
     });

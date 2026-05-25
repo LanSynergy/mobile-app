@@ -87,10 +87,7 @@ class ArtistScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              artist.name,
-                              style: AfTypography.display,
-                            ),
+                            Text(artist.name, style: AfTypography.display),
                             const SizedBox(height: 2),
                             Text(
                               artist.statLine,
@@ -117,10 +114,12 @@ class ArtistScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (artist.bio != null) ...[
-                        Text(artist.bio!,
-                            style: AfTypography.bodyMedium.copyWith(
-                              color: AfColors.textSecondary,
-                            )),
+                        Text(
+                          artist.bio!,
+                          style: AfTypography.bodyMedium.copyWith(
+                            color: AfColors.textSecondary,
+                          ),
+                        ),
                         const SizedBox(height: AfSpacing.s24),
                       ],
                       const SectionHeader(title: 'Top songs', uppercase: true),
@@ -153,9 +152,9 @@ class ArtistScreen extends ConsumerWidget {
               const SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.symmetric(
-                      horizontal: AfSpacing.gutterGenerous),
-                  child:
-                      SectionHeader(title: 'Albums', uppercase: true),
+                    horizontal: AfSpacing.gutterGenerous,
+                  ),
+                  child: SectionHeader(title: 'Albums', uppercase: true),
                 ),
               ),
               const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
@@ -165,7 +164,8 @@ class ArtistScreen extends ConsumerWidget {
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AfSpacing.gutterGenerous),
+                      horizontal: AfSpacing.gutterGenerous,
+                    ),
                     itemCount: albums.length,
                     separatorBuilder: (context, index) =>
                         const SizedBox(width: AfSpacing.s12),
@@ -186,9 +186,7 @@ class ArtistScreen extends ConsumerWidget {
                 ),
               ),
               const SliverToBoxAdapter(
-                child: SizedBox(
-                  height: AfSpacing.bottomInsetWithMiniAndNav,
-                ),
+                child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
               ),
             ],
           );

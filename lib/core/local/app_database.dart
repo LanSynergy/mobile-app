@@ -112,15 +112,16 @@ class CacheEntries extends Table {
 }
 
 @DriftDatabase(
-    tables: [
-      Tracks,
-      Folders,
-      SmartPlaylists,
-      Favorites,
-      Playlists,
-      PlaylistEntries,
-      CacheEntries,
-    ])
+  tables: [
+    Tracks,
+    Folders,
+    SmartPlaylists,
+    Favorites,
+    Playlists,
+    PlaylistEntries,
+    CacheEntries,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -133,23 +134,23 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-        },
-        onUpgrade: (m, from, to) async {
-          // v1 → v2 introduces local-mode favorites and user playlists
-          // so the hearts and "Save to playlist" actions can persist
-          // without a music server.
-          if (from < 2) {
-            await m.createTable(favorites);
-            await m.createTable(playlists);
-            await m.createTable(playlistEntries);
-          }
-          if (from < 3) {
-            await m.createTable(cacheEntries);
-          }
-        },
-      );
+    onCreate: (m) async {
+      await m.createAll();
+    },
+    onUpgrade: (m, from, to) async {
+      // v1 → v2 introduces local-mode favorites and user playlists
+      // so the hearts and "Save to playlist" actions can persist
+      // without a music server.
+      if (from < 2) {
+        await m.createTable(favorites);
+        await m.createTable(playlists);
+        await m.createTable(playlistEntries);
+      }
+      if (from < 3) {
+        await m.createTable(cacheEntries);
+      }
+    },
+  );
 }
 
 LazyDatabase _openConnection() {

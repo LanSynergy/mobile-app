@@ -135,24 +135,25 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
   Timer? _silenceTimer;
 
   double _bassAverage = 0.0;
-  double _prevBass    = 0.0;
-  int    _cooldown    = 0;
+  double _prevBass = 0.0;
+  int _cooldown = 0;
 
   @override
   void initState() {
     super.initState();
-    _ticker = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 16),
-    )..addListener(() {
-        if (_scale.value > 1.001) {
-          // Exponential spring decay back to 1.0.
-          _scale.value = 1.0 + (_scale.value - 1.0) * 0.85;
-        } else {
-          _scale.value = 1.0;
-          _ticker.stop();
-        }
-      });
+    _ticker =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 16),
+        )..addListener(() {
+          if (_scale.value > 1.001) {
+            // Exponential spring decay back to 1.0.
+            _scale.value = 1.0 + (_scale.value - 1.0) * 0.85;
+          } else {
+            _scale.value = 1.0;
+            _ticker.stop();
+          }
+        });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -160,62 +161,60 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
       final pulseEnabled = ref.read(artworkPulseEnabledProvider);
       if (!pulseEnabled) return;
 
-      _fftSub = ref.read(playerServiceProvider).spectrumStream.listen(
-        (frame) {
-          if (!mounted) return;
-          if (frame.bands.isEmpty) return;
+      _fftSub = ref.read(playerServiceProvider).spectrumStream.listen((frame) {
+        if (!mounted) return;
+        if (frame.bands.isEmpty) return;
 
-          // Process every frame. At 60 fps input the pulse detector
-          // is ~0.1 μs/frame (7-band sum + compare) — negligible.
+        // Process every frame. At 60 fps input the pulse detector
+        // is ~0.1 μs/frame (7-band sum + compare) — negligible.
 
-          _silenceTimer?.cancel();
+        _silenceTimer?.cancel();
 
-          // Kick / low-bass pool. With the player configured for 64
-          // log-spaced bands over 20 Hz..20 kHz, the geometric ratio
-          // is ~1.114/band, so band 0 ≈ 20–22 Hz (mostly room rumble)
-          // and bands 1..6 span ≈ 22–45 Hz — the kick-drum fundamental
-          // region on most music. Pool the peak of that window.
-          final int hi = frame.bands.length < 7 ? frame.bands.length : 7;
-          double rawBass = 0.0;
-          for (var i = 1; i < hi; i++) {
-            final v = frame.bands[i].abs();
-            if (v > rawBass) rawBass = v;
-          }
+        // Kick / low-bass pool. With the player configured for 64
+        // log-spaced bands over 20 Hz..20 kHz, the geometric ratio
+        // is ~1.114/band, so band 0 ≈ 20–22 Hz (mostly room rumble)
+        // and bands 1..6 span ≈ 22–45 Hz — the kick-drum fundamental
+        // region on most music. Pool the peak of that window.
+        final int hi = frame.bands.length < 7 ? frame.bands.length : 7;
+        double rawBass = 0.0;
+        for (var i = 1; i < hi; i++) {
+          final v = frame.bands[i].abs();
+          if (v > rawBass) rawBass = v;
+        }
 
-          final delta = rawBass - _prevBass;
-          _prevBass = rawBass;
+        final delta = rawBass - _prevBass;
+        _prevBass = rawBass;
 
-          // Asymmetric baseline: drops fast (0.12) so quiet passages
-          // lower the floor quickly; rises slow (0.03) so kick peaks
-          // stay well above the running average.
-          _bassAverage += (rawBass - _bassAverage) *
-              (rawBass < _bassAverage ? 0.12 : 0.03);
+        // Asymmetric baseline: drops fast (0.12) so quiet passages
+        // lower the floor quickly; rises slow (0.03) so kick peaks
+        // stay well above the running average.
+        _bassAverage +=
+            (rawBass - _bassAverage) * (rawBass < _bassAverage ? 0.12 : 0.03);
 
-          // Transient detection — tuned for the wide 140 dB spectrum
-          // range (-105..+35 dB). At that range a perceptually obvious
-          // 10 dB kick only yields ~1.13× in normalised [0,1] space,
-          // so the old 1.5× ratio was unreachable. Fire on either a
-          // ratio spike (1.12×) or a sharp frame-to-frame delta (0.04).
-          if (_cooldown > 0) {
-            _cooldown--;
-          } else if ((rawBass > _bassAverage * 1.12 || delta > 0.04) &&
-                     rawBass > 0.015) {
-            _scale.value = 1.06;  // +6% bump
-            _cooldown    = 15;    // ~250ms lockout at 60 fps
-            if (!_ticker.isAnimating) _ticker.repeat();
-          }
+        // Transient detection — tuned for the wide 140 dB spectrum
+        // range (-105..+35 dB). At that range a perceptually obvious
+        // 10 dB kick only yields ~1.13× in normalised [0,1] space,
+        // so the old 1.5× ratio was unreachable. Fire on either a
+        // ratio spike (1.12×) or a sharp frame-to-frame delta (0.04).
+        if (_cooldown > 0) {
+          _cooldown--;
+        } else if ((rawBass > _bassAverage * 1.12 || delta > 0.04) &&
+            rawBass > 0.015) {
+          _scale.value = 1.06; // +6% bump
+          _cooldown = 15; // ~250ms lockout at 60 fps
+          if (!_ticker.isAnimating) _ticker.repeat();
+        }
 
-          _silenceTimer?.cancel();
-          if (mounted) {
-            _silenceTimer = Timer(const Duration(milliseconds: 300), () {
-              if (mounted) {
-                _bassAverage = 0.0;
-                _prevBass = 0.0;
-              }
-            });
-          }
-        },
-      );
+        _silenceTimer?.cancel();
+        if (mounted) {
+          _silenceTimer = Timer(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              _bassAverage = 0.0;
+              _prevBass = 0.0;
+            }
+          });
+        }
+      });
     });
   }
 
@@ -272,7 +271,6 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
 
 /// Static metadata row — only rebuilds when track changes (on skip).
 class _MetadataRow extends ConsumerWidget {
-
   const _MetadataRow({required this.track});
   final AfTrack track;
 
@@ -286,10 +284,7 @@ class _MetadataRow extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _MarqueeText(
-                text: track.title,
-                style: AfTypography.titleLarge,
-              ),
+              _MarqueeText(text: track.title, style: AfTypography.titleLarge),
               const SizedBox(height: 2),
               // Tap the artist name to jump to the artist. Mirrors the
               // album-label affordance in the top bar.
@@ -316,9 +311,7 @@ class _MetadataRow extends ConsumerWidget {
         ),
         IconButton(
           icon: Icon(
-            track.isFavorite
-                ? LucideIcons.heart
-                : LucideIcons.heart,
+            track.isFavorite ? LucideIcons.heart : LucideIcons.heart,
             color: track.isFavorite
                 ? AfColors.semanticError
                 : AfColors.textPrimary,
@@ -355,7 +348,6 @@ class _MetadataRow extends ConsumerWidget {
 /// Uses [ClipRect] + [SizedBox] to constrain parent layout — unlike
 /// [OverflowBox] which can break parent Row sizing.
 class _MarqueeText extends StatefulWidget {
-
   const _MarqueeText({required this.text, required this.style});
   final String text;
   final TextStyle style;
@@ -461,14 +453,12 @@ class _AbLoopButton extends ConsumerWidget {
 
     return IconButton(
       icon: Icon(
-        loopA == null
-            ? LucideIcons.arrowLeftRight
-            : LucideIcons.flag,
+        loopA == null ? LucideIcons.arrowLeftRight : LucideIcons.flag,
         color: fullyActive
             ? ref.watch(currentSpectralProvider).energy
             : active
-                ? AfColors.semanticWarning
-                : AfColors.textTertiary,
+            ? AfColors.semanticWarning
+            : AfColors.textTertiary,
         size: 22,
       ),
       tooltip: 'A-B Loop',
@@ -483,10 +473,12 @@ class _AbLoopButton extends ConsumerWidget {
           if (context.mounted) {
             ScaffoldMessenger.of(context)
               ..clearSnackBars()
-              ..showSnackBar(const SnackBar(
-                content: Text('Loop start set — tap again for end'),
-                duration: Duration(seconds: 2),
-              ));
+              ..showSnackBar(
+                const SnackBar(
+                  content: Text('Loop start set — tap again for end'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
           }
         } else if (loopB == null) {
           // Set B marker
@@ -495,10 +487,12 @@ class _AbLoopButton extends ConsumerWidget {
           if (context.mounted) {
             ScaffoldMessenger.of(context)
               ..clearSnackBars()
-              ..showSnackBar(const SnackBar(
-                content: Text('A-B loop active — tap to clear'),
-                duration: Duration(seconds: 2),
-              ));
+              ..showSnackBar(
+                const SnackBar(
+                  content: Text('A-B loop active — tap to clear'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
           }
         } else {
           // Clear both
@@ -509,10 +503,12 @@ class _AbLoopButton extends ConsumerWidget {
           if (context.mounted) {
             ScaffoldMessenger.of(context)
               ..clearSnackBars()
-              ..showSnackBar(const SnackBar(
-                content: Text('A-B loop cleared'),
-                duration: Duration(seconds: 1),
-              ));
+              ..showSnackBar(
+                const SnackBar(
+                  content: Text('A-B loop cleared'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
           }
         }
       },
@@ -565,8 +561,9 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
     final engineProgress = duration.inMilliseconds == 0
         ? 0.0
         : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
-    final displayProgress =
-        _isDragging ? (_scrubPreview ?? engineProgress) : engineProgress;
+    final displayProgress = _isDragging
+        ? (_scrubPreview ?? engineProgress)
+        : engineProgress;
 
     final displayPosition = _isDragging && _scrubPreview != null
         ? Duration(
@@ -598,9 +595,7 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
               // Seeking alone won't resume — we need to call play() as well.
               final wasCompletedAtEnd = svc.isCompleted && svc.isUserPaused;
               try {
-                await svc.seek(newPos).timeout(
-                  const Duration(seconds: 2),
-                );
+                await svc.seek(newPos).timeout(const Duration(seconds: 2));
                 // Resume playback only when the user seeks into a completed track.
                 if (wasCompletedAtEnd && mounted) {
                   await svc.play().timeout(const Duration(seconds: 2));
@@ -628,9 +623,7 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
               ),
               Text(
                 formatRemaining(remaining),
-                style: AfTypography.mono.copyWith(
-                  color: AfColors.textTertiary,
-                ),
+                style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
               ),
             ],
           ),
@@ -647,18 +640,15 @@ class _ReactiveTransport extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isPlaying = ref.watch(playingStreamProvider).maybeWhen(
-      data: (v) => v,
-      orElse: () => false,
-    );
-    final shuffleOn = ref.watch(shuffleModeProvider).maybeWhen(
-      data: (v) => v,
-      orElse: () => false,
-    );
-    final loopMode = ref.watch(loopModeProvider).maybeWhen(
-      data: (v) => v,
-      orElse: () => Loop.off,
-    );
+    final isPlaying = ref
+        .watch(playingStreamProvider)
+        .maybeWhen(data: (v) => v, orElse: () => false);
+    final shuffleOn = ref
+        .watch(shuffleModeProvider)
+        .maybeWhen(data: (v) => v, orElse: () => false);
+    final loopMode = ref
+        .watch(loopModeProvider)
+        .maybeWhen(data: (v) => v, orElse: () => Loop.off);
     final spectral = ref.watch(currentSpectralProvider);
 
     return _TransportRow(
@@ -675,9 +665,9 @@ class _ReactiveTransport extends ConsumerWidget {
       onRepeat: () {
         final svc = ref.read(playerServiceProvider);
         final next = switch (svc.loopMode) {
-          Loop.off      => Loop.playlist,
+          Loop.off => Loop.playlist,
           Loop.playlist => Loop.file,
-          Loop.file     => Loop.off,
+          Loop.file => Loop.off,
         };
         unawaited(svc.setAfLoopMode(next).catchError((_) {}));
       },
@@ -705,8 +695,14 @@ class _TopBar extends ConsumerWidget {
             color: AfColors.surfaceCanvas.withValues(alpha: 0.20),
             borderRadius: AfRadii.borderPill,
           ),
-          margin: const EdgeInsets.symmetric(horizontal: AfSpacing.s8, vertical: 4),
-          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s8, vertical: 4),
+          margin: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.s8,
+            vertical: 4,
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.s8,
+            vertical: 4,
+          ),
           child: Row(
             children: [
               IconButton(
@@ -969,10 +965,7 @@ class _TransportRow extends StatelessWidget {
             onTap: onPrev,
           ),
           const SizedBox(width: 12),
-          _PlayButton(
-            isPlaying: isPlaying,
-            onTap: onPlayPause,
-          ),
+          _PlayButton(isPlaying: isPlaying, onTap: onPlayPause),
           const SizedBox(width: 12),
           _TransportButton(
             icon: const Icon(
@@ -985,13 +978,9 @@ class _TransportRow extends StatelessWidget {
           const Spacer(),
           _TransportButton(
             icon: Icon(
-              loopMode == Loop.file
-                  ? LucideIcons.repeat1
-                  : LucideIcons.repeat,
+              loopMode == Loop.file ? LucideIcons.repeat1 : LucideIcons.repeat,
               size: 20,
-              color: loopMode == Loop.off
-                  ? AfColors.textTertiary
-                  : accent,
+              color: loopMode == Loop.off ? AfColors.textTertiary : accent,
             ),
             onTap: onRepeat,
           ),
@@ -1003,10 +992,7 @@ class _TransportRow extends StatelessWidget {
 }
 
 class _TransportButton extends StatelessWidget {
-  const _TransportButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _TransportButton({required this.icon, required this.onTap});
   final Widget icon;
   final VoidCallback onTap;
 
@@ -1014,20 +1000,13 @@ class _TransportButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return PressScale(
       onTap: onTap,
-      child: SizedBox(
-        width: 44,
-        height: 44,
-        child: Center(child: icon),
-      ),
+      child: SizedBox(width: 44, height: 44, child: Center(child: icon)),
     );
   }
 }
 
 class _PlayButton extends StatelessWidget {
-  const _PlayButton({
-    required this.isPlaying,
-    required this.onTap,
-  });
+  const _PlayButton({required this.isPlaying, required this.onTap});
   final bool isPlaying;
   final VoidCallback onTap;
 
@@ -1045,9 +1024,7 @@ class _PlayButton extends StatelessWidget {
         ),
         child: Center(
           child: Icon(
-            isPlaying
-                ? LucideIcons.pause
-                : LucideIcons.play,
+            isPlaying ? LucideIcons.pause : LucideIcons.play,
             color: Colors.black,
             size: 28,
           ),
@@ -1056,7 +1033,3 @@ class _PlayButton extends StatelessWidget {
     );
   }
 }
-
-
-
-

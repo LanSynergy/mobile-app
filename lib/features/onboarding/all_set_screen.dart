@@ -52,7 +52,7 @@ class _AllSetScreenState extends ConsumerState<AllSetScreen>
                 auth == null
                     ? 'Your library is ready.'
                     : 'Connected to ${auth.server.name}. Your library is '
-                        'ready.',
+                          'ready.',
                 style: AfTypography.bodyLarge.copyWith(
                   color: AfColors.textSecondary,
                 ),
@@ -64,37 +64,39 @@ class _AllSetScreenState extends ConsumerState<AllSetScreen>
                 child: library.isEmpty
                     ? const SizedBox.shrink()
                     : GridView.builder(
-                  itemCount: library.length,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 8,
-                    crossAxisSpacing: 8,
-                  ),
-                  itemBuilder: (context, i) {
-                    final delay = (i * 40) / 600.0;
-                    return AnimatedBuilder(
-                      animation: _stagger,
-                      builder: (context, _) {
-                        final t = ((_stagger.value - delay) / 0.27)
-                            .clamp(0.0, 1.0);
-                        return Opacity(
-                          opacity: t,
-                          child: Transform.translate(
-                            offset: Offset(0, (1 - t) * 8),
-                            child: Artwork(
-                              url: library[i].imageUrl,
-                              size: double.infinity,
-                              height: double.infinity,
-                              radius: AfRadii.borderMd,
+                        itemCount: library.length,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              mainAxisSpacing: 8,
+                              crossAxisSpacing: 8,
                             ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
+                        itemBuilder: (context, i) {
+                          final delay = (i * 40) / 600.0;
+                          return AnimatedBuilder(
+                            animation: _stagger,
+                            builder: (context, _) {
+                              final t = ((_stagger.value - delay) / 0.27).clamp(
+                                0.0,
+                                1.0,
+                              );
+                              return Opacity(
+                                opacity: t,
+                                child: Transform.translate(
+                                  offset: Offset(0, (1 - t) * 8),
+                                  child: Artwork(
+                                    url: library[i].imageUrl,
+                                    size: double.infinity,
+                                    height: double.infinity,
+                                    radius: AfRadii.borderMd,
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
               ),
               const SizedBox(height: AfSpacing.s24),
               ElevatedButton(
@@ -115,9 +117,7 @@ class _StatRow extends StatelessWidget {
   Widget build(BuildContext context) {
     const tracks = 0;
     const albums = 0;
-    final hours = (0 /
-            60)
-        .round();
+    final hours = (0 / 60).round();
     return Row(
       children: [
         const _Stat(label: 'Tracks', value: '$tracks'),

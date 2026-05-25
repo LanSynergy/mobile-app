@@ -9,7 +9,6 @@ import 'saf_picker.dart';
 /// Wraps [LocalDb] and [MetadataScanner] to provide a clean API for
 /// providers and UI code. Analogous to [MusicBackend] but for local files.
 class LocalLibrary {
-
   LocalLibrary({AppDatabase? database}) : _db = LocalDb(database: database) {
     _scanner = MetadataScanner(_db);
   }
@@ -44,10 +43,14 @@ class LocalLibrary {
   /// Get all registered folders.
   Future<List<({String uri, String displayPath})>> getFolders() async {
     final rows = await _db.getFolders();
-    return rows.map((r) => (
-      uri: r['uri'] as String,
-      displayPath: r['display_path'] as String,
-    )).toList();
+    return rows
+        .map(
+          (r) => (
+            uri: r['uri'] as String,
+            displayPath: r['display_path'] as String,
+          ),
+        )
+        .toList();
   }
 
   // ── Scanning ────────────────────────────────────────────────────────────
@@ -62,10 +65,7 @@ class LocalLibrary {
       final uri = folder['uri'] as String;
       // Remove tracks that no longer exist on disk before scanning.
       await _scanner.pruneDeletedFiles(uri);
-      totalInserted += await _scanner.scanFolder(
-        uri,
-        onProgress: onProgress,
-      );
+      totalInserted += await _scanner.scanFolder(uri, onProgress: onProgress);
     }
     return totalInserted;
   }
@@ -84,7 +84,8 @@ class LocalLibrary {
 
   Future<List<AfArtist>> artists() => _db.allArtists();
 
-  Future<List<AfTrack>> tracks({int limit = 5000}) => _db.allTracks(limit: limit);
+  Future<List<AfTrack>> tracks({int limit = 5000}) =>
+      _db.allTracks(limit: limit);
 
   Future<List<AfGenre>> genres() => _db.allGenres();
 
@@ -94,8 +95,7 @@ class LocalLibrary {
   Future<List<AfTrack>> tracksByArtist(String artistName) =>
       _db.tracksByArtist(artistName);
 
-  Future<List<AfTrack>> tracksByGenre(String genre) =>
-      _db.tracksByGenre(genre);
+  Future<List<AfTrack>> tracksByGenre(String genre) => _db.tracksByGenre(genre);
 
   Future<List<AfTrack>> search(String query) => _db.searchTracks(query);
 

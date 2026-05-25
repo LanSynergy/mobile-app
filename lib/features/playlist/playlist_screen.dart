@@ -51,7 +51,8 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
           if (backend != null)
             PopupMenuButton<_PlaylistAction>(
               icon: const Icon(Icons.more_vert_rounded),
-              onSelected: (action) => _handleAction(context, action, detailAsync.valueOrNull),
+              onSelected: (action) =>
+                  _handleAction(context, action, detailAsync.valueOrNull),
               itemBuilder: (context) => [
                 const PopupMenuItem(
                   value: _PlaylistAction.rename,
@@ -64,10 +65,14 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                 const PopupMenuItem(
                   value: _PlaylistAction.delete,
                   child: ListTile(
-                    leading: Icon(Icons.delete_outline_rounded,
-                        color: AfColors.semanticError),
-                    title: Text('Delete playlist',
-                        style: TextStyle(color: AfColors.semanticError)),
+                    leading: Icon(
+                      Icons.delete_outline_rounded,
+                      color: AfColors.semanticError,
+                    ),
+                    title: Text(
+                      'Delete playlist',
+                      style: TextStyle(color: AfColors.semanticError),
+                    ),
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
@@ -96,7 +101,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
               physics: const ClampingScrollPhysics(),
               slivers: [
                 // Header.
-                SliverToBoxAdapter(child: _Header(pl: pl, tracks: tracks)),
+                SliverToBoxAdapter(
+                  child: _Header(pl: pl, tracks: tracks),
+                ),
 
                 // Action row.
                 SliverToBoxAdapter(
@@ -112,7 +119,8 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                 ),
 
                 const SliverToBoxAdapter(
-                    child: SizedBox(height: AfSpacing.s16)),
+                  child: SizedBox(height: AfSpacing.s16),
+                ),
 
                 // Track list — reorderable when signed in.
                 if (backend != null && tracks.isNotEmpty)
@@ -121,11 +129,17 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: AfSpacing.s16),
+                        horizontal: AfSpacing.s16,
+                      ),
                       buildDefaultDragHandles: false,
                       itemCount: tracks.length,
-                      onReorderItem: (oldIndex, newIndex) =>
-                          _onReorder(oldIndex, newIndex, tracks, backend, pl.id),
+                      onReorderItem: (oldIndex, newIndex) => _onReorder(
+                        oldIndex,
+                        newIndex,
+                        tracks,
+                        backend,
+                        pl.id,
+                      ),
                       itemBuilder: (context, i) {
                         final t = tracks[i];
                         return Dismissible(
@@ -133,16 +147,25 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                           direction: DismissDirection.endToStart,
                           background: Container(
                             alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: AfSpacing.s16),
-                            color: AfColors.semanticError.withValues(alpha: 0.15),
-                            child: const Icon(Icons.delete_outline_rounded,
-                                color: AfColors.semanticError),
+                            padding: const EdgeInsets.only(
+                              right: AfSpacing.s16,
+                            ),
+                            color: AfColors.semanticError.withValues(
+                              alpha: 0.15,
+                            ),
+                            child: const Icon(
+                              Icons.delete_outline_rounded,
+                              color: AfColors.semanticError,
+                            ),
                           ),
-                          confirmDismiss: (_) => _confirmRemove(context, t.title),
+                          confirmDismiss: (_) =>
+                              _confirmRemove(context, t.title),
                           onDismissed: (_) =>
                               _removeTrack(i, tracks, backend, pl.id),
                           child: Padding(
-                            padding: const EdgeInsets.only(bottom: AfSpacing.s4),
+                            padding: const EdgeInsets.only(
+                              bottom: AfSpacing.s4,
+                            ),
                             child: Row(
                               children: [
                                 Expanded(
@@ -159,9 +182,12 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                   index: i,
                                   child: const Padding(
                                     padding: EdgeInsets.symmetric(
-                                        horizontal: AfSpacing.s8),
-                                    child: Icon(Icons.drag_indicator_rounded,
-                                        color: AfColors.textTertiary),
+                                      horizontal: AfSpacing.s8,
+                                    ),
+                                    child: Icon(
+                                      Icons.drag_indicator_rounded,
+                                      color: AfColors.textTertiary,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -180,7 +206,8 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                         final t = tracks[i];
                         return Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: AfSpacing.s16),
+                            horizontal: AfSpacing.s16,
+                          ),
                           child: Column(
                             children: [
                               TrackRow(
@@ -212,8 +239,13 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
 
   // ── Reorder ────────────────────────────────────────────────────────────────
 
-  void _onReorder(int oldIndex, int newIndex, List<AfTrack> tracks,
-      MusicBackend client, String playlistId) {
+  void _onReorder(
+    int oldIndex,
+    int newIndex,
+    List<AfTrack> tracks,
+    MusicBackend client,
+    String playlistId,
+  ) {
     // Note: no newIndex adjustment needed — onReorderItem already handles it.
     final updated = List<AfTrack>.from(tracks);
     final item = updated.removeAt(oldIndex);
@@ -222,7 +254,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
 
     // Fire-and-forget server sync — uses playlist entry ID (item.id is the
     // track ID here; movePlaylistItem uses it as the entry identifier).
-    client.movePlaylistItem(playlistId, item.id, newIndex).catchError((Object e) {
+    client.movePlaylistItem(playlistId, item.id, newIndex).catchError((
+      Object e,
+    ) {
       // Revert on failure.
       if (mounted) {
         setState(() => _localTracks = tracks);
@@ -244,7 +278,10 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
             children: [
               Text('Remove track', style: AfTypography.titleMedium),
               const SizedBox(height: AfSpacing.s12),
-              Text('Remove "$title" from this playlist?', style: AfTypography.bodyMedium),
+              Text(
+                'Remove "$title" from this playlist?',
+                style: AfTypography.bodyMedium,
+              ),
               const SizedBox(height: AfSpacing.s24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -255,8 +292,10 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Remove',
-                        style: TextStyle(color: AfColors.semanticError)),
+                    child: const Text(
+                      'Remove',
+                      style: TextStyle(color: AfColors.semanticError),
+                    ),
                   ),
                 ],
               ),
@@ -271,8 +310,12 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   /// Awaits the server call before invalidating providers so the refetch
   /// sees the updated list (not the pre-delete snapshot). Reverts the
   /// optimistic local state on failure.
-  Future<void> _removeTrack(int index, List<AfTrack> tracks,
-      MusicBackend client, String playlistId) async {
+  Future<void> _removeTrack(
+    int index,
+    List<AfTrack> tracks,
+    MusicBackend client,
+    String playlistId,
+  ) async {
     final removed = tracks[index];
     final updated = List<AfTrack>.from(tracks)..removeAt(index);
     setState(() => _localTracks = updated);
@@ -297,8 +340,11 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
 
   // ── Rename / Delete ────────────────────────────────────────────────────────
 
-  Future<void> _handleAction(BuildContext context, _PlaylistAction action,
-      ({AfPlaylist playlist, List<AfTrack> tracks})? detail) async {
+  Future<void> _handleAction(
+    BuildContext context,
+    _PlaylistAction action,
+    ({AfPlaylist playlist, List<AfTrack> tracks})? detail,
+  ) async {
     if (detail == null) return;
     final backend = ref.read(musicBackendProvider);
     if (backend == null) return;
@@ -314,7 +360,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         } catch (e) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(displayError(e, prefix: 'Could not rename'))),
+              SnackBar(
+                content: Text(displayError(e, prefix: 'Could not rename')),
+              ),
             );
           }
         }
@@ -329,8 +377,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
               Text('Delete playlist', style: AfTypography.titleMedium),
               const SizedBox(height: AfSpacing.s12),
               Text(
-                  'Delete "${detail.playlist.name}"? This cannot be undone.',
-                  style: AfTypography.bodyMedium),
+                'Delete "${detail.playlist.name}"? This cannot be undone.',
+                style: AfTypography.bodyMedium,
+              ),
               const SizedBox(height: AfSpacing.s24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -341,8 +390,10 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Delete',
-                        style: TextStyle(color: AfColors.semanticError)),
+                    child: const Text(
+                      'Delete',
+                      style: TextStyle(color: AfColors.semanticError),
+                    ),
                   ),
                 ],
               ),
@@ -357,7 +408,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         } catch (e) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(displayError(e, prefix: 'Could not delete'))),
+              SnackBar(
+                content: Text(displayError(e, prefix: 'Could not delete')),
+              ),
             );
           }
         }
@@ -365,7 +418,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   }
 
   Future<String?> _showRenameDialog(
-      BuildContext context, String currentName) async {
+    BuildContext context,
+    String currentName,
+  ) async {
     final ctl = TextEditingController(text: currentName);
     try {
       return await showBlurDialog<String>(
@@ -420,7 +475,11 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AfSpacing.s16, AfSpacing.s8, AfSpacing.s16, AfSpacing.s16),
+        AfSpacing.s16,
+        AfSpacing.s8,
+        AfSpacing.s16,
+        AfSpacing.s16,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -435,23 +494,29 @@ class _Header extends StatelessWidget {
                 colors: [AfColors.indigo700, AfColors.indigo950],
               ),
             ),
-            child: const Icon(Icons.playlist_play_rounded,
-                color: AfColors.indigo300, size: 40),
+            child: const Icon(
+              Icons.playlist_play_rounded,
+              color: AfColors.indigo300,
+              size: 40,
+            ),
           ),
           const SizedBox(width: AfSpacing.s16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(pl.name,
-                    style: AfTypography.titleLarge,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
+                Text(
+                  pl.name,
+                  style: AfTypography.titleLarge,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: AfSpacing.s4),
                 Text(
                   '${tracks.length} ${tracks.length == 1 ? "track" : "tracks"}',
-                  style: AfTypography.bodySmall
-                      .copyWith(color: AfColors.textTertiary),
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
                 ),
               ],
             ),
@@ -463,8 +528,11 @@ class _Header extends StatelessWidget {
 }
 
 class _ActionRow extends StatelessWidget {
-  const _ActionRow(
-      {required this.tracks, required this.onPlay, required this.onShuffle});
+  const _ActionRow({
+    required this.tracks,
+    required this.onPlay,
+    required this.onShuffle,
+  });
   final List<AfTrack> tracks;
   final VoidCallback onPlay;
   final VoidCallback onShuffle;
@@ -488,12 +556,17 @@ class _ActionRow extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.play_arrow_rounded,
-                        color: AfColors.textOnPrimary),
+                    const Icon(
+                      Icons.play_arrow_rounded,
+                      color: AfColors.textOnPrimary,
+                    ),
                     const SizedBox(width: AfSpacing.s8),
-                    Text('Play',
-                        style: AfTypography.bodyMedium
-                            .copyWith(color: AfColors.textOnPrimary)),
+                    Text(
+                      'Play',
+                      style: AfTypography.bodyMedium.copyWith(
+                        color: AfColors.textOnPrimary,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -514,8 +587,10 @@ class _ActionRow extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.shuffle_rounded,
-                        color: AfColors.textPrimary),
+                    const Icon(
+                      Icons.shuffle_rounded,
+                      color: AfColors.textPrimary,
+                    ),
                     const SizedBox(width: AfSpacing.s8),
                     Text('Shuffle', style: AfTypography.bodyMedium),
                   ],

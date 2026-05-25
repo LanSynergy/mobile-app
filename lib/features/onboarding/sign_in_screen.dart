@@ -103,8 +103,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         // Subsonic the request URI includes the salted MD5 token as a
         // query param, and we don't want it in a logcat capture or a
         // user-submitted bug report.
-        afLog('error',
-            'url: ${redactSensitiveQueryParams(e.requestOptions.uri)}');
+        afLog(
+          'error',
+          'url: ${redactSensitiveQueryParams(e.requestOptions.uri)}',
+        );
         afLog('error', 'status: ${e.response?.statusCode}');
         // Body + response headers can include cookies, server-side error
         // messages, and full HTML 500 pages — only emit them in debug
@@ -177,8 +179,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         // (gated below) for debugging.
         if (kDebugMode) {
           final raw = e.response?.data?.toString() ?? '';
-          final body =
-              raw.length > 240 ? '${raw.substring(0, 240)}…' : raw;
+          final body = raw.length > 240 ? '${raw.substring(0, 240)}…' : raw;
           return 'HTTP $status from $url\n'
               '${body.isNotEmpty ? body : "(no body)"}';
         }
@@ -241,21 +242,23 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding:
-              const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.gutterGenerous,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: AfSpacing.s16),
-              if (_isCleartext) _CleartextWarning(baseUrl: widget.server.baseUrl),
+              if (_isCleartext)
+                _CleartextWarning(baseUrl: widget.server.baseUrl),
               if (_isCleartext) const SizedBox(height: AfSpacing.s16),
               Text(
                 _isSubsonic
                     ? 'Enter your Navidrome username and password.'
                     : _useToken
-                        ? 'Paste a Jellyfin API token. Find these under '
-                            'Dashboard → API Keys on your server.'
-                        : 'Enter your Jellyfin username and password.',
+                    ? 'Paste a Jellyfin API token. Find these under '
+                          'Dashboard → API Keys on your server.'
+                    : 'Enter your Jellyfin username and password.',
                 style: AfTypography.bodyMedium.copyWith(
                   color: AfColors.textSecondary,
                 ),
@@ -338,17 +341,18 @@ class _CleartextWarning extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.lock_open_rounded,
-              size: 18, color: AfColors.semanticError),
+          const Icon(
+            Icons.lock_open_rounded,
+            size: 18,
+            color: AfColors.semanticError,
+          ),
           const SizedBox(width: AfSpacing.s8),
           Expanded(
             child: Text(
               'This server uses plain HTTP. Your username, password, '
               'and access token will be sent unencrypted to $baseUrl. '
               'Only sign in on a trusted network.',
-              style: AfTypography.caption.copyWith(
-                color: AfColors.textPrimary,
-              ),
+              style: AfTypography.caption.copyWith(color: AfColors.textPrimary),
             ),
           ),
         ],

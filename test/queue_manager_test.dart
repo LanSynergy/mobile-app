@@ -10,9 +10,24 @@ void main() {
     setUp(() {
       queueManager = AfQueueManager();
       tracks = [
-        const AfTrack(id: '1', title: 'Track 1', artistName: 'A', albumName: 'B'),
-        const AfTrack(id: '2', title: 'Track 2', artistName: 'A', albumName: 'B'),
-        const AfTrack(id: '3', title: 'Track 3', artistName: 'A', albumName: 'B'),
+        const AfTrack(
+          id: '1',
+          title: 'Track 1',
+          artistName: 'A',
+          albumName: 'B',
+        ),
+        const AfTrack(
+          id: '2',
+          title: 'Track 2',
+          artistName: 'A',
+          albumName: 'B',
+        ),
+        const AfTrack(
+          id: '3',
+          title: 'Track 3',
+          artistName: 'A',
+          albumName: 'B',
+        ),
       ];
     });
 
@@ -83,7 +98,12 @@ void main() {
 
       test('insert adds track at position', () {
         queueManager.replaceQueue(tracks, 0);
-        const newTrack = AfTrack(id: 'new', title: 'New', artistName: 'X', albumName: 'Y');
+        const newTrack = AfTrack(
+          id: 'new',
+          title: 'New',
+          artistName: 'X',
+          albumName: 'Y',
+        );
         queueManager.insert(1, newTrack);
         expect(queueManager.currentQueue.length, 4);
         expect(queueManager.currentQueue[1].id, 'new');
@@ -91,7 +111,12 @@ void main() {
 
       test('append adds to end', () {
         queueManager.replaceQueue(tracks, 0);
-        const newTrack = AfTrack(id: 'new', title: 'New', artistName: 'X', albumName: 'Y');
+        const newTrack = AfTrack(
+          id: 'new',
+          title: 'New',
+          artistName: 'X',
+          albumName: 'Y',
+        );
         queueManager.append(newTrack);
         expect(queueManager.currentQueue.length, 4);
         expect(queueManager.currentQueue.last.id, 'new');

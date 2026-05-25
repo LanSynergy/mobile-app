@@ -58,14 +58,16 @@ class SleepTimerDialogContentState
   void _setTimer() {
     if (_selectedMinutes == null) return;
     if (_selectedMinutes == 0) {
-      ref.read(sleepTimerProvider.notifier).state =
-          DateTime.now().add(const Duration(days: 1));
+      ref.read(sleepTimerProvider.notifier).state = DateTime.now().add(
+        const Duration(days: 1),
+      );
       ref.read(sleepTimerRemainingProvider.notifier).state = null;
     } else {
       final target = DateTime.now().add(Duration(minutes: _selectedMinutes!));
       ref.read(sleepTimerProvider.notifier).state = target;
-      ref.read(sleepTimerRemainingProvider.notifier).state =
-          Duration(minutes: _selectedMinutes!);
+      ref.read(sleepTimerRemainingProvider.notifier).state = Duration(
+        minutes: _selectedMinutes!,
+      );
     }
     Navigator.of(context).pop();
   }
@@ -112,23 +114,26 @@ class SleepTimerDialogContentState
               child: Row(
                 children: [
                   const Icon(
-                      LucideIcons.moon,
-                      color: AfColors.indigo300,
-                      size: 18),
+                    LucideIcons.moon,
+                    color: AfColors.indigo300,
+                    size: 18,
+                  ),
                   const SizedBox(width: AfSpacing.s8),
                   Expanded(
                     child: Text(
                       'Timer active',
-                      style: AfTypography.bodySmall
-                          .copyWith(color: AfColors.indigo300),
+                      style: AfTypography.bodySmall.copyWith(
+                        color: AfColors.indigo300,
+                      ),
                     ),
                   ),
                   TextButton(
                     onPressed: _cancelTimer,
                     child: Text(
                       'Cancel',
-                      style: AfTypography.bodySmall
-                          .copyWith(color: AfColors.semanticError),
+                      style: AfTypography.bodySmall.copyWith(
+                        color: AfColors.semanticError,
+                      ),
                     ),
                   ),
                 ],
@@ -172,13 +177,16 @@ class SleepTimerDialogContentState
                 ),
               ),
               ChoiceChip(
-                label: Text(_showCustomInput ||
-                        (_selectedMinutes != null &&
-                            _selectedMinutes != 0 &&
-                            !_presets.contains(_selectedMinutes))
-                    ? '${_selectedMinutes ?? "?"} min'
-                    : 'Custom'),
-                selected: _showCustomInput ||
+                label: Text(
+                  _showCustomInput ||
+                          (_selectedMinutes != null &&
+                              _selectedMinutes != 0 &&
+                              !_presets.contains(_selectedMinutes))
+                      ? '${_selectedMinutes ?? "?"} min'
+                      : 'Custom',
+                ),
+                selected:
+                    _showCustomInput ||
                     (_selectedMinutes != null &&
                         _selectedMinutes != 0 &&
                         !_presets.contains(_selectedMinutes)),
@@ -186,7 +194,8 @@ class SleepTimerDialogContentState
                 selectedColor: AfColors.indigo600,
                 backgroundColor: AfColors.surfaceRaised,
                 labelStyle: AfTypography.bodySmall.copyWith(
-                  color: _showCustomInput ||
+                  color:
+                      _showCustomInput ||
                           (_selectedMinutes != null &&
                               _selectedMinutes != 0 &&
                               !_presets.contains(_selectedMinutes))
@@ -213,10 +222,7 @@ class SleepTimerDialogContentState
                   ),
                 ),
                 const SizedBox(width: AfSpacing.s8),
-                TextButton(
-                  onPressed: _applyCustom,
-                  child: const Text('Set'),
-                ),
+                TextButton(onPressed: _applyCustom, child: const Text('Set')),
               ],
             ),
           ],

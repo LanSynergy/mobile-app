@@ -15,9 +15,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(
-        database: AppDatabase.forTesting(NativeDatabase.memory()),
-      );
+      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks([
         // "Coastlines" by "Una" — 2 tracks, year 2020, has cover.
         {
@@ -112,30 +110,33 @@ void main() {
       expect(hit.trackCount, 2);
     });
 
-    test('album name containing colon parses correctly via lastIndexOf', () async {
-      // Regression: album IDs use `local:album:NAME:ARTIST` with `:` as
-      // delimiter. If the album name itself contains a colon (e.g.
-      // "Greatest Hits: The Best"), splitting on the FIRST colon would
-      // corrupt both name and artist. Parsing must use lastIndexOf(':').
-      await db.upsertTracks([
-        {
-          'id': 'content://uri/colon1',
-          'title': 'Song One',
-          'artist': 'The Band',
-          'album': 'Greatest Hits: The Best',
-          'album_artist': 'The Band',
-          'duration_ms': 200000,
-          'genre': 'Rock',
-          'file_path': '/a/colon1.mp3',
-          'codec': 'mp3',
-        },
-      ]);
+    test(
+      'album name containing colon parses correctly via lastIndexOf',
+      () async {
+        // Regression: album IDs use `local:album:NAME:ARTIST` with `:` as
+        // delimiter. If the album name itself contains a colon (e.g.
+        // "Greatest Hits: The Best"), splitting on the FIRST colon would
+        // corrupt both name and artist. Parsing must use lastIndexOf(':').
+        await db.upsertTracks([
+          {
+            'id': 'content://uri/colon1',
+            'title': 'Song One',
+            'artist': 'The Band',
+            'album': 'Greatest Hits: The Best',
+            'album_artist': 'The Band',
+            'duration_ms': 200000,
+            'genre': 'Rock',
+            'file_path': '/a/colon1.mp3',
+            'codec': 'mp3',
+          },
+        ]);
 
-      final hit = await db.albumByKey('Greatest Hits: The Best', 'The Band');
-      expect(hit, isNotNull);
-      expect(hit!.name, 'Greatest Hits: The Best');
-      expect(hit.artistName, 'The Band');
-      expect(hit.id, 'local:album:Greatest Hits: The Best:The Band');
-    });
+        final hit = await db.albumByKey('Greatest Hits: The Best', 'The Band');
+        expect(hit, isNotNull);
+        expect(hit!.name, 'Greatest Hits: The Best');
+        expect(hit.artistName, 'The Band');
+        expect(hit.id, 'local:album:Greatest Hits: The Best:The Band');
+      },
+    );
   });
 }

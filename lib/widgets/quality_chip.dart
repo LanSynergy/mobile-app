@@ -11,12 +11,7 @@ import '../design_tokens/tokens.dart';
 /// transcoded), and the warning border appears whenever the audio path
 /// is degraded.
 class QualityChip extends StatelessWidget {
-
-  const QualityChip({
-    super.key,
-    required this.quality,
-    this.compact = false,
-  });
+  const QualityChip({super.key, required this.quality, this.compact = false});
   final TrackQuality quality;
   final bool compact;
 

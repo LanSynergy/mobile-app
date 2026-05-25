@@ -9,7 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import 'app/app.dart';
-import 'app/router.dart' show notifyAuthChanged, resetRouterMode, setRouterAuthState;
+import 'app/router.dart'
+    show notifyAuthChanged, resetRouterMode, setRouterAuthState;
 import 'core/audio/player_service.dart';
 import 'core/audio/player_settings_store.dart';
 import 'core/local/app_mode_store.dart';
@@ -32,8 +33,6 @@ const _fallbackDeviceIdKey = 'aetherfin.deviceId.fallback.v1';
 /// PII (usernames, server URLs) is redacted in release builds.
 void _boot(String message) => afLog('boot', message);
 
-
-
 Future<void> main() async {
   _boot('main() entered');
   // runZonedGuarded provides secondary error containment for synchronous
@@ -43,181 +42,199 @@ Future<void> main() async {
   //   FlutterError.onError       — framework widget/render errors
   //   PlatformDispatcher.onError — uncaught async errors from Dart
   // runZonedGuarded is belt-and-suspenders only.
-  await runZonedGuarded(() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    _boot('WidgetsFlutterBinding.ensureInitialized OK');
+  await runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      _boot('WidgetsFlutterBinding.ensureInitialized OK');
 
-    // PRIMARY error handlers — these catch the vast majority of errors.
-    FlutterError.onError = (details) {
-      FlutterError.presentError(details);
-      afLog(
-        'error',
-        'FlutterError: ${details.exceptionAsString()}',
-        error: details.exception,
-        stackTrace: details.stack,
+      // PRIMARY error handlers — these catch the vast majority of errors.
+      FlutterError.onError = (details) {
+        FlutterError.presentError(details);
+        afLog(
+          'error',
+          'FlutterError: ${details.exceptionAsString()}',
+          error: details.exception,
+          stackTrace: details.stack,
+        );
+      };
+      PlatformDispatcher.instance.onError = (error, stack) {
+        afLog(
+          'error',
+          'PlatformDispatcher uncaught: $error',
+          error: error,
+          stackTrace: stack,
+        );
+        return true;
+      };
+      ErrorWidget.builder = (details) => _RootErrorWidget(details: details);
+      _boot('error handlers installed');
+
+      // ── Phase 1: Storage / auth hydration ────────────────────────────────
+      // Parallel reads so device-id and auth don't serialize.
+      // Wrapped in a timeout so a hung keystore doesn't block boot forever.
+      final storage = AuthStorage();
+      String deviceId;
+      JellyfinAuth? initialAuth;
+      try {
+        // Run the two storage reads concurrently. `Future.wait` collapses
+        // to `List<Object>` for heterogeneous result types — we sequence
+        // the device-id load first so the index→type mapping below is
+        // unambiguous (no records here; the previous "Dart 3 destructuring"
+        // comment was stale, the call site was list-based all along).
+        final results =
+            await Future.wait<Object?>([
+              storage.loadOrCreateDeviceId(),
+              storage.load(),
+            ]).timeout(
+              const Duration(seconds: 5),
+              onTimeout: () => throw TimeoutException('storage timeout'),
+            );
+        deviceId = results[0]! as String;
+        initialAuth = results[1] as JellyfinAuth?;
+        // Redact username in release builds — logs may be shared in bug reports.
+        _boot(
+          'device id loaded (len=${deviceId.length}); '
+          'auth ${initialAuth != null ? "restored" : "absent"}',
+        );
+      } catch (e, stack) {
+        afLog(
+          'error',
+          'device id / auth load failed',
+          error: e,
+          stackTrace: stack,
+        );
+        deviceId = await _loadOrCreateFallbackDeviceId();
+        initialAuth = null;
+      }
+
+      // Load persisted app mode (server | local | null).
+      final persistedMode = await AppModeStore.load();
+      _boot('appMode=${persistedMode?.name ?? "null"}');
+
+      // Load persisted artwork pulse setting.
+      final prefs = await SharedPreferences.getInstance();
+      final artworkPulse = prefs.getBool('af.artwork_pulse_enabled') ?? true;
+      _boot('artworkPulse=$artworkPulse');
+
+      // Load offline cache settings.
+      final offlineCacheEnabled =
+          prefs.getBool('af.offline_cache_enabled') ?? false;
+      final offlineCacheMaxSize =
+          prefs.getInt('af.offline_cache_max_size') ?? (1024 * 1024 * 1024);
+      final maxBitrate = prefs.getInt('af.max_bitrate_kbps') ?? 0;
+      _boot(
+        'offlineCacheEnabled=$offlineCacheEnabled maxSize=$offlineCacheMaxSize maxBitrate=$maxBitrate',
       );
-    };
-    PlatformDispatcher.instance.onError = (error, stack) {
-      afLog(
-        'error',
-        'PlatformDispatcher uncaught: $error',
-        error: error,
-        stackTrace: stack,
+
+      // Resolve the app version once at boot so every HTTP client can stamp
+      // its `User-Agent` and Jellyfin `Version="…"` header from a single
+      // source of truth (pubspec.yaml → platform manifest → PackageInfo).
+      // `package_info_plus` is async (platform-channel lookup), but we're
+      // already awaiting four async reads above in this phase, so adding
+      // one more keeps boot ordering unchanged. The fallback string keeps
+      // boot moving on the rare platforms where the channel times out
+      // — it's preferable to ship a generic version than to crash startup.
+      final aetherfinVersion = await _loadAetherfinVersion();
+      _boot('aetherfinVersion=$aetherfinVersion');
+
+      // ── Phase 2: Native media engine ─────────────────────────────────────
+      // MPV must be initialized before any Player() is constructed.
+      MpvAudioKit.ensureInitialized();
+      _boot('MpvAudioKit.ensureInitialized OK');
+
+      // ── Phase 3: OS audio service ─────────────────────────────────────────
+      final handler = AfPlayerService();
+      _boot('AfPlayerService initialized');
+
+      // ── Phase 3.5: Apply persisted settings before any user interaction ───
+      await PlayerSettingsStore.applyPersisted(handler);
+      _boot('persisted settings applied');
+
+      // ── Phase 4: Provider container + router wiring ───────────────────────
+      _boot('calling runApp');
+      final container = ProviderContainer(
+        overrides: [
+          deviceIdProvider.overrideWithValue(deviceId),
+          initialAuthProvider.overrideWithValue(initialAuth),
+          aetherfinVersionProvider.overrideWithValue(aetherfinVersion),
+          if (persistedMode != null)
+            appModeProvider.overrideWith((ref) => persistedMode),
+          artworkPulseEnabledProvider.overrideWith((ref) => artworkPulse),
+          offlineCacheEnabledProvider.overrideWith(
+            (ref) => offlineCacheEnabled,
+          ),
+          offlineCacheMaxSizeProvider.overrideWith(
+            (ref) => offlineCacheMaxSize,
+          ),
+          maxBitrateProvider.overrideWith((ref) => maxBitrate),
+          playerServiceProvider.overrideWith((ref) {
+            wirePlayerService(ref, handler);
+            return handler;
+          }),
+        ],
       );
-      return true;
-    };
-    ErrorWidget.builder = (details) => _RootErrorWidget(details: details);
-    _boot('error handlers installed');
 
-    // ── Phase 1: Storage / auth hydration ────────────────────────────────
-    // Parallel reads so device-id and auth don't serialize.
-    // Wrapped in a timeout so a hung keystore doesn't block boot forever.
-    final storage = AuthStorage();
-    String deviceId;
-    JellyfinAuth? initialAuth;
-    try {
-      // Run the two storage reads concurrently. `Future.wait` collapses
-      // to `List<Object>` for heterogeneous result types — we sequence
-      // the device-id load first so the index→type mapping below is
-      // unambiguous (no records here; the previous "Dart 3 destructuring"
-      // comment was stale, the call site was list-based all along).
-      final results = await Future.wait<Object?>([
-        storage.loadOrCreateDeviceId(),
-        storage.load(),
-      ]).timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => throw TimeoutException('storage timeout'),
-      );
-      deviceId = results[0]! as String;
-      initialAuth = results[1] as JellyfinAuth?;
-      // Redact username in release builds — logs may be shared in bug reports.
-      _boot('device id loaded (len=${deviceId.length}); '
-          'auth ${initialAuth != null ? "restored" : "absent"}');
-    } catch (e, stack) {
-      afLog('error', 'device id / auth load failed', error: e, stackTrace: stack);
-      deviceId = await _loadOrCreateFallbackDeviceId();
-      initialAuth = null;
-    }
+      // Initialize offline cache service.
+      try {
+        final cacheSvc = container.read(offlineCacheServiceProvider);
+        await cacheSvc.init();
+        _boot('OfflineCacheService init OK');
+      } catch (e, stack) {
+        afLog(
+          'error',
+          'OfflineCacheService init failed',
+          error: e,
+          stackTrace: stack,
+        );
+      }
 
-    // Load persisted app mode (server | local | null).
-    final persistedMode = await AppModeStore.load();
-    _boot('appMode=${persistedMode?.name ?? "null"}');
+      // Seed the router with the initial auth/mode so its redirect runs
+      // correctly on the very first frame.
+      setRouterAuthState(auth: initialAuth, mode: persistedMode);
 
-    // Load persisted artwork pulse setting.
-    final prefs = await SharedPreferences.getInstance();
-    final artworkPulse = prefs.getBool('af.artwork_pulse_enabled') ?? true;
-    _boot('artworkPulse=$artworkPulse');
-
-    // Load offline cache settings.
-    final offlineCacheEnabled = prefs.getBool('af.offline_cache_enabled') ?? false;
-    final offlineCacheMaxSize = prefs.getInt('af.offline_cache_max_size') ?? (1024 * 1024 * 1024);
-    final maxBitrate = prefs.getInt('af.max_bitrate_kbps') ?? 0;
-    _boot('offlineCacheEnabled=$offlineCacheEnabled maxSize=$offlineCacheMaxSize maxBitrate=$maxBitrate');
-
-    // Resolve the app version once at boot so every HTTP client can stamp
-    // its `User-Agent` and Jellyfin `Version="…"` header from a single
-    // source of truth (pubspec.yaml → platform manifest → PackageInfo).
-    // `package_info_plus` is async (platform-channel lookup), but we're
-    // already awaiting four async reads above in this phase, so adding
-    // one more keeps boot ordering unchanged. The fallback string keeps
-    // boot moving on the rare platforms where the channel times out
-    // — it's preferable to ship a generic version than to crash startup.
-    final aetherfinVersion = await _loadAetherfinVersion();
-    _boot('aetherfinVersion=$aetherfinVersion');
-
-    // ── Phase 2: Native media engine ─────────────────────────────────────
-    // MPV must be initialized before any Player() is constructed.
-    MpvAudioKit.ensureInitialized();
-    _boot('MpvAudioKit.ensureInitialized OK');
-
-    // ── Phase 3: OS audio service ─────────────────────────────────────────
-    final handler = AfPlayerService();
-    _boot('AfPlayerService initialized');
-
-    // ── Phase 3.5: Apply persisted settings before any user interaction ───
-    await PlayerSettingsStore.applyPersisted(handler);
-    _boot('persisted settings applied');
-
-    // ── Phase 4: Provider container + router wiring ───────────────────────
-    _boot('calling runApp');
-    final container = ProviderContainer(
-      overrides: [
-        deviceIdProvider.overrideWithValue(deviceId),
-        initialAuthProvider.overrideWithValue(initialAuth),
-        aetherfinVersionProvider.overrideWithValue(aetherfinVersion),
-        if (persistedMode != null)
-          appModeProvider.overrideWith((ref) => persistedMode),
-        artworkPulseEnabledProvider.overrideWith((ref) => artworkPulse),
-        offlineCacheEnabledProvider.overrideWith((ref) => offlineCacheEnabled),
-        offlineCacheMaxSizeProvider.overrideWith((ref) => offlineCacheMaxSize),
-        maxBitrateProvider.overrideWith((ref) => maxBitrate),
-        playerServiceProvider.overrideWith((ref) {
-          wirePlayerService(ref, handler);
-          return handler;
-        }),
-      ],
-    );
-
-    // Initialize offline cache service.
-    try {
-      final cacheSvc = container.read(offlineCacheServiceProvider);
-      await cacheSvc.init();
-      _boot('OfflineCacheService init OK');
-    } catch (e, stack) {
-      afLog('error', 'OfflineCacheService init failed',
-          error: e, stackTrace: stack);
-    }
-
-    // Seed the router with the initial auth/mode so its redirect runs
-    // correctly on the very first frame.
-    setRouterAuthState(auth: initialAuth, mode: persistedMode);
-
-    // Wire auth → router redirect. The subscription lives for the process
-    // lifetime — it intentionally keeps `container` alive (which is fine
-    // since `container` is the app's root provider scope). If the architecture
-    // ever supports hot-restart of the provider tree, this subscription would
-    // need to be disposed. Accept as-is for now.
-    // ignore: unused_local_variable
-    final authSub = container.listen<JellyfinAuth?>(
-      authProvider,
-      (prev, next) {
+      // Wire auth → router redirect. The subscription lives for the process
+      // lifetime — it intentionally keeps `container` alive (which is fine
+      // since `container` is the app's root provider scope). If the architecture
+      // ever supports hot-restart of the provider tree, this subscription would
+      // need to be disposed. Accept as-is for now.
+      // ignore: unused_local_variable
+      final authSub = container.listen<JellyfinAuth?>(authProvider, (
+        prev,
+        next,
+      ) {
         setRouterAuthState(auth: next);
         notifyAuthChanged();
-      },
-      fireImmediately: false,
-    );
+      }, fireImmediately: false);
 
-    // Wire mode → router redirect. Without this, selecting "Play local
-    // files" on the welcome screen updates appModeProvider but the
-    // router's _appMode snapshot stays null — so after scanning,
-    // context.go('/home') hits effectiveMode==null → redirect to '/'.
-    //
-    // When mode is cleared to null (mode switch, clear app data), explicitly
-    // reset the router snapshot via resetRouterMode().  setRouterAuthState's
-    // null guard prevents clearing _appMode through that path.
-    // ignore: unused_local_variable
-    final modeSub = container.listen<AppMode?>(
-      appModeProvider,
-      (prev, next) {
+      // Wire mode → router redirect. Without this, selecting "Play local
+      // files" on the welcome screen updates appModeProvider but the
+      // router's _appMode snapshot stays null — so after scanning,
+      // context.go('/home') hits effectiveMode==null → redirect to '/'.
+      //
+      // When mode is cleared to null (mode switch, clear app data), explicitly
+      // reset the router snapshot via resetRouterMode().  setRouterAuthState's
+      // null guard prevents clearing _appMode through that path.
+      // ignore: unused_local_variable
+      final modeSub = container.listen<AppMode?>(appModeProvider, (prev, next) {
         setRouterAuthState(auth: container.read(authProvider), mode: next);
         if (next == null) {
           resetRouterMode();
         }
         notifyAuthChanged();
-      },
-      fireImmediately: false,
-    );
+      }, fireImmediately: false);
 
-    runApp(
-      UncontrolledProviderScope(
-        container: container,
-        child: const AetherfinApp(),
-      ),
-    );
-    _boot('runApp returned');
-  }, (error, stack) {
-    afLog('error', 'zoned uncaught', error: error, stackTrace: stack);
-  });
+      runApp(
+        UncontrolledProviderScope(
+          container: container,
+          child: const AetherfinApp(),
+        ),
+      );
+      _boot('runApp returned');
+    },
+    (error, stack) {
+      afLog('error', 'zoned uncaught', error: error, stackTrace: stack);
+    },
+  );
 }
 
 /// Resolve the running app version from the platform manifest.
@@ -246,9 +263,12 @@ Future<String> _loadAetherfinVersion() async {
     final plusIdx = raw.indexOf('+');
     return plusIdx < 0 ? raw : raw.substring(0, plusIdx);
   } catch (e, stack) {
-    afLog('error',
-        'PackageInfo.fromPlatform failed; using fallback version string',
-        error: e, stackTrace: stack);
+    afLog(
+      'error',
+      'PackageInfo.fromPlatform failed; using fallback version string',
+      error: e,
+      stackTrace: stack,
+    );
     return 'unknown';
   }
 }
@@ -277,7 +297,12 @@ Future<String> _loadOrCreateFallbackDeviceId() async {
     _boot('fallback device id generated');
     return fresh;
   } catch (e, stack) {
-    afLog('error', 'fallback device id load failed', error: e, stackTrace: stack);
+    afLog(
+      'error',
+      'fallback device id load failed',
+      error: e,
+      stackTrace: stack,
+    );
     // shared_preferences itself is unavailable — per-launch ID as last resort.
     return 'aetherfin-fallback-${const Uuid().v4()}';
   }
@@ -337,10 +362,7 @@ class _RootErrorWidget extends StatelessWidget {
                   kReleaseMode
                       ? 'Tap Restart on Android to retry.'
                       : 'Hot reload to retry.',
-                  style: TextStyle(
-                    color: AfColors.textTertiary,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: AfColors.textTertiary, fontSize: 12),
                 ),
               ],
             ),

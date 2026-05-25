@@ -20,9 +20,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(
-        database: AppDatabase.forTesting(NativeDatabase.memory()),
-      );
+      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks(_fixture);
     });
 
@@ -43,10 +41,8 @@ void main() {
       expect(albums.first.name, 'Zenith');
     });
 
-    test(
-        'tracks with NULL last_modified land at the bottom but stay '
-        'name-stable so identical mtimes have deterministic order',
-        () async {
+    test('tracks with NULL last_modified land at the bottom but stay '
+        'name-stable so identical mtimes have deterministic order', () async {
       await db.upsertTracks([
         {
           'id': 'content://uri/9',
@@ -73,8 +69,11 @@ void main() {
       // Otherwise navigating from Home → album detail would 404.
       final allIds = byAll.map((a) => a.id).toSet();
       for (final a in byRecent) {
-        expect(allIds, contains(a.id),
-            reason: 'id mismatch between aggregations: ${a.id}');
+        expect(
+          allIds,
+          contains(a.id),
+          reason: 'id mismatch between aggregations: ${a.id}',
+        );
       }
     });
   });

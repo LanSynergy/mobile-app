@@ -38,24 +38,35 @@ import 'player_service.dart';
 /// Pairs the string key with conversion functions so [PlayerSettingsStore]
 /// can read and write any supported type through a single generic path.
 class SettingsKey<T> {
-
-  const SettingsKey(this.key,
-      {required this.fromStorage, required this.toStorage});
+  const SettingsKey(
+    this.key, {
+    required this.fromStorage,
+    required this.toStorage,
+  });
   final String key;
   final T Function(dynamic) fromStorage;
   final dynamic Function(T) toStorage;
 
-  static SettingsKey<int> intKey(String k) =>
-      SettingsKey<int>(k, fromStorage: (v) => (v as num).toInt(), toStorage: (v) => v);
+  static SettingsKey<int> intKey(String k) => SettingsKey<int>(
+    k,
+    fromStorage: (v) => (v as num).toInt(),
+    toStorage: (v) => v,
+  );
 
-  static SettingsKey<double> doubleKey(String k) =>
-      SettingsKey<double>(k, fromStorage: (v) => (v as num).toDouble(), toStorage: (v) => v);
+  static SettingsKey<double> doubleKey(String k) => SettingsKey<double>(
+    k,
+    fromStorage: (v) => (v as num).toDouble(),
+    toStorage: (v) => v,
+  );
 
   static SettingsKey<bool> boolKey(String k) =>
       SettingsKey<bool>(k, fromStorage: (v) => v as bool, toStorage: (v) => v);
 
-  static SettingsKey<String> stringKey(String k) =>
-      SettingsKey<String>(k, fromStorage: (v) => v as String, toStorage: (v) => v);
+  static SettingsKey<String> stringKey(String k) => SettingsKey<String>(
+    k,
+    fromStorage: (v) => v as String,
+    toStorage: (v) => v,
+  );
 }
 
 /// Persists user-tweakable mpv runtime settings to `shared_preferences`
@@ -84,14 +95,22 @@ class PlayerSettingsStore {
   static final kCacheSecs = SettingsKey.intKey('af.cache_secs');
   static final kReplayGain = SettingsKey.stringKey('af.replay_gain_mode');
   static final kGapless = SettingsKey.stringKey('af.gapless');
-  static final kReplayGainPreamp = SettingsKey.doubleKey('af.replay_gain_preamp');
-  static final kReplayGainFallback = SettingsKey.doubleKey('af.replay_gain_fallback');
+  static final kReplayGainPreamp = SettingsKey.doubleKey(
+    'af.replay_gain_preamp',
+  );
+  static final kReplayGainFallback = SettingsKey.doubleKey(
+    'af.replay_gain_fallback',
+  );
   static final kReplayGainClip = SettingsKey.boolKey('af.replay_gain_clip');
   static final kPrefetchPlaylist = SettingsKey.boolKey('af.prefetch_playlist');
   static final kDspMasterEnabled = SettingsKey.boolKey('af.dsp_master_enabled');
   static final kArtworkPulse = SettingsKey.boolKey('af.artwork_pulse_enabled');
-  static final kOfflineCacheEnabled = SettingsKey.boolKey('af.offline_cache_enabled');
-  static final kOfflineCacheMaxSize = SettingsKey.intKey('af.offline_cache_max_size');
+  static final kOfflineCacheEnabled = SettingsKey.boolKey(
+    'af.offline_cache_enabled',
+  );
+  static final kOfflineCacheMaxSize = SettingsKey.intKey(
+    'af.offline_cache_max_size',
+  );
   static final kMaxBitrate = SettingsKey.intKey('af.max_bitrate_kbps');
 
   // Compound keys (custom JSON serialization)
@@ -117,7 +136,9 @@ class PlayerSettingsStore {
       case final String v:
         await p.setString(desc.key, v);
       default:
-        throw ArgumentError('Unsupported type for key ${desc.key}: ${stored.runtimeType}');
+        throw ArgumentError(
+          'Unsupported type for key ${desc.key}: ${stored.runtimeType}',
+        );
     }
   }
 
@@ -140,8 +161,7 @@ class PlayerSettingsStore {
   static Future<void> saveExclusive(bool enabled) async =>
       saveValue(kExclusive, enabled);
 
-  static Future<void> saveBufferMs(int ms) async =>
-      saveValue(kBufferMs, ms);
+  static Future<void> saveBufferMs(int ms) async => saveValue(kBufferMs, ms);
 
   static Future<void> saveStreamSilence(bool enabled) async =>
       saveValue(kStreamSilence, enabled);
@@ -310,7 +330,9 @@ class PlayerSettingsStore {
     if (json == null) return {};
     try {
       final raw = jsonDecode(json) as Map<String, dynamic>;
-      return raw.map((k, v) => MapEntry(k, EqPreset.fromJson(v as Map<String, dynamic>)));
+      return raw.map(
+        (k, v) => MapEntry(k, EqPreset.fromJson(v as Map<String, dynamic>)),
+      );
     } catch (_) {
       return {};
     }
@@ -344,9 +366,8 @@ class PlayerSettingsStore {
     try {
       final m = jsonDecode(json) as Map<String, dynamic>;
       final eqParamsRaw = m['eq_params'] as Map<String, dynamic>?;
-      final eqParams = eqParamsRaw?.map(
-            (k, v) => MapEntry(k, (v as num).toDouble()),
-          ) ??
+      final eqParams =
+          eqParamsRaw?.map((k, v) => MapEntry(k, (v as num).toDouble())) ??
           const <String, double>{};
       return AudioEffects(
         bass: BassSettings(
@@ -476,15 +497,21 @@ class PlayerSettingsStore {
       try {
         await action();
       } catch (e, stack) {
-        afLog('error', 'PlayerSettingsStore apply $label failed',
-            error: e, stackTrace: stack);
+        afLog(
+          'error',
+          'PlayerSettingsStore apply $label failed',
+          error: e,
+          stackTrace: stack,
+        );
       }
     }
 
     final sampleRate = p.getInt(kSampleRate.key);
     if (sampleRate != null) {
-      await tryApply('sampleRate=$sampleRate',
-          () => svc.setAudioSampleRate(sampleRate));
+      await tryApply(
+        'sampleRate=$sampleRate',
+        () => svc.setAudioSampleRate(sampleRate),
+      );
     }
 
     final formatName = p.getString(kFormat.key);
@@ -498,29 +525,37 @@ class PlayerSettingsStore {
 
     final exclusive = p.getBool(kExclusive.key);
     if (exclusive != null) {
-      await tryApply('exclusive=$exclusive',
-          () => svc.setAudioExclusive(exclusive));
+      await tryApply(
+        'exclusive=$exclusive',
+        () => svc.setAudioExclusive(exclusive),
+      );
     }
 
     final bufferMs = p.getInt(kBufferMs.key);
     if (bufferMs != null) {
-      await tryApply('bufferMs=$bufferMs',
-          () => svc.setAudioBuffer(Duration(milliseconds: bufferMs)));
+      await tryApply(
+        'bufferMs=$bufferMs',
+        () => svc.setAudioBuffer(Duration(milliseconds: bufferMs)),
+      );
     }
 
     final streamSilence = p.getBool(kStreamSilence.key);
     if (streamSilence != null) {
-      await tryApply('streamSilence=$streamSilence',
-          () => svc.setAudioStreamSilence(streamSilence));
+      await tryApply(
+        'streamSilence=$streamSilence',
+        () => svc.setAudioStreamSilence(streamSilence),
+      );
     }
 
     final cacheSecs = p.getInt(kCacheSecs.key);
     if (cacheSecs != null) {
       await tryApply('cacheSecs=$cacheSecs', () async {
-        await svc.setCache(svc.cacheSettings.copyWith(
-          mode: Cache.yes,
-          secs: Duration(seconds: cacheSecs),
-        ));
+        await svc.setCache(
+          svc.cacheSettings.copyWith(
+            mode: Cache.yes,
+            secs: Duration(seconds: cacheSecs),
+          ),
+        );
       });
     }
 
@@ -534,12 +569,14 @@ class PlayerSettingsStore {
       final fallback = p.getDouble(kReplayGainFallback.key) ?? 0.0;
       final clip = p.getBool(kReplayGainClip.key) ?? false;
       await tryApply('replayGain=$replayGainName', () async {
-        await svc.setReplayGain(ReplayGainSettings(
-          mode: mode,
-          preamp: preamp,
-          fallback: fallback,
-          clip: clip,
-        ));
+        await svc.setReplayGain(
+          ReplayGainSettings(
+            mode: mode,
+            preamp: preamp,
+            fallback: fallback,
+            clip: clip,
+          ),
+        );
       });
     }
 
@@ -554,8 +591,10 @@ class PlayerSettingsStore {
 
     final prefetch = p.getBool(kPrefetchPlaylist.key);
     if (prefetch != null) {
-      await tryApply('prefetchPlaylist=$prefetch',
-          () => svc.setPrefetchPlaylist(prefetch));
+      await tryApply(
+        'prefetchPlaylist=$prefetch',
+        () => svc.setPrefetchPlaylist(prefetch),
+      );
     }
 
     final fx = loadAudioEffects(p);
@@ -573,18 +612,12 @@ class PlayerSettingsStore {
 
 /// A named EQ preset containing 18-band params + bass/treble shelves.
 class EqPreset {
-
-  const EqPreset({
-    required this.bands,
-    this.bass = 0.0,
-    this.treble = 0.0,
-  });
+  const EqPreset({required this.bands, this.bass = 0.0, this.treble = 0.0});
 
   factory EqPreset.fromJson(Map<String, dynamic> json) {
     final bandsRaw = json['bands'] as Map<String, dynamic>?;
-    final bands = bandsRaw?.map(
-          (k, v) => MapEntry(k, (v as num).toDouble()),
-        ) ??
+    final bands =
+        bandsRaw?.map((k, v) => MapEntry(k, (v as num).toDouble())) ??
         const <String, double>{};
     return EqPreset(
       bands: bands,
@@ -597,8 +630,8 @@ class EqPreset {
   final double treble;
 
   Map<String, dynamic> toJson() => {
-        'bands': bands,
-        'bass': bass,
-        'treble': treble,
-      };
+    'bands': bands,
+    'bass': bass,
+    'treble': treble,
+  };
 }

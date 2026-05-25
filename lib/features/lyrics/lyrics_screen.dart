@@ -53,9 +53,8 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
     // Target offset: top of the active row minus half the viewport so
     // the row lands in the centre. Add half a row height to centre on
     // the row's midpoint rather than its top edge.
-    final target = (activeIndex * _rowHeight) -
-        (viewportHeight / 2) +
-        (_rowHeight / 2);
+    final target =
+        (activeIndex * _rowHeight) - (viewportHeight / 2) + (_rowHeight / 2);
     final clamped = target.clamp(
       _scrollController.position.minScrollExtent,
       _scrollController.position.maxScrollExtent,
@@ -171,8 +170,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
               // taps would yank playback back to 0:00 — noise, not
               // navigation. Detect once and use it to disable the
               // gesture entirely for unsynced payloads.
-              final isSynced =
-                  lrc.lines.any((l) => l.start > Duration.zero);
+              final isSynced = lrc.lines.any((l) => l.start > Duration.zero);
               return ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.symmetric(
@@ -187,11 +185,8 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                     borderRadius: AfRadii.borderSm,
                     onTap: isSynced
                         ? () {
-                            unawaited(
-                                HapticFeedback.selectionClick());
-                            ref
-                                .read(playerServiceProvider)
-                                .seek(line.start);
+                            unawaited(HapticFeedback.selectionClick());
+                            ref.read(playerServiceProvider).seek(line.start);
                           }
                         : null,
                     child: AnimatedContainer(

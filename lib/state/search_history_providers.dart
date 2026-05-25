@@ -31,5 +31,5 @@ class SearchHistoryNotifier extends StateNotifier<List<String>> {
 
 final searchHistoryProvider =
     StateNotifierProvider<SearchHistoryNotifier, List<String>>(
-  (ref) => SearchHistoryNotifier(),
-);
+      (ref) => SearchHistoryNotifier(),
+    );
