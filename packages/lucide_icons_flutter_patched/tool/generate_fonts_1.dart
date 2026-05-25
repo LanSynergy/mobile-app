@@ -13,7 +13,7 @@ void main(List<String> args) {
 
   String content = fontsPreviewFile.readAsStringSync();
 
-  Map<String, dynamic> jsonMap = json.decode(content);
+  final jsonMap = json.decode(content) as Map<String, dynamic>;
   Map<String, Map<String, String>> result = {};
 
   jsonMap.forEach((key, value) {
@@ -22,8 +22,8 @@ void main(List<String> args) {
     }
   });
 
-  List<Map<dynamic, dynamic>> resultList = jsonMap.entries
-      .map((entry) => {'name': entry.key, ...entry.value})
+  final resultList = jsonMap.entries
+      .map((entry) => <String, dynamic>{'name': entry.key, ...entry.value as Map<String, dynamic>})
       .toList();
   // stdout.write("info message1 ${resultList}");
   // final c = parse(content);
@@ -48,10 +48,10 @@ void main(List<String> args) {
     "\nconst List<IconData> icons = ["
   ];
   final generatedIconNames = <String>{};
-  for (Map data in resultList) {
-    String iconName = data['name'];
+  for (final data in resultList) {
+    final iconName = data['name'] as String;
     final baseName = ReCase(iconName).camelCase;
-    final codePoint = parseUnicodeString(data['unicode']);
+    final codePoint = parseUnicodeString(data['unicode'] as String);
 
     if (!generatedIconNames.add(baseName)) {
       print('Bỏ qua icon trùng tên Dart: $iconName -> $baseName');
