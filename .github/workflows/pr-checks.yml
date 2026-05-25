@@ -36,15 +36,17 @@ jobs:
           flutter-version: "3.44.0"
           channel: stable
           cache: true
+          pub-cache: false
 
-      - name: Cache pub packages
+      - name: Cache pub packages & build_runner
         uses: actions/cache@v4
         with:
           path: |
             ~/.pub-cache
             .dart_tool
-          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}-
             ${{ runner.os }}-pub-
 
       - name: Show toolchain versions

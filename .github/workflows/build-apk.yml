@@ -43,16 +43,18 @@ jobs:
           channel: stable
           # Caches the Flutter SDK install (~700 MB) keyed on version+channel+OS.
           cache: true
+          pub-cache: false
 
-      - name: Cache pub packages
+      - name: Cache pub packages & build_runner
         uses: actions/cache@v4
         with:
           path: |
             ~/.pub-cache
             .dart_tool
           # pubspec.lock is committed; this key invalidates only when a dep changes.
-          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}-
             ${{ runner.os }}-pub-
 
       - name: Show toolchain versions
