@@ -101,6 +101,9 @@ class NativeMediaSessionBridge {
   /// Fired from native when the user taps the favorite custom action.
   VoidCallback? onToggleFavorite;
 
+  /// Fired when an Android App Shortcut launcher action is triggered.
+  void Function(String)? onShortcutAction;
+
   /// Fired by [pushState] when [MediaSessionState.artPath] is `null` and
   /// [MediaSessionState.needsArtworkDownload] is `true`. The owner should
   /// trigger a remote artwork download for the current track.
@@ -159,6 +162,16 @@ class NativeMediaSessionBridge {
     });
   }
 
+  /// Query if the app was launched via a native app shortcut.
+  Future<String?> getShortcutAction() async {
+    try {
+      return await _channel.invokeMethod<String>('getShortcutAction');
+    } catch (e) {
+      afLog('error', 'Failed to get native shortcut action', error: e);
+      return null;
+    }
+  }
+
   /// Tear down. Nulls the method call handler so no orphaned callbacks
   /// remain after the owning service is disposed.
   void dispose() {
@@ -203,6 +216,11 @@ class NativeMediaSessionBridge {
         onCycleRepeat?.call();
       case 'toggleFavorite':
         onToggleFavorite?.call();
+      case 'shortcutAction':
+        final action = call.arguments as String?;
+        if (action != null) {
+          onShortcutAction?.call(action);
+        }
       default:
         throw PlatformException(
           code: 'Unimplemented',

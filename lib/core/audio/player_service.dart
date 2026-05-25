@@ -33,27 +33,16 @@ class AfPlayerService {
     _queueManager = AfQueueManager();
 
     final bridge = NativeMediaSessionBridge();
-    bridge.onPlay = () => unawaited(play());
-    bridge.onPause = () => unawaited(pause());
-    bridge.onNext = () => unawaited(skipToNext());
-    bridge.onPrevious = () => unawaited(skipToPrevious());
-    bridge.onStop = () => unawaited(stop());
-    bridge.onSeek = (Duration pos) => unawaited(seek(pos));
-    bridge.onSkipToQueueItem = (int idx) => unawaited(skipToQueueItem(idx));
-    bridge.onDuck = (double targetVolume) {
-      if (!_isDucked) {
-        _preDuckVolume = _player.state.volume;
-        _isDucked = true;
-      }
-      unawaited(setVolume(_preDuckVolume * targetVolume));
-    };
-    bridge.onUnduck = () {
-      if (_isDucked) {
-        unawaited(setVolume(_preDuckVolume));
-        _isDucked = false;
-      }
-    };
+    _wireBridgeCallbacks(bridge);
     _bridge = bridge;
+
+    // Check for pending startup shortcut actions
+    Future.microtask(() async {
+      final action = await _bridge.getShortcutAction();
+      if (action != null) {
+        _handleShortcutAction(action);
+      }
+    });
 
     // Set audio driver BEFORE binding streams. If setAudioDriver is called
     // after property observation starts, it can re-initialize the output
@@ -105,43 +94,7 @@ class AfPlayerService {
     if (bridge != null) {
       _bridge = bridge;
     }
-    _bridge.onPlay = () => unawaited(play());
-    _bridge.onPause = () => unawaited(pause());
-    _bridge.onNext = () => unawaited(skipToNext());
-    _bridge.onPrevious = () => unawaited(skipToPrevious());
-    _bridge.onStop = () => unawaited(stop());
-    _bridge.onSeek = (Duration pos) => unawaited(seek(pos));
-    _bridge.onSkipToQueueItem = (int idx) => unawaited(skipToQueueItem(idx));
-    _bridge.onDuck = (double targetVolume) {
-      if (!_isDucked) {
-        _preDuckVolume = _player.state.volume;
-        _isDucked = true;
-      }
-      unawaited(setVolume(_preDuckVolume * targetVolume));
-    };
-    _bridge.onUnduck = () {
-      if (_isDucked) {
-        unawaited(setVolume(_preDuckVolume));
-        _isDucked = false;
-      }
-    };
-    _bridge.onToggleShuffle = () {
-      unawaited(setAfShuffleMode(!_queueManager.isShuffleEnabled));
-      _updateMediaSession();
-    };
-    _bridge.onCycleRepeat = () {
-      final current = _player.state.loop;
-      final next = switch (current) {
-        Loop.off => Loop.playlist,
-        Loop.playlist => Loop.file,
-        Loop.file => Loop.off,
-      };
-      unawaited(setAfLoopMode(next));
-      _updateMediaSession();
-    };
-    _bridge.onToggleFavorite = () {
-      onFavoriteToggled?.call();
-    };
+    _wireBridgeCallbacks(_bridge);
 
     // Skip setAudioDriver, setAudioBuffer, Future.delayed in test mode.
     // Also skips _positionTracker.start() — position polling creates a
@@ -165,6 +118,12 @@ class AfPlayerService {
   /// custom action. The UI layer should toggle the current track's favorite
   /// status and call [_updateMediaSession] afterwards.
   VoidCallback? onFavoriteToggled;
+
+  /// Fired when the user starts the app via the "Play Favorites" launcher shortcut.
+  VoidCallback? onShortcutPlayFavorites;
+
+  /// Fired when the user starts the app via the "Search" launcher shortcut.
+  VoidCallback? onShortcutSearchMusic;
 
   final List<StreamSubscription<dynamic>> _subs =
       <StreamSubscription<dynamic>>[];
@@ -1233,6 +1192,58 @@ class AfPlayerService {
         );
       }
     });
+  }
+
+  void _wireBridgeCallbacks(NativeMediaSessionBridge bridge) {
+    bridge.onPlay = () => unawaited(play());
+    bridge.onPause = () => unawaited(pause());
+    bridge.onNext = () => unawaited(skipToNext());
+    bridge.onPrevious = () => unawaited(skipToPrevious());
+    bridge.onStop = () => unawaited(stop());
+    bridge.onSeek = (Duration pos) => unawaited(seek(pos));
+    bridge.onSkipToQueueItem = (int idx) => unawaited(skipToQueueItem(idx));
+    bridge.onDuck = (double targetVolume) {
+      if (!_isDucked) {
+        _preDuckVolume = _player.state.volume;
+        _isDucked = true;
+      }
+      unawaited(setVolume(_preDuckVolume * targetVolume));
+    };
+    bridge.onUnduck = () {
+      if (_isDucked) {
+        unawaited(setVolume(_preDuckVolume));
+        _isDucked = false;
+      }
+    };
+    bridge.onToggleShuffle = () {
+      unawaited(setAfShuffleMode(!_queueManager.isShuffleEnabled));
+      _updateMediaSession();
+    };
+    bridge.onCycleRepeat = () {
+      final current = _player.state.loop;
+      final next = switch (current) {
+        Loop.off => Loop.playlist,
+        Loop.playlist => Loop.file,
+        Loop.file => Loop.off,
+      };
+      unawaited(setAfLoopMode(next));
+      _updateMediaSession();
+    };
+    bridge.onToggleFavorite = () {
+      onFavoriteToggled?.call();
+    };
+    bridge.onShortcutAction = (String action) {
+      _handleShortcutAction(action);
+    };
+  }
+
+  void _handleShortcutAction(String action) {
+    afLog('audio', 'Handling native shortcut action: $action');
+    if (action == 'play_favorites') {
+      onShortcutPlayFavorites?.call();
+    } else if (action == 'search_music') {
+      onShortcutSearchMusic?.call();
+    }
   }
 }
 

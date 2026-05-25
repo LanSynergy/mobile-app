@@ -246,6 +246,41 @@ void main() {
       },
     );
 
+    test(
+      'platform shortcutAction call triggers onShortcutAction callback',
+      () async {
+        String? actionResult;
+        bridge.onShortcutAction = (action) {
+          actionResult = action;
+        };
+
+        await bridge.handleMethodCall(
+          const MethodCall('shortcutAction', 'play_favorites'),
+        );
+
+        expect(actionResult, 'play_favorites');
+      },
+    );
+
+    test(
+      'getShortcutAction queries method channel and returns result',
+      () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+          const MethodChannel('aetherfin.media_session'),
+          (MethodCall call) async {
+            if (call.method == 'getShortcutAction') {
+              return 'search_music';
+            }
+            return null;
+          },
+        );
+
+        final action = await bridge.getShortcutAction();
+        expect(action, 'search_music');
+      },
+    );
+
     test('unknown platform method throws PlatformException', () async {
       expect(
         () => bridge.handleMethodCall(const MethodCall('unknownMethod')),

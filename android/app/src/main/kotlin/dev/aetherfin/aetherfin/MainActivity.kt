@@ -10,17 +10,28 @@ import dev.aetherfin.aetherfin.saf.SafPlugin
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.os.Build
+import androidx.core.content.pm.ShortcutInfoCompat
+import androidx.core.content.pm.ShortcutManagerCompat
+import androidx.core.graphics.drawable.IconCompat
 
 class MainActivity : FlutterActivity() {
     companion object {
         var mediaSessionChannel: MethodChannel? = null
     }
 
+    private var pendingShortcutAction: String? = null
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         flutterEngine.plugins.add(LiveUpdatePlugin())
         flutterEngine.plugins.add(BatteryOptPlugin())
         flutterEngine.plugins.add(SafPlugin())
+
+        intent?.getStringExtra("shortcut_action")?.let {
+            pendingShortcutAction = it
+        }
+        setupShortcuts()
 
         val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "aetherfin.media_session")
         mediaSessionChannel = channel
@@ -60,10 +71,48 @@ class MainActivity : FlutterActivity() {
                     stopService(intent)
                     result.success(null)
                 }
+                "getShortcutAction" -> {
+                    result.success(pendingShortcutAction)
+                    pendingShortcutAction = null
+                }
                 else -> {
                     result.notImplemented()
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.getStringExtra("shortcut_action")?.let { action ->
+            mediaSessionChannel?.invokeMethod("shortcutAction", action)
+        }
+    }
+
+    private fun setupShortcuts() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+            val playFavoritesShortcut = ShortcutInfoCompat.Builder(this, "play_favorites")
+                .setShortLabel("Play Favorites")
+                .setLongLabel("Play Favorites Playlist")
+                .setIcon(IconCompat.createWithResource(this, android.R.drawable.btn_star_big_on))
+                .setIntent(Intent(this, MainActivity::class.java).apply {
+                    action = Intent.ACTION_VIEW
+                    putExtra("shortcut_action", "play_favorites")
+                })
+                .build()
+
+            val searchShortcut = ShortcutInfoCompat.Builder(this, "search_music")
+                .setShortLabel("Search")
+                .setLongLabel("Search Library")
+                .setIcon(IconCompat.createWithResource(this, android.R.drawable.ic_menu_search))
+                .setIntent(Intent(this, MainActivity::class.java).apply {
+                    action = Intent.ACTION_VIEW
+                    putExtra("shortcut_action", "search_music")
+                })
+                .build()
+
+            ShortcutManagerCompat.addDynamicShortcuts(this, listOf(playFavoritesShortcut, searchShortcut))
         }
     }
 
