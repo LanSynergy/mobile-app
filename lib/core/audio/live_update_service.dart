@@ -10,7 +10,8 @@ class LiveUpdateService {
   static Future<bool> isSupported() async {
     if (_cachedIsSupported != null) return _cachedIsSupported!;
     try {
-      final supported = await _channel.invokeMethod<bool>('isSupported') ?? false;
+      final supported =
+          await _channel.invokeMethod<bool>('isSupported') ?? false;
       _cachedIsSupported = supported;
       return supported;
     } catch (_) {
@@ -49,14 +50,15 @@ class LiveUpdateService {
   }) async {
     try {
       return await _channel.invokeMethod<bool>('start', {
-        'title': title,
-        'artist': artist,
-        'durationMs': durationMs,
-        'positionMs': positionMs,
-        'isPlaying': isPlaying,
-        'shortCriticalText': shortCriticalText,
-        'artworkPath': artworkPath,
-      }) ?? false;
+            'title': title,
+            'artist': artist,
+            'durationMs': durationMs,
+            'positionMs': positionMs,
+            'isPlaying': isPlaying,
+            'shortCriticalText': shortCriticalText,
+            'artworkPath': artworkPath,
+          }) ??
+          false;
     } catch (_) {
       return false;
     }
@@ -74,14 +76,15 @@ class LiveUpdateService {
   }) async {
     try {
       return await _channel.invokeMethod<bool>('update', {
-        'title': title,
-        'artist': artist,
-        'durationMs': durationMs,
-        'positionMs': positionMs,
-        'isPlaying': isPlaying,
-        'shortCriticalText': shortCriticalText,
-        'artworkPath': artworkPath,
-      }) ?? false;
+            'title': title,
+            'artist': artist,
+            'durationMs': durationMs,
+            'positionMs': positionMs,
+            'isPlaying': isPlaying,
+            'shortCriticalText': shortCriticalText,
+            'artworkPath': artworkPath,
+          }) ??
+          false;
     } catch (_) {
       return false;
     }

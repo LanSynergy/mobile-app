@@ -207,16 +207,19 @@ void main() {
       },
     );
 
-    test('platform toggleShuffle call triggers onToggleShuffle callback', () async {
-      var toggled = false;
-      bridge.onToggleShuffle = () {
-        toggled = true;
-      };
+    test(
+      'platform toggleShuffle call triggers onToggleShuffle callback',
+      () async {
+        var toggled = false;
+        bridge.onToggleShuffle = () {
+          toggled = true;
+        };
 
-      await bridge.handleMethodCall(const MethodCall('toggleShuffle'));
+        await bridge.handleMethodCall(const MethodCall('toggleShuffle'));
 
-      expect(toggled, isTrue);
-    });
+        expect(toggled, isTrue);
+      },
+    );
 
     test('platform cycleRepeat call triggers onCycleRepeat callback', () async {
       var cycled = false;
@@ -229,16 +232,19 @@ void main() {
       expect(cycled, isTrue);
     });
 
-    test('platform toggleFavorite call triggers onToggleFavorite callback', () async {
-      var toggled = false;
-      bridge.onToggleFavorite = () {
-        toggled = true;
-      };
+    test(
+      'platform toggleFavorite call triggers onToggleFavorite callback',
+      () async {
+        var toggled = false;
+        bridge.onToggleFavorite = () {
+          toggled = true;
+        };
 
-      await bridge.handleMethodCall(const MethodCall('toggleFavorite'));
+        await bridge.handleMethodCall(const MethodCall('toggleFavorite'));
 
-      expect(toggled, isTrue);
-    });
+        expect(toggled, isTrue);
+      },
+    );
 
     test('unknown platform method throws PlatformException', () async {
       expect(

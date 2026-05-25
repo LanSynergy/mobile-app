@@ -95,7 +95,8 @@ class AfPlayerService {
     required PlayerApi player,
     NativeMediaSessionBridge? bridge,
     bool testingMode = true,
-  }) : _player = player, _testingMode = testingMode {
+  }) : _player = player,
+       _testingMode = testingMode {
     _positionTracker = AfPositionTracker(
       player: player,
       shouldAdvancePosition: () => shouldAdvancePosition,
@@ -1231,9 +1232,13 @@ class AfPlayerService {
 
     final trackChanged = _lastLiveUpdateTrackId != track.id;
     final playingChanged = _lastLiveUpdatePlaying != playing;
-    final timePassed = now.difference(_lastLiveUpdatePost) >= const Duration(seconds: 10);
+    final timePassed =
+        now.difference(_lastLiveUpdatePost) >= const Duration(seconds: 10);
 
-    if (!force && !trackChanged && !playingChanged && (!playing || !timePassed)) {
+    if (!force &&
+        !trackChanged &&
+        !playingChanged &&
+        (!playing || !timePassed)) {
       return;
     }
 
@@ -1296,13 +1301,21 @@ class AfPlayerService {
           final next = _queueManager.engine.nextTrack;
           if (next != null) {
             await _player.add(Media(_resolveStreamUrl!(next)));
-            afLog('audio', 'syncNextTrackInMpv: preloaded next track "${next.title}"');
+            afLog(
+              'audio',
+              'syncNextTrackInMpv: preloaded next track "${next.title}"',
+            );
           } else {
             afLog('audio', 'syncNextTrackInMpv: no next track to preload');
           }
         }
       } catch (e, stack) {
-        afLog('audio', 'syncNextTrackInMpv failed', error: e, stackTrace: stack);
+        afLog(
+          'audio',
+          'syncNextTrackInMpv failed',
+          error: e,
+          stackTrace: stack,
+        );
       }
     });
   }

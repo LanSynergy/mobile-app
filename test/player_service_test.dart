@@ -51,7 +51,11 @@ _createFixture({bool testingMode = true}) {
   });
 
   final bridge = NativeMediaSessionBridge(channel: channel);
-  final service = AfPlayerService.test(player: player, bridge: bridge, testingMode: testingMode);
+  final service = AfPlayerService.test(
+    player: player,
+    bridge: bridge,
+    testingMode: testingMode,
+  );
 
   return (
     service: service,
@@ -747,87 +751,96 @@ void main() {
       verify(() => player.setVolume(1.0)).called(1);
     });
 
-    test('custom actions toggleShuffle, cycleRepeat, and toggleFavorite correctly', () async {
-      expect(handler, isNotNull);
+    test(
+      'custom actions toggleShuffle, cycleRepeat, and toggleFavorite correctly',
+      () async {
+        expect(handler, isNotNull);
 
-      // Load a queue
-      await service.playQueue(
-        [trackA, trackB],
-        startIndex: 0,
-        resolveStreamUrl: resolveStreamUrl,
-      );
-      await Future<void>.delayed(Duration.zero);
-
-      // 1. toggleShuffle
-      expect(service.isShuffleEnabled, isFalse);
-      await handler!(const MethodCall('toggleShuffle'));
-      await Future<void>.delayed(Duration.zero);
-      expect(service.isShuffleEnabled, isTrue);
-
-      // 2. cycleRepeat
-      when(() => player.setLoop(any())).thenAnswer((_) async {});
-      // Currently state is const PlayerState(), which defaults to Loop.off.
-      updateState((s) => s.copyWith(loop: Loop.off));
-
-      await handler!(const MethodCall('cycleRepeat'));
-      await Future<void>.delayed(Duration.zero);
-      verify(() => player.setLoop(Loop.playlist)).called(1);
-
-      // 3. toggleFavorite
-      var favoriteToggledCalled = false;
-      service.onFavoriteToggled = () {
-        favoriteToggledCalled = true;
-      };
-
-      await handler!(const MethodCall('toggleFavorite'));
-      await Future<void>.delayed(Duration.zero);
-      expect(favoriteToggledCalled, isTrue);
-    });
-
-    test('sends live updates on track and position changes when testingMode is false', () async {
-      final liveUpdateCalls = <MethodCall>[];
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-            const MethodChannel('aetherfin.live_update'),
-            (MethodCall call) async {
-              liveUpdateCalls.add(call);
-              if (call.method == 'isSupported') return true;
-              return true;
-            },
-          );
-
-      final fixture = _createFixture(testingMode: false);
-      final testService = fixture.service;
-
-      try {
-        await testService.playQueue(
-          [trackA],
+        // Load a queue
+        await service.playQueue(
+          [trackA, trackB],
           startIndex: 0,
           resolveStreamUrl: resolveStreamUrl,
         );
         await Future<void>.delayed(Duration.zero);
 
-        expect(
-          liveUpdateCalls.any((c) => c.method == 'start'),
-          isTrue,
-        );
+        // 1. toggleShuffle
+        expect(service.isShuffleEnabled, isFalse);
+        await handler!(const MethodCall('toggleShuffle'));
+        await Future<void>.delayed(Duration.zero);
+        expect(service.isShuffleEnabled, isTrue);
 
-        final startCall = liveUpdateCalls.firstWhere((c) => c.method == 'start');
-        expect(startCall.arguments['title'], 'Track A');
-        expect(startCall.arguments['artist'], 'Test Artist');
-      } finally {
-        await testService.dispose();
+        // 2. cycleRepeat
+        when(() => player.setLoop(any())).thenAnswer((_) async {});
+        // Currently state is const PlayerState(), which defaults to Loop.off.
+        updateState((s) => s.copyWith(loop: Loop.off));
+
+        await handler!(const MethodCall('cycleRepeat'));
+        await Future<void>.delayed(Duration.zero);
+        verify(() => player.setLoop(Loop.playlist)).called(1);
+
+        // 3. toggleFavorite
+        var favoriteToggledCalled = false;
+        service.onFavoriteToggled = () {
+          favoriteToggledCalled = true;
+        };
+
+        await handler!(const MethodCall('toggleFavorite'));
+        await Future<void>.delayed(Duration.zero);
+        expect(favoriteToggledCalled, isTrue);
+      },
+    );
+
+    test(
+      'sends live updates on track and position changes when testingMode is false',
+      () async {
+        final liveUpdateCalls = <MethodCall>[];
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(
               const MethodChannel('aetherfin.live_update'),
-              null,
+              (MethodCall call) async {
+                liveUpdateCalls.add(call);
+                if (call.method == 'isSupported') return true;
+                return true;
+              },
             );
-      }
-    });
+
+        final fixture = _createFixture(testingMode: false);
+        final testService = fixture.service;
+
+        try {
+          await testService.playQueue(
+            [trackA],
+            startIndex: 0,
+            resolveStreamUrl: resolveStreamUrl,
+          );
+          await Future<void>.delayed(Duration.zero);
+
+          expect(liveUpdateCalls.any((c) => c.method == 'start'), isTrue);
+
+          final startCall = liveUpdateCalls.firstWhere(
+            (c) => c.method == 'start',
+          );
+          expect(startCall.arguments['title'], 'Track A');
+          expect(startCall.arguments['artist'], 'Test Artist');
+        } finally {
+          await testService.dispose();
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('aetherfin.live_update'),
+                null,
+              );
+        }
+      },
+    );
 
     test('setAfShuffleMode syncs next track in mpv playlist', () async {
-      when(() => player.getRawProperty('playlist/count')).thenAnswer((_) async => '2');
-      when(() => player.getRawProperty('playlist/current')).thenAnswer((_) async => '0');
+      when(
+        () => player.getRawProperty('playlist/count'),
+      ).thenAnswer((_) async => '2');
+      when(
+        () => player.getRawProperty('playlist/current'),
+      ).thenAnswer((_) async => '0');
       when(() => player.sendRawCommand(any())).thenAnswer((_) async {});
       when(() => player.add(any())).thenAnswer((_) async {});
 
@@ -840,8 +853,12 @@ void main() {
 
       clearInteractions(player);
 
-      when(() => player.getRawProperty('playlist/count')).thenAnswer((_) async => '2');
-      when(() => player.getRawProperty('playlist/current')).thenAnswer((_) async => '0');
+      when(
+        () => player.getRawProperty('playlist/count'),
+      ).thenAnswer((_) async => '2');
+      when(
+        () => player.getRawProperty('playlist/current'),
+      ).thenAnswer((_) async => '0');
       when(() => player.sendRawCommand(any())).thenAnswer((_) async {});
       when(() => player.add(any())).thenAnswer((_) async {});
       when(() => player.state).thenReturn(const PlayerState());

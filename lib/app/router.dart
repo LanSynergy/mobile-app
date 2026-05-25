@@ -87,8 +87,9 @@ final _router = GoRouter(
     if (effectiveMode == AppMode.local) {
       if (inOnboarding) {
         if (!_localOnboardingCompleted) {
-          if (loc != '/onboarding/local-setup')
+          if (loc != '/onboarding/local-setup') {
             return '/onboarding/local-setup';
+          }
         } else {
           return '/home';
         }

@@ -139,8 +139,8 @@ await player.next();
 await player.previous();
 await player.jump(index);
 await player.setGapless(Gapless.weak);
-await player.setShuffle(true);   // calls mpv playlist-shuffle
-await player.setShuffle(false);  // calls mpv playlist-unshuffle
+// Note: player.setShuffle(true/false) is not used under the 2-track sliding window.
+// Instead, shuffle is managed in Dart and synced to mpv's prefetch slot.
 
 // Queue manipulation
 await player.playNext(media);    // insert after current track
@@ -233,10 +233,10 @@ lib/
 │  │  │                               bridge to Kotlin service. Composes AfPositionTracker,
 │  │  │                               AfArtworkManager, AfAudioDeviceManager, AfQueueManager.
 │  │  │                               Throttled playbackState (~2 Hz), _pendingPlayNudgeIdx
-│  │  │                               Shuffle: setShuffle(true/false) → mpv playlist-shuffle/unshuffle.
-│  │  │                               Syncs _trackQueue via _player.stream.playlist.first after command.
-│  │  │                               Track-ID guard in playlist listener prevents displayed song change.
-│  │  │                               _originalQueue stores unshuffled order.
+│  │  │                               Shuffle: managed in Dart (Fisher-Yates) to support large queues.
+│  │  │                               Uses _syncNextTrackInMpv() to update mpv's preloaded slot
+│  │  │                               via playlist-remove and add commands when the next track changes,
+│  │  │                               preserving gapless transitions.
 │  │  ├─ play_actions.dart          ← Cross-cutting play entry points (uses MusicBackend)
 │  │  │                               PlayActions.playQueue shuffles before loading when shuffle is ON.
 │  │  ├─ jellyfin_playback_reporter.dart ← Playback reporting lifecycle (uses MusicBackend)
@@ -836,7 +836,7 @@ This prevents formatting drift from accumulating across sessions.
 21. **"Subscribe to `spectrumStream` in `didChangeDependencies`."** No. It fires on every ancestor dependency change and causes stream churn. Subscribe once in `initState` via `addPostFrameCallback`.
 22. **"The battery channel is `dev.aetherfin.aetherfin/battery`."** No. It's `aetherfin.battery_opt` (matches `BatteryOptPlugin.CHANNEL_NAME`).
 23. **"Drive the artwork pulse by continuously scaling with bin 0 amplitude."** No. That flickers on every frame. Use a transient detector with running baseline + cooldown + spring decay.
-24. **"Implement shuffle by rebuilding the queue in Dart."** No. Use mpv's native `setShuffle(true/false)` which calls `playlist-shuffle`/`playlist-unshuffle` without interrupting playback. Sync `_trackQueue` by awaiting `_player.stream.playlist.first` after the command. Store `_originalQueue` for unshuffle.
+24. **"Use mpv's native setShuffle(true/false) under 2-track sliding window."** No. Since Aetherfin uses a 2-track sliding window model to avoid loading lag on large queues (>5 tracks), mpv only holds the current and next track. Shuffle is managed in Dart (via Fisher-Yates mapping in `AfQueueEngine`). When the next track changes in Dart, the preloaded track in mpv is synchronized using raw commands (`playlist-remove` and `add`) to preserve gapless playback.
 25. **"The utility row has 6 icons."** No. It's 4: Lyrics, Save, Queue, More. Sleep timer, playback speed, audio output, and EQ are behind the More popup.
 26. **"Apply EQ/DSP via a separate audio pipeline."** No. Use `player.updateAudioEffects(AudioEffects(...))`. The engine handles DSP natively.
 27. **"Build a parallel HTTP client for Navidrome."** Don't build from scratch. Implement the `MusicBackend` interface in `SubsonicClient`. All providers already use `musicBackendProvider`.
