@@ -818,7 +818,7 @@ This prevents formatting drift from accumulating across sessions.
 3. **"Use `/Search/Hints`."** No. Use `/Users/{id}/Items?searchTerm=…`.
 4. **"Material animation defaults are fine."** No. Five durations, five curves, tests enforce it.
 5. **"Use `just_audio` for playback."** No. The audio engine is `mpv_audio_kit`. `AfPlayerService` wraps it.
-6. **"Loop modes are `LoopMode.off/all/one`."** No. mpv_audio_kit uses `Loop.off / Loop.playlist / Loop.file`.
+6. **"Loop modes are `LoopMode.off/all/one`."** No. mpv_audio_kit uses `Loop.off / Loop.playlist / Loop.file`. Aetherfin extends this in Dart with `AfLoopMode` (`off`, `playlist`, `file`, `forNtimes`), using an intercept in the completed handler to repeat N times.
 7. **"Build a parallel HTTP client."** Don't. Add a method to `JellyfinClient`.
 8. **"Hydrate `AuthNotifier` asynchronously."** No. Load auth in `main()` and inject via `initialAuthProvider`.
 9. **"go_router will figure out where to send a signed-in user."** No. Without `redirect:` + `refreshListenable`, you land on WelcomeScreen.
@@ -926,6 +926,10 @@ This prevents formatting drift from accumulating across sessions.
 - **`SettingsKey<T>`**: Typed descriptor pattern in `player_settings_store.dart` for persisted settings. Each setting has `keyName`, `defaultValue`, `encoder`, `decoder`. Eliminates hand-rolled save/load triples.
 - **`ShimmerLayout`**: Base skeleton widget in `lib/widgets/skeleton.dart`. Applies `LinearGradient` shimmer animation over a gray placeholder. Each screen has a dedicated `*_skeleton.dart` in `widgets/skeletons/`.
 - **`_scrollSafetyTimer`**: Fallback timer in `eq_dsp_screen.dart` that resets `_isScrollActive` after 300ms of no scroll activity. Compensates for `ScrollEndNotification` not always firing on Android at scroll boundaries.
+- **`AfLoopMode`**: Custom loop mode enum (`off`, `playlist`, `file`, `forNtimes`) extending beyond mpv's native Loop modes.
+- **`ShuffleMode`**: Custom shuffle mode enum (`off`, `all`, `tail`) supporting Shuffle Next.
+- **`PlaylistUndoBuffer`**: Ephemeral playlist operation undo buffer class that tracks the last add/remove action per playlist for 8 seconds.
+- **`QueueHistory`**: SQLite database table and repository for saving lightweight played queue snapshots.
 
 ---
 

@@ -1,5 +1,15 @@
 # Continuity Ledger
 
+## 2026-05-25 — Namida-Inspired UX Refinements
+*Goal:* Complete the implementation of 5 UX refinements: Queue History, forNtimes loop, shuffle next, playlist undo, and M3U export/import.
+*Commits:* fa6177c
+*Key decisions:*
+- Queue History table persisted in SQLite via Drift DB v4 migration, auto-cleanup capped at 10 items.
+- forNtimes Loop intercept in player completed stream handler enables ntimes repetition before advancing.
+- Shuffle Next (shuffleTail) shuffles remaining queue tracks, leaving past tracks untouched.
+- M3U Export/Import utilizes a simplified self-contained temp storage and pasted text content dialog path.
+- All lints cleaned up to achieve 0 static analyzer issues and all 346 tests pass.
+
 ## 2026-05-25 — Info-level lint cleanup + fatal info lints in CI
 *Goal:* Fix all 8 `curly_braces_in_flow_control_structures` info-level lints and make `flutter analyze` report info issues as fatal (remove `--no-fatal-infos`)
 *Commits:* 53ef709
@@ -31,12 +41,3 @@
 - `AfPlayerService` simplified from 1413→1035 lines — removed `_jumpAndPlay`, `_pendingPlayNudgeIdx`, `_playlistHandlerGen`, `_nudgeRetries`, `_queueLoadGen`, `_isLoadingQueue`
 - Shuffle blink fix: removed `emitCurrentTrack` + `onTrackChanged` from `setAfShuffleMode` — current track doesn't change on shuffle toggle
 - `_queueLock` only guards `openAll` now
-
-## 2026-05-24 — PlayerSettingsStore + pagination + scrubber tests
-*Goal:* Deliver commits 8/9/10 from Deep Review: refactor `player_settings_store`, client-side pagination, AudioVisualScrubber tests
-*Commits:* (verify with git log)
-*Key decisions:*
-- Extracted `PlayerSettingsStore` from `player_service.dart` into own file
-- Added `LIMIT/OFFSET` support in `LocalDb._queryTracks()` for pagination
-- Removed `_positionTracker.start()` from `AfPlayerService.test()` constructor — prevents `FakeAsync` timer error in widget tests
-- Replaced all `pumpAndSettle()` with `pump()` in scrubber tests — vsync ticker never settles

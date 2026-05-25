@@ -43,7 +43,7 @@ are out of scope of this policy.
 | **Cover-art image cache** | `cached_network_image` files (server) or extracted art files (local) in the App's private cache directory | Only you |
 | **HTTP cache** of catalog requests | Dio cache files in the App's private cache directory | Only you |
 | **Lyrics (LRC files)** fetched from your server | In-memory only — not persisted | Only you, while playing |
-| **Playback state** (current track, position, queue) | In-memory + lock-screen `MediaSession` | Only you |
+| **Playback state** (current track, position, queue, queue history) | In-memory + local SQLite DB (QueueHistory table) + lock-screen `MediaSession` | Only you |
 | **Diagnostic logs** (`aetherfin:boot`, `aetherfin:http`, `aetherfin:data`, `aetherfin:audio`, `aetherfin:error`) | Standard Android logcat buffer (volatile, capped by the OS) | Only you, when you run `adb logcat` |
 
 **Aetherfin does not send any of the above to the maintainer or any

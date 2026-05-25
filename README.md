@@ -41,7 +41,7 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 
 ### Playback
 - Gapless transitions with background prefetch
-- Shuffle, loop (off / track / queue), playback speed (0.5×–2.0×)
+- Shuffle, loop (off / track / queue / forNtimes repeat), playback speed (0.5×–2.0×)
 - Lock-screen and notification controls (artwork background on Samsung/Android 16)
 - Sleep timer with presets and end-of-track mode
 - Instant Mix radio (server-generated similar tracks queue)
@@ -49,6 +49,9 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 - **Local file playback** — play music from device storage via SAF (no server needed)
 - Auto-pause on Bluetooth disconnect or headphone unplug
 - Instant playback — selected song starts immediately even with large queues
+- **Shuffle next** — shuffle only upcoming tracks in the queue (leaves history untouched)
+- **Queue history** — view and restore recently played queues directly from the home screen
+- **M3U Export/Import** — export playlists to standard M3U files, or import playlists by pasting M3U content
 
 ### Audio
 - 86-effect DSP rack via mpv's ffmpeg filter pipeline
@@ -66,6 +69,7 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 - Search across tracks, albums, artists, playlists
 - Long-press context menus (play next, add to queue, go to album/artist)
 - Drag-to-reorder queue with swipe-to-remove
+- **Playlist Undo** — undo track additions or removals within an 8-second grace period
 
 ### Home
 - Swipeable hero album carousel (up to 5 recent albums, dot indicator)
