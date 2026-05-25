@@ -15,9 +15,6 @@ import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/skeletons/home_skeleton.dart';
-import '../../core/local/queue_history_repository.dart';
-import '../../core/local/local_backend.dart';
-import '../../core/backend/music_backend.dart';
 
 /// Mockup 04 — Home.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -139,20 +136,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onRetry: () => ref.invalidate(recentlyAddedAlbumsProvider),
                 ),
               ),
-            ),
-
-            // Recent Queues
-            SliverToBoxAdapter(
-              child: ref
-                  .watch(recentQueueHistoryProvider)
-                  .when(
-                    data: (entries) => entries.isEmpty
-                        ? const SizedBox(height: AfSpacing.sectionGap)
-                        : _RecentQueuesSection(entries: entries),
-                    loading: () => const SizedBox(height: AfSpacing.sectionGap),
-                    error: (_, _) =>
-                        const SizedBox(height: AfSpacing.sectionGap),
-                  ),
             ),
 
             // Recently played.
@@ -418,135 +401,4 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
   }
 }
 
-/// Recent queue history section — shows last 10 played queues.
-/// Tapping an entry restores and starts playback.
-class _RecentQueuesSection extends ConsumerWidget {
-  const _RecentQueuesSection({required this.entries});
-  final List<QueueHistoryItem> entries;
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-          child: SectionHeader(title: 'Recent Queues'),
-        ),
-        const SizedBox(height: AfSpacing.s12),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-          itemCount: entries.take(5).length, // Show max 5 in home screen
-          separatorBuilder: (context, index) =>
-              const SizedBox(height: AfSpacing.s4),
-          itemBuilder: (context, i) {
-            final entry = entries[i];
-            return _QueueHistoryTile(entry: entry);
-          },
-        ),
-        const SizedBox(height: AfSpacing.sectionGap),
-      ],
-    );
-  }
-}
-
-class _QueueHistoryTile extends ConsumerWidget {
-  const _QueueHistoryTile({required this.entry});
-  final QueueHistoryItem entry;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final dateStr = _formatDate(entry.createdAt);
-    return ListTile(
-      dense: true,
-      leading: const Icon(
-        LucideIcons.history,
-        color: AfColors.textSecondary,
-        size: 20,
-      ),
-      title: Text(
-        entry.sourceLabel,
-        style: AfTypography.bodyMedium,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        '${entry.trackIds.length} tracks · $dateStr',
-        style: AfTypography.caption.copyWith(color: AfColors.textTertiary),
-      ),
-      onTap: () => _restoreQueue(context, ref, entry),
-      contentPadding: EdgeInsets.zero,
-      horizontalTitleGap: AfSpacing.s12,
-    );
-  }
-
-  String _formatDate(int epochMs) {
-    final dt = DateTime.fromMillisecondsSinceEpoch(epochMs);
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${dt.month}/${dt.day}';
-  }
-
-  Future<void> _restoreQueue(
-    BuildContext context,
-    WidgetRef ref,
-    QueueHistoryItem entry,
-  ) async {
-    final backend = ref.read(musicBackendProvider);
-    if (backend == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign in to restore queues')),
-      );
-      return;
-    }
-
-    try {
-      // Resolve track IDs against the active backend
-      final tracks = await _resolveTracks(entry.trackIds, backend);
-      if (tracks.isEmpty) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Could not restore queue — tracks not found'),
-            ),
-          );
-        }
-        return;
-      }
-      await ref.read(playActionsProvider).playQueue(tracks);
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to restore queue: ${e.toString()}')),
-        );
-      }
-    }
-  }
-
-  /// Resolve a list of track IDs to AfTrack objects.
-  Future<List<AfTrack>> _resolveTracks(
-    List<String> ids,
-    MusicBackend backend,
-  ) async {
-    final tracks = <AfTrack>[];
-    for (final id in ids) {
-      try {
-        if (backend is LocalBackend) {
-          final track = await backend.db.trackById(id);
-          if (track != null) tracks.add(track);
-        } else {
-          final result = await backend.trackDetails(id);
-          if (result != null) tracks.add(result.track);
-        }
-      } catch (_) {
-        // Skip unresolvable tracks
-      }
-    }
-    return tracks;
-  }
-}

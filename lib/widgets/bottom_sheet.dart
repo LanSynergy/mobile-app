@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../design_tokens/tokens.dart';
@@ -35,11 +34,9 @@ class BlurBottomSheet extends StatelessWidget {
     super.key,
     required this.child,
     this.topRadius = 24.0,
-    this.blurSigma = 15.0,
   });
   final Widget child;
   final double topRadius;
-  final double blurSigma;
 
   @override
   Widget build(BuildContext context) {
@@ -47,16 +44,14 @@ class BlurBottomSheet extends StatelessWidget {
       top: false,
       child: ClipRRect(
         borderRadius: BorderRadius.vertical(top: Radius.circular(topRadius)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(topRadius),
-              ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AfColors.surfaceBase.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(topRadius),
             ),
-            child: Column(
+          ),
+          child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 12),
@@ -74,7 +69,6 @@ class BlurBottomSheet extends StatelessWidget {
             ),
           ),
         ),
-      ),
     );
   }
 }

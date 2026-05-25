@@ -32,9 +32,9 @@ class AppShell extends ConsumerWidget {
       label: 'Songs',
     ),
     const AfBottomNavItem(
-      icon: LucideIcons.search,
-      filledIcon: LucideIcons.search,
-      label: 'Search',
+      icon: LucideIcons.listMusic,
+      filledIcon: LucideIcons.listMusic,
+      label: 'Playlists',
     ),
     const AfBottomNavItem(
       icon: LucideIcons.user,

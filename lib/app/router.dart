@@ -21,10 +21,10 @@ import '../features/onboarding/local_setup_screen.dart';
 import '../features/onboarding/server_discovery_screen.dart';
 import '../features/onboarding/sign_in_screen.dart';
 import '../features/onboarding/welcome_screen.dart';
+import '../features/playlist/playlist_list_screen.dart';
 import '../features/playlist/playlist_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/queue/queue_screen.dart';
-import '../features/search/search_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
 import '../features/smart_playlist/smart_playlist_detail_screen.dart';
@@ -179,9 +179,9 @@ final _router = GoRouter(
           navigatorKey: _shellBranch3Key,
           routes: [
             GoRoute(
-              path: '/search',
+              path: '/playlists',
               pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: SearchScreen()),
+                  const NoTransitionPage(child: PlaylistListScreen()),
             ),
           ],
         ),

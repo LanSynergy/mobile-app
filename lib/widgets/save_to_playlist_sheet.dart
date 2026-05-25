@@ -38,33 +38,21 @@ void showSaveToPlaylistSheet(
       child: SaveToPlaylistSheet(
         track: track,
         backend: backend,
-        onInvalidate: () => ref.invalidate(allPlaylistsProvider),
-        onSaved: () {
-          ref
-              .read(savedTrackIdsProvider.notifier)
-              .update((ids) => {...ids, track.id});
-          ref.invalidate(playlistTrackIdsProvider);
-        },
       ),
     ),
   );
 }
 
 /// Inline list of existing playlists with an optional "New playlist"
-/// row at the top. Pure widget — no provider reads — so it can be
-/// embedded in any dialog / sheet / page.
+/// row at the top. Invalidates providers internally via its own ref.
 class SaveToPlaylistSheet extends ConsumerStatefulWidget {
   const SaveToPlaylistSheet({
     super.key,
     required this.track,
     required this.backend,
-    required this.onInvalidate,
-    this.onSaved,
   });
   final AfTrack track;
   final MusicBackend backend;
-  final VoidCallback onInvalidate;
-  final VoidCallback? onSaved;
 
   @override
   ConsumerState<SaveToPlaylistSheet> createState() =>
@@ -119,13 +107,21 @@ class _SaveToPlaylistSheetState extends ConsumerState<SaveToPlaylistSheet> {
     if (action == null) return;
     try {
       await backend.removeFromPlaylist(playlistId, action.trackIds);
-      widget.onInvalidate();
+      _invalidate();
       ref.invalidate(playlistDetailProvider(playlistId));
-      ref.invalidate(allPlaylistsProvider);
-      ref.invalidate(playlistTrackIdsProvider);
-    } catch (e) {
-      // Ignore or log error
-    }
+    } catch (_) {}
+  }
+
+  void _invalidate() {
+    ref.invalidate(allPlaylistsProvider);
+    ref.invalidate(playlistTrackIdsProvider);
+  }
+
+  void _onSaved() {
+    ref
+        .read(savedTrackIdsProvider.notifier)
+        .update((ids) => {...ids, widget.track.id});
+    ref.invalidate(playlistTrackIdsProvider);
   }
 
   Future<void> _addTo(AfPlaylist playlist) async {
@@ -138,8 +134,8 @@ class _SaveToPlaylistSheetState extends ConsumerState<SaveToPlaylistSheet> {
         widget.track.id,
       ]);
 
-      widget.onInvalidate();
-      widget.onSaved?.call();
+      _invalidate();
+      _onSaved();
       if (mounted) {
         unawaited(Navigator.maybePop(context));
         ScaffoldMessenger.of(context)
@@ -172,8 +168,8 @@ class _SaveToPlaylistSheetState extends ConsumerState<SaveToPlaylistSheet> {
     setState(() => _saving = true);
     try {
       await widget.backend.createPlaylist(name, [widget.track.id]);
-      widget.onInvalidate();
-      widget.onSaved?.call();
+      _invalidate();
+      _onSaved();
       if (mounted) {
         unawaited(Navigator.maybePop(context));
         ScaffoldMessenger.of(context).showSnackBar(
