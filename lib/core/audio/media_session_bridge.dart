@@ -77,6 +77,8 @@ class NativeMediaSessionBridge {
   VoidCallback? onStop;
   void Function(Duration)? onSeek;
   void Function(int)? onSkipToQueueItem;
+  void Function(double)? onDuck;
+  VoidCallback? onUnduck;
 
   /// Fired by [pushState] when [MediaSessionState.artPath] is `null` and
   /// [MediaSessionState.needsArtworkDownload] is `true`. The owner should
@@ -166,6 +168,11 @@ class NativeMediaSessionBridge {
         if (queueIndex != null) {
           onSkipToQueueItem?.call(queueIndex);
         }
+      case 'duck':
+        final volume = call.arguments?['volume'] as double? ?? 0.2;
+        onDuck?.call(volume);
+      case 'unduck':
+        onUnduck?.call();
       default:
         throw PlatformException(
           code: 'Unimplemented',

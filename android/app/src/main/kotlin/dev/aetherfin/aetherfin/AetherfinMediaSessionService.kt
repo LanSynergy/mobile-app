@@ -17,6 +17,11 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.NotificationCompat
 import androidx.media.session.MediaButtonReceiver
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import java.io.File
 
 class AetherfinMediaSessionService : Service() {
@@ -28,6 +33,33 @@ class AetherfinMediaSessionService : Service() {
     }
 
     private var mediaSession: MediaSessionCompat? = null
+
+    private lateinit var audioManager: AudioManager
+    private var focusRequest: AudioFocusRequest? = null
+    private var hasAudioFocus = false
+    private var isReceiverRegistered = false
+
+    private val afChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS -> sendCommandToFlutter("pause")
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> sendCommandToFlutter("pause")
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                sendCommandToFlutter("duck", mapOf("volume" to 0.2))
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                sendCommandToFlutter("unduck")
+                sendCommandToFlutter("play")
+            }
+        }
+    }
+
+    private val noisyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY == intent.action) {
+                sendCommandToFlutter("pause")
+            }
+        }
+    }
 
     private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
         override fun onPlay() {
@@ -62,6 +94,7 @@ class AetherfinMediaSessionService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         
         mediaSession = MediaSessionCompat(this, "AetherfinMediaSession").apply {
             setCallback(mediaSessionCallback)
@@ -102,12 +135,16 @@ class AetherfinMediaSessionService : Service() {
             val notification = buildNotification(title, artist, album, playing, artPath, queueIndex > 0, queueIndex < queueSize - 1)
             
             if (playing) {
+                if (requestAudioFocus()) {
+                    registerNoisyReceiver()
+                }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
                 } else {
                     startForeground(NOTIFICATION_ID, notification)
                 }
             } else {
+                unregisterNoisyReceiver()
                 // When paused: demote from foreground so the user can swipe the
                 // notification away, but keep the notification visible so they
                 // can resume from QS/lock-screen.
@@ -130,6 +167,63 @@ class AetherfinMediaSessionService : Service() {
         // Handle media buttons via receiver
         MediaButtonReceiver.handleIntent(mediaSession, intent)
         return START_NOT_STICKY
+    }
+
+    private fun requestAudioFocus(): Boolean {
+        if (hasAudioFocus) return true
+
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val playbackAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build()
+            
+            focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(playbackAttributes)
+                .setAcceptsDelayedFocusGain(true)
+                .setOnAudioFocusChangeListener(afChangeListener)
+                .build()
+
+            val res = audioManager.requestAudioFocus(focusRequest!!)
+            hasAudioFocus = res == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+            hasAudioFocus
+        } else {
+            @Suppress("DEPRECATION")
+            val res = audioManager.requestAudioFocus(
+                afChangeListener,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN
+            )
+            hasAudioFocus = res == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+            hasAudioFocus
+        }
+    }
+
+    private fun abandonAudioFocus() {
+        if (!hasAudioFocus) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.abandonAudioFocus(afChangeListener)
+        }
+        hasAudioFocus = false
+    }
+
+    private fun registerNoisyReceiver() {
+        if (isReceiverRegistered) return
+        registerReceiver(noisyReceiver, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY))
+        isReceiverRegistered = true
+    }
+
+    private fun unregisterNoisyReceiver() {
+        if (!isReceiverRegistered) return
+        try {
+            unregisterReceiver(noisyReceiver)
+        } catch (e: Exception) {
+            // Ignore
+        }
+        isReceiverRegistered = false
     }
 
     private fun updateMediaSessionState(
@@ -347,6 +441,8 @@ class AetherfinMediaSessionService : Service() {
     override fun onDestroy() {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(NOTIFICATION_ID)
+        abandonAudioFocus()
+        unregisterNoisyReceiver()
         mediaSession?.apply {
             // Explicitly set STATE_STOPPED before releasing. Without this,
             // Android MediaSession retains the last STATE_PLAYING anchor

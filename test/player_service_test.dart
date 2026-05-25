@@ -727,5 +727,24 @@ void main() {
         verify(() => player.seek(Duration.zero)).called(1);
       },
     );
+
+    test('duck and unduck adjust volume correctly', () async {
+      expect(handler, isNotNull);
+
+      updateState((s) => s.copyWith(volume: 1.0));
+      when(() => player.setVolume(any())).thenAnswer((_) async {});
+
+      // Simulate 'duck' with volume ratio 0.2
+      await handler!(const MethodCall('duck', {'volume': 0.2}));
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => player.setVolume(0.2)).called(1);
+
+      // Simulate 'unduck'
+      await handler!(const MethodCall('unduck'));
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => player.setVolume(1.0)).called(1);
+    });
   });
 }

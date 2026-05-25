@@ -1,5 +1,16 @@
 # Continuity Ledger
 
+## 2026-05-26 — Native-fication Research & Architectural Plans
+*Goal:* Deeply research opportunities to native-fy Aetherfin's media framework, local scanning, custom actions, and background downloads. Produce 5 detailed implementation plans, and execute the first plan (Audio Focus & Headphone Disconnection).
+*Commits:* None (local build/test verification complete)
+*Key decisions:*
+- Created 5 plans in `thoughts/shared/plans/` (with `_agy` suffix).
+- Implemented and verified the first plan: **Native Audio Focus & Headphone Disconnection (Becoming Noisy) Handling**.
+  - Wrote dynamic registration of broadcast receiver and audio focus listener in Kotlin.
+  - Linked native events to Dart MethodChannels via `duck` and `unduck` method calls.
+  - Verified with a dedicated unit test suite; all 19 tests in `test/player_service_test.dart` pass and analyzer reports 0 issues.
+- Decided to omit/drop Android 16 Live Updates Dart implementation as it causes double notification rendering on modern Android versions, as reported by user.
+
 ## 2026-05-25 — Namida-Inspired UX Refinements
 *Goal:* Complete the implementation of 5 UX refinements: Queue History, forNtimes loop, shuffle next, playlist undo, and M3U export/import.
 *Commits:* fa6177c

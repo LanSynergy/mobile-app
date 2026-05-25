@@ -40,6 +40,19 @@ class AfPlayerService {
     bridge.onStop = () => unawaited(stop());
     bridge.onSeek = (Duration pos) => unawaited(seek(pos));
     bridge.onSkipToQueueItem = (int idx) => unawaited(skipToQueueItem(idx));
+    bridge.onDuck = (double targetVolume) {
+      if (!_isDucked) {
+        _preDuckVolume = _player.state.volume;
+        _isDucked = true;
+      }
+      unawaited(setVolume(_preDuckVolume * targetVolume));
+    };
+    bridge.onUnduck = () {
+      if (_isDucked) {
+        unawaited(setVolume(_preDuckVolume));
+        _isDucked = false;
+      }
+    };
     _bridge = bridge;
 
     // Set audio driver BEFORE binding streams. If setAudioDriver is called
@@ -99,6 +112,19 @@ class AfPlayerService {
     _bridge.onStop = () => unawaited(stop());
     _bridge.onSeek = (Duration pos) => unawaited(seek(pos));
     _bridge.onSkipToQueueItem = (int idx) => unawaited(skipToQueueItem(idx));
+    _bridge.onDuck = (double targetVolume) {
+      if (!_isDucked) {
+        _preDuckVolume = _player.state.volume;
+        _isDucked = true;
+      }
+      unawaited(setVolume(_preDuckVolume * targetVolume));
+    };
+    _bridge.onUnduck = () {
+      if (_isDucked) {
+        unawaited(setVolume(_preDuckVolume));
+        _isDucked = false;
+      }
+    };
 
     // Skip setAudioDriver, setAudioBuffer, Future.delayed in test mode.
     // Also skips _positionTracker.start() — position polling creates a
@@ -112,6 +138,8 @@ class AfPlayerService {
   late final AfArtworkManager _artworkManager;
   late final AfAudioDeviceManager _audioDeviceManager;
   late final AfQueueManager _queueManager;
+  double _preDuckVolume = 1.0;
+  bool _isDucked = false;
 
   void Function(AfTrack? track)? onTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
