@@ -12,6 +12,7 @@ import '../../state/providers.dart';
 import '../../utils/display_error.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/section_header.dart';
+import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/skeletons/search_skeleton.dart';
@@ -333,20 +334,34 @@ class _LiveSearchResults extends ConsumerWidget {
   }
 }
 
-/// Idle (empty query) panel — uses CustomScrollView + slivers to avoid
-/// the shrinkWrap GridView-inside-ListView layout penalty.
-class _SearchIdleState extends ConsumerWidget {
+/// Idle (empty query) panel — shows recent searches + pill selector
+/// (Artists | Genres | Albums) with a browsable grid.
+class _SearchIdleState extends ConsumerStatefulWidget {
   const _SearchIdleState({required this.onRecent});
   final void Function(String query) onRecent;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final genresAsync = ref.watch(allGenresProvider);
-    final genres = genresAsync.maybeWhen(
-      data: (g) => g,
-      orElse: () => const <AfGenre>[],
-    );
+  ConsumerState<_SearchIdleState> createState() => _SearchIdleStateState();
+}
+
+enum _IdleFilter { artists, genres, albums }
+
+extension on _IdleFilter {
+  String get label => switch (this) {
+    _IdleFilter.artists => 'Artists',
+    _IdleFilter.genres => 'Genres',
+    _IdleFilter.albums => 'Albums',
+  };
+}
+
+class _SearchIdleStateState extends ConsumerState<_SearchIdleState> {
+  _IdleFilter _filter = _IdleFilter.artists;
+
+  @override
+  Widget build(BuildContext context) {
     final recent = ref.watch(searchHistoryProvider);
+    final mode = ref.watch(appModeProvider);
+    final isLocal = mode == AppMode.local;
 
     return CustomScrollView(
       physics: const ClampingScrollPhysics(),
@@ -400,7 +415,7 @@ class _SearchIdleState extends ConsumerWidget {
                       ),
                       deleteIcon: const Icon(Icons.close_rounded, size: 16),
                       deleteIconColor: AfColors.textTertiary,
-                      onPressed: () => onRecent(q),
+                      onPressed: () => widget.onRecent(q),
                       onDeleted: () =>
                           ref.read(searchHistoryProvider.notifier).remove(q),
                     ),
@@ -409,49 +424,17 @@ class _SearchIdleState extends ConsumerWidget {
             ),
           ),
         ],
-        const SliverPadding(
-          padding: EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
           sliver: SliverToBoxAdapter(
-            child: SectionHeader(title: 'Genres', uppercase: true),
+            child: _IdleFilterPills(
+              selected: _filter,
+              onChanged: (v) => setState(() => _filter = v),
+            ),
           ),
         ),
         const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-          sliver: SliverGrid.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisExtent: 80,
-              crossAxisSpacing: AfSpacing.s12,
-              mainAxisSpacing: AfSpacing.s12,
-            ),
-            itemCount: genres.length,
-            itemBuilder: (context, i) {
-              final g = genres[i];
-              // Defensive color parsing — malformed server hex won't crash.
-              final tint = _parseTint(g.tint);
-              return GestureDetector(
-                onTap: () =>
-                    context.push('/genre/${Uri.encodeComponent(g.name)}'),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: tint,
-                    borderRadius: AfRadii.borderMd,
-                  ),
-                  padding: const EdgeInsets.all(AfSpacing.s12),
-                  alignment: Alignment.bottomLeft,
-                  child: Text(
-                    g.name,
-                    style: AfTypography.titleSmall.copyWith(
-                      color: AfColors.textOnPrimary,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s24)),
+        ..._buildGrid(isLocal),
         const SliverToBoxAdapter(
           child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
         ),
@@ -459,19 +442,198 @@ class _SearchIdleState extends ConsumerWidget {
     );
   }
 
-  /// Parse a hex color string from the server, falling back to indigo on error.
-  static Color _parseTint(String hex) {
-    try {
-      final cleaned = hex.replaceFirst('#', '');
-      if (cleaned.length != 6 && cleaned.length != 8) return AfColors.indigo600;
-      final value = int.parse(
-        cleaned.length == 6 ? 'FF$cleaned' : cleaned,
-        radix: 16,
-      );
-      return Color(value);
-    } catch (_) {
-      return AfColors.indigo600;
+  List<Widget> _buildGrid(bool isLocal) {
+    switch (_filter) {
+      case _IdleFilter.artists:
+        return [_ArtistIdleGrid(isLocal: isLocal)];
+      case _IdleFilter.genres:
+        return [_GenreIdleGrid(isLocal: isLocal)];
+      case _IdleFilter.albums:
+        return [_AlbumIdleGrid(isLocal: isLocal)];
     }
+  }
+}
+
+class _IdleFilterPills extends StatelessWidget {
+  const _IdleFilterPills({required this.selected, required this.onChanged});
+  final _IdleFilter selected;
+  final ValueChanged<_IdleFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _IdleFilter.values.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AfSpacing.s8),
+        itemBuilder: (context, i) {
+          final f = _IdleFilter.values[i];
+          final active = f == selected;
+          return GestureDetector(
+            onTap: () => onChanged(f),
+            child: AnimatedContainer(
+              duration: AfDurations.quick,
+              curve: AfCurves.easeStandard,
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+              decoration: BoxDecoration(
+                color: active ? AfColors.indigo600 : AfColors.surfaceRaised,
+                borderRadius: AfRadii.borderPill,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                f.label,
+                style: AfTypography.bodyMedium.copyWith(
+                  color: active
+                      ? AfColors.textOnPrimary
+                      : AfColors.textSecondary,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Parse a hex color string from the server, falling back to indigo on error.
+Color _parseTint(String hex) {
+  try {
+    final cleaned = hex.replaceFirst('#', '');
+    if (cleaned.length != 6 && cleaned.length != 8) return AfColors.indigo600;
+    final value = int.parse(
+      cleaned.length == 6 ? 'FF$cleaned' : cleaned,
+      radix: 16,
+    );
+    return Color(value);
+  } catch (_) {
+    return AfColors.indigo600;
+  }
+}
+
+class _ArtistIdleGrid extends ConsumerWidget {
+  const _ArtistIdleGrid({required this.isLocal});
+  final bool isLocal;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final provider = isLocal ? localArtistsProvider : allArtistsProvider;
+    final async = ref.watch(provider);
+    return async.when(
+      loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      data: (list) => SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+        sliver: SliverGrid.builder(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisExtent: 160,
+            crossAxisSpacing: AfSpacing.s12,
+            mainAxisSpacing: AfSpacing.s12,
+          ),
+          itemCount: list.length,
+          itemBuilder: (context, i) {
+            final a = list[i];
+            return Tile(
+              title: a.name,
+              subtitle: a.statLine,
+              variant: TileVariant.artist,
+              imageUrl: a.imageUrl,
+              size: double.infinity,
+              onTap: () => context.push('/artist/${a.id}'),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _GenreIdleGrid extends ConsumerWidget {
+  const _GenreIdleGrid({required this.isLocal});
+  final bool isLocal;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final provider = isLocal ? localGenresProvider : allGenresProvider;
+    final async = ref.watch(provider);
+    return async.when(
+      loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      data: (list) => SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+        sliver: SliverGrid.builder(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisExtent: 80,
+            crossAxisSpacing: AfSpacing.s12,
+            mainAxisSpacing: AfSpacing.s12,
+          ),
+          itemCount: list.length,
+          itemBuilder: (context, i) {
+            final g = list[i];
+            final tint = _parseTint(g.tint);
+            return GestureDetector(
+              onTap: () =>
+                  context.push('/genre/${Uri.encodeComponent(g.name)}'),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: tint,
+                  borderRadius: AfRadii.borderMd,
+                ),
+                padding: const EdgeInsets.all(AfSpacing.s12),
+                alignment: Alignment.bottomLeft,
+                child: Text(
+                  g.name,
+                  style: AfTypography.titleSmall.copyWith(
+                    color: AfColors.textOnPrimary,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _AlbumIdleGrid extends ConsumerWidget {
+  const _AlbumIdleGrid({required this.isLocal});
+  final bool isLocal;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final provider = isLocal ? localAlbumsProvider : allAlbumsProvider;
+    final async = ref.watch(provider);
+    return async.when(
+      loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      data: (list) => SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+        sliver: SliverGrid.builder(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisExtent: 220,
+            crossAxisSpacing: AfSpacing.s16,
+            mainAxisSpacing: AfSpacing.s16,
+          ),
+          itemCount: list.length,
+          itemBuilder: (context, i) {
+            final a = list[i];
+            return Tile(
+              title: a.name,
+              subtitle: a.artistName,
+              variant: TileVariant.album,
+              imageUrl: a.imageUrl,
+              size: double.infinity,
+              onTap: () => context.push('/album/${a.id}'),
+            );
+          },
+        ),
+      ),
+    );
   }
 }
 

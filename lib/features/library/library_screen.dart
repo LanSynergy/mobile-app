@@ -40,11 +40,14 @@ const _localSections = [
 ];
 
 class LibraryScreen extends ConsumerStatefulWidget {
-  const LibraryScreen({super.key, this.initialSection});
+  const LibraryScreen({super.key, this.initialSection, this.simpleMode = false});
 
   /// When set, the screen opens directly on this tab instead of Albums.
   /// Used by deep-links from Home (genre tiles → Genres, artists → Artists).
   final LibrarySection? initialSection;
+
+  /// When true, hides header, sort, and pill — shows only the selected section.
+  final bool simpleMode;
 
   @override
   ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
@@ -191,6 +194,18 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (widget.simpleMode)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AfSpacing.s16,
+                  AfSpacing.s8,
+                  AfSpacing.s16,
+                  0,
+                ),
+                child: Text('Songs', style: AfTypography.titleLarge),
+              ),
+            if (widget.simpleMode) const SizedBox(height: AfSpacing.s12)
+            else ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AfSpacing.s16,
@@ -258,6 +273,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               onChanged: (v) => setState(() => _section = v),
             ),
             const SizedBox(height: AfSpacing.s16),
+            ],
             Expanded(
               child: _SectionBody(
                 section: _section,
