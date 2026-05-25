@@ -10,7 +10,6 @@ import 'audio_device_manager.dart';
 import 'media_session_bridge.dart';
 import 'position_tracker.dart';
 import 'queue_manager.dart';
-import 'live_update_service.dart';
 
 import 'spectrum_settings.dart';
 
@@ -24,7 +23,7 @@ import 'spectrum_settings.dart';
 /// - [AfAsyncLock] is only used around [openAll] calls in playQueue
 ///   and setAfLoopMode, not for play/pause/seek.
 class AfPlayerService {
-  AfPlayerService() : _player = Player(), _testingMode = false {
+  AfPlayerService() : _player = Player() {
     _positionTracker = AfPositionTracker(
       player: _player,
       shouldAdvancePosition: () => shouldAdvancePosition,
@@ -94,9 +93,7 @@ class AfPlayerService {
   AfPlayerService.test({
     required PlayerApi player,
     NativeMediaSessionBridge? bridge,
-    bool testingMode = true,
-  }) : _player = player,
-       _testingMode = testingMode {
+  }) : _player = player {
     _positionTracker = AfPositionTracker(
       player: player,
       shouldAdvancePosition: () => shouldAdvancePosition,
@@ -182,11 +179,6 @@ class AfPlayerService {
 
   bool _userPaused = false;
   final AfAsyncLock _queueLock = AfAsyncLock();
-  final bool _testingMode;
-
-  DateTime _lastLiveUpdatePost = DateTime.fromMillisecondsSinceEpoch(0);
-  String? _lastLiveUpdateTrackId;
-  bool? _lastLiveUpdatePlaying;
 
   // ---------------------------------------------------------------------------
   // Public stream surface
@@ -869,9 +861,6 @@ class AfPlayerService {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    if (!_testingMode) {
-      unawaited(LiveUpdateService.stop());
-    }
     _bridge.dispose();
     _positionTracker.dispose();
     _queueManager.dispose();
@@ -1121,12 +1110,6 @@ class AfPlayerService {
         }
       }),
     );
-
-    _subs.add(
-      _positionTracker.positionStream.listen((_) {
-        unawaited(_updateLiveNotification());
-      }),
-    );
   }
 
   int _lastMediaSessionUpdateMs = 0;
@@ -1146,7 +1129,6 @@ class AfPlayerService {
     final track = _queueManager.currentTrack;
     if (track == null) {
       _bridge.clear();
-      unawaited(_updateLiveNotification());
       return;
     }
 
@@ -1212,73 +1194,6 @@ class AfPlayerService {
         isFavorite: track.isFavorite,
       ),
     );
-    unawaited(_updateLiveNotification());
-  }
-
-  Future<void> _updateLiveNotification({bool force = false}) async {
-    if (_disposed || _testingMode) return;
-    if (!await LiveUpdateService.isSupported()) return;
-
-    final track = _queueManager.currentTrack;
-    if (track == null) {
-      await LiveUpdateService.stop();
-      _lastLiveUpdateTrackId = null;
-      _lastLiveUpdatePlaying = null;
-      return;
-    }
-
-    final playing = _player.state.playing && !_isDucked;
-    final now = DateTime.now();
-
-    final trackChanged = _lastLiveUpdateTrackId != track.id;
-    final playingChanged = _lastLiveUpdatePlaying != playing;
-    final timePassed =
-        now.difference(_lastLiveUpdatePost) >= const Duration(seconds: 10);
-
-    if (!force &&
-        !trackChanged &&
-        !playingChanged &&
-        (!playing || !timePassed)) {
-      return;
-    }
-
-    _lastLiveUpdatePost = now;
-    _lastLiveUpdateTrackId = track.id;
-    _lastLiveUpdatePlaying = playing;
-
-    final artUri = _artworkManager.artUri(track);
-    final artPath = artUri != null && artUri.isScheme('file')
-        ? artUri.toFilePath()
-        : null;
-
-    final durationMs = _player.state.duration.inMilliseconds;
-    final positionMs = _positionTracker.lastKnownPosition.inMilliseconds;
-
-    final shortCriticalText =
-        '${LiveUpdateService.formatDuration(positionMs)} / '
-        '${LiveUpdateService.formatDuration(durationMs)}';
-
-    if (trackChanged) {
-      await LiveUpdateService.start(
-        title: track.title,
-        artist: track.artistName,
-        durationMs: durationMs > 0 ? durationMs : 1,
-        positionMs: positionMs,
-        isPlaying: playing,
-        shortCriticalText: shortCriticalText,
-        artworkPath: artPath,
-      );
-    } else {
-      await LiveUpdateService.update(
-        title: track.title,
-        artist: track.artistName,
-        durationMs: durationMs > 0 ? durationMs : 1,
-        positionMs: positionMs,
-        isPlaying: playing,
-        shortCriticalText: shortCriticalText,
-        artworkPath: artPath,
-      );
-    }
   }
 
   Future<void> _syncNextTrackInMpv() async {
