@@ -2,7 +2,7 @@
 
 ## 2026-05-25 — Workflow pipeline optimization
 *Goal:* Add verify gate, consolidate ledgers, fix formatting drift, add relative-position anchors and rolling ledger conventions
-*Commits:* f7dbbb2
+*Commits:* 9d4e346
 *Key decisions:* Use `dart format --set-exit-if-changed` for format gate before analysis, rolling ledger at `thoughts/workflow/CONTINUITY.md` with 5-entry pruning, relative-position anchors in plans instead of line numbers, `thoughts/.legacy/` for 30-day archive retention, formatting drift auto-fixed across 198 files
 
 ## 2026-05-25 — Scan progress UI + queue flush
