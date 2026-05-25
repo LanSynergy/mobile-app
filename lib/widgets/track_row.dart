@@ -22,6 +22,10 @@ enum TrackRowDensity { compact, comfortable, generous }
 ///
 /// Active rows render a 2dp left bar in `spectral.energy` and tint the
 /// background to `surface.base`.
+///
+/// When [steelBackground] is true, the row gets a frosted-glass steel
+/// look similar to [MiniPlayer] — semi-transparent white bg, rounded
+/// corners, subtle border.
 class TrackRow extends StatelessWidget {
   const TrackRow({
     super.key,
@@ -34,6 +38,7 @@ class TrackRow extends StatelessWidget {
     this.leadingNumber,
     this.showQualityChip = true,
     this.showHeart = true,
+    this.steelBackground = false,
   });
   final AfTrack track;
   final TrackRowDensity density;
@@ -44,6 +49,7 @@ class TrackRow extends StatelessWidget {
   final int? leadingNumber;
   final bool showQualityChip;
   final bool showHeart;
+  final bool steelBackground;
 
   @override
   Widget build(BuildContext context) {
@@ -88,15 +94,30 @@ class TrackRow extends StatelessWidget {
       onTap: onTap,
       onLongPress: onLongPress,
       child: Container(
-        height: height,
-        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s4),
+        height: height + (steelBackground ? 8 : 0),
+        padding: EdgeInsets.symmetric(
+          horizontal: steelBackground ? AfSpacing.s12 : AfSpacing.s4,
+        ),
         decoration: BoxDecoration(
-          color: isActive ? AfColors.surfaceBase : Colors.transparent,
-          borderRadius: AfRadii.borderSm,
+          color: steelBackground
+              ? (isActive
+                  ? Colors.white.withValues(alpha: 0.15)
+                  : Colors.white.withValues(alpha: 0.08))
+              : (isActive ? AfColors.surfaceBase : Colors.transparent),
+          borderRadius:
+              BorderRadius.circular(steelBackground ? AfRadii.lg : AfRadii.sm),
+          border: steelBackground
+              ? Border.all(
+                  color: isActive
+                      ? accent.withValues(alpha: 0.6)
+                      : AfColors.surfaceHigh.withValues(alpha: 0.5),
+                  width: 1,
+                )
+              : null,
         ),
         child: Row(
           children: [
-            if (isActive)
+            if (isActive && !steelBackground)
               Container(
                 width: 2,
                 height: artSize,
