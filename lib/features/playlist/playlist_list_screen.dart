@@ -53,8 +53,9 @@ class PlaylistListScreen extends ConsumerWidget {
                         size: 22,
                       ),
                       tooltip: 'Import M3U',
-                      onPressed: () =>
-                          ref.read(importM3UActionProvider).import(context: context),
+                      onPressed: () => ref
+                          .read(importM3UActionProvider)
+                          .import(context: context),
                     ),
                   ],
                 ),
@@ -118,9 +119,7 @@ class PlaylistListScreen extends ConsumerWidget {
       slivers.add(
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.s16,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
             child: ListTile(
               leading: Container(
                 width: 48,
@@ -134,10 +133,7 @@ class PlaylistListScreen extends ConsumerWidget {
                   color: AfColors.indigo300,
                 ),
               ),
-              title: Text(
-                'Smart Playlists',
-                style: AfTypography.titleSmall,
-              ),
+              title: Text('Smart Playlists', style: AfTypography.titleSmall),
               subtitle: Text(
                 '$smartCount playlists',
                 style: AfTypography.bodySmall.copyWith(

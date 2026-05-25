@@ -52,23 +52,23 @@ class BlurBottomSheet extends StatelessWidget {
             ),
           ),
           child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 12),
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AfColors.textTertiary.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AfColors.textTertiary.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(height: 12),
-                child,
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+              child,
+            ],
           ),
         ),
+      ),
     );
   }
 }

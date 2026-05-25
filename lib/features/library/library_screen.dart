@@ -40,7 +40,11 @@ const _localSections = [
 ];
 
 class LibraryScreen extends ConsumerStatefulWidget {
-  const LibraryScreen({super.key, this.initialSection, this.simpleMode = false});
+  const LibraryScreen({
+    super.key,
+    this.initialSection,
+    this.simpleMode = false,
+  });
 
   /// When set, the screen opens directly on this tab instead of Albums.
   /// Used by deep-links from Home (genre tiles → Genres, artists → Artists).
@@ -191,7 +195,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         onRefresh: _onRefresh,
         color: AfColors.indigo300,
         backgroundColor: AfColors.surfaceBase,
-          child: Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (widget.simpleMode)
@@ -204,75 +208,76 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 ),
                 child: Text('Songs', style: AfTypography.titleLarge),
               ),
-            if (widget.simpleMode) const SizedBox(height: AfSpacing.s12)
+            if (widget.simpleMode)
+              const SizedBox(height: AfSpacing.s12)
             else ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AfSpacing.s16,
-                AfSpacing.s8,
-                AfSpacing.s16,
-                AfSpacing.s16,
-              ),
-              child: Row(
-                children: [
-                  Text('Library', style: AfTypography.titleLarge),
-                  const Spacer(),
-                  if (_section == LibrarySection.playlists)
-                    IconButton(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AfSpacing.s16,
+                  AfSpacing.s8,
+                  AfSpacing.s16,
+                  AfSpacing.s16,
+                ),
+                child: Row(
+                  children: [
+                    Text('Library', style: AfTypography.titleLarge),
+                    const Spacer(),
+                    if (_section == LibrarySection.playlists)
+                      IconButton(
+                        icon: const Icon(
+                          LucideIcons.listPlus,
+                          color: AfColors.indigo400,
+                          size: 22,
+                        ),
+                        tooltip: 'Import M3U',
+                        onPressed: () => ref
+                            .read(importM3UActionProvider)
+                            .import(context: context),
+                      ),
+                    PopupMenuButton<LibrarySortOption>(
                       icon: const Icon(
-                        LucideIcons.listPlus,
-                        color: AfColors.indigo400,
+                        LucideIcons.arrowDownWideNarrow,
+                        color: AfColors.textPrimary,
                         size: 22,
                       ),
-                      tooltip: 'Import M3U',
-                      onPressed: () => ref
-                          .read(importM3UActionProvider)
-                          .import(context: context),
-                    ),
-                  PopupMenuButton<LibrarySortOption>(
-                    icon: const Icon(
-                      LucideIcons.arrowDownWideNarrow,
-                      color: AfColors.textPrimary,
-                      size: 22,
-                    ),
-                    tooltip: 'Sort',
-                    initialValue: _sortOption,
-                    onSelected: (option) {
-                      setState(() => _sortOption = option);
-                    },
-                    itemBuilder: (context) => LibrarySortOption.values
-                        .map(
-                          (option) => PopupMenuItem<LibrarySortOption>(
-                            value: option,
-                            child: Row(
-                              children: [
-                                if (_sortOption == option)
-                                  const Icon(
-                                    Icons.check,
-                                    size: 18,
-                                    color: AfColors.indigo400,
-                                  )
-                                else
-                                  const SizedBox(width: 18),
-                                const SizedBox(width: 8),
-                                Text(
-                                  option.label,
-                                  style: AfTypography.bodyMedium,
-                                ),
-                              ],
+                      tooltip: 'Sort',
+                      initialValue: _sortOption,
+                      onSelected: (option) {
+                        setState(() => _sortOption = option);
+                      },
+                      itemBuilder: (context) => LibrarySortOption.values
+                          .map(
+                            (option) => PopupMenuItem<LibrarySortOption>(
+                              value: option,
+                              child: Row(
+                                children: [
+                                  if (_sortOption == option)
+                                    const Icon(
+                                      Icons.check,
+                                      size: 18,
+                                      color: AfColors.indigo400,
+                                    )
+                                  else
+                                    const SizedBox(width: 18),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    option.label,
+                                    style: AfTypography.bodyMedium,
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ],
+                          )
+                          .toList(),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            _SegmentedPill(
-              value: _section,
-              onChanged: (v) => setState(() => _section = v),
-            ),
-            const SizedBox(height: AfSpacing.s16),
+              _SegmentedPill(
+                value: _section,
+                onChanged: (v) => setState(() => _section = v),
+              ),
+              const SizedBox(height: AfSpacing.s16),
             ],
             Expanded(
               child: _SectionBody(

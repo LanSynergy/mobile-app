@@ -87,7 +87,8 @@ final _router = GoRouter(
     if (effectiveMode == AppMode.local) {
       if (inOnboarding) {
         if (!_localOnboardingCompleted) {
-          if (loc != '/onboarding/local-setup') return '/onboarding/local-setup';
+          if (loc != '/onboarding/local-setup')
+            return '/onboarding/local-setup';
         } else {
           return '/home';
         }
@@ -163,14 +164,10 @@ final _router = GoRouter(
                       .where((s) => s.name == raw)
                       .firstOrNull;
                   return NoTransitionPage(
-                    child: LibraryScreen(
-                      initialSection: section,
-                    ),
+                    child: LibraryScreen(initialSection: section),
                   );
                 }
-                return const NoTransitionPage(
-                  child: SongsScreen(),
-                );
+                return const NoTransitionPage(child: SongsScreen());
               },
             ),
           ],
@@ -204,9 +201,7 @@ final _router = GoRouter(
       parentNavigatorKey: _rootKey,
       pageBuilder: (context, state) {
         final extra = state.extra;
-        return _NowPlayingPage(
-          miniRect: extra is Rect ? extra : null,
-        );
+        return _NowPlayingPage(miniRect: extra is Rect ? extra : null);
       },
     ),
     GoRoute(
@@ -348,7 +343,8 @@ class _NowPlayingPage extends Page<void> {
   @override
   Route<void> createRoute(BuildContext context) {
     final fullRect = Offset.zero & MediaQuery.of(context).size;
-    final startRect = miniRect ??
+    final startRect =
+        miniRect ??
         Rect.fromLTWH(12, fullRect.height * 0.82, fullRect.width - 24, 56);
 
     return PageRouteBuilder<void>(

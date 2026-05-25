@@ -1,4 +1,5 @@
 export 'app_mode_providers.dart';
+export 'audio_effects_providers.dart';
 export 'auth_providers.dart';
 export 'detail_providers.dart';
 export 'favorite_providers.dart';
