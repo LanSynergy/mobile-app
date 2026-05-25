@@ -1232,9 +1232,7 @@ class AfPlayerService {
     bridge.onToggleFavorite = () {
       onFavoriteToggled?.call();
     };
-    bridge.onShortcutAction = (String action) {
-      _handleShortcutAction(action);
-    };
+    bridge.onShortcutAction = _handleShortcutAction;
   }
 
   void _handleShortcutAction(String action) {
