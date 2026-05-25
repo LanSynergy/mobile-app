@@ -49,16 +49,30 @@ class AetherfinMediaSessionService : Service() {
     private var loopMode = "off"   // "off", "one", "all"
     private var isFavorite = false
 
+    // Playing state tracking for focus handling
+    private var isCurrentlyPlaying = false
+    private var wasPlayingBeforeFocusLoss = false
+
     private val afChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
-            AudioManager.AUDIOFOCUS_LOSS -> sendCommandToFlutter("pause")
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> sendCommandToFlutter("pause")
+            AudioManager.AUDIOFOCUS_LOSS -> {
+                wasPlayingBeforeFocusLoss = false
+                sendCommandToFlutter("pause")
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                wasPlayingBeforeFocusLoss = isCurrentlyPlaying
+                sendCommandToFlutter("pause")
+            }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                wasPlayingBeforeFocusLoss = isCurrentlyPlaying
                 sendCommandToFlutter("duck", mapOf("volume" to 0.2))
             }
             AudioManager.AUDIOFOCUS_GAIN -> {
                 sendCommandToFlutter("unduck")
-                sendCommandToFlutter("play")
+                if (wasPlayingBeforeFocusLoss) {
+                    sendCommandToFlutter("play")
+                    wasPlayingBeforeFocusLoss = false
+                }
             }
         }
     }
@@ -136,6 +150,7 @@ class AetherfinMediaSessionService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent != null && intent.action == ACTION_UPDATE_STATE) {
             val playing = intent.getBooleanExtra("playing", false)
+            isCurrentlyPlaying = playing
             val buffering = intent.getBooleanExtra("buffering", false)
             val positionMs = intent.getLongExtra("positionMs", 0L)
             val durationMs = intent.getLongExtra("durationMs", 0L)
