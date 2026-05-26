@@ -686,6 +686,7 @@ class AfPlayerService {
       'shuffleMode source=live enabled=$enabled '
           'queueSize=${_queueManager.currentQueue.length} currentIndex=${_queueManager.currentIndex}',
     );
+    _updateMediaSession();
   }
 
   Future<void> setAfLoopMode(Loop mode) async {
@@ -694,6 +695,7 @@ class AfPlayerService {
       try {
         await _player.setLoop(mode);
         afLog('data', 'loopMode source=live mode=${mode.name}');
+        _updateMediaSession();
       } catch (e, stack) {
         afLog('audio', 'setAfLoopMode failed', error: e, stackTrace: stack);
       }
@@ -1196,6 +1198,17 @@ class AfPlayerService {
     bridge.onStop = () => unawaited(stop());
     bridge.onSeek = (Duration pos) => unawaited(seek(pos));
     bridge.onSkipToQueueItem = (int idx) => unawaited(skipToQueueItem(idx));
+    bridge.onSetShuffleMode = (int shuffleMode) {
+      unawaited(setAfShuffleMode(shuffleMode == 1));
+    };
+    bridge.onSetRepeatMode = (int repeatMode) {
+      final mode = switch (repeatMode) {
+        1 => Loop.file,
+        2 => Loop.playlist,
+        _ => Loop.off,
+      };
+      unawaited(setAfLoopMode(mode));
+    };
     bridge.onDuck = (double targetVolume) {
       if (!_isDucked) {
         _preDuckVolume = _player.state.volume;

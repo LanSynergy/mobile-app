@@ -335,6 +335,20 @@ class AetherfinMediaSessionService : Service() {
             stateBuilder.setActiveQueueItemId(queueIndex.toLong())
         }
 
+        val androidShuffleMode = if (shuffleEnabled) {
+            PlaybackStateCompat.SHUFFLE_MODE_ALL
+        } else {
+            PlaybackStateCompat.SHUFFLE_MODE_NONE
+        }
+        mediaSession?.setShuffleMode(androidShuffleMode)
+
+        val androidRepeatMode = when (loopMode) {
+            "one" -> PlaybackStateCompat.REPEAT_MODE_ONE
+            "all" -> PlaybackStateCompat.REPEAT_MODE_ALL
+            else -> PlaybackStateCompat.REPEAT_MODE_NONE
+        }
+        mediaSession?.setRepeatMode(androidRepeatMode)
+
         mediaSession?.setPlaybackState(stateBuilder.build())
     }
 
