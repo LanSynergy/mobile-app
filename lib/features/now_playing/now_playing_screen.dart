@@ -63,10 +63,6 @@ class NowPlayingScreen extends ConsumerWidget {
     // Fallback top padding when the system reports 0 top padding (e.g. edge-to-edge status bar issue)
     final double extraTopPadding = topPadding == 0 ? 24.0 : 0.0;
 
-    final double screenHeight = MediaQuery.of(context).size.height;
-    // Dynamically scale artwork size based on screen height to prevent layout overflows on smaller viewports
-    final double artworkSize = (screenHeight * 0.35).clamp(180.0, 300.0);
-
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
@@ -76,25 +72,39 @@ class NowPlayingScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(
               horizontal: AfSpacing.gutterGenerous,
             ),
-            child: Column(
-              children: [
-                if (extraTopPadding > 0) SizedBox(height: extraTopPadding),
-                _TopBar(track: track),
-                const Spacer(),
-                UnconstrainedBox(
-                  clipBehavior: Clip.none,
-                  child: _ReactiveArtwork(track: track, size: artworkSize),
-                ),
-                const Spacer(),
-                _MetadataRow(track: track),
-                const SizedBox(height: AfSpacing.s16),
-                _ReactiveProgress(track: track),
-                const SizedBox(height: AfSpacing.s24),
-                _ReactiveTransport(track: track),
-                const SizedBox(height: AfSpacing.s24),
-                const UtilityRow(),
-                const SizedBox(height: AfSpacing.s16),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final double maxHeight = constraints.maxHeight;
+
+                // Adjust spacing tokens dynamically based on vertical space to prevent layout overflows
+                final double spacing16 = maxHeight < 620 ? 8.0 : (maxHeight < 720 ? 12.0 : 16.0);
+                final double spacing24 = maxHeight < 620 ? 12.0 : (maxHeight < 720 ? 18.0 : 24.0);
+
+                // Scale down artwork and scrubber heights if height budget is tight
+                final double artworkSize = (maxHeight * 0.35).clamp(160.0, 300.0);
+                final double scrubberHeight = (maxHeight * 0.15).clamp(80.0, 120.0);
+
+                return Column(
+                  children: [
+                    if (extraTopPadding > 0) SizedBox(height: extraTopPadding),
+                    _TopBar(track: track),
+                    const Spacer(),
+                    UnconstrainedBox(
+                      clipBehavior: Clip.none,
+                      child: _ReactiveArtwork(track: track, size: artworkSize),
+                    ),
+                    const Spacer(),
+                    _MetadataRow(track: track),
+                    SizedBox(height: spacing16),
+                    _ReactiveProgress(track: track, scrubberHeight: scrubberHeight),
+                    SizedBox(height: spacing24),
+                    _ReactiveTransport(track: track),
+                    SizedBox(height: spacing24),
+                    const UtilityRow(),
+                    SizedBox(height: spacing16),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -541,8 +551,9 @@ class _AbLoopButton extends ConsumerWidget {
 ///   onScrub    → local preview only (no seek, no audio pipeline churn)
 ///   onScrubEnd → single committed seek
 class _ReactiveProgress extends ConsumerStatefulWidget {
-  const _ReactiveProgress({required this.track});
+  const _ReactiveProgress({required this.track, this.scrubberHeight = 120.0});
   final AfTrack track;
+  final double scrubberHeight;
 
   @override
   ConsumerState<_ReactiveProgress> createState() => _ReactiveProgressState();
@@ -598,7 +609,7 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
           AudioVisualScrubber(
             progress: displayProgress,
             playedColor: spectral.energy,
-            height: 120,
+            height: widget.scrubberHeight,
             onScrub: (p) => setState(() {
               _isDragging = true;
               _scrubPreview = p;
