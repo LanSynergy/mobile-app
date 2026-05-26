@@ -38,12 +38,16 @@
 - `lastDisconnectionTimeMs` recorded on `ACTION_AUDIO_BECOMING_NOISY` to enable smart window-based auto-resume.
 - Bluetooth auto-resume only fires within 5 minutes of last disconnect and when service is not already playing.
 
-## 2026-05-25 — Namida-Inspired UX Refinements
-*Goal:* Complete the implementation of 5 UX refinements: Queue History, forNtimes loop, shuffle next, playlist undo, and M3U export/import.
-*Commits:* fa6177c
+## 2026-05-26 — Remove non-functional custom action buttons from notification
+*Goal:* Remove 3 custom action buttons (toggleShuffle, cycleRepeat, toggleFavorite) from notification/QS that never worked because Android requires a
+`MediaSession`-connected `MediaBrowserService` to route custom actions back to the app. Replace with standard `PlaybackState` API (setShuffleMode/setRepeatMode).
+*Commits:* 0df63c8
 *Key decisions:*
-- Queue History table persisted in SQLite via Drift DB v4 migration, auto-cleanup capped at 10 items.
-- forNtimes Loop intercept in player completed stream handler enables ntimes repetition before advancing.
-- Shuffle Next (shuffleTail) shuffles remaining queue tracks, leaving past tracks untouched.
-- M3U Export/Import utilizes a simplified self-contained temp storage and pasted text content dialog path.
-- All lints cleaned up to achieve 0 static analyzer issues and all 346 tests pass.
+- Kotlin: removed ACTION_TOGGLE_SHUFFLE/ACTION_CYCLE_REPEAT/ACTION_TOGGLE_FAVORITE constants and onCustomAction() handler.
+- Kotlin: wired stateBuilder.setShuffleMode/setRepeatMode instead. Added ACTION_SET_SHUFFLE_MODE/SET_REPEAT_MODE to supported actions.
+- Dart media_session_bridge: removed isFavorite from MediaSessionState, removed 3 custom action callbacks and dispatch.
+- Dart player_service: removed onFavoriteToggled (dead field).
+- Widget layout: removed widget_favorite ImageButton.
+- Widget provider: removed isFavorite extra reading and favorite icon sync.
+- Tests: removed 3 custom action tests from both media_session_bridge_test.dart and player_service_test.dart.
+- Full verify gate passed: 0 format issues, 0 analyze issues, all 350 tests pass.
