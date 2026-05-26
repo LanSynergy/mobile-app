@@ -1,13 +1,22 @@
 # Continuity Ledger
 
-## 2026-05-26 — Fix Shuffle Prefetch Mismatch
-*Goal:* Fix automatic track completion transitions playing the incorrect next track when shuffle is active.
-*Commits:* c8de5f3
+## 2026-05-26 — Native Lucide-based Standard Notification Actions for Shuffle and Repeat
+*Goal:* Resolve issue where shuffle and repeat controls do not appear on Android 13+ / Samsung One UI media notifications.
+*Commits:* 69a3e00
 *Key decisions:*
-- Corrected invalid `mpv` playlist properties (`playlist/current` and `playlist/count`) to the standard `playlist-pos` and `playlist-count` in `player_service.dart`.
-- Preserved shuffle mode in `play_actions.dart`'s `playQueue` call to prevent the queue-replacement action from overriding active shuffle states.
-- Corrected trigger order for shuffle button handlers in `playlist_screen.dart`, `smart_playlist_detail_screen.dart`, and `album_more_sheet.dart` to first load the new queue and then enable shuffle.
-- Verified and fixed tests in `player_service_test.dart` and `play_actions_queue_history_test.dart` to match updated properties and mocks.
+- Avoided using `PlaybackStateCompat.CustomAction` (which displays inconsistently across various device models/skins).
+- Added shuffle and repeat as standard `NotificationCompat.Action` buttons directly to `NotificationCompat.Builder` to construct a consistent 5-button layout (`[Shuffle] [Previous] [Play/Pause] [Next] [Repeat]`).
+- Kept the compact view (lock screen / collapsed drawer) to `Previous`, `Play/Pause`, and `Next` using `.setShowActionsInCompactView(1, 2, 3)`.
+- Created 5 custom Vector Drawables under `android/app/src/main/res/drawable/` using the exact stroke-based SVG paths from the project's Lucide icons.
+- Added custom underline indicator bars to active icons (`ic_shuffle_on`, `ic_repeat_all`, `ic_repeat_one`) and a diagonal slash to `ic_repeat_off` to ensure states are easily readable when tinted by the system UI.
+- Wired click events to trigger service broadcast intents that toggle the shuffle/loop state in Dart via the method channel.
+
+## 2026-05-26 — Fix 433px RenderFlex overflow in _MarqueeText
+*Goal:* Prevent overflow error when marquee title text scrolls beyond parent column's width constraint
+*Commits:* 25d3ad2
+*Key decisions:*
+- Wrapped the repeating Row (text + gap + text) in an `OverflowBox` to allow the animated marquee content to exceed the parent's width during scroll animation.
+- Still pending: the 243px RenderFlex overflow source in the metadata/transport row area.
 
 ## 2026-05-26 — Resolve CLAUDE.md Shuffle Contradictions
 *Goal:* Address user questions regarding mpv dependency in 2-track sliding window, resolve contradictions in `CLAUDE.md`, and clean up lint/formatting.
