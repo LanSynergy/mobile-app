@@ -112,6 +112,13 @@ class AetherfinMediaSessionService : Service() {
             sendCommandToFlutter("skipTo", mapOf("queueIndex" to id.toInt()))
         }
 
+        override fun onSetShuffleMode(shuffleMode: Int) {
+            sendCommandToFlutter("setShuffleMode", mapOf("shuffleMode" to shuffleMode))
+        }
+
+        override fun onSetRepeatMode(repeatMode: Int) {
+            sendCommandToFlutter("setRepeatMode", mapOf("repeatMode" to repeatMode))
+        }
     }
 
     override fun onCreate() {
@@ -310,24 +317,22 @@ class AetherfinMediaSessionService : Service() {
         // the queue ends.
         val effectiveSpeed = if (playing) speed.toFloat() else 0f
 
+        // Use ACTION_SET_SHUFFLE_MODE / ACTION_SET_REPEAT_MODE in the actions
+        // bitmask so Android renders the standard shuffle/repeat buttons in the
+        // notification and QS. When pressed, they route to onSetShuffleMode() /
+        // onSetRepeatMode() on the MediaSession callback below.
+        //
+        // Note: PlaybackStateCompat.Builder in androidx.media:media does not
+        // expose setShuffleMode()/setRepeatMode() builder methods, so the
+        // current toggle icon state is not encoded in PlaybackState. The
+        // notification buttons still work — they send the command to Flutter
+        // via MethodChannel, and the Dart side toggles the mode.
         val stateBuilder = PlaybackStateCompat.Builder()
             .setActions(actions)
             .setState(state, positionMs, effectiveSpeed, SystemClock.elapsedRealtime())
 
         if (queueIndex >= 0) {
             stateBuilder.setActiveQueueItemId(queueIndex.toLong())
-        }
-
-        // Use first-class shuffle/repeat mode API instead of custom actions.
-        // Custom actions (addCustomAction) are unreliable across OEM Android
-        // skins and the onCustomAction callback often doesn't route properly.
-        // setShuffleMode/setRepeatMode are standard PlaybackState fields
-        // properly handled by Android's notification/QS/lock-screen layer.
-        stateBuilder.setShuffleMode(if (shuffleEnabled) PlaybackStateCompat.SHUFFLE_MODE_ALL else PlaybackStateCompat.SHUFFLE_MODE_NONE)
-        when (loopMode) {
-            "one" -> stateBuilder.setRepeatMode(PlaybackStateCompat.REPEAT_MODE_ONE)
-            "all" -> stateBuilder.setRepeatMode(PlaybackStateCompat.REPEAT_MODE_ALL)
-            else -> stateBuilder.setRepeatMode(PlaybackStateCompat.REPEAT_MODE_NONE)
         }
 
         mediaSession?.setPlaybackState(stateBuilder.build())

@@ -73,6 +73,6 @@ flutter {
 dependencies {
     implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    implementation("androidx.media:media:1.6.0")
+    implementation("androidx.media:media:1.7.0")
     implementation("androidx.palette:palette-ktx:1.0.0")
 }
