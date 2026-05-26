@@ -414,6 +414,7 @@ class _MarqueeTextState extends State<_MarqueeText>
           _controller.repeat();
         }
 
+        final totalWidth = _offset + tp.width;
         return ClipRect(
           child: SizedBox(
             width: maxWidth,
@@ -425,13 +426,18 @@ class _MarqueeTextState extends State<_MarqueeText>
                   builder: (context, _) {
                     return Transform.translate(
                       offset: Offset(-_offset * _controller.value, 0),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(widget.text, maxLines: 1, style: widget.style),
-                          const SizedBox(width: 32),
-                          Text(widget.text, maxLines: 1, style: widget.style),
-                        ],
+                      child: OverflowBox(
+                        alignment: Alignment.centerLeft,
+                        minWidth: totalWidth,
+                        maxWidth: totalWidth,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(widget.text, maxLines: 1, style: widget.style),
+                            const SizedBox(width: 32),
+                            Text(widget.text, maxLines: 1, style: widget.style),
+                          ],
+                        ),
                       ),
                     );
                   },
