@@ -120,9 +120,11 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                     tracks: tracks,
                     onPlay: () =>
                         ref.read(playActionsProvider).playQueue(tracks),
-                    onShuffle: () {
-                      ref.read(playerServiceProvider).setAfShuffleMode(true);
-                      ref.read(playActionsProvider).playQueue(tracks);
+                    onShuffle: () async {
+                      await ref.read(playActionsProvider).playQueue(tracks);
+                      await ref
+                          .read(playerServiceProvider)
+                          .setAfShuffleMode(true);
                     },
                   ),
                 ),

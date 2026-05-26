@@ -59,8 +59,8 @@ void showAlbumMoreSheet(
             enabled: tracks.isNotEmpty,
             onTap: () async {
               Navigator.of(dialogCtx).pop();
-              await ref.read(playerServiceProvider).setAfShuffleMode(true);
               await ref.read(playActionsProvider).playAlbum(tracks);
+              await ref.read(playerServiceProvider).setAfShuffleMode(true);
             },
           ),
           _MenuItem(

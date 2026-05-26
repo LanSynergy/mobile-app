@@ -142,10 +142,11 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
                       ),
                       const SizedBox(width: AfSpacing.s8),
                       IconButton(
-                        onPressed: () {
-                          final svc = ref.read(playerServiceProvider);
-                          svc.setAfShuffleMode(true);
-                          ref.read(playActionsProvider).playQueue(tracks);
+                        onPressed: () async {
+                          await ref.read(playActionsProvider).playQueue(tracks);
+                          await ref
+                              .read(playerServiceProvider)
+                              .setAfShuffleMode(true);
                         },
                         icon: const Icon(Icons.shuffle_rounded),
                         color: AfColors.textSecondary,

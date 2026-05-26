@@ -46,6 +46,7 @@ class PlayActions {
     // Don't pre-shuffle here — let mpv's shuffle mode handle randomization.
     // Pre-shuffling corrupts _originalQueue so that toggling shuffle off
     // later restores to the shuffled order instead of the original.
+    final wasShuffleEnabled = svc.isShuffleEnabled == true;
     try {
       await svc.playQueue(
         tracks,
@@ -56,6 +57,9 @@ class PlayActions {
             ? const {}
             : (backend?.authHeaders ?? const {}),
       );
+      if (wasShuffleEnabled) {
+        await svc.setAfShuffleMode(true);
+      }
       ref.read(currentTrackProvider.notifier).state = tracks[safeIndex];
 
       // Save to queue history (non-critical — log warnings, don't throw)

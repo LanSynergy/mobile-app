@@ -1161,8 +1161,8 @@ class AfPlayerService {
 
     return _queueLock.run(() async {
       try {
-        final countStr = await _player.getRawProperty('playlist/count');
-        final currentStr = await _player.getRawProperty('playlist/current');
+        final countStr = await _player.getRawProperty('playlist-count');
+        final currentStr = await _player.getRawProperty('playlist-pos');
         if (countStr != null && currentStr != null) {
           final count = int.tryParse(countStr) ?? 0;
           final current = int.tryParse(currentStr) ?? 0;

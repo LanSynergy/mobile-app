@@ -24,6 +24,7 @@ void main() {
       final repo = QueueHistoryRepository(db);
       final mockSvc = MockPlayerService();
 
+      when(() => mockSvc.isShuffleEnabled).thenReturn(false);
       when(
         () => mockSvc.playQueue(
           any(),

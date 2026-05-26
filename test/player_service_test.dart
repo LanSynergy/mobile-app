@@ -789,10 +789,10 @@ void main() {
 
     test('setAfShuffleMode syncs next track in mpv playlist', () async {
       when(
-        () => player.getRawProperty('playlist/count'),
+        () => player.getRawProperty('playlist-count'),
       ).thenAnswer((_) async => '2');
       when(
-        () => player.getRawProperty('playlist/current'),
+        () => player.getRawProperty('playlist-pos'),
       ).thenAnswer((_) async => '0');
       when(() => player.sendRawCommand(any())).thenAnswer((_) async {});
       when(() => player.add(any())).thenAnswer((_) async {});
@@ -807,10 +807,10 @@ void main() {
       clearInteractions(player);
 
       when(
-        () => player.getRawProperty('playlist/count'),
+        () => player.getRawProperty('playlist-count'),
       ).thenAnswer((_) async => '2');
       when(
-        () => player.getRawProperty('playlist/current'),
+        () => player.getRawProperty('playlist-pos'),
       ).thenAnswer((_) async => '0');
       when(() => player.sendRawCommand(any())).thenAnswer((_) async {});
       when(() => player.add(any())).thenAnswer((_) async {});
