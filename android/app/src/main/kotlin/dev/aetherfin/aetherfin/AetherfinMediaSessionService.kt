@@ -38,6 +38,9 @@ class AetherfinMediaSessionService : Service() {
 
         @JvmStatic
         var isServicePlaying = false
+
+        @JvmStatic
+        var lastDisconnectionTimeMs: Long = 0L
     }
 
     private var mediaSession: MediaSessionCompat? = null
@@ -83,6 +86,7 @@ class AetherfinMediaSessionService : Service() {
     private val noisyReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (AudioManager.ACTION_AUDIO_BECOMING_NOISY == intent.action) {
+                lastDisconnectionTimeMs = System.currentTimeMillis()
                 sendCommandToFlutter("pause")
             }
         }
@@ -181,6 +185,7 @@ class AetherfinMediaSessionService : Service() {
                 putExtra("artist", artist)
                 putExtra("playing", playing)
                 putExtra("artPath", artPath)
+                putExtra("isFavorite", isFavorite)
             }
             sendBroadcast(widgetIntent)
 

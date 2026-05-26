@@ -14,7 +14,10 @@ class BluetoothReceiver : BroadcastReceiver() {
         when (intentAction) {
             BluetoothDevice.ACTION_ACL_CONNECTED -> {
                 val autoPlay = prefs.getBoolean("flutter.autoPlayOnBluetooth", false)
-                if (autoPlay) {
+                val timeSinceDisconnect = System.currentTimeMillis() - AetherfinMediaSessionService.lastDisconnectionTimeMs
+                val withinSmartWindow = timeSinceDisconnect in 0..300000 && !AetherfinMediaSessionService.isServicePlaying
+
+                if (autoPlay || withinSmartWindow) {
                     val playIntent = Intent(context, AetherfinMediaSessionService::class.java).apply {
                         action = Intent.ACTION_MEDIA_BUTTON
                         putExtra(Intent.EXTRA_KEY_EVENT, android.view.KeyEvent(
