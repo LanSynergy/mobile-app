@@ -28,6 +28,16 @@
 - Optimized SAF scanner to use direct cursor queries for 10-50x speedup.
 - Fixed shuffle auto-advance bug via `_syncNextTrackInMpv()`.
 
+## 2026-05-26 — Widget palette theming, favorite toggle, smart Bluetooth resume
+*Goal:* Implement home screen widget improvements including dynamic artwork-driven theming, favorite toggle, and smart Bluetooth auto-resume within 5-minute disconnect window.
+*Commits:* 9def7b1
+*Key decisions:*
+- Added `palette-ktx:1.0.0` dependency for artwork color extraction.
+- Widget background dynamically sets muted Palette color from album art with luminance-based text contrast.
+- Favorite button added to widget layout with star on/off state, wired via custom action to Dart's `toggleFavorite`.
+- `lastDisconnectionTimeMs` recorded on `ACTION_AUDIO_BECOMING_NOISY` to enable smart window-based auto-resume.
+- Bluetooth auto-resume only fires within 5 minutes of last disconnect and when service is not already playing.
+
 ## 2026-05-25 — Namida-Inspired UX Refinements
 *Goal:* Complete the implementation of 5 UX refinements: Queue History, forNtimes loop, shuffle next, playlist undo, and M3U export/import.
 *Commits:* fa6177c
@@ -37,11 +47,3 @@
 - Shuffle Next (shuffleTail) shuffles remaining queue tracks, leaving past tracks untouched.
 - M3U Export/Import utilizes a simplified self-contained temp storage and pasted text content dialog path.
 - All lints cleaned up to achieve 0 static analyzer issues and all 346 tests pass.
-
-## 2026-05-25 — Info-level lint cleanup + fatal info lints in CI
-*Goal:* Fix all 8 `curly_braces_in_flow_control_structures` info-level lints and make `flutter analyze` report info issues as fatal (remove `--no-fatal-infos`)
-*Commits:* 53ef709
-*Key decisions:*
-- Removed `--no-fatal-infos` from all 4 references in CLAUDE.md — info lints now block CI
-- Fixed 8 lint violations across 5 files: `smart_playlist_engine.dart`, `cast_picker_screen.dart`, `utility_row.dart`, `settings_sections.dart`, `save_to_playlist_sheet.dart`
-- Verify gate: `dart format` (dry-run) → `flutter analyze` → `flutter test` — all pass clean
