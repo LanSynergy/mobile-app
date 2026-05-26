@@ -121,6 +121,13 @@ class AetherfinMediaSessionService : Service() {
         override fun onSetRepeatMode(repeatMode: Int) {
             sendCommandToFlutter("setRepeatMode", mapOf("repeatMode" to repeatMode))
         }
+
+        override fun onCustomAction(action: String?, extras: android.os.Bundle?) {
+            when (action) {
+                "ACTION_SHUFFLE" -> sendCommandToFlutter("toggleShuffle")
+                "ACTION_REPEAT" -> sendCommandToFlutter("toggleRepeat")
+            }
+        }
     }
 
     override fun onCreate() {
@@ -369,6 +376,36 @@ class AetherfinMediaSessionService : Service() {
             else -> PlaybackStateCompat.REPEAT_MODE_NONE
         }
         mediaSession?.setRepeatMode(androidRepeatMode)
+
+        val shuffleIcon = if (shuffleEnabled) {
+            R.drawable.ic_shuffle_on
+        } else {
+            R.drawable.ic_shuffle_off
+        }
+        val shuffleLabel = if (shuffleEnabled) "Shuffle On" else "Shuffle Off"
+        val shuffleAction = PlaybackStateCompat.CustomAction.Builder(
+            "ACTION_SHUFFLE",
+            shuffleLabel,
+            shuffleIcon
+        ).build()
+        stateBuilder.addCustomAction(shuffleAction)
+
+        val repeatIcon = when (loopMode) {
+            "one" -> R.drawable.ic_repeat_one
+            "all" -> R.drawable.ic_repeat_all
+            else -> R.drawable.ic_repeat_off
+        }
+        val repeatLabel = when (loopMode) {
+            "one" -> "Repeat One"
+            "all" -> "Repeat All"
+            else -> "Repeat Off"
+        }
+        val repeatAction = PlaybackStateCompat.CustomAction.Builder(
+            "ACTION_REPEAT",
+            repeatLabel,
+            repeatIcon
+        ).build()
+        stateBuilder.addCustomAction(repeatAction)
 
         mediaSession?.setPlaybackState(stateBuilder.build())
     }
