@@ -288,4 +288,3 @@ class AutoplayToggle extends ConsumerWidget {
     );
   }
 }
-

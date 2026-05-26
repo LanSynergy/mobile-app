@@ -115,7 +115,6 @@ class AfPlayerService {
   void Function(AfTrack track)? onTrackCompleted;
   Future<List<AfTrack>> Function(AfTrack lastTrack)? onGetSimilarTracks;
 
-
   /// Fired when the user starts the app via the "Play Favorites" launcher shortcut.
   VoidCallback? onShortcutPlayFavorites;
 
@@ -1002,10 +1001,18 @@ class AfPlayerService {
                     await _rebuildWindow(current!);
 
                     autoplayTriggered = true;
-                    afLog('audio', 'autoplay: appended ${similar.length} tracks and continued playback');
+                    afLog(
+                      'audio',
+                      'autoplay: appended ${similar.length} tracks and continued playback',
+                    );
                   }
                 } catch (e, stack) {
-                  afLog('audio', 'autoplay check failed', error: e, stackTrace: stack);
+                  afLog(
+                    'audio',
+                    'autoplay check failed',
+                    error: e,
+                    stackTrace: stack,
+                  );
                 }
               }
             }
@@ -1030,26 +1037,25 @@ class AfPlayerService {
                   _updateMediaSession();
                   afLog('audio', 'queue end, auto-stop (loop=off)');
 
-              case Loop.playlist:
-                _queueManager.engine.jumpTo(0);
-                _positionTracker.onTrackChanged();
-                await _rebuildWindow(_queueManager.currentTrack!);
-                _updateMediaSession();
-                afLog('audio', 'queue end, looping playlist');
-              case Loop.file:
-                _positionTracker.onTrackChanged();
-                if (!playingAtEvent) {
-                  await _player.play();
-                }
-                afLog(
-                  'audio',
-                  'queue end, looping file — mpv handles internally',
-                );
+                case Loop.playlist:
+                  _queueManager.engine.jumpTo(0);
+                  _positionTracker.onTrackChanged();
+                  await _rebuildWindow(_queueManager.currentTrack!);
+                  _updateMediaSession();
+                  afLog('audio', 'queue end, looping playlist');
+                case Loop.file:
+                  _positionTracker.onTrackChanged();
+                  if (!playingAtEvent) {
+                    await _player.play();
+                  }
+                  afLog(
+                    'audio',
+                    'queue end, looping file — mpv handles internally',
+                  );
+              }
             }
           }
-        }
-      } catch (e, stack) {
-
+        } catch (e, stack) {
           afLog(
             'audio',
             'completed handler failed',

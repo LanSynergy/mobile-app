@@ -384,7 +384,6 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
 
-
             const SizedBox(height: AfSpacing.s16),
 
             // ── Advanced ───────────────────────────────────────────────
@@ -464,7 +463,6 @@ class SettingsScreen extends ConsumerWidget {
                           false;
                       await ref.read(authProvider.notifier).clear();
                       ref.invalidate(autoplayEnabledProvider);
-
 
                       if (context.mounted) {
                         context.go('/');

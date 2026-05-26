@@ -171,19 +171,25 @@ class TrackRepository {
     return rows.map(rowToTrack).toList();
   }
 
-  Future<List<AfTrack>> getSimilarTracks(String seedId, {int limit = 50}) async {
+  Future<List<AfTrack>> getSimilarTracks(
+    String seedId, {
+    int limit = 50,
+  }) async {
     final seed = await trackById(seedId);
     if (seed == null) return const [];
 
     final seedArtist = seed.artistName;
-    final seedRow = await (db.select(db.tracks)..where((t) => t.id.equals(seedId))).getSingleOrNull();
+    final seedRow = await (db.select(
+      db.tracks,
+    )..where((t) => t.id.equals(seedId))).getSingleOrNull();
     if (seedRow == null) return const [];
 
     final genre = seedRow.genre;
     final year = seedRow.year;
 
-    final rows = await db.customSelect(
-      r'''
+    final rows = await db
+        .customSelect(
+          r'''
       SELECT * FROM tracks
       WHERE id != ?1
       ORDER BY (
@@ -193,22 +199,22 @@ class TrackRepository {
       ) DESC, random()
       LIMIT ?5
       ''',
-      variables: [
-        Variable<String>(seedId),
-        Variable<String>(seedArtist),
-        Variable<String>(genre),
-        Variable<int>(year),
-        Variable<int>(limit),
-      ],
-      readsFrom: {db.tracks},
-    ).get();
+          variables: [
+            Variable<String>(seedId),
+            Variable<String>(seedArtist),
+            Variable<String>(genre),
+            Variable<int>(year),
+            Variable<int>(limit),
+          ],
+          readsFrom: {db.tracks},
+        )
+        .get();
 
     return rows.map((r) {
       final entity = db.tracks.map(r.data);
       return rowToTrack(entity);
     }).toList();
   }
-
 
   Future<List<AfTrack>> searchTracks(String query) async {
     final like = '%${escapeSqlLike(query)}%';

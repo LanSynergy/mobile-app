@@ -101,7 +101,6 @@ class LocalDb {
   Future<List<AfTrack>> getSimilarTracks(String seedId, {int limit = 50}) =>
       tracks.getSimilarTracks(seedId, limit: limit);
 
-
   Future<List<AfTrack>> searchTracks(String query) =>
       tracks.searchTracks(query);
 

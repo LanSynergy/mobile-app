@@ -114,7 +114,6 @@ class PlayerSettingsStore {
   static final kMaxBitrate = SettingsKey.intKey('af.max_bitrate_kbps');
   static final kAutoplayEnabled = SettingsKey.boolKey('af.autoplay_enabled');
 
-
   // Compound keys (custom JSON serialization)
   static const kAudioEffects = 'af.audio_effects_json';
   static const kEqPresets = 'af.eq_presets_json';
@@ -235,7 +234,6 @@ class PlayerSettingsStore {
   /// Load smart queue autoplay enabled state. Defaults to false.
   static Future<bool> loadAutoplayEnabled() async =>
       (await loadValue(kAutoplayEnabled)) ?? false;
-
 
   /// Serialize the user-visible audio effects to JSON and persist.
   static Future<void> saveAudioEffects(AudioEffects fx) async {

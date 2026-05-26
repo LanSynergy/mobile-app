@@ -1,3 +1,4 @@
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -107,20 +108,17 @@ void main() {
         );
       });
 
-      test(
-        'fires setAudioDevice at least once within 1 second',
-        () async {
+      test('fires setAudioDevice at least once within 1 second', () {
+        fakeAsync((async) {
           manager.nudge();
-          await Future<void>.delayed(const Duration(milliseconds: 500));
+          async.elapse(const Duration(milliseconds: 500));
 
           verify(() => player.setAudioDevice(any())).called(1);
-        },
-        timeout: const Timeout(Duration(seconds: 5)),
-      );
+        });
+      });
 
-      test(
-        'bails early and does not retry when already playing',
-        () async {
+      test('bails early and does not retry when already playing', () {
+        fakeAsync((async) {
           when(() => player.state).thenReturn(
             const PlayerState(
               playing: true,
@@ -134,17 +132,15 @@ void main() {
 
           manager.nudge();
           // Wait for first attempt (300ms) + some buffer
-          await Future<void>.delayed(const Duration(seconds: 2));
+          async.elapse(const Duration(seconds: 2));
 
           // Should fire exactly once and not retry (playing bail)
           verify(() => player.setAudioDevice(any())).called(1);
-        },
-        timeout: const Timeout(Duration(seconds: 10)),
-      );
+        });
+      });
 
-      test(
-        'retries when not playing — at least 2 calls within 2 seconds',
-        () async {
+      test('retries when not playing — at least 2 calls within 2 seconds', () {
+        fakeAsync((async) {
           when(() => player.state).thenReturn(
             const PlayerState(
               playing: false,
@@ -158,19 +154,17 @@ void main() {
 
           manager.nudge();
           // Wait for first (300ms) + second (1000ms) = 1300ms
-          await Future<void>.delayed(const Duration(seconds: 2));
+          async.elapse(const Duration(seconds: 2));
 
           expect(
             verify(() => player.setAudioDevice(any())).callCount,
             greaterThanOrEqualTo(2),
           );
-        },
-        timeout: const Timeout(Duration(seconds: 10)),
-      );
+        });
+      });
 
-      test(
-        'all 3 retries fire within 5 seconds when not playing',
-        () async {
+      test('all 3 retries fire within 5 seconds when not playing', () {
+        fakeAsync((async) {
           when(() => player.state).thenReturn(
             const PlayerState(
               playing: false,
@@ -184,19 +178,17 @@ void main() {
 
           manager.nudge();
           // Wait for all 3 retries (300 + 1000 + 2500 = 3800ms)
-          await Future<void>.delayed(const Duration(seconds: 5));
+          async.elapse(const Duration(seconds: 5));
 
           expect(
             verify(() => player.setAudioDevice(any())).callCount,
             greaterThanOrEqualTo(2),
           );
-        },
-        timeout: const Timeout(Duration(seconds: 10)),
-      );
+        });
+      });
 
-      test(
-        'selects non-auto device when current device is auto',
-        () async {
+      test('selects non-auto device when current device is auto', () {
+        fakeAsync((async) {
           when(() => player.state).thenReturn(
             const PlayerState(
               playing: false,
@@ -209,25 +201,26 @@ void main() {
           );
 
           manager.nudge();
-          await Future<void>.delayed(const Duration(milliseconds: 500));
+          async.elapse(const Duration(milliseconds: 500));
 
           verify(
             () => player.setAudioDevice(
               const Device(name: 'opensles', description: 'OpenSL ES'),
             ),
           ).called(1);
-        },
-        timeout: const Timeout(Duration(seconds: 5)),
-      );
+        });
+      });
 
-      test('does nothing after dispose', () async {
-        manager.dispose();
+      test('does nothing after dispose', () {
+        fakeAsync((async) {
+          manager.dispose();
 
-        manager.nudge();
-        await Future<void>.delayed(const Duration(milliseconds: 500));
+          manager.nudge();
+          async.elapse(const Duration(milliseconds: 500));
 
-        verifyNever(() => player.setAudioDevice(any()));
-      }, timeout: const Timeout(Duration(seconds: 5)));
+          verifyNever(() => player.setAudioDevice(any()));
+        });
+      });
     });
   });
 }

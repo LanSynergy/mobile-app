@@ -15,7 +15,6 @@ import 'music_backend_providers.dart';
 import 'settings_providers.dart';
 import '../utils/log.dart';
 
-
 void wirePlayerService(Ref ref, AfPlayerService svc) {
   svc.onTrackChanged = (track) {
     ref.read(currentTrackProvider.notifier).state = track;
@@ -55,13 +54,17 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
       final existingIds = svc.currentQueue.map((t) => t.id).toSet();
       return mix.where((t) => !existingIds.contains(t.id)).toList();
     } catch (e, stack) {
-      afLog('audio', 'failed to fetch autoplay tracks', error: e, stackTrace: stack);
+      afLog(
+        'audio',
+        'failed to fetch autoplay tracks',
+        error: e,
+        stackTrace: stack,
+      );
       return const <AfTrack>[];
     }
   };
 
   _startPositionPolling(ref, svc);
-
 
   final errorSub = svc.errorStream.listen((error) {
     ref.read(playbackErrorProvider.notifier).state = error;

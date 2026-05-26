@@ -1,3 +1,4 @@
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:aetherfin/core/local/playlist_undo_buffer.dart';
 
@@ -42,11 +43,13 @@ void main() {
       expect(action.trackIds, ['track-1', 'track-2']);
     });
 
-    test('auto-clears after 8 seconds', () async {
-      final buffer = PlaylistUndoBuffer();
-      buffer.pushRemove('pl-1', 'entry-1', 'track-1');
-      await Future.delayed(const Duration(seconds: 9));
-      expect(buffer.pop('pl-1'), isNull);
+    test('auto-clears after 8 seconds', () {
+      fakeAsync((async) {
+        final buffer = PlaylistUndoBuffer();
+        buffer.pushRemove('pl-1', 'entry-1', 'track-1');
+        async.elapse(const Duration(seconds: 9));
+        expect(buffer.pop('pl-1'), isNull);
+      });
     });
 
     test('newer action replaces older one for same playlist', () {

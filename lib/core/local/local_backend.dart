@@ -307,7 +307,6 @@ class LocalBackend implements MusicBackend {
     return _hydrateFavorites(tracks);
   }
 
-
   // ── Lyrics ────────────────────────────────────────────────────────
   //
   // Local mode has no centrally-managed LRC index. Sidecar .lrc

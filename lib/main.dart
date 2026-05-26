@@ -131,7 +131,6 @@ Future<void> main() async {
         'offlineCacheEnabled=$offlineCacheEnabled maxSize=$offlineCacheMaxSize maxBitrate=$maxBitrate autoplayEnabled=$autoplayEnabled',
       );
 
-
       // Resolve the app version once at boot so every HTTP client can stamp
       // its `User-Agent` and Jellyfin `Version="…"` header from a single
       // source of truth (pubspec.yaml → platform manifest → PackageInfo).

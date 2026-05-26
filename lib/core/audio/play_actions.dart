@@ -132,7 +132,6 @@ class PlayActions {
     }
   }
 
-
   String _computeSourceLabel(List<AfTrack> tracks) {
     if (tracks.isEmpty) return 'Unknown';
     final first = tracks.first;
