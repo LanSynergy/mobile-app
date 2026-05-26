@@ -1,5 +1,12 @@
 # Continuity Ledger
 
+## 2026-05-27 — Optimize slow unit tests with fakeAsync
+*Goal:* Speed up the unit test suite by eliminating real-world sleeps/delays (9s, 5s, 2s) using fakeAsync.
+*Commits:* f90cd37
+*Key decisions:*
+- Refactored `playlist_undo_buffer_test.dart` and `audio_device_manager_test.dart` to run under `fakeAsync`.
+- Replaced `Future.delayed` with synchronous `async.elapse()`, lowering run time from 50s+ to ~27s.
+
 ## 2026-05-26 — Native Lucide-based Standard Notification Actions for Shuffle and Repeat
 *Goal:* Resolve issue where shuffle and repeat controls do not appear on Android 13+ / Samsung One UI media notifications.
 *Commits:* 69a3e00
@@ -36,23 +43,3 @@
 - Implemented **Android 16 Live Updates** wrapper and streams binding.
 - Optimized SAF scanner to use direct cursor queries for 10-50x speedup.
 - Fixed shuffle auto-advance bug via `_syncNextTrackInMpv()`.
-
-## 2026-05-26 — Widget palette theming, favorite toggle, smart Bluetooth resume
-*Goal:* Implement home screen widget improvements including dynamic artwork-driven theming, favorite toggle, and smart Bluetooth auto-resume within 5-minute disconnect window.
-*Commits:* 9def7b1
-*Key decisions:*
-- Added `palette-ktx:1.0.0` dependency for artwork color extraction.
-- Widget background dynamically sets muted Palette color from album art with luminance-based text contrast.
-- Favorite button added to widget layout with star on/off state, wired via custom action to Dart's `toggleFavorite`.
-- `lastDisconnectionTimeMs` recorded on `ACTION_AUDIO_BECOMING_NOISY` to enable smart window-based auto-resume.
-- Bluetooth auto-resume only fires within 5 minutes of last disconnect and when service is not already playing.
-
-## 2026-05-26 — Fix build failure: remove nonexistent setShuffleMode/setRepeatMode on PlaybackStateCompat.Builder
-*Goal:* Fix build error caused by a prior edit that called `stateBuilder.setShuffleMode()`/`stateBuilder.setRepeatMode()` — methods that don't exist in `androidx.media:media` at any version (1.6.0, 1.7.0, or even platform `PlaybackState.Builder` on API 34/36). They are not part of the public API.
-*Commits:* 4aeb00c
-*Key decisions:*
-- Replaced nonexistent `stateBuilder.setShuffleMode()`/`stateBuilder.setRepeatMode()` (compile error) with standard `MediaSessionCompat.Callback.onSetShuffleMode()`/`onSetRepeatMode()` overrides.
-- The standard notification shuffle/repeat buttons still work — they now route to Flutter via MethodChannel as `setShuffleMode`/`setRepeatMode` commands.
-- Bumped `androidx.media:media` from 1.6.0 to 1.7.0.
-- Added `/build/` to `android/.gitignore` to prevent build artifacts from being committed.
-- Reverted `compileSdk` change — kept the original `flutter.compileSdkVersion` (the hardcoded `36` was not the cause of the error, and `compileSdk = 36` is the same value as flutter.compileSdkVersion for API 36).

@@ -492,3 +492,20 @@
 - [x] flutter analyze — 0 issues
 - [x] flutter test — all 350+ tests pass (no regressions)
 
+---
+
+# Unit Test Performance Optimization (May 2026)
+
+## Problem
+- Running unit tests was taking a long time due to real-world delays (9s, 5s, 2s) in `playlist_undo_buffer_test.dart` and `audio_device_manager_test.dart`, causing a slow test feedback loop.
+
+## Solution
+- Refactored `test/playlist_undo_buffer_test.dart` and `test/audio_device_manager_test.dart` to use `package:fake_async/fake_async.dart`.
+- Replaced real-time `await Future.delayed(...)` calls with synchronous `async.elapse(...)` calls, enabling the tests to execute instantly.
+- Reduced overall test suite run time from 50s+ to ~27s.
+
+## Quality
+- [x] flutter analyze — 0 issues
+- [x] flutter test — all 350 tests pass
+
+
