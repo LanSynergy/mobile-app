@@ -59,6 +59,14 @@ class NowPlayingScreen extends ConsumerWidget {
       );
     }
 
+    final double topPadding = MediaQuery.of(context).padding.top;
+    // Fallback top padding when the system reports 0 top padding (e.g. edge-to-edge status bar issue)
+    final double extraTopPadding = topPadding == 0 ? 24.0 : 0.0;
+
+    final double screenHeight = MediaQuery.of(context).size.height;
+    // Dynamically scale artwork size based on screen height to prevent layout overflows on smaller viewports
+    final double artworkSize = (screenHeight * 0.35).clamp(180.0, 300.0);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
@@ -70,11 +78,12 @@ class NowPlayingScreen extends ConsumerWidget {
             ),
             child: Column(
               children: [
+                if (extraTopPadding > 0) SizedBox(height: extraTopPadding),
                 _TopBar(track: track),
                 const Spacer(),
                 UnconstrainedBox(
                   clipBehavior: Clip.none,
-                  child: _ReactiveArtwork(track: track),
+                  child: _ReactiveArtwork(track: track, size: artworkSize),
                 ),
                 const Spacer(),
                 _MetadataRow(track: track),
@@ -122,8 +131,9 @@ class _ReactiveBackground extends ConsumerWidget {
 /// Bin 0 (kick drum / sub-bass) drives a ±8% scale bump via asymmetric lerp.
 /// ValueNotifier + Transform.scale — no setState, no rebuild of parent.
 class _ReactiveArtwork extends ConsumerStatefulWidget {
-  const _ReactiveArtwork({required this.track});
+  const _ReactiveArtwork({required this.track, required this.size});
   final AfTrack track;
+  final double size;
 
   @override
   ConsumerState<_ReactiveArtwork> createState() => _ReactiveArtworkState();
@@ -250,7 +260,7 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
           ),
           child: Artwork(
             url: widget.track.imageUrl,
-            size: 300,
+            size: widget.size,
             radius: AfRadii.borderLg,
           ),
         ),
@@ -769,6 +779,7 @@ class _TopBar extends ConsumerWidget {
                 ),
                 onPressed: () => Navigator.maybePop(context),
               ),
+              const SizedBox(width: AfSpacing.s8),
               Expanded(
                 // Tap the album label to jump to the album. Faster than
                 // ⋯ → Go to album. The popup menu still offers the same
@@ -800,6 +811,7 @@ class _TopBar extends ConsumerWidget {
                   ),
                 ),
               ),
+              const SizedBox(width: AfSpacing.s8),
               PopupMenuButton<_NowPlayingAction>(
                 icon: const Icon(
                   LucideIcons.ellipsis,
