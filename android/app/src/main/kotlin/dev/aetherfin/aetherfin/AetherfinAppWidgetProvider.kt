@@ -35,7 +35,6 @@ class AetherfinAppWidgetProvider : AppWidgetProvider() {
             val artist = intent.getStringExtra("artist")
             val playing = intent.getBooleanExtra("playing", false)
             val artPath = intent.getStringExtra("artPath")
-            val isFavorite = intent.getBooleanExtra("isFavorite", false)
 
             for (appWidgetId in appWidgetIds) {
                 val views = RemoteViews(context.packageName, R.layout.aetherfin_widget)
@@ -51,13 +50,6 @@ class AetherfinAppWidgetProvider : AppWidgetProvider() {
                     views.setImageViewResource(R.id.widget_play_pause, android.R.drawable.ic_media_pause)
                 } else {
                     views.setImageViewResource(R.id.widget_play_pause, android.R.drawable.ic_media_play)
-                }
-
-                // Favorite icon sync
-                if (isFavorite) {
-                    views.setImageViewResource(R.id.widget_favorite, android.R.drawable.btn_star_big_on)
-                } else {
-                    views.setImageViewResource(R.id.widget_favorite, android.R.drawable.btn_star_big_off)
                 }
 
                 // Artwork sync + Palette color extraction
@@ -107,7 +99,6 @@ class AetherfinAppWidgetProvider : AppWidgetProvider() {
                 views.setOnClickPendingIntent(R.id.widget_play_pause, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_PLAY_PAUSE))
                 views.setOnClickPendingIntent(R.id.widget_prev, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS))
                 views.setOnClickPendingIntent(R.id.widget_next, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_SKIP_TO_NEXT))
-                views.setOnClickPendingIntent(R.id.widget_favorite, getCustomActionIntent(context, AetherfinMediaSessionService.ACTION_TOGGLE_FAVORITE))
 
                 appWidgetManager.updateAppWidget(appWidgetId, views)
             }
@@ -130,22 +121,6 @@ class AetherfinAppWidgetProvider : AppWidgetProvider() {
         return PendingIntent.getService(
             context,
             action.toInt(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-    }
-
-    private fun getCustomActionIntent(context: Context, action: String): PendingIntent {
-        val intent = Intent(context, AetherfinMediaSessionService::class.java).apply {
-            this.action = Intent.ACTION_MEDIA_BUTTON
-            putExtra(Intent.EXTRA_KEY_EVENT, android.view.KeyEvent(
-                android.view.KeyEvent.ACTION_DOWN,
-                android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-            ))
-        }
-        return PendingIntent.getService(
-            context,
-            action.hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

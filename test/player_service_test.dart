@@ -747,46 +747,6 @@ void main() {
       verify(() => player.setVolume(1.0)).called(1);
     });
 
-    test(
-      'custom actions toggleShuffle, cycleRepeat, and toggleFavorite correctly',
-      () async {
-        expect(handler, isNotNull);
-
-        // Load a queue
-        await service.playQueue(
-          [trackA, trackB],
-          startIndex: 0,
-          resolveStreamUrl: resolveStreamUrl,
-        );
-        await Future<void>.delayed(Duration.zero);
-
-        // 1. toggleShuffle
-        expect(service.isShuffleEnabled, isFalse);
-        await handler!(const MethodCall('toggleShuffle'));
-        await Future<void>.delayed(Duration.zero);
-        expect(service.isShuffleEnabled, isTrue);
-
-        // 2. cycleRepeat
-        when(() => player.setLoop(any())).thenAnswer((_) async {});
-        // Currently state is const PlayerState(), which defaults to Loop.off.
-        updateState((s) => s.copyWith(loop: Loop.off));
-
-        await handler!(const MethodCall('cycleRepeat'));
-        await Future<void>.delayed(Duration.zero);
-        verify(() => player.setLoop(Loop.playlist)).called(1);
-
-        // 3. toggleFavorite
-        var favoriteToggledCalled = false;
-        service.onFavoriteToggled = () {
-          favoriteToggledCalled = true;
-        };
-
-        await handler!(const MethodCall('toggleFavorite'));
-        await Future<void>.delayed(Duration.zero);
-        expect(favoriteToggledCalled, isTrue);
-      },
-    );
-
     test('setAfShuffleMode syncs next track in mpv playlist', () async {
       when(
         () => player.getRawProperty('playlist-count'),

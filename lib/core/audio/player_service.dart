@@ -114,11 +114,6 @@ class AfPlayerService {
   void Function(AfTrack? track)? onTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
 
-  /// Fired from the native lockscreen/QS when the user taps the favorite
-  /// custom action. The UI layer should toggle the current track's favorite
-  /// status and call [_updateMediaSession] afterwards.
-  VoidCallback? onFavoriteToggled;
-
   /// Fired when the user starts the app via the "Play Favorites" launcher shortcut.
   VoidCallback? onShortcutPlayFavorites;
 
@@ -1150,7 +1145,6 @@ class AfPlayerService {
             artUri == null && _artworkManager.needsRemoteArtwork(track),
         shuffleEnabled: _queueManager.isShuffleEnabled,
         loopMode: loopModeStr,
-        isFavorite: track.isFavorite,
       ),
     );
   }
@@ -1214,23 +1208,6 @@ class AfPlayerService {
         unawaited(setVolume(_preDuckVolume));
         _isDucked = false;
       }
-    };
-    bridge.onToggleShuffle = () {
-      unawaited(setAfShuffleMode(!_queueManager.isShuffleEnabled));
-      _updateMediaSession();
-    };
-    bridge.onCycleRepeat = () {
-      final current = _player.state.loop;
-      final next = switch (current) {
-        Loop.off => Loop.playlist,
-        Loop.playlist => Loop.file,
-        Loop.file => Loop.off,
-      };
-      unawaited(setAfLoopMode(next));
-      _updateMediaSession();
-    };
-    bridge.onToggleFavorite = () {
-      onFavoriteToggled?.call();
     };
     bridge.onShortcutAction = _handleShortcutAction;
   }

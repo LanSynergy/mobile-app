@@ -23,7 +23,6 @@ class MediaSessionState {
     this.needsArtworkDownload = false,
     this.shuffleEnabled = false,
     this.loopMode = 'off',
-    this.isFavorite = false,
   });
   final bool playing;
   final bool buffering;
@@ -41,14 +40,13 @@ class MediaSessionState {
   /// so the owner can trigger remote artwork download for the current track.
   final bool needsArtworkDownload;
 
-  /// Whether shuffle mode is currently active.
+  /// Whether shuffle mode is currently active. Passed to native so it can
+  /// set [PlaybackStateCompat.setShuffleMode] via the standard API.
   final bool shuffleEnabled;
 
-  /// Current loop mode: 'off', 'one', or 'all'.
+  /// Current loop mode: 'off', 'one', or 'all'. Passed to native so it can
+  /// set [PlaybackStateCompat.setRepeatMode] via the standard API.
   final String loopMode;
-
-  /// Whether the current track is marked as a favorite.
-  final bool isFavorite;
 }
 
 /// Owns the [MethodChannel] for `aetherfin.media_session` and handles all
@@ -91,15 +89,6 @@ class NativeMediaSessionBridge {
   void Function(int)? onSkipToQueueItem;
   void Function(double)? onDuck;
   VoidCallback? onUnduck;
-
-  /// Fired from native when the user taps the shuffle custom action.
-  VoidCallback? onToggleShuffle;
-
-  /// Fired from native when the user taps the repeat custom action.
-  VoidCallback? onCycleRepeat;
-
-  /// Fired from native when the user taps the favorite custom action.
-  VoidCallback? onToggleFavorite;
 
   /// Fired when an Android App Shortcut launcher action is triggered.
   void Function(String)? onShortcutAction;
@@ -147,7 +136,6 @@ class NativeMediaSessionBridge {
       'queueSize': state.queueSize,
       'shuffleEnabled': state.shuffleEnabled,
       'loopMode': state.loopMode,
-      'isFavorite': state.isFavorite,
     };
 
     _channel.invokeMethod('updateState', args).catchError((Object e) {
@@ -210,12 +198,6 @@ class NativeMediaSessionBridge {
         onDuck?.call(volume);
       case 'unduck':
         onUnduck?.call();
-      case 'toggleShuffle':
-        onToggleShuffle?.call();
-      case 'cycleRepeat':
-        onCycleRepeat?.call();
-      case 'toggleFavorite':
-        onToggleFavorite?.call();
       case 'shortcutAction':
         final action = call.arguments as String?;
         if (action != null) {

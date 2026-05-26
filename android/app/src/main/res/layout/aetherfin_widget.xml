@@ -81,14 +81,6 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_media_next"
             android:contentDescription="Next" />
-
-        <ImageButton
-            android:id="@+id/widget_favorite"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/btn_star_big_off"
-            android:contentDescription="Favorite" />
     </LinearLayout>
 
 </RelativeLayout>
