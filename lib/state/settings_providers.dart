@@ -35,3 +35,7 @@ final offlineCacheMaxSizeProvider = StateProvider<int>((ref) {
 
 /// Max streaming bitrate in kbps. 0 means Original / Lossless.
 final maxBitrateProvider = StateProvider<int>((ref) => 0);
+
+/// Whether smart queue autoplay is enabled.
+final autoplayEnabledProvider = StateProvider<bool>((ref) => false);
+

@@ -268,3 +268,24 @@ class ArtworkPulseSwitch extends ConsumerWidget {
     );
   }
 }
+
+class AutoplayToggle extends ConsumerWidget {
+  const AutoplayToggle({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(autoplayEnabledProvider);
+    return SettingsSwitchTile(
+      icon: LucideIcons.radio,
+      iconColor: AfColors.textSecondary,
+      title: 'Autoplay similar tracks',
+      subtitle: 'Append recommendations when queue ends',
+      value: enabled,
+      onChanged: (v) {
+        ref.read(autoplayEnabledProvider.notifier).state = v;
+        unawaited(PlayerSettingsStore.saveAutoplayEnabled(v));
+      },
+    );
+  }
+}
+

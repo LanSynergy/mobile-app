@@ -461,3 +461,34 @@
 ## Quality
 - [x] flutter analyze — 0 issues
 - [x] flutter test — all tests pass (including new queue_manager_test.dart cases)
+
+---
+
+# Smart Queue & Autoplay (May 2026)
+
+## Problem
+- No autoplay logic existed when a playlist or the active playback queue finished; the player simply stopped, leading to a disconnected experience.
+- Tapping a single track (such as recently played) played only that single song and stopped, whereas a modern music player (like Spotify) should seed a continuous radio/mix of similar tracks.
+- Local mode lacked a real similarity query engine to back an instant mix (simply falling back to shuffling random songs from the same artist).
+
+## Solution
+- Persisted an **Autoplay similar tracks** user setting via `PlayerSettingsStore` and wired it into settings UI.
+- Hooked `onGetSimilarTracks` into the player completed event handler under `Loop.off` mode. When the queue finishes, similar tracks are requested from the active backend, appended to the queue, and playback is seamlessly continued.
+- Overrode `playSingle` to immediately trigger `playInstantMix` (seeding recommendations) when Autoplay is active.
+- Refactored Local Mode's similarity engine to run a scored SQL `customSelect` query directly in SQLite, scoring candidate tracks based on matching artist, album artist, genre, and close release era (+/- 5 years), returning recommendations in milliseconds.
+
+## Files Changed
+- `lib/core/audio/player_settings_store.dart` — descriptor and persistence functions for autoplay setting
+- `lib/state/settings_providers.dart` — provider for autoplay setting
+- `lib/main.dart` — load setting at boot and override provider
+- `lib/features/settings/settings_sections.dart` / `settings_screen.dart` — added UI toggle for Autoplay
+- `lib/core/local/local_db_tracks.dart` / `local_db.dart` — implemented scored similarity SQL query in Drift
+- `lib/core/local/local_backend.dart` — updated `instantMix` to query similar tracks
+- `lib/core/audio/player_service.dart` — added queue-end callback hook and play continuation logic
+- `lib/state/player_providers.dart` — wired completion recommendation fetch hook and filtered duplicate tracks
+- `lib/core/audio/play_actions.dart` — updated single play control to fetch recommendations if Autoplay is active
+
+## Quality
+- [x] flutter analyze — 0 issues
+- [x] flutter test — all 350+ tests pass (no regressions)
+

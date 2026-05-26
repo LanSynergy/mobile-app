@@ -113,6 +113,8 @@ class AfPlayerService {
 
   void Function(AfTrack? track)? onTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
+  Future<List<AfTrack>> Function(AfTrack lastTrack)? onGetSimilarTracks;
+
 
   /// Fired when the user starts the app via the "Play Favorites" launcher shortcut.
   VoidCallback? onShortcutPlayFavorites;
@@ -968,24 +970,66 @@ class AfPlayerService {
             }
           } else {
             // End of queue
-            switch (loopAtEvent) {
-              case Loop.off:
-                _userPaused = true;
-                _positionTracker.onStop();
+            var autoplayTriggered = false;
+            if (loopAtEvent == Loop.off && onGetSimilarTracks != null) {
+              final lastTrack = _queueManager.currentTrack;
+              if (lastTrack != null) {
                 try {
-                  await _player.stop();
+                  final similar = await onGetSimilarTracks!(lastTrack);
+                  if (similar.isNotEmpty) {
+                    for (final t in similar) {
+                      _queueManager.engine.append(t);
+                    }
+                    _queueManager.emitQueue();
+
+                    // Now the queue is extended! Slide and play the next track.
+                    _queueManager.engine.advanceIndex();
+                    _queueManager.engine.advanceWindow();
+                    _positionTracker.onTrackChanged();
+
+                    final current = _queueManager.currentTrack;
+                    if (current != null) {
+                      _queueManager.emitCurrentTrack(current);
+                      onTrackChanged?.call(current);
+                      unawaited(
+                        Future.microtask(() => onTrackCompleted?.call(current)),
+                      );
+                    }
+                    _updateMediaSession();
+                    unawaited(_reconfigureSpectrumOnTrackChange());
+
+                    // Rebuild window for the new track.
+                    await _rebuildWindow(current!);
+
+                    autoplayTriggered = true;
+                    afLog('audio', 'autoplay: appended ${similar.length} tracks and continued playback');
+                  }
                 } catch (e, stack) {
-                  afLog(
-                    'audio',
-                    'stop failed on queue completion',
-                    error: e,
-                    stackTrace: stack,
-                  );
+                  afLog('audio', 'autoplay check failed', error: e, stackTrace: stack);
                 }
-                _queueManager.endPlayback();
-                onTrackChanged?.call(null);
-                _updateMediaSession();
-                afLog('audio', 'queue end, auto-stop (loop=off)');
+              }
+            }
+
+            if (!autoplayTriggered) {
+              switch (loopAtEvent) {
+                case Loop.off:
+                  _userPaused = true;
+                  _positionTracker.onStop();
+                  try {
+                    await _player.stop();
+                  } catch (e, stack) {
+                    afLog(
+                      'audio',
+                      'stop failed on queue completion',
+                      error: e,
+                      stackTrace: stack,
+                    );
+                  }
+                  _queueManager.endPlayback();
+                  onTrackChanged?.call(null);
+                  _updateMediaSession();
+                  afLog('audio', 'queue end, auto-stop (loop=off)');
+
               case Loop.playlist:
                 _queueManager.engine.jumpTo(0);
                 _positionTracker.onTrackChanged();
@@ -1003,7 +1047,9 @@ class AfPlayerService {
                 );
             }
           }
-        } catch (e, stack) {
+        }
+      } catch (e, stack) {
+
           afLog(
             'audio',
             'completed handler failed',

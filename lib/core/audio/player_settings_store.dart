@@ -112,6 +112,8 @@ class PlayerSettingsStore {
     'af.offline_cache_max_size',
   );
   static final kMaxBitrate = SettingsKey.intKey('af.max_bitrate_kbps');
+  static final kAutoplayEnabled = SettingsKey.boolKey('af.autoplay_enabled');
+
 
   // Compound keys (custom JSON serialization)
   static const kAudioEffects = 'af.audio_effects_json';
@@ -225,6 +227,15 @@ class PlayerSettingsStore {
   /// Load max streaming bitrate in kbps. Defaults to 0 (Original / Lossless).
   static Future<int> loadMaxBitrate() async =>
       (await loadValue(kMaxBitrate)) ?? 0;
+
+  /// Persist smart queue autoplay enabled state.
+  static Future<void> saveAutoplayEnabled(bool enabled) async =>
+      saveValue(kAutoplayEnabled, enabled);
+
+  /// Load smart queue autoplay enabled state. Defaults to false.
+  static Future<bool> loadAutoplayEnabled() async =>
+      (await loadValue(kAutoplayEnabled)) ?? false;
+
 
   /// Serialize the user-visible audio effects to JSON and persist.
   static Future<void> saveAudioEffects(AudioEffects fx) async {

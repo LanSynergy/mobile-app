@@ -92,6 +92,8 @@ Smooth audio crossfade when transitioning between tracks (configurable duration)
 - [x] MoreItem icon/text vertical alignment fix
 - [x] Queue initial load capped to 30 forward tracks + overflow caching for shuffle
 - [x] `reorderQueue` allows insertion at end (index = length)
+- [x] Smart Queue & Spotify-like Autoplay Similar Tracks (supporting Local scored similarity query, Jellyfin InstantMix, and Navidrome similar songs)
+
 
 ## Code Quality
 - [x] All 363 info-level lints fixed — `flutter analyze --no-fatal-infos` reports 0 issues

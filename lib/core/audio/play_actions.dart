@@ -87,20 +87,27 @@ class PlayActions {
 
   Future<void> playAlbum(List<AfTrack> tracks) => playQueue(tracks);
 
-  Future<void> playSingle(AfTrack track) => playQueue([track], startIndex: 0);
+  Future<void> playSingle(AfTrack track) async {
+    final autoplay = ref.read(autoplayEnabledProvider);
+    if (autoplay) {
+      await playInstantMix(track);
+    } else {
+      await playQueue([track], startIndex: 0);
+    }
+  }
 
   /// Replace the queue with the seed track followed by [Jellyfin's Instant
   /// Mix](https://api.jellyfin.org/#tag/InstantMix/operation/GetInstantMixFromItem)
   /// of similar songs. Implements the user's "generate queue related song
   /// based on the song played" feature.
   ///
-  /// On signed-out / demo builds this falls back to `playSingle` because
-  /// there's no server to query — surfacing an error toast would be
+  /// On signed-out / demo builds this falls back to playing the single track
+  /// because there's no server to query — surfacing an error toast would be
   /// noisier than silently playing what we have.
   Future<void> playInstantMix(AfTrack seed) async {
     final backend = ref.read(musicBackendProvider);
     if (backend == null) {
-      await playSingle(seed);
+      await playQueue([seed], startIndex: 0);
       return;
     }
     try {
@@ -121,9 +128,10 @@ class PlayActions {
     } catch (e, stack) {
       afLog('audio', 'instantMix failed', error: e, stackTrace: stack);
       // Best-effort fallback: at least play the seed track.
-      await playSingle(seed);
+      await playQueue([seed], startIndex: 0);
     }
   }
+
 
   String _computeSourceLabel(List<AfTrack> tracks) {
     if (tracks.isEmpty) return 'Unknown';

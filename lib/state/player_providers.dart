@@ -13,6 +13,8 @@ import 'app_mode_providers.dart';
 import 'auth_providers.dart';
 import 'music_backend_providers.dart';
 import 'settings_providers.dart';
+import '../utils/log.dart';
+
 
 void wirePlayerService(Ref ref, AfPlayerService svc) {
   svc.onTrackChanged = (track) {
@@ -43,7 +45,23 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     unawaited(cache.cacheTrack(track.id, url, headers: backend.authHeaders));
   };
 
+  svc.onGetSimilarTracks = (lastTrack) async {
+    final autoplay = ref.read(autoplayEnabledProvider);
+    if (!autoplay) return const <AfTrack>[];
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) return const <AfTrack>[];
+    try {
+      final mix = await backend.instantMix(lastTrack.id, limit: 20);
+      final existingIds = svc.currentQueue.map((t) => t.id).toSet();
+      return mix.where((t) => !existingIds.contains(t.id)).toList();
+    } catch (e, stack) {
+      afLog('audio', 'failed to fetch autoplay tracks', error: e, stackTrace: stack);
+      return const <AfTrack>[];
+    }
+  };
+
   _startPositionPolling(ref, svc);
+
 
   final errorSub = svc.errorStream.listen((error) {
     ref.read(playbackErrorProvider.notifier).state = error;

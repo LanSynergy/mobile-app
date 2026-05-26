@@ -380,8 +380,10 @@ class SettingsScreen extends ConsumerWidget {
                   onTap: () => showGaplessDialog(context, ref),
                 ),
                 PrefetchToggle(svc: svc),
+                const AutoplayToggle(),
               ],
             ),
+
 
             const SizedBox(height: AfSpacing.s16),
 
@@ -461,6 +463,8 @@ class SettingsScreen extends ConsumerWidget {
                               .state =
                           false;
                       await ref.read(authProvider.notifier).clear();
+                      ref.invalidate(autoplayEnabledProvider);
+
 
                       if (context.mounted) {
                         context.go('/');
