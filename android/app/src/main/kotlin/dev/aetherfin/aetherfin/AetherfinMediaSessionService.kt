@@ -28,6 +28,8 @@ class AetherfinMediaSessionService : Service() {
 
     companion object {
         const val ACTION_UPDATE_STATE = "dev.aetherfin.aetherfin.UPDATE_STATE"
+        const val ACTION_TOGGLE_SHUFFLE = "dev.aetherfin.aetherfin.TOGGLE_SHUFFLE"
+        const val ACTION_TOGGLE_REPEAT = "dev.aetherfin.aetherfin.TOGGLE_REPEAT"
         const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "dev.aetherfin.audio"
 
@@ -145,6 +147,19 @@ class AetherfinMediaSessionService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent != null) {
+            when (intent.action) {
+                ACTION_TOGGLE_SHUFFLE -> {
+                    sendCommandToFlutter("toggleShuffle")
+                    return START_NOT_STICKY
+                }
+                ACTION_TOGGLE_REPEAT -> {
+                    sendCommandToFlutter("toggleRepeat")
+                    return START_NOT_STICKY
+                }
+            }
+        }
+
         if (intent != null && intent.action == ACTION_UPDATE_STATE) {
             val playing = intent.getBooleanExtra("playing", false)
             isCurrentlyPlaying = playing
@@ -175,7 +190,13 @@ class AetherfinMediaSessionService : Service() {
             }
             sendBroadcast(widgetIntent)
 
-            val notification = buildNotification(title, artist, album, playing, artPath, queueIndex > 0, queueIndex < queueSize - 1)
+            val notification = buildNotification(
+                title, artist, album, playing, artPath,
+                hasPrev = queueIndex > 0,
+                hasNext = queueIndex < queueSize - 1 && queueIndex >= 0,
+                shuffleEnabled = shuffleEnabled,
+                loopMode = loopMode
+            )
             
             if (playing) {
                 if (requestAudioFocus()) {
@@ -394,7 +415,9 @@ class AetherfinMediaSessionService : Service() {
         playing: Boolean,
         artPath: String?,
         hasPrev: Boolean,
-        hasNext: Boolean
+        hasNext: Boolean,
+        shuffleEnabled: Boolean = false,
+        loopMode: String = "off"
     ): Notification {
         createNotificationChannel()
 
@@ -433,8 +456,25 @@ class AetherfinMediaSessionService : Service() {
         )
         builder.setContentIntent(pendingIntent)
 
-        // Notification media control actions
-        val prevIntent = MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
+        // 1. Shuffle Action
+        val shuffleIcon = if (shuffleEnabled) R.drawable.ic_shuffle_on else R.drawable.ic_shuffle_off
+        val shuffleIntent = PendingIntent.getService(
+            this,
+            1,
+            Intent(this, AetherfinMediaSessionService::class.java).apply { action = ACTION_TOGGLE_SHUFFLE },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        builder.addAction(shuffleIcon, "Shuffle", shuffleIntent)
+
+        // 2. Previous Action
+        val prevIntent = if (hasPrev) {
+            MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
+        } else {
+            null
+        }
+        builder.addAction(android.R.drawable.ic_media_previous, "Previous", prevIntent)
+
+        // 3. Play/Pause Action
         val playPauseAction = if (playing) {
             NotificationCompat.Action(
                 android.R.drawable.ic_media_pause,
@@ -448,27 +488,33 @@ class AetherfinMediaSessionService : Service() {
                 MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PLAY)
             )
         }
-        val nextIntent = MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_NEXT)
-
-        var actionCount = 0
-        val compactIndices = ArrayList<Int>()
-
-        if (hasPrev) {
-            builder.addAction(android.R.drawable.ic_media_previous, "Previous", prevIntent)
-            compactIndices.add(actionCount++)
-        }
-
         builder.addAction(playPauseAction)
-        compactIndices.add(actionCount++) // Play/Pause is always present
 
-        if (hasNext) {
-            builder.addAction(android.R.drawable.ic_media_next, "Next", nextIntent)
-            compactIndices.add(actionCount++)
+        // 4. Next Action
+        val nextIntent = if (hasNext) {
+            MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_NEXT)
+        } else {
+            null
         }
+        builder.addAction(android.R.drawable.ic_media_next, "Next", nextIntent)
+
+        // 5. Repeat Action
+        val repeatIcon = when (loopMode) {
+            "one" -> R.drawable.ic_repeat_one
+            "all" -> R.drawable.ic_repeat_all
+            else -> R.drawable.ic_repeat_off
+        }
+        val repeatIntent = PendingIntent.getService(
+            this,
+            2,
+            Intent(this, AetherfinMediaSessionService::class.java).apply { action = ACTION_TOGGLE_REPEAT },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        builder.addAction(repeatIcon, "Repeat", repeatIntent)
 
         val style = androidx.media.app.NotificationCompat.MediaStyle()
             .setMediaSession(mediaSession?.sessionToken)
-            .setShowActionsInCompactView(*compactIndices.toIntArray())
+            .setShowActionsInCompactView(1, 2, 3)
 
         builder.setStyle(style)
         return builder.build()

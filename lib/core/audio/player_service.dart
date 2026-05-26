@@ -1209,6 +1209,17 @@ class AfPlayerService {
       };
       unawaited(setAfLoopMode(mode));
     };
+    bridge.onToggleShuffle = () {
+      unawaited(setAfShuffleMode(!_queueManager.isShuffleEnabled));
+    };
+    bridge.onToggleRepeat = () {
+      final mode = switch (_player.state.loop) {
+        Loop.off => Loop.playlist,
+        Loop.playlist => Loop.file,
+        Loop.file => Loop.off,
+      };
+      unawaited(setAfLoopMode(mode));
+    };
     bridge.onDuck = (double targetVolume) {
       if (!_isDucked) {
         _preDuckVolume = _player.state.volume;

@@ -89,6 +89,8 @@ class NativeMediaSessionBridge {
   void Function(int)? onSkipToQueueItem;
   void Function(int)? onSetShuffleMode;
   void Function(int)? onSetRepeatMode;
+  VoidCallback? onToggleShuffle;
+  VoidCallback? onToggleRepeat;
   void Function(double)? onDuck;
   VoidCallback? onUnduck;
 
@@ -205,6 +207,10 @@ class NativeMediaSessionBridge {
         if (repeatMode != null) {
           onSetRepeatMode?.call(repeatMode);
         }
+      case 'toggleShuffle':
+        onToggleShuffle?.call();
+      case 'toggleRepeat':
+        onToggleRepeat?.call();
       case 'duck':
         final volume = call.arguments?['volume'] as double? ?? 0.2;
         onDuck?.call(volume);
