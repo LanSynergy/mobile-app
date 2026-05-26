@@ -11,6 +11,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import android.os.Build
+import android.os.Bundle
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
@@ -21,6 +22,11 @@ class MainActivity : FlutterActivity() {
     }
 
     private var pendingShortcutAction: String? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        LauncherIconController.tryFixLauncherIconIfNeeded(this)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -38,6 +44,11 @@ class MainActivity : FlutterActivity() {
 
         channel.setMethodCallHandler { call, result ->
             when (call.method) {
+                "changeAppIcon" -> {
+                    val icon = call.argument<String>("icon") ?: "DefaultIcon"
+                    LauncherIconController.setIcon(this, icon)
+                    result.success(null)
+                }
                 "updateState" -> {
                     val intent = Intent(this, AetherfinMediaSessionService::class.java).apply {
                         action = AetherfinMediaSessionService.ACTION_UPDATE_STATE

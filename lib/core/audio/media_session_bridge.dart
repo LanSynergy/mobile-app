@@ -23,6 +23,7 @@ class MediaSessionState {
     this.needsArtworkDownload = false,
     this.shuffleEnabled = false,
     this.loopMode = 'off',
+    this.isFavorite = false,
   });
   final bool playing;
   final bool buffering;
@@ -47,6 +48,9 @@ class MediaSessionState {
   /// Current loop mode: 'off', 'one', or 'all'. Passed to native so it can
   /// set [PlaybackStateCompat.setRepeatMode] via the standard API.
   final String loopMode;
+
+  /// Whether the current track is marked as a favorite.
+  final bool isFavorite;
 }
 
 /// Owns the [MethodChannel] for `aetherfin.media_session` and handles all
@@ -91,6 +95,7 @@ class NativeMediaSessionBridge {
   void Function(int)? onSetRepeatMode;
   VoidCallback? onToggleShuffle;
   VoidCallback? onToggleRepeat;
+  VoidCallback? onToggleFavorite;
   void Function(double)? onDuck;
   VoidCallback? onUnduck;
 
@@ -140,6 +145,7 @@ class NativeMediaSessionBridge {
       'queueSize': state.queueSize,
       'shuffleEnabled': state.shuffleEnabled,
       'loopMode': state.loopMode,
+      'isFavorite': state.isFavorite,
     };
 
     _channel.invokeMethod('updateState', args).catchError((Object e) {
@@ -211,6 +217,8 @@ class NativeMediaSessionBridge {
         onToggleShuffle?.call();
       case 'toggleRepeat':
         onToggleRepeat?.call();
+      case 'toggleFavorite':
+        onToggleFavorite?.call();
       case 'duck':
         final volume = call.arguments?['volume'] as double? ?? 0.2;
         onDuck?.call(volume);

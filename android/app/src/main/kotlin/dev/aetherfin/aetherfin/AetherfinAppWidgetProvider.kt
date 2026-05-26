@@ -6,12 +6,11 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.support.v4.media.session.PlaybackStateCompat
 import android.widget.RemoteViews
-import androidx.core.graphics.ColorUtils
 import androidx.palette.graphics.Palette
+import androidx.core.graphics.ColorUtils
 import java.io.File
 
 class AetherfinAppWidgetProvider : AppWidgetProvider() {
@@ -35,6 +34,7 @@ class AetherfinAppWidgetProvider : AppWidgetProvider() {
             val artist = intent.getStringExtra("artist")
             val playing = intent.getBooleanExtra("playing", false)
             val artPath = intent.getStringExtra("artPath")
+            val isFavorite = intent.getBooleanExtra("isFavorite", false)
 
             for (appWidgetId in appWidgetIds) {
                 val views = RemoteViews(context.packageName, R.layout.aetherfin_widget)
@@ -52,8 +52,15 @@ class AetherfinAppWidgetProvider : AppWidgetProvider() {
                     views.setImageViewResource(R.id.widget_play_pause, android.R.drawable.ic_media_play)
                 }
 
-                // Artwork sync + Palette color extraction
-                var artworkBitmap: Bitmap? = null
+                // Favorite icon sync
+                if (isFavorite) {
+                    views.setImageViewResource(R.id.widget_favorite, android.R.drawable.btn_star_big_on)
+                } else {
+                    views.setImageViewResource(R.id.widget_favorite, android.R.drawable.btn_star_big_off)
+                }
+
+                // Artwork sync & Palette coloring
+                var widgetBgColor = 0xFF251F58.toInt() // default purple
                 if (!artPath.isNullOrEmpty()) {
                     try {
                         val file = File(artPath)
@@ -61,7 +68,10 @@ class AetherfinAppWidgetProvider : AppWidgetProvider() {
                             val bitmap = BitmapFactory.decodeFile(file.absolutePath)
                             if (bitmap != null) {
                                 views.setImageViewBitmap(R.id.widget_album_art, bitmap)
-                                artworkBitmap = bitmap
+                                
+                                // Extract colors using Palette API
+                                val palette = Palette.from(bitmap).generate()
+                                widgetBgColor = palette.getMutedColor(0xFF251F58.toInt())
                             } else {
                                 views.setImageViewResource(R.id.widget_album_art, android.R.drawable.ic_menu_gallery)
                             }
@@ -75,20 +85,10 @@ class AetherfinAppWidgetProvider : AppWidgetProvider() {
                     views.setImageViewResource(R.id.widget_album_art, android.R.drawable.ic_menu_gallery)
                 }
 
-                // Dynamic Palette theming
-                val defaultBgColor = 0xFF251F58.toInt() // Brand purple fallback
-                var widgetBgColor = defaultBgColor
-                if (artworkBitmap != null) {
-                    try {
-                        val palette = Palette.from(artworkBitmap).generate()
-                        widgetBgColor = palette.getMutedColor(defaultBgColor)
-                    } catch (e: Exception) {
-                        widgetBgColor = defaultBgColor
-                    }
-                }
+                // Apply background color dynamically
                 views.setInt(R.id.widget_root, "setBackgroundColor", widgetBgColor)
-
-                // Luminance-based text colors for accessibility
+                
+                // Dynamic contrast text styling
                 val isDark = ColorUtils.calculateLuminance(widgetBgColor) < 0.5
                 val titleColor = if (isDark) 0xFFFFFFFF.toInt() else 0xFF000000.toInt()
                 val artistColor = if (isDark) 0xFFAAAAAA.toInt() else 0xFF444444.toInt()
@@ -99,6 +99,7 @@ class AetherfinAppWidgetProvider : AppWidgetProvider() {
                 views.setOnClickPendingIntent(R.id.widget_play_pause, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_PLAY_PAUSE))
                 views.setOnClickPendingIntent(R.id.widget_prev, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS))
                 views.setOnClickPendingIntent(R.id.widget_next, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_SKIP_TO_NEXT))
+                views.setOnClickPendingIntent(R.id.widget_favorite, getServiceBroadcastIntent(context, AetherfinMediaSessionService.ACTION_TOGGLE_FAVORITE))
 
                 appWidgetManager.updateAppWidget(appWidgetId, views)
             }
@@ -126,12 +127,25 @@ class AetherfinAppWidgetProvider : AppWidgetProvider() {
         )
     }
 
+    private fun getServiceBroadcastIntent(context: Context, customAction: String): PendingIntent {
+        val intent = Intent(context, AetherfinMediaSessionService::class.java).apply {
+            this.action = customAction
+        }
+        return PendingIntent.getService(
+            context,
+            customAction.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
     private fun updateAppWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
         val views = RemoteViews(context.packageName, R.layout.aetherfin_widget)
         // Setup initial default views
         views.setOnClickPendingIntent(R.id.widget_play_pause, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_PLAY_PAUSE))
         views.setOnClickPendingIntent(R.id.widget_prev, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS))
         views.setOnClickPendingIntent(R.id.widget_next, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_SKIP_TO_NEXT))
+        views.setOnClickPendingIntent(R.id.widget_favorite, getServiceBroadcastIntent(context, AetherfinMediaSessionService.ACTION_TOGGLE_FAVORITE))
 
         appWidgetManager.updateAppWidget(appWidgetId, views)
     }

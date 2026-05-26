@@ -1,5 +1,7 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/audio/offline_cache_service.dart';
 import '../core/jellyfin/models/server.dart';
@@ -38,3 +40,28 @@ final maxBitrateProvider = StateProvider<int>((ref) => 0);
 
 /// Whether smart queue autoplay is enabled.
 final autoplayEnabledProvider = StateProvider<bool>((ref) => false);
+
+final appIconProvider = StateNotifierProvider<AppIconNotifier, String>((ref) {
+  return AppIconNotifier();
+});
+
+class AppIconNotifier extends StateNotifier<String> {
+  AppIconNotifier() : super('DefaultIcon') {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getString('af.app_icon') ?? 'DefaultIcon';
+  }
+
+  Future<void> setIcon(String iconName) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('af.app_icon', iconName);
+    state = iconName;
+    try {
+      const channel = MethodChannel('aetherfin.media_session');
+      await channel.invokeMethod('changeAppIcon', {'icon': iconName});
+    } catch (_) {}
+  }
+}

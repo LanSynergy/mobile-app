@@ -439,4 +439,12 @@ class AfQueueEngine {
       _windowStart = _currentIndex.clamp(0, _tracks.length - 1);
     }
   }
+
+  void updateTrackFavorite(String trackId, bool isFavorite) {
+    for (var i = 0; i < _tracks.length; i++) {
+      if (_tracks[i].id == trackId) {
+        _tracks[i] = _tracks[i].copyWith(isFavorite: isFavorite);
+      }
+    }
+  }
 }

@@ -114,6 +114,7 @@ class AfPlayerService {
   void Function(AfTrack? track)? onTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
   Future<List<AfTrack>> Function(AfTrack lastTrack)? onGetSimilarTracks;
+  VoidCallback? onToggleFavorite;
 
   /// Fired when the user starts the app via the "Play Favorites" launcher shortcut.
   VoidCallback? onShortcutPlayFavorites;
@@ -1199,6 +1200,7 @@ class AfPlayerService {
             artUri == null && _artworkManager.needsRemoteArtwork(track),
         shuffleEnabled: _queueManager.isShuffleEnabled,
         loopMode: loopModeStr,
+        isFavorite: track.isFavorite,
       ),
     );
   }
@@ -1286,6 +1288,12 @@ class AfPlayerService {
       }
     };
     bridge.onShortcutAction = _handleShortcutAction;
+    bridge.onToggleFavorite = () => onToggleFavorite?.call();
+  }
+
+  void updateTrackFavorite(String trackId, bool isFavorite) {
+    _queueManager.updateTrackFavorite(trackId, isFavorite);
+    _updateMediaSession();
   }
 
   void _handleShortcutAction(String action) {

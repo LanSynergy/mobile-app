@@ -49,6 +49,7 @@ void main() {
           artPath: '/tmp/cover.jpg',
           queueIndex: 0,
           queueSize: 10,
+          isFavorite: true,
         ),
       );
 
@@ -66,6 +67,7 @@ void main() {
       expect(call.arguments['artPath'], '/tmp/cover.jpg');
       expect(call.arguments['queueIndex'], 0);
       expect(call.arguments['queueSize'], 10);
+      expect(call.arguments['isFavorite'], isTrue);
     });
 
     test('pushState handles minimal state (no metadata)', () {
@@ -220,6 +222,22 @@ void main() {
         );
 
         expect(actionResult, 'play_favorites');
+      },
+    );
+
+    test(
+      'platform toggleFavorite call triggers onToggleFavorite callback',
+      () async {
+        var toggled = false;
+        bridge.onToggleFavorite = () {
+          toggled = true;
+        };
+
+        await bridge.handleMethodCall(
+          const MethodCall('toggleFavorite'),
+        );
+
+        expect(toggled, isTrue);
       },
     );
 

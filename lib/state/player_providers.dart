@@ -13,6 +13,7 @@ import 'app_mode_providers.dart';
 import 'auth_providers.dart';
 import 'music_backend_providers.dart';
 import 'settings_providers.dart';
+import 'favorite_providers.dart';
 import '../utils/log.dart';
 
 void wirePlayerService(Ref ref, AfPlayerService svc) {
@@ -26,6 +27,15 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
         : Duration.zero;
     ref.read(abLoopAProvider.notifier).state = null;
     ref.read(abLoopBProvider.notifier).state = null;
+  };
+
+  svc.onToggleFavorite = () async {
+    final track = ref.read(currentTrackProvider);
+    if (track != null) {
+      try {
+        await ref.read(favoriteToggleProvider)(track);
+      } catch (_) {}
+    }
   };
 
   svc.onTrackCompleted = (track) {
@@ -189,6 +199,9 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
       cancelTimer();
     } else if (prev == null && next != null) {
       ensureTimer();
+    }
+    if (next != null && prev?.isFavorite != next.isFavorite) {
+      svc.updateTrackFavorite(next.id, next.isFavorite);
     }
   });
 

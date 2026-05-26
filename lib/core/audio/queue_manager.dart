@@ -117,7 +117,13 @@ class AfQueueManager {
     _queueController.add(_engine.tracks);
   }
 
-  // ── Lifecycle ───────────────────────────────────────────────────
+  void updateTrackFavorite(String trackId, bool isFavorite) {
+    _engine.updateTrackFavorite(trackId, isFavorite);
+    if (_engine.currentTrack?.id == trackId) {
+      _trackController.add(_engine.currentTrack);
+    }
+    _queueController.add(_engine.tracks);
+  }
 
   void dispose() {
     _trackController.close();

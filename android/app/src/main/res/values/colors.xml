@@ -5,4 +5,7 @@
          same color. No flash, no white edges, no jarring jump. -->
     <color name="aetherfin_canvas">#FF0B0B14</color>
 	<color name="ic_launcher_background">#251F58</color>
+	<color name="ic_launcher_background_midnight">#0B0B14</color>
+	<color name="ic_launcher_background_nordic">#1B3A4B</color>
+	<color name="ic_launcher_background_sunset">#3B141A</color>
 </resources>

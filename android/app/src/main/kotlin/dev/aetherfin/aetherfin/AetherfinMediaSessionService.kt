@@ -30,6 +30,7 @@ class AetherfinMediaSessionService : Service() {
         const val ACTION_UPDATE_STATE = "dev.aetherfin.aetherfin.UPDATE_STATE"
         const val ACTION_TOGGLE_SHUFFLE = "dev.aetherfin.aetherfin.TOGGLE_SHUFFLE"
         const val ACTION_TOGGLE_REPEAT = "dev.aetherfin.aetherfin.TOGGLE_REPEAT"
+        const val ACTION_TOGGLE_FAVORITE = "dev.aetherfin.aetherfin.TOGGLE_FAVORITE"
         const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "dev.aetherfin.audio"
 
@@ -164,6 +165,10 @@ class AetherfinMediaSessionService : Service() {
                     sendCommandToFlutter("toggleRepeat")
                     return START_NOT_STICKY
                 }
+                ACTION_TOGGLE_FAVORITE -> {
+                    sendCommandToFlutter("toggleFavorite")
+                    return START_NOT_STICKY
+                }
             }
         }
 
@@ -183,6 +188,7 @@ class AetherfinMediaSessionService : Service() {
             val queueSize = intent.getIntExtra("queueSize", 0)
             val shuffleEnabled = intent.getBooleanExtra("shuffleEnabled", false)
             val loopMode = intent.getStringExtra("loopMode") ?: "off"
+            val isFavorite = intent.getBooleanExtra("isFavorite", false)
 
             updateMediaSessionState(playing, buffering, positionMs, durationMs, speed, queueIndex, queueSize, shuffleEnabled, loopMode)
             updateMediaSessionMetadata(title, artist, album, durationMs, artPath, queueIndex)
@@ -194,6 +200,7 @@ class AetherfinMediaSessionService : Service() {
                 putExtra("artist", artist)
                 putExtra("playing", playing)
                 putExtra("artPath", artPath)
+                putExtra("isFavorite", isFavorite)
             }
             sendBroadcast(widgetIntent)
 

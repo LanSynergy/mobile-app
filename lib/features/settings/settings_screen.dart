@@ -205,7 +205,23 @@ class SettingsScreen extends ConsumerWidget {
 
             // ── Appearance ─────────────────────────────────────────────
             const SettingsLabel('Appearance'),
-            const SettingsGroup(children: [ArtworkPulseSwitch()]),
+            SettingsGroup(
+              children: [
+                const ArtworkPulseSwitch(),
+                SettingsTile(
+                  icon: LucideIcons.smartphone,
+                  iconColor: AfColors.textSecondary,
+                  title: 'App icon',
+                  subtitle: switch (ref.watch(appIconProvider)) {
+                    'MidnightIcon' => 'Midnight',
+                    'NordicIcon' => 'Nordic',
+                    'SunsetIcon' => 'Sunset',
+                    _ => 'Default',
+                  },
+                  onTap: () => showAppIconDialog(context, ref),
+                ),
+              ],
+            ),
 
             const SizedBox(height: AfSpacing.s16),
 
