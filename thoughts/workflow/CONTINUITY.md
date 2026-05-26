@@ -38,16 +38,12 @@
 - `lastDisconnectionTimeMs` recorded on `ACTION_AUDIO_BECOMING_NOISY` to enable smart window-based auto-resume.
 - Bluetooth auto-resume only fires within 5 minutes of last disconnect and when service is not already playing.
 
-## 2026-05-26 — Remove non-functional custom action buttons from notification
-*Goal:* Remove 3 custom action buttons (toggleShuffle, cycleRepeat, toggleFavorite) from notification/QS that never worked because Android requires a
-`MediaSession`-connected `MediaBrowserService` to route custom actions back to the app. Replace with standard `PlaybackState` API (setShuffleMode/setRepeatMode).
-*Commits:* 0df63c8
+## 2026-05-26 — Fix build failure: remove nonexistent setShuffleMode/setRepeatMode on PlaybackStateCompat.Builder
+*Goal:* Fix build error caused by a prior edit that called `stateBuilder.setShuffleMode()`/`stateBuilder.setRepeatMode()` — methods that don't exist in `androidx.media:media` at any version (1.6.0, 1.7.0, or even platform `PlaybackState.Builder` on API 34/36). They are not part of the public API.
+*Commits:* 4aeb00c
 *Key decisions:*
-- Kotlin: removed ACTION_TOGGLE_SHUFFLE/ACTION_CYCLE_REPEAT/ACTION_TOGGLE_FAVORITE constants and onCustomAction() handler.
-- Kotlin: wired stateBuilder.setShuffleMode/setRepeatMode instead. Added ACTION_SET_SHUFFLE_MODE/SET_REPEAT_MODE to supported actions.
-- Dart media_session_bridge: removed isFavorite from MediaSessionState, removed 3 custom action callbacks and dispatch.
-- Dart player_service: removed onFavoriteToggled (dead field).
-- Widget layout: removed widget_favorite ImageButton.
-- Widget provider: removed isFavorite extra reading and favorite icon sync.
-- Tests: removed 3 custom action tests from both media_session_bridge_test.dart and player_service_test.dart.
-- Full verify gate passed: 0 format issues, 0 analyze issues, all 350 tests pass.
+- Replaced nonexistent `stateBuilder.setShuffleMode()`/`stateBuilder.setRepeatMode()` (compile error) with standard `MediaSessionCompat.Callback.onSetShuffleMode()`/`onSetRepeatMode()` overrides.
+- The standard notification shuffle/repeat buttons still work — they now route to Flutter via MethodChannel as `setShuffleMode`/`setRepeatMode` commands.
+- Bumped `androidx.media:media` from 1.6.0 to 1.7.0.
+- Added `/build/` to `android/.gitignore` to prevent build artifacts from being committed.
+- Reverted `compileSdk` change — kept the original `flutter.compileSdkVersion` (the hardcoded `36` was not the cause of the error, and `compileSdk = 36` is the same value as flutter.compileSdkVersion for API 36).
