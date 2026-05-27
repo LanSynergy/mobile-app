@@ -247,6 +247,18 @@ class _BlockNotifier extends ChangeNotifier {
   bool _fadingOut = false;
   bool _dirty = false;
 
+  // ── Transition buffer ──────────────────────────────────────────────
+  static const int _transitionCapacity = 20; // ~150ms at 8ms emit interval
+  final List<Float32List> _transitionBuffer = List<Float32List>.generate(
+    _transitionCapacity,
+    (_) => Float32List(bins),
+  );
+  int _transitionBufferIndex = 0;
+  bool _fadingIn = false;
+  int _fadeStep = 0;
+  int _fadeTotal = 0;
+  int _fadeOutFrames = 0;
+
   bool get hasEnergy => totalEnergy > 0.001;
 
   /// Updates bar data from engine bands. Does NOT call notifyListeners —
@@ -256,6 +268,25 @@ class _BlockNotifier extends ChangeNotifier {
     _fadingOut = false;
     if (bands.isEmpty) return;
     if (!_lutReady) _initLut();
+
+    // Copy raw frame into transition buffer (circular).
+    if (bands.length >= bins) {
+      _transitionBuffer[_transitionBufferIndex % _transitionCapacity].setAll(
+        0,
+        bands.sublist(0, bins),
+      );
+    } else {
+      _transitionBuffer[_transitionBufferIndex % _transitionCapacity].fillRange(
+        0,
+        bins,
+        0.0,
+      );
+      _transitionBuffer[_transitionBufferIndex % _transitionCapacity].setAll(
+        0,
+        bands,
+      );
+    }
+    _transitionBufferIndex++;
 
     double energy = 0.0;
     final int n = bands.length < bins ? bands.length : bins;
@@ -268,6 +299,26 @@ class _BlockNotifier extends ChangeNotifier {
     for (var i = n; i < bins; i++) {
       smoothed[i] = 0.0;
     }
+
+    // Handle fade-in blending.
+    if (_fadingIn) {
+      _fadeStep++;
+      if (_fadeStep >= _fadeTotal) {
+        _fadingIn = false;
+      } else {
+        final blendFactor = _fadeStep / _fadeTotal;
+        for (var i = 0; i < n; i++) {
+          final idx = (bands[i].clamp(0.0, 1.0) * (_lutSize - 1)).round();
+          final liveV = _pow10Lut[idx];
+          smoothed[i] = liveV * blendFactor;
+        }
+        energy = smoothed.take(n).fold(0.0, (a, b) => a + b);
+        totalEnergy = energy / bins;
+        _dirty = true;
+        return;
+      }
+    }
+
     totalEnergy = energy / bins;
     _dirty = true;
   }
@@ -289,10 +340,27 @@ class _BlockNotifier extends ChangeNotifier {
   /// Start the fade-out animation (called when audio goes silent).
   void startFadeOut() {
     _fadingOut = true;
+    _fadingIn = false;
     _dirty = false;
   }
 
   void _tickFadeOut() {
+    _fadeOutFrames++;
+
+    // Self-healing: if fade-out runs too long (>200ms), zero everything.
+    if (_fadeOutFrames > 13) {
+      for (var i = 0; i < bins; i++) {
+        smoothed[i] = 0.0;
+      }
+      totalEnergy = 0.0;
+      notifyListeners();
+      _fadingOut = false;
+      _fadingIn = true;
+      _fadeStep = 0;
+      _fadeTotal = 6; // ~50ms at 8ms emit
+      return;
+    }
+
     bool moving = false;
     double energy = 0.0;
 
@@ -308,7 +376,13 @@ class _BlockNotifier extends ChangeNotifier {
     totalEnergy = energy / bins;
     notifyListeners();
 
-    if (!moving) _fadingOut = false;
+    if (!moving) {
+      _fadingOut = false;
+      // Start fade-in for next data.
+      _fadingIn = true;
+      _fadeStep = 0;
+      _fadeTotal = 6; // ~50ms at 8ms emit
+    }
   }
 
   void clearTarget() {

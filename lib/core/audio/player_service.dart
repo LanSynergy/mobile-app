@@ -110,6 +110,7 @@ class AfPlayerService {
   late final AfQueueManager _queueManager;
   double _preDuckVolume = 1.0;
   bool _isDucked = false;
+  final Set<String> _prefetchSeenIds = <String>{};
 
   void Function(AfTrack? track)? onTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
@@ -873,6 +874,12 @@ class AfPlayerService {
     }
 
     await _player.openAll(urls, index: 0, play: !_userPaused);
+
+    // Mark the next track as seen so _syncNextTrackInMpv won't
+    // try to preload it again (avoiding a redundant playlist-remove + add).
+    if (next != null) {
+      _prefetchSeenIds.add(next.id);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1192,6 +1199,18 @@ class AfPlayerService {
     );
   }
 
+  /// Returns true if [trackId] should be preloaded into mpv's second slot.
+  ///
+  /// Prevents redundant prefetch: once a track has been loaded by
+  /// [_rebuildWindow] via openAll, we skip re-loading it when the same
+  /// track appears as the next item in _syncNextTrackInMpv, avoiding
+  /// a spurious playlist-remove + add cycle that can corrupt gapless.
+  bool _shouldPreload(String trackId) {
+    if (_prefetchSeenIds.contains(trackId)) return false;
+    _prefetchSeenIds.add(trackId);
+    return true;
+  }
+
   Future<void> _syncNextTrackInMpv() async {
     if (_disposed) return;
     if (_resolveStreamUrl == null) return;
@@ -1226,11 +1245,16 @@ class AfPlayerService {
           }
 
           final next = _queueManager.engine.nextTrack;
-          if (next != null) {
+          if (next != null && _shouldPreload(next.id)) {
             await _player.add(Media(_resolveStreamUrl!(next)));
             afLog(
               'audio',
               'syncNextTrackInMpv: preloaded next track "${next.title}"',
+            );
+          } else if (next != null) {
+            afLog(
+              'audio',
+              'syncNextTrackInMpv: skipped preload for "${next.title}" (already seen)',
             );
           } else {
             afLog('audio', 'syncNextTrackInMpv: no next track to preload');

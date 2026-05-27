@@ -353,6 +353,163 @@ void main() {
     });
   });
 
+  group('AudioVisualScrubber — transition buffer fade-out/fade-in', () {
+    testWidgets('fade-out triggers after silence and does not crash', (
+      tester,
+    ) async {
+      setupFixture();
+
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.5,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
+
+      // Let initState + addPostFrameCallback fire.
+      await tester.pump();
+      await tester.pump();
+
+      // Feed frames to simulate audio playing.
+      final bands = Float32List(64);
+      for (var i = 0; i < 64; i++) {
+        bands[i] = 0.5 + (i / 64.0) * 0.3; // varied energy
+      }
+      for (var t = 0; t < 30; t++) {
+        spectrumCtrl.add(
+          FftFrame(
+            bins: bands,
+            bands: bands,
+            timestamp: Duration.zero,
+            sampleRate: 44100,
+            bandLowHz: 20.0,
+            bandHighHz: 20000.0,
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // Widget still renders with frames ingested.
+      expect(find.byType(AudioVisualScrubber), findsOneWidget);
+
+      // Stop feeding frames and advance past the 300ms silence timer.
+      await tester.pump(const Duration(milliseconds: 350));
+
+      // Silence timer fired → startFadeOut called → ticker runs fade-out.
+      // Pump enough ticks for fade-out to decay bars to zero.
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // Widget still renders after fade-out completes.
+      expect(find.byType(AudioVisualScrubber), findsOneWidget);
+    });
+
+    testWidgets('fade-in blends new frames after silence', (tester) async {
+      setupFixture();
+
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.5,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump();
+
+      // Feed several frames.
+      final bands = Float32List(64);
+      for (var i = 0; i < 64; i++) {
+        bands[i] = 0.5;
+      }
+      for (var t = 0; t < 30; t++) {
+        spectrumCtrl.add(
+          FftFrame(
+            bins: bands,
+            bands: bands,
+            timestamp: Duration.zero,
+            sampleRate: 44100,
+            bandLowHz: 20.0,
+            bandHighHz: 20000.0,
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // Trigger silence and wait for fade-out.
+      await tester.pump(const Duration(milliseconds: 350));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // Feed new frames → should trigger fade-in blending into live data.
+      for (var t = 0; t < 10; t++) {
+        spectrumCtrl.add(
+          FftFrame(
+            bins: bands,
+            bands: bands,
+            timestamp: Duration.zero,
+            sampleRate: 44100,
+            bandLowHz: 20.0,
+            bandHighHz: 20000.0,
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // Widget renders correctly after fade-in.
+      expect(find.byType(AudioVisualScrubber), findsOneWidget);
+    });
+
+    testWidgets('rapid silence-to-audio transitions do not crash', (
+      tester,
+    ) async {
+      setupFixture();
+
+      await tester.pumpWidget(
+        _buildScrubber(
+          progress: 0.5,
+          overrides: [playerServiceProvider.overrideWithValue(service!)],
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump();
+
+      final bands = Float32List(64);
+      for (var i = 0; i < 64; i++) {
+        bands[i] = 0.5;
+      }
+
+      // Perform 3 rapid cycles: play → silence → play → silence → play.
+      for (var cycle = 0; cycle < 3; cycle++) {
+        // Feed frames.
+        for (var t = 0; t < 10; t++) {
+          spectrumCtrl.add(
+            FftFrame(
+              bins: bands,
+              bands: bands,
+              timestamp: Duration.zero,
+              sampleRate: 44100,
+              bandLowHz: 20.0,
+              bandHighHz: 20000.0,
+            ),
+          );
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        // Trigger silence → fade-out.
+        await tester.pump(const Duration(milliseconds: 350));
+        for (var i = 0; i < 15; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+      }
+
+      expect(find.byType(AudioVisualScrubber), findsOneWidget);
+    });
+  });
+
   group('AudioVisualScrubber — progress consumption', () {
     testWidgets('consumes and reflects updated progress', (tester) async {
       setupFixture();

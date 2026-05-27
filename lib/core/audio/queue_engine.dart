@@ -11,16 +11,12 @@ import '../jellyfin/models/items.dart';
 /// - Shuffle OFF: _shuffleOrder is null, direct index access.
 /// - Shuffle ON: _shuffleOrder[i] = original index in _tracks.
 /// - queue[i] = _tracks[_shuffleOrder[i]]
-///
-/// Window tracking: _windowStart is the _tracks index of mpv slot 0.
-/// Slot 0 = tracks[_windowStart], Slot 1 = tracks[_windowStart + 1].
 class AfQueueEngine {
   AfQueueEngine({Random? random}) : _random = random ?? Random();
 
   List<AfTrack> _tracks = <AfTrack>[];
   int _currentIndex = -1;
   List<int>? _shuffleOrder;
-  int _windowStart = 0;
   bool _playbackEnded = false;
 
   // ── forNtimes loop mode fields ────────────────────────────────────
@@ -44,7 +40,6 @@ class AfQueueEngine {
     return _shuffleOrder!.indexOf(_currentIndex);
   }
 
-  int get windowStart => _windowStart;
   bool get isShuffleEnabled => _shuffleOrder != null;
   bool get playbackEnded => _playbackEnded;
   bool get isForNtimes => _isForNtimes;
@@ -58,33 +53,11 @@ class AfQueueEngine {
       ? _tracks[_currentIndex]
       : null;
 
-  /// Track at mpv slot 0 (the currently-playing slot).
-  AfTrack? get windowSlot0 {
-    if (_windowStart < 0 || _windowStart >= _tracks.length) return null;
-    return trackAt(_windowStart);
-  }
-
-  /// Track at mpv slot 1 (the pre-decoded next track).
-  AfTrack? get windowSlot1 {
-    final idx = _windowStart + 1;
-    if (idx < 0 || idx >= _tracks.length) return null;
-    return trackAt(idx);
-  }
-
-  /// The next track that should be loaded into mpv after the current one.
+  /// The next track that should be loaded after the current one.
   AfTrack? get nextTrack {
     final nextIdx = currentIndex + 1;
     if (nextIdx < 0 || nextIdx >= _tracks.length) return null;
     return trackAt(nextIdx);
-  }
-
-  /// The index in [_tracks] of the "next next" track (for window replacement).
-  int get nextNextIndex => _windowStart + 2;
-
-  AfTrack? get nextNextTrack {
-    final idx = nextNextIndex;
-    if (idx < 0 || idx >= _tracks.length) return null;
-    return trackAt(idx);
   }
 
   bool get isAtQueueEnd {
@@ -102,10 +75,8 @@ class AfQueueEngine {
     _tracks = List<AfTrack>.of(tracks);
     if (_tracks.isEmpty) {
       _currentIndex = -1;
-      _windowStart = 0;
     } else {
       _currentIndex = startIndex.clamp(0, _tracks.length - 1);
-      _windowStart = _currentIndex;
     }
     _playbackEnded = false;
     _isTailShuffle = false;
@@ -125,7 +96,6 @@ class AfQueueEngine {
   void clear() {
     _tracks = <AfTrack>[];
     _currentIndex = -1;
-    _windowStart = 0;
     _shuffleOrder = null;
     _playbackEnded = false;
     _isForNtimes = false;
@@ -144,9 +114,7 @@ class AfQueueEngine {
     if (enabled) {
       _shuffleOrder = List<int>.generate(_tracks.length, (i) => i);
       _fisherYatesShuffle();
-      _windowStart = 0;
     } else {
-      _windowStart = _currentIndex >= 0 ? _currentIndex : 0;
       _shuffleOrder = null;
       _isTailShuffle = false;
     }
@@ -191,7 +159,7 @@ class AfQueueEngine {
         : null;
 
     // Build the mapping: shuffled position → original index.
-    // The current track stays at its current position (index 0 of window).
+    // The current track stays at its current position (index 0).
     final indices = List<int>.generate(_tracks.length, (i) => i);
     if (currentTrackId != null) {
       // Swap current track to front, shuffle the rest.
@@ -284,17 +252,7 @@ class AfQueueEngine {
     final clamped = logicalIndex.clamp(0, _tracks.length - 1);
     _currentIndex = physicalIndex(clamped);
     _resetRepeatsOnJump();
-    _windowStart = clamped;
     return currentIndex;
-  }
-
-  /// Advance the window start by 1 (called after a track completes).
-  /// Returns the new window start index.
-  int advanceWindow() {
-    if (_windowStart < _tracks.length - 1) {
-      _windowStart++;
-    }
-    return _windowStart;
   }
 
   // ── Queue mutations (all pure Dart, 0 mpv calls) ───────────────────
@@ -321,29 +279,12 @@ class AfQueueEngine {
       } else if (oldIndex > _currentIndex && insertIdx <= _currentIndex) {
         _currentIndex += 1;
       }
-      // WindowStart follows the same logic as currentIndex for reorder
-      if (_windowStart == oldIndex) {
-        _windowStart = insertIdx;
-      } else if (oldIndex < _windowStart && insertIdx >= _windowStart) {
-        _windowStart -= 1;
-      } else if (oldIndex > _windowStart && insertIdx <= _windowStart) {
-        _windowStart += 1;
-      }
 
       return insertIdx;
     } else {
       final physicalIdx = _shuffleOrder!.removeAt(oldIndex);
       final insertIdx = newIndex > oldIndex ? newIndex - 1 : newIndex;
       _shuffleOrder!.insert(insertIdx, physicalIdx);
-
-      // Adjust _windowStart (logical)
-      if (_windowStart == oldIndex) {
-        _windowStart = insertIdx;
-      } else if (oldIndex < _windowStart && insertIdx >= _windowStart) {
-        _windowStart -= 1;
-      } else if (oldIndex > _windowStart && insertIdx <= _windowStart) {
-        _windowStart += 1;
-      }
 
       return insertIdx;
     }
@@ -375,14 +316,6 @@ class AfQueueEngine {
       if (_currentIndex > physicalIdx) {
         _currentIndex--;
       }
-
-      // Adjust _windowStart (logical)
-      final logicalCurrentIndex = _shuffleOrder!.indexOf(_currentIndex);
-      if (_windowStart > index) {
-        _windowStart--;
-      } else if (_windowStart == index) {
-        _windowStart = logicalCurrentIndex.clamp(0, _shuffleOrder!.length - 1);
-      }
     }
   }
 
@@ -394,18 +327,11 @@ class AfQueueEngine {
       if (clamped <= _currentIndex) {
         _currentIndex++;
       }
-      if (clamped <= _windowStart) {
-        _windowStart++;
-      }
     } else {
       final clampedLogical = index.clamp(0, _shuffleOrder!.length);
       _tracks.add(track);
       final newPhysicalIndex = _tracks.length - 1;
       _shuffleOrder!.insert(clampedLogical, newPhysicalIndex);
-
-      if (clampedLogical <= _windowStart) {
-        _windowStart++;
-      }
     }
   }
 
@@ -417,14 +343,6 @@ class AfQueueEngine {
     }
   }
 
-  /// Call when the slot to replace on track completion changes.
-  /// Returns the index of the track that should replace the finished slot.
-  int slotToReplace(int mpvPlayingSlotIndex) {
-    // mpvPlayingSlotIndex is 0 or 1 (the slot mpv is currently playing).
-    // Replace the OTHER slot.
-    return 1 - mpvPlayingSlotIndex;
-  }
-
   // ── Internal helpers ───────────────────────────────────────────────
 
   void _adjustIndicesAfterRemove(int removedIndex, int? insertedAt) {
@@ -432,11 +350,6 @@ class AfQueueEngine {
       _currentIndex--;
     } else if (_currentIndex == removedIndex) {
       // Can't remove current track — this shouldn't happen with canRemove guard.
-    }
-    if (_windowStart > removedIndex) {
-      _windowStart--;
-    } else if (_windowStart == removedIndex) {
-      _windowStart = _currentIndex.clamp(0, _tracks.length - 1);
     }
   }
 
