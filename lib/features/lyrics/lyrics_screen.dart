@@ -26,12 +26,13 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
 
   /// Estimated height of a single lyric row in logical pixels.
   ///
-  /// Derived from the `titleMedium` line height (~24 dp) plus the
-  /// symmetric 8 dp vertical padding applied to each item = 40 dp.
+  /// `titleMedium` uses a 20 dp font with a 26 / 20 height ratio
+  /// (line height = 26 dp). Each row has symmetric 8 dp vertical
+  /// padding, so the total row is 26 + 8 + 8 = 42 dp.
   /// Used to compute the scroll target without needing a GlobalKey on
   /// every row. Lyric lines are uniform height so the estimate is
   /// accurate enough to keep the active line centred.
-  static const double _rowHeight = 40.0;
+  static const double _rowHeight = 42.0;
 
   /// Index of the active line on the previous build. Used to skip the
   /// scroll animation when the index hasn't actually changed (e.g. the
@@ -102,11 +103,14 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
       return;
     }
 
-    // Target offset: top of the active row minus half the viewport so
-    // the row lands in the centre. Add half a row height to centre on
-    // the row's midpoint rather than its top edge.
+    // The ListView has vertical: AfSpacing.s24 padding. Account for
+    // that so the scroll offset lands on the correct item position.
+    const paddingTop = AfSpacing.s24;
     final target =
-        (activeIndex * _rowHeight) - (viewportHeight / 2) + (_rowHeight / 2);
+        paddingTop +
+        (activeIndex * _rowHeight) -
+        (viewportHeight / 2) +
+        (_rowHeight / 2);
     final clamped = target.clamp(minScroll, maxScroll);
 
     _scrollController.animateTo(
