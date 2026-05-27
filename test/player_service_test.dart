@@ -133,9 +133,9 @@ void main() {
         resolveStreamUrl: resolveStreamUrl,
       );
 
-      // Should have opened all tracks in mpv (original design: openAll for ≤5).
+      // Should have opened single track in mpv.
       verify(
-        () => player.openAll(any(that: hasLength(2)), index: 0, play: true),
+        () => player.openAll(any(that: hasLength(1)), index: 0, play: true),
       ).called(1);
 
       // Current track should be set immediately from Dart state.
@@ -245,6 +245,8 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(service.currentTrack?.id, equals('2'));
 
+      clearInteractions(player);
+
       await service.setAfLoopMode(Loop.playlist);
 
       when(
@@ -267,7 +269,7 @@ void main() {
       expect(service.currentTrack?.id, equals('1'));
       verify(
         () => player.openAll(
-          any(that: hasLength(2)),
+          any(that: hasLength(1)),
           index: 0,
           play: any(named: 'play'),
         ),
@@ -756,42 +758,6 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       verify(() => player.setVolume(1.0)).called(1);
-    });
-
-    test('setAfShuffleMode syncs next track in mpv playlist', () async {
-      when(
-        () => player.getRawProperty('playlist-count'),
-      ).thenAnswer((_) async => '2');
-      when(
-        () => player.getRawProperty('playlist-pos'),
-      ).thenAnswer((_) async => '0');
-      when(() => player.sendRawCommand(any())).thenAnswer((_) async {});
-      when(() => player.add(any())).thenAnswer((_) async {});
-
-      await service.playQueue(
-        [trackA, trackB, trackC],
-        startIndex: 0,
-        resolveStreamUrl: resolveStreamUrl,
-      );
-      await Future<void>.delayed(Duration.zero);
-
-      clearInteractions(player);
-
-      when(
-        () => player.getRawProperty('playlist-count'),
-      ).thenAnswer((_) async => '2');
-      when(
-        () => player.getRawProperty('playlist-pos'),
-      ).thenAnswer((_) async => '0');
-      when(() => player.sendRawCommand(any())).thenAnswer((_) async {});
-      when(() => player.add(any())).thenAnswer((_) async {});
-      when(() => player.state).thenReturn(const PlayerState());
-
-      await service.setAfShuffleMode(true);
-      await Future<void>.delayed(Duration.zero);
-
-      verify(() => player.sendRawCommand(['playlist-remove', '1'])).called(1);
-      verify(() => player.add(any(that: isA<Media>()))).called(1);
     });
   });
 }

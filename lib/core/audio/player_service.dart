@@ -10,18 +10,23 @@ import 'audio_device_manager.dart';
 import 'media_session_bridge.dart';
 import 'position_tracker.dart';
 import 'queue_manager.dart';
+import 'stream_prefetcher.dart';
 
 import 'spectrum_settings.dart';
 
 /// Bridges [Player] (mpv_audio_kit) with a platform-native media session.
 ///
-/// Uses a 2-track sliding window model:
-/// - mpv holds at most 2 loaded Media objects (current + next).
+/// Uses a single-track model: mpv plays exactly what we give it via
+/// [openAll]. On completion, [skipToNext] or the completed handler
+/// advances the Dart queue and calls [openAll] with the next track's
+/// URL. No 2-track sliding window, no gapless sync between Dart and
+/// mpv's internal playlist.
+///
 /// - Dart owns the full queue via [AfQueueManager]/[AfQueueEngine].
 /// - Queue mutations are pure Dart — 0 mpv calls.
 /// - Shuffle is pure Dart Fisher-Yates — 0 mpv calls.
-/// - [AfAsyncLock] is only used around [openAll] calls in playQueue
-///   and setAfLoopMode, not for play/pause/seek.
+/// - [AfAsyncLock] serializes [openAll] calls in playQueue,
+///   setAfLoopMode, and the completed handler.
 class AfPlayerService {
   AfPlayerService() : _player = Player() {
     _positionTracker = AfPositionTracker(
@@ -31,6 +36,7 @@ class AfPlayerService {
     _artworkManager = AfArtworkManager()..onArtworkChanged = _pushStateToNative;
     _audioDeviceManager = AfAudioDeviceManager(player: _player);
     _queueManager = AfQueueManager();
+    _prefetcher = StreamPrefetcher();
 
     final bridge = NativeMediaSessionBridge();
     _wireBridgeCallbacks(bridge);
@@ -90,6 +96,7 @@ class AfPlayerService {
     _artworkManager = AfArtworkManager()..onArtworkChanged = _pushStateToNative;
     _audioDeviceManager = AfAudioDeviceManager(player: player);
     _queueManager = AfQueueManager();
+    _prefetcher = StreamPrefetcher();
 
     if (bridge != null) {
       _bridge = bridge;
@@ -110,7 +117,10 @@ class AfPlayerService {
   late final AfQueueManager _queueManager;
   double _preDuckVolume = 1.0;
   bool _isDucked = false;
-  final Set<String> _prefetchSeenIds = <String>{};
+  late final StreamPrefetcher _prefetcher;
+  Map<String, String> _authHeaders = const <String, String>{};
+  String? _prefetchStartedForTrackId;
+  bool _prefetchPlaylistEnabled = true;
 
   void Function(AfTrack? track)? onTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
@@ -368,25 +378,28 @@ class AfPlayerService {
   ReplayGainSettings get replayGain => _player.state.replayGain;
 
   // ---------------------------------------------------------------------------
-  // Gapless & prefetch
+  // Gapless & prefetch (no-ops — deprecated in single-track model)
   // ---------------------------------------------------------------------------
 
   Future<void> setGapless(Gapless mode) async {
     if (_disposed) return;
-    await _player.setGapless(mode);
-    afLog('audio', 'gapless=${mode.name}');
+    // No-op: gapless is handled by Dart transition logic, not mpv.
+    afLog('audio', 'gapless=${mode.name} (no-op)');
   }
 
-  Gapless get gaplessMode => _player.state.gapless;
-  Stream<Gapless> get gaplessStream => _player.stream.gapless;
+  Gapless get gaplessMode => Gapless.no;
+  Stream<Gapless> get gaplessStream => const Stream.empty();
 
   Future<void> setPrefetchPlaylist(bool enabled) async {
     if (_disposed) return;
-    await _player.setPrefetchPlaylist(enabled);
+    _prefetchPlaylistEnabled = enabled;
+    if (!enabled) {
+      _prefetcher.cancelCurrentPrefetch();
+    }
     afLog('audio', 'prefetchPlaylist=$enabled');
   }
 
-  bool get prefetchPlaylist => _player.state.prefetchPlaylist;
+  bool get prefetchPlaylist => _prefetchPlaylistEnabled;
 
   Stream<FftFrame> get spectrumStream => _player.stream.spectrum;
 
@@ -454,6 +467,7 @@ class AfPlayerService {
   // ---------------------------------------------------------------------------
 
   void setAuthHeaders(Map<String, String> headers) {
+    _authHeaders = headers;
     _artworkManager.setAuthHeaders(headers);
   }
 
@@ -467,8 +481,11 @@ class AfPlayerService {
 
     _userPaused = false;
     _resolveStreamUrl = resolveStreamUrl;
+    _prefetcher.cancelCurrentPrefetch();
+    _prefetchStartedForTrackId = null;
 
     if (streamHeaders.isNotEmpty) {
+      _authHeaders = streamHeaders;
       _artworkManager.setAuthHeaders(streamHeaders);
     }
 
@@ -484,13 +501,18 @@ class AfPlayerService {
           'startIndex=$safeIndex first="${startTrack.title}"',
     );
 
-    // Build 1-2 Media objects for the 2-track window: [current, next].
-    final medias = <Media>[];
-    medias.add(Media(resolveStreamUrl(startTrack)));
-    final nextTrack = _queueManager.engine.nextTrack;
-    if (nextTrack != null) {
-      medias.add(Media(resolveStreamUrl(nextTrack)));
+    final cachedFile = _prefetcher.getCachedFile(startTrack.id);
+    final String url;
+    if (cachedFile != null && cachedFile.existsSync()) {
+      url = cachedFile.uri.toString();
+      afLog(
+        'audio',
+        'playQueue: using prefetched file for "${startTrack.title}"',
+      );
+    } else {
+      url = resolveStreamUrl(startTrack);
     }
+    final medias = <Media>[Media(url)];
 
     return _queueLock.run(() async {
       try {
@@ -546,6 +568,8 @@ class AfPlayerService {
     if (_disposed) return;
     _userPaused = true;
     _positionTracker.onStop();
+    _prefetcher.cancelCurrentPrefetch();
+    _prefetchStartedForTrackId = null;
     try {
       await _player.stop();
     } catch (e, stack) {
@@ -562,6 +586,8 @@ class AfPlayerService {
     if (_disposed) return;
     _userPaused = true;
     _positionTracker.onStop();
+    _prefetcher.cancelCurrentPrefetch();
+    _prefetchStartedForTrackId = null;
     try {
       await _player.stop();
     } catch (e, stack) {
@@ -665,7 +691,6 @@ class AfPlayerService {
     if (_disposed) return;
     if (_queueManager.currentQueue.isEmpty) return;
     _queueManager.shuffleTail();
-    unawaited(_syncNextTrackInMpv());
     afLog(
       'data',
       'shuffleTail source=live '
@@ -679,7 +704,6 @@ class AfPlayerService {
     if (_queueManager.isShuffleEnabled == enabled) return;
 
     _queueManager.setShuffle(enabled);
-    unawaited(_syncNextTrackInMpv());
 
     // Don't emitCurrentTrack or fire onTrackChanged — the current track
     // hasn't changed, only the remaining queue order has. Firing
@@ -751,7 +775,6 @@ class AfPlayerService {
     if (!_queueManager.canReorder(oldIndex, newIndex)) return;
 
     _queueManager.reorder(oldIndex, newIndex);
-    unawaited(_syncNextTrackInMpv());
     afLog(
       'audio',
       'reorderQueue oldIndex=$oldIndex newIndex=$newIndex '
@@ -772,7 +795,6 @@ class AfPlayerService {
     }
 
     _queueManager.remove(index);
-    unawaited(_syncNextTrackInMpv());
     afLog(
       'audio',
       'removeFromQueue index=$index currentIndex=${_queueManager.currentIndex} '
@@ -789,7 +811,6 @@ class AfPlayerService {
     if (_disposed) return;
     _resolveStreamUrl = resolveStreamUrl;
     _queueManager.insert(index, track);
-    unawaited(_syncNextTrackInMpv());
     afLog(
       'audio',
       'insertIntoQueue "${track.title}" at index=$index '
@@ -810,7 +831,6 @@ class AfPlayerService {
       track,
     );
     _queueManager.emitQueue();
-    unawaited(_syncNextTrackInMpv());
     afLog('audio', 'playNext "${track.title}"');
   }
 
@@ -822,7 +842,6 @@ class AfPlayerService {
     _resolveStreamUrl = resolveStreamUrl;
     _queueManager.engine.append(track);
     _queueManager.emitQueue();
-    unawaited(_syncNextTrackInMpv());
     afLog('audio', 'addToQueue "${track.title}" at end');
   }
 
@@ -832,6 +851,7 @@ class AfPlayerService {
     _bridge.dispose();
     _positionTracker.dispose();
     _queueManager.dispose();
+    _prefetcher.cancelCurrentPrefetch();
     for (final s in _subs) {
       await s.cancel();
     }
@@ -866,20 +886,22 @@ class AfPlayerService {
   Future<void> _rebuildWindow(AfTrack target) async {
     if (_resolveStreamUrl == null) return;
 
-    final urls = <Media>[];
-    urls.add(Media(_resolveStreamUrl!(target)));
-    final next = _queueManager.engine.nextTrack;
-    if (next != null) {
-      urls.add(Media(_resolveStreamUrl!(next)));
+    _prefetcher.cancelCurrentPrefetch();
+    _prefetchStartedForTrackId = null;
+
+    final cachedFile = _prefetcher.getCachedFile(target.id);
+    final String url;
+    if (cachedFile != null && cachedFile.existsSync()) {
+      url = cachedFile.uri.toString();
+      afLog(
+        'audio',
+        'rebuildWindow: using prefetched file for "${target.title}"',
+      );
+    } else {
+      url = _resolveStreamUrl!(target);
     }
 
-    await _player.openAll(urls, index: 0, play: !_userPaused);
-
-    // Mark the next track as seen so _syncNextTrackInMpv won't
-    // try to preload it again (avoiding a redundant playlist-remove + add).
-    if (next != null) {
-      _prefetchSeenIds.add(next.id);
-    }
+    await _player.openAll([Media(url)], index: 0, play: !_userPaused);
   }
 
   // ---------------------------------------------------------------------------
@@ -887,6 +909,7 @@ class AfPlayerService {
   // ---------------------------------------------------------------------------
 
   void _bindStreams() {
+    _subs.add(_positionTracker.positionStream.listen(_checkPrefetch));
     _subs.add(
       _player.stream.playing.listen((playing) async {
         try {
@@ -1113,6 +1136,27 @@ class AfPlayerService {
     );
   }
 
+  void _checkPrefetch(Duration pos) {
+    if (!_prefetchPlaylistEnabled) return;
+    final currentTrack = _queueManager.currentTrack;
+    final nextTrack = _queueManager.engine.nextTrack;
+    if (currentTrack != null &&
+        nextTrack != null &&
+        _prefetchStartedForTrackId != currentTrack.id) {
+      final duration = _player.state.duration;
+      if (duration > Duration.zero &&
+          duration - pos <= const Duration(seconds: 3)) {
+        _prefetchStartedForTrackId = currentTrack.id;
+        final nextUrl = _resolveStreamUrl?.call(nextTrack);
+        if (nextUrl != null) {
+          unawaited(
+            _prefetcher.prefetch(nextUrl, _authHeaders, trackId: nextTrack.id),
+          );
+        }
+      }
+    }
+  }
+
   int _lastMediaSessionUpdateMs = 0;
   bool _lastEffectivePlaying = false;
 
@@ -1197,78 +1241,6 @@ class AfPlayerService {
         isFavorite: track.isFavorite,
       ),
     );
-  }
-
-  /// Returns true if [trackId] should be preloaded into mpv's second slot.
-  ///
-  /// Prevents redundant prefetch: once a track has been loaded by
-  /// [_rebuildWindow] via openAll, we skip re-loading it when the same
-  /// track appears as the next item in _syncNextTrackInMpv, avoiding
-  /// a spurious playlist-remove + add cycle that can corrupt gapless.
-  bool _shouldPreload(String trackId) {
-    if (_prefetchSeenIds.contains(trackId)) return false;
-    _prefetchSeenIds.add(trackId);
-    return true;
-  }
-
-  Future<void> _syncNextTrackInMpv() async {
-    if (_disposed) return;
-    if (_resolveStreamUrl == null) return;
-
-    return _queueLock.run(() async {
-      try {
-        // Defense-in-depth: drain any accumulated extras from mpv's playlist.
-        // The 2-track sliding window should never hold more than 2 items.
-        final guardCountStr = await _player.getRawProperty('playlist-count');
-        if (guardCountStr != null) {
-          final guardCount = int.tryParse(guardCountStr) ?? 0;
-          if (guardCount > 2) {
-            afLog(
-              'audio',
-              'syncNextTrackInMpv: draining ${guardCount - 2} extras',
-            );
-            for (var i = guardCount - 1; i > 1; i--) {
-              await _player.sendRawCommand(['playlist-remove', '$i']);
-            }
-          }
-        }
-
-        final countStr = await _player.getRawProperty('playlist-count');
-        final currentStr = await _player.getRawProperty('playlist-pos');
-        if (countStr != null && currentStr != null) {
-          final count = int.tryParse(countStr) ?? 0;
-          final current = int.tryParse(currentStr) ?? 0;
-
-          // Remove all items after the currently playing one
-          for (var i = count - 1; i > current; i--) {
-            await _player.sendRawCommand(['playlist-remove', '$i']);
-          }
-
-          final next = _queueManager.engine.nextTrack;
-          if (next != null && _shouldPreload(next.id)) {
-            await _player.add(Media(_resolveStreamUrl!(next)));
-            afLog(
-              'audio',
-              'syncNextTrackInMpv: preloaded next track "${next.title}"',
-            );
-          } else if (next != null) {
-            afLog(
-              'audio',
-              'syncNextTrackInMpv: skipped preload for "${next.title}" (already seen)',
-            );
-          } else {
-            afLog('audio', 'syncNextTrackInMpv: no next track to preload');
-          }
-        }
-      } catch (e, stack) {
-        afLog(
-          'audio',
-          'syncNextTrackInMpv failed',
-          error: e,
-          stackTrace: stack,
-        );
-      }
-    });
   }
 
   void _wireBridgeCallbacks(NativeMediaSessionBridge bridge) {

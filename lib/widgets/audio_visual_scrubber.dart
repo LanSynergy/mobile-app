@@ -342,43 +342,30 @@ class _BlockNotifier extends ChangeNotifier {
     _fadingOut = true;
     _fadingIn = false;
     _dirty = false;
+    _fadeOutFrames = 0;
   }
 
   void _tickFadeOut() {
-    _fadeOutFrames++;
-
-    // Self-healing: if fade-out runs too long (>200ms), zero everything.
-    if (_fadeOutFrames > 13) {
+    if (_fadeOutFrames < _transitionCapacity) {
+      final k = _fadeOutFrames;
+      final bufferFrame =
+          _transitionBuffer[(_transitionBufferIndex + k) % _transitionCapacity];
+      final fadeFactor = 1.0 - (k / _transitionCapacity);
+      double energy = 0.0;
+      for (var i = 0; i < bins; i++) {
+        smoothed[i] = bufferFrame[i] * fadeFactor;
+        energy += smoothed[i];
+      }
+      totalEnergy = energy / bins;
+      notifyListeners();
+      _fadeOutFrames++;
+    } else {
       for (var i = 0; i < bins; i++) {
         smoothed[i] = 0.0;
       }
       totalEnergy = 0.0;
       notifyListeners();
       _fadingOut = false;
-      _fadingIn = true;
-      _fadeStep = 0;
-      _fadeTotal = 6; // ~50ms at 8ms emit
-      return;
-    }
-
-    bool moving = false;
-    double energy = 0.0;
-
-    for (var i = 0; i < bins; i++) {
-      if (smoothed[i] > 0.001) {
-        smoothed[i] *= 0.85;
-        moving = true;
-      } else {
-        smoothed[i] = 0.0;
-      }
-      energy += smoothed[i];
-    }
-    totalEnergy = energy / bins;
-    notifyListeners();
-
-    if (!moving) {
-      _fadingOut = false;
-      // Start fade-in for next data.
       _fadingIn = true;
       _fadeStep = 0;
       _fadeTotal = 6; // ~50ms at 8ms emit
