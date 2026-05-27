@@ -346,9 +346,10 @@ class _SongsList extends ConsumerWidget {
               isActive: t.id == activeId,
               onTap: () => ref
                   .read(playActionsProvider)
-                  .playQueue(tracks, startIndex: i),
+                  .playSingle(t),
               onLongPress: () => showTrackContextMenu(context, ref, t),
             ),
+
           );
         },
       ),

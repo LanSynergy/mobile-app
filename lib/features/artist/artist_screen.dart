@@ -141,8 +141,9 @@ class ArtistScreen extends ConsumerWidget {
                       ),
                       child: TrackRow(
                         track: t,
-                        onTap: () =>
-                            ref.read(playActionsProvider).playSingle(t),
+                        onTap: () => ref
+                            .read(playActionsProvider)
+                            .playQueue(topTracks, startIndex: i),
                         onLongPress: () =>
                             showTrackContextMenu(context, ref, t),
                       ),

@@ -491,10 +491,11 @@ class _SectionBody extends ConsumerWidget {
                         isActive: t.id == activeId,
                         onTap: () => ref
                             .read(playActionsProvider)
-                            .playQueue(sorted, startIndex: i),
+                            .playSingle(t),
                         onLongPress: () =>
                             showTrackContextMenu(context, ref, t),
                       ),
+
                     );
                   },
                 ),
@@ -571,9 +572,10 @@ class _SectionBody extends ConsumerWidget {
                   isActive: t.id == activeId,
                   onTap: () => ref
                       .read(playActionsProvider)
-                      .playQueue(sorted, startIndex: i),
+                      .playSingle(t),
                   onLongPress: () => showTrackContextMenu(context, ref, t),
                 );
+
               },
             ),
           ),
