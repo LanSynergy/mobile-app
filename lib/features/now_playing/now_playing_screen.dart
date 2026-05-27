@@ -819,7 +819,7 @@ class _TopBar extends ConsumerWidget {
           ),
           margin: const EdgeInsets.symmetric(
             horizontal: AfSpacing.s8,
-            vertical: 4,
+            vertical: 0,
           ),
           padding: const EdgeInsets.symmetric(
             horizontal: AfSpacing.s8,
