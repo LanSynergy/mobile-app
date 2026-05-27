@@ -22,11 +22,6 @@ Smooth audio crossfade when transitioning between tracks (configurable duration)
 - Blocked on mpv_audio_kit adding a pre-DSP tap point
 - Document as known limitation until library update
 
-## Widget / Quick Settings tile
-
-- Android home screen widget showing current track + play/pause
-- Quick Settings tile for play/pause toggle
-
 ## mpv_audio_kit position observation
 
 - observe_property for time-pos doesn't fire on some devices
@@ -110,3 +105,12 @@ Smooth audio crossfade when transitioning between tracks (configurable duration)
 ## CI/CD
 - [x] APK naming standardization for Telegram delivery
 - [x] Telegram delivery via appleboy/telegram-action
+
+## Android Native Integrations & UX (May 2026)
+- [x] Android home screen widget with dynamic track info, playback state, and reactive favorite toggle
+- [x] Dynamic app widget theming utilizing Palette API for artwork color extraction and contrast adjustments
+- [x] Standard notification action buttons for shuffle and loop modes to bypass Android 13+ custom action issues
+- [x] Dynamic launcher icon customization UI (Default, Midnight Accent, Emerald Sunset, Crimson Wave, Golden Sands)
+- [x] Smart Bluetooth reconnection handler with a 5-minute auto-resume playback window
+- [x] Reactive two-way favorite synchronization between the Flutter player session and the native MethodChannel
+

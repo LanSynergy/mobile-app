@@ -42,16 +42,18 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 ### Playback
 - Gapless transitions with background prefetch
 - Shuffle, loop (off / track / queue / forNtimes repeat), playback speed (0.5×–2.0×)
-- Lock-screen and notification controls (artwork background on Samsung/Android 16)
+- Lock-screen and notification controls, including custom action buttons for shuffle and repeat modes
 - Sleep timer with presets and end-of-track mode
 - Instant Mix radio (server-generated similar tracks queue)
 - A-B loop (tap to set start/end markers, tap again to clear)
 - **Local file playback** — play music from device storage via SAF (no server needed)
-- Auto-pause on Bluetooth disconnect or headphone unplug
+- Auto-pause on Bluetooth disconnect or headphone unplug, with a **5-minute auto-resume window** on reconnect
 - Instant playback — selected song starts immediately even with large queues
 - **Shuffle next** — shuffle only upcoming tracks in the queue (leaves history untouched)
 - **Queue history** — view and restore recently played queues directly from the home screen
 - **M3U Export/Import** — export playlists to standard M3U files, or import playlists by pasting M3U content
+- **Android Home Screen Widget** — showing currently playing track metadata, playback state, and reactive favorite toggle, dynamically themed using the Palette API to match artwork colors
+
 
 ### Audio
 - 86-effect DSP rack via mpv's ffmpeg filter pipeline
@@ -87,6 +89,8 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 - Audio output: sample rate, bit depth, exclusive mode
 - Network: cache duration, buffer size, keep-audio-active
 - Server: connection info, switch server, sign out
+- **App Icon Customization** — choose from multiple launcher icon themes (Default, Midnight Accent, Emerald Sunset, Crimson Wave, Golden Sands) directly in app settings
+
 
 ### UI/UX
 - **Lucide icons** throughout — consistent, modern icon set (replaced hugeicons)

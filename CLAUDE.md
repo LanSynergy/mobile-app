@@ -550,12 +550,14 @@ servers in order:
 - Mixing `go()` and `push()` incorrectly destroys the back stack. `lyrics_screen.dart` and `queue_screen.dart` both use `push()` to navigate to each other — using `go()` would replace the stack and break the back gesture.
 - `/lyrics` and `/queue` routes use `NoTransitionPage` (not default `MaterialPage`) to prevent out-of-frame rendering when pushed on `_rootKey` above the now-playing overlay.
 
-## 7. Notification / lock-screen rules
+## 7. Notification / lock-screen / app widget rules
 
 - Implemented via a platform-native Kotlin foreground service `AetherfinMediaSessionService` and a `NativeMediaSessionBridge` (Dart bridge) over `MethodChannel` (`aetherfin.media_session`).
 - Controls are dynamically updated on the native side based on the current queue bounds (Previous/Play-Pause/Next).
 - **Never pass a network artwork URL** to the native player state — the native service reads artwork directly from local storage. Always resolve and download/save the artwork to a local `file://` URI first, and pass the path using `artPath` to the native service.
 - When playback is paused, the foreground service status is dropped (`stopForeground(false)`) to let the user swipe the notification away, but the notification itself is kept visible.
+- **App Widget & Palette extraction**: The app widget (`AetherfinAppWidgetProvider`) dynamically extracts dominant/muted background colors using Android's `Palette` API on the artwork, checks luminance for accessible white/black text contrast, and links a favorite heart `ImageButton` to broadcast `ACTION_TOGGLE_FAVORITE` back to the service.
+- **Dynamic Launcher Icons**: Configured via four `<activity-alias>` elements (`DefaultIcon`, `MidnightIcon`, `NordicIcon`, `SunsetIcon`) in `AndroidManifest.xml` targetting `.MainActivity`. Switching icons calls `changeAppIcon` on the method channel. `tryFixLauncherIconIfNeeded` runs on boot to guarantee that if all aliases are somehow disabled, the `DefaultIcon` is automatically re-enabled to prevent the app from disappearing from the launcher.
 
 ## 8. Background playback (Samsung / Doze)
 
@@ -873,7 +875,9 @@ This prevents formatting drift from accumulating across sessions.
 58. **"Cover art caching needs no eviction policy."** No. `CoverCacheManager` (`lib/core/local/cover_cache_manager.dart`) manages an LRU-evicted disk cache for cover art. Temp files are cleaned up on startup. The eviction test must be robust against filesystem-dependent directory order.
 59. **"Hand-write save/load triples for each setting."** No. Use the `SettingsKey<T>` descriptor pattern (`player_settings_store.dart`). Each setting is a typed key with `keyName`, `defaultValue`, `encoder`, and `decoder`. This eliminates the error-prone hand-rolled save/load triples.
 60. **"info-level lints can be ignored."** No. All 363 info-level lints were fixed in a single pass (`9621d50`). `flutter analyze` reports **0 issues** across the entire codebase. New code must maintain this.
-61. **"QS media session progress bar after queue end is correct."** No. After the queue ends, the QS progress bar can keep running because `playing=false` events are throttled (arriving <100ms apart) while a transient `playing=true` event at ~54ms pushes `playing=true` to native. Android QS then extrapolates position from the last known speed=1.0 forever. Fix: `trackEnded` fallback in `_updateMediaSession` overrides transient `playing=true` when position >= duration at queue end.
+61. **"QS media session progress bar after queue end is correct."** No. After the queue ends, the QS media session can keep running because `playing=false` events are throttled (arriving <100ms apart) while a transient `playing=true` event at ~54ms pushes `playing=true` to native. Android QS then extrapolates position from the last known speed=1.0 forever. Fix: `trackEnded` fallback in `_updateMediaSession` overrides transient `playing=true` when position >= duration at queue end.
+62. **"Forgetting to pass `isFavorite` in MethodChannel `updateState` args."** This causes the home screen widget's favorite/heart star to fail to update when favorited inside the app's Flutter UI.
+63. **"Declaring LAUNCHER intent filter on MainActivity while aliases are active."** If you declare category LAUNCHER in both `MainActivity` and `<activity-alias>` elements, Android lists both icons in the app drawer. Remove the launcher filter from `MainActivity` and declare it only inside `<activity-alias>` configurations.
 
 ## 16. Glossary
 

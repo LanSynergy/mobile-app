@@ -41,14 +41,18 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 
 ### Playback
 - Gapless transitions with background prefetch
-- Shuffle, loop (off / track / queue), playback speed (0.5×–2.0×)
-- Lock-screen and notification controls (artwork background on Samsung/Android 16)
+- Shuffle, loop (off / track / queue / forNtimes repeat), playback speed (0.5×–2.0×)
+- Lock-screen and notification controls, including custom action buttons for shuffle and repeat modes
 - Sleep timer with presets and end-of-track mode
 - Instant Mix radio (server-generated similar tracks queue)
 - A-B loop (tap to set start/end markers, tap again to clear)
 - **Local file playback** — play music from device storage via SAF (no server needed)
-- Auto-pause on Bluetooth disconnect or headphone unplug
+- Auto-pause on Bluetooth disconnect or headphone unplug, with a **5-minute auto-resume window** on reconnect
 - Instant playback — selected song starts immediately even with large queues
+- **Shuffle next** — shuffle only upcoming tracks in the queue (leaves history untouched)
+- **Queue history** — view and restore recently played queues directly from the home screen
+- **M3U Export/Import** — export playlists to standard M3U files, or import playlists by pasting M3U content
+- **Android Home Screen Widget** — showing currently playing track metadata, playback state, and reactive favorite toggle, dynamically themed using the Palette API to match artwork colors
 
 ### Audio
 - 86-effect DSP rack via mpv's ffmpeg filter pipeline
@@ -66,21 +70,31 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 - Search across tracks, albums, artists, playlists
 - Long-press context menus (play next, add to queue, go to album/artist)
 - Drag-to-reorder queue with swipe-to-remove
-
-### Now Playing
-- FFT spectrum visualizer (64 bars, 60 fps, engine-driven)
-- Artwork pulse on kick drums (sub-bass transient detection)
-- Synced lyrics (LRC, auto-scrolling)
-- Favorite toggle, quality chip, save to playlist
+- **Playlist Undo** — undo track additions or removals within an 8-second grace period
 
 ### Home
 - Swipeable hero album carousel (up to 5 recent albums, dot indicator)
 - Recently played tracks, artists, and genres sections
 
+### Now Playing
+- FFT spectrum visualizer (64 bars, 60 fps, engine-driven)
+- Gradient background that shifts with spectral colors extracted from artwork
+- Artwork pulse on kick drums (sub-bass transient detection)
+- Synced lyrics (LRC, auto-scrolling)
+- Favorite toggle, quality chip, save to playlist
+- Translucent queue screen with frosted-glass effect
+
 ### Settings
 - Audio output: sample rate, bit depth, exclusive mode
 - Network: cache duration, buffer size, keep-audio-active
 - Server: connection info, switch server, sign out
+- **App Icon Customization** — choose from multiple launcher icon themes (Default, Midnight Accent, Emerald Sunset, Crimson Wave, Golden Sands) directly in app settings
+
+### UI/UX
+- **Lucide icons** throughout — consistent, modern icon set (replaced hugeicons)
+- **Skeleton loading** — shimmer placeholder animations on every screen while data loads
+- Context menus as dialogs (album 3-dot, track long-press) — cleaner than bottom sheets
+- Per-sheet manual drag handles on bottom sheets — avoids floating transparent handles
 
 ---
 

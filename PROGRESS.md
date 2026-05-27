@@ -508,4 +508,38 @@
 - [x] flutter analyze — 0 issues
 - [x] flutter test — all 350 tests pass
 
+---
+
+# Android Native Integrations & UX Enhancements (May 2026)
+
+## Problem
+- The app lacked integration with Android's platform-level UI features:
+  - No home screen widget for quick playback control and track visibility.
+  - The app icon was static and couldn't be customized to match different aesthetic preferences.
+  - Headphone/Bluetooth disconnections paused playback, but reconnecting shortly after did not automatically resume playback, causing a disjointed listening experience.
+  - Media notifications did not feature explicit buttons to toggle loop and shuffle modes in Android 13+.
+  - In-app track "favorite" state changes were not synced to/from native media widgets or sessions dynamically.
+
+## Solution
+- **Android Home Screen App Widget**:
+  - Implemented `AetherfinAppWidgetProvider.kt` using native Android AppWidget support.
+  - Integrates Palette API for dynamic background color extraction and contrast calculations based on track artwork.
+  - Syncs favorite state and playback control (play/pause, next, previous, favorite toggle) with the active Dart player session.
+- **Dynamic Launcher Icons**:
+  - Created settings option in UI to swap launcher icons dynamically using `<activity-alias>` elements.
+  - Supported icon variants: Default, Midnight Accent, Emerald Sunset, Crimson Wave, Golden Sands.
+  - Correctly structured `AndroidManifest.xml` so aliases handle launcher category filters, avoiding duplicate icon rendering.
+- **Smart Bluetooth Reconnection**:
+  - Added a 5-minute resume window in `BluetoothReceiver.kt` which listens to connection changes.
+  - Automatically resumes playback on Bluetooth reconnect if the system was paused due to a disconnect within the window.
+- **Lucide-based Media Notification Actions**:
+  - Embedded shuffle and repeat control buttons directly as standard notification action buttons in `NotificationCompat.Builder`, overcoming Android 13+ rendering issues with custom actions.
+- **Reactive Favorite Synchronization**:
+  - Added Dart-side Riverpod listeners in `wirePlayerService` (`player_providers.dart` and `player_service.dart`) that call the Kotlin MethodChannel when favorite status changes, ensuring immediate widget synchronization.
+
+## Quality
+- [x] All 351 automated unit/widget tests are passing cleanly (`flutter test`).
+- [x] `flutter analyze --no-fatal-infos` reports 0 issues.
+
+
 

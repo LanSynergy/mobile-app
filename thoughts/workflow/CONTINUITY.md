@@ -1,5 +1,14 @@
 # Continuity Ledger
 
+## 2026-05-27 — Android Native Integrations & UX Enhancements
+*Goal:* Implement home screen widgets, dynamic launcher icon changing, smart Bluetooth reconnection behavior, and reactive favorite status sync.
+*Commits:* e3fa908
+*Key decisions:*
+- Wired bidirectional favorite status synchronization between Dart/Flutter and Kotlin using the MethodChannel.
+- Dynamic app widget background and content theming utilizing the Android Palette API to match artwork colors.
+- Custom dynamic launcher icons setting UI using `<activity-alias>` elements to prevent duplicate app icon registrations.
+- Re-activated automatic resumption of playback upon Bluetooth connection if paused within the 5-minute disconnect window.
+
 ## 2026-05-27 — Optimize slow unit tests with fakeAsync
 *Goal:* Speed up the unit test suite by eliminating real-world sleeps/delays (9s, 5s, 2s) using fakeAsync.
 *Commits:* f90cd37
@@ -33,13 +42,3 @@
 - Explained the necessity of `_syncNextTrackInMpv()` to keep the native prefetch slot in sync for gapless playback while maintaining the queue management/shuffle purely in Dart.
 - Fixed a static analysis lint in `router.dart` (enclosed an `if` block in braces) and formatted modified files.
 
-## 2026-05-26 — Native-fication Research & Architectural Plans
-*Goal:* Deeply research opportunities to native-fy Aetherfin's media framework, local scanning, custom actions, and background downloads. Produce 5 detailed implementation plans, and execute the first plan (Audio Focus & Headphone Disconnection).
-*Commits:* f2d7732, be156c8, 81e38f0, 5581e06, da6bbd4, 6cb9ddd (and others)
-*Key decisions:*
-- Created 5 plans in `thoughts/shared/plans/` (with `_agy` suffix).
-- Implemented and verified the first plan: **Native Audio Focus & Headphone Disconnection (Becoming Noisy) Handling**.
-- Implemented **quick settings custom actions** for shuffle, repeat, and favorite.
-- Implemented **Android 16 Live Updates** wrapper and streams binding.
-- Optimized SAF scanner to use direct cursor queries for 10-50x speedup.
-- Fixed shuffle auto-advance bug via `_syncNextTrackInMpv()`.
