@@ -24,10 +24,10 @@ extension on SongsPill {
   };
 }
 
-class SongsScreen extends ConsumerStatefulWidget {
-  const SongsScreen({super.key, this.initialPill});
+final songsPillProvider = StateProvider<SongsPill?>((ref) => null);
 
-  final SongsPill? initialPill;
+class SongsScreen extends ConsumerStatefulWidget {
+  const SongsScreen({super.key});
 
   @override
   ConsumerState<SongsScreen> createState() => _SongsScreenState();
@@ -35,13 +35,17 @@ class SongsScreen extends ConsumerStatefulWidget {
 
 class _SongsScreenState extends ConsumerState<SongsScreen> {
   final _searchController = TextEditingController();
-  late SongsPill _pill;
+  SongsPill _pill = SongsPill.songs;
   String _query = '';
 
   @override
   void initState() {
     super.initState();
-    _pill = widget.initialPill ?? SongsPill.songs;
+    final pill = ref.read(songsPillProvider);
+    if (pill != null && mounted) {
+      _pill = pill;
+      ref.read(songsPillProvider.notifier).state = null;
+    }
   }
 
   @override
@@ -52,6 +56,15 @@ class _SongsScreenState extends ConsumerState<SongsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<SongsPill?>(songsPillProvider, (prev, next) {
+      if (next != null && next != _pill && mounted) {
+        setState(() {
+          _pill = next;
+          ref.read(songsPillProvider.notifier).state = null;
+        });
+      }
+    });
+
     return SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

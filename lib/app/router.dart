@@ -155,12 +155,8 @@ final _router = GoRouter(
           routes: [
             GoRoute(
               path: '/library',
-              pageBuilder: (_, state) {
-                final pill = state.extra;
-                return NoTransitionPage(
-                  child: SongsScreen(initialPill: pill is SongsPill ? pill : null),
-                );
-              },
+              pageBuilder: (_, state) =>
+                  const NoTransitionPage(child: SongsScreen()),
             ),
           ],
         ),
