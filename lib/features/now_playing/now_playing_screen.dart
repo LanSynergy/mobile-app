@@ -154,9 +154,14 @@ class _ReactiveBackground extends ConsumerWidget {
     final oklch = srgbToOklch(spectral.energy);
     final background = OklchColor(0.35, 0.12, oklch.h).toColor();
     final luminance = background.computeLuminance();
-    final overlayStyle = luminance > 0.5
-        ? SystemUiOverlayStyle.dark
-        : SystemUiOverlayStyle.light;
+    final overlayStyle = SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: luminance > 0.5 ? Brightness.dark : Brightness.light,
+      statusBarBrightness: luminance > 0.5 ? Brightness.light : Brightness.dark,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: luminance > 0.5 ? Brightness.dark : Brightness.light,
+      systemNavigationBarDividerColor: Colors.transparent,
+    );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
       child: AnimatedContainer(
@@ -470,6 +475,7 @@ class _MarqueeTextState extends State<_MarqueeText>
         return ClipRect(
           child: SizedBox(
             width: maxWidth,
+            height: tp.height,
             child: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -482,6 +488,8 @@ class _MarqueeTextState extends State<_MarqueeText>
                         alignment: Alignment.centerLeft,
                         minWidth: totalWidth,
                         maxWidth: totalWidth,
+                        minHeight: tp.height,
+                        maxHeight: tp.height,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
