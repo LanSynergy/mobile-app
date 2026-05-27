@@ -198,6 +198,8 @@ jobs:
           echo "TG_TIMESTAMP=${TIMESTAMP}"  >> "${GITHUB_ENV}"
           echo "TG_COMMIT=${COMMIT_ESC}"    >> "${GITHUB_ENV}"
           echo "TG_RUN_URL=${RUN_URL}"      >> "${GITHUB_ENV}"
+          echo "TG_COMMIT_URL=${{ github.server_url }}/${{ github.repository }}/commit/${GITHUB_SHA}" >> "${GITHUB_ENV}"
+          echo "TG_ACTOR=${{ github.actor }}" >> "${GITHUB_ENV}"
 
       - name: Send APK to Telegram
         if: env.TG_APK_PATH != ''
@@ -212,12 +214,18 @@ jobs:
 
           # Build caption from env vars (set by prepare step)
           caption = (
-              '<b>{name}</b> \xb7 <code>{mode}</code>\n'
-              '<b>Size:</b> {size}\n\n'
-              '<b>Build:</b> <code>{build_id}</code>\n'
-              '<b>Commit:</b> <code>{sha}</code> on <code>{branch}</code>\n'
-              '<i>{commit}</i>\n{timestamp}\n\n'
-              '<a href="{url}">View run</a>'
+              '🚀 <b>Aetherfin Build Successful!</b>\n'
+              '──────────────────────────────\n'
+              '📱 <b>App:</b> <code>{name}</code>\n'
+              '⚙️ <b>Mode:</b> <code>{mode}</code>\n'
+              '💾 <b>Size:</b> <code>{size}</code>\n\n'
+              '🌿 <b>Branch:</b> <code>{branch}</code>\n'
+              '🔢 <b>Build ID:</b> <code>{build_id}</code>\n'
+              '👤 <b>Triggered by:</b> <code>{actor}</code>\n\n'
+              '💬 <b>Last Commit:</b>\n'
+              '<code>{sha}</code> — <i>{commit}</i>\n'
+              '──────────────────────────────\n'
+              '📅 <i>{timestamp}</i>'
           ).format(
               mode=os.environ['TG_MODE'],
               name=os.environ['TG_APK_NAME'],
@@ -227,7 +235,7 @@ jobs:
               branch=os.environ['TG_BRANCH'],
               commit=os.environ['TG_COMMIT'],
               timestamp=os.environ['TG_TIMESTAMP'],
-              url=os.environ['TG_RUN_URL'],
+              actor=os.environ['TG_ACTOR'],
           )
 
           file_path = os.environ['TG_APK_PATH']
@@ -235,6 +243,17 @@ jobs:
 
           with open(file_path, 'rb') as f:
               file_data = f.read()
+
+          # Build inline keyboard buttons
+          reply_markup = {
+              "inline_keyboard": [
+                  [
+                      {"text": "🛠️ View Run", "url": os.environ['TG_RUN_URL']},
+                      {"text": "💻 View Commit", "url": os.environ['TG_COMMIT_URL']}
+                  ]
+              ]
+          }
+          reply_markup_json = json.dumps(reply_markup)
 
           # Build multipart form-data manually (stdlib only)
           boundary = uuid.uuid4().hex
@@ -246,6 +265,8 @@ jobs:
           body += f'--{boundary}\r\nContent-Disposition: form-data; name="caption"\r\n\r\n{caption}\r\n'.encode()
           # parse_mode
           body += f'--{boundary}\r\nContent-Disposition: form-data; name="parse_mode"\r\n\r\nHTML\r\n'.encode()
+          # reply_markup
+          body += f'--{boundary}\r\nContent-Disposition: form-data; name="reply_markup"\r\n\r\n{reply_markup_json}\r\n'.encode()
           # document file
           body += (
               f'--{boundary}\r\n'
