@@ -549,6 +549,7 @@
 - [x] Switched player model from mpv's internal 2-track sliding window (`Gapless.weak`) to a single-track decoder, resolving lock-screen metadata and button synchronization race conditions.
 - [x] Integrated custom Dart-level `StreamPrefetcher` to buffer upcoming track files locally.
 - [x] Connected settings toggles to control local prefetcher caching dynamically.
+- [x] Added remaining duration guard (2000ms threshold) to ignore transient completed/EOF events during network buffering drops and seeks in server mode.
 
 ## Transition Blending
 - [x] Implemented a frame transition buffer in `_BlockNotifier` to smoothly blend and fade out visualizer bars over ~150ms on track switch.

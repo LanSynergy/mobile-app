@@ -110,6 +110,10 @@ class AfPlayerService {
     // _positionTracker.start() explicitly via a visibleForTesting helper.
     _bindStreams();
   }
+
+  @visibleForTesting
+  AfPositionTracker get positionTracker => _positionTracker;
+
   final PlayerApi _player;
   late final AfPositionTracker _positionTracker;
   late final AfArtworkManager _artworkManager;
@@ -930,6 +934,24 @@ class AfPlayerService {
         try {
           if (_disposed) return;
           if (!completed) return;
+
+          final duration = _player.state.duration;
+          final rawPos = await _positionTracker.getRawPosition();
+          final pos = rawPos > Duration.zero
+              ? rawPos
+              : _positionTracker.lastKnownPosition;
+          if (duration > Duration.zero) {
+            final remaining = duration - pos;
+            if (remaining > const Duration(milliseconds: 2000)) {
+              afLog(
+                'audio',
+                'completed event ignored: pos=${pos.inMilliseconds}ms, '
+                    'duration=${duration.inMilliseconds}ms (remaining=${remaining.inMilliseconds}ms > 2000ms). '
+                    'This is likely a transient buffering drop/EOF.',
+              );
+              return;
+            }
+          }
 
           final loopAtEvent = _player.state.loop;
           final playingAtEvent = _player.state.playing;

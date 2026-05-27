@@ -7,6 +7,7 @@
 - Switched to a single-track player model in `player_service.dart`.
 - Developed `StreamPrefetcher` using `dio` to download stream files to local storage for gapless playback support.
 - Completed the transition fade-out/fade-in blending logic in the scrubber/visualizer.
+- Added a remaining duration guard (2000ms threshold) in the `completed` stream listener to prevent premature advancing/looping during seeks or network buffering underflows.
 - Removed obsolete sync methods, cleaned up unit tests, and resolved all lint/formatting warnings.
 
 ## 2026-05-27 — Android Native Integrations & UX Enhancements

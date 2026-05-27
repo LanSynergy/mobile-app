@@ -199,6 +199,50 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
+    // 3.1 completed handler ignores transient EOF when remaining duration is large
+    // -----------------------------------------------------------------------
+    test(
+      'completed handler ignores event if remaining duration > 2000ms',
+      () async {
+        AfTrack? changedTrack;
+        service.onTrackChanged = (track) {
+          changedTrack = track;
+        };
+
+        await service.playQueue(
+          [trackA, trackB],
+          startIndex: 0,
+          resolveStreamUrl: resolveStreamUrl,
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(service.currentTrack?.id, equals('1'));
+
+        changedTrack = null;
+
+        // Set state with duration = 3 minutes and position = 30 seconds (remaining = 150 seconds > 2s)
+        updateState(
+          (s) => s.copyWith(
+            playing: true,
+            completed: false,
+            loop: Loop.off,
+            duration: const Duration(minutes: 3),
+            position: const Duration(seconds: 30),
+          ),
+        );
+        service.positionTracker.updateKnownPosition(
+          const Duration(seconds: 30),
+        );
+
+        ctrls.completed.add(true);
+        await Future<void>.delayed(Duration.zero);
+
+        // Should not advance index (still at track A, i.e. track '1')
+        expect(service.currentTrack?.id, equals('1'));
+        expect(changedTrack, isNull);
+      },
+    );
+
+    // -----------------------------------------------------------------------
     // 4. Completion at queue end with loop=off stops and clears track
     // -----------------------------------------------------------------------
     test('queue end with loop=off stops and clears track', () async {
