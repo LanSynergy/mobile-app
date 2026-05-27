@@ -538,8 +538,26 @@
   - Added Dart-side Riverpod listeners in `wirePlayerService` (`player_providers.dart` and `player_service.dart`) that call the Kotlin MethodChannel when favorite status changes, ensuring immediate widget synchronization.
 
 ## Quality
-- [x] All 351 automated unit/widget tests are passing cleanly (`flutter test`).
-- [x] `flutter analyze --no-fatal-infos` reports 0 issues.
+- [x] All 344 automated unit/widget tests are passing cleanly (`flutter test`).
+- [x] `flutter analyze` reports 0 issues.
+
+---
+
+# Auto-Advance Overhaul & Custom Prefetcher (May 2026)
+
+## Single-Track Decoder Model
+- [x] Switched player model from mpv's internal 2-track sliding window (`Gapless.weak`) to a single-track decoder, resolving lock-screen metadata and button synchronization race conditions.
+- [x] Integrated custom Dart-level `StreamPrefetcher` to buffer upcoming track files locally.
+- [x] Connected settings toggles to control local prefetcher caching dynamically.
+
+## Transition Blending
+- [x] Implemented a frame transition buffer in `_BlockNotifier` to smoothly blend and fade out visualizer bars over ~150ms on track switch.
+
+## Quality & Tests
+- [x] Cleaned up obsolete tests in `player_service_test.dart`.
+- [x] Added `stream_prefetcher_test.dart` to verify download caching, cancellation, error handling, and file pruning.
+- [x] Fixed all lint issues (closures to tear-offs, unused variables) and verified clean `flutter analyze` and formatting.
+- [x] Verified all 344 unit/widget tests are passing cleanly.
 
 
 

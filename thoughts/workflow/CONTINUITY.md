@@ -1,5 +1,14 @@
 # Continuity Ledger
 
+## 2026-05-27 — Auto-Advance Overhaul (Phase 2)
+*Goal:* Transition from mpv's 2-track sliding window to a single-track player model, resolving lock-screen and control desynchronization issues.
+*Commits:* 96bef1c, <current_commit>
+*Key decisions:*
+- Switched to a single-track player model in `player_service.dart`.
+- Developed `StreamPrefetcher` using `dio` to download stream files to local storage for gapless playback support.
+- Completed the transition fade-out/fade-in blending logic in the scrubber/visualizer.
+- Removed obsolete sync methods, cleaned up unit tests, and resolved all lint/formatting warnings.
+
 ## 2026-05-27 — Android Native Integrations & UX Enhancements
 *Goal:* Implement home screen widgets, dynamic launcher icon changing, smart Bluetooth reconnection behavior, and reactive favorite status sync.
 *Commits:* e3fa908
@@ -33,12 +42,3 @@
 *Key decisions:*
 - Wrapped the repeating Row (text + gap + text) in an `OverflowBox` to allow the animated marquee content to exceed the parent's width during scroll animation.
 - Still pending: the 243px RenderFlex overflow source in the metadata/transport row area.
-
-## 2026-05-26 — Resolve CLAUDE.md Shuffle Contradictions
-*Goal:* Address user questions regarding mpv dependency in 2-track sliding window, resolve contradictions in `CLAUDE.md`, and clean up lint/formatting.
-*Commits:* f767631
-*Key decisions:*
-- Updated `CLAUDE.md` to reflect the 2-track sliding window model and Dart-side Fisher-Yates shuffle.
-- Explained the necessity of `_syncNextTrackInMpv()` to keep the native prefetch slot in sync for gapless playback while maintaining the queue management/shuffle purely in Dart.
-- Fixed a static analysis lint in `router.dart` (enclosed an `if` block in braces) and formatted modified files.
-

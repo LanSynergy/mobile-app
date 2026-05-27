@@ -138,13 +138,9 @@ await player.seek(position);
 await player.next();
 await player.previous();
 await player.jump(index);
-await player.setGapless(Gapless.weak);
-// Note: player.setShuffle(true/false) is not used under the 2-track sliding window.
-// Instead, shuffle is managed in Dart and synced to mpv's prefetch slot.
-
-// Queue manipulation
-await player.playNext(media);    // insert after current track
-await player.addToQueue(media);  // append to end of queue
+// Note: player.setShuffle(true/false) and player.setGapless(...) are not used.
+// Aetherfin uses a single-track decoder model. Shuffle is managed in Dart inside AfQueueManager,
+// and gapless transitions are supported via a custom Dart-side StreamPrefetcher.
 
 // State streams (core)
 player.stream.position    // Stream<Duration>
@@ -234,9 +230,8 @@ lib/
 │  │  │                               AfArtworkManager, AfAudioDeviceManager, AfQueueManager.
 │  │  │                               Throttled playbackState (~2 Hz), _pendingPlayNudgeIdx
 │  │  │                               Shuffle: managed in Dart (Fisher-Yates) to support large queues.
-│  │  │                               Uses _syncNextTrackInMpv() to update mpv's preloaded slot
-│  │  │                               via playlist-remove and add commands when the next track changes,
-│  │  │                               preserving gapless transitions.
+│  │  │                               Single-track decoder model: rebuilding the player window with file://
+│  │  │                               URI from custom StreamPrefetcher when ready, or remote URL fallback.
 │  │  ├─ play_actions.dart          ← Cross-cutting play entry points (uses MusicBackend)
 │  │  │                               PlayActions.playQueue shuffles before loading when shuffle is ON.
 │  │  ├─ jellyfin_playback_reporter.dart ← Playback reporting lifecycle (uses MusicBackend)
@@ -838,7 +833,7 @@ This prevents formatting drift from accumulating across sessions.
 21. **"Subscribe to `spectrumStream` in `didChangeDependencies`."** No. It fires on every ancestor dependency change and causes stream churn. Subscribe once in `initState` via `addPostFrameCallback`.
 22. **"The battery channel is `dev.aetherfin.aetherfin/battery`."** No. It's `aetherfin.battery_opt` (matches `BatteryOptPlugin.CHANNEL_NAME`).
 23. **"Drive the artwork pulse by continuously scaling with bin 0 amplitude."** No. That flickers on every frame. Use a transient detector with running baseline + cooldown + spring decay.
-24. **"Use mpv's native setShuffle(true/false) under 2-track sliding window."** No. Since Aetherfin uses a 2-track sliding window model to avoid loading lag on large queues (>5 tracks), mpv only holds the current and next track. Shuffle is managed in Dart (via Fisher-Yates mapping in `AfQueueEngine`). When the next track changes in Dart, the preloaded track in mpv is synchronized using raw commands (`playlist-remove` and `add`) to preserve gapless playback.
+24. **"Use mpv's native setShuffle(true/false) or native gapless preloading."** No. Aetherfin manages shuffle (via Fisher-Yates mapping in `AfQueueEngine` / `AfQueueManager`) and prefetching (via Dart-side `StreamPrefetcher`) entirely in Dart. This resolves metadata sync issues on the lock screen and in notification controls.
 25. **"The utility row has 6 icons."** No. It's 4: Lyrics, Save, Queue, More. Sleep timer, playback speed, audio output, and EQ are behind the More popup.
 26. **"Apply EQ/DSP via a separate audio pipeline."** No. Use `player.updateAudioEffects(AudioEffects(...))`. The engine handles DSP natively.
 27. **"Build a parallel HTTP client for Navidrome."** Don't build from scratch. Implement the `MusicBackend` interface in `SubsonicClient`. All providers already use `musicBackendProvider`.
@@ -847,7 +842,7 @@ This prevents formatting drift from accumulating across sessions.
 30. **"Reuse a Subsonic salt across requests."** No. Each request generates a fresh random salt to prevent replay attacks.
 31. **"Navidrome supports all Jellyfin endpoints."** No. Subsonic API has gaps: no `resumeItems` equivalent (returns empty), no `movePlaylistItem` (no-op), no API key auth (always username + password).
 32. **"Read position from `_player.state.position` or `stream.position`."** No. On some devices, mpv's `observe_property` for `time-pos` never fires. Use elapsed-time extrapolation: anchor position on play/seek, then `pos = anchor + (now - anchorTime) × speed`. Poll `getRawProperty('time-pos')` as primary source; fall back to extrapolation if it returns 0.
-33. **"Use `openAll()` for all queue sizes."** No. For queues > 5 tracks, `openAll` causes a multi-second delay. Use `open(target, play: true)` for instant playback, then `add()` the rest in the background. Suppress `_suppressPlaylistSync` during queue building + 500ms after.
+33. **"Open all queue tracks in mpv."** No. Aetherfin uses a single-track player model where only the currently playing track is loaded into mpv. The queue state is managed entirely in Dart. `openAll` is only called with a single `Media` object for the active track.
 34. **"Read A-B loop state from `svc.abLoopA`."** No. `_player.state.abLoopA` doesn't update on affected devices. Track loop state in Dart providers (`abLoopAProvider`/`abLoopBProvider`). Use `getRawPosition()` for the actual position when setting markers.
 35. **"Use `Timer.periodic` for the progress reporting loop."** No. `Timer.periodic` doesn't await the callback — requests pile up. Use a serialized `while (_running)` loop with `Future.delayed`.
 36. **"Keep a manual drag handle on bottom sheets."** Now handled per-sheet. The theme sets `showDragHandle: false` with `Colors.transparent` background. Each sheet (`album_more_sheet.dart`, `track_details_sheet.dart`, `save_to_playlist_sheet.dart`) adds its own manual drag handle inside the frosted-glass container. This avoids the floating transparent handle on dark backgrounds.
@@ -860,7 +855,7 @@ This prevents formatting drift from accumulating across sessions.
 43. **"Parse tint hex strings without validation."** No. `_hex()` in `home_screen.dart` called `int.parse(hex.replaceFirst('#', ''), radix: 16)` with no try-catch or length check — a malformed string (DB corruption, future provider change) crashes the entire HomeScreen build. Match `search_screen.dart`'s `_parseTint` pattern: try-catch, validate length (6 or 8), fallback to `AfColors.indigo600`.
 44. **"Avoid serializing queue operations."** No. Multiple sequential queue mutations (reorders, additions, removals) can interleave while awaiting mpv responses, corrupting state. Use `_queueLock` (`AfAsyncLock`) to serialize all mutating operations.
 45. **"Allow playback controls during queue loading."** No. Issuing seeks, skips, or jumps while a new queue is loading (`_isLoadingQueue` is true) leads to state corruption or out-of-bounds errors. Guard playback controls to return early when loading.
-46. **"Use Future.wait in playQueue for addition concurrency."** No. Concurrent additions interleave native operations in-flight, which can complete *after* an aborted load is canceled and a new load starts. Always add tracks sequentially in a loop and check the generation counter (`_queueLoadGen`) at each step.
+46. **"Manage mpv's playlist queue dynamically via add/remove."** No. Aetherfin manages the playlist queue entirely in Dart (via `AfQueueManager` / `AfQueueEngine`), loading only the currently active track into mpv. Native mpv playlist addition is no longer used.
 47. **"Let the `completed` handler run outside `_queueLock`."** No. The handler reads `currentTrack`, `currentIndex`, `currentQueue.length` while a concurrent `removeFromQueue`/`reorderQueue` could be mutating those fields. Wrap the critical section — reading queue state + acting on it — in `_queueLock.run()` so mpv's track-advance command fires against a consistent view.
 48. **"`setAfLoopMode` can call `_jumpAndPlay` directly."** No. `_jumpAndPlay(0)` sends a `playlist-play-index` command that triggers a playlist event. If a queue mutation holds `_queueLock`, the event fires against stale state. Wrap the jump in `_queueLock.run()`.
 49. **"`skipToNext`/`skipToPrevious`/`skipToQueueItem` are lightweight, no lock needed."** No. Rapid skips interleave with queue mutations — the playlist listener fires mid-`removeFromQueue`, reading an inconsistent index. Wrap each in `_queueLock.run()`.
@@ -870,7 +865,7 @@ This prevents formatting drift from accumulating across sessions.
 53. **"`shouldAdvancePosition` returns true at the end of queue."** No. `shouldAdvancePosition` returns `false` when `isAtQueueEnd && !playing`. This prevents the QS media session from getting stuck at `playing=true` after the last track finishes — without this guard, a transient `playing=true` event interacts with the extrapolated position at speed=1.0, making the QS progress bar run forever.
 54. **"`ScrollEndNotification` always fires when finger lifts."** No. On Android (especially with Android 16 slow animations), `ScrollEndNotification` is NOT always fired when finger lifts at a scroll boundary. The EQ screen uses a `_scrollSafetyTimer` (300ms fallback) + `UserScrollNotification idle` listener + `ScrollUpdateNotification` keepalive to detect scroll end reliably.
 55. **"Seek at end-of-queue doesn't need a play() call."** No. When the queue ends, `_userPaused=true` and the player stops. Seeking via the progress bar positions the tracker but doesn't resume playback. The `seek()` handler detects `wasCompletedAtEnd` and calls `play()` after a successful seek to restart playback.
-56. **"`openAll()` works fine for large queues."** No. For queues > 5 tracks, `openAll` causes a multi-second delay. Use `open(target, play: true)` for instant playback, then `add()` sequentially in a loop with generation counter checks. Additionally, cap the initial load to **30 forward tracks** — the rest are cached in memory for shuffle (see `_queueLoadLimit` and `_cachedOverflow` in `playQueue`).
+56. **"`openAll()` with the entire queue works fine."** No. Aetherfin manages the playlist queue state entirely in Dart (in `AfQueueManager` / `AfQueueEngine`), loading only the currently active track into mpv. Passing the entire queue of tracks to mpv is obsolete and causes loading delays.
 57. **"Skeleton screens need complex widget trees."** No. Each screen has a dedicated `*_skeleton.dart` widget in `lib/widgets/skeletons/`. They use the shared `ShimmerLayout` base widget from `skeleton.dart` with `LinearGradient` shimmer animation. Skeleton widgets sit in the `widgets/skeletons/` directory and are loaded during data fetch.
 58. **"Cover art caching needs no eviction policy."** No. `CoverCacheManager` (`lib/core/local/cover_cache_manager.dart`) manages an LRU-evicted disk cache for cover art. Temp files are cleaned up on startup. The eviction test must be robust against filesystem-dependent directory order.
 59. **"Hand-write save/load triples for each setting."** No. Use the `SettingsKey<T>` descriptor pattern (`player_settings_store.dart`). Each setting is a typed key with `keyName`, `defaultValue`, `encoder`, and `decoder`. This eliminates the error-prone hand-rolled save/load triples.
