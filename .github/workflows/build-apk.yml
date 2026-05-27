@@ -28,6 +28,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Initialize Telegram Build Notification
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          BUILD_ID=$(grep "kBuildId" lib/build_id.dart | sed "s/.*'\(.*\)'.*/\1/")
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s" | tr -d '_*`[]')
+          BRANCH="${GITHUB_REF_NAME}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${GITHUB_SHA}"
+          ACTOR="${{ github.actor }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+          COMMIT_ESC=$(printf '%s' "$COMMIT_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+
+          # Export metadata to environment
+          echo "TG_MODE=${{ inputs.build_mode }}" >> "${GITHUB_ENV}"
+          echo "TG_BUILD_ID=${BUILD_ID}"    >> "${GITHUB_ENV}"
+          echo "TG_SHA=${SHORT_SHA}"        >> "${GITHUB_ENV}"
+          echo "TG_BRANCH=${BRANCH}"        >> "${GITHUB_ENV}"
+          echo "TG_TIMESTAMP=${TIMESTAMP}"  >> "${GITHUB_ENV}"
+          echo "TG_COMMIT=${COMMIT_ESC}"    >> "${GITHUB_ENV}"
+          echo "TG_RUN_URL=${RUN_URL}"      >> "${GITHUB_ENV}"
+          echo "TG_COMMIT_URL=${COMMIT_URL}" >> "${GITHUB_ENV}"
+          echo "TG_ACTOR=${ACTOR}"          >> "${GITHUB_ENV}"
+
+          # Initialize progress message on Telegram
+          python3 tool/telegram_notifier.py init
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -71,11 +100,25 @@ jobs:
       - name: Run code generation
         run: dart run build_runner build --delete-conflicting-outputs
 
+      - name: Update Telegram progress (Analysis & Tests)
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python3 tool/telegram_notifier.py update "🧪 <i>Running code analysis and unit tests...</i>"
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
       - name: Test
         run: flutter test
+
+      - name: Update Telegram progress (Compiling APK)
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python3 tool/telegram_notifier.py update "📱 <i>Compiling APK (${{ inputs.build_mode }})...</i>"
 
       - name: Decode signing keystore (release mode only)
         if: ${{ inputs.build_mode == 'release' }}
@@ -122,12 +165,6 @@ jobs:
         env:
           BUILD_MODE: ${{ inputs.build_mode }}
         run: |
-          SHORT_SHA="${GITHUB_SHA:0:7}"
-          BUILD_ID=$(grep "kBuildId" lib/build_id.dart | sed "s/.*'\(.*\)'.*/\1/")
-          COMMIT_MSG=$(git log -1 --pretty=format:"%s" | tr -d '_*`[]')
-          BRANCH="${GITHUB_REF_NAME}"
-          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
           cd build/app/outputs/flutter-apk
 
           # Extract version from pubspec.yaml for standard APK naming
@@ -139,9 +176,9 @@ jobs:
             stem="${stem%.apk}"
             abi_part="${stem%-${BUILD_MODE}}"
             if [ -n "$abi_part" ]; then
-              newname="Aetherfin-v${VERSION}-${abi_part}-${BUILD_ID}.apk"
+              newname="Aetherfin-v${VERSION}-${abi_part}-${TG_BUILD_ID}.apk"
             else
-              newname="Aetherfin-v${VERSION}-${BUILD_ID}.apk"
+              newname="Aetherfin-v${VERSION}-${TG_BUILD_ID}.apk"
             fi
             if [ "$f" != "$newname" ]; then
               echo "Renaming $f → $newname"
@@ -183,114 +220,23 @@ jobs:
             exit 1
           fi
 
-          # HTML-escape commit message (< > &) for HTML caption
-          COMMIT_ESC=$(printf '%s' "$COMMIT_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
-
           # Export metadata for the telegram action step
           echo "TG_APK_PATH=${APK_PATH}"    >> "${GITHUB_ENV}"
           echo "TG_APK_NAME=$(basename "$apk")" >> "${GITHUB_ENV}"
-          echo "TG_MODE=${BUILD_MODE}"      >> "${GITHUB_ENV}"
           echo "TG_SIZE=${SIZE_HUMAN}"      >> "${GITHUB_ENV}"
-          echo "TG_BUILD_ID=${BUILD_ID}"    >> "${GITHUB_ENV}"
-          echo "TG_SHA=${SHORT_SHA}"        >> "${GITHUB_ENV}"
-          echo "TG_BRANCH=${BRANCH}"        >> "${GITHUB_ENV}"
-          echo "TG_TIMESTAMP=${TIMESTAMP}"  >> "${GITHUB_ENV}"
-          echo "TG_COMMIT=${COMMIT_ESC}"    >> "${GITHUB_ENV}"
-          echo "TG_RUN_URL=${RUN_URL}"      >> "${GITHUB_ENV}"
-          echo "TG_COMMIT_URL=${{ github.server_url }}/${{ github.repository }}/commit/${GITHUB_SHA}" >> "${GITHUB_ENV}"
-          echo "TG_ACTOR=${{ github.actor }}" >> "${GITHUB_ENV}"
 
       - name: Send APK to Telegram
         if: env.TG_APK_PATH != ''
         env:
-          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          python3 << 'PYEOF'
-          import os, sys, json, uuid
-          from urllib.request import Request, urlopen
-          from urllib.error import HTTPError
+          python3 tool/telegram_notifier.py send_apk
 
-          # Build caption from env vars (set by prepare step)
-          caption = (
-              '🚀 <b>Aetherfin Build Successful!</b>\n'
-              '──────────────────────────────\n'
-              '📱 <b>App:</b> <code>{name}</code>\n'
-              '⚙️ <b>Mode:</b> <code>{mode}</code>\n'
-              '💾 <b>Size:</b> <code>{size}</code>\n\n'
-              '🌿 <b>Branch:</b> <code>{branch}</code>\n'
-              '🔢 <b>Build ID:</b> <code>{build_id}</code>\n'
-              '👤 <b>Triggered by:</b> <code>{actor}</code>\n\n'
-              '💬 <b>Last Commit:</b>\n'
-              '<code>{sha}</code> — <i>{commit}</i>\n'
-              '──────────────────────────────\n'
-              '📅 <i>{timestamp}</i>'
-          ).format(
-              mode=os.environ['TG_MODE'],
-              name=os.environ['TG_APK_NAME'],
-              size=os.environ['TG_SIZE'],
-              build_id=os.environ['TG_BUILD_ID'],
-              sha=os.environ['TG_SHA'],
-              branch=os.environ['TG_BRANCH'],
-              commit=os.environ['TG_COMMIT'],
-              timestamp=os.environ['TG_TIMESTAMP'],
-              actor=os.environ['TG_ACTOR'],
-          )
-
-          file_path = os.environ['TG_APK_PATH']
-          filename = os.environ['TG_APK_NAME']
-
-          with open(file_path, 'rb') as f:
-              file_data = f.read()
-
-          # Build inline keyboard buttons
-          reply_markup = {
-              "inline_keyboard": [
-                  [
-                      {"text": "🛠️ View Run", "url": os.environ['TG_RUN_URL']},
-                      {"text": "💻 View Commit", "url": os.environ['TG_COMMIT_URL']}
-                  ]
-              ]
-          }
-          reply_markup_json = json.dumps(reply_markup)
-
-          # Build multipart form-data manually (stdlib only)
-          boundary = uuid.uuid4().hex
-          body = b''
-
-          # chat_id field
-          body += f'--{boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n{os.environ["CHAT_ID"]}\r\n'.encode()
-          # caption field
-          body += f'--{boundary}\r\nContent-Disposition: form-data; name="caption"\r\n\r\n{caption}\r\n'.encode()
-          # parse_mode
-          body += f'--{boundary}\r\nContent-Disposition: form-data; name="parse_mode"\r\n\r\nHTML\r\n'.encode()
-          # reply_markup
-          body += f'--{boundary}\r\nContent-Disposition: form-data; name="reply_markup"\r\n\r\n{reply_markup_json}\r\n'.encode()
-          # document file
-          body += (
-              f'--{boundary}\r\n'
-              f'Content-Disposition: form-data; name="document"; filename="{filename}"\r\n'
-              f'Content-Type: application/vnd.android.package-archive\r\n\r\n'
-          ).encode() + file_data + b'\r\n'
-          # closing boundary
-          body += f'--{boundary}--\r\n'.encode()
-
-          bot_token = os.environ['BOT_TOKEN']
-          url = f'https://api.telegram.org/bot{bot_token}/sendDocument'
-
-          try:
-              req = Request(
-                  url, data=body,
-                  headers={'Content-Type': f'multipart/form-data; boundary={boundary}'}
-              )
-              resp = urlopen(req)
-              result = json.loads(resp.read())
-              if result.get('ok'):
-                  print(f'Sent {filename}.')
-              else:
-                  print(f'Telegram error: {result}')
-                  sys.exit(1)
-          except HTTPError as e:
-              print(f'HTTP {e.code}: {e.read().decode()}')
-              sys.exit(1)
-          PYEOF
+      - name: Notify Telegram of Failure
+        if: failure() && env.TG_MESSAGE_ID != ''
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python3 tool/telegram_notifier.py fail
