@@ -198,7 +198,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   title: 'Artists',
                   actionLabel: 'See more',
                   onActionTap: () {
-                    ref.read(songsPillProvider.notifier).state = SongsPill.artists;
+                    ref.read(songsPillProvider.notifier).state =
+                        SongsPill.artists;
                     context.go('/library');
                   },
                 ),
@@ -235,7 +236,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         imageUrl: a.imageUrl,
                         size: 100,
                         onTap: () {
-                          ref.read(songsPillProvider.notifier).state = SongsPill.artists;
+                          ref.read(songsPillProvider.notifier).state =
+                              SongsPill.artists;
                           context.go('/library');
                         },
                       );
@@ -257,7 +259,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   title: 'Genres',
                   actionLabel: 'See more',
                   onActionTap: () {
-                    ref.read(songsPillProvider.notifier).state = SongsPill.genres;
+                    ref.read(songsPillProvider.notifier).state =
+                        SongsPill.genres;
                     context.go('/library');
                   },
                 ),
@@ -283,7 +286,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         tint: _hex(g.tint),
                         imageUrl: g.imageUrl,
                         onTap: () {
-                          ref.read(songsPillProvider.notifier).state = SongsPill.genres;
+                          ref.read(songsPillProvider.notifier).state =
+                              SongsPill.genres;
                           context.go('/library');
                         },
                       );

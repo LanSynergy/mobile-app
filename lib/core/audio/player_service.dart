@@ -899,7 +899,6 @@ class AfPlayerService {
       _player.stream.completed.listen((completed) async {
         try {
           if (_disposed) return;
-          _updateMediaSession();
           if (!completed) return;
 
           final loopAtEvent = _player.state.loop;
@@ -933,50 +932,27 @@ class AfPlayerService {
           }
 
           if (!_queueManager.engine.isAtQueueEnd) {
-            // Advance engine state
-            _queueManager.engine.advanceIndex();
-            _queueManager.engine.advanceWindow();
-            _positionTracker.onTrackChanged();
+            return _queueLock.run(() async {
+              // Advance engine state
+              _queueManager.engine.advanceIndex();
+              _queueManager.engine.advanceWindow();
+              _positionTracker.onTrackChanged();
 
-            // Notify and emit
-            final current = _queueManager.currentTrack;
-            if (current != null) {
-              _queueManager.emitCurrentTrack(current);
-              onTrackChanged?.call(current);
-              unawaited(
-                Future.microtask(() => onTrackCompleted?.call(current)),
-              );
-            }
-            _updateMediaSession();
-            unawaited(_reconfigureSpectrumOnTrackChange());
-
-            final next = _queueManager.engine.nextTrack;
-            if (next != null && _resolveStreamUrl != null) {
-              try {
-                await _player.add(Media(_resolveStreamUrl!(next)));
-              } catch (e, stack) {
-                afLog(
-                  'audio',
-                  'completed: failed to add next track',
-                  error: e,
-                  stackTrace: stack,
+              // Notify and emit
+              final current = _queueManager.currentTrack;
+              if (current != null) {
+                _queueManager.emitCurrentTrack(current);
+                onTrackChanged?.call(current);
+                unawaited(
+                  Future.microtask(() => onTrackCompleted?.call(current)),
                 );
               }
-            }
+              _updateMediaSession();
+              unawaited(_reconfigureSpectrumOnTrackChange());
 
-            // If mpv stopped, restart playback to advance to next slot.
-            if (!playingAtEvent && loopAtEvent != Loop.file) {
-              try {
-                await _player.play();
-              } catch (e, stack) {
-                afLog(
-                  'audio',
-                  'completed: play() after advance failed',
-                  error: e,
-                  stackTrace: stack,
-                );
-              }
-            }
+              // Rebuild window instead of _player.add + conditional play
+              await _rebuildWindow(current!);
+            });
           } else {
             // End of queue
             var autoplayTriggered = false;
@@ -992,29 +968,29 @@ class AfPlayerService {
                     _queueManager.emitQueue();
 
                     // Now the queue is extended! Slide and play the next track.
-                    _queueManager.engine.advanceIndex();
-                    _queueManager.engine.advanceWindow();
-                    _positionTracker.onTrackChanged();
+                    return _queueLock.run(() async {
+                      _queueManager.engine.advanceIndex();
+                      _queueManager.engine.advanceWindow();
+                      _positionTracker.onTrackChanged();
 
-                    final current = _queueManager.currentTrack;
-                    if (current != null) {
-                      _queueManager.emitCurrentTrack(current);
-                      onTrackChanged?.call(current);
-                      unawaited(
-                        Future.microtask(() => onTrackCompleted?.call(current)),
-                      );
-                    }
-                    _updateMediaSession();
-                    unawaited(_reconfigureSpectrumOnTrackChange());
+                      final current = _queueManager.currentTrack;
+                      if (current != null) {
+                        _queueManager.emitCurrentTrack(current);
+                        onTrackChanged?.call(current);
+                        unawaited(
+                          Future.microtask(
+                            () => onTrackCompleted?.call(current),
+                          ),
+                        );
+                      }
+                      _updateMediaSession();
+                      unawaited(_reconfigureSpectrumOnTrackChange());
 
-                    // Rebuild window for the new track.
-                    await _rebuildWindow(current!);
+                      // Rebuild window for the new track.
+                      await _rebuildWindow(current!);
 
-                    autoplayTriggered = true;
-                    afLog(
-                      'audio',
-                      'autoplay: appended ${similar.length} tracks and continued playback',
-                    );
+                      autoplayTriggered = true;
+                    });
                   }
                 } catch (e, stack) {
                   afLog(
@@ -1048,11 +1024,13 @@ class AfPlayerService {
                   afLog('audio', 'queue end, auto-stop (loop=off)');
 
                 case Loop.playlist:
-                  _queueManager.engine.jumpTo(0);
-                  _positionTracker.onTrackChanged();
-                  await _rebuildWindow(_queueManager.currentTrack!);
-                  _updateMediaSession();
-                  afLog('audio', 'queue end, looping playlist');
+                  return _queueLock.run(() async {
+                    _queueManager.engine.jumpTo(0);
+                    _positionTracker.onTrackChanged();
+                    await _rebuildWindow(_queueManager.currentTrack!);
+                    _updateMediaSession();
+                    afLog('audio', 'queue end, looping playlist');
+                  });
                 case Loop.file:
                   _positionTracker.onTrackChanged();
                   if (!playingAtEvent) {

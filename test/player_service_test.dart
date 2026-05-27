@@ -599,29 +599,40 @@ void main() {
       );
     });
 
-    test(
-      'completed handler appends next-next track to player playlist',
-      () async {
-        when(() => player.add(any())).thenAnswer((_) async {});
+    test('completed handler rebuilds window via openAll', () async {
+      when(
+        () => player.openAll(
+          any(),
+          play: any(named: 'play'),
+          index: any(named: 'index'),
+        ),
+      ).thenAnswer((_) async {});
 
-        await service.playQueue(
-          [trackA, trackB, trackC],
-          startIndex: 0,
-          resolveStreamUrl: resolveStreamUrl,
-        );
-        await Future<void>.delayed(Duration.zero);
-        expect(service.currentTrack?.id, equals('1'));
+      await service.playQueue(
+        [trackA, trackB, trackC],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('1'));
 
-        updateState(
-          (s) => s.copyWith(playing: true, completed: false, loop: Loop.off),
-        );
+      updateState(
+        (s) => s.copyWith(playing: true, completed: false, loop: Loop.off),
+      );
 
-        ctrls.completed.add(true);
-        await Future<void>.delayed(Duration.zero);
+      ctrls.completed.add(true);
+      await Future<void>.delayed(Duration.zero);
 
-        verify(() => player.add(any(that: isA<Media>()))).called(1);
-      },
-    );
+      // playQueue opens via openAll (call 1), then completed handler rebuilds via openAll (call 2)
+      verify(
+        () => player.openAll(
+          any(),
+          play: any(named: 'play'),
+          index: any(named: 'index'),
+        ),
+      ).called(2);
+      verifyNever(() => player.add(any()));
+    });
 
     test('setAfShuffleMode emits updated shuffle status to stream', () async {
       final shuffleStates = <bool>[];
