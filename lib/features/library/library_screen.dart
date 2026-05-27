@@ -452,7 +452,7 @@ class _SectionBody extends ConsumerWidget {
                     variant: TileVariant.artist,
                     imageUrl: a.imageUrl,
                     size: double.infinity,
-                    onTap: () => context.push('/artist/${a.id}'),
+                    onTap: () => context.go('/library'),
                   );
                 },
               ),
@@ -693,8 +693,7 @@ class _SectionBody extends ConsumerWidget {
                   imageUrl: g.imageUrl,
                   width: double.infinity,
                   height: double.infinity,
-                  onTap: () =>
-                      context.push('/genre/${Uri.encodeComponent(g.name)}'),
+                  onTap: () => context.go('/library'),
                 );
               },
             ),

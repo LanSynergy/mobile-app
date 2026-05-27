@@ -15,6 +15,7 @@ import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/skeletons/home_skeleton.dart';
+import '../library/songs_screen.dart' show SongsPill;
 
 /// Mockup 04 — Home.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -196,7 +197,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: SectionHeader(
                   title: 'Artists',
                   actionLabel: 'See more',
-                  onActionTap: () => context.go('/library?section=artists'),
+                  onActionTap: () => context.go('/library', extra: SongsPill.artists),
                 ),
               ),
             ),
@@ -230,7 +231,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         variant: TileVariant.artist,
                         imageUrl: a.imageUrl,
                         size: 100,
-                        onTap: () => context.push('/artist/${a.id}'),
+                        onTap: () => context.go('/library', extra: SongsPill.artists),
                       );
                     },
                   ),
@@ -249,7 +250,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: SectionHeader(
                   title: 'Genres',
                   actionLabel: 'See more',
-                  onActionTap: () => context.go('/library?section=genres'),
+                  onActionTap: () => context.go('/library', extra: SongsPill.genres),
                 ),
               ),
             ),
@@ -272,9 +273,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         name: g.name,
                         tint: _hex(g.tint),
                         imageUrl: g.imageUrl,
-                        onTap: () => context.push(
-                          '/genre/${Uri.encodeComponent(g.name)}',
-                        ),
+                        onTap: () => context.go('/library', extra: SongsPill.genres),
                       );
                     },
                   ),

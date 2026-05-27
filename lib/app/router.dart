@@ -6,11 +6,8 @@ import '../core/jellyfin/models/server.dart';
 import '../state/providers.dart';
 import '../design_tokens/tokens.dart';
 import '../features/album/album_screen.dart';
-import '../features/artist/artist_screen.dart';
 import '../features/cast_picker/cast_picker_screen.dart';
-import '../features/genre/genre_screen.dart';
 import '../features/home/home_screen.dart';
-import '../features/library/library_screen.dart';
 import '../features/library/songs_screen.dart';
 import '../features/lyrics/lyrics_screen.dart';
 import '../features/now_playing/now_playing_screen.dart';
@@ -159,16 +156,10 @@ final _router = GoRouter(
             GoRoute(
               path: '/library',
               pageBuilder: (_, state) {
-                final raw = state.uri.queryParameters['section'];
-                if (raw != null) {
-                  final section = LibrarySection.values
-                      .where((s) => s.name == raw)
-                      .firstOrNull;
-                  return NoTransitionPage(
-                    child: LibraryScreen(initialSection: section),
-                  );
-                }
-                return const NoTransitionPage(child: SongsScreen());
+                final pill = state.extra;
+                return NoTransitionPage(
+                  child: SongsScreen(initialPill: pill is SongsPill ? pill : null),
+                );
               },
             ),
           ],
@@ -243,12 +234,6 @@ final _router = GoRouter(
       builder: (_, state) => AlbumScreen(albumId: state.pathParameters['id']!),
     ),
     GoRoute(
-      path: '/artist/:id',
-      parentNavigatorKey: _rootKey,
-      builder: (_, state) =>
-          ArtistScreen(artistId: state.pathParameters['id']!),
-    ),
-    GoRoute(
       path: '/playlist/:id',
       parentNavigatorKey: _rootKey,
       builder: (_, state) =>
@@ -275,13 +260,6 @@ final _router = GoRouter(
       parentNavigatorKey: _rootKey,
       builder: (_, state) =>
           SmartPlaylistEditScreen(playlistId: state.pathParameters['id']!),
-    ),
-    GoRoute(
-      path: '/genre/:name',
-      parentNavigatorKey: _rootKey,
-      builder: (_, state) => GenreScreen(
-        genreName: Uri.decodeComponent(state.pathParameters['name']!),
-      ),
     ),
   ],
 );

@@ -13,18 +13,21 @@ import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/skeletons/library_skeleton.dart';
 
-enum _SongsPill { songs, artists, albums }
+enum SongsPill { songs, artists, albums, genres }
 
-extension on _SongsPill {
+extension on SongsPill {
   String get label => switch (this) {
-    _SongsPill.songs => 'Songs',
-    _SongsPill.artists => 'Artists',
-    _SongsPill.albums => 'Albums',
+    SongsPill.songs => 'Songs',
+    SongsPill.artists => 'Artists',
+    SongsPill.albums => 'Albums',
+    SongsPill.genres => 'Genres',
   };
 }
 
 class SongsScreen extends ConsumerStatefulWidget {
-  const SongsScreen({super.key});
+  const SongsScreen({super.key, this.initialPill});
+
+  final SongsPill? initialPill;
 
   @override
   ConsumerState<SongsScreen> createState() => _SongsScreenState();
@@ -32,8 +35,14 @@ class SongsScreen extends ConsumerStatefulWidget {
 
 class _SongsScreenState extends ConsumerState<SongsScreen> {
   final _searchController = TextEditingController();
-  _SongsPill _pill = _SongsPill.songs;
+  late SongsPill _pill;
   String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _pill = widget.initialPill ?? SongsPill.songs;
+  }
 
   @override
   void dispose() {
@@ -126,8 +135,8 @@ class _SongsScreenState extends ConsumerState<SongsScreen> {
 
 class _PillBar extends StatefulWidget {
   const _PillBar({required this.selected, required this.onChanged});
-  final _SongsPill selected;
-  final ValueChanged<_SongsPill> onChanged;
+  final SongsPill selected;
+  final ValueChanged<SongsPill> onChanged;
 
   @override
   State<_PillBar> createState() => _PillBarState();
@@ -142,7 +151,7 @@ class _PillBarState extends State<_PillBar>
   @override
   void initState() {
     super.initState();
-    _toIndex = _SongsPill.values.indexOf(widget.selected);
+    _toIndex = SongsPill.values.indexOf(widget.selected);
     _fromIndex = _toIndex;
     _ctrl = AnimationController(
       vsync: this,
@@ -155,7 +164,7 @@ class _PillBarState extends State<_PillBar>
     super.didUpdateWidget(old);
     if (old.selected != widget.selected) {
       _fromIndex = _toIndex;
-      _toIndex = _SongsPill.values.indexOf(widget.selected);
+      _toIndex = SongsPill.values.indexOf(widget.selected);
       _ctrl.forward(from: 0);
     }
   }
@@ -168,7 +177,7 @@ class _PillBarState extends State<_PillBar>
 
   @override
   Widget build(BuildContext context) {
-    final count = _SongsPill.values.length;
+    final count = SongsPill.values.length;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -183,7 +192,6 @@ class _PillBarState extends State<_PillBar>
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // Sliding indicator — easeOutBack with damped overshoot
                   AnimatedBuilder(
                     animation: _ctrl,
                     builder: (context, _) {
@@ -208,10 +216,9 @@ class _PillBarState extends State<_PillBar>
                       );
                     },
                   ),
-                  // Tap targets + labels
                   Row(
                     children: List.generate(count, (i) {
-                      final pill = _SongsPill.values[i];
+                      final pill = SongsPill.values[i];
                       return Expanded(
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
@@ -247,7 +254,7 @@ class _PillBarState extends State<_PillBar>
 
 class _PillContent extends ConsumerWidget {
   const _PillContent({required this.pill, required this.query});
-  final _SongsPill pill;
+  final SongsPill pill;
   final String query;
 
   @override
@@ -256,12 +263,14 @@ class _PillContent extends ConsumerWidget {
     final isLocal = mode == AppMode.local;
 
     switch (pill) {
-      case _SongsPill.songs:
+      case SongsPill.songs:
         return _SongsList(isLocal: isLocal, query: query);
-      case _SongsPill.artists:
+      case SongsPill.artists:
         return _ArtistsGrid(isLocal: isLocal, query: query);
-      case _SongsPill.albums:
+      case SongsPill.albums:
         return _AlbumsGrid(isLocal: isLocal, query: query);
+      case SongsPill.genres:
+        return _GenresGrid(isLocal: isLocal, query: query);
     }
   }
 }
@@ -404,7 +413,7 @@ class _ArtistsGrid extends ConsumerWidget {
                 variant: TileVariant.artist,
                 imageUrl: a.imageUrl,
                 size: double.infinity,
-                onTap: () => context.push('/artist/${a.id}'),
+                onTap: () => context.go('/library'),
               );
             },
           ),
@@ -499,5 +508,78 @@ class _AlbumsGrid extends ConsumerWidget {
       return a.name.toLowerCase().contains(q) ||
           a.artistName.toLowerCase().contains(q);
     }).toList();
+  }
+}
+
+/// ─────────────────────────────────────────────────────────────────────────────
+///
+/// Genres grid — local or server.
+///
+/// ─────────────────────────────────────────────────────────────────────────────
+class _GenresGrid extends ConsumerWidget {
+  const _GenresGrid({required this.isLocal, required this.query});
+  final bool isLocal;
+  final String query;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final provider = isLocal ? localGenresProvider : allGenresProvider;
+    final async = ref.watch(provider);
+    return async.when(
+      data: (list) {
+        final filtered = _filter(list, query);
+        if (filtered.isEmpty) {
+          return Center(
+            child: Text(
+              'No genres found',
+              style: AfTypography.bodyMedium.copyWith(
+                color: AfColors.textTertiary,
+              ),
+            ),
+          );
+        }
+        const padding = EdgeInsets.symmetric(horizontal: AfSpacing.s16);
+        return RepaintBoundary(
+          child: GridView.builder(
+            padding: padding.add(
+              const EdgeInsets.only(
+                bottom: AfSpacing.bottomInsetWithMiniAndNav,
+              ),
+            ),
+            itemCount: filtered.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisExtent: 96,
+              crossAxisSpacing: AfSpacing.s12,
+              mainAxisSpacing: AfSpacing.s12,
+            ),
+            itemBuilder: (context, i) {
+              final g = filtered[i];
+              final tint = Color(int.parse(g.tint.replaceFirst('#', '0xFF')));
+              return GenreTile(
+                name: g.name,
+                tint: tint,
+                imageUrl: g.imageUrl,
+                width: double.infinity,
+                height: double.infinity,
+                onTap: () => context.go('/library'),
+              );
+            },
+          ),
+        );
+      },
+      loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.genres),
+      error: (e, _) => AsyncErrorView(
+        label: 'Couldn\u2019t load genres',
+        error: e,
+        onRetry: () => ref.invalidate(provider),
+      ),
+    );
+  }
+
+  List<AfGenre> _filter(List<AfGenre> genres, String query) {
+    if (query.isEmpty) return genres;
+    final q = query.toLowerCase();
+    return genres.where((g) => g.name.toLowerCase().contains(q)).toList();
   }
 }
