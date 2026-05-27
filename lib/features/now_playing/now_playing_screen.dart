@@ -75,6 +75,7 @@ class NowPlayingScreen extends ConsumerWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final double maxHeight = constraints.maxHeight;
+                final bool useScroll = maxHeight < 620.0;
 
                 // Adjust spacing tokens dynamically based on vertical space to prevent layout overflows
                 final double spacing16 = maxHeight < 620 ? 8.0 : (maxHeight < 720 ? 12.0 : 16.0);
@@ -84,26 +85,36 @@ class NowPlayingScreen extends ConsumerWidget {
                 final double artworkSize = (maxHeight * 0.35).clamp(160.0, 300.0);
                 final double scrubberHeight = (maxHeight * 0.15).clamp(80.0, 120.0);
 
-                return Column(
-                  children: [
-                    if (extraTopPadding > 0) SizedBox(height: extraTopPadding),
-                    _TopBar(track: track),
-                    const Spacer(),
-                    UnconstrainedBox(
-                      clipBehavior: Clip.none,
-                      child: _ReactiveArtwork(track: track, size: artworkSize),
+                final List<Widget> content = [
+                  if (extraTopPadding > 0) SizedBox(height: extraTopPadding),
+                  _TopBar(track: track),
+                  if (useScroll) const SizedBox(height: AfSpacing.s16) else const Spacer(),
+                  UnconstrainedBox(
+                    clipBehavior: Clip.none,
+                    child: _ReactiveArtwork(track: track, size: artworkSize),
+                  ),
+                  if (useScroll) const SizedBox(height: AfSpacing.s16) else const Spacer(),
+                  _MetadataRow(track: track),
+                  SizedBox(height: spacing16),
+                  _ReactiveProgress(track: track, scrubberHeight: scrubberHeight),
+                  SizedBox(height: spacing24),
+                  _ReactiveTransport(track: track),
+                  SizedBox(height: spacing24),
+                  const UtilityRow(),
+                  SizedBox(height: spacing16),
+                ];
+
+                if (useScroll) {
+                  return SingleChildScrollView(
+                    child: Column(
+                      children: content,
                     ),
-                    const Spacer(),
-                    _MetadataRow(track: track),
-                    SizedBox(height: spacing16),
-                    _ReactiveProgress(track: track, scrubberHeight: scrubberHeight),
-                    SizedBox(height: spacing24),
-                    _ReactiveTransport(track: track),
-                    SizedBox(height: spacing24),
-                    const UtilityRow(),
-                    SizedBox(height: spacing16),
-                  ],
-                );
+                  );
+                } else {
+                  return Column(
+                    children: content,
+                  );
+                }
               },
             ),
           ),
