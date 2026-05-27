@@ -78,25 +78,44 @@ class NowPlayingScreen extends ConsumerWidget {
                 final bool useScroll = maxHeight < 620.0;
 
                 // Adjust spacing tokens dynamically based on vertical space to prevent layout overflows
-                final double spacing16 = maxHeight < 620 ? 8.0 : (maxHeight < 720 ? 12.0 : 16.0);
-                final double spacing24 = maxHeight < 620 ? 12.0 : (maxHeight < 720 ? 18.0 : 24.0);
+                final double spacing16 = maxHeight < 620
+                    ? 8.0
+                    : (maxHeight < 720 ? 12.0 : 16.0);
+                final double spacing24 = maxHeight < 620
+                    ? 12.0
+                    : (maxHeight < 720 ? 18.0 : 24.0);
 
                 // Scale down artwork and scrubber heights if height budget is tight
-                final double artworkSize = (maxHeight * 0.35).clamp(160.0, 300.0);
-                final double scrubberHeight = (maxHeight * 0.15).clamp(80.0, 120.0);
+                final double artworkSize = (maxHeight * 0.35).clamp(
+                  160.0,
+                  300.0,
+                );
+                final double scrubberHeight = (maxHeight * 0.15).clamp(
+                  80.0,
+                  120.0,
+                );
 
                 final List<Widget> content = [
                   if (extraTopPadding > 0) SizedBox(height: extraTopPadding),
                   _TopBar(track: track),
-                  if (useScroll) const SizedBox(height: AfSpacing.s16) else const Spacer(),
+                  if (useScroll)
+                    const SizedBox(height: AfSpacing.s16)
+                  else
+                    const Spacer(),
                   UnconstrainedBox(
                     clipBehavior: Clip.none,
                     child: _ReactiveArtwork(track: track, size: artworkSize),
                   ),
-                  if (useScroll) const SizedBox(height: AfSpacing.s16) else const Spacer(),
+                  if (useScroll)
+                    const SizedBox(height: AfSpacing.s16)
+                  else
+                    const Spacer(),
                   _MetadataRow(track: track),
                   SizedBox(height: spacing16),
-                  _ReactiveProgress(track: track, scrubberHeight: scrubberHeight),
+                  _ReactiveProgress(
+                    track: track,
+                    scrubberHeight: scrubberHeight,
+                  ),
                   SizedBox(height: spacing24),
                   _ReactiveTransport(track: track),
                   SizedBox(height: spacing24),
@@ -106,14 +125,10 @@ class NowPlayingScreen extends ConsumerWidget {
 
                 if (useScroll) {
                   return SingleChildScrollView(
-                    child: Column(
-                      children: content,
-                    ),
+                    child: Column(children: content),
                   );
                 } else {
-                  return Column(
-                    children: content,
-                  );
+                  return Column(children: content);
                 }
               },
             ),

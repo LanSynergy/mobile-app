@@ -233,9 +233,7 @@ void main() {
           toggled = true;
         };
 
-        await bridge.handleMethodCall(
-          const MethodCall('toggleFavorite'),
-        );
+        await bridge.handleMethodCall(const MethodCall('toggleFavorite'));
 
         expect(toggled, isTrue);
       },

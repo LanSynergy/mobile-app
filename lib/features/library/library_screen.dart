@@ -489,13 +489,11 @@ class _SectionBody extends ConsumerWidget {
                         track: t,
                         steelBackground: true,
                         isActive: t.id == activeId,
-                        onTap: () => ref
-                            .read(playActionsProvider)
-                            .playSingle(t),
+                        onTap: () =>
+                            ref.read(playActionsProvider).playSingle(t),
                         onLongPress: () =>
                             showTrackContextMenu(context, ref, t),
                       ),
-
                     );
                   },
                 ),
@@ -570,12 +568,9 @@ class _SectionBody extends ConsumerWidget {
                   track: t,
                   steelBackground: true,
                   isActive: t.id == activeId,
-                  onTap: () => ref
-                      .read(playActionsProvider)
-                      .playSingle(t),
+                  onTap: () => ref.read(playActionsProvider).playSingle(t),
                   onLongPress: () => showTrackContextMenu(context, ref, t),
                 );
-
               },
             ),
           ),
