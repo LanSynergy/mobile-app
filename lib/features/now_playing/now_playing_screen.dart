@@ -156,10 +156,14 @@ class _ReactiveBackground extends ConsumerWidget {
     final luminance = background.computeLuminance();
     final overlayStyle = SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: luminance > 0.5 ? Brightness.dark : Brightness.light,
+      statusBarIconBrightness: luminance > 0.5
+          ? Brightness.dark
+          : Brightness.light,
       statusBarBrightness: luminance > 0.5 ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness: luminance > 0.5 ? Brightness.dark : Brightness.light,
+      systemNavigationBarIconBrightness: luminance > 0.5
+          ? Brightness.dark
+          : Brightness.light,
       systemNavigationBarDividerColor: Colors.transparent,
     );
     return AnnotatedRegion<SystemUiOverlayStyle>(

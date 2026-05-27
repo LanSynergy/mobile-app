@@ -332,13 +332,13 @@ class LocalBackend implements MusicBackend {
       if (await file.exists()) {
         final dir = file.parent.path;
         final baseName = p.basenameWithoutExtension(file.path);
-        
+
         // Try lowercase .lrc
         final lrcFile = File(p.join(dir, '$baseName.lrc'));
         if (await lrcFile.exists()) {
           return await lrcFile.readAsString();
         }
-        
+
         // Try uppercase .LRC
         final lrcFileUpper = File(p.join(dir, '$baseName.LRC'));
         if (await lrcFileUpper.exists()) {
@@ -349,7 +349,11 @@ class LocalBackend implements MusicBackend {
         return await EmbeddedLyricsParser.extractLyrics(trackId);
       }
     } catch (e) {
-      afLog('local', 'failed to read local lyrics for track $trackId', error: e);
+      afLog(
+        'local',
+        'failed to read local lyrics for track $trackId',
+        error: e,
+      );
     }
     return null;
   }

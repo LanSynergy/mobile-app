@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -37,30 +38,76 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
   /// position stream ticks but the active line is the same).
   int _lastScrolledIndex = -1;
 
+  /// Whether the user has manually scrolled the lyrics. When true, auto-scrolling
+  /// is paused to let the user read.
+  bool _userScrolled = false;
+  Timer? _userScrollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _userScrollTimer?.cancel();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.userScrollDirection !=
+        ScrollDirection.idle) {
+      if (!_userScrolled) {
+        setState(() {
+          _userScrolled = true;
+        });
+      }
+      _userScrollTimer?.cancel();
+      _userScrollTimer = Timer(const Duration(seconds: 4), () {
+        if (mounted) {
+          setState(() {
+            _userScrolled = false;
+            _lastScrolledIndex =
+                -1; // Force immediate snap-back to active lyric
+          });
+        }
+      });
+    }
   }
 
   /// Scroll the list so the active line sits in the vertical centre of
   /// the viewport. Called after every build where [activeIndex] changed.
   void _scrollToActive(int activeIndex, int lineCount) {
-    if (!_scrollController.hasClients) return;
-    if (activeIndex < 0) return;
-    if (activeIndex == _lastScrolledIndex) return;
-    _lastScrolledIndex = activeIndex;
+    if (!_scrollController.hasClients) {
+      _lastScrolledIndex = -1;
+      return;
+    }
 
     final viewportHeight = _scrollController.position.viewportDimension;
+    final minScroll = _scrollController.position.minScrollExtent;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+
+    // If the list is expected to be scrollable but maxScroll is 0,
+    // layout is probably not complete. Reset _lastScrolledIndex and schedule
+    // a rebuild on the next frame to retry.
+    final expectedContentHeight = lineCount * _rowHeight;
+    if (maxScroll == 0.0 && expectedContentHeight > viewportHeight) {
+      _lastScrolledIndex = -1;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+      return;
+    }
+
     // Target offset: top of the active row minus half the viewport so
     // the row lands in the centre. Add half a row height to centre on
     // the row's midpoint rather than its top edge.
     final target =
         (activeIndex * _rowHeight) - (viewportHeight / 2) + (_rowHeight / 2);
-    final clamped = target.clamp(
-      _scrollController.position.minScrollExtent,
-      _scrollController.position.maxScrollExtent,
-    );
+    final clamped = target.clamp(minScroll, maxScroll);
 
     _scrollController.animateTo(
       clamped,
@@ -82,27 +129,31 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
       orElse: () => null,
     );
 
+    final position = ref.watch(positionStreamProvider);
+    final isSynced =
+        lrc != null && lrc.lines.any((l) => l.start > Duration.zero);
+    final active = isSynced ? (lrc.activeIndex(position)) : -1;
+
     // Reset scroll tracking when the track changes so lyrics follow from
     // the start of the new song.
     ref.listen(currentTrackProvider, (prev, next) {
       if (prev?.id != next?.id) {
         _lastScrolledIndex = -1;
+        _userScrolled = false;
+        _userScrollTimer?.cancel();
       }
     });
 
-    // Scroll to active line only when position actually changes — not on
-    // every build. Using ref.listen avoids enqueuing a post-frame callback
-    // on every position tick (which was growing the callback queue unboundedly).
-    ref.listen(positionStreamProvider, (_, next) {
-      final position = next;
-      final active = lrc?.activeIndex(position) ?? -1;
-      if (lrc != null && lrc.lines.isNotEmpty) {
+    if (lrc != null &&
+        lrc.lines.isNotEmpty &&
+        active >= 0 &&
+        active != _lastScrolledIndex &&
+        !_userScrolled) {
+      _lastScrolledIndex = active;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToActive(active, lrc.lines.length);
-      }
-    });
-
-    final position = ref.watch(positionStreamProvider);
-    final active = lrc?.activeIndex(position) ?? -1;
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -174,23 +225,37 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                           const SizedBox(height: AfSpacing.s16),
                           FilledButton.icon(
                             onPressed: () async {
-                              final lyricsContent = await SafPicker.pickAndReadLrcFile();
-                              if (lyricsContent == null || lyricsContent.trim().isEmpty) return;
-                              
-                              final success = await backend.saveSidecarLrc(track.id, lyricsContent);
+                              final lyricsContent =
+                                  await SafPicker.pickAndReadLrcFile();
+                              if (lyricsContent == null ||
+                                  lyricsContent.trim().isEmpty) {
+                                return;
+                              }
+
+                              final success = await backend.saveSidecarLrc(
+                                track.id,
+                                lyricsContent,
+                              );
                               if (success) {
                                 ref.invalidate(lyricsProvider(track.id));
                               } else {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Failed to save lyrics')),
+                                    const SnackBar(
+                                      content: Text('Failed to save lyrics'),
+                                    ),
                                   );
                                 }
                               }
                             },
-                            icon: const Icon(Icons.upload_file_rounded, size: 18),
+                            icon: const Icon(
+                              Icons.upload_file_rounded,
+                              size: 18,
+                            ),
                             label: const Text('Load LRC File'),
-                            style: FilledButton.styleFrom(backgroundColor: AfColors.indigo600),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AfColors.indigo600,
+                            ),
                           ),
                         ],
                       ],

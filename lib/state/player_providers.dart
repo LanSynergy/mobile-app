@@ -19,7 +19,9 @@ import '../utils/log.dart';
 void wirePlayerService(Ref ref, AfPlayerService svc) {
   svc.onTrackChanged = (track) {
     ref.read(currentTrackProvider.notifier).state = track;
-    ref.read(currentArtworkUriProvider.notifier).state = track != null ? svc.currentArtworkUri : null;
+    ref.read(currentArtworkUriProvider.notifier).state = track != null
+        ? svc.currentArtworkUri
+        : null;
     ref.read(positionStreamProvider.notifier).state = Duration.zero;
     ref
         .read(durationStreamProvider.notifier)
