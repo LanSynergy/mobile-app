@@ -354,6 +354,27 @@ class LocalBackend implements MusicBackend {
     return null;
   }
 
+  /// Saves the sidecar lyrics back to the track's folder.
+  Future<bool> saveSidecarLrc(String trackId, String content) async {
+    if (trackId.startsWith('content://')) {
+      return SafPicker.saveSidecarLrc(trackId, content);
+    }
+
+    try {
+      final file = File(trackId);
+      if (await file.exists()) {
+        final dir = file.parent.path;
+        final baseName = p.basenameWithoutExtension(file.path);
+        final lrcFile = File(p.join(dir, '$baseName.lrc'));
+        await lrcFile.writeAsString(content);
+        return true;
+      }
+    } catch (e) {
+      afLog('local', 'failed to write local sidecar lrc', error: e);
+    }
+    return false;
+  }
+
   // ── Playback reporting ────────────────────────────────────────────
   //
   // No server, no telemetry destination. The JellyfinPlaybackReporter

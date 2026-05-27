@@ -52,6 +52,19 @@ void main() {
       final result = await localBackend.lyrics(audioFile.path);
       expect(result, equals(lyricsText));
     });
+
+    test('saveSidecarLrc writes lyrics to sidecar .lrc file', () async {
+      final audioFile = File(p.join(tempDir.path, 'song.mp3'));
+      await audioFile.writeAsString('audio-mock');
+      
+      const lyricsText = 'New saved lyrics';
+      final success = await localBackend.saveSidecarLrc(audioFile.path, lyricsText);
+      expect(success, isTrue);
+
+      final lrcFile = File(p.join(tempDir.path, 'song.lrc'));
+      expect(await lrcFile.exists(), isTrue);
+      expect(await lrcFile.readAsString(), equals(lyricsText));
+    });
   });
 
   group('Embedded lyrics parsing', () {

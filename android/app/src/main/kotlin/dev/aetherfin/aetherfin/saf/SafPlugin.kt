@@ -34,6 +34,7 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
     companion object {
         private const val CHANNEL = "aetherfin.saf"
         private const val PICK_FOLDER_REQUEST = 9001
+        private const val PICK_FILE_REQUEST = 9002
         private val AUDIO_EXTENSIONS = setOf(
             "mp3", "flac", "opus", "ogg", "m4a", "wav", "aac", "wma",
             "alac", "aiff", "ape", "wv", "dsf", "dff"
@@ -107,6 +108,25 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
                     }
                 }
             }
+            "pickAndReadLrcFile" -> {
+                pickFile(result)
+            }
+            "saveSidecarLrc" -> {
+                val uri = call.argument<String>("uri")
+                    ?: return result.error("INVALID_ARG", "uri required", null)
+                val content = call.argument<String>("content")
+                    ?: return result.error("INVALID_ARG", "content required", null)
+                scope.launch {
+                    try {
+                        val success = saveSidecarLrc(uri, content)
+                        withContext(Dispatchers.Main) { result.success(success) }
+                    } catch (e: java.lang.Exception) {
+                        withContext(Dispatchers.Main) {
+                            result.error("WRITE_ERROR", e.message, null)
+                        }
+                    }
+                }
+            }
             else -> result.notImplemented()
         }
     }
@@ -129,8 +149,23 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
         act.startActivityForResult(intent, PICK_FOLDER_REQUEST)
     }
 
+    private fun pickFile(result: MethodChannel.Result) {
+        val act = activity
+        if (act == null) {
+            result.error("NO_ACTIVITY", "Activity not available", null)
+            return
+        }
+        pendingResult = result
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("text/*", "application/octet-stream"))
+        }
+        act.startActivityForResult(intent, PICK_FILE_REQUEST)
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
-        if (requestCode != PICK_FOLDER_REQUEST) return false
+        if (requestCode != PICK_FOLDER_REQUEST && requestCode != PICK_FILE_REQUEST) return false
         val result = pendingResult ?: return true
         pendingResult = null
 
@@ -139,12 +174,27 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
             return true
         }
 
-        val treeUri = data.data!!
-        // Take persistent permission
-        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-        activity?.contentResolver?.takePersistableUriPermission(treeUri, flags)
-
-        result.success(treeUri.toString())
+        val uri = data.data!!
+        if (requestCode == PICK_FOLDER_REQUEST) {
+            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            activity?.contentResolver?.takePersistableUriPermission(uri, flags)
+            result.success(uri.toString())
+        } else {
+            scope.launch {
+                try {
+                    val content = activity?.contentResolver?.openInputStream(uri)?.use { inputStream ->
+                        inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+                    }
+                    withContext(Dispatchers.Main) {
+                        result.success(content)
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        result.error("READ_ERROR", e.message, null)
+                    }
+                }
+            }
+        }
         return true
     }
 
@@ -328,6 +378,70 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
             }
         } catch (e: Exception) {
             null
+        }
+    }
+
+    private fun tryWriteUri(ctx: android.content.Context, uri: Uri, content: String): Boolean {
+        return try {
+            ctx.contentResolver.openOutputStream(uri, "rwt")?.use { outputStream ->
+                outputStream.write(content.toByteArray(Charsets.UTF_8))
+                true
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun saveSidecarLrc(trackUriStr: String, content: String): Boolean {
+        val ctx = activity ?: return false
+        val uri = Uri.parse(trackUriStr)
+        return try {
+            val docId = DocumentsContract.getDocumentId(uri)
+            val lastDot = docId.lastIndexOf('.')
+            if (lastDot == -1) return false
+            
+            val baseDocId = docId.substring(0, lastDot)
+            val treeId = DocumentsContract.getTreeDocumentId(uri)
+            val authority = uri.authority ?: return false
+            val treeUri = DocumentsContract.buildTreeDocumentUri(authority, treeId)
+            
+            val lrcDocId = "$baseDocId.lrc"
+            val lrcUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, lrcDocId)
+            
+            // Try to overwrite first
+            var written = tryWriteUri(ctx, lrcUri, content)
+            
+            if (!written) {
+                // If overwrite fails (file does not exist), create it
+                val lastSlash = docId.lastIndexOf('/')
+                val parentDocId = if (lastSlash != -1) {
+                    docId.substring(0, lastSlash)
+                } else {
+                    treeId
+                }
+                
+                val lastSlashInBase = baseDocId.lastIndexOf('/')
+                val baseName = if (lastSlashInBase != -1) {
+                    baseDocId.substring(lastSlashInBase + 1)
+                } else {
+                    baseDocId
+                }
+                
+                val parentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, parentDocId)
+                val newLrcUri = DocumentsContract.createDocument(
+                    ctx.contentResolver,
+                    parentUri,
+                    "application/octet-stream",
+                    "$baseName.lrc"
+                )
+                if (newLrcUri != null) {
+                    written = tryWriteUri(ctx, newLrcUri, content)
+                }
+            }
+            
+            written
+        } catch (e: Exception) {
+            false
         }
     }
 

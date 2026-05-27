@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/local/local_backend.dart';
+import '../../core/local/saf_picker.dart';
 import '../../core/lyrics/lrc_parser.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
@@ -148,19 +150,50 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
             ),
             orElse: () {
               if (lrc == null || lrc.isEmpty) {
+                final backend = ref.watch(musicBackendProvider);
+                final isLocal = backend is LocalBackend;
+
                 return Center(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AfSpacing.gutterGenerous,
                     ),
-                    child: Text(
-                      track == null
-                          ? 'Start a track to see lyrics.'
-                          : 'No lyrics available for this track.',
-                      style: AfTypography.bodyMedium.copyWith(
-                        color: AfColors.textTertiary,
-                      ),
-                      textAlign: TextAlign.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          track == null
+                              ? 'Start a track to see lyrics.'
+                              : 'No lyrics available for this track.',
+                          style: AfTypography.bodyMedium.copyWith(
+                            color: AfColors.textTertiary,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (track != null && isLocal) ...[
+                          const SizedBox(height: AfSpacing.s16),
+                          FilledButton.icon(
+                            onPressed: () async {
+                              final lyricsContent = await SafPicker.pickAndReadLrcFile();
+                              if (lyricsContent == null || lyricsContent.trim().isEmpty) return;
+                              
+                              final success = await backend.saveSidecarLrc(track.id, lyricsContent);
+                              if (success) {
+                                ref.invalidate(lyricsProvider(track.id));
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Failed to save lyrics')),
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.upload_file_rounded, size: 18),
+                            label: const Text('Load LRC File'),
+                            style: FilledButton.styleFrom(backgroundColor: AfColors.indigo600),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 );

@@ -58,6 +58,29 @@ class SafPicker {
       return null;
     }
   }
+
+  /// Opens the Android file picker and reads the selected LRC/text file content.
+  static Future<String?> pickAndReadLrcFile() async {
+    try {
+      final result = await _channel.invokeMethod<String>('pickAndReadLrcFile');
+      return result;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Saves sidecar lyrics back to the audio track's folder via SAF.
+  static Future<bool> saveSidecarLrc(String fileUri, String content) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('saveSidecarLrc', {
+        'uri': fileUri,
+        'content': content,
+      });
+      return result ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
 }
 
 /// A file discovered during SAF tree scan.
