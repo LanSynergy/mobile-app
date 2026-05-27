@@ -1,10 +1,15 @@
+import 'dart:io';
+import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
+import '../../utils/log.dart';
 import '../backend/music_backend.dart';
 import '../jellyfin/models/items.dart';
 import '../jellyfin/models/library.dart';
+import '../lyrics/embedded_lyrics_parser.dart';
 import 'local_db.dart';
 import 'local_library.dart';
+import 'saf_picker.dart';
 
 /// On-device implementation of [MusicBackend] for local mode.
 ///
@@ -309,12 +314,45 @@ class LocalBackend implements MusicBackend {
 
   // ── Lyrics ────────────────────────────────────────────────────────
   //
-  // Local mode has no centrally-managed LRC index. Sidecar .lrc
-  // discovery alongside `content://` files is out of scope for this
-  // pass — the lyrics screen already handles a null return cleanly.
+  // Resolves lyrics for local playback:
+  // 1. If using SAF (Android), delegates to SafPicker to search for a
+  //    sidecar .lrc file or parse embedded tag lyrics.
+  // 2. Otherwise (desktop/raw path), checks for a local sidecar .lrc
+  //    file or extracts embedded tag lyrics using EmbeddedLyricsParser.
 
   @override
-  Future<String?> lyrics(String trackId) async => null;
+  Future<String?> lyrics(String trackId) async {
+    if (trackId.startsWith('content://')) {
+      return SafPicker.readLyrics(trackId);
+    }
+
+    try {
+      // 1. Try sidecar .lrc next to file
+      final file = File(trackId);
+      if (await file.exists()) {
+        final dir = file.parent.path;
+        final baseName = p.basenameWithoutExtension(file.path);
+        
+        // Try lowercase .lrc
+        final lrcFile = File(p.join(dir, '$baseName.lrc'));
+        if (await lrcFile.exists()) {
+          return await lrcFile.readAsString();
+        }
+        
+        // Try uppercase .LRC
+        final lrcFileUpper = File(p.join(dir, '$baseName.LRC'));
+        if (await lrcFileUpper.exists()) {
+          return await lrcFileUpper.readAsString();
+        }
+
+        // 2. Fallback to embedded lyrics
+        return await EmbeddedLyricsParser.extractLyrics(trackId);
+      }
+    } catch (e) {
+      afLog('local', 'failed to read local lyrics for track $trackId', error: e);
+    }
+    return null;
+  }
 
   // ── Playback reporting ────────────────────────────────────────────
   //

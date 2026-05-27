@@ -46,6 +46,18 @@ class SafPicker {
     });
     return result;
   }
+
+  /// Reads sidecar or embedded lyrics from a file via SAF. Returns null if none.
+  static Future<String?> readLyrics(String fileUri) async {
+    try {
+      final result = await _channel.invokeMethod<String>('readLyrics', {
+        'uri': fileUri,
+      });
+      return result;
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 /// A file discovered during SAF tree scan.
