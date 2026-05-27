@@ -105,7 +105,7 @@ jobs:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          python3 tool/telegram_notifier.py update "🧪 <i>Running code analysis and unit tests...</i>"
+          python3 tool/telegram_notifier.py update "Running code analysis and unit tests..."
 
       - name: Analyze
         run: flutter analyze --no-fatal-infos
@@ -118,7 +118,7 @@ jobs:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          python3 tool/telegram_notifier.py update "📱 <i>Compiling APK (${{ inputs.build_mode }})...</i>"
+          python3 tool/telegram_notifier.py update "Compiling APK (${{ inputs.build_mode }})..."
 
       - name: Decode signing keystore (release mode only)
         if: ${{ inputs.build_mode == 'release' }}

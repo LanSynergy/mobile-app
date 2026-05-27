@@ -35,15 +35,15 @@ def get_base_caption(status_text):
     return (
         f"⏳ <b>Aetherfin Build Progress</b>\n"
         f"──────────────────────────────\n"
-        f"🌿 <b>Branch:</b> <code>{branch}</code>\n"
-        f"🔢 <b>Build ID:</b> <code>{build_id}</code>\n"
-        f"👤 <b>Triggered by:</b> <code>{actor}</code>\n"
+        f"<b>Branch:</b> <code>{branch}</code>\n"
+        f"<b>Build ID:</b> <code>{build_id}</code>\n"
+        f"<b>Triggered by:</b> <code>{actor}</code>\n"
         f"──────────────────────────────\n"
-        f"{status_text}"
+        f"<blockquote>{status_text}</blockquote>"
     )
 
 def init_message():
-    text = get_base_caption("🔄 <i>Setting up build environment...</i>")
+    text = get_base_caption("Setting up build environment...")
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = json.dumps({
         "chat_id": CHAT_ID,
@@ -98,11 +98,11 @@ def fail_message():
     text = (
         f"❌ <b>Aetherfin Build Failed!</b>\n"
         f"──────────────────────────────\n"
-        f"🌿 <b>Branch:</b> <code>{branch}</code>\n"
-        f"🔢 <b>Build ID:</b> <code>{build_id}</code>\n"
-        f"👤 <b>Triggered by:</b> <code>{actor}</code>\n"
+        f"<b>Branch:</b> <code>{branch}</code>\n"
+        f"<b>Build ID:</b> <code>{build_id}</code>\n"
+        f"<b>Triggered by:</b> <code>{actor}</code>\n"
         f"──────────────────────────────\n"
-        f"💥 <i>Build failed during compilation or testing.</i>"
+        f"<blockquote>Build failed during compilation or testing.</blockquote>"
     )
     
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
@@ -138,16 +138,16 @@ def send_apk():
     caption = (
         '🚀 <b>Aetherfin Build Successful!</b>\n'
         '──────────────────────────────\n'
-        '📱 <b>App:</b> <code>{name}</code>\n'
-        '⚙️ <b>Mode:</b> <code>{mode}</code>\n'
-        '💾 <b>Size:</b> <code>{size}</code>\n\n'
-        '🌿 <b>Branch:</b> <code>{branch}</code>\n'
-        '🔢 <b>Build ID:</b> <code>{build_id}</code>\n'
-        '👤 <b>Triggered by:</b> <code>{actor}</code>\n\n'
-        '💬 <b>Last Commit:</b>\n'
-        '<code>{sha}</code> — <i>{commit}</i>\n'
+        '<b>App:</b> <code>{name}</code>\n'
+        '<b>Mode:</b> <code>{mode}</code>\n'
+        '<b>Size:</b> <code>{size}</code>\n\n'
+        '<b>Branch:</b> <code>{branch}</code>\n'
+        '<b>Build ID:</b> <code>{build_id}</code>\n'
+        '<b>Triggered by:</b> <code>{actor}</code>\n\n'
+        '<b>Last Commit:</b>\n'
+        '<code>{sha}</code> — {commit}\n'
         '──────────────────────────────\n'
-        '📅 <i>{timestamp}</i>'
+        '<i>{timestamp}</i>'
     ).format(
         mode=os.environ.get('TG_MODE', ''),
         name=filename,
