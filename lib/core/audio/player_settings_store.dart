@@ -231,9 +231,9 @@ class PlayerSettingsStore {
   static Future<void> saveAutoplayEnabled(bool enabled) async =>
       saveValue(kAutoplayEnabled, enabled);
 
-  /// Load smart queue autoplay enabled state. Defaults to false.
+  /// Load smart queue autoplay enabled state. Defaults to true.
   static Future<bool> loadAutoplayEnabled() async =>
-      (await loadValue(kAutoplayEnabled)) ?? false;
+      (await loadValue(kAutoplayEnabled)) ?? true;
 
   /// Serialize the user-visible audio effects to JSON and persist.
   static Future<void> saveAudioEffects(AudioEffects fx) async {

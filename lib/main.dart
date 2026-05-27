@@ -126,7 +126,7 @@ Future<void> main() async {
       final offlineCacheMaxSize =
           prefs.getInt('af.offline_cache_max_size') ?? (1024 * 1024 * 1024);
       final maxBitrate = prefs.getInt('af.max_bitrate_kbps') ?? 0;
-      final autoplayEnabled = prefs.getBool('af.autoplay_enabled') ?? false;
+      final autoplayEnabled = prefs.getBool('af.autoplay_enabled') ?? true;
       _boot(
         'offlineCacheEnabled=$offlineCacheEnabled maxSize=$offlineCacheMaxSize maxBitrate=$maxBitrate autoplayEnabled=$autoplayEnabled',
       );
