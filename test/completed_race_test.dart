@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:aetherfin/core/audio/media_session_bridge.dart';
 import 'package:aetherfin/core/audio/player_service.dart';
@@ -78,6 +79,7 @@ void main() {
     );
 
     setUpAll(() {
+      SharedPreferences.setMockInitialValues({});
       registerFallbackValue(Duration.zero);
       registerFallbackValue(Device.auto);
       registerFallbackValue(Loop.off);

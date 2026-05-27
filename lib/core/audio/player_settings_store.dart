@@ -19,6 +19,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart'
         Format,
         Gapless,
         LoudnormSettings,
+        Loop,
         ReplayGain,
         ReplayGainSettings,
         RubberbandSettings,
@@ -113,6 +114,8 @@ class PlayerSettingsStore {
   );
   static final kMaxBitrate = SettingsKey.intKey('af.max_bitrate_kbps');
   static final kAutoplayEnabled = SettingsKey.boolKey('af.autoplay_enabled');
+  static final kLoopMode = SettingsKey.intKey('af.loop_mode');
+  static final kShuffleEnabled = SettingsKey.boolKey('af.shuffle_enabled');
 
   // Compound keys (custom JSON serialization)
   static const kAudioEffects = 'af.audio_effects_json';
@@ -234,6 +237,14 @@ class PlayerSettingsStore {
   /// Load smart queue autoplay enabled state. Defaults to true.
   static Future<bool> loadAutoplayEnabled() async =>
       (await loadValue(kAutoplayEnabled)) ?? true;
+
+  /// Persist loop mode index.
+  static Future<void> saveLoopMode(Loop mode) async =>
+      saveValue(kLoopMode, mode.index);
+
+  /// Persist shuffle enabled state.
+  static Future<void> saveShuffleEnabled(bool enabled) async =>
+      saveValue(kShuffleEnabled, enabled);
 
   /// Serialize the user-visible audio effects to JSON and persist.
   static Future<void> saveAudioEffects(AudioEffects fx) async {
@@ -613,6 +624,20 @@ class PlayerSettingsStore {
       if (masterEnabled) {
         await tryApply('audioEffects', () => svc.setAudioEffects(fx));
       }
+    }
+
+    final loopModeInt = p.getInt(kLoopMode.key);
+    if (loopModeInt != null) {
+      final mode = Loop.values[loopModeInt];
+      await tryApply('loopMode=$mode', () => svc.setAfLoopMode(mode));
+    }
+
+    final shuffleEnabled = p.getBool(kShuffleEnabled.key);
+    if (shuffleEnabled != null) {
+      await tryApply(
+        'shuffleEnabled=$shuffleEnabled',
+        () => svc.setAfShuffleMode(shuffleEnabled),
+      );
     }
 
     afLog('boot', 'PlayerSettingsStore applied persisted settings');

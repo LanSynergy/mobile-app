@@ -9,6 +9,7 @@ import 'artwork_manager.dart';
 import 'audio_device_manager.dart';
 import 'media_session_bridge.dart';
 import 'position_tracker.dart';
+import 'player_settings_store.dart';
 import 'queue_manager.dart';
 import 'stream_prefetcher.dart';
 
@@ -37,6 +38,7 @@ class AfPlayerService {
     _audioDeviceManager = AfAudioDeviceManager(player: _player);
     _queueManager = AfQueueManager();
     _prefetcher = StreamPrefetcher();
+    _loopModeController = StreamController<Loop>.broadcast();
 
     final bridge = NativeMediaSessionBridge();
     _wireBridgeCallbacks(bridge);
@@ -97,6 +99,7 @@ class AfPlayerService {
     _audioDeviceManager = AfAudioDeviceManager(player: player);
     _queueManager = AfQueueManager();
     _prefetcher = StreamPrefetcher();
+    _loopModeController = StreamController<Loop>.broadcast();
 
     if (bridge != null) {
       _bridge = bridge;
@@ -122,6 +125,8 @@ class AfPlayerService {
   double _preDuckVolume = 1.0;
   bool _isDucked = false;
   late final StreamPrefetcher _prefetcher;
+  Loop _loopMode = Loop.off;
+  late final StreamController<Loop> _loopModeController;
   Map<String, String> _authHeaders = const <String, String>{};
   String? _prefetchStartedForTrackId;
   bool _prefetchPlaylistEnabled = true;
@@ -139,6 +144,12 @@ class AfPlayerService {
   /// NOT set for [Loop.file] restarts — the track is expected to complete
   /// again after looping.
   String? _completedHandledForTrackId;
+
+  /// The ID of the track currently loaded in the mpv player.
+  ///
+  /// Used in the `completed` stream listener to verify if a completed event
+  /// is actually for the current track or a stale event from a previous track.
+  String? _mpvLoadedTrackId;
 
   void Function(AfTrack? track)? onTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
@@ -180,7 +191,7 @@ class AfPlayerService {
   Stream<AfTrack?> get currentTrackStream => _queueManager.currentTrackStream;
   Stream<List<AfTrack>> get queueStream => _queueManager.queueStream;
   Stream<bool> get shuffleModeStream => _queueManager.shuffleModeStream;
-  Stream<Loop> get loopModeStream => _player.stream.loop;
+  Stream<Loop> get loopModeStream => _loopModeController.stream;
   Stream<double> get speedStream => _player.stream.rate;
 
   Stream<List<Device>> get audioDevicesStream => _player.stream.audioDevices;
@@ -483,7 +494,7 @@ class AfPlayerService {
 
   bool get isShuffleEnabled => _queueManager.isShuffleEnabled;
   bool get isTailShuffle => _queueManager.isTailShuffle;
-  Loop get loopMode => _player.state.loop;
+  Loop get loopMode => _loopMode;
   double get speed => _player.state.rate;
 
   // ---------------------------------------------------------------------------
@@ -545,12 +556,14 @@ class AfPlayerService {
 
         final shouldPlay = !_userPaused;
         await _player.openAll(medias, index: 0, play: shouldPlay);
+        _mpvLoadedTrackId = startTrack.id;
 
         _audioDeviceManager.nudge();
       } catch (e, stack) {
         afLog('audio', 'playQueue failed', error: e, stackTrace: stack);
         _userPaused = true;
         _queueManager.clear();
+        _mpvLoadedTrackId = null;
         try {
           await _player.stop();
         } catch (err, st) {
@@ -595,6 +608,7 @@ class AfPlayerService {
     _positionTracker.onStop();
     _prefetcher.cancelCurrentPrefetch();
     _prefetchStartedForTrackId = null;
+    _mpvLoadedTrackId = null;
     try {
       await _player.stop();
     } catch (e, stack) {
@@ -613,6 +627,7 @@ class AfPlayerService {
     _positionTracker.onStop();
     _prefetcher.cancelCurrentPrefetch();
     _prefetchStartedForTrackId = null;
+    _mpvLoadedTrackId = null;
     try {
       await _player.stop();
     } catch (e, stack) {
@@ -643,7 +658,7 @@ class AfPlayerService {
   Future<void> skipToNext() async {
     if (_disposed) return;
     if (_queueManager.engine.isAtQueueEnd &&
-        _player.state.loop != Loop.playlist) {
+        _loopMode != Loop.playlist) {
       return;
     }
 
@@ -728,10 +743,10 @@ class AfPlayerService {
 
   Future<void> setAfShuffleMode(bool enabled) async {
     if (_disposed) return;
-    if (_queueManager.currentQueue.isEmpty) return;
     if (_queueManager.isShuffleEnabled == enabled) return;
 
     _queueManager.setShuffle(enabled);
+    unawaited(PlayerSettingsStore.saveShuffleEnabled(enabled));
 
     // Don't emitCurrentTrack or fire onTrackChanged — the current track
     // hasn't changed, only the remaining queue order has. Firing
@@ -751,7 +766,9 @@ class AfPlayerService {
     if (_disposed) return;
     return _queueLock.run(() async {
       try {
-        await _player.setLoop(mode);
+        _loopMode = mode;
+        _loopModeController.add(mode);
+        unawaited(PlayerSettingsStore.saveLoopMode(mode));
         afLog('data', 'loopMode source=live mode=${mode.name}');
         _updateMediaSession();
       } catch (e, stack) {
@@ -880,9 +897,11 @@ class AfPlayerService {
     _positionTracker.dispose();
     _queueManager.dispose();
     _prefetcher.cancelCurrentPrefetch();
+    _mpvLoadedTrackId = null;
     for (final s in _subs) {
       await s.cancel();
     }
+    await _loopModeController.close();
     await _player.dispose();
   }
 
@@ -929,7 +948,13 @@ class AfPlayerService {
       url = _resolveStreamUrl!(target);
     }
 
-    await _player.openAll([Media(url)], index: 0, play: !_userPaused);
+    try {
+      await _player.openAll([Media(url)], index: 0, play: !_userPaused);
+      _mpvLoadedTrackId = target.id;
+    } catch (e) {
+      _mpvLoadedTrackId = null;
+      rethrow;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -959,10 +984,19 @@ class AfPlayerService {
           if (_disposed) return;
           if (!completed) return;
 
-          // No track active — nothing to complete. This can happen when
-          // endPlayback() set currentIndex to -1 and a stale completed
-          // event fires (e.g. from a loop mode toggle).
-          if (_queueManager.currentTrack == null) return;
+          // No track active or mismatch between loaded track in mpv and Dart.
+          // This prevents stale/duplicate completed events from the previous
+          // track (which fires when stopping/replacing the media in openAll)
+          // from being treated as the completion of the newly-advanced track.
+          final currentTrackId = _queueManager.currentTrack?.id;
+          if (currentTrackId == null || _mpvLoadedTrackId != currentTrackId) {
+            afLog(
+              'audio',
+              'completed event ignored: currentTrackId=$currentTrackId, '
+                  'mpvLoadedTrackId=$_mpvLoadedTrackId (mismatch or null)',
+            );
+            return;
+          }
 
           final duration = _player.state.duration;
           final rawPos = await _positionTracker.getRawPosition();
@@ -982,15 +1016,13 @@ class AfPlayerService {
             }
           }
 
-          final loopAtEvent = _player.state.loop;
+          final loopAtEvent = _loopMode;
           final playingAtEvent = _player.state.playing;
 
           // Guard: ignore duplicate completed events for the same track.
           // This prevents loop mode toggles from re-entering the handler
           // and changing the displayed track (Bug 2).
-          final currentTrackId = _queueManager.currentTrack?.id;
-          if (currentTrackId != null &&
-              _completedHandledForTrackId == currentTrackId) {
+          if (_completedHandledForTrackId == currentTrackId) {
             afLog(
               'audio',
               'completed event ignored: already handled for '
@@ -1139,6 +1171,7 @@ class AfPlayerService {
                 case Loop.off:
                   _userPaused = true;
                   _positionTracker.onStop();
+                  _mpvLoadedTrackId = null;
                   try {
                     await _player.stop();
                   } catch (e, stack) {
@@ -1329,7 +1362,7 @@ class AfPlayerService {
     onArtworkUpdated?.call(artUri);
 
     // Map mpv Loop enum to the string the native side expects
-    final loopModeStr = switch (_player.state.loop) {
+    final loopModeStr = switch (_loopMode) {
       Loop.file => 'one',
       Loop.playlist => 'all',
       Loop.off => 'off',
@@ -1382,7 +1415,7 @@ class AfPlayerService {
       unawaited(setAfShuffleMode(!_queueManager.isShuffleEnabled));
     };
     bridge.onToggleRepeat = () {
-      final mode = switch (_player.state.loop) {
+      final mode = switch (_loopMode) {
         Loop.off => Loop.playlist,
         Loop.playlist => Loop.file,
         Loop.file => Loop.off,

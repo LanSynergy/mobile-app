@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:aetherfin/core/audio/media_session_bridge.dart';
 import 'package:aetherfin/core/audio/player_service.dart';
@@ -95,6 +97,7 @@ void main() {
     String resolveStreamUrl(AfTrack t) => 'https://example.com/${t.id}.flac';
 
     setUpAll(() {
+      SharedPreferences.setMockInitialValues({});
       registerFallbackValue(Duration.zero);
       registerFallbackValue(Device.auto);
       registerFallbackValue(Loop.off);
@@ -996,6 +999,75 @@ void main() {
       expect(service.currentTrack?.id, equals('1'));
       // seek called again for the second loop iteration.
       verify(() => player.seek(Duration.zero)).called(1);
+    });
+
+    // -----------------------------------------------------------------------
+    // Stale completed events from previous tracks are ignored
+    // -----------------------------------------------------------------------
+    test('stale completed events from previous tracks are ignored during stream replacement', () async {
+      int trackChangedCount = 0;
+      service.onTrackChanged = (track) {
+        trackChangedCount++;
+      };
+
+      var openAllCallCount = 0;
+      final openAllCompleter = Completer<void>();
+      when(
+        () => player.openAll(
+          any(),
+          play: any(named: 'play'),
+          index: any(named: 'index'),
+        ),
+      ).thenAnswer((_) {
+        openAllCallCount++;
+        if (openAllCallCount == 1) {
+          return Future.value();
+        } else {
+          return openAllCompleter.future;
+        }
+      });
+
+      // Play queue starting at trackA
+      await service.playQueue(
+        [trackA, trackB],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('1'));
+      trackChangedCount = 0; // Reset count
+
+      // Simulate completed event for trackA, which advances the Dart queue index to trackB
+      // and triggers _rebuildWindow(trackB).
+      updateState(
+        (s) => s.copyWith(playing: true, completed: false, loop: Loop.off),
+      );
+      ctrls.completed.add(true);
+
+      // Wait for the completed event listener to execute and advance the index in Dart.
+      // At this point, rebuildWindow(trackB) is awaiting the second openAll call,
+      // so _mpvLoadedTrackId is still trackA's ID ('1').
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('2'));
+      expect(trackChangedCount, equals(1)); // Changed to trackB
+
+      // Now fire a second completed event (simulating mpv's EOF event due to stopping trackA)
+      // while openAll for trackB is still in-flight.
+      ctrls.completed.add(true);
+      await Future<void>.delayed(Duration.zero);
+
+      // The listener should ignore this completed event because currentTrack is trackB
+      // but _mpvLoadedTrackId is still trackA.
+      expect(service.currentTrack?.id, equals('2'));
+      expect(trackChangedCount, equals(1));
+
+      // Resolve the second openAll call so rebuildWindow completes
+      openAllCompleter.complete();
+      await Future<void>.delayed(Duration.zero);
+
+      // Verify that after resolving, trackB remains active and _mpvLoadedTrackId was updated
+      expect(service.currentTrack?.id, equals('2'));
+      expect(trackChangedCount, equals(1));
     });
   });
 }

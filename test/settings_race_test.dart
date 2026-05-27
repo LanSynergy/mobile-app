@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:aetherfin/core/audio/media_session_bridge.dart';
 import 'package:aetherfin/core/audio/player_service.dart';
@@ -19,6 +20,7 @@ void main() {
     late AfPlayerService service;
 
     setUpAll(() {
+      SharedPreferences.setMockInitialValues({});
       registerFallbackValue(Duration.zero);
       registerFallbackValue(Device.auto);
       registerFallbackValue(Loop.off);
@@ -92,10 +94,16 @@ void main() {
         await service.setGapless(Gapless.weak);
         verifyNever(() => player.setGapless(any()));
 
+        // Loop mode is decoupled from native player. Setters check disposed status.
+        expect(service.loopMode, equals(Loop.off));
         await service.setAfLoopMode(Loop.file);
+        expect(service.loopMode, equals(Loop.off));
         verifyNever(() => player.setLoop(any()));
 
+        // Shuffle mode checks disposed status.
+        expect(service.isShuffleEnabled, isFalse);
         await service.setAfShuffleMode(true);
+        expect(service.isShuffleEnabled, isFalse);
         verifyNever(() => player.setShuffle(any()));
       });
     });
