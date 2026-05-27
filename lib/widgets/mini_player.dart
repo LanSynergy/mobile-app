@@ -32,6 +32,7 @@ class MiniPlayer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final track = ref.watch(currentTrackProvider);
     if (track == null) return const SizedBox.shrink();
+    final artworkUri = ref.watch(currentArtworkUriProvider);
     final isPlaying = ref
         .watch(playingStreamProvider)
         .maybeWhen(data: (v) => v, orElse: () => false);
@@ -85,7 +86,10 @@ class MiniPlayer extends ConsumerWidget {
                             tag: 'now-playing-artwork',
                             child: ClipRRect(
                               borderRadius: AfRadii.borderPill,
-                              child: Artwork(url: track.imageUrl, size: 44),
+                              child: Artwork(
+                                url: artworkUri?.toString() ?? track.imageUrl,
+                                size: 44,
+                              ),
                             ),
                           ),
                         ),

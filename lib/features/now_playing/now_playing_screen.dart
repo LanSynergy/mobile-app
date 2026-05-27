@@ -290,6 +290,7 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
   Widget build(BuildContext context) {
     final spectral = ref.watch(currentSpectralProvider);
     final pulseEnabled = ref.watch(artworkPulseEnabledProvider);
+    final artworkUri = ref.watch(currentArtworkUriProvider);
 
     final artworkWidget = Center(
       child: Hero(
@@ -306,7 +307,7 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
             ],
           ),
           child: Artwork(
-            url: widget.track.imageUrl,
+            url: artworkUri?.toString() ?? widget.track.imageUrl,
             size: widget.size,
             radius: AfRadii.borderLg,
           ),

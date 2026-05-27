@@ -19,6 +19,7 @@ import '../utils/log.dart';
 void wirePlayerService(Ref ref, AfPlayerService svc) {
   svc.onTrackChanged = (track) {
     ref.read(currentTrackProvider.notifier).state = track;
+    ref.read(currentArtworkUriProvider.notifier).state = track != null ? svc.currentArtworkUri : null;
     ref.read(positionStreamProvider.notifier).state = Duration.zero;
     ref
         .read(durationStreamProvider.notifier)
@@ -27,6 +28,10 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
         : Duration.zero;
     ref.read(abLoopAProvider.notifier).state = null;
     ref.read(abLoopBProvider.notifier).state = null;
+  };
+
+  svc.onArtworkUpdated = (artUri) {
+    ref.read(currentArtworkUriProvider.notifier).state = artUri;
   };
 
   svc.onToggleFavorite = () async {
@@ -277,6 +282,7 @@ final fftSpectrumProvider = StreamProvider.autoDispose<FftFrame>((ref) {
 });
 
 final currentTrackProvider = StateProvider<AfTrack?>((ref) => null);
+final currentArtworkUriProvider = StateProvider<Uri?>((ref) => null);
 
 final ntimesCountProvider = StateProvider<int>((ref) => 2);
 

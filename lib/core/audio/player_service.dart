@@ -122,6 +122,9 @@ class AfPlayerService {
   /// Fired when the user starts the app via the "Search" launcher shortcut.
   VoidCallback? onShortcutSearchMusic;
 
+  /// Fired when the artwork path for the active track is updated or resolved.
+  void Function(Uri?)? onArtworkUpdated;
+
   final List<StreamSubscription<dynamic>> _subs =
       <StreamSubscription<dynamic>>[];
 
@@ -727,6 +730,12 @@ class AfPlayerService {
   /// Whether forNtimes mode is currently active.
   bool get isForNtimesMode => _queueManager.engine.isForNtimes;
 
+  /// Returns the current active track's artwork URI.
+  Uri? get currentArtworkUri {
+    final track = _queueManager.currentTrack;
+    return track != null ? _artworkManager.artUri(track) : null;
+  }
+
   /// Set playback speed. Intentionally bypasses `_queueLock` because
   /// `setRate` is a simple mpv property setter — it doesn't touch the
   /// playlist/queue state and cannot interleave with queue mutations.
@@ -1173,6 +1182,8 @@ class AfPlayerService {
     final artPath = artUri != null && artUri.isScheme('file')
         ? artUri.toFilePath()
         : null;
+
+    onArtworkUpdated?.call(artUri);
 
     // Map mpv Loop enum to the string the native side expects
     final loopModeStr = switch (_player.state.loop) {
