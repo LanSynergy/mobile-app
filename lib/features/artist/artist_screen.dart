@@ -87,7 +87,12 @@ class ArtistScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(artist.name, style: AfTypography.display),
+                            Text(
+                              artist.name,
+                              style: AfTypography.display,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             const SizedBox(height: 2),
                             Text(
                               artist.statLine,

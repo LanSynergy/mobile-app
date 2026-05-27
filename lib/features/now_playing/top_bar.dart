@@ -23,17 +23,19 @@ class TopBar extends ConsumerWidget {
           onPressed: () => Navigator.maybePop(context),
         ),
         if (track.albumId != null)
-          GestureDetector(
-            onTap: () => GoRouter.of(context).push('/album/${track.albumId}'),
-            child: Text(
-              track.albumName,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.6),
-                decoration: TextDecoration.underline,
+          Expanded(
+            child: GestureDetector(
+              onTap: () => GoRouter.of(context).push('/album/${track.albumId}'),
+              child: Text(
+                track.albumName,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  decoration: TextDecoration.underline,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         PopupMenuButton<String>(

@@ -125,6 +125,8 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                             style: AfTypography.display.copyWith(
                               color: AfColors.textPrimary,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: AfSpacing.s4),
                           GestureDetector(
