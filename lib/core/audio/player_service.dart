@@ -935,7 +935,6 @@ class AfPlayerService {
             return _queueLock.run(() async {
               // Advance engine state
               _queueManager.engine.advanceIndex();
-              _queueManager.engine.advanceWindow();
               _positionTracker.onTrackChanged();
 
               // Notify and emit
@@ -970,7 +969,6 @@ class AfPlayerService {
                     // Now the queue is extended! Slide and play the next track.
                     return _queueLock.run(() async {
                       _queueManager.engine.advanceIndex();
-                      _queueManager.engine.advanceWindow();
                       _positionTracker.onTrackChanged();
 
                       final current = _queueManager.currentTrack;
@@ -1200,6 +1198,22 @@ class AfPlayerService {
 
     return _queueLock.run(() async {
       try {
+        // Defense-in-depth: drain any accumulated extras from mpv's playlist.
+        // The 2-track sliding window should never hold more than 2 items.
+        final guardCountStr = await _player.getRawProperty('playlist-count');
+        if (guardCountStr != null) {
+          final guardCount = int.tryParse(guardCountStr) ?? 0;
+          if (guardCount > 2) {
+            afLog(
+              'audio',
+              'syncNextTrackInMpv: draining ${guardCount - 2} extras',
+            );
+            for (var i = guardCount - 1; i > 1; i--) {
+              await _player.sendRawCommand(['playlist-remove', '$i']);
+            }
+          }
+        }
+
         final countStr = await _player.getRawProperty('playlist-count');
         final currentStr = await _player.getRawProperty('playlist-pos');
         if (countStr != null && currentStr != null) {
