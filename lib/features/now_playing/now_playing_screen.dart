@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -59,9 +60,7 @@ class NowPlayingScreen extends ConsumerWidget {
       );
     }
 
-    final double topPadding = MediaQuery.of(context).padding.top;
-    // Fallback top padding when the system reports 0 top padding (e.g. edge-to-edge status bar issue)
-    final double extraTopPadding = topPadding == 0 ? 24.0 : 0.0;
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -96,7 +95,7 @@ class NowPlayingScreen extends ConsumerWidget {
                 );
 
                 final List<Widget> content = [
-                  if (extraTopPadding > 0) SizedBox(height: extraTopPadding),
+                  SizedBox(height: statusBarHeight),
                   _TopBar(track: track),
                   if (useScroll)
                     const SizedBox(height: AfSpacing.s16)
@@ -154,11 +153,18 @@ class _ReactiveBackground extends ConsumerWidget {
     final spectral = ref.watch(currentSpectralProvider);
     final oklch = srgbToOklch(spectral.energy);
     final background = OklchColor(0.35, 0.12, oklch.h).toColor();
-    return AnimatedContainer(
-      duration: AfDurations.expressive,
-      curve: AfCurves.easeStandard,
-      color: background,
-      child: child,
+    final luminance = background.computeLuminance();
+    final overlayStyle = luminance > 0.5
+        ? SystemUiOverlayStyle.dark
+        : SystemUiOverlayStyle.light;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyle,
+      child: AnimatedContainer(
+        duration: AfDurations.expressive,
+        curve: AfCurves.easeStandard,
+        color: background,
+        child: child,
+      ),
     );
   }
 }
