@@ -348,8 +348,9 @@ void main() {
       ctrls.completed.add(true);
       await Future<void>.delayed(Duration.zero);
 
-      // Track stays the same; play() is called to restart.
+      // Track stays the same; seek(0) + play() called to restart.
       expect(service.currentTrack?.id, equals('1'));
+      verify(() => player.seek(Duration.zero)).called(1);
       verify(() => player.play()).called(1);
     });
 
@@ -802,6 +803,199 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       verify(() => player.setVolume(1.0)).called(1);
+    });
+
+    // -----------------------------------------------------------------------
+    // Loop.file mid-queue restarts current track instead of advancing
+    // -----------------------------------------------------------------------
+    test('loop file mid-queue restarts current track instead of advancing',
+        () async {
+      AfTrack? changedTrack;
+      service.onTrackChanged = (track) {
+        changedTrack = track;
+      };
+
+      await service.playQueue(
+        [trackA, trackB, trackC],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('1'));
+
+      await service.setAfLoopMode(Loop.file);
+      changedTrack = null;
+
+      // Simulate completion mid-queue with loop=file.
+      updateState(
+        (s) => s.copyWith(
+          playing: false,
+          completed: false,
+          loop: Loop.file,
+        ),
+      );
+
+      ctrls.completed.add(true);
+      await Future<void>.delayed(Duration.zero);
+
+      // Should NOT advance — restart same track.
+      expect(service.currentTrack?.id, equals('1'));
+      // onTrackChanged should NOT fire (track didn't change).
+      expect(changedTrack, isNull);
+      // seek(0) called to restart.
+      verify(() => player.seek(Duration.zero)).called(1);
+    });
+
+    // -----------------------------------------------------------------------
+    // Duplicate completed events for the same track are ignored
+    // -----------------------------------------------------------------------
+    test('duplicate completed events are ignored for same track', () async {
+      int trackChangedCount = 0;
+      service.onTrackChanged = (track) {
+        trackChangedCount++;
+      };
+
+      // Use a single-track queue so queue end is reached on first completion.
+      // The guard stores track '1' after processing completion.
+      await service.playQueue(
+        [trackA],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+      trackChangedCount = 0; // Reset after initial playQueue
+
+      // Simulate completion at queue end (loop=off → endPlayback).
+      updateState(
+        (s) => s.copyWith(playing: true, completed: false, loop: Loop.off),
+      );
+      when(() => player.stop()).thenAnswer((_) async {});
+      ctrls.completed.add(true);
+      await Future<void>.delayed(Duration.zero);
+
+      // Queue ended, currentTrack is null.
+      expect(service.currentTrack, isNull);
+      expect(trackChangedCount, equals(1)); // null track change
+
+      // Now fire completed AGAIN (e.g. loop mode toggle causes re-fire).
+      // The guard should ignore it because track '1' was already handled.
+      ctrls.completed.add(true);
+      await Future<void>.delayed(Duration.zero);
+
+      // Still null — duplicate was ignored.
+      expect(service.currentTrack, isNull);
+      expect(trackChangedCount, equals(1));
+    });
+
+    // -----------------------------------------------------------------------
+    // shouldAdvancePosition returns false when completed is true
+    // -----------------------------------------------------------------------
+    test('shouldAdvancePosition returns false when mpv reports completed',
+        () async {
+      await service.playQueue(
+        [trackA, trackB],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      // While playing, shouldAdvancePosition is true.
+      updateState(
+        (s) => s.copyWith(playing: true, completed: false),
+      );
+      expect(service.shouldAdvancePosition, isTrue);
+
+      // When completed fires, shouldAdvancePosition becomes false.
+      updateState(
+        (s) => s.copyWith(playing: false, completed: true),
+      );
+      expect(service.shouldAdvancePosition, isFalse);
+    });
+
+    // -----------------------------------------------------------------------
+    // Full Bug 1→2→3 cascade: completion → loop toggle → play desync
+    // -----------------------------------------------------------------------
+    test('loop mode toggle after stuck completion does not change displayed '
+        'track (Bug 2 prevention)', () async {
+      AfTrack? changedTrack;
+      service.onTrackChanged = (track) {
+        changedTrack = track;
+      };
+
+      await service.playQueue(
+        [trackA, trackB],
+        startIndex: 1, // Start at last track (queue end).
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('2'));
+
+      // Simulate completion at queue end with loop=off.
+      // This triggers endPlayback → currentTrack = null.
+      updateState(
+        (s) => s.copyWith(playing: true, completed: false, loop: Loop.off),
+      );
+      when(() => player.stop()).thenAnswer((_) async {});
+
+      ctrls.completed.add(true);
+      await Future<void>.delayed(Duration.zero);
+
+      // Queue ended normally — track is null.
+      expect(service.currentTrack, isNull);
+      changedTrack = null;
+
+      // Now toggle loop mode. This should NOT re-enter the completed
+      // handler and change the displayed track.
+      await service.setAfLoopMode(Loop.playlist);
+      await Future<void>.delayed(Duration.zero);
+
+      // Fire another completed event (mpv re-evaluates end-of-file
+      // when loop mode changes). The guard should catch this.
+      ctrls.completed.add(true);
+      await Future<void>.delayed(Duration.zero);
+
+      // currentTrack should still be null from the original endPlayback.
+      // (The duplicate guard works on track id — null track means the
+      // completed handler returns early at `if (!completed) return` or
+      // the currentTrack null check.)
+      expect(changedTrack, isNull);
+    });
+
+    // -----------------------------------------------------------------------
+    // Loop.file completion resets the guard so next loop works
+    // -----------------------------------------------------------------------
+    test('loop file does not set handled guard, allowing repeated loops',
+        () async {
+      await service.playQueue(
+        [trackA],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      await service.setAfLoopMode(Loop.file);
+
+      // First completion → seek(0) + play (Loop.file restart).
+      updateState(
+        (s) => s.copyWith(
+          playing: false,
+          completed: false,
+          loop: Loop.file,
+        ),
+      );
+      ctrls.completed.add(true);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(service.currentTrack?.id, equals('1'));
+      verify(() => player.seek(Duration.zero)).called(1);
+
+      // Second completion → should ALSO restart (guard not set).
+      ctrls.completed.add(true);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(service.currentTrack?.id, equals('1'));
+      // seek called again for the second loop iteration.
+      verify(() => player.seek(Duration.zero)).called(1);
     });
   });
 }

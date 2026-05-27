@@ -126,6 +126,20 @@ class AfPlayerService {
   String? _prefetchStartedForTrackId;
   bool _prefetchPlaylistEnabled = true;
 
+  /// Guards against re-processing a `completed` event for the same track.
+  ///
+  /// When a track finishes, the completed handler processes the event and
+  /// sets this to the track's id. If `completed` re-fires for the same
+  /// track (e.g. because a loop mode toggle causes mpv to re-evaluate
+  /// end-of-file), the duplicate event is ignored.
+  ///
+  /// Reset on any explicit track change (playQueue, skip, skipToQueueItem)
+  /// so the next track's completion is always processed.
+  ///
+  /// NOT set for [Loop.file] restarts — the track is expected to complete
+  /// again after looping.
+  String? _completedHandledForTrackId;
+
   void Function(AfTrack? track)? onTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
   Future<List<AfTrack>> Function(AfTrack lastTrack)? onGetSimilarTracks;
@@ -446,7 +460,13 @@ class AfPlayerService {
   bool get shouldAdvancePosition {
     if (currentTrack == null) return false;
     if (_userPaused) return false;
-    if (_player.state.completed && _queueManager.isAtQueueEnd) return false;
+
+    // Stop extrapolating as soon as mpv reports any track completed.
+    // The completed handler will either advance to the next track
+    // (resetting completed to false) or stop playback. Without this
+    // guard, position keeps extrapolating past the track end if the
+    // completed handler fails or hasn't run yet.
+    if (_player.state.completed) return false;
 
     // Fallback completion detection: on some OEM pipelines / local files
     // mpv's `end-of-file` property observation never fires, so the
@@ -487,6 +507,7 @@ class AfPlayerService {
     _resolveStreamUrl = resolveStreamUrl;
     _prefetcher.cancelCurrentPrefetch();
     _prefetchStartedForTrackId = null;
+    _completedHandledForTrackId = null;
 
     if (streamHeaders.isNotEmpty) {
       _authHeaders = streamHeaders;
@@ -627,6 +648,7 @@ class AfPlayerService {
     }
 
     _userPaused = false;
+    _completedHandledForTrackId = null;
     _queueManager.engine.advanceIndex();
     _queueManager.engine.resetRepeats();
     final nextTrack = _queueManager.currentTrack;
@@ -649,6 +671,7 @@ class AfPlayerService {
     if (_disposed) return;
 
     _userPaused = false;
+    _completedHandledForTrackId = null;
     _queueManager.engine.retreatIndex();
     _queueManager.engine.resetRepeats();
     final prevTrack = _queueManager.currentTrack;
@@ -671,6 +694,7 @@ class AfPlayerService {
     if (_disposed) return;
 
     _userPaused = false;
+    _completedHandledForTrackId = null;
     _queueManager.engine.jumpTo(index);
     _queueManager.engine.resetRepeats();
     final targetTrack = _queueManager.currentTrack;
@@ -935,6 +959,11 @@ class AfPlayerService {
           if (_disposed) return;
           if (!completed) return;
 
+          // No track active — nothing to complete. This can happen when
+          // endPlayback() set currentIndex to -1 and a stale completed
+          // event fires (e.g. from a loop mode toggle).
+          if (_queueManager.currentTrack == null) return;
+
           final duration = _player.state.duration;
           final rawPos = await _positionTracker.getRawPosition();
           final pos = rawPos > Duration.zero
@@ -955,6 +984,50 @@ class AfPlayerService {
 
           final loopAtEvent = _player.state.loop;
           final playingAtEvent = _player.state.playing;
+
+          // Guard: ignore duplicate completed events for the same track.
+          // This prevents loop mode toggles from re-entering the handler
+          // and changing the displayed track (Bug 2).
+          final currentTrackId = _queueManager.currentTrack?.id;
+          if (currentTrackId != null &&
+              _completedHandledForTrackId == currentTrackId) {
+            afLog(
+              'audio',
+              'completed event ignored: already handled for '
+                  'track "$currentTrackId"',
+            );
+            return;
+          }
+
+          // Loop.file: restart current track regardless of queue position.
+          // mpv's single-track model may fire `completed` even with
+          // Loop.file set. Don't advance — explicitly seek to 0 and play.
+          // Don't set _completedHandledForTrackId so the next completion
+          // (after the track loops) is processed.
+          if (loopAtEvent == Loop.file) {
+            return _queueLock.run(() async {
+              _positionTracker.onTrackChanged();
+              try {
+                await _player.seek(Duration.zero);
+                if (!_player.state.playing) {
+                  await _player.play();
+                }
+              } catch (e, stack) {
+                afLog(
+                  'audio',
+                  'Loop.file restart failed, rebuilding window',
+                  error: e,
+                  stackTrace: stack,
+                );
+                final track = _queueManager.currentTrack;
+                if (track != null) {
+                  await _rebuildWindow(track);
+                }
+              }
+              _updateMediaSession();
+              afLog('audio', 'Loop.file — restarted current track');
+            });
+          }
 
           // Check for N-times repeat before advancing or ending
           if (loopAtEvent == Loop.off &&
@@ -983,6 +1056,10 @@ class AfPlayerService {
             return;
           }
 
+          // Mark this track's completion as handled so duplicate events
+          // (from loop mode toggles) are ignored.
+          _completedHandledForTrackId = currentTrackId;
+
           if (!_queueManager.engine.isAtQueueEnd) {
             return _queueLock.run(() async {
               // Advance engine state
@@ -1001,8 +1078,10 @@ class AfPlayerService {
               _updateMediaSession();
               unawaited(_reconfigureSpectrumOnTrackChange());
 
-              // Rebuild window instead of _player.add + conditional play
-              await _rebuildWindow(current!);
+              // Rebuild window for the next track
+              if (current != null) {
+                await _rebuildWindow(current);
+              }
             });
           } else {
             // End of queue
@@ -1037,7 +1116,9 @@ class AfPlayerService {
                       unawaited(_reconfigureSpectrumOnTrackChange());
 
                       // Rebuild window for the new track.
-                      await _rebuildWindow(current!);
+                      if (current != null) {
+                        await _rebuildWindow(current);
+                      }
 
                       autoplayTriggered = true;
                     });
@@ -1082,13 +1163,26 @@ class AfPlayerService {
                     afLog('audio', 'queue end, looping playlist');
                   });
                 case Loop.file:
+                  // Loop.file is handled early (before isAtQueueEnd check).
+                  // This branch should never be reached, but if it is,
+                  // restart the track defensively.
                   _positionTracker.onTrackChanged();
-                  if (!playingAtEvent) {
-                    await _player.play();
+                  try {
+                    await _player.seek(Duration.zero);
+                    if (!_player.state.playing) {
+                      await _player.play();
+                    }
+                  } catch (e, stack) {
+                    afLog(
+                      'audio',
+                      'Loop.file fallback restart failed',
+                      error: e,
+                      stackTrace: stack,
+                    );
                   }
                   afLog(
                     'audio',
-                    'queue end, looping file — mpv handles internally',
+                    'queue end, loop=file — restarted (fallback)',
                   );
               }
             }
