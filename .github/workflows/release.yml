@@ -77,16 +77,19 @@ jobs:
           cache: true
           pub-cache: false
 
-      - name: Cache pub packages & build_runner
+      - name: Cache pub packages
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.pub-cache
-            .dart_tool
-          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}-${{ github.sha }}
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+
+      - name: Cache build_runner outputs
+        uses: actions/cache@v4
+        with:
+          path: .dart_tool
+          key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}-
-            ${{ runner.os }}-pub-
+            ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock') }}-
 
       - name: Show toolchain versions
         run: |
@@ -168,8 +171,6 @@ jobs:
 
       - name: Build universal APK
         run: |
-          # Stop any lingering Gradle daemon to prevent file-watcher collisions.
-          (cd android && ./gradlew --stop) || true
           flutter build apk --release
 
       - name: Stage universal APK
@@ -180,7 +181,6 @@ jobs:
 
       - name: Build per-ABI APKs
         run: |
-          (cd android && ./gradlew --stop) || true
           flutter build apk --release --split-per-abi
 
       - name: Stage per-ABI APKs
