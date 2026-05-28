@@ -84,7 +84,9 @@ final _router = GoRouter(
     if (effectiveMode == AppMode.local) {
       if (inOnboarding) {
         if (!_localOnboardingCompleted) {
-          if (loc != '/onboarding/local-setup') {
+          // Allow staying on '/' (mode selector) — user may have gone back
+          // to re-decide their mode. Do not redirect away from it.
+          if (loc != '/' && loc != '/onboarding/local-setup') {
             return '/onboarding/local-setup';
           }
         } else {

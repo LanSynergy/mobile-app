@@ -163,7 +163,7 @@ class WelcomeScreen extends ConsumerWidget {
                               AppMode.local;
                           await AppModeStore.save(AppMode.local);
                           if (context.mounted) {
-                            context.go('/onboarding/local-setup');
+                            await context.push('/onboarding/local-setup');
                           }
                         },
                       ),

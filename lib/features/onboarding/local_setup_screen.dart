@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/local/app_mode_store.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 
@@ -107,7 +108,18 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
+          onPressed: () async {
+            // Reset mode on back — user wants to re-decide at the
+            // WelcomeScreen. This also prevents stale redirects on
+            // app restart after going back.
+            await AppModeStore.clear();
+            if (context.mounted) {
+              ref.read(appModeProvider.notifier).state = null;
+              // null triggers resetRouterMode() in main.dart's modeSub,
+              // clearing the router's _appMode and _localOnboardingCompleted.
+              context.pop();
+            }
+          },
         ),
       ),
       body: SafeArea(
