@@ -53,6 +53,7 @@ SIGN=false
 TELEGRAM=false
 PROGRESS_WATCH=false
 _WATCHER_PID=""
+BUILD_ID=""
 
 # Resolve Flutter / Dart commands
 if [ -n "${FLUTTER_HOME:-}" ]; then
@@ -118,7 +119,7 @@ _tg_set_env() {
   # Gather Git / build context for Telegram messages.
   # These are set once and reused across init/update/send/fail calls.
   export TG_MODE="${TG_MODE:-$MODE}"
-  export TG_BUILD_ID="${TG_BUILD_ID:-$BUILD_ID}"
+  export TG_BUILD_ID="${TG_BUILD_ID:-${BUILD_ID:-}}"
   export TG_SHA="${TG_SHA:-$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")}"
   export TG_BRANCH="${TG_BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")}"
   export TG_TIMESTAMP="${TG_TIMESTAMP:-$(date -u +"%Y-%m-%d %H:%M UTC" 2>/dev/null)}"
@@ -496,6 +497,7 @@ if [ -f "$ROOT/lib/build_id.dart" ]; then
 else
   BUILD_ID="local"
 fi
+export TG_BUILD_ID="$BUILD_ID"
 VERSION=$(awk '/^version:/ {print $2}' pubspec.yaml | cut -d+ -f1)
 echo "  Build ID:    $BUILD_ID"
 echo "  Version:     $VERSION"
