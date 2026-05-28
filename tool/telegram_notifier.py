@@ -469,7 +469,7 @@ def progress_watch():
     status_text = os.environ.get('TG_STATUS_TEXT', 'Building...')
     start = time.time()
     bar_len = 20
-    interval = 10  # seconds between updates
+    interval = 2  # seconds between updates
     tick = 0
 
     while True:
