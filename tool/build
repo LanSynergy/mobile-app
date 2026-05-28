@@ -12,10 +12,12 @@
 # Options:
 #   --mode <mode>         Build mode: release|debug|profile (default: release)
 #   --split-per-abi       Build per-ABI split APKs (smaller per-device APKs)
+#   --no-universal        Skip universal APK when using --split-per-abi (CI only)
 #   --sign                Sign APK (reads env: KEYSTORE_B64, STORE_PASSWORD,
 #                         KEY_ALIAS, KEY_PASSWORD)
 #   --telegram            Send build notifications via Telegram (reads env:
 #                         TG_BOT_TOKEN, TG_CHAT_ID)
+#   --progress-watch      Show live progress bar on Telegram (requires --telegram)
 #   --install             Install APK on connected device after build
 #   --skip-analyze        Skip flutter analyze
 #   --skip-test           Skip flutter test
@@ -40,6 +42,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 MODE="release"
 SPLIT_PER_ABI=false
+BUILD_UNIVERSAL=true
 INSTALL=false
 SKIP_ANALYZE=false
 SKIP_TEST=false
@@ -48,6 +51,8 @@ SKIP_BUILD=false
 SKIP_BUILD_ID=false
 SIGN=false
 TELEGRAM=false
+PROGRESS_WATCH=false
+_WATCHER_PID=""
 
 # Resolve Flutter / Dart commands
 if [ -n "${FLUTTER_HOME:-}" ]; then
@@ -141,7 +146,7 @@ tg_init() {
   local output
   output=$(python3 "$ROOT/tool/telegram_notifier.py" init 2>&1) || true
   local msg_id
-  msg_id=$(echo "$output" | grep -oP 'TG_MESSAGE_ID=\K\d+' || true)
+  msg_id=$(echo "$output" | sed -n 's/.*TG_MESSAGE_ID=\([0-9]\+\).*/\1/p' || true)
   if [ -n "$msg_id" ]; then
     echo "$msg_id" > "$TG_MSG_FILE"
     echo "  ✅ Telegram message ID: $msg_id"
@@ -164,6 +169,7 @@ tg_send_apk() {
   [ -z "$TG_MESSAGE_ID" ] && return 0
   echo "  📤 Sending APK to Telegram..."
   python3 "$ROOT/tool/telegram_notifier.py" send_apk 2>&1 || warn "Telegram APK upload failed."
+  echo "true" > "$ROOT/build/.tg_notified"
 }
 
 tg_send_text() {
@@ -173,6 +179,7 @@ tg_send_text() {
   [ -z "$TG_MESSAGE_ID" ] && return 0
   echo "  📡 Sending final text to Telegram..."
   python3 "$ROOT/tool/telegram_notifier.py" send_text 2>&1 || warn "Telegram send_text failed."
+  echo "true" > "$ROOT/build/.tg_notified"
 }
 
 tg_fail() {
@@ -182,7 +189,64 @@ tg_fail() {
   [ -z "$TG_MESSAGE_ID" ] && return 0
   echo "  📡 Sending failure notification..."
   python3 "$ROOT/tool/telegram_notifier.py" fail 2>/dev/null || true
+  echo "true" > "$ROOT/build/.tg_notified"
   rm -f "$TG_MSG_FILE"  # prevent double-fire from workflow failure handler
+}
+
+_tg_start_watcher() {
+  [ "$PROGRESS_WATCH" = "false" ] && return 0
+  local msg_id="${TG_MESSAGE_ID:-}"
+  if [ -z "$msg_id" ] && [ -f "$TG_MSG_FILE" ]; then
+    msg_id="$(cat "$TG_MSG_FILE" 2>/dev/null)" || return 0
+  fi
+  [ -z "$msg_id" ] && return 0
+
+  export TG_MESSAGE_ID="$msg_id"
+  # Use a descriptive status text and icon for the watcher
+  export TG_STATUS_TEXT="${TG_STATUS_TEXT:-Building...}"
+  export TG_ICON="${TG_ICON:-\U0001f528}"
+
+  echo "  📡 Starting live-progress watcher (PID: $$)..."
+  python3 "$ROOT/tool/telegram_notifier.py" progress_watch &
+  _WATCHER_PID=$!
+  echo "  ✅ Watcher PID: $_WATCHER_PID"
+}
+
+_tg_stop_watcher() {
+  [ -z "$_WATCHER_PID" ] && return 0
+  echo "  📡 Stopping watcher (PID: $_WATCHER_PID)..."
+  kill "$_WATCHER_PID" 2>/dev/null || true
+  wait "$_WATCHER_PID" 2>/dev/null || true
+  _WATCHER_PID=""
+}
+
+# Update the Telegram message to a new step and restart the progress watcher. 
+# This makes the CI message show what's currently running instead of a static
+# "Building..." throughout the whole pipeline.
+_tg_transition() {
+  [ "$TELEGRAM" = "false" ] && [ "$PROGRESS_WATCH" = "false" ] && return 0
+  local status_text="$1"
+  local icon="$2"
+
+  # Stop current watcher so it doesn't race with the update
+  _tg_stop_watcher
+
+  # Update the message with the new step description
+  local msg_id="${TG_MESSAGE_ID:-}"
+  if [ -z "$msg_id" ] && [ -f "$TG_MSG_FILE" ]; then
+    msg_id="$(cat "$TG_MSG_FILE" 2>/dev/null)" || return 0
+  fi
+  if [ -n "$msg_id" ]; then
+    export TG_MESSAGE_ID="$msg_id"
+    export TG_STATUS_TEXT="$status_text"
+    export TG_ICON="$icon"
+    python3 "$ROOT/tool/telegram_notifier.py" update 2>/dev/null || true
+  fi
+
+  # Restart watcher with the new context so the progress bar keeps running
+  export TG_STATUS_TEXT="$status_text"
+  export TG_ICON="$icon"
+  _tg_start_watcher
 }
 
 # ---------------------------------------------------------------------------
@@ -190,6 +254,13 @@ tg_fail() {
 # ---------------------------------------------------------------------------
 cleanup() {
   local rc=$?
+  _tg_stop_watcher
+
+  # Persist TG_MESSAGE_ID for downstream CI steps (release.yml, etc.)
+  if [ "$CI_MODE" = "true" ] && [ -f "$TG_MSG_FILE" ]; then
+    echo "TG_MESSAGE_ID=$(cat "$TG_MSG_FILE")" >> "$GITHUB_ENV"
+  fi
+
   if [ $rc -ne 0 ] && [ "$TELEGRAM" = "true" ] && [ -f "$TG_MSG_FILE" ]; then
     tg_fail
   fi
@@ -349,8 +420,10 @@ while [[ $# -gt 0 ]]; do
     --debug)          MODE="debug"; shift ;;
     --profile)        MODE="profile"; shift ;;
     --split-per-abi)  SPLIT_PER_ABI=true; shift ;;
+    --no-universal)   BUILD_UNIVERSAL=false; shift ;;
     --sign)           SIGN=true; shift ;;
     --telegram)       TELEGRAM=true; shift ;;
+    --progress-watch) PROGRESS_WATCH=true; shift ;;
     --install)        INSTALL=true; shift ;;
     --skip-analyze)   SKIP_ANALYZE=true; shift ;;
     --skip-test)      SKIP_TEST=true; shift ;;
@@ -385,9 +458,13 @@ echo ""
 # Initialize Telegram — sends "Setting up build environment..." message
 tg_init
 
+# Start live-progress watcher with initial context
+_tg_transition "🔧 Initializing build environment..." "🔧"
+
 # ---------------------------------------------------------------------------
 # 1. Toolchain versions
 # ---------------------------------------------------------------------------
+_tg_transition "🔧 Toolchain: Flutter, Dart, Java" "🔧"
 step "Toolchain versions" bash -c "
   echo '  Flutter:'
   $FLUTTER --version 2>&1 | head -2
@@ -402,12 +479,14 @@ step "Toolchain versions" bash -c "
 # ---------------------------------------------------------------------------
 # 2. Dependencies
 # ---------------------------------------------------------------------------
+_tg_transition "📦 Installing Flutter dependencies..." "📦"
 step "Install dependencies" $FLUTTER pub get
 
 # ---------------------------------------------------------------------------
 # 3. Code generation
 # ---------------------------------------------------------------------------
 if [ "$SKIP_CODEGEN" = "false" ]; then
+  _tg_transition "⚡ Running code generation..." "⚡"
   step "Run code generation" $DART run build_runner build --delete-conflicting-outputs
 fi
 
@@ -415,6 +494,7 @@ fi
 # 4. Static analysis
 # ---------------------------------------------------------------------------
 if [ "$SKIP_ANALYZE" = "false" ]; then
+  _tg_transition "🔍 Running static analysis..." "🔍"
   step "Static analysis" $FLUTTER analyze --no-fatal-infos
 fi
 
@@ -422,6 +502,7 @@ fi
 # 5. Tests
 # ---------------------------------------------------------------------------
 if [ "$SKIP_TEST" = "false" ]; then
+  _tg_transition "🧪 Running unit tests..." "🧪"
   step "Unit tests" $FLUTTER test
 fi
 
@@ -429,6 +510,7 @@ fi
 # 6. Build ID
 # ---------------------------------------------------------------------------
 if [ "$SKIP_BUILD_ID" = "false" ]; then
+  _tg_transition "🔢 Generating build ID..." "🔢"
   step "Generate build ID" $DART run tool/generate_build_id.dart
 fi
 
@@ -438,7 +520,7 @@ if [ -f "$ROOT/lib/build_id.dart" ]; then
 else
   BUILD_ID="local"
 fi
-VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: *\([^+]*\)[+ ].*/\1/' | tr -d ' ')
+VERSION=$(awk '/^version:/ {print $2}' pubspec.yaml | cut -d+ -f1)
 echo "  Build ID:    $BUILD_ID"
 echo "  Version:     $VERSION"
 
@@ -446,6 +528,7 @@ echo "  Version:     $VERSION"
 # 7. Signing (release mode only)
 # ---------------------------------------------------------------------------
 if [ "$SIGN" = "true" ]; then
+  _tg_transition "🔑 Configuring signing keys..." "🔑"
   echo ""
   echo "────────────────────────────────────────"
   echo "  Configure signing"
@@ -469,16 +552,23 @@ fi
 # 8. Build APK
 # ---------------------------------------------------------------------------
 if [ "$SKIP_BUILD" = "false" ]; then
-  step "Build APK ($MODE)" bash -c "
-  ARGS='--$MODE'
-  if [ '$SPLIT_PER_ABI' = 'true' ]; then
-    ARGS=\"\$ARGS --split-per-abi\"
+  if [ "$BUILD_UNIVERSAL" = "true" ]; then
+    _tg_transition "🏗️ Building universal APK ($MODE)..." "🏗️"
+    step "Build universal APK" bash -c "
+    echo '  Running: flutter build apk --$MODE'
+    (cd '$ROOT/android' && ./gradlew --stop) 2>/dev/null || true
+    $FLUTTER build apk '--$MODE'
+    "
   fi
-  echo '  Running: flutter build apk \$ARGS'
-  # Stop lingering Gradle daemon to avoid resource conflicts
-  (cd '$ROOT/android' && ./gradlew --stop) 2>/dev/null || true
-  $FLUTTER build apk \$ARGS
-"
+
+  if [ "$SPLIT_PER_ABI" = "true" ]; then
+    _tg_transition "🏗️ Building per-ABI APKs ($MODE)..." "🏗️"
+    step "Build per-ABI APKs" bash -c "
+    echo '  Running: flutter build apk --$MODE --split-per-abi'
+    (cd '$ROOT/android' && ./gradlew --stop) 2>/dev/null || true
+    $FLUTTER build apk '--$MODE' '--split-per-abi'
+    "
+  fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -514,6 +604,9 @@ if [ "$SKIP_BUILD" = "false" ]; then
     PRIMARY_APK_NAME=$(grep "^name=" "$PRIMARY_APK_FILE" | cut -d= -f2-)
     PRIMARY_APK_SIZE=$(grep "^size=" "$PRIMARY_APK_FILE" | cut -d= -f2-)
   fi
+
+  # Stop live-progress watcher before final notification
+  _tg_stop_watcher
 
   # Send final Telegram message: APK (success) or text fallback.
   if [ -n "$PRIMARY_APK" ] && [ "$TELEGRAM" = "true" ]; then

@@ -92,9 +92,9 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          args="--mode ${{ inputs.build_mode }} --telegram"
+          args="--mode ${{ inputs.build_mode }} --telegram --progress-watch"
           if [ "${{ inputs.split_per_abi }}" = "true" ]; then
-            args="$args --split-per-abi"
+            args="$args --split-per-abi --no-universal"
           fi
           bash tool/build $args
 
@@ -114,8 +114,8 @@ jobs:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          if [ ! -f "build/.telegram_msg_id" ]; then
-            echo "Build script already handled Telegram notification. Skipping."
+          if [ -f "build/.tg_notified" ]; then
+            echo "Telegram notification already handled by build script. Skipping."
             exit 0
           fi
           python3 tool/telegram_notifier.py fail

@@ -61,3 +61,7 @@ handover.md
 .opencode/
 .logs/
 .lcm/
+
+# Auto-generated build metadata
+lib/build_id.dart
+

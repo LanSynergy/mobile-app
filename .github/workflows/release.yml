@@ -42,7 +42,9 @@ jobs:
             echo "::error::Version must match semver format (e.g. 0.1.1 or 0.1.1+5). Got: '$VERSION'"
             exit 1
           fi
+          CLEAN_VERSION=$(echo "$VERSION" | cut -d+ -f1)
           echo "TAG=v$VERSION" >> "$GITHUB_ENV"
+          echo "CLEAN_VERSION=$CLEAN_VERSION" >> "$GITHUB_ENV"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,6 +63,31 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Export Telegram metadata
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          BUILD_ID=$(grep "kBuildId" lib/build_id.dart | sed "s/.*'\(.*\)'.*/\1/" 2>/dev/null || echo "unknown")
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s" | tr -d '_*`[]')
+          BRANCH="${GITHUB_REF_NAME}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${GITHUB_SHA}"
+          ACTOR="${{ github.actor }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+          COMMIT_ESC=$(printf '%s' "$COMMIT_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+
+          echo "TG_BUILD_ID=${BUILD_ID}"      >> "${GITHUB_ENV}"
+          echo "TG_SHA=${SHORT_SHA}"          >> "${GITHUB_ENV}"
+          echo "TG_BRANCH=${BRANCH}"          >> "${GITHUB_ENV}"
+          echo "TG_TIMESTAMP=${TIMESTAMP}"    >> "${GITHUB_ENV}"
+          echo "TG_COMMIT=${COMMIT_ESC}"      >> "${GITHUB_ENV}"
+          echo "TG_RUN_URL=${RUN_URL}"        >> "${GITHUB_ENV}"
+          echo "TG_COMMIT_URL=${COMMIT_URL}"  >> "${GITHUB_ENV}"
+          echo "TG_ACTOR=${ACTOR}"            >> "${GITHUB_ENV}"
+          echo "TG_TAG=${TAG}"                >> "${GITHUB_ENV}"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -134,35 +161,33 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          bash tool/build --mode release --sign --split-per-abi
+          bash tool/build --mode release --sign --split-per-abi --progress-watch
 
       - name: Stage universal APK for release
         run: |
           mkdir -p release-artifacts
-          # tools/build renames APKs to Aetherfin-v{version}-{build_id}.apk, but
-          # for the universal build we need to locate it. When --split-per-abi is
-          # used, the non-split build produces an intermediate artifact before
-          # the split build runs. However tools/build runs only once with both
-          # flags. Let's find the universal APK from the output directory.
-          src="build/app/outputs/flutter-apk/app-release.apk"
-          if [ -f "$src" ]; then
+          # tools/build renames APKs to Aetherfin-v{version}-{build_id}.apk.
+          # Locate the renamed universal APK dynamically by finding Aetherfin-v{clean_version}-*.apk
+          # and excluding split APKs (which contain ABI names in their filename).
+          src=$(ls build/app/outputs/flutter-apk/Aetherfin-v${{ env.CLEAN_VERSION }}-*.apk 2>/dev/null | grep -v -E "armeabi-v7a|arm64-v8a|x86_64" | head -1 || true)
+          if [ -n "$src" ] && [ -f "$src" ]; then
             cp "$src" "release-artifacts/aetherfin-v${{ inputs.version }}-universal.apk"
+            echo "Staged universal APK: $src"
           else
-            echo "::warning::No universal APK found at $src. Check tools/build output."
+            echo "::error::No universal APK found matching build/app/outputs/flutter-apk/Aetherfin-v${{ env.CLEAN_VERSION }}-*.apk"
+            exit 1
           fi
 
       - name: Stage per-ABI APKs for release
         run: |
           # Renamed APKs follow: Aetherfin-v{version}-{abi}-{build_id}.apk
-          # We need consistent naming for the release: aetherfin-v{version}-{abi}.apk
+          # Locate them using the CLEAN_VERSION and rename them to match target upload names.
           for abi in armeabi-v7a arm64-v8a x86_64; do
-            src="build/app/outputs/flutter-apk/Aetherfin-v${{ inputs.version }}-${abi}"-*.apk
-            # Use ls to resolve the glob (there should be exactly one)
-            matched=$(ls $src 2>/dev/null | head -1)
+            src="build/app/outputs/flutter-apk/Aetherfin-v${{ env.CLEAN_VERSION }}-${abi}"-*.apk
+            matched=$(ls $src 2>/dev/null | head -1 || true)
             if [ -z "$matched" ]; then
-              echo "::warning::No APK found for $abi"
-              ls -la build/app/outputs/flutter-apk/
-              continue
+              echo "::error::No APK found for $abi matching $src"
+              exit 1
             fi
             dst="release-artifacts/aetherfin-v${{ inputs.version }}-${abi}.apk"
             cp "$matched" "$dst"
@@ -182,6 +207,14 @@ jobs:
           echo ""
           echo "Total size:"
           du -sh release-artifacts/
+
+      - name: Notify Telegram — Creating release
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TG_STATUS_TEXT: "\U0001f3d7\ufe0f Creating GitHub Release..."
+          TG_ICON: "\U0001f3d7\ufe0f"
+        run: python3 tool/telegram_notifier.py update
 
       - name: Commit pubspec bump
         if: env.PUBSPEC_BUMPED == 'true'
@@ -261,6 +294,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Notify Telegram — Release published
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TG_TAG: ${{ env.TAG }}
+          TG_RELEASE_URL: https://github.com/${{ github.repository }}/releases/tag/${{ env.TAG }}
+        run: python3 tool/telegram_notifier.py release_success
+
       - name: Summary
         run: |
           echo "## Released $TAG :rocket:" >> "$GITHUB_STEP_SUMMARY"
@@ -271,5 +312,12 @@ jobs:
           echo "|------|------|" >> "$GITHUB_STEP_SUMMARY"
           for f in release-artifacts/*.apk release-artifacts/checksums.txt; do
             SIZE=$(numfmt --to=iec --suffix=B "$(stat -c%s "$f")")
-            echo "| \`$(basename "$f")\` | $SIZE |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| `$(basename "$f")` | $SIZE |" >> "$GITHUB_STEP_SUMMARY"
           done
+
+      - name: Notify Telegram — Release failed
+        if: failure()
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python3 tool/telegram_notifier.py release_fail

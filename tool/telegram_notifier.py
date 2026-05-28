@@ -35,15 +35,27 @@ def get_header(icon="\U0001f528"):
     build_id = os.environ.get('TG_BUILD_ID', 'unknown')
     mode = os.environ.get('TG_MODE', '')
     actor = os.environ.get('TG_ACTOR', 'unknown')
+    tag = os.environ.get('TG_TAG', '')
+    sha = os.environ.get('TG_SHA', '')
+    commit = os.environ.get('TG_COMMIT', '')
+    timestamp = os.environ.get('TG_TIMESTAMP', '')
 
-    parts = [f"{icon} <b>Aetherfin Build</b>"]
-    parts.append("\u2500" * 30)
+    parts = [f"{icon} <b>Aetherfin {'Release' if tag else 'Build'}</b>"]
+
+    if tag:
+        parts.append(f"<b>Tag:</b> <code>{tag}</code>")
     parts.append(f"<b>Branch:</b> <code>{branch}</code>")
     if mode:
         parts.append(f"<b>Mode:</b> <code>{mode}</code>")
     parts.append(f"<b>Build ID:</b> <code>{build_id}</code>")
+    if sha and commit:
+        parts.append("\u2500" * 30)
+        parts.append(f"<b>Last Commit:</b>")
+        parts.append(f"<code>{sha}</code> \u2014 {commit}")
     parts.append(f"<b>Triggered by:</b> <code>{actor}</code>")
     parts.append("\u2500" * 30)
+    if timestamp:
+        parts.append(f"<i>{timestamp}</i>")
 
     return "\n".join(parts)
 
@@ -247,6 +259,171 @@ def send_text():
     _send_text(text, reply_markup)
 
 
+def update_message():
+    """Edit the existing init message with updated progress status."""
+    msg_id = os.environ.get('TG_MESSAGE_ID')
+    status_text = os.environ.get('TG_STATUS_TEXT', '')
+
+    if not msg_id:
+        print("Warning: TG_MESSAGE_ID not set — skipping progress update.")
+        return
+
+    icon = os.environ.get('TG_ICON', '\U0001f528')
+    text = build_message(status_text, icon=icon)
+
+    payload = {
+        "chat_id": CHAT_ID,
+        "message_id": int(msg_id),
+        "text": text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+    }
+
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
+    data = json.dumps(payload).encode('utf-8')
+    headers = {"Content-Type": "application/json"}
+
+    try:
+        result = send_request(url, data=data, headers=headers)
+        if result.get('ok'):
+            print(f"Updated message {msg_id} to: {status_text}")
+        else:
+            print(f"Warning: Failed to update message: {result}")
+    except Exception as e:
+        print(f"Warning: Telegram editMessageText failed: {e}")
+
+
+def release_success():
+    """Delete init message, send final release success with tag info."""
+    _delete_message(os.environ.get('TG_MESSAGE_ID'))
+
+    tag = os.environ.get('TG_TAG', '')
+    run_url = os.environ.get('TG_RUN_URL', '')
+    release_url = os.environ.get('TG_RELEASE_URL', '')
+    branch = os.environ.get('TG_BRANCH', '')
+    actor = os.environ.get('TG_ACTOR', '')
+    timestamp = os.environ.get('TG_TIMESTAMP', '')
+
+    text = (
+        "\U0001f680 <b>Aetherfin Release Successful!</b>\n"
+        "\u2500" * 30 + "\n"
+        f"<b>Tag:</b> <code>{tag}</code>\n"
+        f"<b>Branch:</b> <code>{branch}</code>\n"
+        f"<b>Triggered by:</b> <code>{actor}</code>\n"
+        "\u2500" * 30 + "\n"
+        "\U00002705 Release published successfully!\n"
+        "\u2500" * 30 + "\n"
+        f"<i>{timestamp}</i>"
+    )
+
+    buttons = []
+    if run_url:
+        buttons.append({"text": "\U0001f528 View Run", "url": run_url})
+    if release_url:
+        buttons.append({"text": "\U0001f4e6 Release", "url": release_url})
+
+    reply_markup = {}
+    if buttons:
+        reply_markup = {"inline_keyboard": [buttons]}
+
+    _send_text(text, reply_markup)
+
+
+def release_fail():
+    """Delete init message, send release failure notification."""
+    _delete_message(os.environ.get('TG_MESSAGE_ID'))
+
+    branch = os.environ.get('TG_BRANCH', 'unknown')
+    tag = os.environ.get('TG_TAG', 'unknown')
+    actor = os.environ.get('TG_ACTOR', 'unknown')
+    run_url = os.environ.get('TG_RUN_URL', '')
+
+    text = (
+        "\u274c <b>Aetherfin Release Failed!</b>\n"
+        "\u2500" * 30 + "\n"
+        f"<b>Tag:</b> <code>{tag}</code>\n"
+        f"<b>Branch:</b> <code>{branch}</code>\n"
+        f"<b>Triggered by:</b> <code>{actor}</code>\n"
+        "\u2500" * 30 + "\n"
+        "<blockquote>Release failed during the workflow.</blockquote>"
+    )
+
+    reply_markup = {}
+    if run_url:
+        reply_markup = {
+            "inline_keyboard": [[
+                {"text": "\U0001f6a7 View Error Log", "url": run_url}
+            ]]
+        }
+
+    _send_text(text, reply_markup)
+
+
+def progress_watch():
+    """Live-progress watcher for long build steps.
+
+    Runs as a background process (&) alongside the build command.
+    Periodically edits the Telegram message to show elapsed time
+    and a growing progress bar. Killed via SIGTERM when the build
+    finishes. The bar cycles — 20 segments × 45 s = ~15 min per
+    full lap.
+    """
+    import signal
+    import time
+
+    def _handle_sigterm(signum, frame):
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, _handle_sigterm)
+
+    msg_id = os.environ.get('TG_MESSAGE_ID')
+    if not msg_id:
+        print("Error: TG_MESSAGE_ID not set — progress_watch skipped.")
+        sys.exit(1)
+
+    icon = os.environ.get('TG_ICON', '\U0001f528')
+    status_text = os.environ.get('TG_STATUS_TEXT', 'Building...')
+    start = time.time()
+    bar_len = 20
+    interval = 45  # seconds between updates
+    tick = 0
+
+    while True:
+        elapsed_s = int(time.time() - start)
+        mins = elapsed_s // 60
+        secs = elapsed_s % 60
+        elapsed_str = f"{mins}m {secs:02d}s" if mins > 0 else f"{secs}s"
+
+        # Cyclic bar: fills over bar_len ticks (~15 min at 45 s)
+        pos = (tick % bar_len) + 1
+        bar = '\u2588' * pos + '\u2591' * (bar_len - pos)
+
+        progress_line = f"<code>[{bar}]</code> {elapsed_str} elapsed"
+
+        header = get_header(icon)
+        text = f"{header}\n<blockquote>{status_text}\n{progress_line}</blockquote>"
+
+        payload = {
+            "chat_id": CHAT_ID,
+            "message_id": int(msg_id),
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
+        data = json.dumps(payload).encode('utf-8')
+        headers = {"Content-Type": "application/json"}
+
+        try:
+            req = Request(url, data=data, headers=headers)
+            urlopen(req)
+        except Exception:
+            pass  # may be killed mid-request — don't pollute logs
+
+        tick += 1
+        time.sleep(interval)
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python tool/telegram_notifier.py <init|send_apk|send_text|fail>")
@@ -261,6 +438,14 @@ def main():
         send_text()
     elif action == 'fail':
         fail_message()
+    elif action == 'update':
+        update_message()
+    elif action == 'release_success':
+        release_success()
+    elif action == 'release_fail':
+        release_fail()
+    elif action == 'progress_watch':
+        progress_watch()
     else:
         print(f"Unknown action: {action}")
         sys.exit(1)
