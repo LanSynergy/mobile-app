@@ -199,7 +199,7 @@ class TrackRepository {
             (SELECT COUNT(*) 
              FROM playback_history h1
              JOIN playback_history h2 ON h1.track_id = ?1 
-                                     AND h2.track_id = id 
+                                     AND h2.track_id = tracks.id 
                                      AND ABS(h1.played_at - h2.played_at) <= 3600000), 
             0
           ))
@@ -269,8 +269,10 @@ class TrackRepository {
       title: r.title,
       artistName: r.artist,
       albumName: r.album,
-      albumId: null,
-      artistId: null,
+      albumId: (r.album.isNotEmpty && r.artist.isNotEmpty)
+          ? 'local:album:${r.album}:${r.artist}'
+          : null,
+      artistId: r.artist.isNotEmpty ? 'local:artist:${r.artist}' : null,
       trackNumber: r.trackNumber,
       duration: Duration(milliseconds: r.durationMs),
       quality: TrackQuality(

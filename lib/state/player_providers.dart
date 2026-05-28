@@ -173,7 +173,8 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
       // 3. Artist Top Tracks Fallback
       if (results.length < targetSize) {
         final artistId = lastTrack.artistId;
-        if (artistId != null && artistId.isNotEmpty) {
+        final artistName = lastTrack.artistName;
+        if (artistId != null && artistId.isNotEmpty && !_isGenericArtist(artistName)) {
           try {
             final topTracks = await backend.artistTopTracks(artistId, limit: targetSize);
             for (final t in topTracks) {
@@ -189,7 +190,7 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
       // 4. Search Fallback (by artist name)
       if (results.length < targetSize) {
         final artistName = lastTrack.artistName;
-        if (artistName.isNotEmpty) {
+        if (artistName.isNotEmpty && !_isGenericArtist(artistName)) {
           try {
             final searchRes = await backend.search(artistName);
             final cleanArtistName = artistName.trim().toLowerCase();
@@ -209,7 +210,8 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
       // 5. Album Fallback
       if (results.length < targetSize) {
         final albumId = lastTrack.albumId;
-        if (albumId != null && albumId.isNotEmpty) {
+        final albumName = lastTrack.albumName;
+        if (albumId != null && albumId.isNotEmpty && !_isGenericAlbum(albumName)) {
           try {
             final albumData = await backend.album(albumId);
             if (albumData != null) {
@@ -455,3 +457,19 @@ final forNtimesModeProvider = StateProvider<bool>((ref) => false);
 final hasActivePlaybackProvider = Provider<bool>((ref) {
   return ref.watch(currentTrackProvider) != null;
 });
+
+bool _isGenericArtist(String name) {
+  final clean = name.trim().toLowerCase();
+  return clean.isEmpty ||
+      clean == 'unknown' ||
+      clean == 'unknown artist' ||
+      clean == 'various' ||
+      clean == 'various artists';
+}
+
+bool _isGenericAlbum(String name) {
+  final clean = name.trim().toLowerCase();
+  return clean.isEmpty ||
+      clean == 'unknown' ||
+      clean == 'unknown album';
+}

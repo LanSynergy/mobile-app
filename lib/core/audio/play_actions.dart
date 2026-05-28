@@ -184,7 +184,8 @@ class PlayActions {
     if (queue.length < targetSize && queue.isNotEmpty) {
       final seed = queue.first; // the original seed track
       final artistId = seed.artistId;
-      if (artistId != null && artistId.isNotEmpty) {
+      final artistName = seed.artistName;
+      if (artistId != null && artistId.isNotEmpty && !_isGenericArtist(artistName)) {
         try {
           final topTracks = await backend.artistTopTracks(artistId, limit: targetSize);
           for (final t in topTracks) {
@@ -204,7 +205,7 @@ class PlayActions {
     if (queue.length < targetSize && queue.isNotEmpty) {
       final seed = queue.first;
       final artistName = seed.artistName;
-      if (artistName.isNotEmpty) {
+      if (artistName.isNotEmpty && !_isGenericArtist(artistName)) {
         try {
           final searchRes = await backend.search(artistName);
           final cleanArtistName = artistName.trim().toLowerCase();
@@ -228,7 +229,8 @@ class PlayActions {
     if (queue.length < targetSize && queue.isNotEmpty) {
       final seed = queue.first;
       final albumId = seed.albumId;
-      if (albumId != null && albumId.isNotEmpty) {
+      final albumName = seed.albumName;
+      if (albumId != null && albumId.isNotEmpty && !_isGenericAlbum(albumName)) {
         try {
           final albumData = await backend.album(albumId);
           if (albumData != null) {
@@ -246,6 +248,22 @@ class PlayActions {
     }
 
     return queue;
+  }
+
+  bool _isGenericArtist(String name) {
+    final clean = name.trim().toLowerCase();
+    return clean.isEmpty ||
+        clean == 'unknown' ||
+        clean == 'unknown artist' ||
+        clean == 'various' ||
+        clean == 'various artists';
+  }
+
+  bool _isGenericAlbum(String name) {
+    final clean = name.trim().toLowerCase();
+    return clean.isEmpty ||
+        clean == 'unknown' ||
+        clean == 'unknown album';
   }
 
   String _computeSourceLabel(List<AfTrack> tracks) {
