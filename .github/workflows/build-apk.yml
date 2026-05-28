@@ -93,6 +93,9 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           args="--mode ${{ inputs.build_mode }} --telegram --progress-watch"
+          if [ "${{ inputs.build_mode }}" = "release" ]; then
+            args="$args --sign"
+          fi
           if [ "${{ inputs.split_per_abi }}" = "true" ]; then
             args="$args --split-per-abi --no-universal"
           fi
