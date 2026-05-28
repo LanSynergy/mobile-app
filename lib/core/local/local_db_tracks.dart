@@ -195,7 +195,15 @@ class TrackRepository {
       ORDER BY (
         (CASE WHEN artist = ?2 OR album_artist = ?2 THEN 5 ELSE 0 END) +
         (CASE WHEN genre = ?3 AND genre != '' THEN 4 ELSE 0 END) +
-        (CASE WHEN year IS NOT NULL AND ?4 IS NOT NULL AND ABS(year - ?4) <= 5 THEN 2 ELSE 0 END)
+        (CASE WHEN year IS NOT NULL AND ?4 IS NOT NULL AND ABS(year - ?4) <= 3 THEN 3 ELSE 0 END) +
+        MIN(12, 3 * COALESCE(
+          (SELECT COUNT(*) 
+           FROM playback_history h1
+           JOIN playback_history h2 ON h1.track_id = ?1 
+                                   AND h2.track_id = id 
+                                   AND ABS(h1.played_at - h2.played_at) <= 3600000), 
+          0
+        ))
       ) DESC, random()
       LIMIT ?5
       ''',
@@ -206,7 +214,7 @@ class TrackRepository {
             Variable<int>(year),
             Variable<int>(limit),
           ],
-          readsFrom: {db.tracks},
+          readsFrom: {db.tracks, db.playbackHistory},
         )
         .get();
 

@@ -11,6 +11,7 @@ import '../core/audio/shuffle_mode.dart';
 import '../core/backend/music_backend.dart';
 import '../core/jellyfin/models/items.dart';
 import 'app_mode_providers.dart';
+import 'local_library_providers.dart';
 import 'music_backend_providers.dart';
 import 'settings_providers.dart';
 import 'favorite_providers.dart';
@@ -153,21 +154,18 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     ref.read(playbackErrorProvider.notifier).state = error;
   });
 
-  final mode = ref.read(appModeProvider);
-  JellyfinPlaybackReporter? reporter;
-  if (mode != AppMode.local) {
-    reporter = JellyfinPlaybackReporter(
-      svc,
-      () => ref.read(musicBackendProvider),
-    );
-  }
+  final reporter = JellyfinPlaybackReporter(
+    svc,
+    () => ref.read(musicBackendProvider),
+    ref.read(appDatabaseProvider),
+  );
 
   unawaited(svc.configureSpectrum());
 
   ref.listen<MusicBackend?>(musicBackendProvider, (prev, next) {
     if (prev != null && next == null) {
-      reporter?.requestStopOnDispose();
-      unawaited(reporter?.dispose());
+      reporter.requestStopOnDispose();
+      unawaited(reporter.dispose());
     } else if (prev == null && next != null) {
       // User signed in or backend loaded, load the saved queue from server
       unawaited(loadSavedQueue());
@@ -179,7 +177,7 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     await queueSub.cancel();
     await trackSub.cancel();
     await errorSub.cancel();
-    await reporter?.dispose();
+    await reporter.dispose();
     await svc.dispose();
   });
 }

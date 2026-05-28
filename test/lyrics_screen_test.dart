@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:aetherfin/features/lyrics/lyrics_screen.dart';
+import 'package:aetherfin/widgets/skeletons/lyrics_skeleton.dart';
 import 'package:aetherfin/core/jellyfin/models/items.dart';
 import 'package:aetherfin/core/lyrics/lrc_parser.dart';
 import 'package:aetherfin/core/backend/music_backend.dart';
@@ -30,6 +33,33 @@ void main() {
       );
 
       expect(find.text('Start a track to see lyrics.'), findsOneWidget);
+    });
+
+    testWidgets('renders loading state with CircularProgressIndicator and Fetching lyrics...', (
+      tester,
+    ) async {
+      const track = AfTrack(
+        id: 'track1',
+        title: 'Song Title',
+        artistName: 'Artist Name',
+        albumName: 'Album Name',
+        duration: Duration(minutes: 3),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            initialAuthProvider.overrideWithValue(null),
+            currentTrackProvider.overrideWith((ref) => track),
+            lyricsProvider('track1').overrideWith((ref) => Completer<Lrc?>().future),
+          ],
+          child: const MaterialApp(home: LyricsScreen()),
+        ),
+      );
+
+      expect(find.byType(LyricsSkeleton), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Fetching lyrics...'), findsOneWidget);
     });
 
     testWidgets('renders missing lyrics state on server mode', (tester) async {

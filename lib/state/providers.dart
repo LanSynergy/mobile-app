@@ -2,6 +2,7 @@ export 'app_mode_providers.dart';
 export 'auth_providers.dart';
 export 'detail_providers.dart';
 export 'favorite_providers.dart';
+export 'history_providers.dart';
 export 'library_providers.dart';
 export 'local_library_providers.dart';
 export 'music_backend_providers.dart';

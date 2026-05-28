@@ -1,11 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 import '../core/jellyfin/models/items.dart';
 import '../core/lyrics/lrc_parser.dart';
+import '../core/lyrics/lrclib_client.dart';
 import '../utils/log.dart';
 import 'app_mode_providers.dart';
+import 'detail_providers.dart';
 import 'local_library_providers.dart';
 import 'music_backend_providers.dart';
+import 'player_providers.dart';
 
 void _logData(String feature, {required String source, String? extra}) {
   final detail = extra == null || extra.isEmpty ? '' : ' $extra';
@@ -81,23 +87,93 @@ final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((
   ref,
   trackId,
 ) async {
+  // 1. Try local cache directory for previously fetched LRCLib lyrics (synced/plain)
+  try {
+    final cacheDir = await getApplicationCacheDirectory();
+    final cacheFile = File(p.join(cacheDir.path, 'lyrics', '$trackId.lrc'));
+    if (await cacheFile.exists()) {
+      final raw = await cacheFile.readAsString();
+      if (raw.isNotEmpty) {
+        _logData('lyrics', source: 'cache', extra: 'trackId=$trackId fromLocalCache=true');
+        return parseLrc(raw);
+      }
+    }
+  } catch (e) {
+    afLog('error', 'Failed to read lyrics from local cache', error: e);
+  }
+
   final backend = ref.watch(musicBackendProvider);
   if (backend == null) {
     _logData('lyrics', source: 'demo', extra: 'trackId=$trackId (signed out)');
     return null;
   }
 
+  // 2. Fetch from Jellyfin/Navidrome server or local embedded tag / sidecar
   final raw = await backend.lyrics(trackId);
-  if (raw == null || raw.isEmpty) {
-    _logData('lyrics', source: 'live', extra: 'trackId=$trackId result=none');
+  if (raw != null && raw.isNotEmpty) {
+    final parsed = parseLrc(raw);
+    _logData(
+      'lyrics',
+      source: 'live',
+      extra: 'trackId=$trackId lines=${parsed.lines.length}',
+    );
+    return parsed;
+  }
+
+  // 3. Fallback: query LRCLib if the server doesn't have it
+  _logData('lyrics', source: 'fallback_check', extra: 'trackId=$trackId (backend yielded none, trying lrclib.net)');
+
+  // Try to get track details from currently playing track first to avoid loading
+  AfTrack? track;
+  final current = ref.read(currentTrackProvider);
+  if (current != null && current.id == trackId) {
+    track = current;
+  } else {
+    try {
+      final details = await ref.read(trackDetailsProvider(trackId).future);
+      track = details?.track;
+    } catch (_) {}
+  }
+
+  if (track == null) {
+    _logData('lyrics', source: 'lrclib', extra: 'trackId=$trackId (missing track metadata)');
     return null;
   }
 
-  final parsed = parseLrc(raw);
-  _logData(
-    'lyrics',
-    source: 'live',
-    extra: 'trackId=$trackId lines=${parsed.lines.length}',
+  final lrclib = LrcLibClient();
+  final fetched = await lrclib.fetchLyrics(
+    trackName: track.title,
+    artistName: track.artistName,
+    albumName: track.albumName,
+    duration: track.duration,
   );
-  return parsed;
+
+  if (fetched != null) {
+    final rawLyrics = fetched.synced ?? fetched.plain;
+    if (rawLyrics != null && rawLyrics.isNotEmpty) {
+      // Parse the retrieved lyrics
+      final parsed = parseLrc(rawLyrics);
+
+      // Cache it for next time
+      try {
+        final cacheDir = await getApplicationCacheDirectory();
+        final cacheFile = File(p.join(cacheDir.path, 'lyrics', '$trackId.lrc'));
+        await cacheFile.parent.create(recursive: true);
+        await cacheFile.writeAsString(rawLyrics);
+        _logData('lyrics', source: 'lrclib_write', extra: 'cached to local cache path');
+      } catch (e) {
+        afLog('error', 'Failed to write lyrics cache', error: e);
+      }
+
+      _logData(
+        'lyrics',
+        source: 'lrclib',
+        extra: 'trackId=$trackId lines=${parsed.lines.length} synced=${fetched.synced != null}',
+      );
+      return parsed;
+    }
+  }
+
+  _logData('lyrics', source: 'live', extra: 'trackId=$trackId result=none');
+  return null;
 });

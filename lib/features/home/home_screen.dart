@@ -52,6 +52,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _onRefresh() async {
     final isLocal = ref.read(appModeProvider) == AppMode.local;
     ref.invalidate(recentlyAddedAlbumsProvider);
+    ref.invalidate(lostMemoriesProvider);
     if (isLocal) {
       ref.invalidate(localTracksProvider);
       ref.invalidate(localArtistsProvider);
@@ -63,6 +64,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
     await Future.wait<Object?>([
       ref.read(recentlyAddedAlbumsProvider.future),
+      ref.read(lostMemoriesProvider.future),
       ref.read(
         (isLocal ? localTracksProvider : recentlyPlayedTracksProvider).future,
       ),
@@ -90,6 +92,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final genresAsync = isLocal
         ? ref.watch(localGenresProvider)
         : ref.watch(allGenresProvider);
+    final lostMemoriesAsync = ref.watch(lostMemoriesProvider);
 
     return SafeArea(
       child: RefreshIndicator(
@@ -184,6 +187,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
               ),
+            ),
+
+            // Lost memories.
+            lostMemoriesAsync.when(
+              data: (tracks) {
+                if (tracks.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+                return SliverList(
+                  delegate: SliverChildListDelegate([
+                    const SizedBox(height: AfSpacing.sectionGap),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+                      child: SectionHeader(
+                        title: 'Lost memories',
+                        actionLabel: 'Play all',
+                        onActionTap: () => ref.read(playActionsProvider).playQueue(tracks),
+                      ),
+                    ),
+                    const SizedBox(height: AfSpacing.s12),
+                    SizedBox(
+                      height: 172,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AfSpacing.s16,
+                        ),
+                        itemCount: tracks.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(width: AfSpacing.s12),
+                        itemBuilder: (context, i) {
+                          final t = tracks[i];
+                          return Tile(
+                            title: t.title,
+                            subtitle: t.artistName,
+                            variant: TileVariant.album,
+                            imageUrl: t.imageUrl,
+                            size: 100,
+                            onTap: () => ref.read(playActionsProvider).playSingle(t),
+                            onLongPress: () => showTrackContextMenu(context, ref, t),
+                          );
+                        },
+                      ),
+                    ),
+                  ]),
+                );
+              },
+              loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+              error: (e, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
             ),
 
             const SliverToBoxAdapter(

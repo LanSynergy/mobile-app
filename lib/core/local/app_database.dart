@@ -130,6 +130,20 @@ class QueueHistory extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@DataClassName('PlaybackHistoryEntity')
+class PlaybackHistory extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get trackId => text()();
+  IntColumn get playedAt => integer()(); // Unix epoch milliseconds
+  TextColumn get title => text().nullable()();
+  TextColumn get artist => text().nullable()();
+  TextColumn get album => text().nullable()();
+  IntColumn get durationMs => integer().nullable()();
+  TextColumn get imageUrl => text().nullable()();
+  TextColumn get sourceId => text().nullable()();
+  TextColumn get sourceType => text().nullable()();
+}
+
 @DriftDatabase(
   tables: [
     Tracks,
@@ -140,6 +154,7 @@ class QueueHistory extends Table {
     PlaylistEntries,
     CacheEntries,
     QueueHistory,
+    PlaybackHistory,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -150,7 +165,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -171,6 +186,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 4) {
         await m.createTable(queueHistory);
+      }
+      if (from < 5) {
+        await m.createTable(playbackHistory);
       }
     },
   );

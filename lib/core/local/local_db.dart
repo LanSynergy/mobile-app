@@ -301,6 +301,65 @@ class LocalDb {
     return rows.map((r) => tracks.rowToTrack(r, isFavorite: true)).toList();
   }
 
+  // ── Playback History & Lost Memories ───────────────────────────────────
+
+  /// Fetches tracks played exactly N years ago on the same calendar day.
+  Future<List<AfTrack>> getLostMemories({int limit = 50}) async {
+    final now = DateTime.now();
+    final targetDates = <String>[];
+    for (var i = 1; i <= 5; i++) {
+      final pastDate = DateTime(now.year - i, now.month, now.day);
+      final dateStr = pastDate.toIso8601String().substring(0, 10);
+      targetDates.add(dateStr);
+    }
+
+    final placeHolders = targetDates.map((_) => '?').join(',');
+    final query = '''
+      SELECT track_id, title, artist, album, duration_ms, image_url, MAX(played_at) as last_played
+      FROM playback_history
+      WHERE date(played_at / 1000, 'unixepoch', 'localtime') IN ($placeHolders)
+      GROUP BY track_id
+      ORDER BY last_played DESC
+      LIMIT ?
+    ''';
+
+    final variables = [
+      ...targetDates.map(Variable<String>.new),
+      Variable<int>(limit),
+    ];
+
+    final rows = await db.customSelect(
+      query,
+      variables: variables,
+      readsFrom: {db.playbackHistory},
+    ).get();
+
+    final result = <AfTrack>[];
+    final favIds = await favoriteIds();
+
+    for (final r in rows) {
+      final trackId = r.read<String>('track_id');
+      final title = r.read<String?>('title') ?? 'Unknown';
+      final artistName = r.read<String?>('artist') ?? 'Unknown';
+      final albumName = r.read<String?>('album') ?? 'Unknown';
+      final durationMs = r.read<int?>('duration_ms') ?? 0;
+      final imageUrl = r.read<String?>('image_url');
+
+      result.add(
+        AfTrack(
+          id: trackId,
+          title: title,
+          artistName: artistName,
+          albumName: albumName,
+          duration: Duration(milliseconds: durationMs),
+          imageUrl: imageUrl,
+          isFavorite: favIds.contains(trackId),
+        ),
+      );
+    }
+    return result;
+  }
+
   // ── Playlist queries (delegated) ────────────────────────────────────────
 
   Future<List<PlaylistEntity>> allPlaylists() => playlists.allPlaylists();

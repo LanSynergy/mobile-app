@@ -194,7 +194,29 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
         color: AfColors.surfaceCanvas,
         child: SafeArea(
           child: lrcAsync.maybeWhen(
-            loading: () => const LyricsSkeleton(),
+            loading: () => Stack(
+              children: [
+                const LyricsSkeleton(),
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(AfColors.indigo400),
+                      ),
+                      const SizedBox(height: AfSpacing.s16),
+                      Text(
+                        'Fetching lyrics...',
+                        style: AfTypography.bodyMedium.copyWith(
+                          color: AfColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
             error: (e, _) => AsyncErrorView(
               label: 'Could not load lyrics',
               error: e,

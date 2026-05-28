@@ -1,8 +1,11 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart';
+
 import '../../utils/log.dart';
 import '../backend/music_backend.dart';
 import '../jellyfin/models/items.dart';
+import '../local/app_database.dart';
 import 'player_service.dart';
 
 /// Pushes playback-session lifecycle events from [AfPlayerService] to the
@@ -24,12 +27,13 @@ import 'player_service.dart';
 ///                                          player stops, or the reporter
 ///                                          is disposed
 class JellyfinPlaybackReporter {
-  JellyfinPlaybackReporter(this._player, this._clientGetter) {
+  JellyfinPlaybackReporter(this._player, this._clientGetter, this._db) {
     _trackSub = _player.currentTrackStream.listen(_onTrackChanged);
     _playingSub = _player.playingStream.listen(_onPlayingChanged);
   }
   final AfPlayerService _player;
   final MusicBackend? Function() _clientGetter;
+  final AppDatabase _db;
 
   static const _progressInterval = Duration(seconds: 10);
 
@@ -62,6 +66,23 @@ class JellyfinPlaybackReporter {
           duration > Duration.zero && listened >= duration * 0.75;
       final isScrobble =
           isThresholdMet || listened >= const Duration(minutes: 4);
+
+      if (isScrobble) {
+        unawaited(
+          _db.into(_db.playbackHistory).insert(
+                PlaybackHistoryCompanion.insert(
+                  trackId: previousTrack.id,
+                  playedAt: DateTime.now().millisecondsSinceEpoch,
+                  title: Value(previousTrack.title),
+                  artist: Value(previousTrack.artistName),
+                  album: Value(previousTrack.albumName),
+                  durationMs: Value(previousTrack.duration.inMilliseconds),
+                  imageUrl: Value(previousTrack.imageUrl),
+                ),
+              ),
+        );
+        afLog('data', 'Logged play history track=${previousTrack.id}');
+      }
 
       if (client != null) {
         try {
@@ -223,6 +244,24 @@ class JellyfinPlaybackReporter {
     final isScrobble =
         duration > Duration.zero && listened >= duration * 0.75 ||
         listened >= const Duration(minutes: 4);
+
+    if (isScrobble) {
+      unawaited(
+        _db.into(_db.playbackHistory).insert(
+              PlaybackHistoryCompanion.insert(
+                trackId: track.id,
+                playedAt: DateTime.now().millisecondsSinceEpoch,
+                title: Value(track.title),
+                artist: Value(track.artistName),
+                album: Value(track.albumName),
+                durationMs: Value(track.duration.inMilliseconds),
+                imageUrl: Value(track.imageUrl),
+              ),
+            ),
+      );
+      afLog('data', 'Logged play history (dispose) track=${track.id}');
+    }
+
     try {
       await client
           .reportPlaybackStop(track.id, position, submission: isScrobble)
