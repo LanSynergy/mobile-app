@@ -483,31 +483,7 @@ _tg_transition "📦 Installing Flutter dependencies..." "📦"
 step "Install dependencies" $FLUTTER pub get
 
 # ---------------------------------------------------------------------------
-# 3. Code generation
-# ---------------------------------------------------------------------------
-if [ "$SKIP_CODEGEN" = "false" ]; then
-  _tg_transition "⚡ Running code generation..." "⚡"
-  step "Run code generation" $DART run build_runner build --delete-conflicting-outputs
-fi
-
-# ---------------------------------------------------------------------------
-# 4. Static analysis
-# ---------------------------------------------------------------------------
-if [ "$SKIP_ANALYZE" = "false" ]; then
-  _tg_transition "🔍 Running static analysis..." "🔍"
-  step "Static analysis" $FLUTTER analyze --no-fatal-infos
-fi
-
-# ---------------------------------------------------------------------------
-# 5. Tests
-# ---------------------------------------------------------------------------
-if [ "$SKIP_TEST" = "false" ]; then
-  _tg_transition "🧪 Running unit tests..." "🧪"
-  step "Unit tests" $FLUTTER test
-fi
-
-# ---------------------------------------------------------------------------
-# 6. Build ID
+# 3. Build ID
 # ---------------------------------------------------------------------------
 if [ "$SKIP_BUILD_ID" = "false" ]; then
   _tg_transition "🔢 Generating build ID..." "🔢"
@@ -523,6 +499,30 @@ fi
 VERSION=$(awk '/^version:/ {print $2}' pubspec.yaml | cut -d+ -f1)
 echo "  Build ID:    $BUILD_ID"
 echo "  Version:     $VERSION"
+
+# ---------------------------------------------------------------------------
+# 4. Code generation
+# ---------------------------------------------------------------------------
+if [ "$SKIP_CODEGEN" = "false" ]; then
+  _tg_transition "⚡ Running code generation..." "⚡"
+  step "Run code generation" $DART run build_runner build --delete-conflicting-outputs
+fi
+
+# ---------------------------------------------------------------------------
+# 5. Static analysis
+# ---------------------------------------------------------------------------
+if [ "$SKIP_ANALYZE" = "false" ]; then
+  _tg_transition "🔍 Running static analysis..." "🔍"
+  step "Static analysis" $FLUTTER analyze --no-fatal-infos
+fi
+
+# ---------------------------------------------------------------------------
+# 6. Tests
+# ---------------------------------------------------------------------------
+if [ "$SKIP_TEST" = "false" ]; then
+  _tg_transition "🧪 Running unit tests..." "🧪"
+  step "Unit tests" $FLUTTER test
+fi
 
 # ---------------------------------------------------------------------------
 # 7. Signing (release mode only)
