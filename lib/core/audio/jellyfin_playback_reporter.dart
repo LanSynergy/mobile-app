@@ -58,13 +58,19 @@ class JellyfinPlaybackReporter {
       final position = _player.position;
       final listened = _player.listenedDuration;
       final duration = previousTrack.duration;
-      final isThresholdMet = duration > Duration.zero && listened >= duration * 0.75;
-      final isScrobble = isThresholdMet || listened >= const Duration(minutes: 4);
+      final isThresholdMet =
+          duration > Duration.zero && listened >= duration * 0.75;
+      final isScrobble =
+          isThresholdMet || listened >= const Duration(minutes: 4);
 
       if (client != null) {
         try {
           await client
-              .reportPlaybackStop(previousTrack.id, position, submission: isScrobble)
+              .reportPlaybackStop(
+                previousTrack.id,
+                position,
+                submission: isScrobble,
+              )
               .timeout(const Duration(seconds: 5));
           if (_disposed) return;
           // Re-check after the await: a concurrent _onTrackChanged(null)
@@ -214,7 +220,9 @@ class JellyfinPlaybackReporter {
     final position = _player.position;
     final listened = _player.listenedDuration;
     final duration = track.duration;
-    final isScrobble = duration > Duration.zero && listened >= duration * 0.75 || listened >= const Duration(minutes: 4);
+    final isScrobble =
+        duration > Duration.zero && listened >= duration * 0.75 ||
+        listened >= const Duration(minutes: 4);
     try {
       await client
           .reportPlaybackStop(track.id, position, submission: isScrobble)

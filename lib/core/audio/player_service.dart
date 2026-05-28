@@ -145,6 +145,18 @@ class AfPlayerService {
   /// again after looping.
   String? _completedHandledForTrackId;
 
+  /// Guards against re-processing a track completion via the EOF fallback.
+  ///
+  /// Mirrors [_completedHandledForTrackId] but for the position-based
+  /// EOF fallback path ([_checkEndOfTrackFallback]). Set when the
+  /// fallback fires for a track. Checked by both the fallback itself
+  /// (prevents re-entry) and the completed handler (prevents duplicate
+  /// advance if a delayed `completed` arrives after the fallback fired).
+  ///
+  /// Reset on any explicit track change (playQueue, skip, skipToQueueItem)
+  /// so the next track's fallback is always processed.
+  String? _eofFallbackHandledTrackId;
+
   /// The ID of the track currently loaded in the mpv player.
   ///
   /// Used in the `completed` stream listener to verify if a completed event
@@ -535,6 +547,7 @@ class AfPlayerService {
     _prefetcher.cancelCurrentPrefetch();
     _prefetchStartedForTrackId = null;
     _completedHandledForTrackId = null;
+    _eofFallbackHandledTrackId = null;
 
     if (streamHeaders.isNotEmpty) {
       _authHeaders = streamHeaders;
@@ -627,6 +640,7 @@ class AfPlayerService {
     _prefetcher.cancelCurrentPrefetch();
     _prefetchStartedForTrackId = null;
     _mpvLoadedTrackId = null;
+    _eofFallbackHandledTrackId = null;
     try {
       await _player.stop();
     } catch (e, stack) {
@@ -648,6 +662,7 @@ class AfPlayerService {
     _prefetcher.cancelCurrentPrefetch();
     _prefetchStartedForTrackId = null;
     _mpvLoadedTrackId = null;
+    _eofFallbackHandledTrackId = null;
     try {
       await _player.stop();
     } catch (e, stack) {
@@ -683,13 +698,13 @@ class AfPlayerService {
 
   Future<void> skipToNext() async {
     if (_disposed) return;
-    if (_queueManager.engine.isAtQueueEnd &&
-        _loopMode != Loop.playlist) {
+    if (_queueManager.engine.isAtQueueEnd && _loopMode != Loop.playlist) {
       return;
     }
 
     _userPaused = false;
     _completedHandledForTrackId = null;
+    _eofFallbackHandledTrackId = null;
     _queueManager.engine.advanceIndex();
     _queueManager.engine.resetRepeats();
     final nextTrack = _queueManager.currentTrack;
@@ -713,6 +728,7 @@ class AfPlayerService {
 
     _userPaused = false;
     _completedHandledForTrackId = null;
+    _eofFallbackHandledTrackId = null;
     _queueManager.engine.retreatIndex();
     _queueManager.engine.resetRepeats();
     final prevTrack = _queueManager.currentTrack;
@@ -736,6 +752,7 @@ class AfPlayerService {
 
     _userPaused = false;
     _completedHandledForTrackId = null;
+    _eofFallbackHandledTrackId = null;
     _queueManager.engine.jumpTo(index);
     _queueManager.engine.resetRepeats();
     final targetTrack = _queueManager.currentTrack;
@@ -924,6 +941,7 @@ class AfPlayerService {
     _queueManager.dispose();
     _prefetcher.cancelCurrentPrefetch();
     _mpvLoadedTrackId = null;
+    _eofFallbackHandledTrackId = null;
     for (final s in _subs) {
       await s.cancel();
     }
@@ -988,17 +1006,21 @@ class AfPlayerService {
   // ---------------------------------------------------------------------------
 
   void _bindStreams() {
-    _subs.add(_positionTracker.positionStream.listen((pos) {
-      _checkPrefetch(pos);
-      final last = _lastPosition;
-      _lastPosition = pos;
-      if (last != null && isPlaying) {
-        final delta = pos - last;
-        if (delta > Duration.zero && delta < const Duration(milliseconds: 1200)) {
-          _listenedDuration += delta;
+    _subs.add(
+      _positionTracker.positionStream.listen((pos) {
+        _checkPrefetch(pos);
+        _checkEndOfTrackFallback(pos);
+        final last = _lastPosition;
+        _lastPosition = pos;
+        if (last != null && isPlaying) {
+          final delta = pos - last;
+          if (delta > Duration.zero &&
+              delta < const Duration(milliseconds: 1200)) {
+            _listenedDuration += delta;
+          }
         }
-      }
-    }));
+      }),
+    );
     _subs.add(
       _player.stream.playing.listen((playing) async {
         try {
@@ -1032,24 +1054,6 @@ class AfPlayerService {
                   'mpvLoadedTrackId=$_mpvLoadedTrackId (mismatch or null)',
             );
             return;
-          }
-
-          final duration = _player.state.duration;
-          final rawPos = await _positionTracker.getRawPosition();
-          final pos = rawPos > Duration.zero
-              ? rawPos
-              : _positionTracker.lastKnownPosition;
-          if (duration > Duration.zero) {
-            final remaining = duration - pos;
-            if (remaining > const Duration(milliseconds: 2000)) {
-              afLog(
-                'audio',
-                'completed event ignored: pos=${pos.inMilliseconds}ms, '
-                    'duration=${duration.inMilliseconds}ms (remaining=${remaining.inMilliseconds}ms > 2000ms). '
-                    'This is likely a transient buffering drop/EOF.',
-              );
-              return;
-            }
           }
 
           final loopAtEvent = _loopMode;
@@ -1130,28 +1134,7 @@ class AfPlayerService {
           _completedHandledForTrackId = currentTrackId;
 
           if (!_queueManager.engine.isAtQueueEnd) {
-            return _queueLock.run(() async {
-              // Advance engine state
-              _queueManager.engine.advanceIndex();
-              _onTrackChangedOrRestarted();
-
-              // Notify and emit
-              final current = _queueManager.currentTrack;
-              if (current != null) {
-                _queueManager.emitCurrentTrack(current);
-                onTrackChanged?.call(current);
-                unawaited(
-                  Future.microtask(() => onTrackCompleted?.call(current)),
-                );
-              }
-              _updateMediaSession();
-              unawaited(_reconfigureSpectrumOnTrackChange());
-
-              // Rebuild window for the next track
-              if (current != null) {
-                await _rebuildWindow(current);
-              }
-            });
+            return _queueLock.run(_advanceToNextTrack);
           } else {
             // End of queue
             var autoplayTriggered = false;
@@ -1168,27 +1151,7 @@ class AfPlayerService {
 
                     // Now the queue is extended! Slide and play the next track.
                     return _queueLock.run(() async {
-                      _queueManager.engine.advanceIndex();
-                      _onTrackChangedOrRestarted();
-
-                      final current = _queueManager.currentTrack;
-                      if (current != null) {
-                        _queueManager.emitCurrentTrack(current);
-                        onTrackChanged?.call(current);
-                        unawaited(
-                          Future.microtask(
-                            () => onTrackCompleted?.call(current),
-                          ),
-                        );
-                      }
-                      _updateMediaSession();
-                      unawaited(_reconfigureSpectrumOnTrackChange());
-
-                      // Rebuild window for the new track.
-                      if (current != null) {
-                        await _rebuildWindow(current);
-                      }
-
+                      await _advanceToNextTrack();
                       autoplayTriggered = true;
                     });
                   }
@@ -1250,10 +1213,7 @@ class AfPlayerService {
                       stackTrace: stack,
                     );
                   }
-                  afLog(
-                    'audio',
-                    'queue end, loop=file — restarted (fallback)',
-                  );
+                  afLog('audio', 'queue end, loop=file — restarted (fallback)');
               }
             }
           }
@@ -1341,6 +1301,78 @@ class AfPlayerService {
         }
       }
     }
+  }
+
+  /// Advance the engine to the next track and rebuild the mpv window.
+  ///
+  /// Called from:
+  /// - The completed handler's mid-queue branch
+  /// - The completed handler's autoplay branch (end-of-queue with similar tracks)
+  /// - The EOF fallback ([_checkEndOfTrackFallback])
+  ///
+  /// Must be called inside [_queueLock.run()] to prevent interleaving with
+  /// other queue mutations. Errors propagate to the caller's try-catch.
+  Future<void> _advanceToNextTrack() async {
+    _queueManager.engine.advanceIndex();
+    _onTrackChangedOrRestarted();
+
+    final current = _queueManager.currentTrack;
+    if (current != null) {
+      _queueManager.emitCurrentTrack(current);
+      onTrackChanged?.call(current);
+      unawaited(Future.microtask(() => onTrackCompleted?.call(current)));
+    }
+    _updateMediaSession();
+    unawaited(_reconfigureSpectrumOnTrackChange());
+
+    if (current != null) {
+      await _rebuildWindow(current);
+    }
+  }
+
+  /// Position-based EOF fallback detection.
+  ///
+  /// Called on every position tick from the position stream listener
+  /// (inside [_bindStreams], alongside [_checkPrefetch]).
+  ///
+  /// Fires when all conditions are met:
+  /// 1. A current track exists
+  /// 2. The completed handler hasn't already processed this track
+  /// 3. The fallback itself hasn't already fired for this track
+  /// 4. mpv reports a valid duration
+  /// 5. Position is within 500ms of the end
+  /// 6. mpv has stopped playing (EOF reached)
+  ///
+  /// When triggered, advances to the next track via [_advanceToNextTrack]
+  /// inside [_queueLock].
+  void _checkEndOfTrackFallback(Duration pos) {
+    final currentTrack = _queueManager.currentTrack;
+    if (currentTrack == null) return;
+
+    // Don't fire if the completed handler already processed this track.
+    if (_completedHandledForTrackId == currentTrack.id) return;
+
+    // Don't fire if we already triggered the fallback for this track.
+    if (_eofFallbackHandledTrackId == currentTrack.id) return;
+
+    final duration = _player.state.duration;
+    if (duration <= Duration.zero) return;
+
+    // Position must be near the end of the track.
+    if (pos < duration - const Duration(milliseconds: 500)) return;
+
+    // mpv must have stopped (EOF reached).
+    if (_player.state.playing) return;
+
+    // All conditions met — advance to next track.
+    _eofFallbackHandledTrackId = currentTrack.id;
+    afLog(
+      'audio',
+      'EOF fallback triggered for track "${currentTrack.id}" '
+          'pos=${pos.inMilliseconds}ms duration=${duration.inMilliseconds}ms',
+    );
+
+    unawaited(_queueLock.run(_advanceToNextTrack));
   }
 
   int _lastMediaSessionUpdateMs = 0;

@@ -24,7 +24,10 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     try {
       final saved = await backend.getPlayQueue();
       if (saved != null && saved.tracks.isNotEmpty) {
-        afLog('audio', 'Loaded saved queue from backend: count=${saved.tracks.length} current=${saved.currentIndex}');
+        afLog(
+          'audio',
+          'Loaded saved queue from backend: count=${saved.tracks.length} current=${saved.currentIndex}',
+        );
         await svc.playQueue(
           saved.tracks,
           startIndex: saved.currentIndex,
@@ -36,7 +39,12 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
         await svc.pause();
       }
     } catch (e, stack) {
-      afLog('audio', 'Failed to load saved queue on boot', error: e, stackTrace: stack);
+      afLog(
+        'audio',
+        'Failed to load saved queue on boot',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 

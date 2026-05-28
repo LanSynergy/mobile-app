@@ -202,10 +202,11 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // 3.1 completed handler ignores transient EOF when remaining duration is large
+    // 3.1 Completed handler advances even when position is far from end
+    //     (position guard removed — only the track ID guard filters events)
     // -----------------------------------------------------------------------
     test(
-      'completed handler ignores event if remaining duration > 2000ms',
+      'completed handler advances despite position being far from end',
       () async {
         AfTrack? changedTrack;
         service.onTrackChanged = (track) {
@@ -222,7 +223,9 @@ void main() {
 
         changedTrack = null;
 
-        // Set state with duration = 3 minutes and position = 30 seconds (remaining = 150 seconds > 2s)
+        // Set state with duration = 3 minutes and position = 30 seconds
+        // (remaining = 150 seconds — would have been rejected by the
+        // removed position guard).
         updateState(
           (s) => s.copyWith(
             playing: true,
@@ -239,9 +242,9 @@ void main() {
         ctrls.completed.add(true);
         await Future<void>.delayed(Duration.zero);
 
-        // Should not advance index (still at track A, i.e. track '1')
-        expect(service.currentTrack?.id, equals('1'));
-        expect(changedTrack, isNull);
+        // Should advance to next track (position guard removed).
+        expect(service.currentTrack?.id, equals('2'));
+        expect(changedTrack?.id, equals('2'));
       },
     );
 
@@ -811,43 +814,41 @@ void main() {
     // -----------------------------------------------------------------------
     // Loop.file mid-queue restarts current track instead of advancing
     // -----------------------------------------------------------------------
-    test('loop file mid-queue restarts current track instead of advancing',
-        () async {
-      AfTrack? changedTrack;
-      service.onTrackChanged = (track) {
-        changedTrack = track;
-      };
+    test(
+      'loop file mid-queue restarts current track instead of advancing',
+      () async {
+        AfTrack? changedTrack;
+        service.onTrackChanged = (track) {
+          changedTrack = track;
+        };
 
-      await service.playQueue(
-        [trackA, trackB, trackC],
-        startIndex: 0,
-        resolveStreamUrl: resolveStreamUrl,
-      );
-      await Future<void>.delayed(Duration.zero);
-      expect(service.currentTrack?.id, equals('1'));
+        await service.playQueue(
+          [trackA, trackB, trackC],
+          startIndex: 0,
+          resolveStreamUrl: resolveStreamUrl,
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(service.currentTrack?.id, equals('1'));
 
-      await service.setAfLoopMode(Loop.file);
-      changedTrack = null;
+        await service.setAfLoopMode(Loop.file);
+        changedTrack = null;
 
-      // Simulate completion mid-queue with loop=file.
-      updateState(
-        (s) => s.copyWith(
-          playing: false,
-          completed: false,
-          loop: Loop.file,
-        ),
-      );
+        // Simulate completion mid-queue with loop=file.
+        updateState(
+          (s) => s.copyWith(playing: false, completed: false, loop: Loop.file),
+        );
 
-      ctrls.completed.add(true);
-      await Future<void>.delayed(Duration.zero);
+        ctrls.completed.add(true);
+        await Future<void>.delayed(Duration.zero);
 
-      // Should NOT advance — restart same track.
-      expect(service.currentTrack?.id, equals('1'));
-      // onTrackChanged should NOT fire (track didn't change).
-      expect(changedTrack, isNull);
-      // seek(0) called to restart.
-      verify(() => player.seek(Duration.zero)).called(1);
-    });
+        // Should NOT advance — restart same track.
+        expect(service.currentTrack?.id, equals('1'));
+        // onTrackChanged should NOT fire (track didn't change).
+        expect(changedTrack, isNull);
+        // seek(0) called to restart.
+        verify(() => player.seek(Duration.zero)).called(1);
+      },
+    );
 
     // -----------------------------------------------------------------------
     // Duplicate completed events for the same track are ignored
@@ -893,27 +894,25 @@ void main() {
     // -----------------------------------------------------------------------
     // shouldAdvancePosition returns false when completed is true
     // -----------------------------------------------------------------------
-    test('shouldAdvancePosition returns false when mpv reports completed',
-        () async {
-      await service.playQueue(
-        [trackA, trackB],
-        startIndex: 0,
-        resolveStreamUrl: resolveStreamUrl,
-      );
-      await Future<void>.delayed(Duration.zero);
+    test(
+      'shouldAdvancePosition returns false when mpv reports completed',
+      () async {
+        await service.playQueue(
+          [trackA, trackB],
+          startIndex: 0,
+          resolveStreamUrl: resolveStreamUrl,
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      // While playing, shouldAdvancePosition is true.
-      updateState(
-        (s) => s.copyWith(playing: true, completed: false),
-      );
-      expect(service.shouldAdvancePosition, isTrue);
+        // While playing, shouldAdvancePosition is true.
+        updateState((s) => s.copyWith(playing: true, completed: false));
+        expect(service.shouldAdvancePosition, isTrue);
 
-      // When completed fires, shouldAdvancePosition becomes false.
-      updateState(
-        (s) => s.copyWith(playing: false, completed: true),
-      );
-      expect(service.shouldAdvancePosition, isFalse);
-    });
+        // When completed fires, shouldAdvancePosition becomes false.
+        updateState((s) => s.copyWith(playing: false, completed: true));
+        expect(service.shouldAdvancePosition, isFalse);
+      },
+    );
 
     // -----------------------------------------------------------------------
     // Full Bug 1→2→3 cascade: completion → loop toggle → play desync
@@ -967,67 +966,119 @@ void main() {
     // -----------------------------------------------------------------------
     // Loop.file completion resets the guard so next loop works
     // -----------------------------------------------------------------------
-    test('loop file does not set handled guard, allowing repeated loops',
-        () async {
-      await service.playQueue(
-        [trackA],
-        startIndex: 0,
-        resolveStreamUrl: resolveStreamUrl,
-      );
-      await Future<void>.delayed(Duration.zero);
+    test(
+      'loop file does not set handled guard, allowing repeated loops',
+      () async {
+        await service.playQueue(
+          [trackA],
+          startIndex: 0,
+          resolveStreamUrl: resolveStreamUrl,
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      await service.setAfLoopMode(Loop.file);
+        await service.setAfLoopMode(Loop.file);
 
-      // First completion → seek(0) + play (Loop.file restart).
-      updateState(
-        (s) => s.copyWith(
-          playing: false,
-          completed: false,
-          loop: Loop.file,
-        ),
-      );
-      ctrls.completed.add(true);
-      await Future<void>.delayed(Duration.zero);
+        // First completion → seek(0) + play (Loop.file restart).
+        updateState(
+          (s) => s.copyWith(playing: false, completed: false, loop: Loop.file),
+        );
+        ctrls.completed.add(true);
+        await Future<void>.delayed(Duration.zero);
 
-      expect(service.currentTrack?.id, equals('1'));
-      verify(() => player.seek(Duration.zero)).called(1);
+        expect(service.currentTrack?.id, equals('1'));
+        verify(() => player.seek(Duration.zero)).called(1);
 
-      // Second completion → should ALSO restart (guard not set).
-      ctrls.completed.add(true);
-      await Future<void>.delayed(Duration.zero);
+        // Second completion → should ALSO restart (guard not set).
+        ctrls.completed.add(true);
+        await Future<void>.delayed(Duration.zero);
 
-      expect(service.currentTrack?.id, equals('1'));
-      // seek called again for the second loop iteration.
-      verify(() => player.seek(Duration.zero)).called(1);
-    });
+        expect(service.currentTrack?.id, equals('1'));
+        // seek called again for the second loop iteration.
+        verify(() => player.seek(Duration.zero)).called(1);
+      },
+    );
 
     // -----------------------------------------------------------------------
     // Stale completed events from previous tracks are ignored
     // -----------------------------------------------------------------------
-    test('stale completed events from previous tracks are ignored during stream replacement', () async {
-      int trackChangedCount = 0;
+    test(
+      'stale completed events from previous tracks are ignored during stream replacement',
+      () async {
+        int trackChangedCount = 0;
+        service.onTrackChanged = (track) {
+          trackChangedCount++;
+        };
+
+        var openAllCallCount = 0;
+        final openAllCompleter = Completer<void>();
+        when(
+          () => player.openAll(
+            any(),
+            play: any(named: 'play'),
+            index: any(named: 'index'),
+          ),
+        ).thenAnswer((_) {
+          openAllCallCount++;
+          if (openAllCallCount == 1) {
+            return Future.value();
+          } else {
+            return openAllCompleter.future;
+          }
+        });
+
+        // Play queue starting at trackA
+        await service.playQueue(
+          [trackA, trackB],
+          startIndex: 0,
+          resolveStreamUrl: resolveStreamUrl,
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(service.currentTrack?.id, equals('1'));
+        trackChangedCount = 0; // Reset count
+
+        // Simulate completed event for trackA, which advances the Dart queue index to trackB
+        // and triggers _rebuildWindow(trackB).
+        updateState(
+          (s) => s.copyWith(playing: true, completed: false, loop: Loop.off),
+        );
+        ctrls.completed.add(true);
+
+        // Wait for the completed event listener to execute and advance the index in Dart.
+        // At this point, rebuildWindow(trackB) is awaiting the second openAll call,
+        // so _mpvLoadedTrackId is still trackA's ID ('1').
+        await Future<void>.delayed(Duration.zero);
+        expect(service.currentTrack?.id, equals('2'));
+        expect(trackChangedCount, equals(1)); // Changed to trackB
+
+        // Now fire a second completed event (simulating mpv's EOF event due to stopping trackA)
+        // while openAll for trackB is still in-flight.
+        ctrls.completed.add(true);
+        await Future<void>.delayed(Duration.zero);
+
+        // The listener should ignore this completed event because currentTrack is trackB
+        // but _mpvLoadedTrackId is still trackA.
+        expect(service.currentTrack?.id, equals('2'));
+        expect(trackChangedCount, equals(1));
+
+        // Resolve the second openAll call so rebuildWindow completes
+        openAllCompleter.complete();
+        await Future<void>.delayed(Duration.zero);
+
+        // Verify that after resolving, trackB remains active and _mpvLoadedTrackId was updated
+        expect(service.currentTrack?.id, equals('2'));
+        expect(trackChangedCount, equals(1));
+      },
+    );
+
+    // -----------------------------------------------------------------------
+    // 14. EOF fallback fires on position stream when all conditions met
+    // -----------------------------------------------------------------------
+    test('EOF fallback advances track when conditions are met', () async {
+      AfTrack? changedTrack;
       service.onTrackChanged = (track) {
-        trackChangedCount++;
+        changedTrack = track;
       };
 
-      var openAllCallCount = 0;
-      final openAllCompleter = Completer<void>();
-      when(
-        () => player.openAll(
-          any(),
-          play: any(named: 'play'),
-          index: any(named: 'index'),
-        ),
-      ).thenAnswer((_) {
-        openAllCallCount++;
-        if (openAllCallCount == 1) {
-          return Future.value();
-        } else {
-          return openAllCompleter.future;
-        }
-      });
-
-      // Play queue starting at trackA
       await service.playQueue(
         [trackA, trackB],
         startIndex: 0,
@@ -1035,39 +1086,319 @@ void main() {
       );
       await Future<void>.delayed(Duration.zero);
       expect(service.currentTrack?.id, equals('1'));
-      trackChangedCount = 0; // Reset count
 
-      // Simulate completed event for trackA, which advances the Dart queue index to trackB
-      // and triggers _rebuildWindow(trackB).
+      when(
+        () => player.openAll(
+          any(),
+          play: any(named: 'play'),
+          index: any(named: 'index'),
+        ),
+      ).thenAnswer((_) async {});
+
+      // Set state: position near end, mpv stopped, duration valid.
       updateState(
-        (s) => s.copyWith(playing: true, completed: false, loop: Loop.off),
+        (s) => s.copyWith(
+          playing: false,
+          completed: false,
+          loop: Loop.off,
+          duration: const Duration(seconds: 30),
+          position: const Duration(seconds: 29, milliseconds: 700),
+        ),
       );
-      ctrls.completed.add(true);
 
-      // Wait for the completed event listener to execute and advance the index in Dart.
-      // At this point, rebuildWindow(trackB) is awaiting the second openAll call,
-      // so _mpvLoadedTrackId is still trackA's ID ('1').
+      // Fire position event that should trigger the fallback.
+      // The position stream listener runs _checkEndOfTrackFallback.
+      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
+      await Future<void>.delayed(Duration.zero);
+
+      // Should advance to track B.
+      expect(service.currentTrack?.id, equals('2'));
+      expect(changedTrack?.id, equals('2'));
+    });
+
+    // -----------------------------------------------------------------------
+    // 15. EOF fallback skipped when completed handler already processed track
+    // -----------------------------------------------------------------------
+    test('EOF fallback skipped when completed handler already ran', () async {
+      int trackChangedCount = 0;
+      service.onTrackChanged = (track) {
+        trackChangedCount++;
+      };
+
+      await service.playQueue(
+        [trackA, trackB],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      // First, fire a normal completed event. This sets
+      // _completedHandledForTrackId = '1' and advances to track B.
+      updateState(
+        (s) => s.copyWith(
+          playing: true,
+          completed: false,
+          loop: Loop.off,
+          duration: const Duration(seconds: 30),
+          position: const Duration(seconds: 30),
+        ),
+      );
+      when(
+        () => player.openAll(
+          any(),
+          play: any(named: 'play'),
+          index: any(named: 'index'),
+        ),
+      ).thenAnswer((_) async {});
+
+      ctrls.completed.add(true);
       await Future<void>.delayed(Duration.zero);
       expect(service.currentTrack?.id, equals('2'));
-      expect(trackChangedCount, equals(1)); // Changed to trackB
+      trackChangedCount = 0;
 
-      // Now fire a second completed event (simulating mpv's EOF event due to stopping trackA)
-      // while openAll for trackB is still in-flight.
-      ctrls.completed.add(true);
+      // Now simulate receiving a position event near the end of track A
+      // (which is no longer current). The fallback should check
+      // currentTrack.id (now '2') vs _completedHandledForTrackId ('1')
+      // and not fire for track '1'.
+      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
       await Future<void>.delayed(Duration.zero);
 
-      // The listener should ignore this completed event because currentTrack is trackB
-      // but _mpvLoadedTrackId is still trackA.
+      // Still on track B — no unwanted advance.
+      expect(service.currentTrack?.id, equals('2'));
+      expect(trackChangedCount, equals(0));
+    });
+
+    // -----------------------------------------------------------------------
+    // 16. EOF fallback skipped when position is early in track
+    // -----------------------------------------------------------------------
+    test('EOF fallback skipped when position is early in track', () async {
+      await service.playQueue(
+        [trackA, trackB],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('1'));
+
+      // Set state: position early in track, mpv still playing.
+      updateState(
+        (s) => s.copyWith(
+          playing: true,
+          completed: false,
+          loop: Loop.off,
+          duration: const Duration(seconds: 30),
+          position: const Duration(seconds: 5),
+        ),
+      );
+
+      service.positionTracker.emitPositionForTesting(const Duration(seconds: 5));
+      await Future<void>.delayed(Duration.zero);
+
+      // Still on track A — fallback did not trigger.
+      expect(service.currentTrack?.id, equals('1'));
+    });
+
+    // -----------------------------------------------------------------------
+    // 17. EOF fallback skipped when mpv is still playing
+    // -----------------------------------------------------------------------
+    test('EOF fallback skipped when mpv is still playing', () async {
+      await service.playQueue(
+        [trackA, trackB],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('1'));
+
+      // Set state: position near end but mpv still playing.
+      updateState(
+        (s) => s.copyWith(
+          playing: true, // Still playing — fallback should NOT fire
+          completed: false,
+          loop: Loop.off,
+          duration: const Duration(seconds: 30),
+          position: const Duration(seconds: 29, milliseconds: 700),
+        ),
+      );
+
+      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
+      await Future<void>.delayed(Duration.zero);
+
+      // Still on track A — fallback did not trigger.
+      expect(service.currentTrack?.id, equals('1'));
+    });
+
+    // -----------------------------------------------------------------------
+    // 18. EOF fallback does not double-fire (guard prevents re-entry)
+    // -----------------------------------------------------------------------
+    test('EOF fallback does not double-fire for the same track', () async {
+      int trackChangedCount = 0;
+      service.onTrackChanged = (track) {
+        trackChangedCount++;
+      };
+
+      await service.playQueue(
+        [trackA, trackB],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('1'));
+
+      // Reset counter — playQueue already fired onTrackChanged once.
+      trackChangedCount = 0;
+
+      when(
+        () => player.openAll(
+          any(),
+          play: any(named: 'play'),
+          index: any(named: 'index'),
+        ),
+      ).thenAnswer((_) async {});
+
+      // Set state for EOF fallback.
+      updateState(
+        (s) => s.copyWith(
+          playing: false,
+          completed: false,
+          loop: Loop.off,
+          duration: const Duration(seconds: 30),
+          position: const Duration(seconds: 29, milliseconds: 700),
+        ),
+      );
+
+      // First position event triggers fallback.
+      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
+      await Future<void>.delayed(Duration.zero);
       expect(service.currentTrack?.id, equals('2'));
       expect(trackChangedCount, equals(1));
 
-      // Resolve the second openAll call so rebuildWindow completes
-      openAllCompleter.complete();
+      // Reset state for current track (track B at position near end).
+      updateState(
+        (s) => s.copyWith(
+          duration: const Duration(seconds: 30),
+          position: const Duration(seconds: 30),
+        ),
+      );
+
+      // Second position event — the guard prevents double-fire for track A,
+      // but _eofFallbackHandledTrackId ('1') != currentTrack.id ('2'),
+      // so the fallback fires for track B, advancing to end of queue.
+      // _advanceToNextTrack stays at the last track (B) rather than calling endPlayback.
+      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
       await Future<void>.delayed(Duration.zero);
 
-      // Verify that after resolving, trackB remains active and _mpvLoadedTrackId was updated
+      // Still on track B — queue end reached, no further advance.
       expect(service.currentTrack?.id, equals('2'));
-      expect(trackChangedCount, equals(1));
+      // Two track changes: A→B (first fallback), B re-emitted (second fallback).
+      expect(trackChangedCount, equals(2));
+    });
+
+    // -----------------------------------------------------------------------
+    // 19. EOF fallback fires when completed event never arrives
+    //     (simulating broken time-pos observation)
+    // -----------------------------------------------------------------------
+    test('EOF fallback advances track when completed never fires', () async {
+      AfTrack? changedTrack;
+      service.onTrackChanged = (track) {
+        changedTrack = track;
+      };
+
+      await service.playQueue(
+        [trackA, trackB],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('1'));
+
+      when(
+        () => player.openAll(
+          any(),
+          play: any(named: 'play'),
+          index: any(named: 'index'),
+        ),
+      ).thenAnswer((_) async {});
+
+      // Set state: position near end, mpv stopped (EOF reached),
+      // completed is FALSE (event never fired on this device).
+      updateState(
+        (s) => s.copyWith(
+          playing: false,
+          completed: false,
+          loop: Loop.off,
+          duration: const Duration(seconds: 30),
+          position: const Duration(seconds: 29, milliseconds: 700),
+        ),
+      );
+
+      // Position tick triggers the fallback.
+      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
+      await Future<void>.delayed(Duration.zero);
+
+      // Should advance to track B despite no completed event.
+      expect(service.currentTrack?.id, equals('2'));
+      expect(changedTrack?.id, equals('2'));
+    });
+
+    // -----------------------------------------------------------------------
+    // 20. Fallback guard does not block delayed completed event for next track
+    // -----------------------------------------------------------------------
+    test('fallback guard resets on track change (skipToNext)', () async {
+      await service.playQueue(
+        [trackA, trackB, trackC],
+        startIndex: 0,
+        resolveStreamUrl: resolveStreamUrl,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('1'));
+
+      // Set state for EOF fallback.
+      updateState(
+        (s) => s.copyWith(
+          playing: false,
+          completed: false,
+          loop: Loop.off,
+          duration: const Duration(seconds: 30),
+          position: const Duration(seconds: 29, milliseconds: 700),
+        ),
+      );
+      when(
+        () => player.openAll(
+          any(),
+          play: any(named: 'play'),
+          index: any(named: 'index'),
+        ),
+      ).thenAnswer((_) async {});
+
+      // Fallback fires for track A.
+      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('2'));
+
+      // Now manually skip to track C. This resets both guards.
+      await service.skipToQueueItem(2);
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentTrack?.id, equals('3'));
+
+      // Set state for EOF on track C.
+      updateState(
+        (s) => s.copyWith(
+          playing: false,
+          completed: false,
+          loop: Loop.off,
+          duration: const Duration(seconds: 30),
+          position: const Duration(seconds: 29, milliseconds: 700),
+        ),
+      );
+
+      // Position tick should trigger fallback for track C
+      // (guards were reset by skipToQueueItem).
+      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
+      await Future<void>.delayed(Duration.zero);
+
+      // Queue at end — _advanceToNextTrack stays on the last track.
+      expect(service.currentTrack?.id, equals('3'));
     });
   });
 }

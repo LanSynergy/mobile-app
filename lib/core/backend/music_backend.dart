@@ -98,12 +98,21 @@ abstract class MusicBackend {
     Duration position, {
     bool isPaused = false,
   });
-  Future<void> reportPlaybackStop(String trackId, Duration position, {bool submission = true});
+  Future<void> reportPlaybackStop(
+    String trackId,
+    Duration position, {
+    bool submission = true,
+  });
 
   // ── Play queue sync ─────────────────────────────────────────────────
 
-  Future<void> savePlayQueue(List<String> trackIds, {int? currentIndex, Duration? position});
-  Future<({List<AfTrack> tracks, int currentIndex, Duration position})?> getPlayQueue();
+  Future<void> savePlayQueue(
+    List<String> trackIds, {
+    int? currentIndex,
+    Duration? position,
+  });
+  Future<({List<AfTrack> tracks, int currentIndex, Duration position})?>
+  getPlayQueue();
 
   // ── User views (Jellyfin-specific; Subsonic returns a stub) ─────────
 

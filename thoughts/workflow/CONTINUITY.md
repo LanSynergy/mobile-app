@@ -1,5 +1,17 @@
 # Continuity Ledger
 
+## 2026-05-28 — Server Client Enhancement: Navidrome native auth + queue sync
+*Goal:* Add hybrid Navidrome client with native REST auth, queue sync, OpenSubsonic capabilities probing, and precise listen-time scrobbling.
+*Commits:* 00577ce
+*Key decisions:*
+- Created `NavidromeClient` subclassing `SubsonicClient` with JWT auth via `/api/auth/login`
+- Implemented `savePlayQueue` / `getPlayQueue` via Navidrome's `/api/queue` endpoint
+- Added OpenSubsonic capabilities probing: `OS_FORM_POST` (x-www-form-urlencoded), `OS_TRANSCODE_DECISION` (pre-stream transcode check)
+- Updated `music_backend_providers.dart` to switch on `ServerType.subsonic` → `NavidromeClient`
+- Added precise listen-time scrobbling with 75% threshold gate in `jellyfin_playback_reporter.dart`
+- Tracked continuous playback duration (`_listenedDuration`) in `player_service.dart`
+- All 354 tests pass, `flutter analyze`: 0 errors, 0 warnings
+
 ## 2026-05-27 — Auto-Advance Overhaul (Phase 2)
 *Goal:* Transition from mpv's 2-track sliding window to a single-track player model, resolving lock-screen and control desynchronization issues.
 *Commits:* 96bef1c, <current_commit>
@@ -37,9 +49,3 @@
 - Added custom underline indicator bars to active icons (`ic_shuffle_on`, `ic_repeat_all`, `ic_repeat_one`) and a diagonal slash to `ic_repeat_off` to ensure states are easily readable when tinted by the system UI.
 - Wired click events to trigger service broadcast intents that toggle the shuffle/loop state in Dart via the method channel.
 
-## 2026-05-26 — Fix 433px RenderFlex overflow in _MarqueeText
-*Goal:* Prevent overflow error when marquee title text scrolls beyond parent column's width constraint
-*Commits:* 25d3ad2
-*Key decisions:*
-- Wrapped the repeating Row (text + gap + text) in an `OverflowBox` to allow the animated marquee content to exceed the parent's width during scroll animation.
-- Still pending: the 243px RenderFlex overflow source in the metadata/transport row area.

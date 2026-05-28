@@ -405,10 +405,15 @@ class LocalBackend implements MusicBackend {
   // ── Play queue sync ─────────────────────────────────────────────────
 
   @override
-  Future<void> savePlayQueue(List<String> trackIds, {int? currentIndex, Duration? position}) async {}
+  Future<void> savePlayQueue(
+    List<String> trackIds, {
+    int? currentIndex,
+    Duration? position,
+  }) async {}
 
   @override
-  Future<({List<AfTrack> tracks, int currentIndex, Duration position})?> getPlayQueue() async => null;
+  Future<({List<AfTrack> tracks, int currentIndex, Duration position})?>
+  getPlayQueue() async => null;
 
   // ── User views ────────────────────────────────────────────────────
 

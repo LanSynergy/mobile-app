@@ -76,6 +76,11 @@ class AfPositionTracker {
     _positionController.add(pos);
   }
 
+  @visibleForTesting
+  void emitPositionForTesting(Duration pos) {
+    _positionController.add(pos);
+  }
+
   void onSeek(Duration position) {
     _isSeeking = true;
     final now = clock.now();

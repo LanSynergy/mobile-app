@@ -17,17 +17,17 @@ class NavidromeClient extends SubsonicClient {
     required super.password,
     required super.clientVersion,
   }) : _ndDio = Dio(
-          BaseOptions(
-            baseUrl: _buildNdBaseUrl(server.baseUrl),
-            connectTimeout: const Duration(seconds: 5),
-            sendTimeout: const Duration(seconds: 10),
-            receiveTimeout: const Duration(seconds: 15),
-            headers: {
-              'User-Agent': 'Aetherfin/$clientVersion (Android)',
-              'Accept': 'application/json',
-            },
-          ),
-        );
+         BaseOptions(
+           baseUrl: _buildNdBaseUrl(server.baseUrl),
+           connectTimeout: const Duration(seconds: 5),
+           sendTimeout: const Duration(seconds: 10),
+           receiveTimeout: const Duration(seconds: 15),
+           headers: {
+             'User-Agent': 'Aetherfin/$clientVersion (Android)',
+             'Accept': 'application/json',
+           },
+         ),
+       );
 
   final Dio _ndDio;
 
@@ -58,7 +58,9 @@ class NavidromeClient extends SubsonicClient {
       }
 
       if (serverTypeString?.toLowerCase() != 'navidrome') {
-        throw StateError('Connected server is not Navidrome (type: $serverTypeString)');
+        throw StateError(
+          'Connected server is not Navidrome (type: $serverTypeString)',
+        );
       }
 
       await _loginNavidrome();
@@ -78,10 +80,7 @@ class NavidromeClient extends SubsonicClient {
     try {
       final response = await _ndDio.post(
         'auth/login',
-        data: {
-          'username': username,
-          'password': pwd,
-        },
+        data: {'username': username, 'password': pwd},
       );
       final token = response.data['token'] as String?;
       if (token == null || token.isEmpty) {
@@ -91,7 +90,11 @@ class NavidromeClient extends SubsonicClient {
       _ndDio.options.headers['x-nd-authorization'] = 'Bearer $_ndToken';
       afLog('subsonic', 'Navidrome native REST API authenticated successfully');
     } on DioException catch (e) {
-      afLog('subsonic', 'Navidrome native REST API login failed: ${e.message}', error: e);
+      afLog(
+        'subsonic',
+        'Navidrome native REST API login failed: ${e.message}',
+        error: e,
+      );
       rethrow;
     }
   }
@@ -103,7 +106,10 @@ class NavidromeClient extends SubsonicClient {
       try {
         await _loginNavidrome();
       } catch (e) {
-        afLog('subsonic', 'Failed to authenticate Navidrome REST during ping: $e');
+        afLog(
+          'subsonic',
+          'Failed to authenticate Navidrome REST during ping: $e',
+        );
         // Don't rethrow — the Subsonic API ping succeeded, so the
         // connection is usable for Subsonic operations even if the
         // Navidrome REST endpoint is unavailable.
@@ -124,19 +130,24 @@ class NavidromeClient extends SubsonicClient {
         return;
       }
       final body = <String, dynamic>{
+        // ignore: use_null_aware_elements — currentIndex is checked for null
         if (currentIndex != null) 'current': currentIndex,
         'ids': trackIds,
         if (position != null) 'position': position.inMilliseconds,
       };
       await _ndDio.post('queue', data: body);
-      afLog('subsonic', 'Saved play queue to Navidrome: count=${trackIds.length}');
+      afLog(
+        'subsonic',
+        'Saved play queue to Navidrome: count=${trackIds.length}',
+      );
     } catch (e) {
       afLog('subsonic', 'Failed to save play queue to Navidrome', error: e);
     }
   }
 
   @override
-  Future<({List<AfTrack> tracks, int currentIndex, Duration position})?> getPlayQueue() async {
+  Future<({List<AfTrack> tracks, int currentIndex, Duration position})?>
+  getPlayQueue() async {
     try {
       await _ensureNdAuthenticated();
       if (serverTypeString?.toLowerCase() != 'navidrome') {
@@ -179,7 +190,7 @@ class NavidromeClient extends SubsonicClient {
     final suffix = (m['suffix'] as String?)?.toLowerCase() ?? '';
     final isLossless = suffix == 'flac' || suffix == 'alac' || suffix == 'wav';
     final sampleRate = _asInt(m['sampleRate']);
-    
+
     // In Navidrome native REST API, coverArt can be constructed using albumId as fallback
     final coverArt = m['albumId']?.toString() ?? m['id']?.toString();
 

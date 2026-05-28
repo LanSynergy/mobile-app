@@ -186,9 +186,7 @@ class SubsonicClient implements MusicBackend {
         res = await _dio.post<Map<String, dynamic>>(
           '$endpoint.view',
           data: qp,
-          options: Options(
-            contentType: Headers.formUrlEncodedContentType,
-          ),
+          options: Options(contentType: Headers.formUrlEncodedContentType),
         );
       } else {
         res = await _dio.get<Map<String, dynamic>>(
@@ -262,7 +260,7 @@ class SubsonicClient implements MusicBackend {
   /// `ping.view` — verify the server is reachable and credentials work.
   Future<JellyfinServer> ping() async {
     final root = await _get('ping');
-    
+
     // Probe OpenSubsonic extensions if supported
     _capabilities.clear();
     try {
@@ -280,7 +278,10 @@ class SubsonicClient implements MusicBackend {
       }
       afLog('subsonic', 'OpenSubsonic capabilities detected: $_capabilities');
     } catch (e) {
-      afLog('subsonic', 'Failed to fetch OpenSubsonic extensions, assuming standard Subsonic: $e');
+      afLog(
+        'subsonic',
+        'Failed to fetch OpenSubsonic extensions, assuming standard Subsonic: $e',
+      );
     }
 
     return server.copyWith(
@@ -875,10 +876,15 @@ class SubsonicClient implements MusicBackend {
   // ── Play queue sync ─────────────────────────────────────────────────
 
   @override
-  Future<void> savePlayQueue(List<String> trackIds, {int? currentIndex, Duration? position}) async {}
+  Future<void> savePlayQueue(
+    List<String> trackIds, {
+    int? currentIndex,
+    Duration? position,
+  }) async {}
 
   @override
-  Future<({List<AfTrack> tracks, int currentIndex, Duration position})?> getPlayQueue() async => null;
+  Future<({List<AfTrack> tracks, int currentIndex, Duration position})?>
+  getPlayQueue() async => null;
 
   // ── User views ────────────────────────────────────────────────────────
 
