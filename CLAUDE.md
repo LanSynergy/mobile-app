@@ -226,8 +226,9 @@ lib/
 ├─ core/
 │  ├─ audio/
 │  │  ├─ player_service.dart        ← AfPlayerService: mpv_audio_kit + NativeMediaSessionBridge
-│  │  │                               bridge to Kotlin service. Composes AfPositionTracker,
-│  │  │                               AfArtworkManager, AfAudioDeviceManager, AfQueueManager.
+│  │  │                               bridge to Kotlin service. Composes position_tracker,
+│  │  │                               artwork_manager, audio_device_manager, queue_manager,
+│  │  │                               queue_engine, and stream_prefetcher.
 │  │  │                               Throttled playbackState (~2 Hz), _pendingPlayNudgeIdx
 │  │  │                               Shuffle: managed in Dart (Fisher-Yates) to support large queues.
 │  │  │                               Single-track decoder model: rebuilding the player window with file://
@@ -240,13 +241,17 @@ lib/
 │  │  │                               Serialized progress loop (not Timer.periodic), 5s timeouts.
 │  │  ├─ live_update_service.dart   ← Android 16+ Live Update chip (in-flight guard)
 │  │  ├─ spectral_extractor.dart    ← palette_generator → Spectral triple (LRU cache)
-│  │  ├─ af_position_tracker.dart   ← AfPositionTracker: elapsed-time position extrapolation
-│  │  ├─ af_artwork_manager.dart    ← AfArtworkManager: cover art download + notification artwork
-│  │  ├─ af_audio_device_manager.dart ← AfAudioDeviceManager: audio device routing + nudge chains
-│  │  ├─ af_queue_manager.dart      ← AfQueueManager: playlist queue + shuffle/original order
+│  │  ├─ position_tracker.dart      ← AfPositionTracker: elapsed-time position extrapolation
+│  │  ├─ artwork_manager.dart       ← AfArtworkManager: cover art download + notification artwork
+│  │  ├─ audio_device_manager.dart    ← AfAudioDeviceManager: audio device routing + nudge chains
+│  │  ├─ queue_manager.dart         ← AfQueueManager: playlist queue interface
+│  │  ├─ queue_engine.dart          ← AfQueueEngine: Fisher-Yates queue shuffle state machine
+│  │  ├─ stream_prefetcher.dart     ← StreamPrefetcher: buffers upcoming tracks locally for gapless
 │  │  ├─ media_session_bridge.dart  ← NativeMediaSessionBridge: throttled pushState (100ms),
 │  │  │                               MediaSessionState snapshots, callback-based dispatch.
-│  │  │                               Replaces raw MethodChannel calls in AfPlayerService.
+│  │  ├─ af_loop_mode.dart          ← Custom loop mode definition
+│  │  ├─ shuffle_mode.dart           ← Custom shuffle mode definition
+│  │  ├─ track_id_extractor.dart      ← Parses track IDs from paths
 │  │  └─ spectrum_settings.dart     ← Default SpectrumSettings constants
 │  ├─ backend/
 │  │  └─ music_backend.dart ← Abstract MusicBackend interface. Both JellyfinClient and
@@ -283,12 +288,15 @@ lib/
 │  │  └─ models/            ← Plain Dart classes — NO json_serializable codegen
 │  │                          server.dart includes ServerType enum + JellyfinAuth (used by both backends)
 │  ├─ subsonic/
-│  │  └─ client.dart        ← THE ONLY file that speaks HTTP to Navidrome (implements MusicBackend)
-│  │                          Subsonic/OpenSubsonic REST API. Token auth: md5(password + salt).
-│  │                          Random salt per request. All endpoints: albums, artists, tracks,
-│  │                          playlists (CRUD), search, favorites, genres, lyrics, similar songs,
-│  │                          scrobbling. Stream/cover art URLs embed auth as query params.
-│  └─ lyrics/               ← LRC parser (sync + unsynced)
+│  │  ├─ client.dart        ← Speaks HTTP to Navidrome (implements MusicBackend Subsonic API).
+│  │  │                          Subsonic/OpenSubsonic REST API. Token auth: md5(password + salt).
+│  │  │                          Random salt per request. All endpoints: albums, artists, tracks,
+│  │  │                          playlists (CRUD), search, favorites, genres, lyrics, similar songs,
+│  │  │                          scrobbling. Stream/cover art URLs embed auth as query params.
+│  │  └─ navidrome_client.dart ← Speaks native Navidrome REST API for JWT auth and play queue sync.
+│  ├─ lyrics/               ← LRC/embedded lyrics parser
+│  │  ├─ lrc_parser.dart
+│  │  └─ embedded_lyrics_parser.dart
 ├─ features/                ← One folder per top-level screen
 │  ├─ home/        library/  album/      artist/     genre/
 │  ├─ search/      queue/    now_playing/ lyrics/
@@ -527,6 +535,7 @@ Rules:
   to `/rest/stream.view?id=…` and `/rest/getCoverArt.view?id=…`.
 - The canonical implementation lives in `SubsonicClient._authParams()`
   at `lib/core/subsonic/client.dart`. **Do not duplicate this logic.**
+- **Navidrome Native REST API Auth**: To support play queue synchronization, `NavidromeClient` (`lib/core/subsonic/navidrome_client.dart`) authenticates via `POST auth/login` using the username and raw password to obtain a temporary JWT token, which is stored in memory and sent via the `x-nd-authorization: Bearer <token>` header for native endpoints.
 
 ### 5.5 Server detection during onboarding
 

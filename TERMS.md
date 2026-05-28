@@ -19,50 +19,50 @@ supplementary to the LICENSE and do not override it.
 ## 1. What Aetherfin is, and what it isn't
 
 Aetherfin is a **client** application that connects to a
-[Jellyfin](https://jellyfin.org) media server **that you operate or
-otherwise have authorization to access**. The App streams audio from
-that server and renders the catalog locally on your Android device.
+[Jellyfin](https://jellyfin.org) or [Navidrome](https://www.navidrome.org) media server **that you operate or
+otherwise have authorization to access**, or plays local audio files from your device storage. The App streams audio from
+that server or loads local files, rendering the catalog locally on your Android device.
 
 Aetherfin does **not**:
 
 - Operate any servers of its own. There is no "Aetherfin cloud".
 - Host, distribute, or supply any music, video, image, or text content.
-- Provide an account system. Your identity is your Jellyfin account on
-  your Jellyfin server.
+- Provide an account system. Your identity is your account on
+  your Jellyfin or Navidrome server (or is purely local when playing device files).
 - Sell, license, or sublicense any media content.
 
 All media content you access through Aetherfin is supplied by, and
-remains the responsibility of, the Jellyfin server you connect to.
+remains the responsibility of, the configured server or your local device storage.
 
 ## 2. You are responsible for what you do with the App
 
 You are solely responsible for:
 
 - **Owning or having the legal right** to access the media stored on the
-  Jellyfin server you connect to.
+  configured server you connect to or on your device.
 - **Complying with the laws** of your jurisdiction with respect to
   storing, streaming, and listening to that media.
 - **The configuration, operation, security, and lawful use of any
-  Jellyfin server** you connect to. The maintainer of Aetherfin has no
+  server** you connect to. The maintainer of Aetherfin has no
   visibility into, and no control over, your server.
 - **Your network connection**, including any data charges your mobile
   carrier may impose for streaming.
 
 If you do not have the legal right to access a particular library or
-file on a Jellyfin server, do not access it through Aetherfin.
+file on a server, do not access it through Aetherfin.
 
 ## 3. Acceptable use
 
 You agree not to use Aetherfin to:
 
-- Access any Jellyfin server without the owner's permission.
+- Access any server without the owner's permission.
 - Circumvent technical or legal access controls on media content.
 - Distribute, retransmit, or publicly perform media content beyond what
   the content's license permits.
 - Reverse-engineer, repackage, or redistribute the App in a way that
   removes the MIT License notice, copyright attribution, or these Terms.
 - Interfere with, disrupt, or attempt to gain unauthorized access to any
-  Jellyfin server or its underlying infrastructure.
+  server or its underlying infrastructure.
 
 ## 4. Open-source license & modifications
 
@@ -87,7 +87,7 @@ merchantability, fitness for a particular purpose, and non-infringement.
 The maintainer makes no guarantee that:
 
 - The App will be available, error-free, or compatible with every
-  Jellyfin server version, plugin, or Android device.
+  server version, plugin, or Android device.
 - Audio playback, lyrics sync, offline cache, or any other feature will
   behave correctly in every environment.
 - Server-side actions taken by Aetherfin (e.g. updating a track's
@@ -115,7 +115,7 @@ by law.
 Aetherfin uses third-party open-source libraries (Flutter, mpv_audio_kit,
 dio, flutter_riverpod, cached_network_image,
 flutter_secure_storage, palette_generator, etc.) and connects to
-Jellyfin servers operated by their respective owners. These components
+Jellyfin or Navidrome servers operated by their respective owners. These components
 are licensed separately and are not maintained by the Aetherfin author.
 
 ## 8. No content rights granted

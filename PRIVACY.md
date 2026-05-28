@@ -34,7 +34,7 @@ are out of scope of this policy.
 |---|---|---|
 | **Server URL** (e.g. `http://omahsangar.local:8097` for Jellyfin, `http://192.168.1.10:4533` for Navidrome) | `flutter_secure_storage` on your device | You + your server |
 | **Username** | `flutter_secure_storage` on your device | You + your server |
-| **Access token** (Jellyfin) or **password** (Navidrome — stored encrypted, used to compute per-request auth tokens) | `flutter_secure_storage` on your device | You + your server |
+| **Access token** (Jellyfin) or **password** (Navidrome — stored encrypted, used to compute auth tokens/JWTs) | `flutter_secure_storage` on your device | You + your server |
 | **User ID** | `flutter_secure_storage` on your device | You + your server |
 | **Server type** (Jellyfin or Navidrome/Subsonic) | `flutter_secure_storage` on your device | Only you |
 | **Device ID** — random 16-byte value generated on first launch and used as Jellyfin's `DeviceId` for session bookkeeping | `flutter_secure_storage` on your device | Your server |
@@ -74,18 +74,17 @@ requests any compatible client would send, including:
     last-played-at timestamps are updated. These can be disabled by
     your Jellyfin server administrator if desired.
 
-### 3b. Navidrome (Subsonic API) servers
+### 3b. Navidrome (Subsonic & Native REST APIs) servers
 
-- **Authentication:** Every request carries query parameters `u`
-  (username), `t` (`md5(password + salt)`), and `s` (random salt).
-  The password itself is never sent over the wire — only the hash.
-- **Catalog reads:** `getAlbumList2.view`, `getArtists.view`,
-  `getArtist.view`, `getAlbum.view`, `search3.view`, etc.
-- **Audio streaming:** `GET /rest/stream.view?id=…` — direct
-  byte-for-byte download of the audio file.
+- **Authentication:** 
+  - For Subsonic API endpoints: Every request carries query parameters `u` (username), `t` (`md5(password + salt)`), and `s` (random salt). The password itself is never sent over the wire — only the hash.
+  - For Navidrome Native REST API features (e.g., play queue synchronization): Authenticates using username and password via `POST /api/auth/login` to obtain a temporary JSON Web Token (JWT) Bearer token, which is sent via the `x-nd-authorization` header for native endpoints.
+- **Catalog reads:** `getAlbumList2.view`, `getArtists.view`, `getArtist.view`, `getAlbum.view`, `search3.view`, etc.
+- **Audio streaming:** `GET /rest/stream.view?id=…` — direct byte-for-byte download of the audio file.
 - **Library state writes:**
   - `star.view` / `unstar.view` when you tap the heart icon.
   - `scrobble.view` to report playback for play counts.
+  - Native play queue synchronization (`POST /api/queue`) to sync the active playback queue.
 
 Your server logs and stores this data according to its own
 configuration, which is **outside the control of the App and its
@@ -153,8 +152,8 @@ If you want to verify the claims in this policy, the relevant files are:
 
 - `lib/core/jellyfin/client.dart` — the only file that issues HTTP
   requests to Jellyfin.
-- `lib/core/subsonic/client.dart` — the only file that issues HTTP
-  requests to Navidrome (Subsonic API).
+- `lib/core/subsonic/client.dart` — issues HTTP requests to Navidrome (Subsonic API).
+- `lib/core/subsonic/navidrome_client.dart` — handles Navidrome native REST API (JWT auth and queue sync).
 - `lib/core/jellyfin/auth_storage.dart` — the secure-storage adapter.
 - `lib/state/providers.dart` — barrel re-export of 13 domain provider files.
 - `lib/main.dart` — bootstrap and initialization.

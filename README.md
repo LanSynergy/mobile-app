@@ -40,11 +40,11 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 ## Features
 
 ### Playback
-- Gapless transitions with background prefetch
+- Gapless transitions via custom Dart-side `StreamPrefetcher` caching (single-track player model)
 - Shuffle, loop (off / track / queue / forNtimes repeat), playback speed (0.5×–2.0×)
 - Lock-screen and notification controls, including custom action buttons for shuffle and repeat modes
 - Sleep timer with presets and end-of-track mode
-- Instant Mix radio (server-generated similar tracks queue)
+- **Autoplay / Instant Mix** — automatically seeds and appends similar tracks when the active queue finishes, utilizing scored local SQLite recommendations (Local mode) or server recommendations (Server mode)
 - A-B loop (tap to set start/end markers, tap again to clear)
 - **Local file playback** — play music from device storage via SAF (no server needed)
 - Auto-pause on Bluetooth disconnect or headphone unplug, with a **5-minute auto-resume window** on reconnect
@@ -53,6 +53,8 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 - **Queue history** — view and restore recently played queues directly from the home screen
 - **M3U Export/Import** — export playlists to standard M3U files, or import playlists by pasting M3U content
 - **Android Home Screen Widget** — showing currently playing track metadata, playback state, and reactive favorite toggle, dynamically themed using the Palette API to match artwork colors
+- **Lyrics & LRC** — support for synchronized auto-scrolling lyrics (LRC), manually loading/saving sidecar `.lrc` files, and local file embedded metadata lyrics
+- **EOF Fallback** — watchdog watchdog fallback to automatically advance or loop tracks on devices with broken mpv property observation
 
 
 ### Audio
@@ -72,9 +74,10 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 - Long-press context menus (play next, add to queue, go to album/artist)
 - Drag-to-reorder queue with swipe-to-remove
 - **Playlist Undo** — undo track additions or removals within an 8-second grace period
+- **Play Queue Sync** — syncs your active playback queue with Navidrome server using its native REST API (JWT authenticated)
 
 ### Home
-- Swipeable hero album carousel (up to 5 recent albums, dot indicator)
+- Swipeable hero album carousel (up to 5 recent albums with dynamic artwork backgrounds, dot indicator)
 - Recently played tracks, artists, and genres sections
 
 ### Now Playing
@@ -95,6 +98,7 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 ### UI/UX
 - **Lucide icons** throughout — consistent, modern icon set (replaced hugeicons)
 - **Skeleton loading** — shimmer placeholder animations on every screen while data loads
+- **Songs Screen Filter Pills** — unified Library Songs page with filter pills replacing separate artist/genre detail pages
 - Context menus as dialogs (album 3-dot, track long-press) — cleaner than bottom sheets
 - Per-sheet manual drag handles on bottom sheets — avoids floating transparent handles
 
@@ -107,7 +111,7 @@ Grab the latest APK from [Releases](https://github.com/Aetherfin/mobile-app/rele
 ### Requirements
 
 - Android 7.0+
-- **Server mode:** A reachable [Jellyfin 10.8+](https://jellyfin.org/downloads/server) or [Navidrome 0.49+](https://www.navidrome.org/docs/installation/) server
+- **Server mode:** A reachable [Jellyfin 10.8+](https://jellyfin.org/downloads/server) or [Navidrome 0.49+](https://www.navidrome.org/docs/installation/) server (supporting standard Subsonic and native REST API calls)
 - **Local mode:** Audio files on your device (pick a folder during setup)
 
 ### First run

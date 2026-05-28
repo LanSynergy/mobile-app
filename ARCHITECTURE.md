@@ -47,15 +47,21 @@ lib/
 │  ├─ backend/
 │  │  └─ music_backend.dart           # Abstract MusicBackend interface
 │  ├─ audio/                          # Playback engine
-│  │  ├─ player_service.dart          # AfPlayerService (1241 loc) — mpv + MediaSession bridge
+│  │  ├─ player_service.dart          # AfPlayerService — mpv + MediaSession bridge
 │  │  ├─ position_tracker.dart        # AfPositionTracker — elapsed-time extrapolation
 │  │  ├─ artwork_manager.dart         # AfArtworkManager — cover art cache
 │  │  ├─ audio_device_manager.dart    # AfAudioDeviceManager — output routing
-│  │  ├─ queue_manager.dart           # AfQueueManager — queue + shuffle
+│  │  ├─ queue_manager.dart           # AfQueueManager — queue interface
+│  │  ├─ queue_engine.dart            # AfQueueEngine — Fisher-Yates shuffle logic
 │  │  ├─ play_actions.dart            # Cross-cutting play entry points
 │  │  ├─ jellyfin_playback_reporter.dart # Playback reporting lifecycle
 │  │  ├─ live_update_service.dart     # Android 16+ Live Update chip
 │  │  ├─ offline_cache_service.dart   # Offline track caching
+│  │  ├─ stream_prefetcher.dart       # StreamPrefetcher — gapless track downloader
+│  │  ├─ media_session_bridge.dart    # NativeMediaSessionBridge — throttled platform pushes
+│  │  ├─ af_loop_mode.dart            # Custom loop mode definition
+│  │  ├─ shuffle_mode.dart           # Custom shuffle mode definition
+│  │  ├─ track_id_extractor.dart      # Parses IDs from media files
 │  │  ├─ spectral_extractor.dart      # palette_generator wrapper
 │  │  ├─ spectrum_settings.dart       # FFT config constants
 │  │  └─ player_settings_store.dart   # Persisted DSP/EQ settings
@@ -71,7 +77,8 @@ lib/
 │  │      ├─ library.dart             # LibraryView
 │  │      └─ quality.dart             # AfQuality, AudioParams
 │  ├─ subsonic/
-│  │  └─ client.dart                  # SubsonicClient (implements MusicBackend)
+│  │  ├─ client.dart                  # SubsonicClient (implements MusicBackend)
+│  │  └─ navidrome_client.dart        # NavidromeClient (JWT auth & queue sync)
 │  ├─ local/                          # Local mode backend
 │  │  ├─ app_database.dart            # Drift DB definition
 │  │  ├─ app_database.g.dart          # Drift codegen (DO NOT hand-edit)
@@ -89,7 +96,8 @@ lib/
 │  │  ├─ smart_playlist_db.dart       # SQLite CRUD
 │  │  └─ smart_playlist_engine.dart   # Rule→track resolution
 │  ├─ lyrics/
-│  │  └─ lrc_parser.dart              # LRC sync/unsynced parser
+│  │  ├─ lrc_parser.dart              # LRC sync/unsynced parser
+│  │  └─ embedded_lyrics_parser.dart  # ID3/meta embedded lyrics parser
 │  ├─ search/
 │  │  └─ search_history_store.dart    # Recent searches
 │  └─ battery_opt.dart                # Battery optimization bridge
@@ -103,10 +111,12 @@ lib/
 │  ├─ playlist/                       # PlaylistScreen
 │  ├─ profile/                        # ProfileScreen
 │  ├─ queue/                          # QueueScreen
-│  ├─ now_playing/                    # NowPlayingScreen + 14 sub-widgets
+│  ├─ now_playing/                    # NowPlayingScreen + sub-widgets
 │  │  ├─ eq_dsp_screen.dart           # EQ/DSP full-screen
 │  │  ├─ eq_dsp_widgets.dart          # EQ sliders, cards
-│  │  └─ eq_preset.dart               # kEqBands, kBuiltInPresets
+│  │  ├─ eq_preset.dart               # kEqBands, kBuiltInPresets
+│  │  ├─ reactive_artwork.dart        # Album art with transient pulse
+│  │  └─ top_bar.dart                 # Now playing custom top bar
 │  ├─ lyrics/                         # LyricsScreen
 │  ├─ onboarding/                     # Welcome → Discovery → Sign-in → Scope → Done
 │  ├─ settings/                       # SettingsScreen (4 files)
@@ -185,11 +195,12 @@ main()
 ## Core Components
 
 ### Audio Service (`AfPlayerService`)
-The central hub. Composes 4 managers:
+The central hub. Composes 4 managers and helpers:
 - **AfPositionTracker** — Elapsed-time extrapolation (anchor on play/seek, poll time-pos, fallback to `anchor + elapsed × speed`)
 - **AfArtworkManager** — Downloads cover art to local storage for notifications
 - **AfAudioDeviceManager** — Output routing with nudge chains (generation-counter guarded)
-- **AfQueueManager** — Queue state + shuffle/original order
+- **AfQueueManager** and **AfQueueEngine** — Queue state + Fisher-Yates shuffle mapping
+- **StreamPrefetcher** — Dart-level pre-download caching of upcoming tracks to local storage for gapless playback under the single-track decoder model.
 
 Communicates with native `AetherfinMediaSessionService` via `NativeMediaSessionBridge` (wrapping `MethodChannel('aetherfin.media_session')`). Operations serialized via `AfAsyncLock` (`_queueLock`).
 
@@ -252,8 +263,9 @@ Centralized in `lib/design_tokens/`. Single import: `package:aetherfin/design_to
           └──────────────────┘
 
 Audio playback flow:
-  MusicBackend.trackStreamUrl() → URL → AfPlayerService
-    → mpv_audio_kit (libmpv) → DSP effects → audio output
+  MusicBackend.trackStreamUrl() → URL → StreamPrefetcher (downloads & caches)
+    → file:// URI (or URL fallback) → AfPlayerService → mpv_audio_kit (libmpv)
+    → DSP effects → audio output
     → FFT stream → AudioVisualScrubber (64-band, vsync-aligned)
     → position stream → AfPositionTracker → TimeDisplay
 ```
@@ -265,7 +277,7 @@ Audio playback flow:
 | Integration | Protocol | Details |
 |---|---|---|
 | **Jellyfin** | REST API | Auth: `Authorization: MediaBrowser ...` header. Stream: `/Audio/{id}/stream?Static=true` |
-| **Navidrome** | Subsonic API | Auth: MD5 token in query params. Stream: `/rest/stream.view?id=...` |
+| **Navidrome** | Subsonic & Native REST | Auth: MD5 token in query params (Subsonic) or JWT via `POST /api/auth/login` (Native REST). Stream: `/rest/stream.view?id=...`. Queue Sync: `/api/queue` |
 | **Android MediaSession** | MethodChannel | `aetherfin.media_session` — lock-screen controls (via `NativeMediaSessionBridge`) |
 | **Battery Opt** | MethodChannel | `aetherfin.battery_opt` — request battery exemption |
 | **SAF** | MethodChannel | `aetherfin.saf` — Storage Access Framework for local mode |

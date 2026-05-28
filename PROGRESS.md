@@ -560,5 +560,57 @@
 - [x] Fixed all lint issues (closures to tear-offs, unused variables) and verified clean `flutter analyze` and formatting.
 - [x] Verified all 344 unit/widget tests are passing cleanly.
 
+---
+
+# Navidrome REST Client & Play Queue Sync (May 2026)
+
+## Features
+- [x] JWT-based native Navidrome authentication (`POST /api/auth/login`) using credentials in memory to fetch token.
+- [x] Play queue synchronization (`POST/GET /api/queue`) with Navidrome's native REST endpoints.
+- [x] OpenSubsonic capabilities probing (`OS_FORM_POST` and `OS_TRANSCODE_DECISION`).
+- [x] Precise listen-time scrobbling (75% threshold gate).
+
+## Quality
+- [x] All unit/widget tests passing.
+- [x] Clean static analysis.
+
+---
+
+# End-of-Track (EOF) Fallback (May 2026)
+
+## Features
+- [x] Implemented `_checkEndOfTrackFallback()` position polling watchdog.
+- [x] Detects devices where mpv's `completed` events fail to fire due to broken `time-pos` property observation.
+- [x] Auto-advances or loops track when position exceeds 80% duration and playback stops unexpectedly.
+- [x] Included robust `_eofFallbackHandledTrackId` guards to prevent double-firing.
+
+## Quality
+- [x] 7 dedicated unit tests covering fallback scenarios.
+- [x] Verified zero regressions across the play loop.
+
+---
+
+# Build Pipeline Consolidation & CI (May 2026)
+
+## Features
+- [x] Consolidated entire build and release orchestration script under `tool/build`.
+- [x] Added automated dynamic Telegram build progress notifications.
+- [x] Enabled in-place editing of Telegram status notifications to clean up chat history.
+- [x] Supported inline keyboard buttons in Telegram notification messages for quick action linking.
+
+---
+
+# UI/UX Improvements & Minor Fixes (May 2026)
+
+## UI Polish
+- [x] Hero album card updated to use artwork as a full-card background.
+- [x] Replaced separate artist/genre detail pages with `SongsScreen` filter pills.
+- [x] Added `NoTransitionPage` page builder for transient overlays (`/lyrics` and `/queue`) to avoid out-of-frame slides.
+- [x] Fallback to scrollable Column on small/scaled viewports for now-playing screen.
+- [x] Back gesture on onboarding screens (local setup and server discovery return to mode selector).
+- [x] Prevent status bar from disappearing at launch by disabling fullscreen in launch themes.
+- [x] Custom app widgets support local cover art (dynamically resolved and persisted local cover art).
+- [x] Removed duplicate shuffle/repeat notification actions on the lock screen / media notification.
+
 
 
