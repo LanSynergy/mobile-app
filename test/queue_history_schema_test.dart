@@ -66,8 +66,8 @@ void main() {
       expect(rows[1].sourceId, 'album-123');
     });
 
-    test('schema version is 5', () {
-      expect(db.schemaVersion, 5);
+    test('schema version is 6', () {
+      expect(db.schemaVersion, 6);
     });
 
     test('loadRecent returns limited entries in desc order', () async {

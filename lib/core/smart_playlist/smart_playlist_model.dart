@@ -52,6 +52,8 @@ class SmartRule {
     'bitrate' => 'Bitrate',
     'dateAdded' => 'Date added',
     'isFavorite' => 'Favorite',
+    'playCount' => 'Play Count',
+    'lastPlayed' => 'Last played',
     _ => field,
   };
 }
@@ -135,6 +137,8 @@ const kSmartFields = <String, String>{
   'bitrate': 'Bitrate (kbps)',
   'dateAdded': 'Date added',
   'isFavorite': 'Favorite',
+  'playCount': 'Play Count',
+  'lastPlayed': 'Last Played',
 };
 
 /// Available operators per field type.
@@ -145,8 +149,8 @@ const kBoolOperators = ['is'];
 
 /// Returns the appropriate operators for a given field.
 List<String> operatorsForField(String field) => switch (field) {
-  'year' || 'duration' || 'bitrate' => kNumericOperators,
-  'dateAdded' => kDateOperators,
+  'year' || 'duration' || 'bitrate' || 'playCount' => kNumericOperators,
+  'dateAdded' || 'lastPlayed' => kDateOperators,
   'isFavorite' => kBoolOperators,
   _ => kStringOperators,
 };
@@ -159,5 +163,7 @@ const kSmartSortOptions = <String, String>{
   'year': 'Year',
   'dateAdded': 'Date added',
   'duration': 'Duration',
+  'playCount': 'Play Count',
+  'lastPlayed': 'Last Played',
   'random': 'Random',
 };

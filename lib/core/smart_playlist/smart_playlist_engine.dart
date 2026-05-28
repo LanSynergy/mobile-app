@@ -20,6 +20,19 @@ class SmartPlaylistEngine {
     final orderBy = _buildSqlOrderBy(playlist);
 
     var sql = 'SELECT * FROM tracks';
+    final hasHistoryRules = playlist.rules.any((r) => r.field == 'playCount' || r.field == 'lastPlayed') ||
+        playlist.sort == 'playCount' || playlist.sort == 'lastPlayed';
+    if (hasHistoryRules) {
+      sql = '''
+        SELECT * FROM (
+          SELECT *,
+            (SELECT COUNT(*) FROM playback_history h WHERE h.track_id = tracks.id AND h.skipped = 0) AS play_count,
+            (SELECT MAX(played_at) FROM playback_history h WHERE h.track_id = tracks.id) AS last_played
+          FROM tracks
+        )
+      ''';
+    }
+
     if (where.clause.isNotEmpty) {
       sql += ' WHERE ${where.clause}';
     }
@@ -44,10 +57,11 @@ class SmartPlaylistEngine {
   /// Filters client-side using the rules, then sorts and limits.
   List<AfTrack> resolveFromList(
     SmartPlaylist playlist,
-    List<AfTrack> allTracks,
-  ) {
-    var filtered = allTracks.where((t) => _matchesRules(t, playlist)).toList();
-    filtered = _sortTracks(filtered, playlist);
+    List<AfTrack> allTracks, {
+    Map<String, ({int playCount, DateTime? lastPlayed})> playHistoryMap = const {},
+  }) {
+    var filtered = allTracks.where((t) => _matchesRules(t, playlist, playHistoryMap)).toList();
+    filtered = _sortTracks(filtered, playlist, playHistoryMap);
     if (playlist.limit != null && filtered.length > playlist.limit!) {
       filtered = filtered.sublist(0, playlist.limit!);
     }
@@ -56,16 +70,24 @@ class SmartPlaylistEngine {
 
   // ── Client-side matching ────────────────────────────────────────────────
 
-  bool _matchesRules(AfTrack track, SmartPlaylist playlist) {
+  bool _matchesRules(
+    AfTrack track,
+    SmartPlaylist playlist,
+    Map<String, ({int playCount, DateTime? lastPlayed})> playHistoryMap,
+  ) {
     if (playlist.rules.isEmpty) return true;
     if (playlist.combinator == 'any') {
-      return playlist.rules.any((r) => _matchRule(track, r));
+      return playlist.rules.any((r) => _matchRule(track, r, playHistoryMap));
     }
-    return playlist.rules.every((r) => _matchRule(track, r));
+    return playlist.rules.every((r) => _matchRule(track, r, playHistoryMap));
   }
 
-  bool _matchRule(AfTrack track, SmartRule rule) {
-    final fieldValue = _getField(track, rule.field);
+  bool _matchRule(
+    AfTrack track,
+    SmartRule rule,
+    Map<String, ({int playCount, DateTime? lastPlayed})> playHistoryMap,
+  ) {
+    final fieldValue = _getField(track, rule.field, playHistoryMap);
     final ruleValue = rule.value;
 
     return switch (rule.operator) {
@@ -81,7 +103,11 @@ class SmartPlaylistEngine {
     };
   }
 
-  dynamic _getField(AfTrack track, String field) => switch (field) {
+  dynamic _getField(
+    AfTrack track,
+    String field,
+    Map<String, ({int playCount, DateTime? lastPlayed})> playHistoryMap,
+  ) => switch (field) {
     'title' => track.title,
     'artist' => track.artistName,
     'album' => track.albumName,
@@ -92,6 +118,8 @@ class SmartPlaylistEngine {
     'bitrate' => track.quality?.bitrateKbps,
     'dateAdded' => track.dateAdded,
     'isFavorite' => track.isFavorite,
+    'playCount' => playHistoryMap[track.id]?.playCount ?? 0,
+    'lastPlayed' => playHistoryMap[track.id]?.lastPlayed,
     _ => null,
   };
 
@@ -140,14 +168,18 @@ class SmartPlaylistEngine {
 
   // ── Sorting ─────────────────────────────────────────────────────────────
 
-  List<AfTrack> _sortTracks(List<AfTrack> tracks, SmartPlaylist playlist) {
+  List<AfTrack> _sortTracks(
+    List<AfTrack> tracks,
+    SmartPlaylist playlist,
+    Map<String, ({int playCount, DateTime? lastPlayed})> playHistoryMap,
+  ) {
     if (playlist.sort == 'random') {
       return tracks..shuffle(Random());
     }
     final asc = playlist.sortOrder == 'asc';
     tracks.sort((a, b) {
-      final va = _getField(a, playlist.sort);
-      final vb = _getField(b, playlist.sort);
+      final va = _getField(a, playlist.sort, playHistoryMap);
+      final vb = _getField(b, playlist.sort, playHistoryMap);
       final cmp = _compare(va, vb);
       return asc ? cmp : -cmp;
     });
@@ -245,6 +277,8 @@ class SmartPlaylistEngine {
     'bitrate' => 'bitrate',
     'dateAdded' => 'last_modified',
     'isFavorite' => null, // Not in local DB
+    'playCount' => 'play_count',
+    'lastPlayed' => 'last_played',
     _ => null,
   };
 }

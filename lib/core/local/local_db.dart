@@ -360,6 +360,19 @@ class LocalDb {
     return result;
   }
 
+  /// Fetches track IDs that have been skipped within the specified [threshold].
+  Future<List<String>> getRecentlySkippedTrackIds({
+    Duration threshold = const Duration(days: 14),
+  }) async {
+    final cutoff = DateTime.now().subtract(threshold).millisecondsSinceEpoch;
+    final rows = await db.customSelect(
+      'SELECT DISTINCT track_id FROM playback_history WHERE skipped = 1 AND played_at >= ?',
+      variables: [Variable<int>(cutoff)],
+      readsFrom: {db.playbackHistory},
+    ).get();
+    return rows.map((r) => r.read<String>('track_id')).toList();
+  }
+
   // ── Playlist queries (delegated) ────────────────────────────────────────
 
   Future<List<PlaylistEntity>> allPlaylists() => playlists.allPlaylists();

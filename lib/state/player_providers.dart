@@ -137,7 +137,9 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
       final existingIds = svc.currentQueue.map((t) => t.id).toSet();
       const targetSize = 20;
       final results = <AfTrack>[];
-      final seenIds = Set<String>.from(existingIds);
+      final localLib = ref.read(localLibraryProvider);
+      final skippedIds = await localLib.db.getRecentlySkippedTrackIds().catchError((_) => <String>[]);
+      final seenIds = Set<String>.from(existingIds)..addAll(skippedIds);
 
       // 1. Initial similar mix query
       final mix = await backend.instantMix(lastTrack.id, limit: targetSize);

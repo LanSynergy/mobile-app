@@ -112,13 +112,15 @@ class PlayActions {
       return;
     }
     try {
+      final localLib = ref.read(localLibraryProvider);
+      final skippedIds = await localLib.db.getRecentlySkippedTrackIds().catchError((_) => <String>[]);
       final mix = await backend.instantMix(seed.id);
       // Server-generated mix sometimes excludes the seed; prepend it so
       // the user hears the song they tapped first, then the radio.
       var queue = <AfTrack>[
         seed,
         for (final t in mix)
-          if (t.id != seed.id) t,
+          if (t.id != seed.id && !skippedIds.contains(t.id)) t,
       ];
 
       // If the queue has fewer than 30 tracks, backfill it!
@@ -148,6 +150,11 @@ class PlayActions {
   }) async {
     final queue = List<AfTrack>.from(initialQueue);
     final seenIds = queue.map((t) => t.id).toSet();
+    try {
+      final localLib = ref.read(localLibraryProvider);
+      final skippedIds = await localLib.db.getRecentlySkippedTrackIds().catchError((_) => <String>[]);
+      seenIds.addAll(skippedIds);
+    } catch (_) {}
 
     // 1. Similarity Propagation (Graph Walk)
     // If we have some tracks but not enough, iteratively query instantMix for the last track.

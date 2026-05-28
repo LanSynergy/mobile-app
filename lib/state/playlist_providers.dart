@@ -44,7 +44,27 @@ final smartPlaylistTracksProvider = FutureProvider.autoDispose
       }
 
       final allTracks = await ref.read(allTracksProvider.future);
-      return engine.resolveFromList(playlist, allTracks);
+      final appDb = ref.read(appDatabaseProvider);
+      final historyRows = await appDb.customSelect(
+        'SELECT track_id, COUNT(*) AS play_count, MAX(played_at) AS last_played FROM playback_history WHERE skipped = 0 GROUP BY track_id',
+      ).get();
+
+      final playHistoryMap = <String, ({int playCount, DateTime? lastPlayed})>{};
+      for (final r in historyRows) {
+        final trackId = r.read<String>('track_id');
+        final playCount = r.read<int>('play_count');
+        final lastPlayedMs = r.readNullable<int>('last_played');
+        final lastPlayed = lastPlayedMs != null
+            ? DateTime.fromMillisecondsSinceEpoch(lastPlayedMs)
+            : null;
+        playHistoryMap[trackId] = (playCount: playCount, lastPlayed: lastPlayed);
+      }
+
+      return engine.resolveFromList(
+        playlist,
+        allTracks,
+        playHistoryMap: playHistoryMap,
+      );
     });
 
 final playlistDetailProvider = FutureProvider.autoDispose

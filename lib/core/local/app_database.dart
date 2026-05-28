@@ -142,6 +142,7 @@ class PlaybackHistory extends Table {
   TextColumn get imageUrl => text().nullable()();
   TextColumn get sourceId => text().nullable()();
   TextColumn get sourceType => text().nullable()();
+  BoolColumn get skipped => boolean().withDefault(const Constant(false))();
 }
 
 @DriftDatabase(
@@ -165,7 +166,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -189,6 +190,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 5) {
         await m.createTable(playbackHistory);
+      }
+      if (from < 6) {
+        await m.addColumn(playbackHistory, playbackHistory.skipped);
       }
     },
   );

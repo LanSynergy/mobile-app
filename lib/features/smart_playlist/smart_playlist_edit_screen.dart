@@ -672,7 +672,9 @@ class _RuleRow extends StatelessWidget {
       field == 'year' ||
       field == 'duration' ||
       field == 'bitrate' ||
-      field == 'dateAdded';
+      field == 'dateAdded' ||
+      field == 'playCount' ||
+      field == 'lastPlayed';
 
   String _opLabel(String op) => switch (op) {
     'is' => 'is',

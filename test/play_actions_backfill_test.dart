@@ -1,3 +1,5 @@
+import 'package:drift/native.dart';
+import 'package:aetherfin/core/local/app_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -114,6 +116,7 @@ void main() {
           queueHistoryRepositoryProvider.overrideWithValue(mockHistoryRepo),
           playerServiceProvider.overrideWithValue(mockSvc),
           appModeProvider.overrideWith((ref) => AppMode.local),
+          appDatabaseProvider.overrideWithValue(AppDatabase.forTesting(NativeDatabase.memory())),
           initialAuthProvider.overrideWithValue(null),
         ],
       );

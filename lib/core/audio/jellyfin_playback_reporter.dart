@@ -67,6 +67,10 @@ class JellyfinPlaybackReporter {
       final isScrobble =
           isThresholdMet || listened >= const Duration(minutes: 4);
 
+      final isSkip = !isScrobble &&
+          listened >= const Duration(seconds: 2) &&
+          (listened < const Duration(seconds: 30) || (duration > Duration.zero && listened < duration * 0.35));
+
       if (isScrobble) {
         unawaited(
           _db.into(_db.playbackHistory).insert(
@@ -78,10 +82,27 @@ class JellyfinPlaybackReporter {
                   album: Value(previousTrack.albumName),
                   durationMs: Value(previousTrack.duration.inMilliseconds),
                   imageUrl: Value(previousTrack.imageUrl),
+                  skipped: const Value(false),
                 ),
               ),
         );
         afLog('data', 'Logged play history track=${previousTrack.id}');
+      } else if (isSkip) {
+        unawaited(
+          _db.into(_db.playbackHistory).insert(
+                PlaybackHistoryCompanion.insert(
+                  trackId: previousTrack.id,
+                  playedAt: DateTime.now().millisecondsSinceEpoch,
+                  title: Value(previousTrack.title),
+                  artist: Value(previousTrack.artistName),
+                  album: Value(previousTrack.albumName),
+                  durationMs: Value(previousTrack.duration.inMilliseconds),
+                  imageUrl: Value(previousTrack.imageUrl),
+                  skipped: const Value(true),
+                ),
+              ),
+        );
+        afLog('data', 'Logged skip history track=${previousTrack.id}');
       }
 
       if (client != null) {
@@ -256,6 +277,7 @@ class JellyfinPlaybackReporter {
                 album: Value(track.albumName),
                 durationMs: Value(track.duration.inMilliseconds),
                 imageUrl: Value(track.imageUrl),
+                skipped: const Value(false),
               ),
             ),
       );
