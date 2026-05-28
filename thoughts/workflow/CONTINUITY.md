@@ -1,5 +1,17 @@
 # Continuity Ledger
 
+## 2026-05-28 — EOF fallback for broken time-pos observation (position tracker)
+*Goal:* Add end-of-track fallback that advances the queue when mpv's completed event never fires (devices with broken time-pos property observation).
+*Commits:* 9a8a63f
+*Key decisions:*
+- Implemented `_checkEndOfTrackFallback()` in player_service.dart position stream listener
+- Conditions: position >= 80% duration, !playing, near-EOF state, not already handled
+- `_eofFallbackHandledTrackId` guard prevents double-fire for same track
+- Guard resets on track change (playQueue, skipToNext, setAfLoopMode, new queue load)
+- Added `emitPositionForTesting()` to `AfPositionTracker` for test access to the tracker's stream controller
+- 7 tests covering: basic advance, completed-first skip, early-position skip, still-playing skip, double-fire prevention, missing-completed simulation, skipToNext guard reset
+- All 361 tests pass, `flutter analyze`: 0 errors, 0 warnings
+
 ## 2026-05-28 — Server Client Enhancement: Navidrome native auth + queue sync
 *Goal:* Add hybrid Navidrome client with native REST auth, queue sync, OpenSubsonic capabilities probing, and precise listen-time scrobbling.
 *Commits:* 00577ce
