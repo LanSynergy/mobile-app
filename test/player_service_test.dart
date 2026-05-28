@@ -1108,7 +1108,9 @@ void main() {
 
       // Fire position event that should trigger the fallback.
       // The position stream listener runs _checkEndOfTrackFallback.
-      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
+      service.positionTracker.emitPositionForTesting(
+        const Duration(seconds: 29, milliseconds: 700),
+      );
       await Future<void>.delayed(Duration.zero);
 
       // Should advance to track B.
@@ -1160,7 +1162,9 @@ void main() {
       // (which is no longer current). The fallback should check
       // currentTrack.id (now '2') vs _completedHandledForTrackId ('1')
       // and not fire for track '1'.
-      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
+      service.positionTracker.emitPositionForTesting(
+        const Duration(seconds: 29, milliseconds: 700),
+      );
       await Future<void>.delayed(Duration.zero);
 
       // Still on track B — no unwanted advance.
@@ -1191,7 +1195,9 @@ void main() {
         ),
       );
 
-      service.positionTracker.emitPositionForTesting(const Duration(seconds: 5));
+      service.positionTracker.emitPositionForTesting(
+        const Duration(seconds: 5),
+      );
       await Future<void>.delayed(Duration.zero);
 
       // Still on track A — fallback did not trigger.
@@ -1221,7 +1227,9 @@ void main() {
         ),
       );
 
-      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
+      service.positionTracker.emitPositionForTesting(
+        const Duration(seconds: 29, milliseconds: 700),
+      );
       await Future<void>.delayed(Duration.zero);
 
       // Still on track A — fallback did not trigger.
@@ -1268,7 +1276,9 @@ void main() {
       );
 
       // First position event triggers fallback.
-      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
+      service.positionTracker.emitPositionForTesting(
+        const Duration(seconds: 29, milliseconds: 700),
+      );
       await Future<void>.delayed(Duration.zero);
       expect(service.currentTrack?.id, equals('2'));
       expect(trackChangedCount, equals(1));
@@ -1285,7 +1295,9 @@ void main() {
       // but _eofFallbackHandledTrackId ('1') != currentTrack.id ('2'),
       // so the fallback fires for track B, advancing to end of queue.
       // _advanceToNextTrack stays at the last track (B) rather than calling endPlayback.
-      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
+      service.positionTracker.emitPositionForTesting(
+        const Duration(seconds: 29, milliseconds: 700),
+      );
       await Future<void>.delayed(Duration.zero);
 
       // Still on track B — queue end reached, no further advance.
@@ -1333,7 +1345,9 @@ void main() {
       );
 
       // Position tick triggers the fallback.
-      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
+      service.positionTracker.emitPositionForTesting(
+        const Duration(seconds: 29, milliseconds: 700),
+      );
       await Future<void>.delayed(Duration.zero);
 
       // Should advance to track B despite no completed event.
@@ -1372,7 +1386,9 @@ void main() {
       ).thenAnswer((_) async {});
 
       // Fallback fires for track A.
-      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
+      service.positionTracker.emitPositionForTesting(
+        const Duration(seconds: 29, milliseconds: 700),
+      );
       await Future<void>.delayed(Duration.zero);
       expect(service.currentTrack?.id, equals('2'));
 
@@ -1394,7 +1410,9 @@ void main() {
 
       // Position tick should trigger fallback for track C
       // (guards were reset by skipToQueueItem).
-      service.positionTracker.emitPositionForTesting(const Duration(seconds: 29, milliseconds: 700));
+      service.positionTracker.emitPositionForTesting(
+        const Duration(seconds: 29, milliseconds: 700),
+      );
       await Future<void>.delayed(Duration.zero);
 
       // Queue at end — _advanceToNextTrack stays on the last track.

@@ -145,7 +145,7 @@ class WelcomeScreen extends ConsumerWidget {
                               AppMode.server;
                           await AppModeStore.save(AppMode.server);
                           if (context.mounted) {
-                            context.go('/onboarding/discover');
+                            await context.push('/onboarding/discover');
                           }
                         },
                       ),

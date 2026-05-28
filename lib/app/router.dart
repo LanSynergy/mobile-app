@@ -191,9 +191,7 @@ final _router = GoRouter(
       parentNavigatorKey: _rootKey,
       pageBuilder: (context, state) {
         final extra = state.extra;
-        return _NowPlayingPage(
-          miniRect: extra is Rect ? extra : null,
-        );
+        return _NowPlayingPage(miniRect: extra is Rect ? extra : null);
       },
     ),
     GoRoute(
@@ -322,7 +320,8 @@ class _NowPlayingPage extends Page<void> {
   @override
   Route<void> createRoute(BuildContext context) {
     final fullRect = Offset.zero & MediaQuery.of(context).size;
-    final startRect = miniRect ??
+    final startRect =
+        miniRect ??
         Rect.fromLTWH(12, fullRect.height * 0.82, fullRect.width - 24, 56);
 
     return PageRouteBuilder<void>(

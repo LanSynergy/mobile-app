@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/jellyfin/client.dart';
 import '../../core/jellyfin/discovery.dart';
 import '../../core/jellyfin/models/server.dart';
+import '../../core/local/app_mode_store.dart';
 import '../../core/subsonic/client.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
@@ -146,7 +147,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
     ServerType serverType = ServerType.jellyfin,
   }) {
     ref.read(discoveredServersProvider.notifier).state = [s];
-    context.go(
+    context.push(
       '/onboarding/sign-in',
       extra: (server: s, serverType: serverType),
     );
@@ -166,14 +167,14 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () {
-            // We arrive here via `context.go()` from WelcomeScreen, which
-            // replaces the stack — so `pop()` raises GoError("nothing to
-            // pop"). Route home explicitly when the stack is empty.
-            if (context.canPop()) {
+          onPressed: () async {
+            // Reset mode on back — user wants to re-decide at the
+            // WelcomeScreen. This also prevents stale redirects on
+            // app restart after going back.
+            await AppModeStore.clear();
+            if (context.mounted) {
+              ref.read(appModeProvider.notifier).state = null;
               context.pop();
-            } else {
-              context.go('/');
             }
           },
         ),

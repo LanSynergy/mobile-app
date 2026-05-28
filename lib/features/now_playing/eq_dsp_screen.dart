@@ -608,13 +608,15 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                   vertical: AfSpacing.s8,
                 ),
                 children: _buildSections()
-                    .map((child) => Opacity(
-                      opacity: _masterEnabled ? 1.0 : 0.4,
-                      child: AbsorbPointer(
-                        absorbing: !_masterEnabled,
-                        child: child,
+                    .map(
+                      (child) => Opacity(
+                        opacity: _masterEnabled ? 1.0 : 0.4,
+                        child: AbsorbPointer(
+                          absorbing: !_masterEnabled,
+                          child: child,
+                        ),
                       ),
-                    ))
+                    )
                     .toList(),
               ),
             ),
@@ -623,9 +625,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
             valueListenable: _isScrollActive,
             builder: (_, active, _) => active
                 ? const Positioned.fill(
-                    child: AbsorbPointer(
-                      child: SizedBox.expand(),
-                    ),
+                    child: AbsorbPointer(child: SizedBox.expand()),
                   )
                 : const SizedBox.shrink(),
           ),

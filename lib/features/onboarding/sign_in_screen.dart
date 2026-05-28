@@ -215,16 +215,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () {
-            // Onboarding navigates with context.go() (which replaces the
-            // stack), so pop is a no-op. Route home to the discovery step
-            // explicitly instead.
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/onboarding/discover');
-            }
-          },
+          onPressed: () => context.pop(),
         ),
         title: Text('Sign in', style: AfTypography.titleMedium),
         actions: [

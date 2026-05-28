@@ -415,5 +415,3 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
     );
   }
 }
-
-

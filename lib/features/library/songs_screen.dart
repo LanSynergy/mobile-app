@@ -199,9 +199,7 @@ class _PillBarState extends State<_PillBar>
         return ClipRRect(
           borderRadius: AfRadii.borderPill,
           child: DecoratedBox(
-            decoration: const BoxDecoration(
-              color: AfColors.surfaceRaised,
-            ),
+            decoration: const BoxDecoration(color: AfColors.surfaceRaised),
             child: SizedBox(
               height: 44,
               child: Stack(
@@ -214,8 +212,7 @@ class _PillBarState extends State<_PillBar>
                       final damped = curved > 1.0
                           ? 1.0 + (curved - 1.0) * 0.15
                           : curved;
-                      final idx =
-                          _fromIndex + (_toIndex - _fromIndex) * damped;
+                      final idx = _fromIndex + (_toIndex - _fromIndex) * damped;
                       return Positioned(
                         left: 4 + segWidth * idx,
                         top: 4,
@@ -251,12 +248,12 @@ class _PillBarState extends State<_PillBar>
                                 fontWeight: pill == widget.selected
                                     ? FontWeight.w600
                                     : FontWeight.w400,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    }),
                   ),
                 ],
               ),
@@ -309,8 +306,7 @@ class _SongsList extends ConsumerWidget {
       final tracks = ref.watch(localTracksProvider);
       return tracks.when(
         data: (list) => _buildList(_filterTracks(list, query), activeId, ref),
-        loading: () =>
-            const LibrarySkeleton(mode: LibrarySkeletonMode.songs),
+        loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.songs),
         error: (e, _) => AsyncErrorView(
           label: 'Couldn\u2019t load songs',
           error: e,
@@ -345,20 +341,14 @@ class _SongsList extends ConsumerWidget {
     }).toList();
   }
 
-  Widget _buildList(
-    List<AfTrack> tracks,
-    String? activeId,
-    WidgetRef ref,
-  ) {
+  Widget _buildList(List<AfTrack> tracks, String? activeId, WidgetRef ref) {
     const padding = EdgeInsets.symmetric(horizontal: AfSpacing.s8);
 
     if (tracks.isEmpty) {
       return Center(
         child: Text(
           'No songs found',
-          style: AfTypography.bodyMedium.copyWith(
-            color: AfColors.textTertiary,
-          ),
+          style: AfTypography.bodyMedium.copyWith(color: AfColors.textTertiary),
         ),
       );
     }
@@ -366,9 +356,7 @@ class _SongsList extends ConsumerWidget {
     return RepaintBoundary(
       child: ListView.builder(
         padding: padding.add(
-          const EdgeInsets.only(
-            bottom: AfSpacing.bottomInsetWithMiniAndNav,
-          ),
+          const EdgeInsets.only(bottom: AfSpacing.bottomInsetWithMiniAndNav),
         ),
         itemCount: tracks.length,
         itemBuilder: (context, i) {
@@ -456,9 +444,7 @@ class _ArtistsGrid extends ConsumerWidget {
   List<AfArtist> _filter(List<AfArtist> artists, String query) {
     if (query.isEmpty) return artists;
     final q = query.toLowerCase();
-    return artists
-        .where((a) => a.name.toLowerCase().contains(q))
-        .toList();
+    return artists.where((a) => a.name.toLowerCase().contains(q)).toList();
   }
 }
 

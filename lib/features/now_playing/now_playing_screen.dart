@@ -60,8 +60,6 @@ class NowPlayingScreen extends ConsumerWidget {
       );
     }
 
-
-
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
