@@ -52,19 +52,5 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock') }}-
 
-      - name: Show toolchain versions
-        run: |
-          flutter --version
-          dart --version
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Run code generation
-        run: dart run build_runner build --delete-conflicting-outputs
-
-      - name: Analyze
-        run: flutter analyze --no-fatal-infos
-
-      - name: Test
-        run: flutter test
+      - name: Analyze + test (via tool/build)
+        run: bash tool/build --skip-build-id

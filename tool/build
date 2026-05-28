@@ -1,0 +1,545 @@
+#!/usr/bin/env bash
+# tool/build — Unified Aetherfin build script
+#
+# Handles the full build lifecycle:
+#   deps → codegen → analyze → test → build → sign → rename → notify
+#
+# Called by CI (.github/workflows/build-apk.yml / release.yml / pr-checks.yml)
+# or used directly for local development builds.
+#
+# Usage:  tool/build [options]
+#
+# Options:
+#   --mode <mode>         Build mode: release|debug|profile (default: release)
+#   --split-per-abi       Build per-ABI split APKs (smaller per-device APKs)
+#   --sign                Sign APK (reads env: KEYSTORE_B64, STORE_PASSWORD,
+#                         KEY_ALIAS, KEY_PASSWORD)
+#   --telegram            Send build notifications via Telegram (reads env:
+#                         TG_BOT_TOKEN, TG_CHAT_ID)
+#   --install             Install APK on connected device after build
+#   --skip-analyze        Skip flutter analyze
+#   --skip-test           Skip flutter test
+#   --skip-codegen        Skip dart run build_runner (code generation)
+#   --skip-build-id       Skip build ID generation
+#   --help                Show this help
+#
+# Environment:
+#   FLUTTER_HOME          Flutter SDK root (optional; defaults to PATH)
+#   KEYSTORE_B64          Base64-encoded Android keystore (for --sign)
+#   STORE_PASSWORD        Keystore password
+#   KEY_ALIAS             Signing key alias
+#   KEY_PASSWORD          Signing key password
+#   TG_BOT_TOKEN          Telegram bot token (for --telegram)
+#   TG_CHAT_ID            Telegram chat ID (for --telegram)
+#
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+MODE="release"
+SPLIT_PER_ABI=false
+INSTALL=false
+SKIP_ANALYZE=false
+SKIP_TEST=false
+SKIP_CODEGEN=false
+SKIP_BUILD_ID=false
+SIGN=false
+TELEGRAM=false
+
+# Resolve Flutter / Dart commands
+if [ -n "${FLUTTER_HOME:-}" ]; then
+  FLUTTER="$FLUTTER_HOME/bin/flutter"
+  DART="$FLUTTER_HOME/bin/dart"
+else
+  FLUTTER="flutter"
+  DART="dart"
+fi
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OUTDIR="$ROOT/build/app/outputs/flutter-apk"
+TG_MSG_FILE="$ROOT/build/.telegram_msg_id"
+PRIMARY_APK_FILE="$ROOT/build/.primary_apk_info"
+CI_MODE="${GITHUB_ACTIONS:-false}"
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+usage() {
+  sed -n '3,36p' "$0" | sed 's/^# //; s/^#$//; s/^#//'
+  exit 0
+}
+
+print_banner() {
+  echo ""
+  echo "  ╔══════════════════════════════════════════╗"
+  echo "  ║         Aetherfin Build Script           ║"
+  echo "  ╚══════════════════════════════════════════╝"
+  echo ""
+}
+
+warn()  { echo "  ⚠ $*" 1>&2; }
+die()   { echo "  ✕ $*" 1>&2; exit 1; }
+
+# Run a named step with CI collapsible groups.
+step() {
+  local name="$1"
+  shift
+
+  echo ""
+  if [ "$CI_MODE" = "true" ]; then
+    echo "::group::⏵ $name"
+  fi
+  echo "────────────────────────────────────────"
+  echo "  $name"
+  echo "────────────────────────────────────────"
+
+  "$@"
+  local rc=$?
+
+  if [ "$CI_MODE" = "true" ]; then
+    echo "::endgroup::"
+  fi
+  echo ""
+  return $rc
+}
+
+# ---------------------------------------------------------------------------
+# Telegram helpers
+# ---------------------------------------------------------------------------
+_tg_set_env() {
+  # Gather Git / build context for Telegram messages.
+  # These are set once and reused across init/update/send/fail calls.
+  export TG_MODE="${TG_MODE:-$MODE}"
+  export TG_BUILD_ID="${TG_BUILD_ID:-$BUILD_ID}"
+  export TG_SHA="${TG_SHA:-$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")}"
+  export TG_BRANCH="${TG_BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")}"
+  export TG_TIMESTAMP="${TG_TIMESTAMP:-$(date -u +"%Y-%m-%d %H:%M UTC" 2>/dev/null)}"
+  export TG_ACTOR="${TG_ACTOR:-$(git config user.name 2>/dev/null || echo "unknown")}"
+  export TG_RUN_URL="${TG_RUN_URL:-}"
+  export TG_COMMIT_URL="${TG_COMMIT_URL:-}"
+
+  # HTML-escape the commit message
+  local raw_msg
+  raw_msg="$(git log -1 --pretty=format:"%s" 2>/dev/null || echo "")"
+  local escaped
+  escaped=$(printf '%s' "$raw_msg" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+  export TG_COMMIT="$escaped"
+}
+
+tg_init() {
+  [ "$TELEGRAM" = "false" ] && return 0
+  if [ -z "${TG_BOT_TOKEN:-}" ] || [ -z "${TG_CHAT_ID:-}" ]; then
+    warn "TG_BOT_TOKEN / TG_CHAT_ID not set — skipping Telegram notifications."
+    TELEGRAM=false
+    return 0
+  fi
+  _tg_set_env
+  echo "  📡 Initializing Telegram notification..."
+  local output
+  output=$(python3 "$ROOT/tool/telegram_notifier.py" init 2>&1) || true
+  local msg_id
+  msg_id=$(echo "$output" | grep -oP 'TG_MESSAGE_ID=\K\d+' || true)
+  if [ -n "$msg_id" ]; then
+    echo "$msg_id" > "$TG_MSG_FILE"
+    echo "  ✅ Telegram message ID: $msg_id"
+  else
+    warn "Failed to get Telegram message ID."
+    TELEGRAM=false
+  fi
+}
+
+tg_send_apk() {
+  [ "$TELEGRAM" = "false" ] && return 0
+  local apk_path="$1"
+  local apk_name="$2"
+  local apk_size="$3"
+  export TG_APK_PATH="$apk_path"
+  export TG_APK_NAME="$apk_name"
+  export TG_SIZE="$apk_size"
+  export TG_MESSAGE_ID
+  TG_MESSAGE_ID="$(cat "$TG_MSG_FILE" 2>/dev/null || true)"
+  [ -z "$TG_MESSAGE_ID" ] && return 0
+  echo "  📤 Sending APK to Telegram..."
+  python3 "$ROOT/tool/telegram_notifier.py" send_apk 2>&1 || warn "Telegram APK upload failed."
+}
+
+tg_send_text() {
+  [ "$TELEGRAM" = "false" ] && return 0
+  export TG_MESSAGE_ID
+  TG_MESSAGE_ID="$(cat "$TG_MSG_FILE" 2>/dev/null || true)"
+  [ -z "$TG_MESSAGE_ID" ] && return 0
+  echo "  📡 Sending final text to Telegram..."
+  python3 "$ROOT/tool/telegram_notifier.py" send_text 2>&1 || warn "Telegram send_text failed."
+}
+
+tg_fail() {
+  [ "$TELEGRAM" = "false" ] && return 0
+  export TG_MESSAGE_ID
+  TG_MESSAGE_ID="$(cat "$TG_MSG_FILE" 2>/dev/null || true)"
+  [ -z "$TG_MESSAGE_ID" ] && return 0
+  echo "  📡 Sending failure notification..."
+  python3 "$ROOT/tool/telegram_notifier.py" fail 2>/dev/null || true
+  rm -f "$TG_MSG_FILE"  # prevent double-fire from workflow failure handler
+}
+
+# ---------------------------------------------------------------------------
+# Trap — notify Telegram on unhandled error
+# ---------------------------------------------------------------------------
+cleanup() {
+  local rc=$?
+  if [ $rc -ne 0 ] && [ "$TELEGRAM" = "true" ] && [ -f "$TG_MSG_FILE" ]; then
+    tg_fail
+  fi
+  rm -f "$TG_MSG_FILE" "$PRIMARY_APK_FILE"
+}
+trap cleanup EXIT
+
+# ---------------------------------------------------------------------------
+# APK rename helper (runs in current shell)
+# ---------------------------------------------------------------------------
+rename_apks() {
+  local outdir="$1"
+  local version="$2"
+  local build_id="$3"
+  local mode="$4"
+  local split="$5"
+
+  cd "$outdir" || return 1
+  shopt -s nullglob
+  local renamed=0
+
+  for f in app-*.apk; do
+    local stem="${f#app-}"
+    stem="${stem%.apk}"
+    local abi_part="${stem%-$mode}"
+    local newname
+    if [ "$split" = "true" ] && [ -n "$abi_part" ] && [ "$abi_part" != "$stem" ]; then
+      newname="Aetherfin-v${version}-${abi_part}-${build_id}.apk"
+    else
+      newname="Aetherfin-v${version}-${build_id}.apk"
+    fi
+    if [ "$f" != "$newname" ]; then
+      echo "    $f → $newname"
+      mv "$f" "$newname"
+    fi
+    renamed=$((renamed + 1))
+  done
+  echo "  Renamed $renamed APK(s)"
+}
+
+# ---------------------------------------------------------------------------
+# Select primary APK (arm64-v8a preferred, fallback to universal)
+# ---------------------------------------------------------------------------
+select_primary_apk() {
+  local outdir="$1"
+  local info_file="$2"
+
+  cd "$outdir" || return 1
+  shopt -s nullglob
+
+  local apks
+  apks=(*arm64-v8a*.apk)
+  if [ ${#apks[@]} -eq 0 ]; then
+    apks=(Aetherfin-v*.apk)
+    echo "  No arm64-v8a split found — using universal APK."
+  else
+    echo "  Using arm64-v8a build."
+  fi
+
+  if [ ${#apks[@]} -eq 0 ]; then
+    echo "  ⚠ No APKs found."
+    echo "path=" > "$info_file"
+    return 0
+  fi
+
+  local apk="${apks[0]}"
+  local apk_path="$PWD/$apk"
+
+  local size
+  size=$(stat -c%s "$apk_path" 2>/dev/null || stat -f%z "$apk_path" 2>/dev/null || echo 0)
+  local size_human
+  size_human=$(numfmt --to=iec --suffix=B "$size" 2>/dev/null || echo "$size bytes")
+
+  if [ "$size" -gt 52428800 ] 2>/dev/null; then
+    echo "  ⚠ APK is $size_human — exceeds Telegram's 50 MB limit."
+    echo "path=" > "$info_file"
+    return 0
+  fi
+
+  echo "path=$apk_path"   > "$info_file"
+  echo "name=$apk"       >> "$info_file"
+  echo "size=$size_human" >> "$info_file"
+  echo "  Selected: $apk ($size_human)"
+}
+
+# ---------------------------------------------------------------------------
+# Print summary
+# ---------------------------------------------------------------------------
+print_summary() {
+  local outdir="$1"
+  local mode="$2"
+  local build_id="$3"
+  local version="$4"
+
+  echo ""
+  echo "────────────────────────────────────────"
+  echo "  ✅ Build complete"
+  echo ""
+  echo "  Mode:       $mode"
+  echo "  Build ID:   $build_id"
+  echo "  Split ABI:  $SPLIT_PER_ABI"
+  echo "  Sign:       $SIGN"
+  echo ""
+
+  local count=0
+  for f in "$outdir"/Aetherfin-v*.apk; do
+    if [ -f "$f" ]; then
+      local size
+      size=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo 0)
+      local human
+      human=$(numfmt --to=iec --suffix=B "$size" 2>/dev/null || echo "$size bytes")
+      echo "  • $(basename "$f") ($human)"
+      count=$((count + 1))
+    fi
+  done
+
+  if [ "$count" -eq 0 ]; then
+    echo "  (no APK files found in $outdir)"
+  fi
+
+  echo ""
+
+  # GitHub Actions step summary
+  if [ "$CI_MODE" = "true" ]; then
+    {
+      echo "## ✅ Aetherfin Build Summary"
+      echo ""
+      echo "| Property | Value |"
+      echo "|----------|-------|"
+      echo "| Mode | $mode |"
+      echo "| Build ID | $build_id |"
+      echo "| Split ABI | $SPLIT_PER_ABI |"
+      echo "| Signed | $SIGN |"
+      echo ""
+      echo "### APKs"
+      echo ""
+      for f in "$outdir"/Aetherfin-v*.apk; do
+        if [ -f "$f" ]; then
+          local size
+          size=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo 0)
+          local human
+          human=$(numfmt --to=iec --suffix=B "$size" 2>/dev/null || echo "$size bytes")
+          echo "- \`$(basename "$f")\` ($human)"
+        fi
+      done
+    } >> "$GITHUB_STEP_SUMMARY"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --mode)           MODE="$2"; shift 2 ;;
+    --release)        MODE="release"; shift ;;
+    --debug)          MODE="debug"; shift ;;
+    --profile)        MODE="profile"; shift ;;
+    --split-per-abi)  SPLIT_PER_ABI=true; shift ;;
+    --sign)           SIGN=true; shift ;;
+    --telegram)       TELEGRAM=true; shift ;;
+    --install)        INSTALL=true; shift ;;
+    --skip-analyze)   SKIP_ANALYZE=true; shift ;;
+    --skip-test)      SKIP_TEST=true; shift ;;
+    --skip-codegen)   SKIP_CODEGEN=true; shift ;;
+    --skip-build-id)  SKIP_BUILD_ID=true; shift ;;
+    --help)           usage ;;
+    *)                die "Unknown option: $1. Use --help for usage." ;;
+  esac
+done
+
+case "$MODE" in
+  release|debug|profile) ;;
+  *) die "Invalid mode: $MODE. Must be release, debug, or profile." ;;
+esac
+
+# ---------------------------------------------------------------------------
+# Setup
+# ---------------------------------------------------------------------------
+mkdir -p "$(dirname "$TG_MSG_FILE")" "$OUTDIR"
+cd "$ROOT"
+
+print_banner
+echo "  Mode:          $MODE"
+echo "  Split ABI:     $SPLIT_PER_ABI"
+echo "  Sign:          $SIGN"
+echo "  Telegram:      $TELEGRAM"
+echo "  CI mode:       $CI_MODE"
+echo ""
+
+# Initialize Telegram — sends "Setting up build environment..." message
+tg_init
+
+# ---------------------------------------------------------------------------
+# 1. Toolchain versions
+# ---------------------------------------------------------------------------
+step "Toolchain versions" bash -c "
+  echo '  Flutter:'
+  $FLUTTER --version 2>&1 | head -2
+  echo ''
+  echo '  Dart:'
+  $DART --version 2>&1 | head -1
+  echo ''
+  echo '  Java:'
+  java -version 2>&1 | head -1
+"
+
+# ---------------------------------------------------------------------------
+# 2. Dependencies
+# ---------------------------------------------------------------------------
+step "Install dependencies" $FLUTTER pub get
+
+# ---------------------------------------------------------------------------
+# 3. Code generation
+# ---------------------------------------------------------------------------
+if [ "$SKIP_CODEGEN" = "false" ]; then
+  step "Run code generation" $DART run build_runner build --delete-conflicting-outputs
+fi
+
+# ---------------------------------------------------------------------------
+# 4. Static analysis
+# ---------------------------------------------------------------------------
+if [ "$SKIP_ANALYZE" = "false" ]; then
+  step "Static analysis" $FLUTTER analyze --no-fatal-infos
+fi
+
+# ---------------------------------------------------------------------------
+# 5. Tests
+# ---------------------------------------------------------------------------
+if [ "$SKIP_TEST" = "false" ]; then
+  step "Unit tests" $FLUTTER test
+fi
+
+# ---------------------------------------------------------------------------
+# 6. Build ID
+# ---------------------------------------------------------------------------
+if [ "$SKIP_BUILD_ID" = "false" ]; then
+  step "Generate build ID" $DART run tool/generate_build_id.dart
+fi
+
+# Read build ID and version for later steps
+if [ -f "$ROOT/lib/build_id.dart" ]; then
+  BUILD_ID=$(grep "kBuildId" "$ROOT/lib/build_id.dart" | sed "s/.*'\(.*\)'.*/\1/")
+else
+  BUILD_ID="local"
+fi
+VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: *\([^+]*\)[+ ].*/\1/' | tr -d ' ')
+echo "  Build ID:    $BUILD_ID"
+echo "  Version:     $VERSION"
+
+# ---------------------------------------------------------------------------
+# 7. Signing (release mode only)
+# ---------------------------------------------------------------------------
+if [ "$SIGN" = "true" ]; then
+  echo ""
+  echo "────────────────────────────────────────"
+  echo "  Configure signing"
+  echo "────────────────────────────────────────"
+  if [ -n "${KEYSTORE_B64:-}" ]; then
+    echo "$KEYSTORE_B64" | base64 -d > "$ROOT/android/app/aetherfin-release.jks"
+    cat > "$ROOT/android/key.properties" <<EOF
+storeFile=aetherfin-release.jks
+storePassword=$STORE_PASSWORD
+keyAlias=$KEY_ALIAS
+keyPassword=$KEY_PASSWORD
+EOF
+    echo "  ✅ Keystore decoded ($(wc -c < "$ROOT/android/app/aetherfin-release.jks") bytes)"
+  else
+    echo "  ⚠ KEYSTORE_B64 not set — building unsigned APK."
+  fi
+  echo ""
+fi
+
+# ---------------------------------------------------------------------------
+# 8. Build APK
+# ---------------------------------------------------------------------------
+step "Build APK ($MODE)" bash -c "
+  ARGS='--$MODE'
+  if [ '$SPLIT_PER_ABI' = 'true' ]; then
+    ARGS=\"\$ARGS --split-per-abi\"
+  fi
+  echo '  Running: flutter build apk \$ARGS'
+  # Stop lingering Gradle daemon to avoid resource conflicts
+  (cd '$ROOT/android' && ./gradlew --stop) 2>/dev/null || true
+  $FLUTTER build apk \$ARGS
+"
+
+# ---------------------------------------------------------------------------
+# 9. Rename APKs with standard naming
+# ---------------------------------------------------------------------------
+echo ""
+echo "────────────────────────────────────────"
+echo "  Rename APKs"
+echo "────────────────────────────────────────"
+rename_apks "$OUTDIR" "$VERSION" "$BUILD_ID" "$MODE" "$SPLIT_PER_ABI"
+echo ""
+
+# ---------------------------------------------------------------------------
+# 10. Select primary APK for Telegram
+# ---------------------------------------------------------------------------
+echo "────────────────────────────────────────"
+echo "  Select primary APK"
+echo "────────────────────────────────────────"
+select_primary_apk "$OUTDIR" "$PRIMARY_APK_FILE"
+echo ""
+
+# Read back primary APK info
+PRIMARY_APK=""
+PRIMARY_APK_NAME=""
+PRIMARY_APK_SIZE=""
+if [ -f "$PRIMARY_APK_FILE" ]; then
+  PRIMARY_APK=$(grep "^path=" "$PRIMARY_APK_FILE" | cut -d= -f2-)
+  PRIMARY_APK_NAME=$(grep "^name=" "$PRIMARY_APK_FILE" | cut -d= -f2-)
+  PRIMARY_APK_SIZE=$(grep "^size=" "$PRIMARY_APK_FILE" | cut -d= -f2-)
+fi
+
+# Send final Telegram message: APK (success) or text fallback.
+# Both paths delete the init message and send exactly one new message.
+if [ -n "$PRIMARY_APK" ] && [ "$TELEGRAM" = "true" ]; then
+  tg_send_apk "$PRIMARY_APK" "$PRIMARY_APK_NAME" "$PRIMARY_APK_SIZE"
+elif [ "$TELEGRAM" = "true" ]; then
+  tg_send_text
+fi
+
+# ---------------------------------------------------------------------------
+# 11. Install on connected device
+# ---------------------------------------------------------------------------
+if [ "$INSTALL" = "true" ] && [ -n "$PRIMARY_APK" ]; then
+  echo ""
+  echo "────────────────────────────────────────"
+  echo "  Install on device"
+  echo "────────────────────────────────────────"
+  if [ "$SPLIT_PER_ABI" = "true" ]; then
+    detected=$(adb shell getprop ro.product.cpu.abi 2>/dev/null | tr -d '\r' || true)
+    if [ -n "$detected" ]; then
+      install_apk="$OUTDIR/Aetherfin-v${VERSION}-${detected}-${BUILD_ID}.apk"
+    else
+      install_apk="$PRIMARY_APK"
+    fi
+  else
+    install_apk="$PRIMARY_APK"
+  fi
+  if [ -f "$install_apk" ]; then
+    echo "  Installing $install_apk..."
+    adb install -r "$install_apk"
+  else
+    echo "  No APK found at $install_apk"
+  fi
+  echo ""
+fi
+
+# ---------------------------------------------------------------------------
+# 12. Summary
+# ---------------------------------------------------------------------------
+print_summary "$OUTDIR" "$MODE" "$BUILD_ID" "$VERSION"

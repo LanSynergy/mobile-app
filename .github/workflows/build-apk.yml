@@ -28,41 +28,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Initialize Telegram Build Notification
-        env:
-          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          SHORT_SHA="${GITHUB_SHA:0:7}"
-          BUILD_ID=$(grep "kBuildId" lib/build_id.dart | sed "s/.*'\(.*\)'.*/\1/")
-          COMMIT_MSG=$(git log -1 --pretty=format:"%s" | tr -d '_*`[]')
-          BRANCH="${GITHUB_REF_NAME}"
-          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${GITHUB_SHA}"
-          ACTOR="${{ github.actor }}"
-          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
-          COMMIT_ESC=$(printf '%s' "$COMMIT_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
-
-          # Export metadata to environment
-          echo "TG_MODE=${{ inputs.build_mode }}" >> "${GITHUB_ENV}"
-          echo "TG_BUILD_ID=${BUILD_ID}"    >> "${GITHUB_ENV}"
-          echo "TG_SHA=${SHORT_SHA}"        >> "${GITHUB_ENV}"
-          echo "TG_BRANCH=${BRANCH}"        >> "${GITHUB_ENV}"
-          echo "TG_TIMESTAMP=${TIMESTAMP}"  >> "${GITHUB_ENV}"
-          echo "TG_COMMIT=${COMMIT_ESC}"    >> "${GITHUB_ENV}"
-          echo "TG_RUN_URL=${RUN_URL}"      >> "${GITHUB_ENV}"
-          echo "TG_COMMIT_URL=${COMMIT_URL}" >> "${GITHUB_ENV}"
-          echo "TG_ACTOR=${ACTOR}"          >> "${GITHUB_ENV}"
-
-          # Initialize progress message on Telegram
-          python3 tool/telegram_notifier.py init
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-          # Caches ~/.gradle/caches and ~/.gradle/wrapper keyed on Gradle files.
           cache: gradle
 
       - name: Set up Flutter
@@ -70,7 +40,6 @@ jobs:
         with:
           flutter-version: "3.44.0"
           channel: stable
-          # Caches the Flutter SDK install (~700 MB) keyed on version+channel+OS.
           cache: true
           pub-cache: false
 
@@ -88,70 +57,46 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock') }}-
 
-      - name: Show toolchain versions
-        run: |
-          flutter --version
-          java -version
-          dart --version
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Run code generation
-        run: dart run build_runner build --delete-conflicting-outputs
-
-      - name: Update Telegram progress (Analysis & Tests)
+      # Metadata for Telegram notifications (read by tools/build --telegram)
+      - name: Export Telegram metadata
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          python3 tool/telegram_notifier.py update "Running code analysis and unit tests..."
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          BUILD_ID=$(grep "kBuildId" lib/build_id.dart | sed "s/.*'\(.*\)'.*/\1/" 2>/dev/null || echo "unknown")
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s" | tr -d '_*`[]')
+          BRANCH="${GITHUB_REF_NAME}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${GITHUB_SHA}"
+          ACTOR="${{ github.actor }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+          COMMIT_ESC=$(printf '%s' "$COMMIT_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
 
-      - name: Analyze
-        run: flutter analyze --no-fatal-infos
+          echo "TG_MODE=${{ inputs.build_mode }}"  >> "${GITHUB_ENV}"
+          echo "TG_BUILD_ID=${BUILD_ID}"            >> "${GITHUB_ENV}"
+          echo "TG_SHA=${SHORT_SHA}"                >> "${GITHUB_ENV}"
+          echo "TG_BRANCH=${BRANCH}"                >> "${GITHUB_ENV}"
+          echo "TG_TIMESTAMP=${TIMESTAMP}"          >> "${GITHUB_ENV}"
+          echo "TG_COMMIT=${COMMIT_ESC}"            >> "${GITHUB_ENV}"
+          echo "TG_RUN_URL=${RUN_URL}"              >> "${GITHUB_ENV}"
+          echo "TG_COMMIT_URL=${COMMIT_URL}"        >> "${GITHUB_ENV}"
+          echo "TG_ACTOR=${ACTOR}"                  >> "${GITHUB_ENV}"
 
-      - name: Test
-        run: flutter test
-
-      - name: Update Telegram progress (Compiling APK)
+      - name: Build APK (+ Telegram notifications)
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python3 tool/telegram_notifier.py update "Compiling APK (${{ inputs.build_mode }})..."
-
-      - name: Decode signing keystore (release mode only)
-        if: ${{ inputs.build_mode == 'release' }}
-        env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_B64" ]; then
-            echo "::warning::ANDROID_KEYSTORE_BASE64 not set; building unsigned release APK."
-            exit 0
-          fi
-          echo "$KEYSTORE_B64" | base64 -d > android/app/aetherfin-release.jks
-          cat > android/key.properties <<EOF
-          storeFile=aetherfin-release.jks
-          storePassword=$STORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEY_PASSWORD
-          EOF
-          echo "Signing config wired. Keystore size: $(wc -c < android/app/aetherfin-release.jks) bytes"
-
-      - name: Generate build ID
-        run: dart run tool/generate_build_id.dart
-
-      - name: Build APK
-        run: |
-          ARGS="--${{ inputs.build_mode }}"
+          args="--mode ${{ inputs.build_mode }} --telegram"
           if [ "${{ inputs.split_per_abi }}" = "true" ]; then
-            ARGS="$ARGS --split-per-abi"
+            args="$args --split-per-abi"
           fi
-          echo "Running: flutter build apk $ARGS"
-          flutter build apk $ARGS
+          bash tool/build $args
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -161,82 +106,16 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Prepare APK for Telegram
-        env:
-          BUILD_MODE: ${{ inputs.build_mode }}
-        run: |
-          cd build/app/outputs/flutter-apk
-
-          # Extract version from pubspec.yaml for standard APK naming
-          VERSION=$(grep "^version:" "${GITHUB_WORKSPACE}/pubspec.yaml" | sed 's/version: *\([^+]*\)[+ ].*/\1/' | tr -d ' ')
-
-          # Rename APKs to standard format: Aetherfin-v{version}-{build_id}[-{abi}].apk
-          for f in app-*.apk; do
-            stem="${f#app-}"
-            stem="${stem%.apk}"
-            abi_part="${stem%-${BUILD_MODE}}"
-            if [ -n "$abi_part" ]; then
-              newname="Aetherfin-v${VERSION}-${abi_part}-${TG_BUILD_ID}.apk"
-            else
-              newname="Aetherfin-v${VERSION}-${TG_BUILD_ID}.apk"
-            fi
-            if [ "$f" != "$newname" ]; then
-              echo "Renaming $f → $newname"
-              mv "$f" "$newname"
-            fi
-          done
-
-          shopt -s nullglob
-          # Prefer the arm64 split if it exists (per user request); otherwise fall
-          # back to the universal APK from a non-split build.
-          APKS=(*arm64-v8a*.apk)
-          if [ ${#APKS[@]} -eq 0 ]; then
-            APKS=(*.apk)
-            echo "No arm64-v8a split found; falling back to universal APK(s)."
-          else
-            echo "Sending arm64-v8a build only (per workflow config). Other ABIs remain in the workflow artifact."
-          fi
-          if [ ${#APKS[@]} -eq 0 ]; then
-            echo "::error::No APKs found to send."
-            exit 1
-          fi
-
-          # Take the first matching APK (arm64-v8a or universal)
-          apk="${APKS[0]}"
-          APK_PATH="$PWD/$apk"
-
-          # Verify file exists and readable
-          if [[ ! -r "$APK_PATH" ]]; then
-            echo "::error::Cannot read APK file: $APK_PATH"
-            ls -la "$PWD"
-            exit 1
-          fi
-
-          SIZE_BYTES=$(stat -c%s "$APK_PATH")
-          SIZE_HUMAN=$(numfmt --to=iec --suffix=B "$SIZE_BYTES")
-
-          if [ "$SIZE_BYTES" -gt 52428800 ]; then
-            echo "::error::$apk is $SIZE_HUMAN — over Telegram Bot API's 50 MB sendDocument limit. Re-run with split_per_abi=true."
-            exit 1
-          fi
-
-          # Export metadata for the telegram action step
-          echo "TG_APK_PATH=${APK_PATH}"    >> "${GITHUB_ENV}"
-          echo "TG_APK_NAME=$(basename "$apk")" >> "${GITHUB_ENV}"
-          echo "TG_SIZE=${SIZE_HUMAN}"      >> "${GITHUB_ENV}"
-
-      - name: Send APK to Telegram
-        if: env.TG_APK_PATH != ''
+      # Catches infrastructure failures (JDK/Flutter/cache setup)
+      # that happen BEFORE the build step runs.
+      - name: Notify Telegram of Infrastructure Failure
+        if: failure()
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          python3 tool/telegram_notifier.py send_apk
-
-      - name: Notify Telegram of Failure
-        if: failure() && env.TG_MESSAGE_ID != ''
-        env:
-          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
+          if [ ! -f "build/.telegram_msg_id" ]; then
+            echo "Build script already handled Telegram notification. Skipping."
+            exit 0
+          fi
           python3 tool/telegram_notifier.py fail

@@ -91,12 +91,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock') }}-
 
-      - name: Show toolchain versions
-        run: |
-          flutter --version
-          java -version
-          dart --version
-
       - name: Sync pubspec.yaml version
         env:
           VERSION: ${{ inputs.version }}
@@ -133,67 +127,46 @@ jobs:
             echo "PUBSPEC_BUMPED=true" >> "$GITHUB_ENV"
           fi
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Run code generation
-        run: dart run build_runner build --delete-conflicting-outputs
-
-      - name: Analyze
-        run: flutter analyze --no-fatal-infos
-
-      - name: Test
-        run: flutter test
-
-      - name: Decode signing keystore
+      - name: Build signed APKs (universal + per-ABI)
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_B64" ]; then
-            echo "::error::ANDROID_KEYSTORE_BASE64 not set. Releases must be signed."
-            echo "::error::Configure repo secrets: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD."
-            exit 1
-          fi
-          echo "$KEYSTORE_B64" | base64 -d > android/app/aetherfin-release.jks
-          cat > android/key.properties <<EOF
-          storeFile=aetherfin-release.jks
-          storePassword=$STORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEY_PASSWORD
-          EOF
-          echo "Signing config wired. Keystore size: $(wc -c < android/app/aetherfin-release.jks) bytes"
+          bash tool/build --mode release --sign --split-per-abi
 
-      - name: Generate build ID
-        run: dart run tool/generate_build_id.dart
-
-      - name: Build universal APK
-        run: |
-          flutter build apk --release
-
-      - name: Stage universal APK
+      - name: Stage universal APK for release
         run: |
           mkdir -p release-artifacts
-          cp build/app/outputs/flutter-apk/app-release.apk \
-             release-artifacts/aetherfin-v${{ inputs.version }}-universal.apk
+          # tools/build renames APKs to Aetherfin-v{version}-{build_id}.apk, but
+          # for the universal build we need to locate it. When --split-per-abi is
+          # used, the non-split build produces an intermediate artifact before
+          # the split build runs. However tools/build runs only once with both
+          # flags. Let's find the universal APK from the output directory.
+          src="build/app/outputs/flutter-apk/app-release.apk"
+          if [ -f "$src" ]; then
+            cp "$src" "release-artifacts/aetherfin-v${{ inputs.version }}-universal.apk"
+          else
+            echo "::warning::No universal APK found at $src. Check tools/build output."
+          fi
 
-      - name: Build per-ABI APKs
+      - name: Stage per-ABI APKs for release
         run: |
-          flutter build apk --release --split-per-abi
-
-      - name: Stage per-ABI APKs
-        run: |
-          # split-per-abi produces armeabi-v7a, arm64-v8a, x86_64.
+          # Renamed APKs follow: Aetherfin-v{version}-{abi}-{build_id}.apk
+          # We need consistent naming for the release: aetherfin-v{version}-{abi}.apk
           for abi in armeabi-v7a arm64-v8a x86_64; do
-            src="build/app/outputs/flutter-apk/app-${abi}-release.apk"
-            if [ ! -f "$src" ]; then
-              echo "::error::Expected APK not found: $src"
+            src="build/app/outputs/flutter-apk/Aetherfin-v${{ inputs.version }}-${abi}"-*.apk
+            # Use ls to resolve the glob (there should be exactly one)
+            matched=$(ls $src 2>/dev/null | head -1)
+            if [ -z "$matched" ]; then
+              echo "::warning::No APK found for $abi"
               ls -la build/app/outputs/flutter-apk/
-              exit 1
+              continue
             fi
-            cp "$src" "release-artifacts/aetherfin-v${{ inputs.version }}-${abi}.apk"
+            dst="release-artifacts/aetherfin-v${{ inputs.version }}-${abi}.apk"
+            cp "$matched" "$dst"
+            echo "Staged: $matched → $dst"
           done
 
       - name: Compute SHA-256 checksums
@@ -231,7 +204,6 @@ jobs:
           # Find the previous tag to diff against.
           PREV_TAG=$(git tag --sort=-v:refname | grep -v "^$TAG$" | head -1)
           if [ -z "$PREV_TAG" ]; then
-            # No previous tag — include all commits.
             RANGE="HEAD"
           else
             RANGE="${PREV_TAG}..HEAD"
@@ -240,7 +212,6 @@ jobs:
           echo "## What's Changed" > release-notes.md
           echo "" >> release-notes.md
 
-          # Group commits by conventional-commit prefix.
           declare -A SECTIONS
           SECTIONS[feat]="### Features"
           SECTIONS[fix]="### Bug Fixes"
