@@ -134,9 +134,106 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     final backend = ref.read(musicBackendProvider);
     if (backend == null) return const <AfTrack>[];
     try {
-      final mix = await backend.instantMix(lastTrack.id, limit: 20);
       final existingIds = svc.currentQueue.map((t) => t.id).toSet();
-      return mix.where((t) => !existingIds.contains(t.id)).toList();
+      const targetSize = 20;
+      final results = <AfTrack>[];
+      final seenIds = Set<String>.from(existingIds);
+
+      // 1. Initial similar mix query
+      final mix = await backend.instantMix(lastTrack.id, limit: targetSize);
+      for (final t in mix) {
+        if (results.length >= targetSize) break;
+        if (seenIds.add(t.id)) {
+          results.add(t);
+        }
+      }
+
+      // 2. Similarity Propagation (Graph Walk)
+      // If we don't have enough tracks, walk the graph of recommendations using the last added track
+      int lastLength = results.length;
+      for (int step = 0; step < 3 && results.length < targetSize; step++) {
+        final nextSeed = results.isNotEmpty ? results.last : lastTrack;
+        try {
+          final nextMix = await backend.instantMix(nextSeed.id, limit: targetSize);
+          for (final t in nextMix) {
+            if (results.length >= targetSize) break;
+            if (seenIds.add(t.id)) {
+              results.add(t);
+            }
+          }
+        } catch (_) {
+          break; // Stop propagation on error
+        }
+        if (results.length == lastLength) {
+          break; // No new tracks added
+        }
+        lastLength = results.length;
+      }
+
+      // 3. Artist Top Tracks Fallback
+      if (results.length < targetSize) {
+        final artistId = lastTrack.artistId;
+        if (artistId != null && artistId.isNotEmpty) {
+          try {
+            final topTracks = await backend.artistTopTracks(artistId, limit: targetSize);
+            for (final t in topTracks) {
+              if (results.length >= targetSize) break;
+              if (seenIds.add(t.id)) {
+                results.add(t);
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      // 4. Search Fallback (by artist name)
+      if (results.length < targetSize) {
+        final artistName = lastTrack.artistName;
+        if (artistName.isNotEmpty) {
+          try {
+            final searchRes = await backend.search(artistName);
+            for (final t in searchRes.tracks) {
+              if (results.length >= targetSize) break;
+              if (seenIds.add(t.id)) {
+                results.add(t);
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      // 5. Album Fallback
+      if (results.length < targetSize) {
+        final albumId = lastTrack.albumId;
+        if (albumId != null && albumId.isNotEmpty) {
+          try {
+            final albumData = await backend.album(albumId);
+            if (albumData != null) {
+              for (final t in albumData.tracks) {
+                if (results.length >= targetSize) break;
+                if (seenIds.add(t.id)) {
+                  results.add(t);
+                }
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      // 6. Recently Played Fallback
+      if (results.length < targetSize) {
+        try {
+          final recent = await backend.recentlyPlayed(limit: targetSize);
+          for (final t in recent) {
+            if (results.length >= targetSize) break;
+            if (seenIds.add(t.id)) {
+              results.add(t);
+            }
+          }
+        } catch (_) {}
+      }
+
+      return results;
     } catch (e, stack) {
       afLog(
         'audio',

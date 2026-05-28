@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/providers.dart';
 import '../../utils/log.dart';
+import '../backend/music_backend.dart';
 import '../jellyfin/models/items.dart';
 
 /// Cross-cutting "Play" entry points used by every screen so that we
@@ -114,11 +115,17 @@ class PlayActions {
       final mix = await backend.instantMix(seed.id);
       // Server-generated mix sometimes excludes the seed; prepend it so
       // the user hears the song they tapped first, then the radio.
-      final queue = <AfTrack>[
+      var queue = <AfTrack>[
         seed,
         for (final t in mix)
           if (t.id != seed.id) t,
       ];
+
+      // If the queue has fewer than 30 tracks, backfill it!
+      if (queue.length < 30) {
+        queue = await _backfillQueue(backend, queue, targetSize: 30);
+      }
+
       afLog(
         'audio',
         'instantMix seed=${seed.id} '
@@ -130,6 +137,127 @@ class PlayActions {
       // Best-effort fallback: at least play the seed track.
       await playQueue([seed], startIndex: 0);
     }
+  }
+
+  /// Backfill the queue to reach at least [targetSize] tracks using similarity propagation,
+  /// artist top tracks, and other fallback strategies.
+  Future<List<AfTrack>> _backfillQueue(
+    MusicBackend backend,
+    List<AfTrack> initialQueue, {
+    int targetSize = 30,
+  }) async {
+    final queue = List<AfTrack>.from(initialQueue);
+    final seenIds = queue.map((t) => t.id).toSet();
+
+    // 1. Similarity Propagation (Graph Walk)
+    // If we have some tracks but not enough, iteratively query instantMix for the last track.
+    int lastQueueLength = queue.length;
+    // Limit iterations to prevent infinite loops or excessive network requests (max 4 steps)
+    for (int step = 0; step < 4 && queue.length < targetSize; step++) {
+      if (queue.isEmpty) break;
+      final nextSeed = queue.last;
+      try {
+        final nextMix = await backend.instantMix(nextSeed.id, limit: targetSize);
+        final newTracks = nextMix.where((t) => !seenIds.contains(t.id)).toList();
+        if (newTracks.isEmpty) {
+          break; // No new tracks found, stop propagation
+        }
+        for (final t in newTracks) {
+          if (queue.length >= targetSize) break;
+          if (seenIds.add(t.id)) {
+            queue.add(t);
+          }
+        }
+      } catch (e) {
+        afLog('audio', 'Propagation step failed for track=${nextSeed.id}', error: e);
+        break; // Stop propagation on error
+      }
+      // If we didn't add any new tracks, stop
+      if (queue.length == lastQueueLength) {
+        break;
+      }
+      lastQueueLength = queue.length;
+    }
+
+    // 2. Artist Top Tracks Fallback
+    // If still not enough, fetch top tracks from the seed's artist
+    if (queue.length < targetSize && queue.isNotEmpty) {
+      final seed = queue.first; // the original seed track
+      final artistId = seed.artistId;
+      if (artistId != null && artistId.isNotEmpty) {
+        try {
+          final topTracks = await backend.artistTopTracks(artistId, limit: targetSize);
+          for (final t in topTracks) {
+            if (queue.length >= targetSize) break;
+            if (seenIds.add(t.id)) {
+              queue.add(t);
+            }
+          }
+        } catch (e) {
+          afLog('audio', 'Artist top tracks backfill failed for artistId=$artistId', error: e);
+        }
+      }
+    }
+
+    // 3. Search Fallback (by artist name)
+    // If still not enough, search for the artist name to get related tracks
+    if (queue.length < targetSize && queue.isNotEmpty) {
+      final seed = queue.first;
+      final artistName = seed.artistName;
+      if (artistName.isNotEmpty) {
+        try {
+          final searchRes = await backend.search(artistName);
+          for (final t in searchRes.tracks) {
+            if (queue.length >= targetSize) break;
+            if (seenIds.add(t.id)) {
+              queue.add(t);
+            }
+          }
+        } catch (e) {
+          afLog('audio', 'Search backfill failed for artistName=$artistName', error: e);
+        }
+      }
+    }
+
+    // 4. Album Fallback
+    // If still not enough, try to fetch the album of the seed track
+    if (queue.length < targetSize && queue.isNotEmpty) {
+      final seed = queue.first;
+      final albumId = seed.albumId;
+      if (albumId != null && albumId.isNotEmpty) {
+        try {
+          final albumData = await backend.album(albumId);
+          if (albumData != null) {
+            for (final t in albumData.tracks) {
+              if (queue.length >= targetSize) break;
+              if (seenIds.add(t.id)) {
+                queue.add(t);
+              }
+            }
+          }
+        } catch (e) {
+          afLog('audio', 'Album backfill failed for albumId=$albumId', error: e);
+        }
+      }
+    }
+
+    // 5. General Catalogue/Recent Fallback
+    // If we are still short, grab recently played tracks
+    if (queue.length < targetSize) {
+      try {
+        final recent = await backend.recentlyPlayed(limit: targetSize);
+        for (final t in recent) {
+          if (queue.length >= targetSize) break;
+          if (seenIds.add(t.id)) {
+            queue.add(t);
+          }
+        }
+      } catch (e) {
+        afLog('audio', 'Recently played fallback backfill failed', error: e);
+      }
+    }
+
+    return queue;
   }
 
   String _computeSourceLabel(List<AfTrack> tracks) {
