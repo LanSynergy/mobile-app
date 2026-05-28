@@ -203,8 +203,8 @@ def send_apk():
 
 
 def fail_message():
-    """Delete init message, then send one final failure message."""
-    _delete_message(os.environ.get('TG_MESSAGE_ID'))
+    """Edit the init message to show build failure, or send a new one."""
+    msg_id = os.environ.get('TG_MESSAGE_ID')
 
     branch = os.environ.get('TG_BRANCH', 'unknown')
     build_id = os.environ.get('TG_BUILD_ID', 'unknown')
@@ -229,12 +229,33 @@ def fail_message():
             ]]
         }
 
+    if msg_id:
+        payload = {
+            "chat_id": CHAT_ID,
+            "message_id": int(msg_id),
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
+        data = json.dumps(payload).encode('utf-8')
+        headers = {"Content-Type": "application/json"}
+        try:
+            send_request(url, data=data, headers=headers)
+            print(f"Edited message {msg_id} to show build failure.")
+            return
+        except Exception as e:
+            print(f"Warning: Failed to edit message: {e}")
+
     _send_text(text, reply_markup)
 
 
 def send_text():
-    """Delete init message, then send a simple text result (APK too large or not found)."""
-    _delete_message(os.environ.get('TG_MESSAGE_ID'))
+    """Edit the init message to show success (APK too large or not found), or send a new one."""
+    msg_id = os.environ.get('TG_MESSAGE_ID')
 
     text = (
         "\u2705 <b>Aetherfin Build Successful!</b>\n"
@@ -255,6 +276,27 @@ def send_text():
                 {"text": "\U0001f528 Download from CI", "url": run_url}
             ]]
         }
+
+    if msg_id:
+        payload = {
+            "chat_id": CHAT_ID,
+            "message_id": int(msg_id),
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
+        data = json.dumps(payload).encode('utf-8')
+        headers = {"Content-Type": "application/json"}
+        try:
+            send_request(url, data=data, headers=headers)
+            print(f"Edited message {msg_id} to show success without APK.")
+            return
+        except Exception as e:
+            print(f"Warning: Failed to edit message: {e}")
 
     _send_text(text, reply_markup)
 
@@ -294,8 +336,8 @@ def update_message():
 
 
 def release_success():
-    """Delete init message, send final release success with tag info."""
-    _delete_message(os.environ.get('TG_MESSAGE_ID'))
+    """Edit the init message with release success tag info, or send a new one."""
+    msg_id = os.environ.get('TG_MESSAGE_ID')
 
     tag = os.environ.get('TG_TAG', '')
     run_url = os.environ.get('TG_RUN_URL', '')
@@ -326,12 +368,33 @@ def release_success():
     if buttons:
         reply_markup = {"inline_keyboard": [buttons]}
 
+    if msg_id:
+        payload = {
+            "chat_id": CHAT_ID,
+            "message_id": int(msg_id),
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
+        data = json.dumps(payload).encode('utf-8')
+        headers = {"Content-Type": "application/json"}
+        try:
+            send_request(url, data=data, headers=headers)
+            print(f"Edited message {msg_id} to show release success.")
+            return
+        except Exception as e:
+            print(f"Warning: Failed to edit message: {e}")
+
     _send_text(text, reply_markup)
 
 
 def release_fail():
-    """Delete init message, send release failure notification."""
-    _delete_message(os.environ.get('TG_MESSAGE_ID'))
+    """Edit the init message to show release failure, or send a new one."""
+    msg_id = os.environ.get('TG_MESSAGE_ID')
 
     branch = os.environ.get('TG_BRANCH', 'unknown')
     tag = os.environ.get('TG_TAG', 'unknown')
@@ -355,6 +418,27 @@ def release_fail():
                 {"text": "\U0001f6a7 View Error Log", "url": run_url}
             ]]
         }
+
+    if msg_id:
+        payload = {
+            "chat_id": CHAT_ID,
+            "message_id": int(msg_id),
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
+        data = json.dumps(payload).encode('utf-8')
+        headers = {"Content-Type": "application/json"}
+        try:
+            send_request(url, data=data, headers=headers)
+            print(f"Edited message {msg_id} to show release failure.")
+            return
+        except Exception as e:
+            print(f"Warning: Failed to edit message: {e}")
 
     _send_text(text, reply_markup)
 
