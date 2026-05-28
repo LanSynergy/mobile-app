@@ -473,10 +473,7 @@ class SettingsScreen extends ConsumerWidget {
 
                       await AppModeStore.clear();
                       ref.read(appModeProvider.notifier).state = null;
-                      ref
-                              .read(localOnboardingCompletedProvider.notifier)
-                              .state =
-                          false;
+                      ref.read(localOnboardingCompletedProvider.notifier).state = false;
                       await ref.read(authProvider.notifier).clear();
                       ref.invalidate(autoplayEnabledProvider);
 

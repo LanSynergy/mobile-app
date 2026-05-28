@@ -35,7 +35,10 @@ void showSaveToPlaylistSheet(
     context: context,
     builder: (_) => ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
-      child: SaveToPlaylistSheet(track: track, backend: backend),
+      child: SaveToPlaylistSheet(
+        track: track,
+        backend: backend,
+      ),
     ),
   );
 }

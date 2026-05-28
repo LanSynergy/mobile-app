@@ -101,12 +101,11 @@ class TrackRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: steelBackground
               ? (isActive
-                    ? Colors.white.withValues(alpha: 0.15)
-                    : Colors.white.withValues(alpha: 0.08))
+                  ? Colors.white.withValues(alpha: 0.15)
+                  : Colors.white.withValues(alpha: 0.08))
               : (isActive ? AfColors.surfaceBase : Colors.transparent),
-          borderRadius: BorderRadius.circular(
-            steelBackground ? AfRadii.lg : AfRadii.sm,
-          ),
+          borderRadius:
+              BorderRadius.circular(steelBackground ? AfRadii.lg : AfRadii.sm),
           border: steelBackground
               ? Border.all(
                   color: isActive

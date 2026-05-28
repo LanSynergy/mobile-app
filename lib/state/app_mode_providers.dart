@@ -9,3 +9,4 @@ final localScanProgressProvider = StateProvider<({int completed, int total})?>(
 );
 
 final localOnboardingCompletedProvider = StateProvider<bool>((ref) => false);
+
