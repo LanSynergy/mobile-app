@@ -36,11 +36,12 @@ Widget eqToggleTile(
   String title,
   String subtitle,
   bool value,
-  ValueChanged<bool> onChanged,
-) {
+  ValueChanged<bool> onChanged, {
+  bool enabled = true,
+}) {
   return SwitchListTile.adaptive(
     value: value,
-    onChanged: onChanged,
+    onChanged: enabled ? onChanged : null,
     title: Text(title, style: AfTypography.bodyMedium),
     subtitle: Text(
       subtitle,
@@ -61,6 +62,7 @@ Widget eqSliderRow(
   VoidCallback onChangeEnd, {
   String? suffix,
   int precision = 0,
+  bool enabled = true,
 }) {
   final display = value >= 0 && suffix == 'dB'
       ? '+${value.toStringAsFixed(precision)}'
@@ -84,8 +86,8 @@ Widget eqSliderRow(
         max: max,
         divisions: divisions,
         activeColor: AfColors.indigo400,
-        onChanged: onChanged,
-        onChangeEnd: (_) => onChangeEnd(),
+        onChanged: enabled ? onChanged : null,
+        onChangeEnd: enabled ? (_) => onChangeEnd() : null,
       ),
     ],
   );

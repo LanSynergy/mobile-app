@@ -52,7 +52,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   /// held at its top or bottom boundary (ClampingScrollPhysics releases the
   /// gesture recognizer at the boundary, causing pointer events to fall
   /// through to children and trigger spurious active states).
-  bool _isScrollActive = false;
+  final ValueNotifier<bool> _isScrollActive = ValueNotifier(false);
 
   /// Safety timer: guarantees _isScrollActive is reset even when
   /// ScrollEndNotification is missing (e.g. fast finger-lift at boundary
@@ -258,8 +258,8 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   void _resetScrollActive() {
     _scrollSafetyTimer?.cancel();
     _scrollSafetyTimer = null;
-    if (_isScrollActive) {
-      setState(() => _isScrollActive = false);
+    if (_isScrollActive.value) {
+      _isScrollActive.value = false;
     }
   }
 
@@ -579,53 +579,57 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           ),
         ],
       ),
-      body: AnimatedOpacity(
-        opacity: _masterEnabled ? 1.0 : 0.4,
-        duration: const Duration(milliseconds: 200),
-        child: NotificationListener<ScrollNotification>(
-          onNotification: (notification) {
-            if (notification is ScrollStartNotification) {
-              // Cancel any pending safety reset and mark scroll as active.
-              _scrollSafetyTimer?.cancel();
-              if (!_isScrollActive) {
-                setState(() => _isScrollActive = true);
-              }
-            } else if (notification is ScrollUpdateNotification) {
-              // Keep safety timer alive while the user is actively scrolling.
-              _armScrollSafetyTimer(ms: 300);
-            } else if (notification is ScrollEndNotification) {
-              // Normal end — reset immediately.
-              _resetScrollActive();
-            } else if (notification is UserScrollNotification &&
-                notification.direction == ScrollDirection.idle) {
-              // Fired when user lifts finger even if ScrollEnd was missed
-              // (common at boundaries with ClampingScrollPhysics).
-              _resetScrollActive();
-            }
-            return false;
-          },
-          child: NotificationListener<OverscrollIndicatorNotification>(
+      body: Stack(
+        children: [
+          NotificationListener<ScrollNotification>(
             onNotification: (notification) {
-              notification.disallowIndicator();
-              return true;
+              if (notification is ScrollStartNotification) {
+                _scrollSafetyTimer?.cancel();
+                if (!_isScrollActive.value) {
+                  _isScrollActive.value = true;
+                }
+              } else if (notification is ScrollUpdateNotification) {
+                _armScrollSafetyTimer(ms: 200);
+              } else if (notification is UserScrollNotification &&
+                  notification.direction == ScrollDirection.idle) {
+                _resetScrollActive();
+              }
+              return false;
             },
-            child: ListView(
-              physics: const ClampingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AfSpacing.s16,
-                vertical: AfSpacing.s8,
+            child: NotificationListener<OverscrollIndicatorNotification>(
+              onNotification: (notification) {
+                notification.disallowIndicator();
+                return true;
+              },
+              child: ListView(
+                physics: const ClampingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.s16,
+                  vertical: AfSpacing.s8,
+                ),
+                children: _buildSections()
+                    .map((child) => Opacity(
+                      opacity: _masterEnabled ? 1.0 : 0.4,
+                      child: AbsorbPointer(
+                        absorbing: !_masterEnabled,
+                        child: child,
+                      ),
+                    ))
+                    .toList(),
               ),
-              children: _buildSections()
-                  .map(
-                    (child) => IgnorePointer(
-                      ignoring: !_masterEnabled || _isScrollActive,
-                      child: child,
-                    ),
-                  )
-                  .toList(),
             ),
           ),
-        ),
+          ValueListenableBuilder<bool>(
+            valueListenable: _isScrollActive,
+            builder: (_, active, _) => active
+                ? const Positioned.fill(
+                    child: AbsorbPointer(
+                      child: SizedBox.expand(),
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
       ),
     );
   }
