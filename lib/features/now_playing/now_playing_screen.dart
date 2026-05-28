@@ -60,7 +60,7 @@ class NowPlayingScreen extends ConsumerWidget {
       );
     }
 
-    final double statusBarHeight = MediaQuery.of(context).padding.top;
+
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -95,7 +95,6 @@ class NowPlayingScreen extends ConsumerWidget {
                 );
 
                 final List<Widget> content = [
-                  SizedBox(height: statusBarHeight),
                   _TopBar(track: track),
                   if (useScroll)
                     const SizedBox(height: AfSpacing.s16)
