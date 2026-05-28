@@ -192,10 +192,14 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
         if (artistName.isNotEmpty) {
           try {
             final searchRes = await backend.search(artistName);
+            final cleanArtistName = artistName.trim().toLowerCase();
             for (final t in searchRes.tracks) {
               if (results.length >= targetSize) break;
-              if (seenIds.add(t.id)) {
-                results.add(t);
+              // Strict filtering to ensure only tracks by the actual artist are added
+              if (t.artistName.trim().toLowerCase() == cleanArtistName) {
+                if (seenIds.add(t.id)) {
+                  results.add(t);
+                }
               }
             }
           } catch (_) {}
@@ -218,19 +222,6 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
             }
           } catch (_) {}
         }
-      }
-
-      // 6. Recently Played Fallback
-      if (results.length < targetSize) {
-        try {
-          final recent = await backend.recentlyPlayed(limit: targetSize);
-          for (final t in recent) {
-            if (results.length >= targetSize) break;
-            if (seenIds.add(t.id)) {
-              results.add(t);
-            }
-          }
-        } catch (_) {}
       }
 
       return results;

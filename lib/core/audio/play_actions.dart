@@ -207,10 +207,14 @@ class PlayActions {
       if (artistName.isNotEmpty) {
         try {
           final searchRes = await backend.search(artistName);
+          final cleanArtistName = artistName.trim().toLowerCase();
           for (final t in searchRes.tracks) {
             if (queue.length >= targetSize) break;
-            if (seenIds.add(t.id)) {
-              queue.add(t);
+            // Strict filtering to ensure only tracks by the actual artist are added
+            if (t.artistName.trim().toLowerCase() == cleanArtistName) {
+              if (seenIds.add(t.id)) {
+                queue.add(t);
+              }
             }
           }
         } catch (e) {
@@ -238,22 +242,6 @@ class PlayActions {
         } catch (e) {
           afLog('audio', 'Album backfill failed for albumId=$albumId', error: e);
         }
-      }
-    }
-
-    // 5. General Catalogue/Recent Fallback
-    // If we are still short, grab recently played tracks
-    if (queue.length < targetSize) {
-      try {
-        final recent = await backend.recentlyPlayed(limit: targetSize);
-        for (final t in recent) {
-          if (queue.length >= targetSize) break;
-          if (seenIds.add(t.id)) {
-            queue.add(t);
-          }
-        }
-      } catch (e) {
-        afLog('audio', 'Recently played fallback backfill failed', error: e);
       }
     }
 

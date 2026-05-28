@@ -85,13 +85,6 @@ void main() {
         ),
       );
 
-      // Setup recently played fallback
-      when(() => mockBackend.recentlyPlayed(limit: any(named: 'limit'))).thenAnswer(
-        (_) async => [
-          const AfTrack(id: 'track-9', title: 'Track 9', artistName: 'Test Artist', albumName: 'Test Album'),
-        ],
-      );
-
       // Mock playQueue call on service
       List<AfTrack>? playedQueue;
       when(
@@ -140,7 +133,7 @@ void main() {
       expect(playedQueue!.any((t) => t.id == 'track-6'), isTrue);
       expect(playedQueue!.any((t) => t.id == 'track-7'), isTrue);
       expect(playedQueue!.any((t) => t.id == 'track-8'), isTrue);
-      expect(playedQueue!.any((t) => t.id == 'track-9'), isTrue);
+      expect(playedQueue!.any((t) => t.id == 'track-9'), isFalse);
     });
   });
 }
