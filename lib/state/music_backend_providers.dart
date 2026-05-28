@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/backend/music_backend.dart';
 import '../core/jellyfin/client.dart';
 import '../core/local/local_backend.dart';
-import '../core/subsonic/client.dart';
+import '../core/subsonic/navidrome_client.dart';
 import '../utils/log.dart';
 import 'app_mode_providers.dart';
 import 'auth_providers.dart';
@@ -36,7 +36,7 @@ final musicBackendProvider = Provider.autoDispose<MusicBackend?>((ref) {
   switch (auth.serverType) {
     case ServerType.subsonic:
       {
-        final client = SubsonicClient(
+        final client = NavidromeClient(
           server: auth.server,
           username: auth.userName,
           password: auth.accessToken,

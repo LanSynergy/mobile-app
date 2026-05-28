@@ -396,7 +396,19 @@ class LocalBackend implements MusicBackend {
   }) async {}
 
   @override
-  Future<void> reportPlaybackStop(String trackId, Duration position) async {}
+  Future<void> reportPlaybackStop(
+    String trackId,
+    Duration position, {
+    bool submission = true,
+  }) async {}
+
+  // ── Play queue sync ─────────────────────────────────────────────────
+
+  @override
+  Future<void> savePlayQueue(List<String> trackIds, {int? currentIndex, Duration? position}) async {}
+
+  @override
+  Future<({List<AfTrack> tracks, int currentIndex, Duration position})?> getPlayQueue() async => null;
 
   // ── User views ────────────────────────────────────────────────────
 

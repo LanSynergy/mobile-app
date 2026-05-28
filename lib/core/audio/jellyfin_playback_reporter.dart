@@ -6,14 +6,14 @@ import '../jellyfin/models/items.dart';
 import 'player_service.dart';
 
 /// Pushes playback-session lifecycle events from [AfPlayerService] to the
-/// Jellyfin server so the "Now Playing" widgets, listening history, and
-/// activity feed all reflect what's actually playing.
+/// Jellyfin or Subsonic/Navidrome server so the "Now Playing" widgets,
+/// listening history, and activity feed all reflect what's actually playing.
 ///
 /// Wired up in `playerServiceProvider` so the player itself stays
 /// Riverpod-free. [clientGetter] is a *lazy* lookup (called on every
 /// emit) so when auth flips and `jellyfinClientProvider` rebuilds with a
-/// new `JellyfinClient`, the reporter automatically targets the new
-/// server without any re-subscription dance.
+/// new `JellyfinClient` or `NavidromeClient`, the reporter automatically
+/// targets the new server without any re-subscription dance.
 ///
 /// Endpoints used (per the Jellyfin REST conventions Finamp + the web
 /// client agree on):
@@ -35,7 +35,7 @@ class JellyfinPlaybackReporter {
 
   StreamSubscription<AfTrack?>? _trackSub;
   StreamSubscription<bool>? _playingSub;
-  String? _lastReportedTrackId;
+  AfTrack? _lastReportedTrack;
   bool _disposed = false;
   // dispose() must NOT send a `Stopped` ping when the reporter is being
   // torn down purely because the ProviderScope rebuilt around a still-
@@ -47,28 +47,33 @@ class JellyfinPlaybackReporter {
   Future<void> _onTrackChanged(AfTrack? track) async {
     if (_disposed) return;
     final client = _clientGetter();
-    final previousId = _lastReportedTrackId;
+    final previousTrack = _lastReportedTrack;
 
     // Stop the progress timer before sending playbackStop to prevent
     // the old loop from reporting progress for the previous track
     // after the stop has been sent.
     _stopProgressTimer();
 
-    if (previousId != null && previousId != track?.id) {
+    if (previousTrack != null && previousTrack.id != track?.id) {
       final position = _player.position;
+      final listened = _player.listenedDuration;
+      final duration = previousTrack.duration;
+      final isThresholdMet = duration > Duration.zero && listened >= duration * 0.75;
+      final isScrobble = isThresholdMet || listened >= const Duration(minutes: 4);
+
       if (client != null) {
         try {
           await client
-              .reportPlaybackStop(previousId, position)
+              .reportPlaybackStop(previousTrack.id, position, submission: isScrobble)
               .timeout(const Duration(seconds: 5));
           if (_disposed) return;
           // Re-check after the await: a concurrent _onTrackChanged(null)
-          // may have cleared _lastReportedTrackId, invalidating our context.
-          if (_lastReportedTrackId != previousId) return;
+          // may have cleared _lastReportedTrack, invalidating our context.
+          if (_lastReportedTrack?.id != previousTrack.id) return;
           afLog(
             'data',
-            'playbackStop source=live track=$previousId '
-                'positionMs=${position.inMilliseconds}',
+            'playbackStop source=live track=${previousTrack.id} '
+                'positionMs=${position.inMilliseconds} listenedMs=${listened.inMilliseconds} scrobble=$isScrobble',
           );
         } catch (e, stack) {
           afLog(
@@ -82,13 +87,13 @@ class JellyfinPlaybackReporter {
     }
 
     if (track == null) {
-      _lastReportedTrackId = null;
+      _lastReportedTrack = null;
       return;
     }
-    if (track.id == previousId) return;
+    if (track.id == previousTrack?.id) return;
     if (_disposed) return;
 
-    _lastReportedTrackId = track.id;
+    _lastReportedTrack = track;
     if (client == null) {
       afLog('data', 'playbackStart source=demo track=${track.id} (signed out)');
       return;
@@ -107,8 +112,9 @@ class JellyfinPlaybackReporter {
 
   Future<void> _onPlayingChanged(bool isPlaying) async {
     if (_disposed) return;
-    final trackId = _lastReportedTrackId;
-    if (trackId == null) return;
+    final track = _lastReportedTrack;
+    if (track == null) return;
+    final trackId = track.id;
     final client = _clientGetter();
     if (client == null) return;
     final position = _player.position;
@@ -163,8 +169,9 @@ class JellyfinPlaybackReporter {
     while (_progressRunning && generation == _loopGeneration) {
       await Future.delayed(_progressInterval);
       if (!_progressRunning || generation != _loopGeneration) break;
-      final trackId = _lastReportedTrackId;
-      if (trackId == null) break;
+      final track = _lastReportedTrack;
+      if (track == null) break;
+      final trackId = track.id;
       final client = _clientGetter();
       if (client == null) break;
       final position = _player.position;
@@ -199,20 +206,23 @@ class JellyfinPlaybackReporter {
     await _trackSub?.cancel();
     await _playingSub?.cancel();
     _stopProgressTimer();
-    final trackId = _lastReportedTrackId;
-    if (trackId == null) return;
+    final track = _lastReportedTrack;
+    if (track == null) return;
     if (!_shouldStopOnDispose) return;
     final client = _clientGetter();
     if (client == null) return;
     final position = _player.position;
+    final listened = _player.listenedDuration;
+    final duration = track.duration;
+    final isScrobble = duration > Duration.zero && listened >= duration * 0.75 || listened >= const Duration(minutes: 4);
     try {
       await client
-          .reportPlaybackStop(trackId, position)
+          .reportPlaybackStop(track.id, position, submission: isScrobble)
           .timeout(const Duration(seconds: 5));
       afLog(
         'data',
-        'playbackStop source=live track=$trackId '
-            'positionMs=${position.inMilliseconds} (reporter disposed)',
+        'playbackStop source=live track=${track.id} '
+            'positionMs=${position.inMilliseconds} listenedMs=${listened.inMilliseconds} scrobble=$isScrobble (reporter disposed)',
       );
     } catch (e, stack) {
       afLog(

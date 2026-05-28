@@ -1,4 +1,4 @@
-import 'dart:async' show unawaited;
+import 'dart:async' show unawaited, Timer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
@@ -8,15 +8,73 @@ import '../core/audio/af_loop_mode.dart';
 import '../core/audio/jellyfin_playback_reporter.dart';
 import '../core/audio/player_service.dart';
 import '../core/audio/shuffle_mode.dart';
+import '../core/backend/music_backend.dart';
 import '../core/jellyfin/models/items.dart';
 import 'app_mode_providers.dart';
-import 'auth_providers.dart';
 import 'music_backend_providers.dart';
 import 'settings_providers.dart';
 import 'favorite_providers.dart';
 import '../utils/log.dart';
 
 void wirePlayerService(Ref ref, AfPlayerService svc) {
+  // Asynchronously load the saved play queue from the backend if it exists
+  Future<void> loadSavedQueue() async {
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) return;
+    try {
+      final saved = await backend.getPlayQueue();
+      if (saved != null && saved.tracks.isNotEmpty) {
+        afLog('audio', 'Loaded saved queue from backend: count=${saved.tracks.length} current=${saved.currentIndex}');
+        await svc.playQueue(
+          saved.tracks,
+          startIndex: saved.currentIndex,
+          resolveStreamUrl: (track) => backend.trackStreamUrl(track.id),
+        );
+        if (saved.position > Duration.zero) {
+          await svc.seek(saved.position);
+        }
+        await svc.pause();
+      }
+    } catch (e, stack) {
+      afLog('audio', 'Failed to load saved queue on boot', error: e, stackTrace: stack);
+    }
+  }
+
+  // Load initially if backend is already available
+  if (ref.read(musicBackendProvider) != null) {
+    unawaited(loadSavedQueue());
+  }
+
+  // Save play queue to the backend on updates, debounced
+  Timer? saveQueueDebounce;
+  void triggerSaveQueue() {
+    saveQueueDebounce?.cancel();
+    saveQueueDebounce = Timer(const Duration(milliseconds: 1500), () async {
+      final backend = ref.read(musicBackendProvider);
+      if (backend == null) return;
+
+      final tracks = svc.currentQueue;
+      if (tracks.isEmpty) return;
+
+      final trackIds = tracks.map((t) => t.id).toList();
+      final currentIndex = svc.currentIndex;
+      final position = svc.position;
+
+      try {
+        await backend.savePlayQueue(
+          trackIds,
+          currentIndex: currentIndex >= 0 ? currentIndex : 0,
+          position: position,
+        );
+      } catch (e) {
+        afLog('audio', 'Failed to save play queue', error: e);
+      }
+    });
+  }
+
+  final queueSub = svc.queueStream.listen((_) => triggerSaveQueue());
+  final trackSub = svc.currentTrackStream.listen((_) => triggerSaveQueue());
+
   svc.onTrackChanged = (track) {
     ref.read(currentTrackProvider.notifier).state = track;
     ref.read(currentArtworkUriProvider.notifier).state = track != null
@@ -98,14 +156,20 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
 
   unawaited(svc.configureSpectrum());
 
-  ref.listen(authProvider, (prev, next) {
+  ref.listen<MusicBackend?>(musicBackendProvider, (prev, next) {
     if (prev != null && next == null) {
       reporter?.requestStopOnDispose();
       unawaited(reporter?.dispose());
+    } else if (prev == null && next != null) {
+      // User signed in or backend loaded, load the saved queue from server
+      unawaited(loadSavedQueue());
     }
   });
 
   ref.onDispose(() async {
+    saveQueueDebounce?.cancel();
+    await queueSub.cancel();
+    await trackSub.cancel();
     await errorSub.cancel();
     await reporter?.dispose();
     await svc.dispose();

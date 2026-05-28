@@ -151,6 +151,18 @@ class AfPlayerService {
   /// is actually for the current track or a stale event from a previous track.
   String? _mpvLoadedTrackId;
 
+  Duration? _lastPosition;
+  Duration _listenedDuration = Duration.zero;
+
+  /// Returns the accumulated continuous listen duration for the active track.
+  Duration get listenedDuration => _listenedDuration;
+
+  void _onTrackChangedOrRestarted() {
+    _positionTracker.onTrackChanged();
+    _listenedDuration = Duration.zero;
+    _lastPosition = null;
+  }
+
   void Function(AfTrack? track)? onTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
   Future<List<AfTrack>> Function(AfTrack lastTrack)? onGetSimilarTracks;
@@ -454,6 +466,10 @@ class AfPlayerService {
 
   List<AfTrack> get currentQueue => _queueManager.currentQueue;
 
+  /// The logical index of the currently-playing track in the queue.
+  /// Returns -1 if the queue is empty or playback has ended.
+  int get currentIndex => _queueManager.currentIndex;
+
   AfTrack? get currentTrack => _queueManager.currentTrack;
 
   bool get isPlaying => _player.state.playing;
@@ -552,7 +568,7 @@ class AfPlayerService {
 
     return _queueLock.run(() async {
       try {
-        _positionTracker.onTrackChanged();
+        _onTrackChangedOrRestarted();
 
         final shouldPlay = !_userPaused;
         await _player.openAll(medias, index: 0, play: shouldPlay);
@@ -606,6 +622,8 @@ class AfPlayerService {
     if (_disposed) return;
     _userPaused = true;
     _positionTracker.onStop();
+    _listenedDuration = Duration.zero;
+    _lastPosition = null;
     _prefetcher.cancelCurrentPrefetch();
     _prefetchStartedForTrackId = null;
     _mpvLoadedTrackId = null;
@@ -625,6 +643,8 @@ class AfPlayerService {
     if (_disposed) return;
     _userPaused = true;
     _positionTracker.onStop();
+    _listenedDuration = Duration.zero;
+    _lastPosition = null;
     _prefetcher.cancelCurrentPrefetch();
     _prefetchStartedForTrackId = null;
     _mpvLoadedTrackId = null;
@@ -646,6 +666,12 @@ class AfPlayerService {
   Future<void> seek(Duration position) async {
     if (_disposed) return;
     _positionTracker.onSeek(position);
+    if (position == Duration.zero) {
+      _listenedDuration = Duration.zero;
+      _lastPosition = null;
+    } else {
+      _lastPosition = position;
+    }
     try {
       await _player.seek(position);
       _updateMediaSession();
@@ -669,7 +695,7 @@ class AfPlayerService {
     final nextTrack = _queueManager.currentTrack;
     if (nextTrack == null) return;
 
-    _positionTracker.onTrackChanged();
+    _onTrackChangedOrRestarted();
     _queueManager.emitCurrentTrack(nextTrack);
     onTrackChanged?.call(nextTrack);
     _updateMediaSession();
@@ -692,7 +718,7 @@ class AfPlayerService {
     final prevTrack = _queueManager.currentTrack;
     if (prevTrack == null) return;
 
-    _positionTracker.onTrackChanged();
+    _onTrackChangedOrRestarted();
     _queueManager.emitCurrentTrack(prevTrack);
     onTrackChanged?.call(prevTrack);
     _updateMediaSession();
@@ -715,7 +741,7 @@ class AfPlayerService {
     final targetTrack = _queueManager.currentTrack;
     if (targetTrack == null) return;
 
-    _positionTracker.onTrackChanged();
+    _onTrackChangedOrRestarted();
     _queueManager.emitCurrentTrack(targetTrack);
     onTrackChanged?.call(targetTrack);
     _updateMediaSession();
@@ -962,7 +988,17 @@ class AfPlayerService {
   // ---------------------------------------------------------------------------
 
   void _bindStreams() {
-    _subs.add(_positionTracker.positionStream.listen(_checkPrefetch));
+    _subs.add(_positionTracker.positionStream.listen((pos) {
+      _checkPrefetch(pos);
+      final last = _lastPosition;
+      _lastPosition = pos;
+      if (last != null && isPlaying) {
+        final delta = pos - last;
+        if (delta > Duration.zero && delta < const Duration(milliseconds: 1200)) {
+          _listenedDuration += delta;
+        }
+      }
+    }));
     _subs.add(
       _player.stream.playing.listen((playing) async {
         try {
@@ -1038,7 +1074,7 @@ class AfPlayerService {
           // (after the track loops) is processed.
           if (loopAtEvent == Loop.file) {
             return _queueLock.run(() async {
-              _positionTracker.onTrackChanged();
+              _onTrackChangedOrRestarted();
               try {
                 await _player.seek(Duration.zero);
                 if (!_player.state.playing) {
@@ -1072,6 +1108,7 @@ class AfPlayerService {
                   '${_queueManager.engine.remainingRepeats} repeats remaining',
             );
             try {
+              _onTrackChangedOrRestarted();
               await _player.seek(Duration.zero);
               if (!playingAtEvent) {
                 await _player.play();
@@ -1096,7 +1133,7 @@ class AfPlayerService {
             return _queueLock.run(() async {
               // Advance engine state
               _queueManager.engine.advanceIndex();
-              _positionTracker.onTrackChanged();
+              _onTrackChangedOrRestarted();
 
               // Notify and emit
               final current = _queueManager.currentTrack;
@@ -1132,7 +1169,7 @@ class AfPlayerService {
                     // Now the queue is extended! Slide and play the next track.
                     return _queueLock.run(() async {
                       _queueManager.engine.advanceIndex();
-                      _positionTracker.onTrackChanged();
+                      _onTrackChangedOrRestarted();
 
                       final current = _queueManager.currentTrack;
                       if (current != null) {
@@ -1190,7 +1227,7 @@ class AfPlayerService {
                 case Loop.playlist:
                   return _queueLock.run(() async {
                     _queueManager.engine.jumpTo(0);
-                    _positionTracker.onTrackChanged();
+                    _onTrackChangedOrRestarted();
                     await _rebuildWindow(_queueManager.currentTrack!);
                     _updateMediaSession();
                     afLog('audio', 'queue end, looping playlist');
@@ -1199,7 +1236,7 @@ class AfPlayerService {
                   // Loop.file is handled early (before isAtQueueEnd check).
                   // This branch should never be reached, but if it is,
                   // restart the track defensively.
-                  _positionTracker.onTrackChanged();
+                  _onTrackChangedOrRestarted();
                   try {
                     await _player.seek(Duration.zero);
                     if (!_player.state.playing) {

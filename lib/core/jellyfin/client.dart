@@ -347,13 +347,25 @@ class JellyfinClient implements MusicBackend {
   }
 
   @override
-  Future<void> reportPlaybackStop(String trackId, Duration position) async {
+  Future<void> reportPlaybackStop(
+    String trackId,
+    Duration position, {
+    bool submission = true,
+  }) async {
     _urlBuilder.assertUser();
     await _dio.post(
       'Sessions/Playing/Stopped',
       data: {'ItemId': trackId, 'PositionTicks': position.inMicroseconds * 10},
     );
   }
+
+  // ── Play queue sync ─────────────────────────────────────────────────
+
+  @override
+  Future<void> savePlayQueue(List<String> trackIds, {int? currentIndex, Duration? position}) async {}
+
+  @override
+  Future<({List<AfTrack> tracks, int currentIndex, Duration position})?> getPlayQueue() async => null;
 
   @override
   Future<void> setFavorite(String itemId, bool isFavorite) async {

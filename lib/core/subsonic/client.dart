@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode, visibleForTesting;
 
 import '../../utils/log.dart';
 import '../../utils/url.dart';
@@ -89,6 +89,9 @@ class SubsonicClient implements MusicBackend {
   /// Typed as [Uint8List] to clarify this is raw UTF-8 byte data.
   final Uint8List _passwordBytes;
 
+  /// Expose the password bytes to subclasses like NavidromeClient.
+  Uint8List get passwordBytes => _passwordBytes;
+
   /// Aetherfin's running app version (e.g. `0.2.3`). Sent in `User-Agent`.
   /// Loaded from `package_info_plus` in `main()` and injected through
   /// [aetherfinVersionProvider] — never hardcoded here so a `pubspec.yaml`
@@ -96,8 +99,20 @@ class SubsonicClient implements MusicBackend {
   final String clientVersion;
 
   final Dio _dio;
+
+  @visibleForTesting
+  Dio get dio => _dio;
+
   final MemCacheStore _cacheStore;
   final Random _rng = Random.secure();
+
+  /// Cached OpenSubsonic extensions/capabilities supported by the server.
+  final Set<String> _capabilities = {};
+  String? _serverVersion;
+  String? _serverType;
+
+  String? get serverVersionString => _serverVersion;
+  String? get serverTypeString => _serverType;
 
   static String _buildBaseUrl(String baseUrl) {
     final b = baseUrl.endsWith('/') ? baseUrl : '$baseUrl/';
@@ -163,16 +178,40 @@ class SubsonicClient implements MusicBackend {
   ]) async {
     final qp = <String, dynamic>{..._authParams(), ...?extra};
     try {
-      final res = await _dio.get<Map<String, dynamic>>(
-        '$endpoint.view',
-        queryParameters: qp,
-      );
+      Response<Map<String, dynamic>> res;
+      // Do not use Form POST for 'ping' or 'getOpenSubsonicExtensions' to avoid dependency issues on first connect
+      if (_capabilities.contains('formPost') &&
+          endpoint != 'ping' &&
+          endpoint != 'getOpenSubsonicExtensions') {
+        res = await _dio.post<Map<String, dynamic>>(
+          '$endpoint.view',
+          data: qp,
+          options: Options(
+            contentType: Headers.formUrlEncodedContentType,
+          ),
+        );
+      } else {
+        res = await _dio.get<Map<String, dynamic>>(
+          '$endpoint.view',
+          queryParameters: qp,
+        );
+      }
+
       final root = res.data?['subsonic-response'] as Map<String, dynamic>?;
       if (root == null) {
         throw StateError(
           'Subsonic response missing subsonic-response envelope',
         );
       }
+
+      // Extract server details dynamically from response headers or body
+      final type = root['type'] as String?;
+      final serverVersion = root['serverVersion'] as String?;
+      if (type != null && type.isNotEmpty) _serverType = type;
+      if (serverVersion != null && serverVersion.isNotEmpty) {
+        _serverVersion = serverVersion;
+      }
+
       final status = root['status'] as String?;
       if (status != 'ok') {
         final err = root['error'] as Map<String, dynamic>?;
@@ -222,8 +261,32 @@ class SubsonicClient implements MusicBackend {
 
   /// `ping.view` — verify the server is reachable and credentials work.
   Future<JellyfinServer> ping() async {
-    await _get('ping');
-    return server.copyWith(isReachable: true);
+    final root = await _get('ping');
+    
+    // Probe OpenSubsonic extensions if supported
+    _capabilities.clear();
+    try {
+      final extRoot = await _get('getOpenSubsonicExtensions');
+      final extensions = extRoot['openSubsonicExtensions'] as List?;
+      if (extensions != null) {
+        for (final ext in extensions) {
+          if (ext is Map) {
+            final name = ext['name'] as String?;
+            if (name != null && name.isNotEmpty) {
+              _capabilities.add(name);
+            }
+          }
+        }
+      }
+      afLog('subsonic', 'OpenSubsonic capabilities detected: $_capabilities');
+    } catch (e) {
+      afLog('subsonic', 'Failed to fetch OpenSubsonic extensions, assuming standard Subsonic: $e');
+    }
+
+    return server.copyWith(
+      isReachable: true,
+      version: _serverVersion ?? root['version'] as String?,
+    );
   }
 
   // ── Library browsing ──────────────────────────────────────────────────
@@ -321,7 +384,7 @@ class SubsonicClient implements MusicBackend {
     final results = root['searchResult3'] as Map<String, dynamic>?;
     final songs =
         (results?['song'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
-    return songs.map(_parseTrack).toList(growable: false);
+    return songs.map(parseTrack).toList(growable: false);
   }
 
   @override
@@ -376,7 +439,7 @@ class SubsonicClient implements MusicBackend {
     if (starred == null) return const [];
     final songs =
         (starred['song'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
-    return songs.take(limit).map(_parseTrack).toList(growable: false);
+    return songs.take(limit).map(parseTrack).toList(growable: false);
   }
 
   // ── Detail views ──────────────────────────────────────────────────────
@@ -389,7 +452,7 @@ class SubsonicClient implements MusicBackend {
     final albumObj = _parseAlbumDetail(albumData);
     final songs =
         (albumData['song'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
-    final tracks = songs.map(_parseTrack).toList(growable: false);
+    final tracks = songs.map(parseTrack).toList(growable: false);
     return (album: albumObj, tracks: tracks);
   }
 
@@ -411,7 +474,7 @@ class SubsonicClient implements MusicBackend {
       final root = await _get('getSong', {'id': id});
       final data = (root['song'] as Map?)?.cast<String, dynamic>();
       if (data == null) return null;
-      final track = _parseTrack(data);
+      final track = parseTrack(data);
       final suffix = (data['suffix'] as String?)?.toLowerCase();
       final bitRate = _asInt(data['bitRate']);
       final samplingRate = _asInt(data['samplingRate']);
@@ -467,7 +530,7 @@ class SubsonicClient implements MusicBackend {
       final songs =
           (topSongs?['song'] as List?)?.cast<Map<String, dynamic>>() ??
           const [];
-      return songs.map(_parseTrack).toList(growable: false);
+      return songs.map(parseTrack).toList(growable: false);
     } catch (e) {
       afLog('subsonic', 'getTopSongs failed, falling back to search', error: e);
       // getTopSongs may not be supported; fall back to search
@@ -482,7 +545,7 @@ class SubsonicClient implements MusicBackend {
         final songs =
             (results?['song'] as List?)?.cast<Map<String, dynamic>>() ??
             const [];
-        return songs.map(_parseTrack).toList(growable: false);
+        return songs.map(parseTrack).toList(growable: false);
       } catch (e2) {
         afLog('subsonic', 'search3 fallback also failed', error: e2);
         return const [];
@@ -510,7 +573,7 @@ class SubsonicClient implements MusicBackend {
     final pl = _parsePlaylist(data);
     final songs =
         (data['entry'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
-    final tracks = songs.map(_parseTrack).toList(growable: false);
+    final tracks = songs.map(parseTrack).toList(growable: false);
     return (playlist: pl, tracks: tracks);
   }
 
@@ -553,7 +616,7 @@ class SubsonicClient implements MusicBackend {
         (results?['playlist'] as List?)?.cast<Map<String, dynamic>>() ??
         const [];
     return (
-      tracks: songs.map(_parseTrack).toList(growable: false),
+      tracks: songs.map(parseTrack).toList(growable: false),
       albums: albumsList.map(_parseAlbumDetail).toList(growable: false),
       artists: artistsList.map(_parseArtist).toList(growable: false),
       playlists: playlistsList.map(_parsePlaylist).toList(growable: false),
@@ -670,7 +733,7 @@ class SubsonicClient implements MusicBackend {
       final data = root['similarSongs2'] as Map<String, dynamic>?;
       final songs =
           (data?['song'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
-      return songs.map(_parseTrack).toList(growable: false);
+      return songs.map(parseTrack).toList(growable: false);
     } catch (e) {
       afLog('subsonic', 'getSimilarSongs2 failed', error: e);
       // getSimilarSongs2 may not be supported; return empty
@@ -793,17 +856,29 @@ class SubsonicClient implements MusicBackend {
   }
 
   @override
-  Future<void> reportPlaybackStop(String trackId, Duration position) async {
+  Future<void> reportPlaybackStop(
+    String trackId,
+    Duration position, {
+    bool submission = true,
+  }) async {
     try {
       await _get('scrobble', {
         'id': trackId,
-        'submission': true,
+        'submission': submission,
         'time': '${position.inMilliseconds}',
       });
     } catch (e) {
       afLog('subsonic', 'reportPlaybackStop scrobble failed', error: e);
     }
   }
+
+  // ── Play queue sync ─────────────────────────────────────────────────
+
+  @override
+  Future<void> savePlayQueue(List<String> trackIds, {int? currentIndex, Duration? position}) async {}
+
+  @override
+  Future<({List<AfTrack> tracks, int currentIndex, Duration position})?> getPlayQueue() async => null;
 
   // ── User views ────────────────────────────────────────────────────────
 
@@ -871,7 +946,7 @@ class SubsonicClient implements MusicBackend {
     );
   }
 
-  AfTrack _parseTrack(Map<String, dynamic> m) {
+  AfTrack parseTrack(Map<String, dynamic> m) {
     final duration = _asInt(m['duration']) ?? 0;
     final starred = m['starred'] as String?;
     final created = m['created'] as String?;
