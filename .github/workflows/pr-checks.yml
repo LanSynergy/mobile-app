@@ -53,4 +53,4 @@ jobs:
             ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock') }}-
 
       - name: Analyze + test (via tool/build)
-        run: bash tool/build --skip-build-id
+        run: bash tool/build --skip-build

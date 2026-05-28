@@ -20,6 +20,7 @@
 #   --skip-analyze        Skip flutter analyze
 #   --skip-test           Skip flutter test
 #   --skip-codegen        Skip dart run build_runner (code generation)
+#   --skip-build          Skip the APK build step entirely (useful for PR checks)
 #   --skip-build-id       Skip build ID generation
 #   --help                Show this help
 #
@@ -43,6 +44,7 @@ INSTALL=false
 SKIP_ANALYZE=false
 SKIP_TEST=false
 SKIP_CODEGEN=false
+SKIP_BUILD=false
 SKIP_BUILD_ID=false
 SIGN=false
 TELEGRAM=false
@@ -353,6 +355,7 @@ while [[ $# -gt 0 ]]; do
     --skip-analyze)   SKIP_ANALYZE=true; shift ;;
     --skip-test)      SKIP_TEST=true; shift ;;
     --skip-codegen)   SKIP_CODEGEN=true; shift ;;
+    --skip-build)     SKIP_BUILD=true; shift ;;
     --skip-build-id)  SKIP_BUILD_ID=true; shift ;;
     --help)           usage ;;
     *)                die "Unknown option: $1. Use --help for usage." ;;
@@ -375,6 +378,7 @@ echo "  Mode:          $MODE"
 echo "  Split ABI:     $SPLIT_PER_ABI"
 echo "  Sign:          $SIGN"
 echo "  Telegram:      $TELEGRAM"
+echo "  Skip build:    $SKIP_BUILD"
 echo "  CI mode:       $CI_MODE"
 echo ""
 
@@ -464,7 +468,8 @@ fi
 # ---------------------------------------------------------------------------
 # 8. Build APK
 # ---------------------------------------------------------------------------
-step "Build APK ($MODE)" bash -c "
+if [ "$SKIP_BUILD" = "false" ]; then
+  step "Build APK ($MODE)" bash -c "
   ARGS='--$MODE'
   if [ '$SPLIT_PER_ABI' = 'true' ]; then
     ARGS=\"\$ARGS --split-per-abi\"
@@ -474,6 +479,7 @@ step "Build APK ($MODE)" bash -c "
   (cd '$ROOT/android' && ./gradlew --stop) 2>/dev/null || true
   $FLUTTER build apk \$ARGS
 "
+fi
 
 # ---------------------------------------------------------------------------
 # 9. Rename APKs with standard naming
@@ -482,61 +488,68 @@ echo ""
 echo "────────────────────────────────────────"
 echo "  Rename APKs"
 echo "────────────────────────────────────────"
-rename_apks "$OUTDIR" "$VERSION" "$BUILD_ID" "$MODE" "$SPLIT_PER_ABI"
+if [ "$SKIP_BUILD" = "false" ]; then
+  rename_apks "$OUTDIR" "$VERSION" "$BUILD_ID" "$MODE" "$SPLIT_PER_ABI"
+else
+  echo "  (skipped — no APK was built)"
+fi
 echo ""
 
 # ---------------------------------------------------------------------------
 # 10. Select primary APK for Telegram
 # ---------------------------------------------------------------------------
-echo "────────────────────────────────────────"
-echo "  Select primary APK"
-echo "────────────────────────────────────────"
-select_primary_apk "$OUTDIR" "$PRIMARY_APK_FILE"
-echo ""
+if [ "$SKIP_BUILD" = "false" ]; then
+  echo "────────────────────────────────────────"
+  echo "  Select primary APK"
+  echo "────────────────────────────────────────"
+  select_primary_apk "$OUTDIR" "$PRIMARY_APK_FILE"
+  echo ""
 
-# Read back primary APK info
-PRIMARY_APK=""
-PRIMARY_APK_NAME=""
-PRIMARY_APK_SIZE=""
-if [ -f "$PRIMARY_APK_FILE" ]; then
-  PRIMARY_APK=$(grep "^path=" "$PRIMARY_APK_FILE" | cut -d= -f2-)
-  PRIMARY_APK_NAME=$(grep "^name=" "$PRIMARY_APK_FILE" | cut -d= -f2-)
-  PRIMARY_APK_SIZE=$(grep "^size=" "$PRIMARY_APK_FILE" | cut -d= -f2-)
-fi
+  # Read back primary APK info
+  PRIMARY_APK=""
+  PRIMARY_APK_NAME=""
+  PRIMARY_APK_SIZE=""
+  if [ -f "$PRIMARY_APK_FILE" ]; then
+    PRIMARY_APK=$(grep "^path=" "$PRIMARY_APK_FILE" | cut -d= -f2-)
+    PRIMARY_APK_NAME=$(grep "^name=" "$PRIMARY_APK_FILE" | cut -d= -f2-)
+    PRIMARY_APK_SIZE=$(grep "^size=" "$PRIMARY_APK_FILE" | cut -d= -f2-)
+  fi
 
-# Send final Telegram message: APK (success) or text fallback.
-# Both paths delete the init message and send exactly one new message.
-if [ -n "$PRIMARY_APK" ] && [ "$TELEGRAM" = "true" ]; then
-  tg_send_apk "$PRIMARY_APK" "$PRIMARY_APK_NAME" "$PRIMARY_APK_SIZE"
-elif [ "$TELEGRAM" = "true" ]; then
-  tg_send_text
+  # Send final Telegram message: APK (success) or text fallback.
+  if [ -n "$PRIMARY_APK" ] && [ "$TELEGRAM" = "true" ]; then
+    tg_send_apk "$PRIMARY_APK" "$PRIMARY_APK_NAME" "$PRIMARY_APK_SIZE"
+  elif [ "$TELEGRAM" = "true" ]; then
+    tg_send_text
+  fi
 fi
 
 # ---------------------------------------------------------------------------
 # 11. Install on connected device
 # ---------------------------------------------------------------------------
-if [ "$INSTALL" = "true" ] && [ -n "$PRIMARY_APK" ]; then
-  echo ""
-  echo "────────────────────────────────────────"
-  echo "  Install on device"
-  echo "────────────────────────────────────────"
-  if [ "$SPLIT_PER_ABI" = "true" ]; then
-    detected=$(adb shell getprop ro.product.cpu.abi 2>/dev/null | tr -d '\r' || true)
-    if [ -n "$detected" ]; then
-      install_apk="$OUTDIR/Aetherfin-v${VERSION}-${detected}-${BUILD_ID}.apk"
+if [ "$SKIP_BUILD" = "false" ] && [ "$INSTALL" = "true" ]; then
+  if [ -n "$PRIMARY_APK" ]; then
+    echo ""
+    echo "────────────────────────────────────────"
+    echo "  Install on device"
+    echo "────────────────────────────────────────"
+    if [ "$SPLIT_PER_ABI" = "true" ]; then
+      detected=$(adb shell getprop ro.product.cpu.abi 2>/dev/null | tr -d '\r' || true)
+      if [ -n "$detected" ]; then
+        install_apk="$OUTDIR/Aetherfin-v${VERSION}-${detected}-${BUILD_ID}.apk"
+      else
+        install_apk="$PRIMARY_APK"
+      fi
     else
       install_apk="$PRIMARY_APK"
     fi
-  else
-    install_apk="$PRIMARY_APK"
+    if [ -f "$install_apk" ]; then
+      echo "  Installing $install_apk..."
+      adb install -r "$install_apk"
+    else
+      echo "  No APK found at $install_apk"
+    fi
+    echo ""
   fi
-  if [ -f "$install_apk" ]; then
-    echo "  Installing $install_apk..."
-    adb install -r "$install_apk"
-  else
-    echo "  No APK found at $install_apk"
-  fi
-  echo ""
 fi
 
 # ---------------------------------------------------------------------------
