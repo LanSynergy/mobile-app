@@ -588,8 +588,11 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                 if (!_isScrollActive.value) {
                   _isScrollActive.value = true;
                 }
+                _armScrollSafetyTimer(ms: 300);
               } else if (notification is ScrollUpdateNotification) {
                 _armScrollSafetyTimer(ms: 200);
+              } else if (notification is ScrollEndNotification) {
+                _resetScrollActive();
               } else if (notification is UserScrollNotification &&
                   notification.direction == ScrollDirection.idle) {
                 _resetScrollActive();
