@@ -33,6 +33,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
   final _manualController = TextEditingController(text: 'http://');
   bool _scanning = true;
   String? _manualError;
+  bool _busy = false;
 
   @override
   void initState() {
@@ -86,7 +87,10 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
       return;
     }
     final uri = Uri.tryParse(raw)!;
-    setState(() => _manualError = null);
+    setState(() {
+      _manualError = null;
+      _busy = true;
+    });
 
     // Preserve any base path the user pasted (e.g. https://media.example.com/jellyfin),
     // and strip a trailing slash so we don't construct doubled slashes
@@ -109,6 +113,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
     );
     try {
       final resolved = await jellyfinClient.publicInfo();
+      setState(() => _busy = false);
       _continueWith(resolved);
       return;
     } catch (_) {
@@ -132,13 +137,17 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
         // Expected — wrong/empty creds but the Subsonic envelope arrived
       }
       testClient.close();
+      setState(() => _busy = false);
       _continueWith(
         server.copyWith(name: 'Navidrome', isReachable: true),
         serverType: ServerType.subsonic,
       );
     } catch (e, stack) {
       afLog('error', 'server discovery failed', error: e, stackTrace: stack);
-      setState(() => _manualError = 'Couldn’t reach ${server.baseUrl}. $e');
+      setState(() {
+        _manualError = 'Couldn’t reach ${server.baseUrl}. $e';
+        _busy = false;
+      });
     }
   }
 
@@ -238,12 +247,18 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
                   hintText: 'http://192.168.1.10:8096',
                   errorText: _manualError,
                 ),
-                onSubmitted: (_) => _useManual(),
+                onSubmitted: (_) => _busy ? null : _useManual(),
               ),
               const SizedBox(height: AfSpacing.s12),
               ElevatedButton(
-                onPressed: _useManual,
-                child: const Text('Continue'),
+                onPressed: _busy ? null : _useManual,
+                child: _busy
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      )
+                    : const Text('Continue'),
               ),
               const SizedBox(height: AfSpacing.s24),
             ],
