@@ -338,12 +338,10 @@ class AetherfinMediaSessionService : Service() {
                     PlaybackStateCompat.ACTION_SET_REPEAT_MODE
         }
 
-        if (queueIndex > 0) {
-            actions = actions or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
-        }
-        if (queueIndex < queueSize - 1 && queueIndex >= 0) {
-            actions = actions or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-        }
+        // Always advertise prev/next so the QS layout stays stable.
+        // Tapping them while at bounds is handled gracefully on the Dart side.
+        actions = actions or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+        actions = actions or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
 
         // Use speed=0f when not playing. Passing the real playback speed
         // (e.g. 1.0f) alongside STATE_PAUSED causes some Android/OEM
