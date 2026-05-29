@@ -76,7 +76,7 @@ jobs:
           RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${GITHUB_SHA}"
           ACTOR="${{ github.actor }}"
-          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+          TIMESTAMP=$(TZ="Asia/Jakarta" date +"%Y-%m-%d %H:%M WIB")
           COMMIT_ESC=$(printf '%s' "$COMMIT_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
 
           echo "TG_BUILD_ID=${BUILD_ID}"      >> "${GITHUB_ENV}"
