@@ -1,5 +1,15 @@
 # Continuity Ledger
 
+## 2026-05-29 — Add forNtimes (repeat 2) to QS media player cycle
+*Goal:* Add 4th repeat state (repeat 2 times) to QS media player repeat cycle, with proper icon and labels.
+*Commits:* 2d58952
+*Key decisions:*
+- `ic_repeat_ntimes.xml`: fill-based loop arrow + "2" path indicator inside arrow
+- `onToggleRepeat` cycle: off → playlist → file → forNtimes → off (was missing forNtimes)
+- Kotlin label: "ntimes" → "Repeat 2"
+- viewportWidth experiments abandoned; badge at top-right was too small at 20dp
+- All 384 tests pass, `flutter analyze`: 0 errors
+
 ## 2026-05-29 — Workflow optimization v2: lean plans, session bootstrap, auto-prune
 *Goal:* Add 3 workflow optimizations: plans no longer embed inline code (saves 70-80% plan size), session bootstrap checkpoint file for instant context recovery, and auto-prune policy for old artifacts.
 *Commits:* 20238b2
@@ -34,15 +44,3 @@
 - Added `emitPositionForTesting()` to `AfPositionTracker` for test access to the tracker's stream controller
 - 7 tests covering: basic advance, completed-first skip, early-position skip, still-playing skip, double-fire prevention, missing-completed simulation, skipToNext guard reset
 - All 361 tests pass, `flutter analyze`: 0 errors, 0 warnings
-
-## 2026-05-28 — Server Client Enhancement: Navidrome native auth + queue sync
-*Goal:* Add hybrid Navidrome client with native REST auth, queue sync, OpenSubsonic capabilities probing, and precise listen-time scrobbling.
-*Commits:* 00577ce
-*Key decisions:*
-- Created `NavidromeClient` subclassing `SubsonicClient` with JWT auth via `/api/auth/login`
-- Implemented `savePlayQueue` / `getPlayQueue` via Navidrome's `/api/queue` endpoint
-- Added OpenSubsonic capabilities probing: `OS_FORM_POST` (x-www-form-urlencoded), `OS_TRANSCODE_DECISION` (pre-stream transcode check)
-- Updated `music_backend_providers.dart` to switch on `ServerType.subsonic` → `NavidromeClient`
-- Added precise listen-time scrobbling with 75% threshold gate in `jellyfin_playback_reporter.dart`
-- Tracked continuous playback duration (`_listenedDuration`) in `player_service.dart`
-- All 354 tests pass, `flutter analyze`: 0 errors, 0 warnings

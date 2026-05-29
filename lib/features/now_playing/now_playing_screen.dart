@@ -751,8 +751,8 @@ class _ReactiveTransport extends ConsumerWidget {
             break;
           case AfLoopMode.forNtimes:
             ref.read(forNtimesModeProvider.notifier).state = false;
+            svc.setLoopModeOffSync();
             unawaited(svc.setAfForNtimes(false).catchError((_) {}));
-            unawaited(svc.setAfLoopMode(Loop.off).catchError((_) {}));
             break;
         }
       },

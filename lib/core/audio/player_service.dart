@@ -181,6 +181,7 @@ class AfPlayerService {
   void Function(AfTrack track)? onTrackSkipped;
   Future<List<AfTrack>> Function(AfTrack lastTrack)? onGetSimilarTracks;
   VoidCallback? onToggleFavorite;
+  void Function(bool enabled)? onForNtimesChanged;
 
   /// Fired when the user starts the app via the "Play Favorites" launcher shortcut.
   VoidCallback? onShortcutPlayFavorites;
@@ -854,6 +855,8 @@ class AfPlayerService {
   Future<void> setAfForNtimes(bool enabled) async {
     if (_disposed) return;
     _queueManager.engine.setForNtimes(enabled);
+    onForNtimesChanged?.call(enabled);
+    _updateMediaSession();
     afLog(
       'data',
       'forNtimes source=live enabled=$enabled '
@@ -870,6 +873,14 @@ class AfPlayerService {
 
   /// Whether forNtimes mode is currently active.
   bool get isForNtimesMode => _queueManager.engine.isForNtimes;
+
+  /// Synchronously set loop mode to off (no async lock, no queue mutation).
+  /// Use when exiting forNtimes to prevent stale [_loopMode] reads in
+  /// concurrent [setAfForNtimes] → [_updateMediaSession] calls.
+  void setLoopModeOffSync() {
+    _loopMode = Loop.off;
+    _loopModeController.add(Loop.off);
+  }
 
   /// Returns the current active track's artwork URI.
   Uri? get currentArtworkUri {
@@ -1529,8 +1540,10 @@ class AfPlayerService {
     };
     bridge.onToggleRepeat = () {
       if (_queueManager.engine.isForNtimes) {
+        _loopMode = Loop.off;
+        _loopModeController.add(Loop.off);
         unawaited(setAfForNtimes(false));
-        unawaited(setAfLoopMode(Loop.off));
+        unawaited(PlayerSettingsStore.saveLoopMode(Loop.off));
       } else {
         switch (_loopMode) {
           case Loop.off:

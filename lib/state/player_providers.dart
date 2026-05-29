@@ -212,6 +212,10 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
     }
   };
 
+  svc.onForNtimesChanged = (enabled) {
+    ref.read(forNtimesModeProvider.notifier).state = enabled;
+  };
+
   svc.onTrackCompleted = (track) {
     final enabled = ref.read(offlineCacheEnabledProvider);
     if (!enabled) return;
