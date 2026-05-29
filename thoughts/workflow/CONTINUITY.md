@@ -1,5 +1,9 @@
 # Continuity Ledger
 
+## 2026-05-29 — Fix 7 flutter analyze issues (curly_braces, cancel_subscriptions, unused_import)
+*Goal:* Fix all 7 info/warning issues across 3 files: home_screen.dart (curly braces), player_providers.dart (StreamSubscription disposal), global_mini_player_overlay_test.dart (unused import).
+*Commits:* 84f3424, ac08a11
+
 ## 2026-05-29 — Fix failing test after mini_player state refactor
 *Goal:* Fix `mini_player_progress_ring_test.dart` which failed because `_ReactiveProgressRingState.initState()` reads `playerServiceProvider` directly for position stream subscription (added in mini_player state refactor).
 *Commits:* 28e0133
@@ -42,31 +46,4 @@
 - Completed the transition fade-out/fade-in blending logic in the scrubber/visualizer.
 - Added a remaining duration guard (2000ms threshold) in the `completed` stream listener to prevent premature advancing/looping during seeks or network buffering underflows.
 - Removed obsolete sync methods, cleaned up unit tests, and resolved all lint/formatting warnings.
-
-## 2026-05-27 — Android Native Integrations & UX Enhancements
-*Goal:* Implement home screen widgets, dynamic launcher icon changing, smart Bluetooth reconnection behavior, and reactive favorite status sync.
-*Commits:* e3fa908
-*Key decisions:*
-- Wired bidirectional favorite status synchronization between Dart/Flutter and Kotlin using the MethodChannel.
-- Dynamic app widget background and content theming utilizing the Android Palette API to match artwork colors.
-- Custom dynamic launcher icons setting UI using `<activity-alias>` elements to prevent duplicate app icon registrations.
-- Re-activated automatic resumption of playback upon Bluetooth connection if paused within the 5-minute disconnect window.
-
-## 2026-05-27 — Optimize slow unit tests with fakeAsync
-*Goal:* Speed up the unit test suite by eliminating real-world sleeps/delays (9s, 5s, 2s) using fakeAsync.
-*Commits:* f90cd37
-*Key decisions:*
-- Refactored `playlist_undo_buffer_test.dart` and `audio_device_manager_test.dart` to run under `fakeAsync`.
-- Replaced `Future.delayed` with synchronous `async.elapse()`, lowering run time from 50s+ to ~27s.
-
-## 2026-05-26 — Native Lucide-based Standard Notification Actions for Shuffle and Repeat
-*Goal:* Resolve issue where shuffle and repeat controls do not appear on Android 13+ / Samsung One UI media notifications.
-*Commits:* 69a3e00
-*Key decisions:*
-- Avoided using `PlaybackStateCompat.CustomAction` (which displays inconsistently across various device models/skins).
-- Added shuffle and repeat as standard `NotificationCompat.Action` buttons directly to `NotificationCompat.Builder` to construct a consistent 5-button layout (`[Shuffle] [Previous] [Play/Pause] [Next] [Repeat]`).
-- Kept the compact view (lock screen / collapsed drawer) to `Previous`, `Play/Pause`, and `Next` using `.setShowActionsInCompactView(1, 2, 3)`.
-- Created 5 custom Vector Drawables under `android/app/src/main/res/drawable/` using the exact stroke-based SVG paths from the project's Lucide icons.
-- Added custom underline indicator bars to active icons (`ic_shuffle_on`, `ic_repeat_all`, `ic_repeat_one`) and a diagonal slash to `ic_repeat_off` to ensure states are easily readable when tinted by the system UI.
-- Wired click events to trigger service broadcast intents that toggle the shuffle/loop state in Dart via the method channel.
 
