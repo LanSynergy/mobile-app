@@ -118,6 +118,11 @@ abstract class MusicBackend {
 
   Future<List<LibraryView>> userViews();
 
+  // ── User avatar (Jellyfin-specific; others are local-only overrides) ──
+
+  Future<void> uploadUserAvatar(List<int> bytes, String mimeType);
+  Future<void> deleteUserAvatar();
+
   // ── Lifecycle ───────────────────────────────────────────────────────
 
   void clearCache();

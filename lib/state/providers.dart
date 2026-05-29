@@ -8,6 +8,7 @@ export 'local_library_providers.dart';
 export 'music_backend_providers.dart';
 export 'queue_history_providers.dart';
 export 'player_providers.dart';
+export 'profile_providers.dart';
 export 'playlist_providers.dart';
 export 'playlist_undo_providers.dart';
 export 'search_history_providers.dart';

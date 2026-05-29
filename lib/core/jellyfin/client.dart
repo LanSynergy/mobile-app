@@ -300,6 +300,26 @@ class JellyfinClient implements MusicBackend {
   }
 
   @override
+  Future<void> uploadUserAvatar(List<int> bytes, String mimeType) async {
+    _urlBuilder.assertUser();
+    await _dio.post(
+      'Users/$userId/Images/Primary',
+      data: bytes,
+      options: Options(
+        headers: {
+          'Content-Type': mimeType,
+        },
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteUserAvatar() async {
+    _urlBuilder.assertUser();
+    await _dio.delete('Users/$userId/Images/Primary');
+  }
+
+  @override
   String trackStreamUrl(
     String trackId, {
     int? maxBitrateKbps,

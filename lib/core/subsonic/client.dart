@@ -897,6 +897,12 @@ class SubsonicClient implements MusicBackend {
     ];
   }
 
+  @override
+  Future<void> uploadUserAvatar(List<int> bytes, String mimeType) async {}
+
+  @override
+  Future<void> deleteUserAvatar() async {}
+
   // ── Parsing helpers ───────────────────────────────────────────────────
 
   List<AfAlbum> _parseAlbumList(Map<String, dynamic>? data) {

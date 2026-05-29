@@ -420,6 +420,12 @@ class LocalBackend implements MusicBackend {
   @override
   Future<List<LibraryView>> userViews() async => const [];
 
+  @override
+  Future<void> uploadUserAvatar(List<int> bytes, String mimeType) async {}
+
+  @override
+  Future<void> deleteUserAvatar() async {}
+
   // ── Lifecycle ─────────────────────────────────────────────────────
 
   @override
