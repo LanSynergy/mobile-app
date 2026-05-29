@@ -13,7 +13,7 @@ import 'artwork.dart';
 import 'circular_progress_ring.dart';
 import 'press_scale.dart';
 
-class MiniPlayer extends ConsumerWidget {
+class MiniPlayer extends ConsumerStatefulWidget {
   const MiniPlayer({
     super.key,
     this.onTap,
@@ -28,10 +28,18 @@ class MiniPlayer extends ConsumerWidget {
   final VoidCallback? onSkipPrevious;
   final VoidCallback? onDismiss;
 
-  static const double _swipeVelocityThreshold = 600;
+  @override
+  ConsumerState<MiniPlayer> createState() => _MiniPlayerState();
+}
+
+class _MiniPlayerState extends ConsumerState<MiniPlayer> {
+  static const double _swipeVelocityThreshold = 300;
+  static const double _swipeDistanceThreshold = 50;
+
+  double _dragDistance = 0;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final track = ref.watch(currentTrackProvider);
     if (track == null) return const SizedBox.shrink();
     final artworkUri = ref.watch(currentArtworkUriProvider);
@@ -52,19 +60,33 @@ class MiniPlayer extends ConsumerWidget {
           button: true,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
+            onVerticalDragStart: (_) {
+              _dragDistance = 0;
+            },
+            onVerticalDragUpdate: (details) {
+              _dragDistance += details.primaryDelta ?? 0;
+            },
             onVerticalDragEnd: (details) {
               final vy = details.primaryVelocity ?? 0;
-              if (vy.abs() < _swipeVelocityThreshold) return;
-              unawaited(HapticFeedback.selectionClick());
-              if (vy < 0) {
-                onTap?.call();
-              } else {
-                onDismiss?.call();
+              final absVy = vy.abs();
+              final absDist = _dragDistance.abs();
+
+              final isFlick = absVy >= _swipeVelocityThreshold;
+              final isSignificantDrag = absDist >= _swipeDistanceThreshold;
+
+              if (isFlick || isSignificantDrag) {
+                final bool isUpward = isFlick ? (vy < 0) : (_dragDistance < 0);
+                unawaited(HapticFeedback.selectionClick());
+                if (isUpward) {
+                  widget.onTap?.call();
+                } else {
+                  widget.onDismiss?.call();
+                }
               }
             },
             child: PressScale(
               ensureHitTarget: false,
-              onTap: onTap,
+              onTap: widget.onTap,
               child: ClipRRect(
                 borderRadius: AfRadii.borderPill,
                 child: BackdropFilter(
@@ -127,11 +149,11 @@ class MiniPlayer extends ConsumerWidget {
                             size: 24,
                             color: AfColors.textPrimary,
                           ),
-                          onTap: onSkipPrevious,
+                          onTap: widget.onSkipPrevious,
                         ),
                         PressScale(
                           ensureHitTarget: false,
-                          onTap: onPlayPause,
+                          onTap: widget.onPlayPause,
                           child: Container(
                             width: 48,
                             height: 48,
@@ -163,7 +185,7 @@ class MiniPlayer extends ConsumerWidget {
                             size: 24,
                             color: AfColors.textPrimary,
                           ),
-                          onTap: onSkipNext,
+                          onTap: widget.onSkipNext,
                         ),
                       ],
                     ),
