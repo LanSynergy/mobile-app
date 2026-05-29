@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -33,11 +32,43 @@ class MiniPlayer extends ConsumerStatefulWidget {
   ConsumerState<MiniPlayer> createState() => _MiniPlayerState();
 }
 
-class _MiniPlayerState extends ConsumerState<MiniPlayer> {
+class _MiniPlayerState extends ConsumerState<MiniPlayer>
+    with SingleTickerProviderStateMixin {
   static const double _swipeVelocityThreshold = 300;
   static const double _swipeDistanceThreshold = 50;
+  static const double _maxDragDistance = 200;
 
   double _dragDistance = 0;
+  late final AnimationController _snapCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _snapCtrl = AnimationController(vsync: this, duration: AfDurations.quick)
+      ..addListener(() {
+        setState(() => _dragDistance = _snapCtrl.value * _maxDragDistance * 2);
+      });
+  }
+
+  @override
+  void dispose() {
+    _snapCtrl.dispose();
+    super.dispose();
+  }
+
+  void _snapBack() {
+    _snapCtrl.duration = AfDurations.quick;
+    _snapCtrl.value = _dragDistance / (_maxDragDistance * 2);
+    _snapCtrl.reverse();
+  }
+
+  void _animateDismiss() {
+    _snapCtrl.duration = AfDurations.standard;
+    _snapCtrl.value = _dragDistance / (_maxDragDistance * 2);
+    _snapCtrl.forward().then((_) {
+      if (mounted) widget.onDismiss?.call();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +79,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
         .watch(playingStreamProvider)
         .maybeWhen(data: (v) => v, orElse: () => false);
     final isBuffering = ref.watch(isBufferingProvider);
+
+    final clampedDy = _dragDistance.clamp(0, _maxDragDistance * 2).toDouble();
+    final dragOpacity = 1.0 - (clampedDy / _maxDragDistance).clamp(0, 1);
 
     return Material(
       type: MaterialType.transparency,
@@ -62,10 +96,13 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onVerticalDragStart: (_) {
+              if (_snapCtrl.isAnimating) _snapCtrl.stop();
               _dragDistance = 0;
             },
             onVerticalDragUpdate: (details) {
-              _dragDistance += details.primaryDelta ?? 0;
+              setState(() {
+                _dragDistance += details.primaryDelta ?? 0;
+              });
             },
             onVerticalDragEnd: (details) {
               final vy = details.primaryVelocity ?? 0;
@@ -79,121 +116,125 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                 final bool isUpward = isFlick ? (vy < 0) : (_dragDistance < 0);
                 unawaited(HapticFeedback.selectionClick());
                 if (isUpward) {
+                  setState(() => _dragDistance = 0);
                   widget.onTap?.call();
                 } else {
-                  widget.onDismiss?.call();
+                  _animateDismiss();
                 }
+              } else {
+                _snapBack();
               }
             },
-            child: PressScale(
-              ensureHitTarget: false,
-              onTap: widget.onTap,
-              child: ClipRRect(
-                borderRadius: AfRadii.borderPill,
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                  child: Container(
-                    height: AfSpacing.miniPlayerHeight,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      borderRadius: AfRadii.borderPill,
-                      border: Border.all(
-                        color: AfColors.surfaceHigh.withValues(alpha: 0.5),
-                        width: 1,
-                      ),
-                    ),
-                    padding: const EdgeInsets.only(
-                      left: 4,
-                      right: AfSpacing.s8,
-                    ),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: _ReactiveProgressRing(
-                            track: track,
-                            child: Hero(
-                              tag: 'now-playing-artwork',
-                              child: ClipRRect(
-                                borderRadius: AfRadii.borderPill,
-                                child: Artwork(
-                                  url: artworkUri?.toString() ?? track.imageUrl,
-                                  size: 44,
-                                ),
-                              ),
-                            ),
+            child: Opacity(
+              opacity: dragOpacity,
+              child: Transform.translate(
+                offset: Offset(0, clampedDy),
+                child: PressScale(
+                  ensureHitTarget: false,
+                  onTap: widget.onTap,
+                  child: ClipRRect(
+                    borderRadius: AfRadii.borderPill,
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                      child: Container(
+                        height: AfSpacing.miniPlayerHeight,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: AfRadii.borderPill,
+                          border: Border.all(
+                            color: AfColors.surfaceHigh.withValues(alpha: 0.5),
+                            width: 1,
                           ),
                         ),
-                        const SizedBox(width: AfSpacing.s12),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _MarqueeText(
-                                text: track.title,
-                                style: AfTypography.bodyMedium.copyWith(
-                                  color: AfColors.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              _MarqueeText(
-                                text: track.artistName,
-                                style: AfTypography.bodySmall.copyWith(
-                                  color: AfColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        _MiniTransportButton(
-                          icon: const Icon(
-                            LucideIcons.skipBack,
-                            size: 24,
-                            color: AfColors.textPrimary,
-                          ),
-                          onTap: widget.onSkipPrevious,
-                        ),
-                        PressScale(
-                          ensureHitTarget: false,
-                          onTap: widget.onPlayPause,
-                          child: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: isBuffering
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.0,
-                                        color: Colors.black,
-                                      ),
-                                    )
-                                  : Icon(
-                                      isPlaying
-                                          ? LucideIcons.pause
-                                          : LucideIcons.play,
-                                      color: Colors.black,
-                                      size: 24,
+                        padding: const EdgeInsets.only(left: 4, right: AfSpacing.s8),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: _ReactiveProgressRing(
+                                track: track,
+                                child: Hero(
+                                  tag: 'now-playing-artwork',
+                                  child: ClipRRect(
+                                    borderRadius: AfRadii.borderPill,
+                                    child: Artwork(
+                                      url: artworkUri?.toString() ?? track.imageUrl,
+                                      size: 44,
                                     ),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: AfSpacing.s12),
+                            Expanded(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _MarqueeText(
+                                    text: track.title,
+                                    style: AfTypography.bodyMedium.copyWith(
+                                      color: AfColors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  _MarqueeText(
+                                    text: track.artistName,
+                                    style: AfTypography.bodySmall.copyWith(
+                                      color: AfColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            _MiniTransportButton(
+                              icon: const Icon(
+                                LucideIcons.skipBack,
+                                size: 24,
+                                color: AfColors.textPrimary,
+                              ),
+                              onTap: widget.onSkipPrevious,
+                            ),
+                            PressScale(
+                              ensureHitTarget: false,
+                              onTap: widget.onPlayPause,
+                              child: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: isBuffering
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.0,
+                                            color: Colors.black,
+                                          ),
+                                        )
+                                      : Icon(
+                                          isPlaying ? LucideIcons.pause : LucideIcons.play,
+                                          color: Colors.black,
+                                          size: 24,
+                                        ),
+                                ),
+                              ),
+                            ),
+                            _MiniTransportButton(
+                              icon: const Icon(
+                                LucideIcons.skipForward,
+                                size: 24,
+                                color: AfColors.textPrimary,
+                              ),
+                              onTap: widget.onSkipNext,
+                            ),
+                          ],
                         ),
-                        _MiniTransportButton(
-                          icon: const Icon(
-                            LucideIcons.skipForward,
-                            size: 24,
-                            color: AfColors.textPrimary,
-                          ),
-                          onTap: widget.onSkipNext,
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -220,65 +261,31 @@ class _MiniTransportButton extends StatelessWidget {
   }
 }
 
-class _ReactiveProgressRing extends ConsumerStatefulWidget {
+class _ReactiveProgressRing extends ConsumerWidget {
   const _ReactiveProgressRing({required this.track, required this.child});
 
   final AfTrack track;
   final Widget child;
 
   @override
-  ConsumerState<_ReactiveProgressRing> createState() =>
-      _ReactiveProgressRingState();
-}
-
-class _ReactiveProgressRingState extends ConsumerState<_ReactiveProgressRing> {
-  late final ValueNotifier<Duration> _positionNotifier;
-  StreamSubscription<Duration>? _positionSub;
-
-  @override
-  void initState() {
-    super.initState();
-    _positionNotifier = ValueNotifier(Duration.zero);
-    final svc = ref.read(playerServiceProvider);
-    _positionSub = svc.positionStream.listen((pos) {
-      _positionNotifier.value = pos;
-    });
-  }
-
-  @override
-  void dispose() {
-    _positionSub?.cancel();
-    _positionNotifier.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final position = ref.watch(positionStreamProvider);
     final mpvDuration = ref.watch(durationStreamProvider);
-    final duration = mpvDuration > Duration.zero
-        ? mpvDuration
-        : widget.track.duration;
+    final duration = mpvDuration > Duration.zero ? mpvDuration : track.duration;
+    final ringProgress = duration.inMilliseconds == 0
+        ? 0.0
+        : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
     final energyColor = ref.watch(currentSpectralProvider).energy;
+
     final isBuffering = ref.watch(isBufferingProvider);
 
-    return ValueListenableBuilder<Duration>(
-      valueListenable: _positionNotifier,
-      builder: (context, position, _) {
-        final ringProgress = duration.inMilliseconds == 0
-            ? 0.0
-            : (position.inMilliseconds / duration.inMilliseconds).clamp(
-                0.0,
-                1.0,
-              );
-        return CircularProgressRing(
-          progress: ringProgress,
-          progressColor: energyColor,
-          size: 48,
-          strokeWidth: 2,
-          isIndeterminate: isBuffering,
-          child: widget.child,
-        );
-      },
+    return CircularProgressRing(
+      progress: ringProgress,
+      progressColor: energyColor,
+      size: 48,
+      strokeWidth: 2,
+      isIndeterminate: isBuffering,
+      child: child,
     );
   }
 }

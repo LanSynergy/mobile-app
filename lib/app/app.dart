@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/providers.dart';
 import '../utils/log.dart';
-import '../widgets/global_mini_player_overlay.dart';
 import 'router.dart';
 import 'theme.dart';
 
@@ -48,12 +47,7 @@ class AetherfinApp extends ConsumerWidget {
         );
         return MediaQuery(
           data: mq.copyWith(textScaler: clamped),
-          child: Stack(
-            children: [
-              child ?? const SizedBox.shrink(),
-              const GlobalMiniPlayerOverlay(),
-            ],
-          ),
+          child: child ?? const SizedBox.shrink(),
         );
       },
     );
