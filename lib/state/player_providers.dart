@@ -5,6 +5,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop, MpvPlayerError;
 
 import '../core/audio/af_loop_mode.dart';
 import '../core/audio/jellyfin_playback_reporter.dart';
+import '../core/audio/lastfm_playback_reporter.dart';
 import '../core/audio/player_service.dart';
 import '../core/audio/shuffle_mode.dart';
 import '../core/backend/music_backend.dart';
@@ -27,6 +28,7 @@ class _WireDisposables {
   StreamSubscription<bool>? bufferingSub;
   StreamSubscription<bool>? pausedForCacheSub;
   JellyfinPlaybackReporter? reporter;
+  LastFmPlaybackReporter? lastfmReporter;
 
   Future<void> dispose() async {
     saveQueueDebounce?.cancel();
@@ -36,6 +38,7 @@ class _WireDisposables {
     await bufferingSub?.cancel();
     await pausedForCacheSub?.cancel();
     await reporter?.dispose();
+    await lastfmReporter?.dispose();
   }
 }
 
@@ -278,6 +281,12 @@ void _wireInfrastructure(Ref ref, AfPlayerService svc, _WireDisposables d) {
     svc,
     () => ref.read(musicBackendProvider),
     ref.read(appDatabaseProvider),
+  );
+
+  d.lastfmReporter = LastFmPlaybackReporter(
+    svc,
+    () => ref.read(lastFmClientProvider),
+    () => ref.read(lastfmScrobbleEnabledProvider),
   );
 
   unawaited(svc.configureSpectrum());

@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
     show Cache, Format, Gapless, ReplayGain, ReplayGainSettings;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/audio/offline_cache_service.dart';
 import '../../core/audio/player_settings_store.dart';
+import '../../core/lastfm/lastfm_client.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/af_dialog.dart';
@@ -679,4 +681,263 @@ void showAppIconDialog(BuildContext context, WidgetRef ref) {
       ],
     ),
   );
+}
+
+void showLastFmApiConfigDialog(BuildContext context, WidgetRef ref) {
+  final apiKeyController = TextEditingController(
+    text: ref.read(lastfmApiKeyProvider),
+  );
+  final apiSecretController = TextEditingController(
+    text: ref.read(lastfmApiSecretProvider),
+  );
+
+  showBlurDialog(
+    context: context,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Last.fm API Credentials', style: AfTypography.titleMedium),
+        const SizedBox(height: AfSpacing.s12),
+        Text(
+          'To enable Last.fm scrobbling, you need your own API credentials.',
+          style: AfTypography.bodyMedium,
+        ),
+        const SizedBox(height: AfSpacing.s8),
+        InkWell(
+          onTap: () => launchUrl(
+            Uri.parse('https://www.last.fm/api/account/create'),
+            mode: LaunchMode.externalApplication,
+          ),
+          child: Text(
+            'Create a developer account and register your API key at last.fm/api/account/create',
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.indigo400,
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
+        const SizedBox(height: AfSpacing.s16),
+        TextField(
+          controller: apiKeyController,
+          decoration: const InputDecoration(
+            labelText: 'API Key',
+            border: OutlineInputBorder(),
+          ),
+          style: AfTypography.bodyMedium,
+        ),
+        const SizedBox(height: AfSpacing.s12),
+        TextField(
+          controller: apiSecretController,
+          decoration: const InputDecoration(
+            labelText: 'API Secret',
+            border: OutlineInputBorder(),
+          ),
+          style: AfTypography.bodyMedium,
+        ),
+        const SizedBox(height: AfSpacing.s24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final key = apiKeyController.text.trim();
+                final secret = apiSecretController.text.trim();
+                ref.read(lastfmApiKeyProvider.notifier).state = key;
+                ref.read(lastfmApiSecretProvider.notifier).state = secret;
+                unawaited(PlayerSettingsStore.saveLastFmApiKey(key));
+                unawaited(PlayerSettingsStore.saveLastFmApiSecret(secret));
+                Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+void showLastFmLoginDialog(BuildContext context, WidgetRef ref) {
+  showBlurDialog(context: context, child: const LastFmLoginDialogContent());
+}
+
+class LastFmLoginDialogContent extends ConsumerStatefulWidget {
+  const LastFmLoginDialogContent({super.key});
+
+  @override
+  ConsumerState<LastFmLoginDialogContent> createState() =>
+      _LastFmLoginDialogContentState();
+}
+
+class _LastFmLoginDialogContentState
+    extends ConsumerState<LastFmLoginDialogContent> {
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _loading = false;
+  String? _error;
+
+  Future<void> _login() async {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+    if (username.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Please enter both username and password.');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    final apiKey = ref.read(lastfmApiKeyProvider);
+    final apiSecret = ref.read(lastfmApiSecretProvider);
+
+    if (apiKey.isEmpty || apiSecret.isEmpty) {
+      setState(() {
+        _loading = false;
+        _error = 'API credentials are missing.';
+      });
+      return;
+    }
+
+    try {
+      final client = LastFmClient(apiKey: apiKey, apiSecret: apiSecret);
+      final sessionKey = await client.authenticate(username, password);
+
+      ref.read(lastfmSessionKeyProvider.notifier).state = sessionKey;
+      ref.read(lastfmUsernameProvider.notifier).state = username;
+      unawaited(PlayerSettingsStore.saveLastFmSessionKey(sessionKey));
+      unawaited(PlayerSettingsStore.saveLastFmUsername(username));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Connected to Last.fm as $username!')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = e.toString().replaceAll('Exception: ', '');
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Link Last.fm Account', style: AfTypography.titleMedium),
+        const SizedBox(height: AfSpacing.s16),
+        TextField(
+          controller: _usernameController,
+          decoration: const InputDecoration(
+            labelText: 'Last.fm Username',
+            border: OutlineInputBorder(),
+          ),
+          style: AfTypography.bodyMedium,
+          autocorrect: false,
+          enableSuggestions: false,
+        ),
+        const SizedBox(height: AfSpacing.s12),
+        TextField(
+          controller: _passwordController,
+          decoration: const InputDecoration(
+            labelText: 'Password',
+            border: OutlineInputBorder(),
+          ),
+          style: AfTypography.bodyMedium,
+          obscureText: true,
+          autocorrect: false,
+          enableSuggestions: false,
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: AfSpacing.s12),
+          Text(
+            _error!,
+            style: const TextStyle(color: AfColors.semanticError, fontSize: 13),
+          ),
+        ],
+        const SizedBox(height: AfSpacing.s24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              onPressed: _loading ? null : () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            const SizedBox(width: AfSpacing.s8),
+            if (_loading)
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              TextButton(onPressed: _login, child: const Text('Link Account')),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> showLastFmSignOutDialog(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final confirmed = await showBlurDialog<bool>(
+    context: context,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Disconnect Last.fm?', style: AfTypography.titleMedium),
+        const SizedBox(height: AfSpacing.s12),
+        Text(
+          'You will be signed out from Last.fm, and tracks will no longer be scrobbled.',
+          style: AfTypography.bodyMedium,
+        ),
+        const SizedBox(height: AfSpacing.s24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text(
+                'Disconnect',
+                style: TextStyle(color: AfColors.semanticError),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed == true) {
+    ref.read(lastfmSessionKeyProvider.notifier).state = '';
+    ref.read(lastfmUsernameProvider.notifier).state = '';
+    unawaited(PlayerSettingsStore.saveLastFmSessionKey(''));
+    unawaited(PlayerSettingsStore.saveLastFmUsername(''));
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Disconnected from Last.fm.')),
+      );
+    }
+  }
 }

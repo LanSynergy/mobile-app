@@ -402,9 +402,8 @@ class SettingsScreen extends ConsumerWidget {
 
             const SizedBox(height: AfSpacing.s16),
 
-            // ── Discover ────────────────────────────────────────────────
-            const SettingsLabel('Discover'),
-            const SettingsGroup(children: [LastFmApiKeyTile()]),
+            // ── Last.fm Scrobbling ──────────────────────────────────────
+            const _LastFmSettingsSection(),
 
             const SizedBox(height: AfSpacing.s16),
 
@@ -609,6 +608,71 @@ class _CacheUsageTileState extends ConsumerState<_CacheUsageTile> {
               onPressed: _cacheSize > 0 ? _clearCache : null,
               child: const Text('Clear'),
             ),
+    );
+  }
+}
+
+class _LastFmSettingsSection extends ConsumerWidget {
+  const _LastFmSettingsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final apiKey = ref.watch(lastfmApiKeyProvider);
+    final apiSecret = ref.watch(lastfmApiSecretProvider);
+    final sessionKey = ref.watch(lastfmSessionKeyProvider);
+    final username = ref.watch(lastfmUsernameProvider);
+    final scrobbleEnabled = ref.watch(lastfmScrobbleEnabledProvider);
+
+    final hasCredentials = apiKey.isNotEmpty && apiSecret.isNotEmpty;
+    final isConnected = sessionKey.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SettingsLabel('Last.fm'),
+        SettingsGroup(
+          children: [
+            SettingsTile(
+              icon: LucideIcons.key,
+              iconColor: AfColors.textSecondary,
+              title: 'API Credentials',
+              subtitle: hasCredentials
+                  ? 'Key: ${apiKey.substring(0, apiKey.length > 8 ? 8 : apiKey.length)}…'
+                  : 'Not configured — set to scrobble',
+              onTap: () => showLastFmApiConfigDialog(context, ref),
+            ),
+            if (hasCredentials && !isConnected)
+              SettingsTile(
+                icon: LucideIcons.link,
+                iconColor: AfColors.textSecondary,
+                title: 'Link Last.fm Account',
+                subtitle: 'Log in with username and password',
+                onTap: () => showLastFmLoginDialog(context, ref),
+              ),
+            if (isConnected) ...[
+              SettingsTile(
+                icon: LucideIcons.user,
+                iconColor: AfColors.textSecondary,
+                title: 'Connected as $username',
+                subtitle: 'Tap to disconnect / sign out',
+                onTap: () => showLastFmSignOutDialog(context, ref),
+              ),
+              SettingsSwitchTile(
+                icon: LucideIcons.checkSquare,
+                iconColor: AfColors.textSecondary,
+                title: 'Scrobble tracks',
+                subtitle: 'Submit played tracks to profile',
+                value: scrobbleEnabled,
+                onChanged: (v) {
+                  ref.read(lastfmScrobbleEnabledProvider.notifier).state = v;
+                  unawaited(PlayerSettingsStore.saveLastFmScrobbleEnabled(v));
+                },
+              ),
+            ],
+          ],
+        ),
+      ],
     );
   }
 }

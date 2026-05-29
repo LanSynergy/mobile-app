@@ -113,6 +113,15 @@ class PlayerSettingsStore {
   );
   static final kMaxBitrate = SettingsKey.intKey('af.max_bitrate_kbps');
   static final kShuffleEnabled = SettingsKey.boolKey('af.shuffle_enabled');
+  static final kLastFmApiKey = SettingsKey.stringKey('af.lastfm_api_key');
+  static final kLastFmApiSecret = SettingsKey.stringKey('af.lastfm_api_secret');
+  static final kLastFmSessionKey = SettingsKey.stringKey(
+    'af.lastfm_session_key',
+  );
+  static final kLastFmUsername = SettingsKey.stringKey('af.lastfm_username');
+  static final kLastFmScrobbleEnabled = SettingsKey.boolKey(
+    'af.lastfm_scrobble_enabled',
+  );
 
   // Compound keys (custom JSON serialization)
   static const kAudioEffects = 'af.audio_effects_json';
@@ -150,6 +159,19 @@ class PlayerSettingsStore {
     if (raw == null) return null;
     return desc.fromStorage(raw);
   }
+
+  // ── Last.fm Settings ──────────────────────────────────────────────────────
+
+  static Future<void> saveLastFmApiKey(String val) =>
+      saveValue(kLastFmApiKey, val);
+  static Future<void> saveLastFmApiSecret(String val) =>
+      saveValue(kLastFmApiSecret, val);
+  static Future<void> saveLastFmSessionKey(String val) =>
+      saveValue(kLastFmSessionKey, val);
+  static Future<void> saveLastFmUsername(String val) =>
+      saveValue(kLastFmUsername, val);
+  static Future<void> saveLastFmScrobbleEnabled(bool val) =>
+      saveValue(kLastFmScrobbleEnabled, val);
 
   // ── Setters (called from UI) ──────────────────────────────────────────────
 

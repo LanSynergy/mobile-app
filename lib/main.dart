@@ -130,6 +130,18 @@ Future<void> main() async {
         'offlineCacheEnabled=$offlineCacheEnabled maxSize=$offlineCacheMaxSize maxBitrate=$maxBitrate',
       );
 
+      // Load Last.fm settings
+      final lastfmApiKey = prefs.getString('af.lastfm_api_key') ?? '';
+      final lastfmApiSecret = prefs.getString('af.lastfm_api_secret') ?? '';
+      final lastfmSessionKey = prefs.getString('af.lastfm_session_key') ?? '';
+      final lastfmUsername = prefs.getString('af.lastfm_username') ?? '';
+      final lastfmScrobbleEnabled =
+          prefs.getBool('af.lastfm_scrobble_enabled') ?? true;
+      _boot(
+        'lastfm: key=${lastfmApiKey.isNotEmpty} secret=${lastfmApiSecret.isNotEmpty} '
+        'session=${lastfmSessionKey.isNotEmpty} user=$lastfmUsername scrobble=$lastfmScrobbleEnabled',
+      );
+
       // Resolve the app version once at boot so every HTTP client can stamp
       // its `User-Agent` and Jellyfin `Version="…"` header from a single
       // source of truth (pubspec.yaml → platform manifest → PackageInfo).
@@ -171,6 +183,13 @@ Future<void> main() async {
             (ref) => offlineCacheMaxSize,
           ),
           maxBitrateProvider.overrideWith((ref) => maxBitrate),
+          lastfmApiKeyProvider.overrideWith((ref) => lastfmApiKey),
+          lastfmApiSecretProvider.overrideWith((ref) => lastfmApiSecret),
+          lastfmSessionKeyProvider.overrideWith((ref) => lastfmSessionKey),
+          lastfmUsernameProvider.overrideWith((ref) => lastfmUsername),
+          lastfmScrobbleEnabledProvider.overrideWith(
+            (ref) => lastfmScrobbleEnabled,
+          ),
 
           playerServiceProvider.overrideWith((ref) {
             wirePlayerService(ref, handler);

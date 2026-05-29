@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/audio/offline_cache_service.dart';
 import '../core/jellyfin/models/server.dart';
+import '../core/lastfm/lastfm_client.dart';
 import 'local_library_providers.dart';
 
 final reducedMotionProvider = Provider.autoDispose<bool>((ref) {
@@ -40,6 +41,31 @@ final maxBitrateProvider = StateProvider<int>((ref) => 0);
 
 /// Last.fm API key for enriching smart queue candidates.
 final lastfmApiKeyProvider = StateProvider<String>((ref) => '');
+
+/// Last.fm API secret for signing scrobbles.
+final lastfmApiSecretProvider = StateProvider<String>((ref) => '');
+
+/// Last.fm session key for scrobbling.
+final lastfmSessionKeyProvider = StateProvider<String>((ref) => '');
+
+/// Last.fm username for scrobbling.
+final lastfmUsernameProvider = StateProvider<String>((ref) => '');
+
+/// Whether Last.fm scrobbling is enabled.
+final lastfmScrobbleEnabledProvider = StateProvider<bool>((ref) => true);
+
+/// Central Last.fm client provider, watching api key, secret and session key.
+final lastFmClientProvider = Provider<LastFmClient?>((ref) {
+  final apiKey = ref.watch(lastfmApiKeyProvider);
+  final apiSecret = ref.watch(lastfmApiSecretProvider);
+  final sessionKey = ref.watch(lastfmSessionKeyProvider);
+  if (apiKey.isEmpty) return null;
+  return LastFmClient(
+    apiKey: apiKey,
+    apiSecret: apiSecret.isEmpty ? null : apiSecret,
+    sessionKey: sessionKey.isEmpty ? null : sessionKey,
+  );
+});
 
 final appIconProvider = NotifierProvider<AppIconNotifier, String>(
   AppIconNotifier.new,
