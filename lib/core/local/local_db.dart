@@ -314,7 +314,8 @@ class LocalDb {
     }
 
     final placeHolders = targetDates.map((_) => '?').join(',');
-    final query = '''
+    final query =
+        '''
       SELECT track_id, title, artist, album, duration_ms, image_url, MAX(played_at) as last_played
       FROM playback_history
       WHERE date(played_at / 1000, 'unixepoch', 'localtime') IN ($placeHolders)
@@ -328,11 +329,13 @@ class LocalDb {
       Variable<int>(limit),
     ];
 
-    final rows = await db.customSelect(
-      query,
-      variables: variables,
-      readsFrom: {db.playbackHistory},
-    ).get();
+    final rows = await db
+        .customSelect(
+          query,
+          variables: variables,
+          readsFrom: {db.playbackHistory},
+        )
+        .get();
 
     final result = <AfTrack>[];
     final favIds = await favoriteIds();
@@ -365,11 +368,13 @@ class LocalDb {
     Duration threshold = const Duration(days: 14),
   }) async {
     final cutoff = DateTime.now().subtract(threshold).millisecondsSinceEpoch;
-    final rows = await db.customSelect(
-      'SELECT DISTINCT track_id FROM playback_history WHERE skipped = 1 AND played_at >= ?',
-      variables: [Variable<int>(cutoff)],
-      readsFrom: {db.playbackHistory},
-    ).get();
+    final rows = await db
+        .customSelect(
+          'SELECT DISTINCT track_id FROM playback_history WHERE skipped = 1 AND played_at >= ?',
+          variables: [Variable<int>(cutoff)],
+          readsFrom: {db.playbackHistory},
+        )
+        .get();
     return rows.map((r) => r.read<String>('track_id')).toList();
   }
 

@@ -4,7 +4,6 @@ import '../core/jellyfin/models/items.dart';
 import '../utils/log.dart';
 import 'library_providers.dart';
 import 'music_backend_providers.dart';
-import 'player_providers.dart';
 
 void _logData(String feature, {required String source, String? extra}) {
   final detail = extra == null || extra.isEmpty ? '' : ' $extra';
@@ -15,6 +14,15 @@ void _logData(String feature, {required String source, String? extra}) {
 final trackFavoriteOverridesProvider = StateProvider<Map<String, bool>>(
   (ref) => const {},
 );
+
+/// Derives the favorite state for a specific track by merging overrides
+/// (from optimistic UI) with the server/library favorite IDs.
+final isFavoriteProvider = Provider.family<bool, String>((ref, trackId) {
+  final overrides = ref.watch(trackFavoriteOverridesProvider);
+  if (overrides.containsKey(trackId)) return overrides[trackId]!;
+  final favIds = ref.watch(favoriteIdsProvider);
+  return favIds.contains(trackId);
+});
 
 final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
   /// Serializer: any previous in-flight toggle must resolve before the
@@ -36,12 +44,6 @@ final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
     final overrides = ref.read(trackFavoriteOverridesProvider);
     final wasFavorite = overrides[track.id] ?? track.isFavorite;
     final next = !wasFavorite;
-    final updated = track.copyWith(isFavorite: next);
-    final current = ref.read(currentTrackProvider);
-
-    if (current?.id == track.id) {
-      ref.read(currentTrackProvider.notifier).state = updated;
-    }
     ref
         .read(trackFavoriteOverridesProvider.notifier)
         .update((s) => {...s, track.id: next});
@@ -68,9 +70,6 @@ final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
         ref.invalidate(recentlyPlayedTracksProvider);
       } catch (e, stack) {
         afLog('error', 'favoriteToggle failed', error: e, stackTrace: stack);
-        if (current?.id == track.id) {
-          ref.read(currentTrackProvider.notifier).state = track;
-        }
         ref
             .read(trackFavoriteOverridesProvider.notifier)
             .update((s) => {...s, track.id: wasFavorite});

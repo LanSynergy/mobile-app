@@ -141,19 +141,21 @@ void main() {
       ''');
 
       final db = AppDatabase.forTesting(NativeDatabase.opened(sqliteDb));
-      
+
       // Query the database to trigger open/migration
       final result = await db.select(db.playbackHistory).get();
       expect(result, isEmpty);
 
       // Verify that the skipped column was added and works
-      await db.into(db.playbackHistory).insert(
-        PlaybackHistoryCompanion.insert(
-          trackId: 'test-track-1',
-          playedAt: 123456,
-          skipped: const Value(true),
-        ),
-      );
+      await db
+          .into(db.playbackHistory)
+          .insert(
+            PlaybackHistoryCompanion.insert(
+              trackId: 'test-track-1',
+              playedAt: 123456,
+              skipped: const Value(true),
+            ),
+          );
 
       final rows = await db.select(db.playbackHistory).get();
       expect(rows.length, 1);
@@ -166,18 +168,20 @@ void main() {
       // This tests the case where we start with an empty database (or a fresh install)
       // and ensure there are no duplicate column errors.
       final db = AppDatabase.forTesting(NativeDatabase.memory());
-      
+
       // Query to trigger open/onCreate
       final result = await db.select(db.playbackHistory).get();
       expect(result, isEmpty);
 
-      await db.into(db.playbackHistory).insert(
-        PlaybackHistoryCompanion.insert(
-          trackId: 'test-track-2',
-          playedAt: 7891011,
-          skipped: const Value(false),
-        ),
-      );
+      await db
+          .into(db.playbackHistory)
+          .insert(
+            PlaybackHistoryCompanion.insert(
+              trackId: 'test-track-2',
+              playedAt: 7891011,
+              skipped: const Value(false),
+            ),
+          );
 
       final rows = await db.select(db.playbackHistory).get();
       expect(rows.length, 1);

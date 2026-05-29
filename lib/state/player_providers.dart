@@ -1,8 +1,7 @@
-import 'dart:async' show unawaited, Timer;
+import 'dart:async' show unawaited, Timer, StreamSubscription;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart'
-    show Loop, FftFrame, MpvPlayerError;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop, MpvPlayerError;
 
 import '../core/audio/af_loop_mode.dart';
 import '../core/audio/jellyfin_playback_reporter.dart';
@@ -17,8 +16,40 @@ import 'settings_providers.dart';
 import 'favorite_providers.dart';
 import '../utils/log.dart';
 
+/// Holds disposables accumulated during [wirePlayerService] wiring so each
+/// extracted function can register resources that are torn down together.
+class _WireDisposables {
+  Timer? saveQueueDebounce;
+  StreamSubscription<List<AfTrack>>? queueSub;
+  StreamSubscription<AfTrack?>? trackSub;
+  StreamSubscription<MpvPlayerError>? errorSub;
+  StreamSubscription<bool>? bufferingSub;
+  StreamSubscription<bool>? pausedForCacheSub;
+  JellyfinPlaybackReporter? reporter;
+}
+
 void wirePlayerService(Ref ref, AfPlayerService svc) {
-  // Asynchronously load the saved play queue from the backend if it exists
+  final d = _WireDisposables();
+  _wireQueueLoading(ref, svc);
+  _wireQueueSaving(ref, svc, d);
+  _wireServiceCallbacks(ref, svc);
+  _wireInfrastructure(ref, svc, d);
+
+  ref.onDispose(() async {
+    d.saveQueueDebounce?.cancel();
+    await d.queueSub?.cancel();
+    await d.trackSub?.cancel();
+    await d.errorSub?.cancel();
+    await d.bufferingSub?.cancel();
+    await d.pausedForCacheSub?.cancel();
+    await d.reporter?.dispose();
+    await svc.dispose();
+  });
+}
+
+// ── Queue loading ──────────────────────────────────────────────────────────
+
+Future<void> _wireQueueLoading(Ref ref, AfPlayerService svc) async {
   Future<void> loadSavedQueue() async {
     final backend = ref.read(musicBackendProvider);
     if (backend == null) return;
@@ -54,11 +85,20 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     unawaited(loadSavedQueue());
   }
 
-  // Save play queue to the backend on updates, debounced
-  Timer? saveQueueDebounce;
+  // Load saved queue when the user signs in later
+  ref.listen<MusicBackend?>(musicBackendProvider, (prev, next) {
+    if (prev == null && next != null) {
+      unawaited(loadSavedQueue());
+    }
+  });
+}
+
+// ── Queue saving ───────────────────────────────────────────────────────────
+
+void _wireQueueSaving(Ref ref, AfPlayerService svc, _WireDisposables d) {
   void triggerSaveQueue() {
-    saveQueueDebounce?.cancel();
-    saveQueueDebounce = Timer(const Duration(milliseconds: 1500), () async {
+    d.saveQueueDebounce?.cancel();
+    d.saveQueueDebounce = Timer(const Duration(milliseconds: 1500), () async {
       final backend = ref.read(musicBackendProvider);
       if (backend == null) return;
 
@@ -81,9 +121,13 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     });
   }
 
-  final queueSub = svc.queueStream.listen((_) => triggerSaveQueue());
-  final trackSub = svc.currentTrackStream.listen((_) => triggerSaveQueue());
+  d.queueSub = svc.queueStream.listen((_) => triggerSaveQueue());
+  d.trackSub = svc.currentTrackStream.listen((_) => triggerSaveQueue());
+}
 
+// ── Service callbacks ──────────────────────────────────────────────────────
+
+void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
   svc.onTrackChanged = (track) {
     ref.read(currentTrackProvider.notifier).state = track;
     ref.read(currentArtworkUriProvider.notifier).state = track != null
@@ -142,7 +186,9 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
       const targetSize = 20;
       final results = <AfTrack>[];
       final localLib = ref.read(localLibraryProvider);
-      final skippedIds = await localLib.db.getRecentlySkippedTrackIds().catchError((_) => <String>[]);
+      final skippedIds = await localLib.db
+          .getRecentlySkippedTrackIds()
+          .catchError((_) => <String>[]);
       final seenIds = Set<String>.from(existingIds)..addAll(skippedIds);
 
       // 1. Initial similar mix query
@@ -155,12 +201,14 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
       }
 
       // 2. Similarity Propagation (Graph Walk)
-      // If we don't have enough tracks, walk the graph of recommendations using the last added track
       int lastLength = results.length;
       for (int step = 0; step < 3 && results.length < targetSize; step++) {
         final nextSeed = results.isNotEmpty ? results.last : lastTrack;
         try {
-          final nextMix = await backend.instantMix(nextSeed.id, limit: targetSize);
+          final nextMix = await backend.instantMix(
+            nextSeed.id,
+            limit: targetSize,
+          );
           for (final t in nextMix) {
             if (results.length >= targetSize) break;
             if (seenIds.add(t.id)) {
@@ -168,11 +216,9 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
             }
           }
         } catch (_) {
-          break; // Stop propagation on error
+          break;
         }
-        if (results.length == lastLength) {
-          break; // No new tracks added
-        }
+        if (results.length == lastLength) break;
         lastLength = results.length;
       }
 
@@ -180,9 +226,14 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
       if (results.length < targetSize) {
         final artistId = lastTrack.artistId;
         final artistName = lastTrack.artistName;
-        if (artistId != null && artistId.isNotEmpty && !_isGenericArtist(artistName)) {
+        if (artistId != null &&
+            artistId.isNotEmpty &&
+            !_isGenericArtist(artistName)) {
           try {
-            final topTracks = await backend.artistTopTracks(artistId, limit: targetSize);
+            final topTracks = await backend.artistTopTracks(
+              artistId,
+              limit: targetSize,
+            );
             for (final t in topTracks) {
               if (results.length >= targetSize) break;
               if (seenIds.add(t.id)) {
@@ -202,7 +253,6 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
             final cleanArtistName = artistName.trim().toLowerCase();
             for (final t in searchRes.tracks) {
               if (results.length >= targetSize) break;
-              // Strict filtering to ensure only tracks by the actual artist are added
               if (t.artistName.trim().toLowerCase() == cleanArtistName) {
                 if (seenIds.add(t.id)) {
                   results.add(t);
@@ -217,7 +267,9 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
       if (results.length < targetSize) {
         final albumId = lastTrack.albumId;
         final albumName = lastTrack.albumName;
-        if (albumId != null && albumId.isNotEmpty && !_isGenericAlbum(albumName)) {
+        if (albumId != null &&
+            albumId.isNotEmpty &&
+            !_isGenericAlbum(albumName)) {
           try {
             final albumData = await backend.album(albumId);
             if (albumData != null) {
@@ -243,49 +295,41 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
       return const <AfTrack>[];
     }
   };
+}
 
+// ── Infrastructure ─────────────────────────────────────────────────────────
+
+void _wireInfrastructure(Ref ref, AfPlayerService svc, _WireDisposables d) {
   _startPositionPolling(ref, svc);
 
-  final errorSub = svc.errorStream.listen((error) {
+  d.errorSub = svc.errorStream.listen((error) {
     ref.read(playbackErrorProvider.notifier).state = error;
   });
- 
+
   void updateBuffering() {
     ref.read(playerIsBufferingProvider.notifier).state =
         svc.isBuffering || svc.isPausedForCache;
   }
 
-  final bufferingSub = svc.bufferingStream.listen((_) => updateBuffering());
-  final pausedForCacheSub =
-      svc.pausedForCacheStream.listen((_) => updateBuffering());
- 
-  final reporter = JellyfinPlaybackReporter(
+  d.bufferingSub = svc.bufferingStream.listen((_) => updateBuffering());
+  d.pausedForCacheSub = svc.pausedForCacheStream.listen(
+    (_) => updateBuffering(),
+  );
+
+  d.reporter = JellyfinPlaybackReporter(
     svc,
     () => ref.read(musicBackendProvider),
     ref.read(appDatabaseProvider),
   );
- 
+
   unawaited(svc.configureSpectrum());
- 
+
   ref.listen<MusicBackend?>(musicBackendProvider, (prev, next) {
     if (prev != null && next == null) {
-      reporter.requestStopOnDispose();
-      unawaited(reporter.dispose());
-    } else if (prev == null && next != null) {
-      // User signed in or backend loaded, load the saved queue from server
-      unawaited(loadSavedQueue());
+      d.reporter?.requestStopOnDispose();
+      unawaited(d.reporter?.dispose());
+      d.reporter = null;
     }
-  });
- 
-  ref.onDispose(() async {
-    saveQueueDebounce?.cancel();
-    await queueSub.cancel();
-    await trackSub.cancel();
-    await errorSub.cancel();
-    await bufferingSub.cancel();
-    await pausedForCacheSub.cancel();
-    await reporter.dispose();
-    await svc.dispose();
   });
 }
 
@@ -319,7 +363,15 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
     disposed = true;
   });
 
+  Duration? lastWrittenPosition;
+
   final posSub = svc.positionStream.listen((pos) {
+    if (disposed) return;
+    // Dedup: skip writes when position hasn't changed. mpv emits at
+    // ~30 Hz but consecutive ticks often differ by <16ms, which is
+    // below visual significance (<1% of a 250dp progress bar pixel).
+    if (pos == lastWrittenPosition) return;
+    lastWrittenPosition = pos;
     ref.read(positionStreamProvider.notifier).state = pos;
   });
 
@@ -455,11 +507,6 @@ final playbackSpeedProvider = StreamProvider.autoDispose<double>((ref) {
   });
 });
 
-final fftSpectrumProvider = StreamProvider.autoDispose<FftFrame>((ref) {
-  final svc = ref.watch(playerServiceProvider);
-  return svc.spectrumStream;
-});
-
 final currentTrackProvider = StateProvider<AfTrack?>((ref) => null);
 final currentArtworkUriProvider = StateProvider<Uri?>((ref) => null);
 final mpvLoadedTrackIdProvider = StateProvider<String?>((ref) => null);
@@ -504,7 +551,5 @@ bool _isGenericArtist(String name) {
 
 bool _isGenericAlbum(String name) {
   final clean = name.trim().toLowerCase();
-  return clean.isEmpty ||
-      clean == 'unknown' ||
-      clean == 'unknown album';
+  return clean.isEmpty || clean == 'unknown' || clean == 'unknown album';
 }

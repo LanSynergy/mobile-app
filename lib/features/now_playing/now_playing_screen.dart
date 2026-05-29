@@ -337,6 +337,7 @@ class _MetadataRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isFav = ref.watch(isFavoriteProvider(track.id));
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -372,15 +373,11 @@ class _MetadataRow extends ConsumerWidget {
         ),
         IconButton(
           icon: Icon(
-            track.isFavorite ? LucideIcons.heart : LucideIcons.heart,
-            color: track.isFavorite
-                ? AfColors.semanticError
-                : AfColors.textPrimary,
+            isFav ? LucideIcons.heart : LucideIcons.heart,
+            color: isFav ? AfColors.semanticError : AfColors.textPrimary,
             size: 24,
           ),
-          tooltip: track.isFavorite
-              ? 'Remove from favorites'
-              : 'Add to favorites',
+          tooltip: isFav ? 'Remove from favorites' : 'Add to favorites',
           onPressed: () async {
             try {
               await ref.read(favoriteToggleProvider)(track);

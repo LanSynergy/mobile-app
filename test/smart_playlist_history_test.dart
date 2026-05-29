@@ -17,8 +17,11 @@ import 'package:aetherfin/state/providers.dart';
 import 'package:aetherfin/core/jellyfin/models/items.dart';
 
 class MockPlayerService extends Mock implements AfPlayerService {}
+
 class MockMusicBackend extends Mock implements MusicBackend {}
-class MockQueueHistoryRepository extends Mock implements QueueHistoryRepository {}
+
+class MockQueueHistoryRepository extends Mock
+    implements QueueHistoryRepository {}
 
 void main() {
   setUpAll(() {
@@ -65,28 +68,42 @@ void main() {
       // track-1 played twice (not skipped)
       // track-2 played once but skipped, played once not skipped
       final appDb = db.db;
-      await appDb.into(appDb.playbackHistory).insert(
+      await appDb
+          .into(appDb.playbackHistory)
+          .insert(
             PlaybackHistoryCompanion.insert(
               trackId: 'track-1',
-              playedAt: DateTime.now().subtract(const Duration(days: 5)).millisecondsSinceEpoch,
+              playedAt: DateTime.now()
+                  .subtract(const Duration(days: 5))
+                  .millisecondsSinceEpoch,
               skipped: const Value(false),
             ),
           );
-      await appDb.into(appDb.playbackHistory).insert(
+      await appDb
+          .into(appDb.playbackHistory)
+          .insert(
             PlaybackHistoryCompanion.insert(
               trackId: 'track-1',
-              playedAt: DateTime.now().subtract(const Duration(days: 2)).millisecondsSinceEpoch,
+              playedAt: DateTime.now()
+                  .subtract(const Duration(days: 2))
+                  .millisecondsSinceEpoch,
               skipped: const Value(false),
             ),
           );
-      await appDb.into(appDb.playbackHistory).insert(
+      await appDb
+          .into(appDb.playbackHistory)
+          .insert(
             PlaybackHistoryCompanion.insert(
               trackId: 'track-2',
-              playedAt: DateTime.now().subtract(const Duration(days: 1)).millisecondsSinceEpoch,
+              playedAt: DateTime.now()
+                  .subtract(const Duration(days: 1))
+                  .millisecondsSinceEpoch,
               skipped: const Value(true), // skipped
             ),
           );
-      await appDb.into(appDb.playbackHistory).insert(
+      await appDb
+          .into(appDb.playbackHistory)
+          .insert(
             PlaybackHistoryCompanion.insert(
               trackId: 'track-2',
               playedAt: DateTime.now().millisecondsSinceEpoch,
@@ -101,9 +118,7 @@ void main() {
       final playlist = SmartPlaylist(
         id: 'smart-1',
         name: 'Highly Played Pop',
-        rules: [
-          const SmartRule(field: 'playCount', operator: 'gt', value: 1),
-        ],
+        rules: [const SmartRule(field: 'playCount', operator: 'gt', value: 1)],
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -128,31 +143,51 @@ void main() {
       expect(tracks.map((t) => t.id), containsAll(['track-1', 'track-2']));
     });
 
-    test('resolveFromList resolves playCount rules correctly with history map', () {
-      final playlist = SmartPlaylist(
-        id: 'smart-3',
-        name: 'Client Side Smart',
-        rules: [
-          const SmartRule(field: 'playCount', operator: 'gt', value: 1),
-        ],
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+    test(
+      'resolveFromList resolves playCount rules correctly with history map',
+      () {
+        final playlist = SmartPlaylist(
+          id: 'smart-3',
+          name: 'Client Side Smart',
+          rules: [
+            const SmartRule(field: 'playCount', operator: 'gt', value: 1),
+          ],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
 
-      final allTracks = [
-        const AfTrack(id: 'track-1', title: 'T1', artistName: 'A1', albumName: 'AL1'),
-        const AfTrack(id: 'track-2', title: 'T2', artistName: 'A2', albumName: 'AL2'),
-      ];
+        final allTracks = [
+          const AfTrack(
+            id: 'track-1',
+            title: 'T1',
+            artistName: 'A1',
+            albumName: 'AL1',
+          ),
+          const AfTrack(
+            id: 'track-2',
+            title: 'T2',
+            artistName: 'A2',
+            albumName: 'AL2',
+          ),
+        ];
 
-      final playHistoryMap = {
-        'track-1': (playCount: 2, lastPlayed: DateTime.now().subtract(const Duration(days: 2))),
-        'track-2': (playCount: 1, lastPlayed: DateTime.now()),
-      };
+        final playHistoryMap = {
+          'track-1': (
+            playCount: 2,
+            lastPlayed: DateTime.now().subtract(const Duration(days: 2)),
+          ),
+          'track-2': (playCount: 1, lastPlayed: DateTime.now()),
+        };
 
-      final tracks = engine.resolveFromList(playlist, allTracks, playHistoryMap: playHistoryMap);
-      expect(tracks, hasLength(1));
-      expect(tracks.first.id, 'track-1');
-    });
+        final tracks = engine.resolveFromList(
+          playlist,
+          allTracks,
+          playHistoryMap: playHistoryMap,
+        );
+        expect(tracks, hasLength(1));
+        expect(tracks.first.id, 'track-1');
+      },
+    );
   });
 
   group('Skip-Filtering Autoplay recommendations', () {
@@ -160,7 +195,9 @@ void main() {
       final mockSvc = MockPlayerService();
       final mockBackend = MockMusicBackend();
       final mockHistoryRepo = MockQueueHistoryRepository();
-      final localDb = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
+      final localDb = LocalDb(
+        database: AppDatabase.forTesting(NativeDatabase.memory()),
+      );
 
       const seed = AfTrack(
         id: 'seed-track',
@@ -173,7 +210,9 @@ void main() {
 
       // Seed a skip for 'track-2' inside the database
       final appDb = localDb.db;
-      await appDb.into(appDb.playbackHistory).insert(
+      await appDb
+          .into(appDb.playbackHistory)
+          .insert(
             PlaybackHistoryCompanion.insert(
               trackId: 'track-2',
               playedAt: DateTime.now().millisecondsSinceEpoch,
@@ -183,21 +222,69 @@ void main() {
 
       when(() => mockBackend.instantMix('seed-track')).thenAnswer(
         (_) async => [
-          const AfTrack(id: 'track-1', title: 'Track 1', artistName: 'Test Artist', albumName: 'Test Album'),
-          const AfTrack(id: 'track-2', title: 'Track 2', artistName: 'Test Artist', albumName: 'Test Album'),
-          const AfTrack(id: 'track-3', title: 'Track 3', artistName: 'Test Artist', albumName: 'Test Album'),
+          const AfTrack(
+            id: 'track-1',
+            title: 'Track 1',
+            artistName: 'Test Artist',
+            albumName: 'Test Album',
+          ),
+          const AfTrack(
+            id: 'track-2',
+            title: 'Track 2',
+            artistName: 'Test Artist',
+            albumName: 'Test Album',
+          ),
+          const AfTrack(
+            id: 'track-3',
+            title: 'Track 3',
+            artistName: 'Test Artist',
+            albumName: 'Test Album',
+          ),
         ],
       );
 
       // We backfill up to 10 tracks to keep it simple, seeding extra top tracks
-      when(() => mockBackend.artistTopTracks('artist-1', limit: any(named: 'limit'))).thenAnswer(
+      when(
+        () =>
+            mockBackend.artistTopTracks('artist-1', limit: any(named: 'limit')),
+      ).thenAnswer(
         (_) async => [
-          const AfTrack(id: 'track-4', title: 'Track 4', artistName: 'Test Artist', albumName: 'Test Album'),
-          const AfTrack(id: 'track-5', title: 'Track 5', artistName: 'Test Artist', albumName: 'Test Album'),
-          const AfTrack(id: 'track-6', title: 'Track 6', artistName: 'Test Artist', albumName: 'Test Album'),
-          const AfTrack(id: 'track-7', title: 'Track 7', artistName: 'Test Artist', albumName: 'Test Album'),
-          const AfTrack(id: 'track-8', title: 'Track 8', artistName: 'Test Artist', albumName: 'Test Album'),
-          const AfTrack(id: 'track-9', title: 'Track 9', artistName: 'Test Artist', albumName: 'Test Album'),
+          const AfTrack(
+            id: 'track-4',
+            title: 'Track 4',
+            artistName: 'Test Artist',
+            albumName: 'Test Album',
+          ),
+          const AfTrack(
+            id: 'track-5',
+            title: 'Track 5',
+            artistName: 'Test Artist',
+            albumName: 'Test Album',
+          ),
+          const AfTrack(
+            id: 'track-6',
+            title: 'Track 6',
+            artistName: 'Test Artist',
+            albumName: 'Test Album',
+          ),
+          const AfTrack(
+            id: 'track-7',
+            title: 'Track 7',
+            artistName: 'Test Artist',
+            albumName: 'Test Album',
+          ),
+          const AfTrack(
+            id: 'track-8',
+            title: 'Track 8',
+            artistName: 'Test Artist',
+            albumName: 'Test Album',
+          ),
+          const AfTrack(
+            id: 'track-9',
+            title: 'Track 9',
+            artistName: 'Test Artist',
+            albumName: 'Test Album',
+          ),
         ],
       );
 

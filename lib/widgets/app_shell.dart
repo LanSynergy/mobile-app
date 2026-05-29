@@ -103,10 +103,7 @@ class AppShell extends ConsumerWidget {
     );
   }
 
-  Widget _buildScaffold(
-    BuildContext context,
-    WidgetRef ref,
-  ) {
+  Widget _buildScaffold(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,

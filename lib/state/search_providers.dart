@@ -94,7 +94,11 @@ final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((
     if (await cacheFile.exists()) {
       final raw = await cacheFile.readAsString();
       if (raw.isNotEmpty) {
-        _logData('lyrics', source: 'cache', extra: 'trackId=$trackId fromLocalCache=true');
+        _logData(
+          'lyrics',
+          source: 'cache',
+          extra: 'trackId=$trackId fromLocalCache=true',
+        );
         return parseLrc(raw);
       }
     }
@@ -121,7 +125,11 @@ final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((
   }
 
   // 3. Fallback: query LRCLib if the server doesn't have it
-  _logData('lyrics', source: 'fallback_check', extra: 'trackId=$trackId (backend yielded none, trying lrclib.net)');
+  _logData(
+    'lyrics',
+    source: 'fallback_check',
+    extra: 'trackId=$trackId (backend yielded none, trying lrclib.net)',
+  );
 
   // Try to get track details from currently playing track first to avoid loading
   AfTrack? track;
@@ -136,7 +144,11 @@ final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((
   }
 
   if (track == null) {
-    _logData('lyrics', source: 'lrclib', extra: 'trackId=$trackId (missing track metadata)');
+    _logData(
+      'lyrics',
+      source: 'lrclib',
+      extra: 'trackId=$trackId (missing track metadata)',
+    );
     return null;
   }
 
@@ -160,7 +172,11 @@ final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((
         final cacheFile = File(p.join(cacheDir.path, 'lyrics', '$trackId.lrc'));
         await cacheFile.parent.create(recursive: true);
         await cacheFile.writeAsString(rawLyrics);
-        _logData('lyrics', source: 'lrclib_write', extra: 'cached to local cache path');
+        _logData(
+          'lyrics',
+          source: 'lrclib_write',
+          extra: 'cached to local cache path',
+        );
       } catch (e) {
         afLog('error', 'Failed to write lyrics cache', error: e);
       }
@@ -168,7 +184,8 @@ final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((
       _logData(
         'lyrics',
         source: 'lrclib',
-        extra: 'trackId=$trackId lines=${parsed.lines.length} synced=${fetched.synced != null}',
+        extra:
+            'trackId=$trackId lines=${parsed.lines.length} synced=${fetched.synced != null}',
       );
       return parsed;
     }

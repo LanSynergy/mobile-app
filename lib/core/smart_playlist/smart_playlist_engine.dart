@@ -20,8 +20,12 @@ class SmartPlaylistEngine {
     final orderBy = _buildSqlOrderBy(playlist);
 
     var sql = 'SELECT * FROM tracks';
-    final hasHistoryRules = playlist.rules.any((r) => r.field == 'playCount' || r.field == 'lastPlayed') ||
-        playlist.sort == 'playCount' || playlist.sort == 'lastPlayed';
+    final hasHistoryRules =
+        playlist.rules.any(
+          (r) => r.field == 'playCount' || r.field == 'lastPlayed',
+        ) ||
+        playlist.sort == 'playCount' ||
+        playlist.sort == 'lastPlayed';
     if (hasHistoryRules) {
       sql = '''
         SELECT * FROM (
@@ -58,9 +62,12 @@ class SmartPlaylistEngine {
   List<AfTrack> resolveFromList(
     SmartPlaylist playlist,
     List<AfTrack> allTracks, {
-    Map<String, ({int playCount, DateTime? lastPlayed})> playHistoryMap = const {},
+    Map<String, ({int playCount, DateTime? lastPlayed})> playHistoryMap =
+        const {},
   }) {
-    var filtered = allTracks.where((t) => _matchesRules(t, playlist, playHistoryMap)).toList();
+    var filtered = allTracks
+        .where((t) => _matchesRules(t, playlist, playHistoryMap))
+        .toList();
     filtered = _sortTracks(filtered, playlist, playHistoryMap);
     if (playlist.limit != null && filtered.length > playlist.limit!) {
       filtered = filtered.sublist(0, playlist.limit!);

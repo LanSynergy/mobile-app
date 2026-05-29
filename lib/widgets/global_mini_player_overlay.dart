@@ -10,13 +10,20 @@ class GlobalMiniPlayerOverlay extends ConsumerStatefulWidget {
   const GlobalMiniPlayerOverlay({super.key});
 
   @override
-  ConsumerState<GlobalMiniPlayerOverlay> createState() => _GlobalMiniPlayerOverlayState();
+  ConsumerState<GlobalMiniPlayerOverlay> createState() =>
+      _GlobalMiniPlayerOverlayState();
 }
 
-class _GlobalMiniPlayerOverlayState extends ConsumerState<GlobalMiniPlayerOverlay> {
+class _GlobalMiniPlayerOverlayState
+    extends ConsumerState<GlobalMiniPlayerOverlay> {
   late final VoidCallback _routerListener;
 
-  static const _shellLocations = {'/home', '/library', '/playlists', '/profile'};
+  static const _shellLocations = {
+    '/home',
+    '/library',
+    '/playlists',
+    '/profile',
+  };
   static const _hiddenLocations = {
     '/',
     '/now-playing',
@@ -50,16 +57,21 @@ class _GlobalMiniPlayerOverlayState extends ConsumerState<GlobalMiniPlayerOverla
 
     // Determine current route location
     final routeMatchList = appRouter.routerDelegate.currentConfiguration;
-    final location = routeMatchList.isEmpty ? '/' : routeMatchList.last.matchedLocation;
+    final location = routeMatchList.isEmpty
+        ? '/'
+        : routeMatchList.last.matchedLocation;
 
     // Check if location is in hidden set or is an onboarding sub-path
-    final isHidden = _hiddenLocations.contains(location) || location.startsWith('/onboarding');
+    final isHidden =
+        _hiddenLocations.contains(location) ||
+        location.startsWith('/onboarding');
     final showMini = !isHidden && MediaQuery.of(context).viewInsets.bottom == 0;
 
     final bottomNav = MediaQuery.of(context).padding.bottom;
     final double targetBottom;
     if (_shellLocations.contains(location)) {
-      targetBottom = AfSpacing.bottomNavHeight + bottomNav + AfSpacing.miniPlayerNavGap;
+      targetBottom =
+          AfSpacing.bottomNavHeight + bottomNav + AfSpacing.miniPlayerNavGap;
     } else {
       targetBottom = bottomNav + AfSpacing.miniPlayerNavGap;
     }
@@ -95,7 +107,8 @@ class _GlobalMiniPlayerOverlayState extends ConsumerState<GlobalMiniPlayerOverla
                 }
               },
               onSkipNext: () => ref.read(playerServiceProvider).skipToNext(),
-              onSkipPrevious: () => ref.read(playerServiceProvider).skipToPrevious(),
+              onSkipPrevious: () =>
+                  ref.read(playerServiceProvider).skipToPrevious(),
               onDismiss: () => ref.read(playerServiceProvider).stopAndClear(),
             ),
           ),

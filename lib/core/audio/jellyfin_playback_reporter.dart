@@ -67,13 +67,17 @@ class JellyfinPlaybackReporter {
       final isScrobble =
           isThresholdMet || listened >= const Duration(minutes: 4);
 
-      final isSkip = !isScrobble &&
+      final isSkip =
+          !isScrobble &&
           listened >= const Duration(seconds: 2) &&
-          (listened < const Duration(seconds: 30) || (duration > Duration.zero && listened < duration * 0.35));
+          (listened < const Duration(seconds: 30) ||
+              (duration > Duration.zero && listened < duration * 0.35));
 
       if (isScrobble) {
         unawaited(
-          _db.into(_db.playbackHistory).insert(
+          _db
+              .into(_db.playbackHistory)
+              .insert(
                 PlaybackHistoryCompanion.insert(
                   trackId: previousTrack.id,
                   playedAt: DateTime.now().millisecondsSinceEpoch,
@@ -89,7 +93,9 @@ class JellyfinPlaybackReporter {
         afLog('data', 'Logged play history track=${previousTrack.id}');
       } else if (isSkip) {
         unawaited(
-          _db.into(_db.playbackHistory).insert(
+          _db
+              .into(_db.playbackHistory)
+              .insert(
                 PlaybackHistoryCompanion.insert(
                   trackId: previousTrack.id,
                   playedAt: DateTime.now().millisecondsSinceEpoch,
@@ -268,7 +274,9 @@ class JellyfinPlaybackReporter {
 
     if (isScrobble) {
       unawaited(
-        _db.into(_db.playbackHistory).insert(
+        _db
+            .into(_db.playbackHistory)
+            .insert(
               PlaybackHistoryCompanion.insert(
                 trackId: track.id,
                 playedAt: DateTime.now().millisecondsSinceEpoch,

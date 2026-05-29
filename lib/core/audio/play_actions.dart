@@ -117,17 +117,24 @@ class PlayActions {
     final future = () async {
       try {
         final localLib = ref.read(localLibraryProvider);
-        final skippedIds = await localLib.db.getRecentlySkippedTrackIds().catchError((_) => <String>[]);
+        final skippedIds = await localLib.db
+            .getRecentlySkippedTrackIds()
+            .catchError((_) => <String>[]);
         final mix = await backend.instantMix(seed.id);
-        
+
         var queue = <AfTrack>[
           for (final t in mix)
             if (t.id != seed.id && !skippedIds.contains(t.id)) t,
         ];
 
-        if (queue.length < 29) { // 29 because we already have seed in play
+        if (queue.length < 29) {
+          // 29 because we already have seed in play
           final backfillSeedQueue = <AfTrack>[seed, ...queue];
-          final backfilled = await _backfillQueue(backend, backfillSeedQueue, targetSize: 30);
+          final backfilled = await _backfillQueue(
+            backend,
+            backfillSeedQueue,
+            targetSize: 30,
+          );
           queue = backfilled.where((t) => t.id != seed.id).toList();
         }
 
@@ -149,11 +156,17 @@ class PlayActions {
                 maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate,
               );
             }
+
             await svc.appendQueue(queue, resolveStreamUrl: resolveStreamUrl);
           }
         }
       } catch (e, stack) {
-        afLog('audio', 'background instantMix/backfill failed', error: e, stackTrace: stack);
+        afLog(
+          'audio',
+          'background instantMix/backfill failed',
+          error: e,
+          stackTrace: stack,
+        );
       }
     }();
 
@@ -175,7 +188,9 @@ class PlayActions {
     final seenIds = queue.map((t) => t.id).toSet();
     try {
       final localLib = ref.read(localLibraryProvider);
-      final skippedIds = await localLib.db.getRecentlySkippedTrackIds().catchError((_) => <String>[]);
+      final skippedIds = await localLib.db
+          .getRecentlySkippedTrackIds()
+          .catchError((_) => <String>[]);
       seenIds.addAll(skippedIds);
     } catch (_) {}
 
@@ -187,8 +202,13 @@ class PlayActions {
       if (queue.isEmpty) break;
       final nextSeed = queue.last;
       try {
-        final nextMix = await backend.instantMix(nextSeed.id, limit: targetSize);
-        final newTracks = nextMix.where((t) => !seenIds.contains(t.id)).toList();
+        final nextMix = await backend.instantMix(
+          nextSeed.id,
+          limit: targetSize,
+        );
+        final newTracks = nextMix
+            .where((t) => !seenIds.contains(t.id))
+            .toList();
         if (newTracks.isEmpty) {
           break; // No new tracks found, stop propagation
         }
@@ -199,7 +219,11 @@ class PlayActions {
           }
         }
       } catch (e) {
-        afLog('audio', 'Propagation step failed for track=${nextSeed.id}', error: e);
+        afLog(
+          'audio',
+          'Propagation step failed for track=${nextSeed.id}',
+          error: e,
+        );
         break; // Stop propagation on error
       }
       // If we didn't add any new tracks, stop
@@ -215,9 +239,14 @@ class PlayActions {
       final seed = queue.first; // the original seed track
       final artistId = seed.artistId;
       final artistName = seed.artistName;
-      if (artistId != null && artistId.isNotEmpty && !_isGenericArtist(artistName)) {
+      if (artistId != null &&
+          artistId.isNotEmpty &&
+          !_isGenericArtist(artistName)) {
         try {
-          final topTracks = await backend.artistTopTracks(artistId, limit: targetSize);
+          final topTracks = await backend.artistTopTracks(
+            artistId,
+            limit: targetSize,
+          );
           for (final t in topTracks) {
             if (queue.length >= targetSize) break;
             if (seenIds.add(t.id)) {
@@ -225,7 +254,11 @@ class PlayActions {
             }
           }
         } catch (e) {
-          afLog('audio', 'Artist top tracks backfill failed for artistId=$artistId', error: e);
+          afLog(
+            'audio',
+            'Artist top tracks backfill failed for artistId=$artistId',
+            error: e,
+          );
         }
       }
     }
@@ -249,7 +282,11 @@ class PlayActions {
             }
           }
         } catch (e) {
-          afLog('audio', 'Search backfill failed for artistName=$artistName', error: e);
+          afLog(
+            'audio',
+            'Search backfill failed for artistName=$artistName',
+            error: e,
+          );
         }
       }
     }
@@ -260,7 +297,9 @@ class PlayActions {
       final seed = queue.first;
       final albumId = seed.albumId;
       final albumName = seed.albumName;
-      if (albumId != null && albumId.isNotEmpty && !_isGenericAlbum(albumName)) {
+      if (albumId != null &&
+          albumId.isNotEmpty &&
+          !_isGenericAlbum(albumName)) {
         try {
           final albumData = await backend.album(albumId);
           if (albumData != null) {
@@ -272,7 +311,11 @@ class PlayActions {
             }
           }
         } catch (e) {
-          afLog('audio', 'Album backfill failed for albumId=$albumId', error: e);
+          afLog(
+            'audio',
+            'Album backfill failed for albumId=$albumId',
+            error: e,
+          );
         }
       }
     }
@@ -291,9 +334,7 @@ class PlayActions {
 
   bool _isGenericAlbum(String name) {
     final clean = name.trim().toLowerCase();
-    return clean.isEmpty ||
-        clean == 'unknown' ||
-        clean == 'unknown album';
+    return clean.isEmpty || clean == 'unknown' || clean == 'unknown album';
   }
 
   String _computeSourceLabel(List<AfTrack> tracks) {

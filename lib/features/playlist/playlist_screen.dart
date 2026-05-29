@@ -187,7 +187,8 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                   child: TrackRow(
                                     track: t,
                                     isActive: t.id == activeId,
-                                    isBuffering: t.id == activeId && isBuffering,
+                                    isBuffering:
+                                        t.id == activeId && isBuffering,
                                     activeAccent: activeAccent,
                                     onTap: () => ref
                                         .read(playActionsProvider)

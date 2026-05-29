@@ -35,32 +35,35 @@ void main() {
       expect(find.text('Start a track to see lyrics.'), findsOneWidget);
     });
 
-    testWidgets('renders loading state with CircularProgressIndicator and Fetching lyrics...', (
-      tester,
-    ) async {
-      const track = AfTrack(
-        id: 'track1',
-        title: 'Song Title',
-        artistName: 'Artist Name',
-        albumName: 'Album Name',
-        duration: Duration(minutes: 3),
-      );
+    testWidgets(
+      'renders loading state with CircularProgressIndicator and Fetching lyrics...',
+      (tester) async {
+        const track = AfTrack(
+          id: 'track1',
+          title: 'Song Title',
+          artistName: 'Artist Name',
+          albumName: 'Album Name',
+          duration: Duration(minutes: 3),
+        );
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            initialAuthProvider.overrideWithValue(null),
-            currentTrackProvider.overrideWith((ref) => track),
-            lyricsProvider('track1').overrideWith((ref) => Completer<Lrc?>().future),
-          ],
-          child: const MaterialApp(home: LyricsScreen()),
-        ),
-      );
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              initialAuthProvider.overrideWithValue(null),
+              currentTrackProvider.overrideWith((ref) => track),
+              lyricsProvider(
+                'track1',
+              ).overrideWith((ref) => Completer<Lrc?>().future),
+            ],
+            child: const MaterialApp(home: LyricsScreen()),
+          ),
+        );
 
-      expect(find.byType(LyricsSkeleton), findsOneWidget);
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      expect(find.text('Fetching lyrics...'), findsOneWidget);
-    });
+        expect(find.byType(LyricsSkeleton), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        expect(find.text('Fetching lyrics...'), findsOneWidget);
+      },
+    );
 
     testWidgets('renders missing lyrics state on server mode', (tester) async {
       final mockBackend = MockMusicBackend();

@@ -305,11 +305,7 @@ class JellyfinClient implements MusicBackend {
     await _dio.post(
       'Users/$userId/Images/Primary',
       data: bytes,
-      options: Options(
-        headers: {
-          'Content-Type': mimeType,
-        },
-      ),
+      options: Options(headers: {'Content-Type': mimeType}),
     );
   }
 

@@ -70,7 +70,9 @@ class MockPlayerStream extends Mock implements PlayerStream {}
   when(() => stream.rate).thenAnswer((_) => rateCtrl.stream);
   when(() => stream.loop).thenAnswer((_) => loopCtrl.stream);
   when(() => stream.buffering).thenAnswer((_) => bufferingCtrl.stream);
-  when(() => stream.pausedForCache).thenAnswer((_) => pausedForCacheCtrl.stream);
+  when(
+    () => stream.pausedForCache,
+  ).thenAnswer((_) => pausedForCacheCtrl.stream);
   when(() => stream.shuffle).thenAnswer((_) => shuffleCtrl.stream);
   when(() => stream.coverArt).thenAnswer((_) => coverArtCtrl.stream);
   when(() => stream.audioDevice).thenAnswer((_) => audioDeviceCtrl.stream);

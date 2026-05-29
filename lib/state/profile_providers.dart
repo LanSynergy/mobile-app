@@ -60,7 +60,8 @@ class ProfilePhotoNotifier extends StateNotifier<ProfilePhotoState> {
 
     String? networkUrl;
     if (auth != null && auth.serverType == ServerType.jellyfin) {
-      networkUrl = '${auth.server.baseUrl}/Users/${auth.userId}/Images/Primary?v=$version';
+      networkUrl =
+          '${auth.server.baseUrl}/Users/${auth.userId}/Images/Primary?v=$version';
     }
 
     state = ProfilePhotoState(
@@ -110,7 +111,8 @@ class ProfilePhotoNotifier extends StateNotifier<ProfilePhotoState> {
 
       String? networkUrl;
       if (auth != null && auth.serverType == ServerType.jellyfin) {
-        networkUrl = '${auth.server.baseUrl}/Users/${auth.userId}/Images/Primary?v=$nextVersion';
+        networkUrl =
+            '${auth.server.baseUrl}/Users/${auth.userId}/Images/Primary?v=$nextVersion';
       }
 
       state = ProfilePhotoState(
@@ -174,6 +176,9 @@ class ProfilePhotoNotifier extends StateNotifier<ProfilePhotoState> {
   }
 }
 
-final profilePhotoProvider = StateNotifierProvider.autoDispose<ProfilePhotoNotifier, ProfilePhotoState>((ref) {
-  return ProfilePhotoNotifier(ref);
-});
+final profilePhotoProvider =
+    StateNotifierProvider.autoDispose<ProfilePhotoNotifier, ProfilePhotoState>((
+      ref,
+    ) {
+      return ProfilePhotoNotifier(ref);
+    });

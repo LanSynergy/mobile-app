@@ -2,16 +2,20 @@ import 'package:dio/dio.dart';
 import '../../utils/log.dart';
 
 class LrcLibClient {
-  LrcLibClient({Dio? dio}) : _dio = dio ?? Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 5),
-      sendTimeout: const Duration(seconds: 5),
-      receiveTimeout: const Duration(seconds: 10),
-      headers: {
-        'User-Agent': 'Aetherfin Music Player (https://github.com/Aetherfin/mobile-app)',
-      },
-    ),
-  );
+  LrcLibClient({Dio? dio})
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 5),
+              sendTimeout: const Duration(seconds: 5),
+              receiveTimeout: const Duration(seconds: 10),
+              headers: {
+                'User-Agent':
+                    'Aetherfin Music Player (https://github.com/Aetherfin/mobile-app)',
+              },
+            ),
+          );
 
   final Dio _dio;
 
@@ -60,7 +64,8 @@ class LrcLibClient {
 
         final synced = raw['syncedLyrics'] as String?;
         final plain = raw['plainLyrics'] as String?;
-        if ((synced == null || synced.isEmpty) && (plain == null || plain.isEmpty)) {
+        if ((synced == null || synced.isEmpty) &&
+            (plain == null || plain.isEmpty)) {
           continue;
         }
 
@@ -93,7 +98,9 @@ class LrcLibClient {
           'lrclib.net: match found. ID=${bestMatch['id']} synced=${synced != null && synced.isNotEmpty}',
         );
         return (
-          synced: synced != null && synced.trim().isNotEmpty ? synced.trim() : null,
+          synced: synced != null && synced.trim().isNotEmpty
+              ? synced.trim()
+              : null,
           plain: plain != null && plain.trim().isNotEmpty ? plain.trim() : null,
         );
       }

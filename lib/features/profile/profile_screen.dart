@@ -87,7 +87,9 @@ class ProfileScreen extends ConsumerWidget {
                       if (image != null) {
                         final bytes = await image.readAsBytes();
                         final mimeType = image.mimeType ?? 'image/jpeg';
-                        await ref.read(profilePhotoProvider.notifier).updatePhoto(bytes, mimeType);
+                        await ref
+                            .read(profilePhotoProvider.notifier)
+                            .updatePhoto(bytes, mimeType);
                       }
                     } catch (e) {
                       if (context.mounted) {
@@ -102,7 +104,9 @@ class ProfileScreen extends ConsumerWidget {
                   },
                   onRemovePhoto: () async {
                     try {
-                      await ref.read(profilePhotoProvider.notifier).removePhoto();
+                      await ref
+                          .read(profilePhotoProvider.notifier)
+                          .removePhoto();
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -292,7 +296,9 @@ class _AvatarImagePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasPhoto = (localPath != null && File(localPath!).existsSync()) || networkUrl != null;
+    final hasPhoto =
+        (localPath != null && File(localPath!).existsSync()) ||
+        networkUrl != null;
 
     Widget avatarContent;
     if (localPath != null && File(localPath!).existsSync()) {
@@ -327,16 +333,28 @@ class _AvatarImagePicker extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     ListTile(
-                      leading: const Icon(Icons.photo_camera_outlined, color: AfColors.textPrimary),
-                      title: const Text('Take Photo', style: TextStyle(color: AfColors.textPrimary)),
+                      leading: const Icon(
+                        Icons.photo_camera_outlined,
+                        color: AfColors.textPrimary,
+                      ),
+                      title: const Text(
+                        'Take Photo',
+                        style: TextStyle(color: AfColors.textPrimary),
+                      ),
                       onTap: () {
                         Navigator.pop(context);
                         onPickPhoto(ImageSource.camera);
                       },
                     ),
                     ListTile(
-                      leading: const Icon(Icons.photo_library_outlined, color: AfColors.textPrimary),
-                      title: const Text('Choose from Gallery', style: TextStyle(color: AfColors.textPrimary)),
+                      leading: const Icon(
+                        Icons.photo_library_outlined,
+                        color: AfColors.textPrimary,
+                      ),
+                      title: const Text(
+                        'Choose from Gallery',
+                        style: TextStyle(color: AfColors.textPrimary),
+                      ),
                       onTap: () {
                         Navigator.pop(context);
                         onPickPhoto(ImageSource.gallery);
@@ -344,8 +362,14 @@ class _AvatarImagePicker extends StatelessWidget {
                     ),
                     if (hasPhoto)
                       ListTile(
-                        leading: const Icon(Icons.delete_outline, color: AfColors.semanticError),
-                        title: const Text('Remove Photo', style: TextStyle(color: AfColors.semanticError)),
+                        leading: const Icon(
+                          Icons.delete_outline,
+                          color: AfColors.semanticError,
+                        ),
+                        title: const Text(
+                          'Remove Photo',
+                          style: TextStyle(color: AfColors.semanticError),
+                        ),
                         onTap: () {
                           Navigator.pop(context);
                           onRemovePhoto();
@@ -364,14 +388,9 @@ class _AvatarImagePicker extends StatelessWidget {
             height: 96,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                color: AfColors.indigo600,
-                width: 2,
-              ),
+              border: Border.all(color: AfColors.indigo600, width: 2),
             ),
-            child: ClipOval(
-              child: avatarContent,
-            ),
+            child: ClipOval(child: avatarContent),
           ),
           if (!isUploading)
             Positioned(

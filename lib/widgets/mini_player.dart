@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -101,7 +102,10 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                         width: 1,
                       ),
                     ),
-                    padding: const EdgeInsets.only(left: 4, right: AfSpacing.s8),
+                    padding: const EdgeInsets.only(
+                      left: 4,
+                      right: AfSpacing.s8,
+                    ),
                     child: Row(
                       children: [
                         SizedBox(
@@ -172,7 +176,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                                       ),
                                     )
                                   : Icon(
-                                      isPlaying ? LucideIcons.pause : LucideIcons.play,
+                                      isPlaying
+                                          ? LucideIcons.pause
+                                          : LucideIcons.play,
                                       color: Colors.black,
                                       size: 24,
                                     ),
@@ -214,31 +220,65 @@ class _MiniTransportButton extends StatelessWidget {
   }
 }
 
-class _ReactiveProgressRing extends ConsumerWidget {
+class _ReactiveProgressRing extends ConsumerStatefulWidget {
   const _ReactiveProgressRing({required this.track, required this.child});
 
   final AfTrack track;
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final position = ref.watch(positionStreamProvider);
-    final mpvDuration = ref.watch(durationStreamProvider);
-    final duration = mpvDuration > Duration.zero ? mpvDuration : track.duration;
-    final ringProgress = duration.inMilliseconds == 0
-        ? 0.0
-        : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
-    final energyColor = ref.watch(currentSpectralProvider).energy;
+  ConsumerState<_ReactiveProgressRing> createState() =>
+      _ReactiveProgressRingState();
+}
 
+class _ReactiveProgressRingState extends ConsumerState<_ReactiveProgressRing> {
+  late final ValueNotifier<Duration> _positionNotifier;
+  StreamSubscription<Duration>? _positionSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _positionNotifier = ValueNotifier(Duration.zero);
+    final svc = ref.read(playerServiceProvider);
+    _positionSub = svc.positionStream.listen((pos) {
+      _positionNotifier.value = pos;
+    });
+  }
+
+  @override
+  void dispose() {
+    _positionSub?.cancel();
+    _positionNotifier.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mpvDuration = ref.watch(durationStreamProvider);
+    final duration = mpvDuration > Duration.zero
+        ? mpvDuration
+        : widget.track.duration;
+    final energyColor = ref.watch(currentSpectralProvider).energy;
     final isBuffering = ref.watch(isBufferingProvider);
 
-    return CircularProgressRing(
-      progress: ringProgress,
-      progressColor: energyColor,
-      size: 48,
-      strokeWidth: 2,
-      isIndeterminate: isBuffering,
-      child: child,
+    return ValueListenableBuilder<Duration>(
+      valueListenable: _positionNotifier,
+      builder: (context, position, _) {
+        final ringProgress = duration.inMilliseconds == 0
+            ? 0.0
+            : (position.inMilliseconds / duration.inMilliseconds).clamp(
+                0.0,
+                1.0,
+              );
+        return CircularProgressRing(
+          progress: ringProgress,
+          progressColor: energyColor,
+          size: 48,
+          strokeWidth: 2,
+          isIndeterminate: isBuffering,
+          child: widget.child,
+        );
+      },
     );
   }
 }

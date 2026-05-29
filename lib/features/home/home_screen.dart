@@ -192,16 +192,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Lost memories.
             lostMemoriesAsync.when(
               data: (tracks) {
-                if (tracks.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+                if (tracks.isEmpty)
+                  return const SliverToBoxAdapter(child: SizedBox.shrink());
                 return SliverList(
                   delegate: SliverChildListDelegate([
                     const SizedBox(height: AfSpacing.sectionGap),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.s16,
+                      ),
                       child: SectionHeader(
                         title: 'Lost memories',
                         actionLabel: 'Play all',
-                        onActionTap: () => ref.read(playActionsProvider).playQueue(tracks),
+                        onActionTap: () =>
+                            ref.read(playActionsProvider).playQueue(tracks),
                       ),
                     ),
                     const SizedBox(height: AfSpacing.s12),
@@ -223,8 +227,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             variant: TileVariant.album,
                             imageUrl: t.imageUrl,
                             size: 100,
-                            onTap: () => ref.read(playActionsProvider).playSingle(t),
-                            onLongPress: () => showTrackContextMenu(context, ref, t),
+                            onTap: () =>
+                                ref.read(playActionsProvider).playSingle(t),
+                            onLongPress: () =>
+                                showTrackContextMenu(context, ref, t),
                           );
                         },
                       ),
@@ -233,7 +239,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 );
               },
               loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-              error: (e, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+              error: (e, _) =>
+                  const SliverToBoxAdapter(child: SizedBox.shrink()),
             ),
 
             const SliverToBoxAdapter(

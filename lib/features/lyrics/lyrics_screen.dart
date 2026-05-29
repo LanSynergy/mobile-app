@@ -202,7 +202,9 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(AfColors.indigo400),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AfColors.indigo400,
+                        ),
                       ),
                       const SizedBox(height: AfSpacing.s16),
                       Text(
