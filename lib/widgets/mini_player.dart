@@ -20,11 +20,13 @@ class MiniPlayer extends ConsumerWidget {
     this.onPlayPause,
     this.onSkipNext,
     this.onSkipPrevious,
+    this.onDismiss,
   });
   final VoidCallback? onTap;
   final VoidCallback? onPlayPause;
   final VoidCallback? onSkipNext;
   final VoidCallback? onSkipPrevious;
+  final VoidCallback? onDismiss;
 
   static const double _swipeVelocityThreshold = 600;
 
@@ -50,14 +52,14 @@ class MiniPlayer extends ConsumerWidget {
           button: true,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onHorizontalDragEnd: (details) {
-              final vx = details.primaryVelocity ?? 0;
-              if (vx.abs() < _swipeVelocityThreshold) return;
+            onVerticalDragEnd: (details) {
+              final vy = details.primaryVelocity ?? 0;
+              if (vy.abs() < _swipeVelocityThreshold) return;
               unawaited(HapticFeedback.selectionClick());
-              if (vx < 0) {
-                onSkipNext?.call();
+              if (vy < 0) {
+                onTap?.call();
               } else {
-                onSkipPrevious?.call();
+                onDismiss?.call();
               }
             },
             child: PressScale(

@@ -96,6 +96,7 @@ class _GlobalMiniPlayerOverlayState extends ConsumerState<GlobalMiniPlayerOverla
               },
               onSkipNext: () => ref.read(playerServiceProvider).skipToNext(),
               onSkipPrevious: () => ref.read(playerServiceProvider).skipToPrevious(),
+              onDismiss: () => ref.read(playerServiceProvider).stopAndClear(),
             ),
           ),
         ),
