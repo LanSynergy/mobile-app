@@ -1175,13 +1175,14 @@ class _TransportButton extends StatelessWidget {
   }
 }
 
-class _PlayButton extends StatelessWidget {
+class _PlayButton extends ConsumerWidget {
   const _PlayButton({required this.isPlaying, required this.onTap});
   final bool isPlaying;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isBuffering = ref.watch(isBufferingProvider);
     return PressScale(
       ensureHitTarget: false,
       onTap: onTap,
@@ -1193,11 +1194,20 @@ class _PlayButton extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         child: Center(
-          child: Icon(
-            isPlaying ? LucideIcons.pause : LucideIcons.play,
-            color: Colors.black,
-            size: 28,
-          ),
+          child: isBuffering
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.black,
+                  ),
+                )
+              : Icon(
+                  isPlaying ? LucideIcons.pause : LucideIcons.play,
+                  color: Colors.black,
+                  size: 28,
+                ),
         ),
       ),
     );

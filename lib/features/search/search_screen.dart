@@ -656,6 +656,10 @@ class _SearchResults extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final activeId = ref.watch(currentTrackProvider)?.id;
+    final isBuffering = ref.watch(isBufferingProvider);
+    final activeAccent = ref.watch(currentSpectralProvider).energy;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AfSpacing.s16,
@@ -672,6 +676,9 @@ class _SearchResults extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: 4),
               child: TrackRow(
                 track: tracks[i],
+                isActive: tracks[i].id == activeId,
+                isBuffering: tracks[i].id == activeId && isBuffering,
+                activeAccent: activeAccent,
                 onTap: () => ref
                     .read(playActionsProvider)
                     .playQueue(tracks, startIndex: i),

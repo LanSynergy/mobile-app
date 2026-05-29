@@ -375,6 +375,8 @@ class _SectionBody extends ConsumerWidget {
     final mode = ref.watch(appModeProvider);
     final isLocal = mode == AppMode.local;
     final activeId = ref.watch(currentTrackProvider)?.id;
+    final isBuffering = ref.watch(isBufferingProvider);
+    final activeAccent = ref.watch(currentSpectralProvider).energy;
 
     switch (section) {
       case LibrarySection.albums:
@@ -489,6 +491,8 @@ class _SectionBody extends ConsumerWidget {
                         track: t,
                         steelBackground: true,
                         isActive: t.id == activeId,
+                        isBuffering: t.id == activeId && isBuffering,
+                        activeAccent: activeAccent,
                         onTap: () =>
                             ref.read(playActionsProvider).playSingle(t),
                         onLongPress: () =>
@@ -568,6 +572,8 @@ class _SectionBody extends ConsumerWidget {
                   track: t,
                   steelBackground: true,
                   isActive: t.id == activeId,
+                  isBuffering: t.id == activeId && isBuffering,
+                  activeAccent: activeAccent,
                   onTap: () => ref.read(playActionsProvider).playSingle(t),
                   onLongPress: () => showTrackContextMenu(context, ref, t),
                 );
@@ -743,6 +749,8 @@ class _SectionBody extends ConsumerWidget {
                           track: t,
                           steelBackground: true,
                           isActive: t.id == activeId,
+                          isBuffering: t.id == activeId && isBuffering,
+                          activeAccent: activeAccent,
                           onTap: () => ref
                               .read(playActionsProvider)
                               .playQueue(list, startIndex: i),

@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/providers.dart';
@@ -105,39 +106,61 @@ class PlayActions {
   /// On signed-out / demo builds this falls back to playing the single track
   /// because there's no server to query — surfacing an error toast would be
   /// noisier than silently playing what we have.
-  Future<void> playInstantMix(AfTrack seed) async {
+  Future<void> playInstantMix(AfTrack seed, {bool wait = false}) async {
+    // 1. Play the seed track immediately so the user doesn't wait
+    await playQueue([seed], startIndex: 0);
+
     final backend = ref.read(musicBackendProvider);
-    if (backend == null) {
-      await playQueue([seed], startIndex: 0);
-      return;
-    }
-    try {
-      final localLib = ref.read(localLibraryProvider);
-      final skippedIds = await localLib.db.getRecentlySkippedTrackIds().catchError((_) => <String>[]);
-      final mix = await backend.instantMix(seed.id);
-      // Server-generated mix sometimes excludes the seed; prepend it so
-      // the user hears the song they tapped first, then the radio.
-      var queue = <AfTrack>[
-        seed,
-        for (final t in mix)
-          if (t.id != seed.id && !skippedIds.contains(t.id)) t,
-      ];
+    if (backend == null) return;
 
-      // If the queue has fewer than 30 tracks, backfill it!
-      if (queue.length < 30) {
-        queue = await _backfillQueue(backend, queue, targetSize: 30);
+    // 2. Fetch the mix and backfill
+    final future = () async {
+      try {
+        final localLib = ref.read(localLibraryProvider);
+        final skippedIds = await localLib.db.getRecentlySkippedTrackIds().catchError((_) => <String>[]);
+        final mix = await backend.instantMix(seed.id);
+        
+        var queue = <AfTrack>[
+          for (final t in mix)
+            if (t.id != seed.id && !skippedIds.contains(t.id)) t,
+        ];
+
+        if (queue.length < 29) { // 29 because we already have seed in play
+          final backfillSeedQueue = <AfTrack>[seed, ...queue];
+          final backfilled = await _backfillQueue(backend, backfillSeedQueue, targetSize: 30);
+          queue = backfilled.where((t) => t.id != seed.id).toList();
+        }
+
+        if (queue.isNotEmpty) {
+          final svc = ref.read(playerServiceProvider);
+          // Only append if the active track is still the seed track
+          if (svc.currentTrack?.id == seed.id) {
+            final mode = ref.read(appModeProvider);
+            String resolveStreamUrl(AfTrack t) {
+              if (mode == AppMode.local) return t.id;
+              final cache = ref.read(offlineCacheServiceProvider);
+              if (ref.read(offlineCacheEnabledProvider)) {
+                final cachedUri = cache.cachedFileUri(t.id);
+                if (cachedUri != null) return cachedUri;
+              }
+              final maxBitrate = ref.read(maxBitrateProvider);
+              return backend.trackStreamUrl(
+                t.id,
+                maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate,
+              );
+            }
+            await svc.appendQueue(queue, resolveStreamUrl: resolveStreamUrl);
+          }
+        }
+      } catch (e, stack) {
+        afLog('audio', 'background instantMix/backfill failed', error: e, stackTrace: stack);
       }
+    }();
 
-      afLog(
-        'audio',
-        'instantMix seed=${seed.id} '
-            'queue=${queue.length} (from server: ${mix.length})',
-      );
-      await playQueue(queue);
-    } catch (e, stack) {
-      afLog('audio', 'instantMix failed', error: e, stackTrace: stack);
-      // Best-effort fallback: at least play the seed track.
-      await playQueue([seed], startIndex: 0);
+    if (wait) {
+      await future;
+    } else {
+      unawaited(future);
     }
   }
 

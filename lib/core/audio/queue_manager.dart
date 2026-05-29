@@ -117,6 +117,13 @@ class AfQueueManager {
     _queueController.add(_engine.tracks);
   }
 
+  void appendAll(List<AfTrack> tracks) {
+    for (final track in tracks) {
+      _engine.append(track);
+    }
+    _queueController.add(_engine.tracks);
+  }
+
   void updateTrackFavorite(String trackId, bool isFavorite) {
     _engine.updateTrackFavorite(trackId, isFavorite);
     if (_engine.currentTrack?.id == trackId) {

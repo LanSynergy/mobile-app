@@ -19,6 +19,10 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tracksAsync = ref.watch(smartPlaylistTracksProvider(playlistId));
     final playlistAsync = ref.watch(smartPlaylistsProvider);
+    final activeTrack = ref.watch(currentTrackProvider);
+    final activeId = activeTrack?.id;
+    final isBuffering = ref.watch(isBufferingProvider);
+    final activeAccent = ref.watch(currentSpectralProvider).energy;
     final playlist = playlistAsync.maybeWhen(
       data: (list) => list.where((p) => p.id == playlistId).firstOrNull,
       orElse: () => null,
@@ -186,6 +190,9 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
                       children: [
                         TrackRow(
                           track: t,
+                          isActive: t.id == activeId,
+                          isBuffering: t.id == activeId && isBuffering,
+                          activeAccent: activeAccent,
                           onTap: () => ref
                               .read(playActionsProvider)
                               .playQueue(tracks, startIndex: i),

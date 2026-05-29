@@ -55,6 +55,10 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
   @override
   Widget build(BuildContext context) {
     final detailAsync = ref.watch(albumDetailProvider(widget.albumId));
+    final activeTrack = ref.watch(currentTrackProvider);
+    final activeId = activeTrack?.id;
+    final isBuffering = ref.watch(isBufferingProvider);
+    final activeAccent = ref.watch(currentSpectralProvider).energy;
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
       body: detailAsync.when(
@@ -174,6 +178,9 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                       child: TrackRow(
                         track: tracks[i],
                         leadingNumber: i + 1,
+                        isActive: tracks[i].id == activeId,
+                        isBuffering: tracks[i].id == activeId && isBuffering,
+                        activeAccent: activeAccent,
                         onTap: () => ref
                             .read(playActionsProvider)
                             .playQueue(tracks, startIndex: i),

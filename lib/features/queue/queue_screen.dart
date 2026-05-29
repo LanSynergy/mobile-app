@@ -46,6 +46,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
   Widget build(BuildContext context) {
     final queueAsync = ref.watch(playerQueueProvider);
     final current = ref.watch(currentTrackProvider);
+    final isBuffering = ref.watch(isBufferingProvider);
 
     final liveQueue = queueAsync.maybeWhen(
       data: (q) => q,
@@ -307,6 +308,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                                       track: t,
                                       density: TrackRowDensity.compact,
                                       isActive: active,
+                                      isBuffering: active && isBuffering,
                                       showHeart: false,
                                       onTap: () {
                                         // Jump to and play the selected track

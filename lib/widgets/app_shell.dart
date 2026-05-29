@@ -4,11 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../design_tokens/tokens.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
-import '../state/providers.dart';
 import 'bottom_nav.dart';
-import 'mini_player.dart';
 
 /// App shell — wraps every authed-app tab with the persistent 4-tab
 /// bottom nav and the floating mini-player.
@@ -89,11 +86,6 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hasMini = ref.watch(hasActivePlaybackProvider);
-    final bottomNav = MediaQuery.of(context).padding.bottom;
-    final miniBottom =
-        AfSpacing.bottomNavHeight + bottomNav + AfSpacing.miniPlayerNavGap;
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -107,15 +99,13 @@ class AppShell extends ConsumerWidget {
           await SystemNavigator.pop();
         }
       },
-      child: _buildScaffold(context, ref, hasMini, miniBottom),
+      child: _buildScaffold(context, ref),
     );
   }
 
   Widget _buildScaffold(
     BuildContext context,
     WidgetRef ref,
-    bool hasMini,
-    double miniBottom,
   ) {
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -151,64 +141,6 @@ class AppShell extends ConsumerWidget {
             width: 0,
             height: 0,
             child: SleepTimerWatcher(),
-          ),
-
-          // Floating mini-player overlay.
-          // Hidden when keyboard is open to avoid overlapping input fields.
-          Positioned(
-            key: const ValueKey('mini-player'),
-            left: 0,
-            right: 0,
-            bottom: miniBottom,
-            child: AnimatedSlide(
-              offset: (hasMini && MediaQuery.of(context).viewInsets.bottom == 0)
-                  ? Offset.zero
-                  : const Offset(0, 2),
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              child: AnimatedOpacity(
-                opacity:
-                    (hasMini && MediaQuery.of(context).viewInsets.bottom == 0)
-                    ? 1.0
-                    : 0.0,
-                duration: const Duration(milliseconds: 200),
-                child: IgnorePointer(
-                  ignoring: !hasMini,
-                  child: MiniPlayer(
-                    onTap: () {
-                      final size = MediaQuery.of(context).size;
-                      final bottom = MediaQuery.of(context).padding.bottom;
-                      final miniY = size.height - (72 + bottom + 16 + 56);
-                      final rect = Rect.fromLTWH(
-                        12,
-                        miniY,
-                        size.width - 24,
-                        56,
-                      );
-                      context.push('/now-playing', extra: rect);
-                    },
-                    onPlayPause: () {
-                      // Toggle off mpv's own `playing` state — the only
-                      // signal that stays correct in the first ~250 ms
-                      // of a freshly-started track. The previous check
-                      // (`position == Duration.zero`) would silently
-                      // upgrade a tap-to-pause into a redundant play()
-                      // whenever the user caught the track at 0:00.
-                      final svc = ref.read(playerServiceProvider);
-                      if (svc.isPlaying) {
-                        svc.pause();
-                      } else {
-                        svc.play();
-                      }
-                    },
-                    onSkipNext: () =>
-                        ref.read(playerServiceProvider).skipToNext(),
-                    onSkipPrevious: () =>
-                        ref.read(playerServiceProvider).skipToPrevious(),
-                  ),
-                ),
-              ),
-            ),
           ),
         ],
       ),

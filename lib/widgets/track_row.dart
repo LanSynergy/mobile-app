@@ -39,6 +39,7 @@ class TrackRow extends StatelessWidget {
     this.showQualityChip = true,
     this.showHeart = true,
     this.steelBackground = false,
+    this.isBuffering = false,
   });
   final AfTrack track;
   final TrackRowDensity density;
@@ -50,6 +51,7 @@ class TrackRow extends StatelessWidget {
   final bool showQualityChip;
   final bool showHeart;
   final bool steelBackground;
+  final bool isBuffering;
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +72,7 @@ class TrackRow extends StatelessWidget {
     );
 
     Widget leading;
-    if (leadingNumber != null) {
+    if (leadingNumber != null && !isActive) {
       leading = SizedBox(
         width: artSize,
         height: artSize,
@@ -82,10 +84,34 @@ class TrackRow extends StatelessWidget {
         ),
       );
     } else {
-      leading = Artwork(
-        url: track.imageUrl,
-        size: artSize,
-        radius: BorderRadius.circular(AfRadii.sm),
+      leading = Stack(
+        alignment: Alignment.center,
+        children: [
+          Artwork(
+            url: track.imageUrl,
+            size: artSize,
+            radius: BorderRadius.circular(AfRadii.sm),
+          ),
+          if (isActive && isBuffering)
+            Container(
+              width: artSize,
+              height: artSize,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(AfRadii.sm),
+              ),
+              child: const Center(
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+        ],
       );
     }
 

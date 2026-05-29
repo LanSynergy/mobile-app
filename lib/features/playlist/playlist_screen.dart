@@ -38,6 +38,10 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   Widget build(BuildContext context) {
     final detailAsync = ref.watch(playlistDetailProvider(widget.playlistId));
     final backend = ref.watch(musicBackendProvider);
+    final activeTrack = ref.watch(currentTrackProvider);
+    final activeId = activeTrack?.id;
+    final isBuffering = ref.watch(isBufferingProvider);
+    final activeAccent = ref.watch(currentSpectralProvider).energy;
 
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
@@ -182,6 +186,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                 Expanded(
                                   child: TrackRow(
                                     track: t,
+                                    isActive: t.id == activeId,
+                                    isBuffering: t.id == activeId && isBuffering,
+                                    activeAccent: activeAccent,
                                     onTap: () => ref
                                         .read(playActionsProvider)
                                         .playQueue(tracks, startIndex: i),
@@ -223,6 +230,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                             children: [
                               TrackRow(
                                 track: t,
+                                isActive: t.id == activeId,
+                                isBuffering: t.id == activeId && isBuffering,
+                                activeAccent: activeAccent,
                                 onTap: () => ref
                                     .read(playActionsProvider)
                                     .playQueue(tracks, startIndex: i),

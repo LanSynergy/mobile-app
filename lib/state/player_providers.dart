@@ -103,6 +103,10 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
     ref.read(currentArtworkUriProvider.notifier).state = artUri;
   };
 
+  svc.onMpvLoadedTrackChanged = (trackId) {
+    ref.read(mpvLoadedTrackIdProvider.notifier).state = trackId;
+  };
+
   svc.onToggleFavorite = () async {
     final track = ref.read(currentTrackProvider);
     if (track != null) {
@@ -447,6 +451,27 @@ final fftSpectrumProvider = StreamProvider.autoDispose<FftFrame>((ref) {
 
 final currentTrackProvider = StateProvider<AfTrack?>((ref) => null);
 final currentArtworkUriProvider = StateProvider<Uri?>((ref) => null);
+final mpvLoadedTrackIdProvider = StateProvider<String?>((ref) => null);
+
+final bufferingStreamProvider = StreamProvider.autoDispose<bool>((ref) {
+  final svc = ref.watch(playerServiceProvider);
+  return svc.bufferingStream;
+});
+
+final isBufferingProvider = Provider<bool>((ref) {
+  final currentTrack = ref.watch(currentTrackProvider);
+  if (currentTrack == null) return false;
+
+  final loadedTrackId = ref.watch(mpvLoadedTrackIdProvider);
+  if (currentTrack.id != loadedTrackId) {
+    return true;
+  }
+
+  return ref.watch(bufferingStreamProvider).maybeWhen(
+        data: (v) => v,
+        orElse: () => false,
+      );
+});
 
 final ntimesCountProvider = StateProvider<int>((ref) => 2);
 

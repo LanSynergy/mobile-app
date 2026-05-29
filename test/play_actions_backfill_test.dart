@@ -100,6 +100,17 @@ void main() {
         playedQueue = invocation.positionalArguments[0] as List<AfTrack>;
       });
       when(() => mockSvc.isShuffleEnabled).thenReturn(false);
+      when(() => mockSvc.currentTrack).thenReturn(seed);
+
+      List<AfTrack>? appendedQueue;
+      when(
+        () => mockSvc.appendQueue(
+          any(),
+          resolveStreamUrl: any(named: 'resolveStreamUrl'),
+        ),
+      ).thenAnswer((invocation) async {
+        appendedQueue = invocation.positionalArguments[0] as List<AfTrack>;
+      });
 
       when(
         () => mockHistoryRepo.save(
@@ -123,20 +134,22 @@ void main() {
       addTearDown(container.dispose);
 
       final actions = container.read(playActionsProvider);
-      await actions.playInstantMix(seed);
+      await actions.playInstantMix(seed, wait: true);
 
       // The final queue must be composed of the seed and the backfilled tracks
       expect(playedQueue, isNotNull);
       expect(playedQueue!.any((t) => t.id == 'seed-track'), isTrue);
-      expect(playedQueue!.any((t) => t.id == 'track-1'), isTrue);
-      expect(playedQueue!.any((t) => t.id == 'track-2'), isTrue);
-      expect(playedQueue!.any((t) => t.id == 'track-3'), isTrue);
-      expect(playedQueue!.any((t) => t.id == 'track-4'), isTrue);
-      expect(playedQueue!.any((t) => t.id == 'track-5'), isTrue);
-      expect(playedQueue!.any((t) => t.id == 'track-6'), isTrue);
-      expect(playedQueue!.any((t) => t.id == 'track-7'), isTrue);
-      expect(playedQueue!.any((t) => t.id == 'track-8'), isTrue);
-      expect(playedQueue!.any((t) => t.id == 'track-9'), isFalse);
+
+      final fullQueue = [...playedQueue!, ...?appendedQueue];
+      expect(fullQueue.any((t) => t.id == 'track-1'), isTrue);
+      expect(fullQueue.any((t) => t.id == 'track-2'), isTrue);
+      expect(fullQueue.any((t) => t.id == 'track-3'), isTrue);
+      expect(fullQueue.any((t) => t.id == 'track-4'), isTrue);
+      expect(fullQueue.any((t) => t.id == 'track-5'), isTrue);
+      expect(fullQueue.any((t) => t.id == 'track-6'), isTrue);
+      expect(fullQueue.any((t) => t.id == 'track-7'), isTrue);
+      expect(fullQueue.any((t) => t.id == 'track-8'), isTrue);
+      expect(fullQueue.any((t) => t.id == 'track-9'), isFalse);
     });
   });
 }

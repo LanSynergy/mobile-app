@@ -213,6 +213,17 @@ void main() {
         playedQueue = invocation.positionalArguments[0] as List<AfTrack>;
       });
       when(() => mockSvc.isShuffleEnabled).thenReturn(false);
+      when(() => mockSvc.currentTrack).thenReturn(seed);
+
+      List<AfTrack>? appendedQueue;
+      when(
+        () => mockSvc.appendQueue(
+          any(),
+          resolveStreamUrl: any(named: 'resolveStreamUrl'),
+        ),
+      ).thenAnswer((invocation) async {
+        appendedQueue = invocation.positionalArguments[0] as List<AfTrack>;
+      });
 
       when(
         () => mockHistoryRepo.save(
@@ -238,17 +249,19 @@ void main() {
       addTearDown(localDb.close);
 
       final actions = container.read(playActionsProvider);
-      await actions.playInstantMix(seed);
+      await actions.playInstantMix(seed, wait: true);
 
       expect(playedQueue, isNotNull);
       // seed-track is included
       expect(playedQueue!.any((t) => t.id == 'seed-track'), isTrue);
+
+      final fullQueue = [...playedQueue!, ...?appendedQueue];
       // track-1 is included
-      expect(playedQueue!.any((t) => t.id == 'track-1'), isTrue);
+      expect(fullQueue.any((t) => t.id == 'track-1'), isTrue);
       // track-2 was skipped, so it must NOT be included in the queue!
-      expect(playedQueue!.any((t) => t.id == 'track-2'), isFalse);
+      expect(fullQueue.any((t) => t.id == 'track-2'), isFalse);
       // track-3 is included
-      expect(playedQueue!.any((t) => t.id == 'track-3'), isTrue);
+      expect(fullQueue.any((t) => t.id == 'track-3'), isTrue);
     });
   });
 }

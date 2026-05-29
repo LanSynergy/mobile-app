@@ -366,6 +366,8 @@ class _SongsList extends ConsumerWidget {
             child: TrackRow(
               track: t,
               isActive: t.id == activeId,
+              isBuffering: t.id == activeId && ref.watch(isBufferingProvider),
+              activeAccent: ref.watch(currentSpectralProvider).energy,
               onTap: () => ref.read(playActionsProvider).playSingle(t),
               onLongPress: () => showTrackContextMenu(context, ref, t),
             ),

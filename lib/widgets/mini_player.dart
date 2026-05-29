@@ -36,6 +36,7 @@ class MiniPlayer extends ConsumerWidget {
     final isPlaying = ref
         .watch(playingStreamProvider)
         .maybeWhen(data: (v) => v, orElse: () => false);
+    final isBuffering = ref.watch(isBufferingProvider);
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -135,11 +136,20 @@ class MiniPlayer extends ConsumerWidget {
                             shape: BoxShape.circle,
                           ),
                           child: Center(
-                            child: Icon(
-                              isPlaying ? LucideIcons.pause : LucideIcons.play,
-                              color: Colors.black,
-                              size: 24,
-                            ),
+                            child: isBuffering
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.0,
+                                      color: Colors.black,
+                                    ),
+                                  )
+                                : Icon(
+                                    isPlaying ? LucideIcons.pause : LucideIcons.play,
+                                    color: Colors.black,
+                                    size: 24,
+                                  ),
                           ),
                         ),
                       ),
@@ -193,11 +203,14 @@ class _ReactiveProgressRing extends ConsumerWidget {
         : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
     final energyColor = ref.watch(currentSpectralProvider).energy;
 
+    final isBuffering = ref.watch(isBufferingProvider);
+
     return CircularProgressRing(
       progress: ringProgress,
       progressColor: energyColor,
       size: 48,
       strokeWidth: 2,
+      isIndeterminate: isBuffering,
       child: child,
     );
   }

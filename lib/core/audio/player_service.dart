@@ -176,6 +176,7 @@ class AfPlayerService {
   }
 
   void Function(AfTrack? track)? onTrackChanged;
+  void Function(String? trackId)? onMpvLoadedTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
   Future<List<AfTrack>> Function(AfTrack lastTrack)? onGetSimilarTracks;
   VoidCallback? onToggleFavorite;
@@ -548,6 +549,8 @@ class AfPlayerService {
     _prefetchStartedForTrackId = null;
     _completedHandledForTrackId = null;
     _eofFallbackHandledTrackId = null;
+    _mpvLoadedTrackId = null;
+    onMpvLoadedTrackChanged?.call(null);
 
     if (streamHeaders.isNotEmpty) {
       _authHeaders = streamHeaders;
@@ -586,6 +589,7 @@ class AfPlayerService {
         final shouldPlay = !_userPaused;
         await _player.openAll(medias, index: 0, play: shouldPlay);
         _mpvLoadedTrackId = startTrack.id;
+        onMpvLoadedTrackChanged?.call(_mpvLoadedTrackId);
 
         _audioDeviceManager.nudge();
       } catch (e, stack) {
@@ -593,6 +597,7 @@ class AfPlayerService {
         _userPaused = true;
         _queueManager.clear();
         _mpvLoadedTrackId = null;
+        onMpvLoadedTrackChanged?.call(null);
         try {
           await _player.stop();
         } catch (err, st) {
@@ -640,6 +645,7 @@ class AfPlayerService {
     _prefetcher.cancelCurrentPrefetch();
     _prefetchStartedForTrackId = null;
     _mpvLoadedTrackId = null;
+    onMpvLoadedTrackChanged?.call(null);
     _eofFallbackHandledTrackId = null;
     try {
       await _player.stop();
@@ -662,6 +668,7 @@ class AfPlayerService {
     _prefetcher.cancelCurrentPrefetch();
     _prefetchStartedForTrackId = null;
     _mpvLoadedTrackId = null;
+    onMpvLoadedTrackChanged?.call(null);
     _eofFallbackHandledTrackId = null;
     try {
       await _player.stop();
@@ -705,6 +712,8 @@ class AfPlayerService {
     _userPaused = false;
     _completedHandledForTrackId = null;
     _eofFallbackHandledTrackId = null;
+    _mpvLoadedTrackId = null;
+    onMpvLoadedTrackChanged?.call(null);
     _queueManager.engine.advanceIndex();
     _queueManager.engine.resetRepeats();
     final nextTrack = _queueManager.currentTrack;
@@ -729,6 +738,8 @@ class AfPlayerService {
     _userPaused = false;
     _completedHandledForTrackId = null;
     _eofFallbackHandledTrackId = null;
+    _mpvLoadedTrackId = null;
+    onMpvLoadedTrackChanged?.call(null);
     _queueManager.engine.retreatIndex();
     _queueManager.engine.resetRepeats();
     final prevTrack = _queueManager.currentTrack;
@@ -753,6 +764,8 @@ class AfPlayerService {
     _userPaused = false;
     _completedHandledForTrackId = null;
     _eofFallbackHandledTrackId = null;
+    _mpvLoadedTrackId = null;
+    onMpvLoadedTrackChanged?.call(null);
     _queueManager.engine.jumpTo(index);
     _queueManager.engine.resetRepeats();
     final targetTrack = _queueManager.currentTrack;
@@ -933,6 +946,16 @@ class AfPlayerService {
     afLog('audio', 'addToQueue "${track.title}" at end');
   }
 
+  Future<void> appendQueue(
+    List<AfTrack> tracks, {
+    required String Function(AfTrack) resolveStreamUrl,
+  }) async {
+    if (_disposed || tracks.isEmpty) return;
+    _resolveStreamUrl = resolveStreamUrl;
+    _queueManager.appendAll(tracks);
+    afLog('audio', 'appendQueue added ${tracks.length} tracks at end');
+  }
+
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
@@ -995,8 +1018,10 @@ class AfPlayerService {
     try {
       await _player.openAll([Media(url)], index: 0, play: !_userPaused);
       _mpvLoadedTrackId = target.id;
+      onMpvLoadedTrackChanged?.call(_mpvLoadedTrackId);
     } catch (e) {
       _mpvLoadedTrackId = null;
+      onMpvLoadedTrackChanged?.call(null);
       rethrow;
     }
   }
