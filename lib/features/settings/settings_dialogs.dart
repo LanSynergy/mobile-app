@@ -837,6 +837,11 @@ class _LastFmLoginDialogContentState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('Link Last.fm Account', style: AfTypography.titleMedium),
+        const SizedBox(height: AfSpacing.s8),
+        Text(
+          'Your username and password are used once to request a secure session token from Last.fm. We never save or store your password.',
+          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
+        ),
         const SizedBox(height: AfSpacing.s16),
         TextField(
           controller: _usernameController,
