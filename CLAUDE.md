@@ -750,6 +750,11 @@ flutter test
 git add -A
 git commit -m "type(scope): description"
 git push
+
+# 5. Post-commit housekeeping (see §14.6)
+#   - Archive completed plan+design to thoughts/.legacy/
+#   - Prune duplicate session ledgers from thoughts/ledgers/
+#   - Update thoughts/workflow/BOOTSTRAP.md
 ```
 
 Rules:
@@ -780,6 +785,37 @@ Insert `stopAndClear()` immediately after the `stop()` method in `AfPlayerServic
 
 Design documents and plan documents MUST use relative-position anchors. The
 plans folder (`thoughts/shared/plans/`) follows this convention.
+
+### 14.2a Lean plans — no inline code
+
+Plans **describe** what to build — they do **not** contain inline code. Full code blocks (complete test files, old/new diff blocks) bloat plans to 2,000+ lines and are redundant: the implementer reads actual source files to write code.
+
+**Bad (inline code — bloats plan, redundant):**
+```
+**Test:**
+```dart
+test('parses simple #EXTM3U', () {
+  const content = '#EXTM3U\n#EXTINF:123,Test - Song\n/path.mp3\n';
+  final entries = M3uParser.parse(content);
+  expect(entries.length, 2);
+  ...
+});
+```
+```
+
+**Good (describe intent — implementer writes the code):**
+```
+**Test:** `test/m3u_parser_test.dart`
+Cover: simple #EXTM3U, entries without #EXTINF, metadata parsing,
+edge cases (empty file, malformed headers, unicode paths)
+```
+
+**Plan structure:**
+- **Dependency graph** — batch/parallel structure (unchanged)
+- **Per-task:** file path, test path, method/anchor, approach description, key edge cases — **no code**
+- **Design reference** — single line linking to the design doc
+
+Implementer agents write the actual code and tests. The plan gives them the shape, location, and edge cases to cover, not the byte-level implementation.
 
 ### 14.3 Rolling ledger consolidation
 
@@ -816,6 +852,55 @@ The format check runs BEFORE analysis in the verify gate pipeline:
 4. Only then proceed to `flutter analyze`
 
 This prevents formatting drift from accumulating across sessions.
+
+### 14.5 Session bootstrap checkpoint
+
+After every session that produces commits, update `thoughts/workflow/BOOTSTRAP.md` with a **concise status snapshot** so the next session can recover context in seconds.
+
+**Format (max 30 lines, strictly summary):**
+```markdown
+# Workflow Bootstrap — 2026-05-29
+
+## Last session
+- **HEAD:** 84f3424 — fix: resolve 7 flutter analyze issues
+- **Branch:** main
+- **State:** All 383 tests pass, analyze: 0 errors
+
+## In progress
+- (nothing — all tasks committed)
+
+## Pending plans
+- `thoughts/shared/plans/2026-05-29-streaming-architecture-fixes.md`
+
+## Known issues
+- None
+```
+
+**Rules:**
+- Always include HEAD hash + test/analyze state from the **last verify gate run**.
+- List in-progress items or "(nothing)" if clean.
+- List pending plans that haven't been fully committed yet.
+- Keep it under 30 lines — no narrative, no rationale (that goes in CONTINUITY.md).
+- If `BOOTSTRAP.md` is missing (fresh clone), the agent creates it by running `git log -1`, `flutter analyze`, and `flutter test`.
+
+### 14.6 Archive and prune policy
+
+Old artifacts accumulate fast. The active `thoughts/` directories should contain only **currently relevant** files.
+
+**Archive rules:**
+- **Plans:** Move from `thoughts/shared/plans/` to `thoughts/.legacy/` once all implementation batches for that plan are committed.
+- **Designs:** Move from `thoughts/shared/designs/` to `thoughts/.legacy/` once the plan that references it is fully committed.
+- **Session ledgers:** Prune per-session ledger files from `thoughts/ledgers/` after their entry is reflected in the rolling `CONTINUITY.md`. Keep them accessible in `.legacy/` for 30 days.
+- **Bootstrap:** Keep `BOOTSTRAP.md` at `thoughts/workflow/` (not archived — it's the entry point for next session).
+
+**The verify gate's final step** (after commit) includes:
+```
+1. If this session completed a plan: mv that plan+design → thoughts/.legacy/
+2. Prune redundant session ledgers from thoughts/ledgers/
+3. Update BOOTSTRAP.md with new HEAD and state
+```
+
+This keeps the active directory focused on current work. Historical artifacts remain one directory away for reference.
 
 ## 15. Things AI agents have gotten wrong before
 
