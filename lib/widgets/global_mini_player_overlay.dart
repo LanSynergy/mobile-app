@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../app/router.dart';
 import '../design_tokens/tokens.dart';
@@ -85,7 +84,7 @@ class _GlobalMiniPlayerOverlayState extends ConsumerState<GlobalMiniPlayerOverla
                 final size = MediaQuery.of(context).size;
                 final miniY = size.height - (72 + bottomNav + 16 + 56);
                 final rect = Rect.fromLTWH(12, miniY, size.width - 24, 56);
-                context.push('/now-playing', extra: rect);
+                appRouter.push('/now-playing', extra: rect);
               },
               onPlayPause: () {
                 final svc = ref.read(playerServiceProvider);

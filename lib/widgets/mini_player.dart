@@ -38,130 +38,133 @@ class MiniPlayer extends ConsumerWidget {
         .maybeWhen(data: (v) => v, orElse: () => false);
     final isBuffering = ref.watch(isBufferingProvider);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AfSpacing.miniPlayerSideMargin,
-      ),
-      child: Semantics(
-        label:
-            'Mini player. Now playing ${track.title} by ${track.artistName}.',
-        button: true,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragEnd: (details) {
-            final vx = details.primaryVelocity ?? 0;
-            if (vx.abs() < _swipeVelocityThreshold) return;
-            unawaited(HapticFeedback.selectionClick());
-            if (vx < 0) {
-              onSkipNext?.call();
-            } else {
-              onSkipPrevious?.call();
-            }
-          },
-          child: PressScale(
-            ensureHitTarget: false,
-            onTap: onTap,
-            child: ClipRRect(
-              borderRadius: AfRadii.borderPill,
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                child: Container(
-                  height: AfSpacing.miniPlayerHeight,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: AfRadii.borderPill,
-                    border: Border.all(
-                      color: AfColors.surfaceHigh.withValues(alpha: 0.5),
-                      width: 1,
+    return Material(
+      type: MaterialType.transparency,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AfSpacing.miniPlayerSideMargin,
+        ),
+        child: Semantics(
+          label:
+              'Mini player. Now playing ${track.title} by ${track.artistName}.',
+          button: true,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragEnd: (details) {
+              final vx = details.primaryVelocity ?? 0;
+              if (vx.abs() < _swipeVelocityThreshold) return;
+              unawaited(HapticFeedback.selectionClick());
+              if (vx < 0) {
+                onSkipNext?.call();
+              } else {
+                onSkipPrevious?.call();
+              }
+            },
+            child: PressScale(
+              ensureHitTarget: false,
+              onTap: onTap,
+              child: ClipRRect(
+                borderRadius: AfRadii.borderPill,
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                  child: Container(
+                    height: AfSpacing.miniPlayerHeight,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: AfRadii.borderPill,
+                      border: Border.all(
+                        color: AfColors.surfaceHigh.withValues(alpha: 0.5),
+                        width: 1,
+                      ),
                     ),
-                  ),
-                  padding: const EdgeInsets.only(left: 4, right: AfSpacing.s8),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 48,
-                        height: 48,
-                        child: _ReactiveProgressRing(
-                          track: track,
-                          child: Hero(
-                            tag: 'now-playing-artwork',
-                            child: ClipRRect(
-                              borderRadius: AfRadii.borderPill,
-                              child: Artwork(
-                                url: artworkUri?.toString() ?? track.imageUrl,
-                                size: 44,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AfSpacing.s12),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _MarqueeText(
-                              text: track.title,
-                              style: AfTypography.bodyMedium.copyWith(
-                                color: AfColors.textPrimary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            _MarqueeText(
-                              text: track.artistName,
-                              style: AfTypography.bodySmall.copyWith(
-                                color: AfColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _MiniTransportButton(
-                        icon: const Icon(
-                          LucideIcons.skipBack,
-                          size: 24,
-                          color: AfColors.textPrimary,
-                        ),
-                        onTap: onSkipPrevious,
-                      ),
-                      PressScale(
-                        ensureHitTarget: false,
-                        onTap: onPlayPause,
-                        child: Container(
+                    padding: const EdgeInsets.only(left: 4, right: AfSpacing.s8),
+                    child: Row(
+                      children: [
+                        SizedBox(
                           width: 48,
                           height: 48,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
+                          child: _ReactiveProgressRing(
+                            track: track,
+                            child: Hero(
+                              tag: 'now-playing-artwork',
+                              child: ClipRRect(
+                                borderRadius: AfRadii.borderPill,
+                                child: Artwork(
+                                  url: artworkUri?.toString() ?? track.imageUrl,
+                                  size: 44,
+                                ),
+                              ),
+                            ),
                           ),
-                          child: Center(
-                            child: isBuffering
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.0,
+                        ),
+                        const SizedBox(width: AfSpacing.s12),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _MarqueeText(
+                                text: track.title,
+                                style: AfTypography.bodyMedium.copyWith(
+                                  color: AfColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              _MarqueeText(
+                                text: track.artistName,
+                                style: AfTypography.bodySmall.copyWith(
+                                  color: AfColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _MiniTransportButton(
+                          icon: const Icon(
+                            LucideIcons.skipBack,
+                            size: 24,
+                            color: AfColors.textPrimary,
+                          ),
+                          onTap: onSkipPrevious,
+                        ),
+                        PressScale(
+                          ensureHitTarget: false,
+                          onTap: onPlayPause,
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: isBuffering
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.0,
+                                        color: Colors.black,
+                                      ),
+                                    )
+                                  : Icon(
+                                      isPlaying ? LucideIcons.pause : LucideIcons.play,
                                       color: Colors.black,
+                                      size: 24,
                                     ),
-                                  )
-                                : Icon(
-                                    isPlaying ? LucideIcons.pause : LucideIcons.play,
-                                    color: Colors.black,
-                                    size: 24,
-                                  ),
+                            ),
                           ),
                         ),
-                      ),
-                      _MiniTransportButton(
-                        icon: const Icon(
-                          LucideIcons.skipForward,
-                          size: 24,
-                          color: AfColors.textPrimary,
+                        _MiniTransportButton(
+                          icon: const Icon(
+                            LucideIcons.skipForward,
+                            size: 24,
+                            color: AfColors.textPrimary,
+                          ),
+                          onTap: onSkipNext,
                         ),
-                        onTap: onSkipNext,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
