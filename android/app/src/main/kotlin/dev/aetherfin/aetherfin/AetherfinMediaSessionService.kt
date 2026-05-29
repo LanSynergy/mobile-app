@@ -328,14 +328,10 @@ class AetherfinMediaSessionService : Service() {
         var actions = if (playing) {
             PlaybackStateCompat.ACTION_PLAY_PAUSE or
                     PlaybackStateCompat.ACTION_PAUSE or
-                    PlaybackStateCompat.ACTION_SEEK_TO or
-                    PlaybackStateCompat.ACTION_SET_SHUFFLE_MODE or
-                    PlaybackStateCompat.ACTION_SET_REPEAT_MODE
+                    PlaybackStateCompat.ACTION_SEEK_TO
         } else {
             PlaybackStateCompat.ACTION_PLAY_PAUSE or
-                    PlaybackStateCompat.ACTION_PLAY or
-                    PlaybackStateCompat.ACTION_SET_SHUFFLE_MODE or
-                    PlaybackStateCompat.ACTION_SET_REPEAT_MODE
+                    PlaybackStateCompat.ACTION_PLAY
         }
 
         // Always advertise prev/next so the QS layout stays stable.
