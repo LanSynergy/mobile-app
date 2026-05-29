@@ -41,13 +41,15 @@ final maxBitrateProvider = StateProvider<int>((ref) => 0);
 /// Whether smart queue autoplay is enabled.
 final autoplayEnabledProvider = StateProvider<bool>((ref) => true);
 
-final appIconProvider = StateNotifierProvider<AppIconNotifier, String>((ref) {
-  return AppIconNotifier();
-});
+final appIconProvider = NotifierProvider<AppIconNotifier, String>(
+  AppIconNotifier.new,
+);
 
-class AppIconNotifier extends StateNotifier<String> {
-  AppIconNotifier() : super('DefaultIcon') {
+class AppIconNotifier extends Notifier<String> {
+  @override
+  String build() {
     _load();
+    return 'DefaultIcon';
   }
 
   Future<void> _load() async {

@@ -41,24 +41,21 @@ final initialAuthProvider = Provider<JellyfinAuth?>((ref) {
   );
 });
 
-final authProvider = StateNotifierProvider<AuthNotifier, JellyfinAuth?>((ref) {
-  return AuthNotifier(
-    ref.watch(authStorageProvider),
-    initial: ref.watch(initialAuthProvider),
-  );
-});
+final authProvider = NotifierProvider<AuthNotifier, JellyfinAuth?>(
+  AuthNotifier.new,
+);
 
-class AuthNotifier extends StateNotifier<JellyfinAuth?> {
-  AuthNotifier(this._storage, {JellyfinAuth? initial}) : super(initial);
-  final AuthStorage _storage;
+class AuthNotifier extends Notifier<JellyfinAuth?> {
+  @override
+  JellyfinAuth? build() => ref.read(initialAuthProvider);
 
   Future<void> save(JellyfinAuth auth) async {
-    await _storage.save(auth);
+    await ref.read(authStorageProvider).save(auth);
     state = auth;
   }
 
   Future<void> clear() async {
-    await _storage.clear();
+    await ref.read(authStorageProvider).clear();
     state = null;
   }
 }

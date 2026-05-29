@@ -37,18 +37,20 @@ class PaginationState<T> {
 }
 
 /// Manages paginated track loading via [MusicBackend.allTracks()].
-class TracksNotifier extends StateNotifier<PaginationState<AfTrack>> {
-  TracksNotifier(this._ref) : super(const PaginationState<AfTrack>()) {
-    Future.microtask(loadFirstPage);
-  }
-  final Ref _ref;
+class TracksNotifier extends Notifier<PaginationState<AfTrack>> {
   static const _pageSize = 100;
+
+  @override
+  PaginationState<AfTrack> build() {
+    Future.microtask(loadFirstPage);
+    return const PaginationState<AfTrack>();
+  }
 
   /// Fetch the first page of tracks.
   Future<void> loadFirstPage() async {
     state = state.copyWith(isLoadingMore: true, error: null);
     try {
-      final backend = _ref.read(musicBackendProvider);
+      final backend = ref.read(musicBackendProvider);
       if (backend == null) {
         state = state.copyWith(isLoadingMore: false, hasMore: false);
         return;
@@ -70,7 +72,7 @@ class TracksNotifier extends StateNotifier<PaginationState<AfTrack>> {
     if (state.isLoadingMore || !state.hasMore) return;
     state = state.copyWith(isLoadingMore: true);
     try {
-      final backend = _ref.read(musicBackendProvider);
+      final backend = ref.read(musicBackendProvider);
       if (backend == null) return;
       final startIndex = (state.currentPage + 1) * _pageSize;
       final tracks = await backend.allTracks(
@@ -91,9 +93,9 @@ class TracksNotifier extends StateNotifier<PaginationState<AfTrack>> {
 /// Provider for paginated track list (replaces direct [allTracksProvider]
 /// usage in screens that support infinite scroll).
 final tracksPaginationProvider =
-    StateNotifierProvider<TracksNotifier, PaginationState<AfTrack>>((ref) {
-      return TracksNotifier(ref);
-    });
+    NotifierProvider<TracksNotifier, PaginationState<AfTrack>>(
+      TracksNotifier.new,
+    );
 
 final recentlyAddedAlbumsProvider = FutureProvider.autoDispose<List<AfAlbum>>((
   ref,

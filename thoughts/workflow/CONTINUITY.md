@@ -1,5 +1,15 @@
 # Continuity Ledger
 
+## 2026-05-29 — Workflow optimization v2: lean plans, session bootstrap, auto-prune
+*Goal:* Add 3 workflow optimizations: plans no longer embed inline code (saves 70-80% plan size), session bootstrap checkpoint file for instant context recovery, and auto-prune policy for old artifacts.
+*Commits:* 20238b2
+*Key decisions:*
+- Plans describe WHAT and WHERE but not the full code — implementer reads source
+- `thoughts/workflow/BOOTSTRAP.md` updated after every session with HEAD + test state
+- Completed plans/designs moved to `thoughts/.legacy/` after commits land
+- Per-session ledgers pruned after their entry is in CONTINUITY.md (keep 30 days in .legacy)
+- All 383 tests pass, `flutter analyze`: 0 errors, 0 warnings
+
 ## 2026-05-29 — Fix 7 flutter analyze issues (curly_braces, cancel_subscriptions, unused_import)
 *Goal:* Fix all 7 info/warning issues across 3 files: home_screen.dart (curly braces), player_providers.dart (StreamSubscription disposal), global_mini_player_overlay_test.dart (unused import).
 *Commits:* 84f3424, ac08a11
@@ -36,14 +46,3 @@
 - Added precise listen-time scrobbling with 75% threshold gate in `jellyfin_playback_reporter.dart`
 - Tracked continuous playback duration (`_listenedDuration`) in `player_service.dart`
 - All 354 tests pass, `flutter analyze`: 0 errors, 0 warnings
-
-## 2026-05-27 — Auto-Advance Overhaul (Phase 2)
-*Goal:* Transition from mpv's 2-track sliding window to a single-track player model, resolving lock-screen and control desynchronization issues.
-*Commits:* 96bef1c, <current_commit>
-*Key decisions:*
-- Switched to a single-track player model in `player_service.dart`.
-- Developed `StreamPrefetcher` using `dio` to download stream files to local storage for gapless playback support.
-- Completed the transition fade-out/fade-in blending logic in the scrubber/visualizer.
-- Added a remaining duration guard (2000ms threshold) in the `completed` stream listener to prevent premature advancing/looping during seeks or network buffering underflows.
-- Removed obsolete sync methods, cleaned up unit tests, and resolved all lint/formatting warnings.
-

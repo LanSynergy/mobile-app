@@ -40,18 +40,18 @@ class ProfilePhotoState {
   }
 }
 
-class ProfilePhotoNotifier extends StateNotifier<ProfilePhotoState> {
-  ProfilePhotoNotifier(this._ref) : super(ProfilePhotoState(version: 0)) {
+class ProfilePhotoNotifier extends Notifier<ProfilePhotoState> {
+  @override
+  ProfilePhotoState build() {
     _init();
+    return ProfilePhotoState(version: 0);
   }
-
-  final Ref _ref;
 
   String _getLocalKey(String userId) => 'af.profile_photo_local_$userId';
   String _getVersionKey(String userId) => 'af.profile_photo_version_$userId';
 
   Future<void> _init() async {
-    final auth = _ref.read(authProvider);
+    final auth = ref.read(authProvider);
     final userId = auth?.userId ?? 'local';
     final prefs = await SharedPreferences.getInstance();
 
@@ -74,12 +74,12 @@ class ProfilePhotoNotifier extends StateNotifier<ProfilePhotoState> {
   Future<void> updatePhoto(List<int> bytes, String mimeType) async {
     state = state.copyWith(isUploading: true);
     try {
-      final auth = _ref.read(authProvider);
+      final auth = ref.read(authProvider);
       final userId = auth?.userId ?? 'local';
       final prefs = await SharedPreferences.getInstance();
 
       // 1. Upload to Jellyfin if in Jellyfin mode
-      final backend = _ref.read(musicBackendProvider);
+      final backend = ref.read(musicBackendProvider);
       if (backend is JellyfinClient) {
         await backend.uploadUserAvatar(bytes, mimeType);
       }
@@ -130,12 +130,12 @@ class ProfilePhotoNotifier extends StateNotifier<ProfilePhotoState> {
   Future<void> removePhoto() async {
     state = state.copyWith(isUploading: true);
     try {
-      final auth = _ref.read(authProvider);
+      final auth = ref.read(authProvider);
       final userId = auth?.userId ?? 'local';
       final prefs = await SharedPreferences.getInstance();
 
       // 1. Delete from Jellyfin if in Jellyfin mode
-      final backend = _ref.read(musicBackendProvider);
+      final backend = ref.read(musicBackendProvider);
       if (backend is JellyfinClient) {
         try {
           await backend.deleteUserAvatar();
@@ -177,8 +177,6 @@ class ProfilePhotoNotifier extends StateNotifier<ProfilePhotoState> {
 }
 
 final profilePhotoProvider =
-    StateNotifierProvider.autoDispose<ProfilePhotoNotifier, ProfilePhotoState>((
-      ref,
-    ) {
-      return ProfilePhotoNotifier(ref);
-    });
+    NotifierProvider<ProfilePhotoNotifier, ProfilePhotoState>(
+      ProfilePhotoNotifier.new,
+    );
