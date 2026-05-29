@@ -403,7 +403,7 @@ class _HeroAlbumCarousel extends ConsumerStatefulWidget {
 
 class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
   int _currentPage = 0;
-  final PageController _pageController = PageController(viewportFraction: 0.92);
+  final PageController _pageController = PageController(viewportFraction: 1.0);
 
   @override
   void dispose() {
