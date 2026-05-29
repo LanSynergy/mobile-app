@@ -73,10 +73,9 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         if (activeIdx < 0) return;
         // Each item is ~48dp (compact row 44dp + 4dp vertical padding).
         const itemExtent = 48.0;
-        // The list has extra top padding (kToolbarHeight + s8) to
-        // clear the AppBar since extendBodyBehindAppBar is true.
-        // Account for that offset in the scroll target.
-        const topPadding = kToolbarHeight + AfSpacing.s8;
+        // No extra top padding on the list — SafeArea handles the
+        // status bar inset and the AppBar floats above body content.
+        const topPadding = 0;
         final targetOffset =
             topPadding +
             (activeIdx * itemExtent) -
@@ -188,7 +187,6 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                     child: ReorderableListView.builder(
                       scrollController: _scrollController,
                       padding: const EdgeInsets.only(
-                        top: kToolbarHeight + AfSpacing.s8,
                         bottom: AfSpacing.s8,
                         left: AfSpacing.s16,
                         right: AfSpacing.s16,

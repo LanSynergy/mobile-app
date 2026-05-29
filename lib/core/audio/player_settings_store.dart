@@ -194,9 +194,9 @@ class PlayerSettingsStore {
   static Future<void> saveDspMasterEnabled(bool enabled) async =>
       saveValue(kDspMasterEnabled, enabled);
 
-  /// Load the DSP master switch state. Defaults to true (effects active).
+  /// Load the DSP master switch state. Defaults to false (effects off).
   static Future<bool> loadDspMasterEnabled() async =>
-      (await loadValue(kDspMasterEnabled)) ?? true;
+      (await loadValue(kDspMasterEnabled)) ?? false;
 
   /// Persist the artwork pulse animation toggle.
   static Future<void> saveArtworkPulse(bool enabled) async =>
@@ -620,7 +620,7 @@ class PlayerSettingsStore {
     final fx = loadAudioEffects(p);
     if (fx != null) {
       // Only apply effects if the master switch was ON when last saved.
-      final masterEnabled = p.getBool(kDspMasterEnabled.key) ?? true;
+      final masterEnabled = p.getBool(kDspMasterEnabled.key) ?? false;
       if (masterEnabled) {
         await tryApply('audioEffects', () => svc.setAudioEffects(fx));
       }
