@@ -373,7 +373,7 @@ class AetherfinMediaSessionService : Service() {
 
         val androidRepeatMode = when (loopMode) {
             "one" -> PlaybackStateCompat.REPEAT_MODE_ONE
-            "all" -> PlaybackStateCompat.REPEAT_MODE_ALL
+            "all", "ntimes" -> PlaybackStateCompat.REPEAT_MODE_ALL
             else -> PlaybackStateCompat.REPEAT_MODE_NONE
         }
         mediaSession?.setRepeatMode(androidRepeatMode)
@@ -394,11 +394,13 @@ class AetherfinMediaSessionService : Service() {
         val repeatIcon = when (loopMode) {
             "one" -> R.drawable.ic_repeat_one
             "all" -> R.drawable.ic_repeat_all
+            "ntimes" -> R.drawable.ic_repeat_ntimes
             else -> R.drawable.ic_repeat_off
         }
         val repeatLabel = when (loopMode) {
             "one" -> "Repeat One"
             "all" -> "Repeat All"
+            "ntimes" -> "Repeat 2"
             else -> "Repeat Off"
         }
         val repeatAction = PlaybackStateCompat.CustomAction.Builder(

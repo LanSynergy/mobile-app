@@ -1470,12 +1470,16 @@ class AfPlayerService {
 
     onArtworkUpdated?.call(artUri);
 
-    // Map mpv Loop enum to the string the native side expects
-    final loopModeStr = switch (_loopMode) {
-      Loop.file => 'one',
-      Loop.playlist => 'all',
-      Loop.off => 'off',
-    };
+    // Map mpv Loop enum to the string the native side expects.
+    // forNtimes takes priority since it's a superset of the underlying
+    // mpv loop mode.
+    final loopModeStr = _queueManager.engine.isForNtimes
+        ? 'ntimes'
+        : switch (_loopMode) {
+            Loop.file => 'one',
+            Loop.playlist => 'all',
+            Loop.off => 'off',
+          };
 
     _bridge.pushState(
       MediaSessionState(
@@ -1524,12 +1528,19 @@ class AfPlayerService {
       unawaited(setAfShuffleMode(!_queueManager.isShuffleEnabled));
     };
     bridge.onToggleRepeat = () {
-      final mode = switch (_loopMode) {
-        Loop.off => Loop.playlist,
-        Loop.playlist => Loop.file,
-        Loop.file => Loop.off,
-      };
-      unawaited(setAfLoopMode(mode));
+      if (_queueManager.engine.isForNtimes) {
+        unawaited(setAfForNtimes(false));
+        unawaited(setAfLoopMode(Loop.off));
+      } else {
+        switch (_loopMode) {
+          case Loop.off:
+            unawaited(setAfLoopMode(Loop.playlist));
+          case Loop.playlist:
+            unawaited(setAfLoopMode(Loop.file));
+          case Loop.file:
+            unawaited(setAfForNtimes(true));
+        }
+      }
     };
     bridge.onDuck = (double targetVolume) {
       if (!_isDucked) {
