@@ -67,8 +67,8 @@ void main() {
       expect(rows[1].sourceId, 'album-123');
     });
 
-    test('schema version is 6', () {
-      expect(db.schemaVersion, 6);
+    test('schema version is 9', () {
+      expect(db.schemaVersion, 9);
     });
 
     test('loadRecent returns limited entries in desc order', () async {
@@ -122,9 +122,9 @@ void main() {
   });
 
   group('Database migration tests', () {
-    test('migration from v5 to v6 runs successfully', () async {
+    test('migration from v8 to v9 runs successfully', () async {
       final sqliteDb = sqlite3.openInMemory();
-      sqliteDb.execute('PRAGMA user_version = 5;');
+      sqliteDb.execute('PRAGMA user_version = 8;');
       sqliteDb.execute('''
         CREATE TABLE playback_history (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,17 +136,83 @@ void main() {
           duration_ms INTEGER,
           image_url TEXT,
           source_id TEXT,
-          source_type TEXT
+          source_type TEXT,
+          skipped INTEGER NOT NULL DEFAULT 0,
+          completion_rate REAL NOT NULL DEFAULT 0.0
         );
+      ''');
+      sqliteDb.execute('''
+        CREATE TABLE track_stats (
+          track_id TEXT NOT NULL PRIMARY KEY,
+          play_count INTEGER NOT NULL DEFAULT 0,
+          skip_count INTEGER NOT NULL DEFAULT 0,
+          avg_completion REAL NOT NULL DEFAULT 0.0,
+          last_played INTEGER
+        );
+      ''');
+      sqliteDb.execute('''
+        CREATE TABLE track_co_occurrences (
+          track_a_id TEXT NOT NULL,
+          track_b_id TEXT NOT NULL,
+          count INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (track_a_id, track_b_id)
+        );
+      ''');
+      sqliteDb.execute('''
+        CREATE TABLE tracks (id TEXT PRIMARY KEY, title TEXT NOT NULL, artist TEXT DEFAULT "", album TEXT DEFAULT "", album_artist TEXT DEFAULT "", track_number INTEGER, duration_ms INTEGER DEFAULT 0, year INTEGER, genre TEXT DEFAULT "", file_path TEXT NOT NULL, file_size INTEGER, last_modified INTEGER, cover_path TEXT, codec TEXT DEFAULT "", bitrate INTEGER, sample_rate INTEGER)
+      ''');
+      sqliteDb.execute('''
+        CREATE TABLE folders (uri TEXT PRIMARY KEY, display_path TEXT NOT NULL, added_at INTEGER NOT NULL)
       ''');
 
       final db = AppDatabase.forTesting(NativeDatabase.opened(sqliteDb));
 
-      // Query the database to trigger open/migration
-      final result = await db.select(db.playbackHistory).get();
-      expect(result, isEmpty);
+      // Verify lastfm_similar_cache table was added
+      await db
+          .into(db.lastfmSimilarCache)
+          .insert(
+            LastfmSimilarCacheCompanion.insert(
+              trackId: 'test-track',
+              similarTrackIds: '["track-a","track-b"]',
+              cachedAt: DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
+      final rows = await db.select(db.lastfmSimilarCache).get();
+      expect(rows.length, 1);
+      expect(rows[0].trackId, 'test-track');
 
-      // Verify that the skipped column was added and works
+      await db.close();
+    });
+
+    test('migration from v6 to v9 runs successfully', () async {
+      final sqliteDb = sqlite3.openInMemory();
+      sqliteDb.execute('PRAGMA user_version = 6;');
+      sqliteDb.execute('''
+        CREATE TABLE playback_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          track_id TEXT NOT NULL,
+          played_at INTEGER NOT NULL,
+          title TEXT,
+          artist TEXT,
+          album TEXT,
+          duration_ms INTEGER,
+          image_url TEXT,
+          source_id TEXT,
+          source_type TEXT,
+          skipped INTEGER NOT NULL DEFAULT 0
+        );
+      ''');
+      // Create all other tables that existed at v6
+      sqliteDb.execute(
+        'CREATE TABLE tracks (id TEXT PRIMARY KEY, title TEXT NOT NULL, artist TEXT DEFAULT "", album TEXT DEFAULT "", album_artist TEXT DEFAULT "", track_number INTEGER, duration_ms INTEGER DEFAULT 0, year INTEGER, genre TEXT DEFAULT "", file_path TEXT NOT NULL, file_size INTEGER, last_modified INTEGER, cover_path TEXT, codec TEXT DEFAULT "", bitrate INTEGER, sample_rate INTEGER)',
+      );
+      sqliteDb.execute(
+        'CREATE TABLE folders (uri TEXT PRIMARY KEY, display_path TEXT NOT NULL, added_at INTEGER NOT NULL)',
+      );
+
+      final db = AppDatabase.forTesting(NativeDatabase.opened(sqliteDb));
+
+      // Verify completionRate column was added
       await db
           .into(db.playbackHistory)
           .insert(
@@ -154,25 +220,38 @@ void main() {
               trackId: 'test-track-1',
               playedAt: 123456,
               skipped: const Value(true),
+              completionRate: const Value(0.85),
             ),
           );
-
       final rows = await db.select(db.playbackHistory).get();
       expect(rows.length, 1);
-      expect(rows[0].skipped, isTrue);
+      expect(rows[0].completionRate, 0.85);
+
+      // Verify new tables exist
+      await db
+          .into(db.trackStats)
+          .insert(TrackStatsCompanion.insert(trackId: 'stats-1'));
+      final statsRows = await db.select(db.trackStats).get();
+      expect(statsRows.length, 1);
+
+      await db
+          .into(db.trackCoOccurrences)
+          .insert(
+            TrackCoOccurrencesCompanion.insert(
+              trackAId: 'track-a',
+              trackBId: 'track-b',
+            ),
+          );
+      final coRows = await db.select(db.trackCoOccurrences).get();
+      expect(coRows.length, 1);
 
       await db.close();
     });
 
-    test('migration from scratch (v0 to v6) runs successfully', () async {
-      // This tests the case where we start with an empty database (or a fresh install)
-      // and ensure there are no duplicate column errors.
+    test('migration from scratch (v0 to v9) runs successfully', () async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
 
-      // Query to trigger open/onCreate
-      final result = await db.select(db.playbackHistory).get();
-      expect(result, isEmpty);
-
+      // Verify playback_history with completionRate works
       await db
           .into(db.playbackHistory)
           .insert(
@@ -180,12 +259,39 @@ void main() {
               trackId: 'test-track-2',
               playedAt: 7891011,
               skipped: const Value(false),
+              completionRate: const Value(0.92),
             ),
           );
-
-      final rows = await db.select(db.playbackHistory).get();
+      var rows = await db.select(db.playbackHistory).get();
       expect(rows.length, 1);
-      expect(rows[0].skipped, isFalse);
+      expect(rows[0].completionRate, 0.92);
+
+      // Verify track_stats works
+      await db
+          .into(db.trackStats)
+          .insert(
+            TrackStatsCompanion.insert(
+              trackId: 'local:track:test',
+              playCount: const Value(5),
+            ),
+          );
+      var statsRows = await db.select(db.trackStats).get();
+      expect(statsRows.length, 1);
+      expect(statsRows[0].playCount, 5);
+
+      // Verify track_co_occurrences works
+      await db
+          .into(db.trackCoOccurrences)
+          .insert(
+            TrackCoOccurrencesCompanion.insert(
+              trackAId: 'alice',
+              trackBId: 'bob',
+              count: const Value(3),
+            ),
+          );
+      var coRows = await db.select(db.trackCoOccurrences).get();
+      expect(coRows.length, 1);
+      expect(coRows[0].count, 3);
 
       await db.close();
     });

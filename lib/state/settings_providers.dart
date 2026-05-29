@@ -41,6 +41,9 @@ final maxBitrateProvider = StateProvider<int>((ref) => 0);
 /// Whether smart queue autoplay is enabled.
 final autoplayEnabledProvider = StateProvider<bool>((ref) => true);
 
+/// Last.fm API key for enriching smart queue candidates.
+final lastfmApiKeyProvider = StateProvider<String>((ref) => '');
+
 final appIconProvider = NotifierProvider<AppIconNotifier, String>(
   AppIconNotifier.new,
 );

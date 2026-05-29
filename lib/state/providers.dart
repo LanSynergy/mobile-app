@@ -14,4 +14,5 @@ export 'playlist_undo_providers.dart';
 export 'search_history_providers.dart';
 export 'search_providers.dart';
 export 'settings_providers.dart';
+export 'smart_queue_providers.dart';
 export 'spectral_providers.dart';

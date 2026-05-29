@@ -178,6 +178,7 @@ class AfPlayerService {
   void Function(AfTrack? track)? onTrackChanged;
   void Function(String? trackId)? onMpvLoadedTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
+  void Function(AfTrack track)? onTrackSkipped;
   Future<List<AfTrack>> Function(AfTrack lastTrack)? onGetSimilarTracks;
   VoidCallback? onToggleFavorite;
 
@@ -711,11 +712,15 @@ class AfPlayerService {
       return;
     }
 
+    final wasPlaying = _queueManager.currentTrack;
     _userPaused = false;
     _completedHandledForTrackId = null;
     _eofFallbackHandledTrackId = null;
     _mpvLoadedTrackId = null;
     onMpvLoadedTrackChanged?.call(null);
+    if (wasPlaying != null) {
+      onTrackSkipped?.call(wasPlaying);
+    }
     _queueManager.engine.advanceIndex();
     _queueManager.engine.resetRepeats();
     final nextTrack = _queueManager.currentTrack;
@@ -737,11 +742,15 @@ class AfPlayerService {
   Future<void> skipToPrevious() async {
     if (_disposed) return;
 
+    final wasPlaying = _queueManager.currentTrack;
     _userPaused = false;
     _completedHandledForTrackId = null;
     _eofFallbackHandledTrackId = null;
     _mpvLoadedTrackId = null;
     onMpvLoadedTrackChanged?.call(null);
+    if (wasPlaying != null) {
+      onTrackSkipped?.call(wasPlaying);
+    }
     _queueManager.engine.retreatIndex();
     _queueManager.engine.resetRepeats();
     final prevTrack = _queueManager.currentTrack;
@@ -763,11 +772,15 @@ class AfPlayerService {
   Future<void> skipToQueueItem(int index) async {
     if (_disposed) return;
 
+    final wasPlaying = _queueManager.currentTrack;
     _userPaused = false;
     _completedHandledForTrackId = null;
     _eofFallbackHandledTrackId = null;
     _mpvLoadedTrackId = null;
     onMpvLoadedTrackChanged?.call(null);
+    if (wasPlaying != null) {
+      onTrackSkipped?.call(wasPlaying);
+    }
     _queueManager.engine.jumpTo(index);
     _queueManager.engine.resetRepeats();
     final targetTrack = _queueManager.currentTrack;

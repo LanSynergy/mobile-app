@@ -106,6 +106,7 @@ class AfTrack {
     this.isDownloaded = false,
     this.dateAdded,
     this.peaks,
+    this.genre,
   });
   final String id;
   final String title;
@@ -130,6 +131,10 @@ class AfTrack {
   /// pattern instead of going through the fallback path.
   final List<int>? peaks;
 
+  /// Genre tag from the track metadata. Populated for local mode tracks
+  /// from the SQLite entity; server mode tracks may or may not carry it.
+  final String? genre;
+
   AfTrack copyWith({
     String? id,
     String? title,
@@ -145,6 +150,7 @@ class AfTrack {
     bool? isDownloaded,
     DateTime? dateAdded,
     List<int>? peaks,
+    String? genre,
   }) => AfTrack(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -160,6 +166,7 @@ class AfTrack {
     isDownloaded: isDownloaded ?? this.isDownloaded,
     dateAdded: dateAdded ?? this.dateAdded,
     peaks: peaks ?? this.peaks,
+    genre: genre ?? this.genre,
   );
 
   /// "Artist · Album · 3:42" — the standard subtitle for a track row.

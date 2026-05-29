@@ -130,6 +130,28 @@ class QueueHistory extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@DataClassName('TrackStatsEntity')
+class TrackStats extends Table {
+  TextColumn get trackId => text()();
+  IntColumn get playCount => integer().withDefault(const Constant(0))();
+  IntColumn get skipCount => integer().withDefault(const Constant(0))();
+  RealColumn get avgCompletion => real().withDefault(const Constant(0.0))();
+  IntColumn get lastPlayed => integer().nullable()(); // epoch ms
+
+  @override
+  Set<Column> get primaryKey => {trackId};
+}
+
+@DataClassName('TrackCoOccurrenceEntity')
+class TrackCoOccurrences extends Table {
+  TextColumn get trackAId => text()();
+  TextColumn get trackBId => text()();
+  IntColumn get count => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column> get primaryKey => {trackAId, trackBId};
+}
+
 @DataClassName('PlaybackHistoryEntity')
 class PlaybackHistory extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -143,6 +165,17 @@ class PlaybackHistory extends Table {
   TextColumn get sourceId => text().nullable()();
   TextColumn get sourceType => text().nullable()();
   BoolColumn get skipped => boolean().withDefault(const Constant(false))();
+  RealColumn get completionRate => real().withDefault(const Constant(0.0))();
+}
+
+@DataClassName('LastfmSimilarCacheEntity')
+class LastfmSimilarCache extends Table {
+  TextColumn get trackId => text()();
+  TextColumn get similarTrackIds => text()(); // JSON array of track IDs
+  IntColumn get cachedAt => integer()(); // epoch ms
+
+  @override
+  Set<Column> get primaryKey => {trackId};
 }
 
 @DriftDatabase(
@@ -156,6 +189,9 @@ class PlaybackHistory extends Table {
     CacheEntries,
     QueueHistory,
     PlaybackHistory,
+    TrackStats,
+    TrackCoOccurrences,
+    LastfmSimilarCache,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -166,7 +202,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -190,8 +226,19 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 5) {
         await m.createTable(playbackHistory);
-      } else if (from < 6) {
+      }
+      if (from < 6) {
         await m.addColumn(playbackHistory, playbackHistory.skipped);
+      }
+      if (from < 7) {
+        await m.addColumn(playbackHistory, playbackHistory.completionRate);
+      }
+      if (from < 8) {
+        await m.createTable(trackStats);
+        await m.createTable(trackCoOccurrences);
+      }
+      if (from < 9) {
+        await m.createTable(lastfmSimilarCache);
       }
     },
   );

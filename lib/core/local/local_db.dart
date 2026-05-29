@@ -4,7 +4,10 @@ import '../../utils/sql.dart';
 import '../jellyfin/models/items.dart';
 import 'app_database.dart';
 import 'local_db_albums.dart';
+import 'local_db_co_occurrences.dart';
 import 'local_db_playlists.dart';
+import 'local_db_lastfm.dart';
+import 'local_db_track_stats.dart';
 import 'local_db_tracks.dart';
 
 /// Local database for caching scanned music metadata.
@@ -14,12 +17,18 @@ class LocalDb {
     tracks = TrackRepository(db);
     albums = AlbumRepository(db);
     playlists = PlaylistRepository(db, tracks);
+    trackStats = TrackStatsRepository(db);
+    coOccurrences = CoOccurrenceRepository(db);
+    lastfm = LastFmCacheRepository(db);
   }
   final AppDatabase db;
 
   late final TrackRepository tracks;
   late final AlbumRepository albums;
   late final PlaylistRepository playlists;
+  late final TrackStatsRepository trackStats;
+  late final CoOccurrenceRepository coOccurrences;
+  late final LastFmCacheRepository lastfm;
 
   // ── Folders ─────────────────────────────────────────────────────────────
 

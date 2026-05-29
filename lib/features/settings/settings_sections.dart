@@ -7,8 +7,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/audio/player_settings_store.dart';
 import '../../core/audio/player_service.dart';
-import '../../state/providers.dart';
 import '../../design_tokens/tokens.dart';
+import '../../state/providers.dart';
+import '../../widgets/af_dialog.dart';
 import 'settings_widgets.dart';
 
 void launchSettingsUrl(String url) {
@@ -285,6 +286,92 @@ class AutoplayToggle extends ConsumerWidget {
         ref.read(autoplayEnabledProvider.notifier).state = v;
         unawaited(PlayerSettingsStore.saveAutoplayEnabled(v));
       },
+    );
+  }
+}
+
+class SmartQueueToggle extends ConsumerWidget {
+  const SmartQueueToggle({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(smartQueueEnabledProvider);
+    return SettingsSwitchTile(
+      icon: LucideIcons.lightbulb,
+      iconColor: AfColors.textSecondary,
+      title: 'Smart queue',
+      subtitle: 'Learn from skips and plays for better suggestions',
+      value: enabled,
+      onChanged: (v) {
+        ref.read(smartQueueEnabledProvider.notifier).state = v;
+      },
+    );
+  }
+}
+
+class LastFmApiKeyTile extends ConsumerWidget {
+  const LastFmApiKeyTile({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final apiKey = ref.watch(lastfmApiKeyProvider);
+    return SettingsTile(
+      icon: LucideIcons.externalLink,
+      iconColor: AfColors.textSecondary,
+      title: 'Last.fm API key',
+      subtitle: apiKey.isNotEmpty
+          ? apiKey.replaceRange(8, null, '…')
+          : 'Not set — enrich suggestions',
+      onTap: () => _showApiKeyDialog(context, ref),
+    );
+  }
+
+  void _showApiKeyDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController(
+      text: ref.read(lastfmApiKeyProvider),
+    );
+    showBlurDialog(
+      context: context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Last.fm API key', style: AfTypography.titleMedium),
+          const SizedBox(height: AfSpacing.s12),
+          Text(
+            'Get your free API key at last.fm/api',
+            style: AfTypography.bodyMedium,
+          ),
+          const SizedBox(height: AfSpacing.s16),
+          TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: 'Enter your API key',
+              border: OutlineInputBorder(),
+            ),
+            style: AfTypography.bodyMedium,
+          ),
+          const SizedBox(height: AfSpacing.s24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  ref.read(lastfmApiKeyProvider.notifier).state = controller
+                      .text
+                      .trim();
+                  Navigator.pop(context);
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

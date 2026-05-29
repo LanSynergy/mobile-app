@@ -397,8 +397,15 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 PrefetchToggle(svc: svc),
                 const AutoplayToggle(),
+                const SmartQueueToggle(),
               ],
             ),
+
+            const SizedBox(height: AfSpacing.s16),
+
+            // ── Discover ────────────────────────────────────────────────
+            const SettingsLabel('Discover'),
+            const SettingsGroup(children: [LastFmApiKeyTile()]),
 
             const SizedBox(height: AfSpacing.s16),
 

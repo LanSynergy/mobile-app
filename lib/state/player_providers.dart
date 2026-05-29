@@ -15,6 +15,7 @@ import 'music_backend_providers.dart';
 import 'settings_providers.dart';
 import 'favorite_providers.dart';
 import '../utils/log.dart';
+import 'smart_queue_providers.dart';
 
 /// Holds disposables accumulated during [wirePlayerService] wiring so each
 /// extracted function can register resources that are torn down together.
@@ -132,7 +133,54 @@ void _wireQueueSaving(Ref ref, AfPlayerService svc, _WireDisposables d) {
 // ── Service callbacks ──────────────────────────────────────────────────────
 
 void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
+  AfTrack? prevTrack;
+  bool wasSkip = false;
+
+  svc.onTrackSkipped = (oldTrack) {
+    wasSkip = true;
+    final sq = ref.read(smartQueueManagerProvider);
+    final pos = ref.read(positionStreamProvider);
+    final dur = oldTrack.duration;
+    final completion = dur > Duration.zero
+        ? (pos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0).toDouble()
+        : 0.0;
+    unawaited(
+      sq.recordPlayback(oldTrack, completionRate: completion, isSkipped: true),
+    );
+  };
+
   svc.onTrackChanged = (track) {
+    // Smart queue feedback for prev track
+    if (prevTrack != null &&
+        track != null &&
+        track.id != prevTrack!.id &&
+        !wasSkip) {
+      final sq = ref.read(smartQueueManagerProvider);
+      final pos = ref.read(positionStreamProvider);
+      final dur = prevTrack!.duration;
+      final completion = dur > Duration.zero
+          ? (pos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0).toDouble()
+          : 0.0;
+      unawaited(
+        sq.recordPlayback(
+          prevTrack!,
+          completionRate: completion,
+          isSkipped: false,
+        ),
+      );
+      unawaited(
+        sq.recordTransition(prevTrack!, track, completionRate: completion),
+      );
+    }
+    prevTrack = track;
+    wasSkip = false;
+
+    // Refill smart queue buffer
+    if (track != null && ref.read(smartQueueEnabledProvider)) {
+      final sq = ref.read(smartQueueManagerProvider);
+      unawaited(sq.refillBuffer(track));
+    }
+
     ref.read(currentTrackProvider.notifier).state = track;
     ref.read(currentArtworkUriProvider.notifier).state = track != null
         ? svc.currentArtworkUri
@@ -183,6 +231,24 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
   svc.onGetSimilarTracks = (lastTrack) async {
     final autoplay = ref.read(autoplayEnabledProvider);
     if (!autoplay) return const <AfTrack>[];
+
+    // Smart queue buffer takes priority when enabled
+    final sqEnabled = ref.read(smartQueueEnabledProvider);
+    if (sqEnabled) {
+      final sq = ref.read(smartQueueManagerProvider);
+      final existingIds = svc.currentQueue.map((t) => t.id).toSet();
+      final bufferTracks = sq.dequeueBatch(20);
+      if (bufferTracks.isNotEmpty) {
+        final fresh = bufferTracks
+            .where((t) => !existingIds.contains(t.id))
+            .toList();
+        unawaited(sq.refillBuffer(lastTrack));
+        return fresh.take(20).toList();
+      }
+      // Buffer empty — fall through to existing logic but also refill
+      unawaited(sq.refillBuffer(lastTrack));
+    }
+
     final backend = ref.read(musicBackendProvider);
     if (backend == null) return const <AfTrack>[];
     try {

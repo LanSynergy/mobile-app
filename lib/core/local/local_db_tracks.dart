@@ -283,6 +283,7 @@ class TrackRepository {
       ),
       imageUrl: r.coverPath != null ? 'file://${r.coverPath}' : null,
       isFavorite: isFavorite,
+      genre: r.genre.isNotEmpty ? r.genre : null,
     );
   }
 }
