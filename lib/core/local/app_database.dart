@@ -190,8 +190,7 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 5) {
         await m.createTable(playbackHistory);
-      }
-      if (from < 6) {
+      } else if (from < 6) {
         await m.addColumn(playbackHistory, playbackHistory.skipped);
       }
     },

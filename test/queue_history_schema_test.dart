@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqlite3/sqlite3.dart';
 
 import 'package:aetherfin/core/local/app_database.dart';
 
@@ -117,6 +118,72 @@ void main() {
         )..where((t) => t.id.equals('to-delete'))).get()).length,
         0,
       );
+    });
+  });
+
+  group('Database migration tests', () {
+    test('migration from v5 to v6 runs successfully', () async {
+      final sqliteDb = sqlite3.openInMemory();
+      sqliteDb.execute('PRAGMA user_version = 5;');
+      sqliteDb.execute('''
+        CREATE TABLE playback_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          track_id TEXT NOT NULL,
+          played_at INTEGER NOT NULL,
+          title TEXT,
+          artist TEXT,
+          album TEXT,
+          duration_ms INTEGER,
+          image_url TEXT,
+          source_id TEXT,
+          source_type TEXT
+        );
+      ''');
+
+      final db = AppDatabase.forTesting(NativeDatabase.opened(sqliteDb));
+      
+      // Query the database to trigger open/migration
+      final result = await db.select(db.playbackHistory).get();
+      expect(result, isEmpty);
+
+      // Verify that the skipped column was added and works
+      await db.into(db.playbackHistory).insert(
+        PlaybackHistoryCompanion.insert(
+          trackId: 'test-track-1',
+          playedAt: 123456,
+          skipped: const Value(true),
+        ),
+      );
+
+      final rows = await db.select(db.playbackHistory).get();
+      expect(rows.length, 1);
+      expect(rows[0].skipped, isTrue);
+
+      await db.close();
+    });
+
+    test('migration from scratch (v0 to v6) runs successfully', () async {
+      // This tests the case where we start with an empty database (or a fresh install)
+      // and ensure there are no duplicate column errors.
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      
+      // Query to trigger open/onCreate
+      final result = await db.select(db.playbackHistory).get();
+      expect(result, isEmpty);
+
+      await db.into(db.playbackHistory).insert(
+        PlaybackHistoryCompanion.insert(
+          trackId: 'test-track-2',
+          playedAt: 7891011,
+          skipped: const Value(false),
+        ),
+      );
+
+      final rows = await db.select(db.playbackHistory).get();
+      expect(rows.length, 1);
+      expect(rows[0].skipped, isFalse);
+
+      await db.close();
     });
   });
 }
