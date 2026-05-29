@@ -50,7 +50,7 @@ class _GlobalMiniPlayerOverlayState extends ConsumerState<GlobalMiniPlayerOverla
 
     // Determine current route location
     final routeMatchList = appRouter.routerDelegate.currentConfiguration;
-    final location = routeMatchList.uri.path;
+    final location = routeMatchList.isEmpty ? '/' : routeMatchList.last.matchedLocation;
 
     // Check if location is in hidden set or is an onboarding sub-path
     final isHidden = _hiddenLocations.contains(location) || location.startsWith('/onboarding');
