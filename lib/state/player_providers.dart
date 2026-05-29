@@ -249,15 +249,24 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
   final errorSub = svc.errorStream.listen((error) {
     ref.read(playbackErrorProvider.notifier).state = error;
   });
+ 
+  void updateBuffering() {
+    ref.read(playerIsBufferingProvider.notifier).state =
+        svc.isBuffering || svc.isPausedForCache;
+  }
 
+  final bufferingSub = svc.bufferingStream.listen((_) => updateBuffering());
+  final pausedForCacheSub =
+      svc.pausedForCacheStream.listen((_) => updateBuffering());
+ 
   final reporter = JellyfinPlaybackReporter(
     svc,
     () => ref.read(musicBackendProvider),
     ref.read(appDatabaseProvider),
   );
-
+ 
   unawaited(svc.configureSpectrum());
-
+ 
   ref.listen<MusicBackend?>(musicBackendProvider, (prev, next) {
     if (prev != null && next == null) {
       reporter.requestStopOnDispose();
@@ -267,12 +276,14 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
       unawaited(loadSavedQueue());
     }
   });
-
+ 
   ref.onDispose(() async {
     saveQueueDebounce?.cancel();
     await queueSub.cancel();
     await trackSub.cancel();
     await errorSub.cancel();
+    await bufferingSub.cancel();
+    await pausedForCacheSub.cancel();
     await reporter.dispose();
     await svc.dispose();
   });
@@ -453,9 +464,9 @@ final currentTrackProvider = StateProvider<AfTrack?>((ref) => null);
 final currentArtworkUriProvider = StateProvider<Uri?>((ref) => null);
 final mpvLoadedTrackIdProvider = StateProvider<String?>((ref) => null);
 
-final bufferingStreamProvider = StreamProvider.autoDispose<bool>((ref) {
+final playerIsBufferingProvider = StateProvider<bool>((ref) {
   final svc = ref.watch(playerServiceProvider);
-  return svc.bufferingStream;
+  return svc.isBuffering || svc.isPausedForCache;
 });
 
 final isBufferingProvider = Provider<bool>((ref) {
@@ -467,10 +478,7 @@ final isBufferingProvider = Provider<bool>((ref) {
     return true;
   }
 
-  return ref.watch(bufferingStreamProvider).maybeWhen(
-        data: (v) => v,
-        orElse: () => false,
-      );
+  return ref.watch(playerIsBufferingProvider);
 });
 
 final ntimesCountProvider = StateProvider<int>((ref) => 2);

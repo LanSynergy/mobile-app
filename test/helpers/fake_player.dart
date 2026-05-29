@@ -52,6 +52,7 @@ class MockPlayerStream extends Mock implements PlayerStream {}
   final rateCtrl = StreamController<double>.broadcast();
   final loopCtrl = StreamController<Loop>.broadcast();
   final bufferingCtrl = StreamController<bool>.broadcast();
+  final pausedForCacheCtrl = StreamController<bool>.broadcast();
   final shuffleCtrl = StreamController<bool>.broadcast();
   final coverArtCtrl = StreamController<CoverArt?>.broadcast();
   final audioDeviceCtrl = StreamController<Device>.broadcast();
@@ -69,6 +70,7 @@ class MockPlayerStream extends Mock implements PlayerStream {}
   when(() => stream.rate).thenAnswer((_) => rateCtrl.stream);
   when(() => stream.loop).thenAnswer((_) => loopCtrl.stream);
   when(() => stream.buffering).thenAnswer((_) => bufferingCtrl.stream);
+  when(() => stream.pausedForCache).thenAnswer((_) => pausedForCacheCtrl.stream);
   when(() => stream.shuffle).thenAnswer((_) => shuffleCtrl.stream);
   when(() => stream.coverArt).thenAnswer((_) => coverArtCtrl.stream);
   when(() => stream.audioDevice).thenAnswer((_) => audioDeviceCtrl.stream);
@@ -118,6 +120,7 @@ class MockPlayerStream extends Mock implements PlayerStream {}
     rate: rateCtrl,
     loop: loopCtrl,
     buffering: bufferingCtrl,
+    pausedForCache: pausedForCacheCtrl,
     duration: durationCtrl,
     shuffle: shuffleCtrl,
     coverArt: coverArtCtrl,
@@ -137,6 +140,7 @@ class StreamControllers {
     required this.rate,
     required this.loop,
     required this.buffering,
+    required this.pausedForCache,
     required this.duration,
     required this.shuffle,
     required this.coverArt,
@@ -149,6 +153,7 @@ class StreamControllers {
   final StreamController<double> rate;
   final StreamController<Loop> loop;
   final StreamController<bool> buffering;
+  final StreamController<bool> pausedForCache;
   final StreamController<Duration> duration;
   final StreamController<bool> shuffle;
   final StreamController<CoverArt?> coverArt;
@@ -163,6 +168,7 @@ class StreamControllers {
     rate.close();
     loop.close();
     buffering.close();
+    pausedForCache.close();
     duration.close();
     shuffle.close();
     coverArt.close();

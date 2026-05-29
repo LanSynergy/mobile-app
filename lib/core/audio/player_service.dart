@@ -332,6 +332,8 @@ class AfPlayerService {
       _player.stream.playbackState;
   Stream<bool> get bufferingStream => _player.stream.buffering;
   bool get isBuffering => _player.state.buffering;
+  Stream<bool> get pausedForCacheStream => _player.stream.pausedForCache;
+  bool get isPausedForCache => _player.state.pausedForCache;
   Stream<double> get bufferingPercentageStream =>
       _player.stream.bufferingPercentage;
   double get bufferingPercentage => _player.state.bufferingPercentage;
