@@ -100,7 +100,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                         url: heroUrl,
                         size: width,
                         height: heroHeight,
-                        radius: BorderRadius.zero,
+                        radius: AfRadii.borderMd,
                       ),
                     ),
                   ),
