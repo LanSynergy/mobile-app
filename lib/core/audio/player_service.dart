@@ -1567,6 +1567,13 @@ class AfPlayerService {
         _isDucked = false;
       }
     };
+    bridge.onArtworkNeeded = () {
+      final track = _queueManager.currentTrack;
+      if (track == null) return;
+      unawaited(_artworkManager.downloadArtworkForNotification(track).then((_) {
+        if (!_disposed) _updateMediaSession();
+      }));
+    };
     bridge.onShortcutAction = _handleShortcutAction;
     bridge.onToggleFavorite = () => onToggleFavorite?.call();
   }
