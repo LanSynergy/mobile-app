@@ -2,7 +2,7 @@
 
 ## 2026-05-29 — Fix failing test after mini_player state refactor
 *Goal:* Fix `mini_player_progress_ring_test.dart` which failed because `_ReactiveProgressRingState.initState()` reads `playerServiceProvider` directly for position stream subscription (added in mini_player state refactor).
-*Commits:* 4ea0407
+*Commits:* 28e0133
 *Key decisions:*
 - Rewrote test to use `createMockPlayer()` + `AfPlayerService.test()` pattern matching other test files
 - Added `playerServiceProvider.overrideWithValue(service)` and `currentArtworkUriProvider` overrides

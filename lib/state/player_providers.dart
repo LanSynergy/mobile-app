@@ -26,6 +26,16 @@ class _WireDisposables {
   StreamSubscription<bool>? bufferingSub;
   StreamSubscription<bool>? pausedForCacheSub;
   JellyfinPlaybackReporter? reporter;
+
+  Future<void> dispose() async {
+    saveQueueDebounce?.cancel();
+    await queueSub?.cancel();
+    await trackSub?.cancel();
+    await errorSub?.cancel();
+    await bufferingSub?.cancel();
+    await pausedForCacheSub?.cancel();
+    await reporter?.dispose();
+  }
 }
 
 void wirePlayerService(Ref ref, AfPlayerService svc) {
@@ -36,13 +46,7 @@ void wirePlayerService(Ref ref, AfPlayerService svc) {
   _wireInfrastructure(ref, svc, d);
 
   ref.onDispose(() async {
-    d.saveQueueDebounce?.cancel();
-    await d.queueSub?.cancel();
-    await d.trackSub?.cancel();
-    await d.errorSub?.cancel();
-    await d.bufferingSub?.cancel();
-    await d.pausedForCacheSub?.cancel();
-    await d.reporter?.dispose();
+    await d.dispose();
     await svc.dispose();
   });
 }

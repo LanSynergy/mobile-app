@@ -192,8 +192,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Lost memories.
             lostMemoriesAsync.when(
               data: (tracks) {
-                if (tracks.isEmpty)
+                if (tracks.isEmpty) {
                   return const SliverToBoxAdapter(child: SizedBox.shrink());
+                }
                 return SliverList(
                   delegate: SliverChildListDelegate([
                     const SizedBox(height: AfSpacing.sectionGap),
