@@ -7,7 +7,7 @@ import 'local_library_providers.dart';
 import 'music_backend_providers.dart';
 import 'settings_providers.dart';
 
-final smartQueueEnabledProvider = StateProvider<bool>((ref) => false);
+final smartQueueEnabledProvider = StateProvider<bool>((ref) => true);
 
 final smartQueueManagerProvider = Provider<SmartQueueManager>((ref) {
   final localLib = ref.watch(localLibraryProvider);

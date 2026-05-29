@@ -90,12 +90,97 @@ class PlayActions {
   Future<void> playAlbum(List<AfTrack> tracks) => playQueue(tracks);
 
   Future<void> playSingle(AfTrack track) async {
-    final autoplay = ref.read(autoplayEnabledProvider);
-    if (autoplay) {
-      await playInstantMix(track);
-    } else {
-      await playQueue([track], startIndex: 0);
+    await playQueue([track], startIndex: 0);
+
+    final svc = ref.read(playerServiceProvider);
+    final mode = ref.read(appModeProvider);
+    final backend = ref.read(musicBackendProvider);
+
+    String resolveStreamUrl(AfTrack t) {
+      if (mode == AppMode.local) return t.id;
+      final cache = ref.read(offlineCacheServiceProvider);
+      if (ref.read(offlineCacheEnabledProvider)) {
+        final cachedUri = cache.cachedFileUri(t.id);
+        if (cachedUri != null) return cachedUri;
+      }
+      if (backend != null) {
+        final maxBitrate = ref.read(maxBitrateProvider);
+        return backend.trackStreamUrl(
+          t.id,
+          maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate,
+        );
+      }
+      return 'about:blank';
     }
+
+    final existingIds = svc.currentQueue.map((t) => t.id).toSet();
+    final toAppend = <AfTrack>[];
+
+    // 1. Smart queue buffer
+    if (ref.read(smartQueueEnabledProvider)) {
+      final sq = ref.read(smartQueueManagerProvider);
+      await sq.refillBuffer(track);
+      for (final t in sq.dequeueBatch(20)) {
+        if (toAppend.length >= 20) break;
+        if (existingIds.add(t.id)) toAppend.add(t);
+      }
+    }
+
+    // 2. Fallback until we hit 20
+    if (toAppend.length < 20) {
+      final similar = await _getSimilarTracks(track, existingIds);
+      for (final t in similar) {
+        if (toAppend.length >= 20) break;
+        if (existingIds.add(t.id)) toAppend.add(t);
+      }
+    }
+
+    if (toAppend.isEmpty) return;
+    await svc.appendQueue(toAppend, resolveStreamUrl: resolveStreamUrl);
+  }
+
+  Future<List<AfTrack>> _getSimilarTracks(
+    AfTrack seed,
+    Set<String> seenIds,
+  ) async {
+    final mode = ref.read(appModeProvider);
+
+    if (mode == AppMode.server) {
+      final backend = ref.read(musicBackendProvider);
+      if (backend == null) return const [];
+      try {
+        final mix = await backend.instantMix(seed.id, limit: 30);
+        return mix
+            .where((t) => t.id != seed.id && seenIds.add(t.id))
+            .take(20)
+            .toList();
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    // Local mode
+    final localLib = ref.read(localLibraryProvider);
+    final db = localLib.db;
+    final results = <AfTrack>[];
+
+    if (seed.genre != null && seed.genre!.isNotEmpty) {
+      try {
+        for (final t in await db.tracksByGenre(seed.genre!)) {
+          if (results.length >= 20) break;
+          if (seenIds.add(t.id)) results.add(t);
+        }
+      } catch (_) {}
+    }
+
+    try {
+      for (final t in await db.tracksByArtist(seed.artistName)) {
+        if (results.length >= 20) break;
+        if (seenIds.add(t.id)) results.add(t);
+      }
+    } catch (_) {}
+
+    return results;
   }
 
   /// Replace the queue with the seed track followed by [Jellyfin's Instant

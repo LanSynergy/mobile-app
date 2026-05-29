@@ -126,9 +126,8 @@ Future<void> main() async {
       final offlineCacheMaxSize =
           prefs.getInt('af.offline_cache_max_size') ?? (1024 * 1024 * 1024);
       final maxBitrate = prefs.getInt('af.max_bitrate_kbps') ?? 0;
-      final autoplayEnabled = prefs.getBool('af.autoplay_enabled') ?? true;
       _boot(
-        'offlineCacheEnabled=$offlineCacheEnabled maxSize=$offlineCacheMaxSize maxBitrate=$maxBitrate autoplayEnabled=$autoplayEnabled',
+        'offlineCacheEnabled=$offlineCacheEnabled maxSize=$offlineCacheMaxSize maxBitrate=$maxBitrate',
       );
 
       // Resolve the app version once at boot so every HTTP client can stamp
@@ -172,7 +171,6 @@ Future<void> main() async {
             (ref) => offlineCacheMaxSize,
           ),
           maxBitrateProvider.overrideWith((ref) => maxBitrate),
-          autoplayEnabledProvider.overrideWith((ref) => autoplayEnabled),
 
           playerServiceProvider.overrideWith((ref) {
             wirePlayerService(ref, handler);

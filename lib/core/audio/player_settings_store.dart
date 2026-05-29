@@ -113,7 +113,6 @@ class PlayerSettingsStore {
     'af.offline_cache_max_size',
   );
   static final kMaxBitrate = SettingsKey.intKey('af.max_bitrate_kbps');
-  static final kAutoplayEnabled = SettingsKey.boolKey('af.autoplay_enabled');
   static final kLoopMode = SettingsKey.intKey('af.loop_mode');
   static final kShuffleEnabled = SettingsKey.boolKey('af.shuffle_enabled');
 
@@ -229,14 +228,6 @@ class PlayerSettingsStore {
   /// Load max streaming bitrate in kbps. Defaults to 0 (Original / Lossless).
   static Future<int> loadMaxBitrate() async =>
       (await loadValue(kMaxBitrate)) ?? 0;
-
-  /// Persist smart queue autoplay enabled state.
-  static Future<void> saveAutoplayEnabled(bool enabled) async =>
-      saveValue(kAutoplayEnabled, enabled);
-
-  /// Load smart queue autoplay enabled state. Defaults to true.
-  static Future<bool> loadAutoplayEnabled() async =>
-      (await loadValue(kAutoplayEnabled)) ?? true;
 
   /// Persist loop mode index.
   static Future<void> saveLoopMode(Loop mode) async =>

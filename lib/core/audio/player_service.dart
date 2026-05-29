@@ -857,6 +857,10 @@ class AfPlayerService {
     _queueManager.engine.setForNtimes(enabled);
     onForNtimesChanged?.call(enabled);
     _updateMediaSession();
+    // Prevent stale Loop.file from persisting across restarts
+    if (enabled) {
+      unawaited(PlayerSettingsStore.saveLoopMode(Loop.off));
+    }
     afLog(
       'data',
       'forNtimes source=live enabled=$enabled '

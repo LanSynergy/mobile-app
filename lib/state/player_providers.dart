@@ -233,141 +233,22 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
   };
 
   svc.onGetSimilarTracks = (lastTrack) async {
-    final autoplay = ref.read(autoplayEnabledProvider);
-    if (!autoplay) return const <AfTrack>[];
-
-    // Smart queue buffer takes priority when enabled
     final sqEnabled = ref.read(smartQueueEnabledProvider);
-    if (sqEnabled) {
-      final sq = ref.read(smartQueueManagerProvider);
-      final existingIds = svc.currentQueue.map((t) => t.id).toSet();
-      final bufferTracks = sq.dequeueBatch(20);
-      if (bufferTracks.isNotEmpty) {
-        final fresh = bufferTracks
-            .where((t) => !existingIds.contains(t.id))
-            .toList();
-        unawaited(sq.refillBuffer(lastTrack));
-        return fresh.take(20).toList();
-      }
-      // Buffer empty — fall through to existing logic but also refill
+    if (!sqEnabled) return const <AfTrack>[];
+
+    final sq = ref.read(smartQueueManagerProvider);
+    final existingIds = svc.currentQueue.map((t) => t.id).toSet();
+    final bufferTracks = sq.dequeueBatch(20);
+    if (bufferTracks.isNotEmpty) {
+      final fresh = bufferTracks
+          .where((t) => !existingIds.contains(t.id))
+          .toList();
       unawaited(sq.refillBuffer(lastTrack));
+      return fresh.take(20).toList();
     }
-
-    final backend = ref.read(musicBackendProvider);
-    if (backend == null) return const <AfTrack>[];
-    try {
-      final existingIds = svc.currentQueue.map((t) => t.id).toSet();
-      const targetSize = 20;
-      final results = <AfTrack>[];
-      final localLib = ref.read(localLibraryProvider);
-      final skippedIds = await localLib.db
-          .getRecentlySkippedTrackIds()
-          .catchError((_) => <String>[]);
-      final seenIds = Set<String>.from(existingIds)..addAll(skippedIds);
-
-      // 1. Initial similar mix query
-      final mix = await backend.instantMix(lastTrack.id, limit: targetSize);
-      for (final t in mix) {
-        if (results.length >= targetSize) break;
-        if (seenIds.add(t.id)) {
-          results.add(t);
-        }
-      }
-
-      // 2. Similarity Propagation (Graph Walk)
-      int lastLength = results.length;
-      for (int step = 0; step < 3 && results.length < targetSize; step++) {
-        final nextSeed = results.isNotEmpty ? results.last : lastTrack;
-        try {
-          final nextMix = await backend.instantMix(
-            nextSeed.id,
-            limit: targetSize,
-          );
-          for (final t in nextMix) {
-            if (results.length >= targetSize) break;
-            if (seenIds.add(t.id)) {
-              results.add(t);
-            }
-          }
-        } catch (_) {
-          break;
-        }
-        if (results.length == lastLength) break;
-        lastLength = results.length;
-      }
-
-      // 3. Artist Top Tracks Fallback
-      if (results.length < targetSize) {
-        final artistId = lastTrack.artistId;
-        final artistName = lastTrack.artistName;
-        if (artistId != null &&
-            artistId.isNotEmpty &&
-            !_isGenericArtist(artistName)) {
-          try {
-            final topTracks = await backend.artistTopTracks(
-              artistId,
-              limit: targetSize,
-            );
-            for (final t in topTracks) {
-              if (results.length >= targetSize) break;
-              if (seenIds.add(t.id)) {
-                results.add(t);
-              }
-            }
-          } catch (_) {}
-        }
-      }
-
-      // 4. Search Fallback (by artist name)
-      if (results.length < targetSize) {
-        final artistName = lastTrack.artistName;
-        if (artistName.isNotEmpty && !_isGenericArtist(artistName)) {
-          try {
-            final searchRes = await backend.search(artistName);
-            final cleanArtistName = artistName.trim().toLowerCase();
-            for (final t in searchRes.tracks) {
-              if (results.length >= targetSize) break;
-              if (t.artistName.trim().toLowerCase() == cleanArtistName) {
-                if (seenIds.add(t.id)) {
-                  results.add(t);
-                }
-              }
-            }
-          } catch (_) {}
-        }
-      }
-
-      // 5. Album Fallback
-      if (results.length < targetSize) {
-        final albumId = lastTrack.albumId;
-        final albumName = lastTrack.albumName;
-        if (albumId != null &&
-            albumId.isNotEmpty &&
-            !_isGenericAlbum(albumName)) {
-          try {
-            final albumData = await backend.album(albumId);
-            if (albumData != null) {
-              for (final t in albumData.tracks) {
-                if (results.length >= targetSize) break;
-                if (seenIds.add(t.id)) {
-                  results.add(t);
-                }
-              }
-            }
-          } catch (_) {}
-        }
-      }
-
-      return results;
-    } catch (e, stack) {
-      afLog(
-        'audio',
-        'failed to fetch autoplay tracks',
-        error: e,
-        stackTrace: stack,
-      );
-      return const <AfTrack>[];
-    }
+    // Buffer empty — refill for next time
+    unawaited(sq.refillBuffer(lastTrack));
+    return const <AfTrack>[];
   };
 }
 
@@ -613,17 +494,3 @@ final forNtimesModeProvider = StateProvider<bool>((ref) => false);
 final hasActivePlaybackProvider = Provider<bool>((ref) {
   return ref.watch(currentTrackProvider) != null;
 });
-
-bool _isGenericArtist(String name) {
-  final clean = name.trim().toLowerCase();
-  return clean.isEmpty ||
-      clean == 'unknown' ||
-      clean == 'unknown artist' ||
-      clean == 'various' ||
-      clean == 'various artists';
-}
-
-bool _isGenericAlbum(String name) {
-  final clean = name.trim().toLowerCase();
-  return clean.isEmpty || clean == 'unknown' || clean == 'unknown album';
-}
