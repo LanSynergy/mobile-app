@@ -146,10 +146,18 @@ class CircularArtwork extends StatelessWidget {
   final String? semanticLabel;
 
   @override
-  Widget build(BuildContext context) => Artwork(
-    url: url,
-    size: size,
-    radius: BorderRadius.circular(size / 2),
-    semanticLabel: semanticLabel,
-  );
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxW = constraints.maxWidth;
+        final r = maxW.isFinite && maxW > 0 ? maxW / 2 : 32.0;
+        return Artwork(
+          url: url,
+          size: maxW,
+          radius: BorderRadius.circular(r),
+          semanticLabel: semanticLabel,
+        );
+      },
+    );
+  }
 }
