@@ -29,13 +29,11 @@ class Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final art = variant == TileVariant.artist
-        ? CircularArtwork(url: imageUrl, size: size)
-        : Artwork(
-            url: imageUrl,
-            size: size,
-            radius: BorderRadius.circular(AfRadii.lg),
-          );
+    final art = Artwork(
+      url: imageUrl,
+      size: size,
+      radius: BorderRadius.circular(AfRadii.lg),
+    );
 
     return PressScale(
       ensureHitTarget: false,
