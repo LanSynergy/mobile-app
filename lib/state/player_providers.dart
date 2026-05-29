@@ -238,16 +238,19 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
 
     final sq = ref.read(smartQueueManagerProvider);
     final existingIds = svc.currentQueue.map((t) => t.id).toSet();
-    final bufferTracks = sq.dequeueBatch(20);
-    if (bufferTracks.isNotEmpty) {
-      final fresh = bufferTracks
-          .where((t) => !existingIds.contains(t.id))
-          .toList();
-      unawaited(sq.refillBuffer(lastTrack));
-      return fresh.take(20).toList();
+
+    if (sq.isBufferLow) {
+      await sq.refillBuffer(lastTrack);
     }
-    // Buffer empty — refill for next time
-    unawaited(sq.refillBuffer(lastTrack));
+
+    final bufferTracks = sq
+        .dequeueBatch(20)
+        .where((t) => !existingIds.contains(t.id))
+        .toList();
+    if (bufferTracks.isNotEmpty) {
+      unawaited(sq.refillBuffer(lastTrack));
+      return bufferTracks.take(20).toList();
+    }
     return const <AfTrack>[];
   };
 }

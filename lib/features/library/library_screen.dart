@@ -493,8 +493,9 @@ class _SectionBody extends ConsumerWidget {
                         isActive: t.id == activeId,
                         isBuffering: t.id == activeId && isBuffering,
                         activeAccent: activeAccent,
-                        onTap: () =>
-                            ref.read(playActionsProvider).playSingle(t),
+                        onTap: () => ref
+                            .read(playActionsProvider)
+                            .playSmartQueue(t, sorted),
                         onLongPress: () =>
                             showTrackContextMenu(context, ref, t),
                       ),
@@ -574,7 +575,8 @@ class _SectionBody extends ConsumerWidget {
                   isActive: t.id == activeId,
                   isBuffering: t.id == activeId && isBuffering,
                   activeAccent: activeAccent,
-                  onTap: () => ref.read(playActionsProvider).playSingle(t),
+                  onTap: () =>
+                      ref.read(playActionsProvider).playSmartQueue(t, sorted),
                   onLongPress: () => showTrackContextMenu(context, ref, t),
                 );
               },

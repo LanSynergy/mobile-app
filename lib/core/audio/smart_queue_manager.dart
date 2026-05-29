@@ -339,4 +339,20 @@ class SmartQueueManager {
 
     return s.clamp(0.0, 1.0);
   }
+
+  /// Public scoring: score all [candidates] against [seed], return sorted.
+  Future<List<AfTrack>> scoreAndSort(
+    AfTrack seed,
+    List<AfTrack> candidates,
+  ) async {
+    if (candidates.isEmpty) return candidates;
+    final recentlyPlayedIds = (await _getRecentlyPlayedIds(limit: 20)).toList();
+    final scored = <MapEntry<AfTrack, double>>[];
+    for (final c in candidates) {
+      final s = await _scoreOne(c, seed, recentlyPlayedIds);
+      scored.add(MapEntry(c, s));
+    }
+    scored.sort((a, b) => b.value.compareTo(a.value));
+    return scored.map((e) => e.key).toList();
+  }
 }

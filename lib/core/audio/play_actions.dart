@@ -139,6 +139,32 @@ class PlayActions {
     await svc.appendQueue(toAppend, resolveStreamUrl: resolveStreamUrl);
   }
 
+  /// Play a track followed by all other tracks scored and sorted by smart queue.
+  /// Most relevant (genre/artist/affinity) come first, least relevant last.
+  /// Skips and plays refine the scoring over time.
+  Future<void> playSmartQueue(AfTrack seed, List<AfTrack> allTracks) async {
+    if (allTracks.isEmpty) return;
+    final sqEnabled = ref.read(smartQueueEnabledProvider);
+
+    List<AfTrack> sorted;
+    if (sqEnabled && allTracks.length > 1) {
+      sorted = await ref
+          .read(smartQueueManagerProvider)
+          .scoreAndSort(seed, allTracks);
+    } else {
+      sorted = List.from(allTracks);
+    }
+
+    // Ensure seed is first
+    final seedIdx = sorted.indexWhere((t) => t.id == seed.id);
+    if (seedIdx > 0) {
+      sorted.removeAt(seedIdx);
+      sorted.insert(0, seed);
+    }
+
+    await playQueue(sorted, startIndex: 0);
+  }
+
   Future<List<AfTrack>> _getSimilarTracks(
     AfTrack seed,
     Set<String> seenIds,

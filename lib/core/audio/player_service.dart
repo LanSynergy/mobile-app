@@ -840,7 +840,6 @@ class AfPlayerService {
       try {
         _loopMode = mode;
         _loopModeController.add(mode);
-        unawaited(PlayerSettingsStore.saveLoopMode(mode));
         afLog('data', 'loopMode source=live mode=${mode.name}');
         _updateMediaSession();
       } catch (e, stack) {
@@ -858,9 +857,6 @@ class AfPlayerService {
     onForNtimesChanged?.call(enabled);
     _updateMediaSession();
     // Prevent stale Loop.file from persisting across restarts
-    if (enabled) {
-      unawaited(PlayerSettingsStore.saveLoopMode(Loop.off));
-    }
     afLog(
       'data',
       'forNtimes source=live enabled=$enabled '
@@ -1547,7 +1543,6 @@ class AfPlayerService {
         _loopMode = Loop.off;
         _loopModeController.add(Loop.off);
         unawaited(setAfForNtimes(false));
-        unawaited(PlayerSettingsStore.saveLoopMode(Loop.off));
       } else {
         switch (_loopMode) {
           case Loop.off:

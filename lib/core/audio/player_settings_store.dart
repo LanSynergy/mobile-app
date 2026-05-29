@@ -19,7 +19,6 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart'
         Format,
         Gapless,
         LoudnormSettings,
-        Loop,
         ReplayGain,
         ReplayGainSettings,
         RubberbandSettings,
@@ -113,7 +112,6 @@ class PlayerSettingsStore {
     'af.offline_cache_max_size',
   );
   static final kMaxBitrate = SettingsKey.intKey('af.max_bitrate_kbps');
-  static final kLoopMode = SettingsKey.intKey('af.loop_mode');
   static final kShuffleEnabled = SettingsKey.boolKey('af.shuffle_enabled');
 
   // Compound keys (custom JSON serialization)
@@ -228,10 +226,6 @@ class PlayerSettingsStore {
   /// Load max streaming bitrate in kbps. Defaults to 0 (Original / Lossless).
   static Future<int> loadMaxBitrate() async =>
       (await loadValue(kMaxBitrate)) ?? 0;
-
-  /// Persist loop mode index.
-  static Future<void> saveLoopMode(Loop mode) async =>
-      saveValue(kLoopMode, mode.index);
 
   /// Persist shuffle enabled state.
   static Future<void> saveShuffleEnabled(bool enabled) async =>
@@ -615,12 +609,6 @@ class PlayerSettingsStore {
       if (masterEnabled) {
         await tryApply('audioEffects', () => svc.setAudioEffects(fx));
       }
-    }
-
-    final loopModeInt = p.getInt(kLoopMode.key);
-    if (loopModeInt != null) {
-      final mode = Loop.values[loopModeInt];
-      await tryApply('loopMode=$mode', () => svc.setAfLoopMode(mode));
     }
 
     final shuffleEnabled = p.getBool(kShuffleEnabled.key);
