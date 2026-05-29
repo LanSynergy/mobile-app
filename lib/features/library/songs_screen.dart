@@ -428,7 +428,7 @@ class _ArtistsGrid extends ConsumerWidget {
                 variant: TileVariant.artist,
                 imageUrl: a.imageUrl,
                 size: double.infinity,
-                onTap: () => context.go('/library'),
+                onTap: () => context.push('/artist/${a.id}'),
               );
             },
           ),
@@ -577,7 +577,7 @@ class _GenresGrid extends ConsumerWidget {
                 imageUrl: g.imageUrl,
                 width: double.infinity,
                 height: double.infinity,
-                onTap: () => context.go('/library'),
+                onTap: () => context.push('/genre/${g.name}'),
               );
             },
           ),

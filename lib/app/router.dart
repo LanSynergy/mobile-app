@@ -6,7 +6,9 @@ import '../core/jellyfin/models/server.dart';
 import '../state/providers.dart';
 import '../design_tokens/tokens.dart';
 import '../features/album/album_screen.dart';
+import '../features/artist/artist_screen.dart';
 import '../features/cast_picker/cast_picker_screen.dart';
+import '../features/genre/genre_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/library/songs_screen.dart';
 import '../features/lyrics/lyrics_screen.dart';
@@ -230,6 +232,17 @@ final _router = GoRouter(
       path: '/album/:id',
       parentNavigatorKey: _rootKey,
       builder: (_, state) => AlbumScreen(albumId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/artist/:id',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) =>
+          ArtistScreen(artistId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/genre/:name',
+      parentNavigatorKey: _rootKey,
+      builder: (_, state) => GenreScreen(genre: state.pathParameters['name']!),
     ),
     GoRoute(
       path: '/playlist/:id',
