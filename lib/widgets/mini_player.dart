@@ -146,7 +146,10 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                             width: 1,
                           ),
                         ),
-                        padding: const EdgeInsets.only(left: 4, right: AfSpacing.s8),
+                        padding: const EdgeInsets.only(
+                          left: 4,
+                          right: AfSpacing.s8,
+                        ),
                         child: Row(
                           children: [
                             SizedBox(
@@ -159,7 +162,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                                   child: ClipRRect(
                                     borderRadius: AfRadii.borderPill,
                                     child: Artwork(
-                                      url: artworkUri?.toString() ?? track.imageUrl,
+                                      url:
+                                          artworkUri?.toString() ??
+                                          track.imageUrl,
                                       size: 44,
                                     ),
                                   ),
@@ -217,7 +222,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                                           ),
                                         )
                                       : Icon(
-                                          isPlaying ? LucideIcons.pause : LucideIcons.play,
+                                          isPlaying
+                                              ? LucideIcons.pause
+                                              : LucideIcons.play,
                                           color: Colors.black,
                                           size: 24,
                                         ),
