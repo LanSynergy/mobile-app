@@ -52,8 +52,6 @@ class _GenreScreenState extends ConsumerState<GenreScreen> {
           onRetry: () => ref.invalidate(genreAlbumsProvider(widget.genre)),
         ),
         data: (albums) {
-          final width = MediaQuery.of(context).size.width;
-
           return Stack(
             children: [
               ValueListenableBuilder<double>(

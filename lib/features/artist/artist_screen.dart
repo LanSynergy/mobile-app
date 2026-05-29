@@ -6,14 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/audio/play_actions.dart';
-import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/async_error_view.dart';
-import '../../widgets/press_scale.dart';
 import '../../widgets/section_header.dart';
-import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/skeletons/artist_skeleton.dart';
@@ -71,20 +68,41 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
           final topTracks = topTracksAsync.valueOrNull ?? [];
           final albums = albumsAsync.valueOrNull ?? [];
           final width = MediaQuery.of(context).size.width;
+          final heroHeight = width; // 1:1
+
+          // Use artist image or first album artwork as hero
+          final heroUrl =
+              artist.imageUrl ??
+              (albums.isNotEmpty ? albums.first.imageUrl : null);
 
           return Stack(
             children: [
+              // Hero artwork — parallax via Transform.translate
               ValueListenableBuilder<double>(
                 valueListenable: _scrollOffset,
                 builder: (context, offset, _) => Positioned(
-                  top: 0,
+                  top: -offset * 0.5,
                   left: 0,
                   right: 0,
-                  child: _OpacityAppBar(
-                    scrollOffset: offset,
-                    threshold: 240,
-                    title: artist.name,
-                    onBack: () => context.pop(),
+                  child: SizedBox(
+                    height: heroHeight,
+                    child: ShaderMask(
+                      shaderCallback: (rect) {
+                        return const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: [0.6, 1.0],
+                          colors: [Colors.white, Colors.transparent],
+                        ).createShader(rect);
+                      },
+                      blendMode: BlendMode.dstIn,
+                      child: Artwork(
+                        url: heroUrl,
+                        size: width,
+                        height: heroHeight,
+                        radius: BorderRadius.zero,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -93,46 +111,23 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                 controller: _scroll,
                 physics: const ClampingScrollPhysics(),
                 slivers: [
+                  SliverToBoxAdapter(child: SizedBox(height: heroHeight)),
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: EdgeInsets.only(
-                        top:
-                            MediaQuery.of(context).padding.top +
-                            kToolbarHeight +
-                            AfSpacing.s16,
-                        left: AfSpacing.gutterGenerous,
-                        right: AfSpacing.gutterGenerous,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.gutterGenerous,
                       ),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Center(
-                            child: CircularArtwork(
-                              url: artist.imageUrl,
-                              size: width * 0.35,
-                            ),
-                          ),
-                          const SizedBox(height: AfSpacing.s16),
                           Text(
                             artist.name,
                             style: AfTypography.display.copyWith(
                               color: AfColors.textPrimary,
                             ),
-                            textAlign: TextAlign.center,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (artist.bio != null && artist.bio!.isNotEmpty) ...[
-                            const SizedBox(height: AfSpacing.s8),
-                            Text(
-                              artist.bio!,
-                              style: AfTypography.bodyMedium.copyWith(
-                                color: AfColors.textSecondary,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
                           const SizedBox(height: AfSpacing.s4),
                           Text(
                             artist.statLine,
@@ -140,7 +135,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                               color: AfColors.textTertiary,
                             ),
                           ),
-                          const SizedBox(height: AfSpacing.s20),
+                          const SizedBox(height: AfSpacing.s16),
                           _ActionRow(
                             onPlay: topTracks.isNotEmpty
                                 ? () => ref
@@ -156,9 +151,9 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                     const SliverToBoxAdapter(
                       child: SizedBox(height: AfSpacing.s32),
                     ),
-                    SliverToBoxAdapter(
+                    const SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
+                        padding: EdgeInsets.symmetric(
                           horizontal: AfSpacing.gutterGenerous,
                         ),
                         child: SectionHeader(title: 'Top Songs'),
@@ -191,53 +186,28 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                       ),
                     ),
                   ],
-                  if (albums.isNotEmpty) ...[
-                    const SliverToBoxAdapter(
-                      child: SizedBox(height: AfSpacing.s32),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AfSpacing.gutterGenerous,
-                        ),
-                        child: SectionHeader(title: 'Albums'),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(
-                      child: SizedBox(height: AfSpacing.s12),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AfSpacing.s16,
-                      ),
-                      sliver: SliverGrid(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisExtent: 220,
-                              crossAxisSpacing: AfSpacing.s16,
-                              mainAxisSpacing: AfSpacing.s16,
-                            ),
-                        delegate: SliverChildBuilderDelegate((context, i) {
-                          final a = albums[i];
-                          return Tile(
-                            title: a.name,
-                            subtitle: a.metadataLine,
-                            variant: TileVariant.album,
-                            imageUrl: a.imageUrl,
-                            size: double.infinity,
-                            onTap: () => context.push('/album/${a.id}'),
-                          );
-                        }, childCount: albums.length),
-                      ),
-                    ),
-                  ],
                   const SliverToBoxAdapter(
                     child: SizedBox(
                       height: AfSpacing.bottomInsetWithMiniAndNav,
                     ),
                   ),
                 ],
+              ),
+
+              // App bar
+              ValueListenableBuilder<double>(
+                valueListenable: _scrollOffset,
+                builder: (context, offset, _) => Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: _OpacityAppBar(
+                    scrollOffset: offset,
+                    threshold: heroHeight - kToolbarHeight,
+                    title: artist.name,
+                    onBack: () => context.pop(),
+                  ),
+                ),
               ),
             ],
           );
