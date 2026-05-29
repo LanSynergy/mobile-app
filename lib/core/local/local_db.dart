@@ -143,7 +143,7 @@ class LocalDb {
   Future<List<AfArtist>> allArtists() async {
     final rows = await db.customSelect('''
       SELECT artist, COUNT(DISTINCT album) as album_count,
-             MIN(cover_path) as cover_path
+             COUNT(*) as track_count, MIN(cover_path) as cover_path
       FROM tracks
       WHERE artist != ''
       GROUP BY artist
@@ -155,6 +155,7 @@ class LocalDb {
         id: 'local:artist:$name',
         name: name,
         albumCount: r.read<int?>('album_count') ?? 0,
+        trackCount: r.read<int?>('track_count') ?? 0,
         imageUrl: r.read<String?>('cover_path') != null
             ? 'file://${r.read<String>('cover_path')}'
             : null,
@@ -167,7 +168,7 @@ class LocalDb {
         .customSelect(
           r'''
       SELECT artist, COUNT(DISTINCT album) as album_count,
-             MIN(cover_path) as cover_path
+             COUNT(*) as track_count, MIN(cover_path) as cover_path
       FROM tracks
       WHERE artist != ''
         AND artist = ?1
@@ -185,6 +186,7 @@ class LocalDb {
       id: 'local:artist:$resolved',
       name: resolved,
       albumCount: r.read<int?>('album_count') ?? 0,
+      trackCount: r.read<int?>('track_count') ?? 0,
       imageUrl: r.read<String?>('cover_path') != null
           ? 'file://${r.read<String>('cover_path')}'
           : null,
@@ -197,7 +199,7 @@ class LocalDb {
         .customSelect(
           r'''
       SELECT artist, COUNT(DISTINCT album) as album_count,
-             MIN(cover_path) as cover_path
+             COUNT(*) as track_count, MIN(cover_path) as cover_path
       FROM tracks
       WHERE artist != ''
         AND artist LIKE ?1 ESCAPE '\'
@@ -215,6 +217,7 @@ class LocalDb {
         id: 'local:artist:$name',
         name: name,
         albumCount: r.read<int?>('album_count') ?? 0,
+        trackCount: r.read<int?>('track_count') ?? 0,
         imageUrl: r.read<String?>('cover_path') != null
             ? 'file://${r.read<String>('cover_path')}'
             : null,
