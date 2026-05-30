@@ -34,6 +34,28 @@ class CoOccurrenceRepository {
     return row?.count ?? 0;
   }
 
+  Future<Map<String, int>> getCountsForSeed(
+    String seedId,
+    List<String> candidateIds,
+  ) async {
+    if (candidateIds.isEmpty) return const {};
+    final result = <String, int>{};
+    const chunkSize = 500;
+    for (var i = 0; i < candidateIds.length; i += chunkSize) {
+      final chunk = candidateIds.sublist(
+        i,
+        i + chunkSize > candidateIds.length ? candidateIds.length : i + chunkSize,
+      );
+      final query = db.select(db.trackCoOccurrences)
+        ..where((t) => t.trackAId.equals(seedId) & t.trackBId.isIn(chunk));
+      final rows = await query.get();
+      for (final row in rows) {
+        result[row.trackBId] = row.count;
+      }
+    }
+    return result;
+  }
+
   Future<int> getMaxCount(String trackAId) async {
     final query = db.customSelect(
       'SELECT MAX(count) AS max_count FROM track_co_occurrences WHERE track_a_id = ?1',

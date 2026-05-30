@@ -25,10 +25,25 @@ class RadioGenerator {
     final backend = ref.read(musicBackendProvider);
     if (backend == null) return [seed];
 
+    final sq = ref.read(smartQueueManagerProvider);
+
+    if (backend.serverType != ServerType.local) {
+      try {
+        // Fetch a pool of candidates from the server's similarity endpoint
+        final mix = await backend.instantMix(seed.id, limit: 150);
+        if (mix.isNotEmpty) {
+          final sorted = await sq.scoreAndSort(seed, mix);
+          final withoutSeed = sorted.where((t) => t.id != seed.id).toList();
+          return [seed, ...withoutSeed.take(50)];
+        }
+      } catch (_) {
+        // Fall back to local library scoring if server-side similarity fails
+      }
+    }
+
     final allTracks = await _fetchAllTracks(backend);
     if (allTracks.length <= 1) return [seed];
 
-    final sq = ref.read(smartQueueManagerProvider);
     final sorted = await sq.scoreAndSort(seed, allTracks);
     final withoutSeed = sorted.where((t) => t.id != seed.id).toList();
     // Cap at 50 so the queue doesn't overwhelm the player on large

@@ -11,6 +11,24 @@ class TrackStatsRepository {
     return query.getSingleOrNull();
   }
 
+  Future<Map<String, TrackStatsEntity>> getStatsForTracks(List<String> trackIds) async {
+    if (trackIds.isEmpty) return const {};
+    final result = <String, TrackStatsEntity>{};
+    const chunkSize = 500;
+    for (var i = 0; i < trackIds.length; i += chunkSize) {
+      final chunk = trackIds.sublist(
+        i,
+        i + chunkSize > trackIds.length ? trackIds.length : i + chunkSize,
+      );
+      final query = db.select(db.trackStats)..where((t) => t.trackId.isIn(chunk));
+      final rows = await query.get();
+      for (final row in rows) {
+        result[row.trackId] = row;
+      }
+    }
+    return result;
+  }
+
   Future<void> recordPlay(
     String trackId, {
     required double completionRate,

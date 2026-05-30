@@ -265,11 +265,34 @@ class SmartQueueManager {
     AfTrack seed,
   ) async {
     final results = <MapEntry<AfTrack, double>>[];
+    if (candidates.isEmpty) return results;
+
     final recentlyPlayedIds = await _getRecentlyPlayedIds(limit: 20);
     final recentlyList = recentlyPlayedIds.toList();
 
+    final candidateIds = candidates.map((c) => c.id).toList();
+
+    final statsMap = localDb != null
+        ? await localDb!.trackStats.getStatsForTracks(candidateIds)
+        : const <String, TrackStatsEntity>{};
+
+    final coCountsMap = localDb != null
+        ? await localDb!.coOccurrences.getCountsForSeed(seed.id, candidateIds)
+        : const <String, int>{};
+
+    final maxCo = localDb != null
+        ? await localDb!.coOccurrences.getMaxCount(seed.id)
+        : 0;
+
     for (final candidate in candidates) {
-      final score = await _scoreOne(candidate, seed, recentlyList);
+      final score = _scoreOneSync(
+        candidate,
+        seed,
+        recentlyList,
+        stats: statsMap[candidate.id],
+        coCount: coCountsMap[candidate.id] ?? 0,
+        maxCo: maxCo,
+      );
       results.add(MapEntry(candidate, score));
     }
 
@@ -277,32 +300,19 @@ class SmartQueueManager {
     return results;
   }
 
-  Future<double> _scoreOne(
+  double _scoreOneSync(
     AfTrack candidate,
     AfTrack seed,
-    List<String> recentlyPlayedIds,
-  ) async {
+    List<String> recentlyPlayedIds, {
+    required TrackStatsEntity? stats,
+    required int coCount,
+    required int maxCo,
+  }) {
     double s = 0.0;
 
-    TrackStatsEntity? stats;
-    if (localDb != null) {
-      try {
-        stats = await localDb!.trackStats.getStats(candidate.id);
-      } catch (_) {}
-    }
-
     // 1. Co-occurrence (0.35)
-    if (localDb != null) {
-      try {
-        final coCount = await localDb!.coOccurrences.getCount(
-          seed.id,
-          candidate.id,
-        );
-        final maxCo = await localDb!.coOccurrences.getMaxCount(seed.id);
-        if (maxCo > 0) {
-          s += (coCount / maxCo) * 0.35;
-        }
-      } catch (_) {}
+    if (maxCo > 0) {
+      s += (coCount / maxCo) * 0.35;
     }
 
     // 2. Genre match (0.20)
@@ -347,9 +357,31 @@ class SmartQueueManager {
   ) async {
     if (candidates.isEmpty) return candidates;
     final recentlyPlayedIds = (await _getRecentlyPlayedIds(limit: 20)).toList();
+
+    final candidateIds = candidates.map((c) => c.id).toList();
+
+    final statsMap = localDb != null
+        ? await localDb!.trackStats.getStatsForTracks(candidateIds)
+        : const <String, TrackStatsEntity>{};
+
+    final coCountsMap = localDb != null
+        ? await localDb!.coOccurrences.getCountsForSeed(seed.id, candidateIds)
+        : const <String, int>{};
+
+    final maxCo = localDb != null
+        ? await localDb!.coOccurrences.getMaxCount(seed.id)
+        : 0;
+
     final scored = <MapEntry<AfTrack, double>>[];
     for (final c in candidates) {
-      final s = await _scoreOne(c, seed, recentlyPlayedIds);
+      final s = _scoreOneSync(
+        c,
+        seed,
+        recentlyPlayedIds,
+        stats: statsMap[c.id],
+        coCount: coCountsMap[c.id] ?? 0,
+        maxCo: maxCo,
+      );
       scored.add(MapEntry(c, s));
     }
     scored.sort((a, b) => b.value.compareTo(a.value));
