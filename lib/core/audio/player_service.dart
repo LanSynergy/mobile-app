@@ -735,10 +735,6 @@ class AfPlayerService {
 
     try {
       await _rebuildWindow(nextTrack);
-      final realPos = await _positionTracker.getRawPosition();
-      if (realPos > Duration.zero) {
-        _positionTracker.updateKnownPosition(realPos);
-      }
       _updateMediaSession();
     } catch (e, stack) {
       afLog('audio', 'skipToNext failed', error: e, stackTrace: stack);
@@ -770,10 +766,6 @@ class AfPlayerService {
 
     try {
       await _rebuildWindow(prevTrack);
-      final realPos = await _positionTracker.getRawPosition();
-      if (realPos > Duration.zero) {
-        _positionTracker.updateKnownPosition(realPos);
-      }
       _updateMediaSession();
     } catch (e, stack) {
       afLog('audio', 'skipToPrevious failed', error: e, stackTrace: stack);
@@ -805,10 +797,6 @@ class AfPlayerService {
 
     try {
       await _rebuildWindow(targetTrack);
-      final realPos = await _positionTracker.getRawPosition();
-      if (realPos > Duration.zero) {
-        _positionTracker.updateKnownPosition(realPos);
-      }
       _updateMediaSession();
     } catch (e, stack) {
       afLog('audio', 'skipToQueueItem failed', error: e, stackTrace: stack);
@@ -1085,6 +1073,16 @@ class AfPlayerService {
             _listenedDuration += delta;
           }
         }
+        // Periodically push position to native media session so QS
+        // progress bar advances.  Throttled to ~2s to limit
+        // MethodChannel traffic.
+        if (pos > Duration.zero) {
+          final nowMs = DateTime.now().millisecondsSinceEpoch;
+          if (nowMs - _lastQSPositionPushMs > 2000) {
+            _lastQSPositionPushMs = nowMs;
+            _updateMediaSession();
+          }
+        }
       }),
     );
     _subs.add(
@@ -1258,10 +1256,6 @@ class AfPlayerService {
                     _queueManager.engine.jumpTo(0);
                     _onTrackChangedOrRestarted();
                     await _rebuildWindow(_queueManager.currentTrack!);
-                    final realPos = await _positionTracker.getRawPosition();
-                    if (realPos > Duration.zero) {
-                      _positionTracker.updateKnownPosition(realPos);
-                    }
                     _updateMediaSession();
                     afLog('audio', 'queue end, looping playlist');
                   });
@@ -1414,15 +1408,10 @@ class AfPlayerService {
           );
         }
       }
-      // Re-push media session state with real position after the new
-      // track is loaded.  The pre-_rebuildWindow _updateMediaSession
-      // (L1376) pushed position=0 before openAll resolved — QS latches
-      // that snapshot.  Without this re-push the progress bar stays at
-      // 0 until the next playing/buffering event, which may never come.
-      final realPos = await _positionTracker.getRawPosition();
-      if (realPos > Duration.zero) {
-        _positionTracker.updateKnownPosition(realPos);
-      }
+      // Re-push media session after rebuild so QS gets updated state.
+      // Position is 0 from the anchor reset — still correct since the
+      // new track just started.  The position stream listener handles
+      // periodic QS position updates (every ~2s while playing).
       _updateMediaSession();
     }
   }
@@ -1473,6 +1462,7 @@ class AfPlayerService {
   }
 
   int _lastMediaSessionUpdateMs = 0;
+  int _lastQSPositionPushMs = 0;
   bool _lastEffectivePlaying = false;
 
   /// Push the current state through the bridge (throttled to ~100ms).

@@ -166,20 +166,16 @@ class RadioGenerator {
             return tracks.take(2).toList();
           } else {
             final results = await backend.search(name);
-            final artistTracks =
-                results.tracks
-                    .where(
-                      (t) => t.artistName.toLowerCase() == name.toLowerCase(),
-                    )
-                    .take(2)
-                    .toList();
+            final artistTracks = results.tracks
+                .where((t) => t.artistName.toLowerCase() == name.toLowerCase())
+                .take(2)
+                .toList();
             if (artistTracks.isNotEmpty) return artistTracks;
 
             return results.tracks
                 .where(
-                  (t) => t.artistName.toLowerCase().contains(
-                    name.toLowerCase(),
-                  ),
+                  (t) =>
+                      t.artistName.toLowerCase().contains(name.toLowerCase()),
                 )
                 .take(2)
                 .toList();

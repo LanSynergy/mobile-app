@@ -845,6 +845,7 @@ class _LastFmBrowserAuthDialogState
           sessionKey: sessionKey,
         );
         final verifiedName = await verifiedClient.verifySession();
+        if (!mounted) return;
         final username = verifiedName.isNotEmpty
             ? verifiedName
             : (_username ?? 'Last.fm');

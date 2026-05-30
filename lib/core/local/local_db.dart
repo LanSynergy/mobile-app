@@ -436,9 +436,11 @@ class LocalDb {
 
   // ── Listening Statistics fallback from local history ────────────────────
 
-  Future<List<({String artist, String title, int playCount, String? imageUrl})>> getTopTracksFromHistory({int limit = 10}) async {
-    final rows = await db.customSelect(
-      '''
+  Future<List<({String artist, String title, int playCount, String? imageUrl})>>
+  getTopTracksFromHistory({int limit = 10}) async {
+    final rows = await db
+        .customSelect(
+          '''
       SELECT artist, title, COUNT(*) as play_count, MIN(image_url) as image_url
       FROM playback_history
       WHERE skipped = 0 AND title IS NOT NULL AND title != ''
@@ -446,20 +448,28 @@ class LocalDb {
       ORDER BY play_count DESC
       LIMIT ?
       ''',
-      variables: [Variable<int>(limit)],
-      readsFrom: {db.playbackHistory},
-    ).get();
-    return rows.map((r) => (
-      artist: r.read<String?>('artist') ?? 'Unknown Artist',
-      title: r.read<String?>('title') ?? 'Unknown Track',
-      playCount: r.read<int>('play_count'),
-      imageUrl: r.read<String?>('image_url'),
-    )).toList();
+          variables: [Variable<int>(limit)],
+          readsFrom: {db.playbackHistory},
+        )
+        .get();
+    return rows
+        .map(
+          (r) => (
+            artist: r.read<String?>('artist') ?? 'Unknown Artist',
+            title: r.read<String?>('title') ?? 'Unknown Track',
+            playCount: r.read<int>('play_count'),
+            imageUrl: r.read<String?>('image_url'),
+          ),
+        )
+        .toList();
   }
 
-  Future<List<({String artist, int playCount})>> getTopArtistsFromHistory({int limit = 10}) async {
-    final rows = await db.customSelect(
-      '''
+  Future<List<({String artist, int playCount})>> getTopArtistsFromHistory({
+    int limit = 10,
+  }) async {
+    final rows = await db
+        .customSelect(
+          '''
       SELECT artist, COUNT(*) as play_count
       FROM playback_history
       WHERE skipped = 0 AND artist IS NOT NULL AND artist != ''
@@ -467,18 +477,25 @@ class LocalDb {
       ORDER BY play_count DESC
       LIMIT ?
       ''',
-      variables: [Variable<int>(limit)],
-      readsFrom: {db.playbackHistory},
-    ).get();
-    return rows.map((r) => (
-      artist: r.read<String>('artist'),
-      playCount: r.read<int>('play_count'),
-    )).toList();
+          variables: [Variable<int>(limit)],
+          readsFrom: {db.playbackHistory},
+        )
+        .get();
+    return rows
+        .map(
+          (r) => (
+            artist: r.read<String>('artist'),
+            playCount: r.read<int>('play_count'),
+          ),
+        )
+        .toList();
   }
 
-  Future<List<({String artist, String album, int playCount, String? imageUrl})>> getTopAlbumsFromHistory({int limit = 10}) async {
-    final rows = await db.customSelect(
-      '''
+  Future<List<({String artist, String album, int playCount, String? imageUrl})>>
+  getTopAlbumsFromHistory({int limit = 10}) async {
+    final rows = await db
+        .customSelect(
+          '''
       SELECT artist, album, COUNT(*) as play_count, MIN(image_url) as image_url
       FROM playback_history
       WHERE skipped = 0 AND album IS NOT NULL AND album != ''
@@ -486,28 +503,38 @@ class LocalDb {
       ORDER BY play_count DESC
       LIMIT ?
       ''',
-      variables: [Variable<int>(limit)],
-      readsFrom: {db.playbackHistory},
-    ).get();
-    return rows.map((r) => (
-      artist: r.read<String?>('artist') ?? 'Unknown Artist',
-      album: r.read<String>('album'),
-      playCount: r.read<int>('play_count'),
-      imageUrl: r.read<String?>('image_url'),
-    )).toList();
+          variables: [Variable<int>(limit)],
+          readsFrom: {db.playbackHistory},
+        )
+        .get();
+    return rows
+        .map(
+          (r) => (
+            artist: r.read<String?>('artist') ?? 'Unknown Artist',
+            album: r.read<String>('album'),
+            playCount: r.read<int>('play_count'),
+            imageUrl: r.read<String?>('image_url'),
+          ),
+        )
+        .toList();
   }
 
-  Future<AfTrack?> searchTrackByArtistAndTitle(String artist, String title) async {
-    final rows = await db.customSelect(
-      r'''
+  Future<AfTrack?> searchTrackByArtistAndTitle(
+    String artist,
+    String title,
+  ) async {
+    final rows = await db
+        .customSelect(
+          r'''
       SELECT * FROM tracks 
       WHERE artist = ?1 COLLATE NOCASE 
         AND title = ?2 COLLATE NOCASE 
       LIMIT 1
       ''',
-      variables: [Variable<String>(artist), Variable<String>(title)],
-      readsFrom: {db.tracks},
-    ).get();
+          variables: [Variable<String>(artist), Variable<String>(title)],
+          readsFrom: {db.tracks},
+        )
+        .get();
     if (rows.isEmpty) return null;
     return rowToTrack(db.tracks.map(rows.first.data));
   }

@@ -160,7 +160,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   if (topTracks.isNotEmpty) ...[
                     const SliverToBoxAdapter(
                       child: SizedBox(height: AfSpacing.s32),
-                        ),
+                    ),
                     const SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.symmetric(
@@ -198,7 +198,9 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   ],
                   wikiAsync.maybeWhen(
                     data: (wiki) {
-                      if (wiki == null || wiki.bio == null || wiki.bio!.isEmpty) {
+                      if (wiki == null ||
+                          wiki.bio == null ||
+                          wiki.bio!.isEmpty) {
                         return const SliverToBoxAdapter(child: SizedBox());
                       }
                       return SliverToBoxAdapter(
@@ -402,11 +404,9 @@ Future<void> _startArtistRadio(
   } catch (e) {
     if (context.mounted) Navigator.pop(context); // Close loading HUD
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to start radio: $e'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to start radio: $e')));
     }
   }
 }
@@ -440,10 +440,7 @@ class _ActionRow extends StatelessWidget {
                 side: const BorderSide(color: AfColors.indigo600, width: 1.5),
                 foregroundColor: AfColors.indigo300,
               ),
-              icon: const Icon(
-                LucideIcons.radio,
-                size: 20,
-              ),
+              icon: const Icon(LucideIcons.radio, size: 20),
               label: const Text('Artist Radio'),
             ),
           ),
@@ -454,7 +451,11 @@ class _ActionRow extends StatelessWidget {
 }
 
 class _ArtistBiographyPanel extends StatefulWidget {
-  const _ArtistBiographyPanel({required this.bio, this.listeners, this.playCount});
+  const _ArtistBiographyPanel({
+    required this.bio,
+    this.listeners,
+    this.playCount,
+  });
   final String bio;
   final String? listeners;
   final String? playCount;

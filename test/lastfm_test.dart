@@ -317,7 +317,12 @@ void main() {
           data: any(named: 'data'),
           options: any(named: 'options'),
         ),
-      ).thenAnswer((_) async => Response(requestOptions: RequestOptions(path: '/'), data: {}));
+      ).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: '/'),
+          data: {},
+        ),
+      );
 
       await lastFmClient.love(artist: 'Artist A', track: 'Track A');
 
@@ -326,23 +331,11 @@ void main() {
           '/',
           data: any(
             named: 'data',
-            that: isA<Map<String, String>>().having(
-              (m) => m['method'],
-              'method',
-              'track.love',
-            ).having(
-              (m) => m['artist'],
-              'artist',
-              'Artist A',
-            ).having(
-              (m) => m['track'],
-              'track',
-              'Track A',
-            ).having(
-              (m) => m['sk'],
-              'session key',
-              'test_session',
-            ),
+            that: isA<Map<String, String>>()
+                .having((m) => m['method'], 'method', 'track.love')
+                .having((m) => m['artist'], 'artist', 'Artist A')
+                .having((m) => m['track'], 'track', 'Track A')
+                .having((m) => m['sk'], 'session key', 'test_session'),
           ),
           options: any(named: 'options'),
         ),
@@ -356,7 +349,12 @@ void main() {
           data: any(named: 'data'),
           options: any(named: 'options'),
         ),
-      ).thenAnswer((_) async => Response(requestOptions: RequestOptions(path: '/'), data: {}));
+      ).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: '/'),
+          data: {},
+        ),
+      );
 
       await lastFmClient.unlove(artist: 'Artist A', track: 'Track A');
 
@@ -378,10 +376,8 @@ void main() {
 
     test('getLovedTracks queries user.getLovedTracks', () async {
       when(
-        () => mockDio.get(
-          any(),
-          queryParameters: any(named: 'queryParameters'),
-        ),
+        () =>
+            mockDio.get(any(), queryParameters: any(named: 'queryParameters')),
       ).thenAnswer(
         (_) async => Response(
           requestOptions: RequestOptions(path: '/'),
@@ -390,10 +386,10 @@ void main() {
               'track': [
                 {
                   'name': 'Track A',
-                  'artist': {'name': 'Artist A'}
-                }
-              ]
-            }
+                  'artist': {'name': 'Artist A'},
+                },
+              ],
+            },
           },
         ),
       );
@@ -406,10 +402,8 @@ void main() {
 
     test('getTopTracks queries user.getTopTracks', () async {
       when(
-        () => mockDio.get(
-          any(),
-          queryParameters: any(named: 'queryParameters'),
-        ),
+        () =>
+            mockDio.get(any(), queryParameters: any(named: 'queryParameters')),
       ).thenAnswer(
         (_) async => Response(
           requestOptions: RequestOptions(path: '/'),
@@ -419,10 +413,10 @@ void main() {
                 {
                   'name': 'Track A',
                   'artist': {'name': 'Artist A'},
-                  'playcount': '10'
-                }
-              ]
-            }
+                  'playcount': '10',
+                },
+              ],
+            },
           },
         ),
       );
@@ -434,15 +428,16 @@ void main() {
 
     test('getArtistInfo queries artist.getInfo', () async {
       when(
-        () => mockDio.get(
-          any(),
-          queryParameters: any(named: 'queryParameters'),
-        ),
+        () =>
+            mockDio.get(any(), queryParameters: any(named: 'queryParameters')),
       ).thenAnswer(
         (_) async => Response(
           requestOptions: RequestOptions(path: '/'),
           data: {
-            'artist': {'name': 'Artist A', 'bio': {'content': 'Biography content'}}
+            'artist': {
+              'name': 'Artist A',
+              'bio': {'content': 'Biography content'},
+            },
           },
         ),
       );

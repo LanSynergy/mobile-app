@@ -63,11 +63,15 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
 
     final detail = detailAsync.valueOrNull;
     final wikiAsync = detail != null
-        ? ref.watch(albumWikiProvider((
-            artistName: detail.album.artistName,
-            albumName: detail.album.name,
-          )))
-        : const AsyncValue<({String? wiki, String? listeners, String? playCount})?>.loading();
+        ? ref.watch(
+            albumWikiProvider((
+              artistName: detail.album.artistName,
+              albumName: detail.album.name,
+            )),
+          )
+        : const AsyncValue<
+            ({String? wiki, String? listeners, String? playCount})?
+          >.loading();
 
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
@@ -201,7 +205,9 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                   ),
                   wikiAsync.maybeWhen(
                     data: (wiki) {
-                      if (wiki == null || wiki.wiki == null || wiki.wiki!.isEmpty) {
+                      if (wiki == null ||
+                          wiki.wiki == null ||
+                          wiki.wiki!.isEmpty) {
                         return const SliverToBoxAdapter(child: SizedBox());
                       }
                       return SliverToBoxAdapter(

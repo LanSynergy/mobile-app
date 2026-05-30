@@ -532,11 +532,23 @@ class _StatsDashboard extends ConsumerWidget {
           // Period Selector
           Row(
             children: [
-              _PeriodButton(label: '7 Days', value: '7day', activeValue: activePeriod),
+              _PeriodButton(
+                label: '7 Days',
+                value: '7day',
+                activeValue: activePeriod,
+              ),
               const SizedBox(width: 8),
-              _PeriodButton(label: '30 Days', value: '1month', activeValue: activePeriod),
+              _PeriodButton(
+                label: '30 Days',
+                value: '1month',
+                activeValue: activePeriod,
+              ),
               const SizedBox(width: 8),
-              _PeriodButton(label: 'All Time', value: 'overall', activeValue: activePeriod),
+              _PeriodButton(
+                label: 'All Time',
+                value: 'overall',
+                activeValue: activePeriod,
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -551,9 +563,21 @@ class _StatsDashboard extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              _TabButton(label: 'Songs', value: 'songs', activeValue: activeTab),
-              _TabButton(label: 'Artists', value: 'artists', activeValue: activeTab),
-              _TabButton(label: 'Albums', value: 'albums', activeValue: activeTab),
+              _TabButton(
+                label: 'Songs',
+                value: 'songs',
+                activeValue: activeTab,
+              ),
+              _TabButton(
+                label: 'Artists',
+                value: 'artists',
+                activeValue: activeTab,
+              ),
+              _TabButton(
+                label: 'Albums',
+                value: 'albums',
+                activeValue: activeTab,
+              ),
             ],
           ),
         ),
@@ -565,7 +589,11 @@ class _StatsDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _renderActiveList(BuildContext context, WidgetRef ref, String activeTab) {
+  Widget _renderActiveList(
+    BuildContext context,
+    WidgetRef ref,
+    String activeTab,
+  ) {
     switch (activeTab) {
       case 'songs':
         final songsAsync = ref.watch(topTracksProvider);
@@ -600,7 +628,10 @@ class _StatsDashboard extends ConsumerWidget {
         child: SizedBox(
           width: 24,
           height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2, color: AfColors.indigo300),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AfColors.indigo300,
+          ),
         ),
       ),
     );
@@ -691,12 +722,15 @@ class _TabButton extends ConsumerWidget {
 
 class _SongsList extends ConsumerWidget {
   const _SongsList({required this.tracks});
-  final List<({String artist, String title, int playCount, String? imageUrl})> tracks;
+  final List<({String artist, String title, int playCount, String? imageUrl})>
+  tracks;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (tracks.isEmpty) {
-      return _emptyState('No history logged yet. Listen to tracks to collect metrics.');
+      return _emptyState(
+        'No history logged yet. Listen to tracks to collect metrics.',
+      );
     }
     return ListView.separated(
       shrinkWrap: true,
@@ -713,10 +747,19 @@ class _SongsList extends ConsumerWidget {
             width: 48,
             child: Row(
               children: [
-                Text('${i + 1}', style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary)),
+                Text(
+                  '${i + 1}',
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
                 const Spacer(),
                 t.imageUrl != null
-                    ? Artwork(url: t.imageUrl, size: 28, radius: AfRadii.borderSm)
+                    ? Artwork(
+                        url: t.imageUrl,
+                        size: 28,
+                        radius: AfRadii.borderSm,
+                      )
                     : Container(
                         width: 28,
                         height: 28,
@@ -724,14 +767,37 @@ class _SongsList extends ConsumerWidget {
                           color: AfColors.surfaceHigh,
                           borderRadius: AfRadii.borderSm,
                         ),
-                        child: const Icon(LucideIcons.music, size: 14, color: AfColors.textTertiary),
+                        child: const Icon(
+                          LucideIcons.music,
+                          size: 14,
+                          color: AfColors.textTertiary,
+                        ),
                       ),
               ],
             ),
           ),
-          title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AfTypography.bodySmall.copyWith(fontWeight: FontWeight.bold)),
-          subtitle: Text(t.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary, fontSize: 11)),
-          trailing: Text('${t.playCount} plays', style: AfTypography.bodySmall.copyWith(color: AfColors.indigo300, fontSize: 11)),
+          title: Text(
+            t.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AfTypography.bodySmall.copyWith(fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(
+            t.artist,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textTertiary,
+              fontSize: 11,
+            ),
+          ),
+          trailing: Text(
+            '${t.playCount} plays',
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.indigo300,
+              fontSize: 11,
+            ),
+          ),
           onTap: () => _playTrackFromStats(context, ref, t.artist, t.title),
         );
       },
@@ -763,14 +829,34 @@ class _ArtistsList extends ConsumerWidget {
             width: 32,
             child: Row(
               children: [
-                Text('${i + 1}', style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary)),
+                Text(
+                  '${i + 1}',
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
                 const Spacer(),
-                const Icon(LucideIcons.user, size: 16, color: AfColors.textTertiary),
+                const Icon(
+                  LucideIcons.user,
+                  size: 16,
+                  color: AfColors.textTertiary,
+                ),
               ],
             ),
           ),
-          title: Text(a.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: AfTypography.bodySmall.copyWith(fontWeight: FontWeight.bold)),
-          trailing: Text('${a.playCount} plays', style: AfTypography.bodySmall.copyWith(color: AfColors.indigo300, fontSize: 11)),
+          title: Text(
+            a.artist,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AfTypography.bodySmall.copyWith(fontWeight: FontWeight.bold),
+          ),
+          trailing: Text(
+            '${a.playCount} plays',
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.indigo300,
+              fontSize: 11,
+            ),
+          ),
           onTap: () => _navigateToArtistFromStats(context, ref, a.artist),
         );
       },
@@ -780,7 +866,8 @@ class _ArtistsList extends ConsumerWidget {
 
 class _AlbumsList extends ConsumerWidget {
   const _AlbumsList({required this.albums});
-  final List<({String artist, String album, int playCount, String? imageUrl})> albums;
+  final List<({String artist, String album, int playCount, String? imageUrl})>
+  albums;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -802,10 +889,19 @@ class _AlbumsList extends ConsumerWidget {
             width: 48,
             child: Row(
               children: [
-                Text('${i + 1}', style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary)),
+                Text(
+                  '${i + 1}',
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
                 const Spacer(),
                 alb.imageUrl != null
-                    ? Artwork(url: alb.imageUrl, size: 28, radius: AfRadii.borderSm)
+                    ? Artwork(
+                        url: alb.imageUrl,
+                        size: 28,
+                        radius: AfRadii.borderSm,
+                      )
                     : Container(
                         width: 28,
                         height: 28,
@@ -813,15 +909,39 @@ class _AlbumsList extends ConsumerWidget {
                           color: AfColors.surfaceHigh,
                           borderRadius: AfRadii.borderSm,
                         ),
-                        child: const Icon(LucideIcons.disc, size: 14, color: AfColors.textTertiary),
+                        child: const Icon(
+                          LucideIcons.disc,
+                          size: 14,
+                          color: AfColors.textTertiary,
+                        ),
                       ),
               ],
             ),
           ),
-          title: Text(alb.album, maxLines: 1, overflow: TextOverflow.ellipsis, style: AfTypography.bodySmall.copyWith(fontWeight: FontWeight.bold)),
-          subtitle: Text(alb.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary, fontSize: 11)),
-          trailing: Text('${alb.playCount} plays', style: AfTypography.bodySmall.copyWith(color: AfColors.indigo300, fontSize: 11)),
-          onTap: () => _navigateToAlbumFromStats(context, ref, alb.artist, alb.album),
+          title: Text(
+            alb.album,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AfTypography.bodySmall.copyWith(fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(
+            alb.artist,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textTertiary,
+              fontSize: 11,
+            ),
+          ),
+          trailing: Text(
+            '${alb.playCount} plays',
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.indigo300,
+              fontSize: 11,
+            ),
+          ),
+          onTap: () =>
+              _navigateToAlbumFromStats(context, ref, alb.artist, alb.album),
         );
       },
     );
@@ -843,7 +963,12 @@ Widget _emptyState(String text) {
 
 // ── Search/Resolution Helpers ────────────────────────────────────────────────
 
-Future<void> _playTrackFromStats(BuildContext context, WidgetRef ref, String artist, String title) async {
+Future<void> _playTrackFromStats(
+  BuildContext context,
+  WidgetRef ref,
+  String artist,
+  String title,
+) async {
   unawaited(
     showDialog(
       context: context,
@@ -859,10 +984,16 @@ Future<void> _playTrackFromStats(BuildContext context, WidgetRef ref, String art
                 SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AfColors.indigo300),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AfColors.indigo300,
+                  ),
                 ),
                 SizedBox(width: 16),
-                Text('Locating track in library...', style: TextStyle(color: AfColors.textPrimary)),
+                Text(
+                  'Locating track in library...',
+                  style: TextStyle(color: AfColors.textPrimary),
+                ),
               ],
             ),
           ),
@@ -906,7 +1037,9 @@ Future<void> _playTrackFromStats(BuildContext context, WidgetRef ref, String art
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('"$title" by $artist is not in your library.')),
+          SnackBar(
+            content: Text('"$title" by $artist is not in your library.'),
+          ),
         );
       }
     }
@@ -920,7 +1053,11 @@ Future<void> _playTrackFromStats(BuildContext context, WidgetRef ref, String art
   }
 }
 
-Future<void> _navigateToArtistFromStats(BuildContext context, WidgetRef ref, String artistName) async {
+Future<void> _navigateToArtistFromStats(
+  BuildContext context,
+  WidgetRef ref,
+  String artistName,
+) async {
   unawaited(
     showDialog(
       context: context,
@@ -936,10 +1073,16 @@ Future<void> _navigateToArtistFromStats(BuildContext context, WidgetRef ref, Str
                 SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AfColors.indigo300),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AfColors.indigo300,
+                  ),
                 ),
                 SizedBox(width: 16),
-                Text('Locating artist...', style: TextStyle(color: AfColors.textPrimary)),
+                Text(
+                  'Locating artist...',
+                  style: TextStyle(color: AfColors.textPrimary),
+                ),
               ],
             ),
           ),
@@ -988,7 +1131,12 @@ Future<void> _navigateToArtistFromStats(BuildContext context, WidgetRef ref, Str
   }
 }
 
-Future<void> _navigateToAlbumFromStats(BuildContext context, WidgetRef ref, String artistName, String albumName) async {
+Future<void> _navigateToAlbumFromStats(
+  BuildContext context,
+  WidgetRef ref,
+  String artistName,
+  String albumName,
+) async {
   unawaited(
     showDialog(
       context: context,
@@ -1004,10 +1152,16 @@ Future<void> _navigateToAlbumFromStats(BuildContext context, WidgetRef ref, Stri
                 SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AfColors.indigo300),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AfColors.indigo300,
+                  ),
                 ),
                 SizedBox(width: 16),
-                Text('Locating album...', style: TextStyle(color: AfColors.textPrimary)),
+                Text(
+                  'Locating album...',
+                  style: TextStyle(color: AfColors.textPrimary),
+                ),
               ],
             ),
           ),
@@ -1043,7 +1197,11 @@ Future<void> _navigateToAlbumFromStats(BuildContext context, WidgetRef ref, Stri
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Album "$albumName" by $artistName not found in library.')),
+          SnackBar(
+            content: Text(
+              'Album "$albumName" by $artistName not found in library.',
+            ),
+          ),
         );
       }
     }

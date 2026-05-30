@@ -15,19 +15,21 @@ class LastFmClient {
     String? apiSecret,
     String? sessionKey,
     void Function(String message)? onStatus,
+    Dio? dio,
   }) : _apiKey = apiKey,
        _apiSecret = apiSecret,
        _sessionKey = sessionKey,
-       _onStatus = onStatus;
+       _onStatus = onStatus,
+       _dio =
+           dio ??
+           Dio(BaseOptions(baseUrl: 'https://ws.audioscrobbler.com/2.0/'));
 
   final String _apiKey;
   final String? _apiSecret;
   final String? _sessionKey;
   final void Function(String message)? _onStatus;
 
-  final Dio _dio = Dio(
-    BaseOptions(baseUrl: 'https://ws.audioscrobbler.com/2.0/'),
-  );
+  final Dio _dio;
 
   /// Helper to calculate MD5 request signature for authenticated endpoints.
   /// Concatenates parameters alphabetically by name, appends secret, and hashes.
@@ -363,7 +365,12 @@ class LastFmClient {
       );
       afLog('data', 'Last.fm unloved track: $artist - $track');
     } catch (e, stack) {
-      afLog('error', 'Last.fm unlove track failed', error: e, stackTrace: stack);
+      afLog(
+        'error',
+        'Last.fm unlove track failed',
+        error: e,
+        stackTrace: stack,
+      );
       rethrow;
     }
   }
@@ -396,7 +403,12 @@ class LastFmClient {
         return (artist: artist, title: name);
       }).toList();
     } catch (e, stack) {
-      afLog('error', 'Last.fm getLovedTracks failed', error: e, stackTrace: stack);
+      afLog(
+        'error',
+        'Last.fm getLovedTracks failed',
+        error: e,
+        stackTrace: stack,
+      );
       return [];
     }
   }
@@ -432,7 +444,12 @@ class LastFmClient {
         return (artist: artist, title: name, playCount: playCount);
       }).toList();
     } catch (e, stack) {
-      afLog('error', 'Last.fm getTopTracks failed', error: e, stackTrace: stack);
+      afLog(
+        'error',
+        'Last.fm getTopTracks failed',
+        error: e,
+        stackTrace: stack,
+      );
       return [];
     }
   }
@@ -467,13 +484,19 @@ class LastFmClient {
         return (artist: name, playCount: playCount);
       }).toList();
     } catch (e, stack) {
-      afLog('error', 'Last.fm getTopArtists failed', error: e, stackTrace: stack);
+      afLog(
+        'error',
+        'Last.fm getTopArtists failed',
+        error: e,
+        stackTrace: stack,
+      );
       return [];
     }
   }
 
   /// Fetch top albums for a user.
-  Future<List<({String artist, String album, int playCount, String? imageUrl})>> getTopAlbums({
+  Future<List<({String artist, String album, int playCount, String? imageUrl})>>
+  getTopAlbums({
     required String username,
     String period = '7day',
     int limit = 10,
@@ -504,23 +527,36 @@ class LastFmClient {
         String? imageUrl;
         if (images != null && images.isNotEmpty) {
           final xlImage = images.firstWhere(
-            (img) => (img as Map)['size'] == 'extralarge' || img['size'] == 'large',
+            (img) =>
+                (img as Map)['size'] == 'extralarge' || img['size'] == 'large',
             orElse: () => images.last,
           );
           if (xlImage is Map) {
             imageUrl = xlImage['#text'] as String?;
           }
         }
-        return (artist: artist, album: name, playCount: playCount, imageUrl: imageUrl);
+        return (
+          artist: artist,
+          album: name,
+          playCount: playCount,
+          imageUrl: imageUrl,
+        );
       }).toList();
     } catch (e, stack) {
-      afLog('error', 'Last.fm getTopAlbums failed', error: e, stackTrace: stack);
+      afLog(
+        'error',
+        'Last.fm getTopAlbums failed',
+        error: e,
+        stackTrace: stack,
+      );
       return [];
     }
   }
 
   /// Fetch artist information (biography, stats, etc.).
-  Future<Map<String, dynamic>?> getArtistInfo({required String artistName}) async {
+  Future<Map<String, dynamic>?> getArtistInfo({
+    required String artistName,
+  }) async {
     try {
       final res = await _dio.get(
         '/',
@@ -537,7 +573,12 @@ class LastFmClient {
       }
       return null;
     } catch (e, stack) {
-      afLog('error', 'Last.fm getArtistInfo failed', error: e, stackTrace: stack);
+      afLog(
+        'error',
+        'Last.fm getArtistInfo failed',
+        error: e,
+        stackTrace: stack,
+      );
       return null;
     }
   }
@@ -564,7 +605,12 @@ class LastFmClient {
       }
       return null;
     } catch (e, stack) {
-      afLog('error', 'Last.fm getAlbumInfo failed', error: e, stackTrace: stack);
+      afLog(
+        'error',
+        'Last.fm getAlbumInfo failed',
+        error: e,
+        stackTrace: stack,
+      );
       return null;
     }
   }
@@ -596,7 +642,12 @@ class LastFmClient {
           .where((n) => n.isNotEmpty)
           .toList();
     } catch (e, stack) {
-      afLog('error', 'Last.fm getSimilarArtists failed', error: e, stackTrace: stack);
+      afLog(
+        'error',
+        'Last.fm getSimilarArtists failed',
+        error: e,
+        stackTrace: stack,
+      );
       return [];
     }
   }

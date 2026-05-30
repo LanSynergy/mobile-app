@@ -321,9 +321,7 @@ Future<void> _startTrackRadio(
     if (context.mounted) Navigator.pop(context); // Close loading HUD
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to start radio: ${displayError(e)}'),
-        ),
+        SnackBar(content: Text('Failed to start radio: ${displayError(e)}')),
       );
     }
   }
