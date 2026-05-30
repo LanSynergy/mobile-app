@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:aetherfin/core/audio/lastfm_playback_reporter.dart';
@@ -10,6 +11,8 @@ import 'package:aetherfin/core/lastfm/lastfm_client.dart';
 class MockPlayerService extends Mock implements AfPlayerService {}
 
 class MockLastFmClient extends Mock implements LastFmClient {}
+
+class MockDio extends Mock implements Dio {}
 
 void main() {
   late MockPlayerService player;
@@ -290,6 +293,163 @@ void main() {
       );
 
       await reporter.dispose();
+    });
+  });
+
+  group('LastFmClient Extended API Endpoints', () {
+    late MockDio mockDio;
+    late LastFmClient lastFmClient;
+
+    setUp(() {
+      mockDio = MockDio();
+      lastFmClient = LastFmClient(
+        apiKey: 'test_key',
+        apiSecret: 'test_secret',
+        sessionKey: 'test_session',
+        dio: mockDio,
+      );
+    });
+
+    test('love submits POST with signature', () async {
+      when(
+        () => mockDio.post(
+          any(),
+          data: any(named: 'data'),
+          options: any(named: 'options'),
+        ),
+      ).thenAnswer((_) async => Response(requestOptions: RequestOptions(path: '/'), data: {}));
+
+      await lastFmClient.love(artist: 'Artist A', track: 'Track A');
+
+      verify(
+        () => mockDio.post(
+          '/',
+          data: any(
+            named: 'data',
+            that: isA<Map<String, String>>().having(
+              (m) => m['method'],
+              'method',
+              'track.love',
+            ).having(
+              (m) => m['artist'],
+              'artist',
+              'Artist A',
+            ).having(
+              (m) => m['track'],
+              'track',
+              'Track A',
+            ).having(
+              (m) => m['sk'],
+              'session key',
+              'test_session',
+            ),
+          ),
+          options: any(named: 'options'),
+        ),
+      ).called(1);
+    });
+
+    test('unlove submits POST with signature', () async {
+      when(
+        () => mockDio.post(
+          any(),
+          data: any(named: 'data'),
+          options: any(named: 'options'),
+        ),
+      ).thenAnswer((_) async => Response(requestOptions: RequestOptions(path: '/'), data: {}));
+
+      await lastFmClient.unlove(artist: 'Artist A', track: 'Track A');
+
+      verify(
+        () => mockDio.post(
+          '/',
+          data: any(
+            named: 'data',
+            that: isA<Map<String, String>>().having(
+              (m) => m['method'],
+              'method',
+              'track.unlove',
+            ),
+          ),
+          options: any(named: 'options'),
+        ),
+      ).called(1);
+    });
+
+    test('getLovedTracks queries user.getLovedTracks', () async {
+      when(
+        () => mockDio.get(
+          any(),
+          queryParameters: any(named: 'queryParameters'),
+        ),
+      ).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: '/'),
+          data: {
+            'lovedtracks': {
+              'track': [
+                {
+                  'name': 'Track A',
+                  'artist': {'name': 'Artist A'}
+                }
+              ]
+            }
+          },
+        ),
+      );
+
+      final result = await lastFmClient.getLovedTracks(username: 'test_user');
+      expect(result.length, 1);
+      expect(result.first.title, 'Track A');
+      expect(result.first.artist, 'Artist A');
+    });
+
+    test('getTopTracks queries user.getTopTracks', () async {
+      when(
+        () => mockDio.get(
+          any(),
+          queryParameters: any(named: 'queryParameters'),
+        ),
+      ).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: '/'),
+          data: {
+            'toptracks': {
+              'track': [
+                {
+                  'name': 'Track A',
+                  'artist': {'name': 'Artist A'},
+                  'playcount': '10'
+                }
+              ]
+            }
+          },
+        ),
+      );
+
+      final result = await lastFmClient.getTopTracks(username: 'test_user');
+      expect(result.length, 1);
+      expect(result.first.playCount, 10);
+    });
+
+    test('getArtistInfo queries artist.getInfo', () async {
+      when(
+        () => mockDio.get(
+          any(),
+          queryParameters: any(named: 'queryParameters'),
+        ),
+      ).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: '/'),
+          data: {
+            'artist': {'name': 'Artist A', 'bio': {'content': 'Biography content'}}
+          },
+        ),
+      );
+
+      final result = await lastFmClient.getArtistInfo(artistName: 'Artist A');
+      expect(result?['name'], 'Artist A');
+      expect(result?['bio']?['content'], 'Biography content');
     });
   });
 }

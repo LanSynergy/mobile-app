@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
+import '../../state/lastfm_metadata_providers.dart';
 import '../../state/providers.dart';
 import '../../utils/display_error.dart';
 import '../../utils/log.dart';
@@ -59,6 +60,15 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
     final activeId = activeTrack?.id;
     final isBuffering = ref.watch(isBufferingProvider);
     final activeAccent = ref.watch(currentSpectralProvider).energy;
+
+    final detail = detailAsync.valueOrNull;
+    final wikiAsync = detail != null
+        ? ref.watch(albumWikiProvider((
+            artistName: detail.album.artistName,
+            albumName: detail.album.name,
+          )))
+        : const AsyncValue<({String? wiki, String? listeners, String? playCount})?>.loading();
+
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
       body: detailAsync.when(
@@ -188,6 +198,27 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                             showTrackContextMenu(context, ref, tracks[i]),
                       ),
                     ),
+                  ),
+                  wikiAsync.maybeWhen(
+                    data: (wiki) {
+                      if (wiki == null || wiki.wiki == null || wiki.wiki!.isEmpty) {
+                        return const SliverToBoxAdapter(child: SizedBox());
+                      }
+                      return SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AfSpacing.gutterGenerous,
+                            vertical: AfSpacing.s24,
+                          ),
+                          child: _AlbumWikiPanel(
+                            wiki: wiki.wiki!,
+                            listeners: wiki.listeners,
+                            playCount: wiki.playCount,
+                          ),
+                        ),
+                      );
+                    },
+                    orElse: () => const SliverToBoxAdapter(child: SizedBox()),
                   ),
                   const SliverToBoxAdapter(
                     child: SizedBox(
@@ -466,6 +497,92 @@ class _IconCircle extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         child: Icon(icon, size: 22, color: color ?? AfColors.textPrimary),
+      ),
+    );
+  }
+}
+
+class _AlbumWikiPanel extends StatefulWidget {
+  const _AlbumWikiPanel({required this.wiki, this.listeners, this.playCount});
+  final String wiki;
+  final String? listeners;
+  final String? playCount;
+
+  @override
+  State<_AlbumWikiPanel> createState() => _AlbumWikiPanelState();
+}
+
+class _AlbumWikiPanelState extends State<_AlbumWikiPanel> {
+  bool _expanded = false;
+
+  String _cleanHtml(String html) {
+    return html.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+  }
+
+  String _formatNumber(String? numStr) {
+    if (numStr == null) return '';
+    final n = int.tryParse(numStr);
+    if (n == null) return numStr;
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return '$n';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cleanText = _cleanHtml(widget.wiki);
+    if (cleanText.isEmpty) return const SizedBox();
+
+    final stats = <String>[];
+    if (widget.listeners != null) {
+      stats.add('${_formatNumber(widget.listeners)} listeners');
+    }
+    if (widget.playCount != null) {
+      stats.add('${_formatNumber(widget.playCount)} plays');
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(AfSpacing.s16),
+      decoration: const BoxDecoration(
+        color: AfColors.surfaceBase,
+        borderRadius: AfRadii.borderMd,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('About this Album', style: AfTypography.titleSmall),
+          if (stats.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              stats.join(' · '),
+              style: AfTypography.bodySmall.copyWith(
+                color: AfColors.textTertiary,
+                fontSize: 11,
+              ),
+            ),
+          ],
+          const SizedBox(height: AfSpacing.s12),
+          Text(
+            cleanText,
+            maxLines: _expanded ? null : 4,
+            overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Text(
+              _expanded ? 'Show less' : 'Read more',
+              style: AfTypography.bodySmall.copyWith(
+                color: AfColors.indigo300,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

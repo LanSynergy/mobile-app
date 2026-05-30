@@ -17,6 +17,7 @@ import '../../core/audio/player_settings_store.dart';
 import '../../core/local/app_mode_store.dart';
 import '../../build_id.dart';
 import '../../design_tokens/tokens.dart';
+import '../../state/lastfm_sync_provider.dart';
 import '../../state/providers.dart';
 import '../../widgets/af_dialog.dart';
 import 'settings_dialogs.dart';
@@ -657,6 +658,73 @@ class _LastFmSettingsSection extends ConsumerWidget {
                 title: 'Connected as $username',
                 subtitle: 'Tap to disconnect / sign out',
                 onTap: () => showLastFmSignOutDialog(context, ref),
+              ),
+              SettingsTile(
+                icon: LucideIcons.refreshCw,
+                iconColor: AfColors.textSecondary,
+                title: 'Sync Liked Tracks',
+                subtitle: 'Sync favorites between library and Last.fm',
+                onTap: () async {
+                  unawaited(
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const Center(
+                        child: Card(
+                          color: AfColors.surfaceBase,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 16,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AfColors.indigo300,
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Text(
+                                  'Syncing favorites...',
+                                  style: TextStyle(color: AfColors.textPrimary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+
+                  try {
+                    final syncFn = ref.read(lastFmSyncProvider);
+                    final result = await syncFn();
+                    if (context.mounted) Navigator.pop(context); // Close dialog
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Synced! Added ${result.toApp} tracks locally, '
+                            'loved ${result.toLastFm} on Last.fm.',
+                          ),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) Navigator.pop(context); // Close dialog
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Sync failed: $e')),
+                      );
+                    }
+                  }
+                },
               ),
               SettingsSwitchTile(
                 icon: LucideIcons.checkSquare,

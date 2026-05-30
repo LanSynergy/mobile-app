@@ -10,6 +10,7 @@ import '../core/audio/play_actions.dart';
 import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
+import '../state/radio_providers.dart';
 import '../utils/display_error.dart';
 import 'af_dialog.dart';
 import 'save_to_playlist_sheet.dart';
@@ -115,6 +116,14 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('"${track.title}" added to queue')),
                 );
+              },
+            ),
+            _MenuItem(
+              icon: LucideIcons.radio,
+              label: 'Start Radio',
+              onTap: () async {
+                Navigator.of(ctx).pop();
+                await _startTrackRadio(context, innerRef, track);
               },
             ),
             _MenuItem(
@@ -251,6 +260,73 @@ String Function(AfTrack)? _streamResolver(WidgetRef ref) {
       maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate,
     );
   };
+}
+
+Future<void> _startTrackRadio(
+  BuildContext context,
+  WidgetRef ref,
+  AfTrack track,
+) async {
+  unawaited(
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          color: AfColors.surfaceBase,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AfColors.indigo300,
+                  ),
+                ),
+                SizedBox(width: 16),
+                Text(
+                  'Generating Radio queue...',
+                  style: TextStyle(color: AfColors.textPrimary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  try {
+    final generator = ref.read(radioGeneratorProvider);
+    final queue = await generator.generateTrackRadio(track);
+
+    if (context.mounted) Navigator.pop(context); // Close loading HUD
+
+    if (queue.isNotEmpty) {
+      await ref.read(playActionsProvider).playQueue(queue, startIndex: 0);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not generate similar track radio queue.'),
+          ),
+        );
+      }
+    }
+  } catch (e) {
+    if (context.mounted) Navigator.pop(context); // Close loading HUD
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to start radio: ${displayError(e)}'),
+        ),
+      );
+    }
+  }
 }
 
 void _playNext(WidgetRef ref, AfTrack track) {

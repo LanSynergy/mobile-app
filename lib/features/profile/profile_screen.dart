@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -5,25 +6,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../core/audio/play_actions.dart';
+import '../../core/backend/music_backend.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
+import '../../state/lastfm_stats_providers.dart';
 import '../../state/providers.dart';
+import '../../utils/display_error.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/bottom_sheet.dart';
 import '../../widgets/section_header.dart';
 
 /// Mockup 09 — Profile.
-///
-/// Per non-negotiable §4.1: shows TRACKS and ALBUMS, never followers.
-/// Jellyfin is personal; there is no "follower" concept.
-///
-/// Every section on this screen is now wired to a live Riverpod provider
-/// instead of the previous hard-coded ("Skylark / Field Notes / Pinemoth
-/// / Marrow Bay") demo strings:
-///   • Stats        ← allAlbumsProvider.length + allTracksProvider.length
-///   • Pinned       ← favoriteAlbumsProvider (falls back to recently-added)
-///   • Playlists    ← allPlaylistsProvider (removed — now in Playlist tab)
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -43,10 +39,8 @@ class ProfileScreen extends ConsumerWidget {
         ? ref.watch(localAlbumsProvider)
         : ref.watch(allAlbumsProvider);
     final favAlbumsAsync = ref.watch(favoriteAlbumsProvider);
-    // Same provider in both modes — LocalBackend.recentlyAddedAlbums
-    // sorts by MAX(last_modified) so this fallback actually surfaces
-    // newly-imported music instead of the alphabetically-first album.
     final recentAlbumsAsync = ref.watch(recentlyAddedAlbumsProvider);
+
     String fmtCount<T>(AsyncValue<List<T>> async) =>
         async.maybeWhen(data: (list) => _fmt(list.length), orElse: () => '—');
 
@@ -60,6 +54,11 @@ class ProfileScreen extends ConsumerWidget {
             ),
       orElse: () => const <AfAlbum>[],
     );
+
+    // Last.fm connection state.
+    final lastFmSession = ref.watch(lastfmSessionKeyProvider);
+    final lastFmUser = ref.watch(lastfmUsernameProvider);
+    final isLastFmConnected = lastFmSession.isNotEmpty && lastFmUser.isNotEmpty;
 
     return SafeArea(
       child: ListView(
@@ -144,6 +143,14 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: AfSpacing.s8),
           _PinnedRow(albums: pinned),
           const SizedBox(height: AfSpacing.s24),
+
+          // ── Listening Stats Dashboard ──────────────────────────────────────
+          const SectionHeader(title: 'Listening Stats', uppercase: true),
+          const SizedBox(height: AfSpacing.s12),
+          if (!isLastFmConnected) _LastFmConnectionCTA(),
+          _StatsDashboard(isLastFmConnected: isLastFmConnected),
+          const SizedBox(height: AfSpacing.s24),
+
           const SectionHeader(title: 'Account', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
           ListTile(
@@ -448,5 +455,604 @@ class _AvatarImagePicker extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _LastFmConnectionCTA extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AfSpacing.s16),
+      padding: const EdgeInsets.all(AfSpacing.s16),
+      decoration: const BoxDecoration(
+        borderRadius: AfRadii.borderMd,
+        gradient: LinearGradient(
+          colors: [AfColors.indigo800, AfColors.semanticError],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                LucideIcons.radio,
+                color: AfColors.textOnPrimary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Connect to Last.fm',
+                style: AfTypography.titleSmall.copyWith(
+                  color: AfColors.textOnPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Sync your listening habits globally, unlock detailed statistics, and get smart recommendations.',
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textOnPrimary.withValues(alpha: 0.9),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: AfColors.indigo800,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            onPressed: () => context.push('/settings'),
+            child: const Text('Connect now'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatsDashboard extends ConsumerWidget {
+  const _StatsDashboard({required this.isLastFmConnected});
+  final bool isLastFmConnected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activePeriod = ref.watch(statsPeriodProvider);
+    final activeTab = ref.watch(statsTabProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (isLastFmConnected) ...[
+          // Period Selector
+          Row(
+            children: [
+              _PeriodButton(label: '7 Days', value: '7day', activeValue: activePeriod),
+              const SizedBox(width: 8),
+              _PeriodButton(label: '30 Days', value: '1month', activeValue: activePeriod),
+              const SizedBox(width: 8),
+              _PeriodButton(label: 'All Time', value: 'overall', activeValue: activePeriod),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Tabs Selector (Songs | Artists | Albums)
+        Container(
+          padding: const EdgeInsets.all(2),
+          decoration: const BoxDecoration(
+            color: AfColors.surfaceBase,
+            borderRadius: AfRadii.borderMd,
+          ),
+          child: Row(
+            children: [
+              _TabButton(label: 'Songs', value: 'songs', activeValue: activeTab),
+              _TabButton(label: 'Artists', value: 'artists', activeValue: activeTab),
+              _TabButton(label: 'Albums', value: 'albums', activeValue: activeTab),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // List render
+        _renderActiveList(context, ref, activeTab),
+      ],
+    );
+  }
+
+  Widget _renderActiveList(BuildContext context, WidgetRef ref, String activeTab) {
+    switch (activeTab) {
+      case 'songs':
+        final songsAsync = ref.watch(topTracksProvider);
+        return songsAsync.when(
+          loading: _loadingIndicator,
+          error: (err, _) => _errorText(err),
+          data: (tracks) => _SongsList(tracks: tracks),
+        );
+      case 'artists':
+        final artistsAsync = ref.watch(topArtistsProvider);
+        return artistsAsync.when(
+          loading: _loadingIndicator,
+          error: (err, _) => _errorText(err),
+          data: (artists) => _ArtistsList(artists: artists),
+        );
+      case 'albums':
+        final albumsAsync = ref.watch(topAlbumsProvider);
+        return albumsAsync.when(
+          loading: _loadingIndicator,
+          error: (err, _) => _errorText(err),
+          data: (albums) => _AlbumsList(albums: albums),
+        );
+      default:
+        return const SizedBox();
+    }
+  }
+
+  Widget _loadingIndicator() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(AfSpacing.s32),
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2, color: AfColors.indigo300),
+        ),
+      ),
+    );
+  }
+
+  Widget _errorText(Object error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AfSpacing.s16),
+        child: Text(
+          'Failed to load statistics: $error',
+          style: AfTypography.bodySmall.copyWith(color: AfColors.semanticError),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+}
+
+class _PeriodButton extends ConsumerWidget {
+  const _PeriodButton({
+    required this.label,
+    required this.value,
+    required this.activeValue,
+  });
+  final String label;
+  final String value;
+  final String activeValue;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = value == activeValue;
+    return GestureDetector(
+      onTap: () => ref.read(statsPeriodProvider.notifier).state = value,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? AfColors.indigo600 : AfColors.surfaceBase,
+          borderRadius: AfRadii.borderSm,
+        ),
+        child: Text(
+          label,
+          style: AfTypography.bodySmall.copyWith(
+            color: active ? AfColors.textOnPrimary : AfColors.textSecondary,
+            fontWeight: active ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TabButton extends ConsumerWidget {
+  const _TabButton({
+    required this.label,
+    required this.value,
+    required this.activeValue,
+  });
+  final String label;
+  final String value;
+  final String activeValue;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = value == activeValue;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => ref.read(statsTabProvider.notifier).state = value,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: active ? AfColors.surfaceHigh : Colors.transparent,
+            borderRadius: AfRadii.borderMd,
+          ),
+          child: Text(
+            label,
+            style: AfTypography.bodySmall.copyWith(
+              color: active ? AfColors.textPrimary : AfColors.textTertiary,
+              fontWeight: active ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SongsList extends ConsumerWidget {
+  const _SongsList({required this.tracks});
+  final List<({String artist, String title, int playCount, String? imageUrl})> tracks;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (tracks.isEmpty) {
+      return _emptyState('No history logged yet. Listen to tracks to collect metrics.');
+    }
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: tracks.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 8),
+      itemBuilder: (context, i) {
+        final t = tracks[i];
+        return ListTile(
+          dense: true,
+          tileColor: AfColors.surfaceBase,
+          shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderSm),
+          leading: SizedBox(
+            width: 48,
+            child: Row(
+              children: [
+                Text('${i + 1}', style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary)),
+                const Spacer(),
+                t.imageUrl != null
+                    ? Artwork(url: t.imageUrl, size: 28, radius: AfRadii.borderSm)
+                    : Container(
+                        width: 28,
+                        height: 28,
+                        decoration: const BoxDecoration(
+                          color: AfColors.surfaceHigh,
+                          borderRadius: AfRadii.borderSm,
+                        ),
+                        child: const Icon(LucideIcons.music, size: 14, color: AfColors.textTertiary),
+                      ),
+              ],
+            ),
+          ),
+          title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AfTypography.bodySmall.copyWith(fontWeight: FontWeight.bold)),
+          subtitle: Text(t.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary, fontSize: 11)),
+          trailing: Text('${t.playCount} plays', style: AfTypography.bodySmall.copyWith(color: AfColors.indigo300, fontSize: 11)),
+          onTap: () => _playTrackFromStats(context, ref, t.artist, t.title),
+        );
+      },
+    );
+  }
+}
+
+class _ArtistsList extends ConsumerWidget {
+  const _ArtistsList({required this.artists});
+  final List<({String artist, int playCount})> artists;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (artists.isEmpty) {
+      return _emptyState('No history logged yet.');
+    }
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: artists.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 8),
+      itemBuilder: (context, i) {
+        final a = artists[i];
+        return ListTile(
+          dense: true,
+          tileColor: AfColors.surfaceBase,
+          shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderSm),
+          leading: SizedBox(
+            width: 32,
+            child: Row(
+              children: [
+                Text('${i + 1}', style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary)),
+                const Spacer(),
+                const Icon(LucideIcons.user, size: 16, color: AfColors.textTertiary),
+              ],
+            ),
+          ),
+          title: Text(a.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: AfTypography.bodySmall.copyWith(fontWeight: FontWeight.bold)),
+          trailing: Text('${a.playCount} plays', style: AfTypography.bodySmall.copyWith(color: AfColors.indigo300, fontSize: 11)),
+          onTap: () => _navigateToArtistFromStats(context, ref, a.artist),
+        );
+      },
+    );
+  }
+}
+
+class _AlbumsList extends ConsumerWidget {
+  const _AlbumsList({required this.albums});
+  final List<({String artist, String album, int playCount, String? imageUrl})> albums;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (albums.isEmpty) {
+      return _emptyState('No history logged yet.');
+    }
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: albums.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 8),
+      itemBuilder: (context, i) {
+        final alb = albums[i];
+        return ListTile(
+          dense: true,
+          tileColor: AfColors.surfaceBase,
+          shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderSm),
+          leading: SizedBox(
+            width: 48,
+            child: Row(
+              children: [
+                Text('${i + 1}', style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary)),
+                const Spacer(),
+                alb.imageUrl != null
+                    ? Artwork(url: alb.imageUrl, size: 28, radius: AfRadii.borderSm)
+                    : Container(
+                        width: 28,
+                        height: 28,
+                        decoration: const BoxDecoration(
+                          color: AfColors.surfaceHigh,
+                          borderRadius: AfRadii.borderSm,
+                        ),
+                        child: const Icon(LucideIcons.disc, size: 14, color: AfColors.textTertiary),
+                      ),
+              ],
+            ),
+          ),
+          title: Text(alb.album, maxLines: 1, overflow: TextOverflow.ellipsis, style: AfTypography.bodySmall.copyWith(fontWeight: FontWeight.bold)),
+          subtitle: Text(alb.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary, fontSize: 11)),
+          trailing: Text('${alb.playCount} plays', style: AfTypography.bodySmall.copyWith(color: AfColors.indigo300, fontSize: 11)),
+          onTap: () => _navigateToAlbumFromStats(context, ref, alb.artist, alb.album),
+        );
+      },
+    );
+  }
+}
+
+Widget _emptyState(String text) {
+  return Center(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      child: Text(
+        text,
+        style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
+        textAlign: TextAlign.center,
+      ),
+    ),
+  );
+}
+
+// ── Search/Resolution Helpers ────────────────────────────────────────────────
+
+Future<void> _playTrackFromStats(BuildContext context, WidgetRef ref, String artist, String title) async {
+  unawaited(
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          color: AfColors.surfaceBase,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AfColors.indigo300),
+                ),
+                SizedBox(width: 16),
+                Text('Locating track in library...', style: TextStyle(color: AfColors.textPrimary)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  try {
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) throw Exception('No connected library.');
+
+    AfTrack? resolved;
+    if (backend.serverType == ServerType.local) {
+      final db = ref.read(localLibraryProvider).db;
+      resolved = await db.searchTrackByArtistAndTitle(artist, title);
+    } else {
+      final results = await backend.search('$artist $title');
+      for (final t in results.tracks) {
+        if (t.title.toLowerCase() == title.toLowerCase() &&
+            t.artistName.toLowerCase() == artist.toLowerCase()) {
+          resolved = t;
+          break;
+        }
+      }
+      if (resolved == null) {
+        for (final t in results.tracks) {
+          if (t.title.toLowerCase().contains(title.toLowerCase()) &&
+              t.artistName.toLowerCase().contains(artist.toLowerCase())) {
+            resolved = t;
+            break;
+          }
+        }
+      }
+    }
+
+    if (context.mounted) Navigator.pop(context); // Close loading HUD
+
+    if (resolved != null) {
+      await ref.read(playActionsProvider).playQueue([resolved], startIndex: 0);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('"$title" by $artist is not in your library.')),
+        );
+      }
+    }
+  } catch (e) {
+    if (context.mounted) Navigator.pop(context); // Close loading HUD
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to resolve track: ${displayError(e)}')),
+      );
+    }
+  }
+}
+
+Future<void> _navigateToArtistFromStats(BuildContext context, WidgetRef ref, String artistName) async {
+  unawaited(
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          color: AfColors.surfaceBase,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AfColors.indigo300),
+                ),
+                SizedBox(width: 16),
+                Text('Locating artist...', style: TextStyle(color: AfColors.textPrimary)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  try {
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) throw Exception('No connected library.');
+
+    String? artistId;
+    if (backend.serverType == ServerType.local) {
+      final db = ref.read(localLibraryProvider).db;
+      final resolved = await db.artistByName(artistName);
+      artistId = resolved?.id;
+    } else {
+      final results = await backend.search(artistName);
+      for (final art in results.artists) {
+        if (art.name.toLowerCase() == artistName.toLowerCase()) {
+          artistId = art.id;
+          break;
+        }
+      }
+    }
+
+    if (context.mounted) Navigator.pop(context); // Close loading HUD
+
+    if (artistId != null) {
+      if (context.mounted) unawaited(context.push('/artist/$artistId'));
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Artist "$artistName" not found in library.')),
+        );
+      }
+    }
+  } catch (e) {
+    if (context.mounted) Navigator.pop(context); // Close loading HUD
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to resolve artist: ${displayError(e)}')),
+      );
+    }
+  }
+}
+
+Future<void> _navigateToAlbumFromStats(BuildContext context, WidgetRef ref, String artistName, String albumName) async {
+  unawaited(
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          color: AfColors.surfaceBase,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AfColors.indigo300),
+                ),
+                SizedBox(width: 16),
+                Text('Locating album...', style: TextStyle(color: AfColors.textPrimary)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  try {
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) throw Exception('No connected library.');
+
+    String? albumId;
+    if (backend.serverType == ServerType.local) {
+      final db = ref.read(localLibraryProvider).db;
+      final resolved = await db.albumByKey(albumName, artistName);
+      albumId = resolved?.id;
+    } else {
+      final results = await backend.search('$artistName $albumName');
+      for (final alb in results.albums) {
+        if (alb.name.toLowerCase() == albumName.toLowerCase() &&
+            alb.artistName.toLowerCase() == artistName.toLowerCase()) {
+          albumId = alb.id;
+          break;
+        }
+      }
+    }
+
+    if (context.mounted) Navigator.pop(context); // Close loading HUD
+
+    if (albumId != null) {
+      if (context.mounted) unawaited(context.push('/album/$albumId'));
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Album "$albumName" by $artistName not found in library.')),
+        );
+      }
+    }
+  } catch (e) {
+    if (context.mounted) Navigator.pop(context); // Close loading HUD
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to resolve album: ${displayError(e)}')),
+      );
+    }
   }
 }

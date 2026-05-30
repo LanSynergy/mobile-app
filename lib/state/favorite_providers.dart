@@ -4,6 +4,7 @@ import '../core/jellyfin/models/items.dart';
 import '../utils/log.dart';
 import 'library_providers.dart';
 import 'music_backend_providers.dart';
+import 'settings_providers.dart';
 
 void _logData(String feature, {required String source, String? extra}) {
   final detail = extra == null || extra.isEmpty ? '' : ' $extra';
@@ -65,6 +66,33 @@ final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
           source: 'live',
           extra: 'id=${track.id} isFavorite=$next',
         );
+
+        // Sync to Last.fm if account is linked
+        final lastFmClient = ref.read(lastFmClientProvider);
+        final sessionKey = ref.read(lastfmSessionKeyProvider);
+        if (lastFmClient != null && sessionKey.isNotEmpty) {
+          try {
+            if (next) {
+              await lastFmClient.love(
+                artist: track.artistName,
+                track: track.title,
+              );
+            } else {
+              await lastFmClient.unlove(
+                artist: track.artistName,
+                track: track.title,
+              );
+            }
+          } catch (e, stack) {
+            afLog(
+              'error',
+              'Last.fm love/unlove failed during toggle',
+              error: e,
+              stackTrace: stack,
+            );
+          }
+        }
+
         ref.invalidate(favoriteAlbumsProvider);
         ref.invalidate(favoriteTracksProvider);
         ref.invalidate(recentlyPlayedTracksProvider);

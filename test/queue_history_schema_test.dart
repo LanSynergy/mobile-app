@@ -262,7 +262,7 @@ void main() {
               completionRate: const Value(0.92),
             ),
           );
-      var rows = await db.select(db.playbackHistory).get();
+      final rows = await db.select(db.playbackHistory).get();
       expect(rows.length, 1);
       expect(rows[0].completionRate, 0.92);
 
@@ -275,7 +275,7 @@ void main() {
               playCount: const Value(5),
             ),
           );
-      var statsRows = await db.select(db.trackStats).get();
+      final statsRows = await db.select(db.trackStats).get();
       expect(statsRows.length, 1);
       expect(statsRows[0].playCount, 5);
 
@@ -289,7 +289,7 @@ void main() {
               count: const Value(3),
             ),
           );
-      var coRows = await db.select(db.trackCoOccurrences).get();
+      final coRows = await db.select(db.trackCoOccurrences).get();
       expect(coRows.length, 1);
       expect(coRows[0].count, 3);
 

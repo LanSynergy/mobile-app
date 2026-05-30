@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -7,7 +8,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/audio/play_actions.dart';
 import '../../design_tokens/tokens.dart';
+import '../../state/lastfm_metadata_providers.dart';
 import '../../state/providers.dart';
+import '../../state/radio_providers.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/async_error_view.dart';
 import '../../widgets/section_header.dart';
@@ -50,6 +53,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     final activeId = ref.watch(currentTrackProvider)?.id;
     final isBuffering = ref.watch(isBufferingProvider);
     final activeAccent = ref.watch(currentSpectralProvider).energy;
+    final wikiAsync = ref.watch(artistWikiProvider(widget.artistId));
 
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
@@ -142,6 +146,12 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                                       .read(playActionsProvider)
                                       .playQueue(topTracks, startIndex: 0)
                                 : null,
+                            onRadio: () => _startArtistRadio(
+                              context,
+                              ref,
+                              artist.name,
+                              widget.artistId,
+                            ),
                           ),
                         ],
                       ),
@@ -150,7 +160,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   if (topTracks.isNotEmpty) ...[
                     const SliverToBoxAdapter(
                       child: SizedBox(height: AfSpacing.s32),
-                    ),
+                        ),
                     const SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.symmetric(
@@ -186,6 +196,27 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                       ),
                     ),
                   ],
+                  wikiAsync.maybeWhen(
+                    data: (wiki) {
+                      if (wiki == null || wiki.bio == null || wiki.bio!.isEmpty) {
+                        return const SliverToBoxAdapter(child: SizedBox());
+                      }
+                      return SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AfSpacing.gutterGenerous,
+                            vertical: AfSpacing.s24,
+                          ),
+                          child: _ArtistBiographyPanel(
+                            bio: wiki.bio!,
+                            listeners: wiki.listeners,
+                            playCount: wiki.playCount,
+                          ),
+                        ),
+                      );
+                    },
+                    orElse: () => const SliverToBoxAdapter(child: SizedBox()),
+                  ),
                   const SliverToBoxAdapter(
                     child: SizedBox(
                       height: AfSpacing.bottomInsetWithMiniAndNav,
@@ -312,9 +343,78 @@ class _OpacityAppBar extends StatelessWidget {
   }
 }
 
+Future<void> _startArtistRadio(
+  BuildContext context,
+  WidgetRef ref,
+  String artistName,
+  String artistId,
+) async {
+  unawaited(
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          color: AfColors.surfaceBase,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AfColors.indigo300,
+                  ),
+                ),
+                SizedBox(width: 16),
+                Text(
+                  'Generating Artist Radio...',
+                  style: TextStyle(color: AfColors.textPrimary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  try {
+    final generator = ref.read(radioGeneratorProvider);
+    final queue = await generator.generateArtistRadio(artistName, artistId);
+
+    if (context.mounted) Navigator.pop(context); // Close loading HUD
+
+    if (queue.isNotEmpty) {
+      await ref.read(playActionsProvider).playQueue(queue, startIndex: 0);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not generate similar artist radio queue.'),
+          ),
+        );
+      }
+    }
+  } catch (e) {
+    if (context.mounted) Navigator.pop(context); // Close loading HUD
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to start radio: $e'),
+        ),
+      );
+    }
+  }
+}
+
 class _ActionRow extends StatelessWidget {
-  const _ActionRow({required this.onPlay});
+  const _ActionRow({required this.onPlay, required this.onRadio});
   final VoidCallback? onPlay;
+  final VoidCallback? onRadio;
 
   @override
   Widget build(BuildContext context) {
@@ -331,7 +431,110 @@ class _ActionRow extends StatelessWidget {
             label: const Text('Play'),
           ),
         ),
+        if (onRadio != null) ...[
+          const SizedBox(width: AfSpacing.s12),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: onRadio,
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AfColors.indigo600, width: 1.5),
+                foregroundColor: AfColors.indigo300,
+              ),
+              icon: const Icon(
+                LucideIcons.radio,
+                size: 20,
+              ),
+              label: const Text('Artist Radio'),
+            ),
+          ),
+        ],
       ],
+    );
+  }
+}
+
+class _ArtistBiographyPanel extends StatefulWidget {
+  const _ArtistBiographyPanel({required this.bio, this.listeners, this.playCount});
+  final String bio;
+  final String? listeners;
+  final String? playCount;
+
+  @override
+  State<_ArtistBiographyPanel> createState() => _ArtistBiographyPanelState();
+}
+
+class _ArtistBiographyPanelState extends State<_ArtistBiographyPanel> {
+  bool _expanded = false;
+
+  String _cleanHtml(String html) {
+    return html.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+  }
+
+  String _formatNumber(String? numStr) {
+    if (numStr == null) return '';
+    final n = int.tryParse(numStr);
+    if (n == null) return numStr;
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return '$n';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cleanText = _cleanHtml(widget.bio);
+    if (cleanText.isEmpty) return const SizedBox();
+
+    final stats = <String>[];
+    if (widget.listeners != null) {
+      stats.add('${_formatNumber(widget.listeners)} listeners');
+    }
+    if (widget.playCount != null) {
+      stats.add('${_formatNumber(widget.playCount)} plays');
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(AfSpacing.s16),
+      decoration: const BoxDecoration(
+        color: AfColors.surfaceBase,
+        borderRadius: AfRadii.borderMd,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Biography', style: AfTypography.titleSmall),
+          if (stats.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              stats.join(' · '),
+              style: AfTypography.bodySmall.copyWith(
+                color: AfColors.textTertiary,
+                fontSize: 11,
+              ),
+            ),
+          ],
+          const SizedBox(height: AfSpacing.s12),
+          Text(
+            cleanText,
+            maxLines: _expanded ? null : 4,
+            overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Text(
+              _expanded ? 'Show less' : 'Read more',
+              style: AfTypography.bodySmall.copyWith(
+                color: AfColors.indigo300,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
