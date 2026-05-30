@@ -261,13 +261,30 @@ class LastFmClient {
       params['api_sig'] = sig;
       params['format'] = 'json';
 
-      await _dio.post(
+      final res = await _dio.post(
         '/',
         data: params,
         options: Options(contentType: Headers.formUrlEncodedContentType),
       );
-      _reportStatus(true, 'scrobble: $artist - $track');
-      afLog('data', 'Last.fm scrobble submitted: $artist - $track');
+      final body = res.data;
+      if (body is Map && body['scrobbles'] is Map) {
+        final scrobbles = body['scrobbles'] as Map;
+        final attr = scrobbles['@attr'] as Map?;
+        if (attr != null && attr['accepted'] == 1) {
+          _reportStatus(true, 'scrobble: $artist - $track');
+          afLog('data', 'Last.fm scrobble submitted: $artist - $track');
+        } else {
+          final scrobble = scrobbles['scrobble'] as Map?;
+          final ignoredMsg = scrobble?['ignoredMessage'] as Map?;
+          final code = ignoredMsg?['code'] ?? 'unknown';
+          final text = ignoredMsg?['#text'] ?? '';
+          _reportStatus(false, 'scrobble ignored (code $code): $text');
+          afLog('error', 'Last.fm scrobble ignored: code=$code msg=$text');
+        }
+      } else {
+        _reportStatus(false, 'scrobble: unexpected response');
+        afLog('error', 'Last.fm scrobble response parse failed: $body');
+      }
     } catch (e, stack) {
       _reportStatus(false, 'scrobble: $e');
       afLog('error', 'Last.fm scrobble failed', error: e, stackTrace: stack);

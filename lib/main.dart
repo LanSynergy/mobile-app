@@ -183,14 +183,6 @@ Future<void> main() async {
             (ref) => offlineCacheMaxSize,
           ),
           maxBitrateProvider.overrideWith((ref) => maxBitrate),
-          lastfmApiKeyProvider.overrideWith((ref) => lastfmApiKey),
-          lastfmApiSecretProvider.overrideWith((ref) => lastfmApiSecret),
-          lastfmSessionKeyProvider.overrideWith((ref) => lastfmSessionKey),
-          lastfmUsernameProvider.overrideWith((ref) => lastfmUsername),
-          lastfmScrobbleEnabledProvider.overrideWith(
-            (ref) => lastfmScrobbleEnabled,
-          ),
-
           playerServiceProvider.overrideWith((ref) {
             wirePlayerService(ref, handler);
             return handler;
@@ -200,6 +192,17 @@ Future<void> main() async {
           ),
         ],
       );
+
+      // Initialize Last.fm providers with boot-time values so the user
+      // can update them later without restarting (remove override pattern
+      // because overrideWith makes StateProviders read-only).
+      container.read(lastfmApiKeyProvider.notifier).state = lastfmApiKey;
+      container.read(lastfmApiSecretProvider.notifier).state = lastfmApiSecret;
+      container.read(lastfmSessionKeyProvider.notifier).state =
+          lastfmSessionKey;
+      container.read(lastfmUsernameProvider.notifier).state = lastfmUsername;
+      container.read(lastfmScrobbleEnabledProvider.notifier).state =
+          lastfmScrobbleEnabled;
 
       // Initialize offline cache service.
       try {
