@@ -122,8 +122,13 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
               icon: LucideIcons.radio,
               label: 'Start Radio',
               onTap: () async {
+                // Resolve providers BEFORE popping the dialog — the ref
+                // comes from a Consumer inside the dialog and becomes
+                // stale once the dialog is dismissed.
+                final radioGen = innerRef.read(radioGeneratorProvider);
+                final playActions = innerRef.read(playActionsProvider);
                 Navigator.of(ctx).pop();
-                await _startTrackRadio(context, innerRef, track);
+                await _startTrackRadio(context, radioGen, playActions, track);
               },
             ),
             _MenuItem(
@@ -264,50 +269,16 @@ String Function(AfTrack)? _streamResolver(WidgetRef ref) {
 
 Future<void> _startTrackRadio(
   BuildContext context,
-  WidgetRef ref,
+  RadioGenerator radioGen,
+  PlayActions playActions,
   AfTrack track,
 ) async {
-  unawaited(
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: Card(
-          color: AfColors.surfaceBase,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AfColors.indigo300,
-                  ),
-                ),
-                SizedBox(width: 16),
-                Text(
-                  'Generating Radio queue...',
-                  style: TextStyle(color: AfColors.textPrimary),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-
   try {
-    final generator = ref.read(radioGeneratorProvider);
-    final queue = await generator.generateTrackRadio(track);
-
-    if (context.mounted) Navigator.pop(context); // Close loading HUD
+    final queue = await radioGen.generateTrackRadio(track);
 
     if (queue.isNotEmpty) {
-      await ref.read(playActionsProvider).playQueue(queue, startIndex: 0);
+      await playActions.playQueue(queue, startIndex: 0);
+      if (context.mounted) unawaited(context.push('/now-playing'));
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -318,7 +289,6 @@ Future<void> _startTrackRadio(
       }
     }
   } catch (e) {
-    if (context.mounted) Navigator.pop(context); // Close loading HUD
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to start radio: ${displayError(e)}')),
