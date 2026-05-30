@@ -735,6 +735,11 @@ class AfPlayerService {
 
     try {
       await _rebuildWindow(nextTrack);
+      final realPos = await _positionTracker.getRawPosition();
+      if (realPos > Duration.zero) {
+        _positionTracker.updateKnownPosition(realPos);
+      }
+      _updateMediaSession();
     } catch (e, stack) {
       afLog('audio', 'skipToNext failed', error: e, stackTrace: stack);
     }
@@ -765,6 +770,11 @@ class AfPlayerService {
 
     try {
       await _rebuildWindow(prevTrack);
+      final realPos = await _positionTracker.getRawPosition();
+      if (realPos > Duration.zero) {
+        _positionTracker.updateKnownPosition(realPos);
+      }
+      _updateMediaSession();
     } catch (e, stack) {
       afLog('audio', 'skipToPrevious failed', error: e, stackTrace: stack);
     }
@@ -795,6 +805,11 @@ class AfPlayerService {
 
     try {
       await _rebuildWindow(targetTrack);
+      final realPos = await _positionTracker.getRawPosition();
+      if (realPos > Duration.zero) {
+        _positionTracker.updateKnownPosition(realPos);
+      }
+      _updateMediaSession();
     } catch (e, stack) {
       afLog('audio', 'skipToQueueItem failed', error: e, stackTrace: stack);
     }
@@ -1243,6 +1258,10 @@ class AfPlayerService {
                     _queueManager.engine.jumpTo(0);
                     _onTrackChangedOrRestarted();
                     await _rebuildWindow(_queueManager.currentTrack!);
+                    final realPos = await _positionTracker.getRawPosition();
+                    if (realPos > Duration.zero) {
+                      _positionTracker.updateKnownPosition(realPos);
+                    }
                     _updateMediaSession();
                     afLog('audio', 'queue end, looping playlist');
                   });
@@ -1395,6 +1414,16 @@ class AfPlayerService {
           );
         }
       }
+      // Re-push media session state with real position after the new
+      // track is loaded.  The pre-_rebuildWindow _updateMediaSession
+      // (L1376) pushed position=0 before openAll resolved — QS latches
+      // that snapshot.  Without this re-push the progress bar stays at
+      // 0 until the next playing/buffering event, which may never come.
+      final realPos = await _positionTracker.getRawPosition();
+      if (realPos > Duration.zero) {
+        _positionTracker.updateKnownPosition(realPos);
+      }
+      _updateMediaSession();
     }
   }
 
