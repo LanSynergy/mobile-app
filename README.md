@@ -132,6 +132,8 @@ Grab the latest APK from [Releases](https://github.com/Aetherfin/mobile-app/rele
 
 ## Build from source
 
+> **Note:** First build downloads ~20MB libmpv `.so` files per ABI (arm64-v8a, x86_64) from GitHub Releases. Ensure you have internet connectivity and sufficient disk space.
+
 ```bash
 flutter pub get
 flutter run --debug

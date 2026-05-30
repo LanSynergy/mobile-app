@@ -56,6 +56,7 @@ class MockPlayerStream extends Mock implements PlayerStream {}
   final shuffleCtrl = StreamController<bool>.broadcast();
   final coverArtCtrl = StreamController<CoverArt?>.broadcast();
   final audioDeviceCtrl = StreamController<Device>.broadcast();
+  final audioDevicesCtrl = StreamController<List<Device>>.broadcast();
   final durationCtrl = StreamController<Duration>.broadcast();
 
   // Stub player.stream to return our MockPlayerStream
@@ -76,6 +77,7 @@ class MockPlayerStream extends Mock implements PlayerStream {}
   when(() => stream.shuffle).thenAnswer((_) => shuffleCtrl.stream);
   when(() => stream.coverArt).thenAnswer((_) => coverArtCtrl.stream);
   when(() => stream.audioDevice).thenAnswer((_) => audioDeviceCtrl.stream);
+  when(() => stream.audioDevices).thenAnswer((_) => audioDevicesCtrl.stream);
 
   // Stub default state (override in each test as needed)
   when(() => player.state).thenReturn(const PlayerState());
@@ -127,6 +129,7 @@ class MockPlayerStream extends Mock implements PlayerStream {}
     shuffle: shuffleCtrl,
     coverArt: coverArtCtrl,
     audioDevice: audioDeviceCtrl,
+    audioDevices: audioDevicesCtrl,
   );
 
   return (player: player, ctrls: ctrls);
@@ -147,6 +150,7 @@ class StreamControllers {
     required this.shuffle,
     required this.coverArt,
     required this.audioDevice,
+    required this.audioDevices,
   });
   final StreamController<bool> playing;
   final StreamController<bool> completed;
@@ -160,6 +164,7 @@ class StreamControllers {
   final StreamController<bool> shuffle;
   final StreamController<CoverArt?> coverArt;
   final StreamController<Device> audioDevice;
+  final StreamController<List<Device>> audioDevices;
 
   /// Close all controllers. Call in `tearDown`.
   void dispose() {
@@ -175,5 +180,6 @@ class StreamControllers {
     shuffle.close();
     coverArt.close();
     audioDevice.close();
+    audioDevices.close();
   }
 }

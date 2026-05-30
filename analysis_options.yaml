@@ -21,7 +21,9 @@ linter:
     # Variables & types
     prefer_final_locals: true
     always_declare_return_types: true
-    avoid_dynamic_calls: false  # some legacy patterns use dynamic
+    avoid_dynamic_calls: false  # Intentional: used for multi-type returns (_getField),
+                                 # 3rd-party APIs (multicast_dns host param), and duck-typed params
+                                 # (playlist_undo_buffer entryIds/trackIds). All usages are type-checked.
 
     # Naming & style
     no_leading_underscores_for_local_identifiers: true

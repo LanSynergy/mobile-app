@@ -90,6 +90,11 @@ flutter_launcher_icons:
   min_sdk_android: 21
 
 dependency_overrides:
+  # Local patch of lucide_icons_flutter that consolidates variable fonts
+  # into a single TTF file, saving ~2.6MB per ABI (~5.2MB total).
+  # The official package (v3.1.14+2) includes separate Lucide100-600 font
+  # families for stroke weight variants, which are not used by Aetherfin.
+  # Upstream: https://github.com/vqh2602/lucide-flutter-main
   lucide_icons_flutter:
     path: packages/lucide_icons_flutter_patched
 

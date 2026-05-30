@@ -30,6 +30,7 @@ class ServerDiscoveryScreen extends ConsumerStatefulWidget {
 
 class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
   StreamSubscription<JellyfinServer>? _sub;
+  Timer? _scanTimeout;
   final _manualController = TextEditingController(text: 'http://');
   bool _scanning = true;
   String? _manualError;
@@ -39,6 +40,14 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
   void initState() {
     super.initState();
     _startScan();
+  }
+
+  @override
+  void dispose() {
+    _scanTimeout?.cancel();
+    _sub?.cancel();
+    _manualController.dispose();
+    super.dispose();
   }
 
   void _startScan() {
@@ -60,7 +69,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
           onError: (_) {},
           onDone: () => mounted ? setState(() => _scanning = false) : null,
         );
-    Future.delayed(const Duration(seconds: 6), () {
+    _scanTimeout = Timer(const Duration(seconds: 6), () {
       if (mounted) setState(() => _scanning = false);
     });
   }
@@ -160,13 +169,6 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
       '/onboarding/sign-in',
       extra: (server: s, serverType: serverType),
     );
-  }
-
-  @override
-  void dispose() {
-    _sub?.cancel();
-    _manualController.dispose();
-    super.dispose();
   }
 
   @override
