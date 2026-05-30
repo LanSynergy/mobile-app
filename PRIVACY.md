@@ -44,11 +44,12 @@ are out of scope of this policy.
 | **HTTP cache** of catalog requests | Dio cache files in the App's private cache directory | Only you |
 | **Lyrics (LRC files)** fetched from your server | In-memory only — not persisted | Only you, while playing |
 | **Playback state** (current track, position, queue, queue history) | In-memory + local SQLite DB (QueueHistory table) + lock-screen `MediaSession` | Only you |
+| **Last.fm Credentials** (API key, API secret, session key, username) — only if Last.fm connection is set up | `shared_preferences` on your device | You + Last.fm |
 | **Diagnostic logs** (`aetherfin:boot`, `aetherfin:http`, `aetherfin:data`, `aetherfin:audio`, `aetherfin:error`) | Standard Android logcat buffer (volatile, capped by the OS) | Only you, when you run `adb logcat` |
 
-**Aetherfin does not send any of the above to the maintainer or any
-third party.** The only network destination Aetherfin contacts is the
-server URL you provide (Jellyfin or Navidrome).
+**Aetherfin does not send any of the above to the maintainer or any unconfigured third party.** The only network destinations Aetherfin contacts are:
+1. The server URL you provide (Jellyfin or Navidrome).
+2. The Last.fm API endpoints (`ws.audioscrobbler.com`), **only** if you explicitly choose to connect your Last.fm account in Settings.
 
 ## 3. What Aetherfin sends to your server
 
@@ -90,6 +91,13 @@ Your server logs and stores this data according to its own
 configuration, which is **outside the control of the App and its
 maintainer**. Refer to your server administrator for its retention
 and access policy.
+
+### 3c. Last.fm API (Optional Third-Party Integration)
+
+If you choose to link a Last.fm account:
+- **Authentication:** Authenticates via Last.fm's secure OAuth flow or username/password handshake to retrieve a unique session key. Credentials are saved locally on-device.
+- **Playback Scrobbling:** If scrobbling is enabled, the app sends details of the tracks you play (artist, title, album, duration, timestamp) to Last.fm once you have listened to 75% of the song or 4 minutes.
+- **Listening Stats & Metadata:** If connected, the app sends search and info text queries (artist, album, track name) to Last.fm to fetch biographies, album wikis, top artist charts, and similar tracks for recommendation radios.
 
 ## 4. What Aetherfin does NOT do
 

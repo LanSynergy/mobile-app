@@ -1025,6 +1025,10 @@ This keeps the active directory focused on current work. Historical artifacts re
 - **`ShuffleMode`**: Custom shuffle mode enum (`off`, `all`, `tail`) supporting Shuffle Next.
 - **`PlaylistUndoBuffer`**: Ephemeral playlist operation undo buffer class that tracks the last add/remove action per playlist for 8 seconds.
 - **`QueueHistory`**: SQLite database table and repository for saving lightweight played queue snapshots.
+- **`LastFmClient`**: Service class (`lib/core/lastfm/lastfm_client.dart`) that connects to Last.fm API. Uses signed MD5 parameters for love/unlove and scrobble endpoints.
+- **`RadioGenerator`**: Utility class (`lib/state/radio_providers.dart`) that generates continuous recommended queues (similar artist/track queues) concurrently.
+- **`smartQueueProvider`**: Smart Queue Autoplay provider that tracks play history metrics (skips, plays, completion rates) and computes recommendation lists using Drift SQLite.
+- **`lastFmSyncProvider`**: Reconciliation service provider (`lib/state/lastfm_sync_provider.dart`) that performs two-way loved track synchronization between local/server libraries and Last.fm.
 
 ---
 

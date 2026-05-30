@@ -11,6 +11,7 @@ Known device-specific behaviors and workarounds for the `mpv_audio_kit` audio en
 | Unhandled setAudioDriver rejection | App crashes on startup on some devices | `.catchError` wrapping around `setAudioDriver()`/`setAudioBuffer()` calls | `AfPlayerService` constructor |
 | FFmpeg auth header rejection | Stream URL fails to load | Embed auth as query params (`api_key` for Jellyfin, `u`/`t`/`s` for Subsonic) | `url_builder.dart`, Subsonic `client.dart` |
 | mpv playlist-play-index stale state | Wrong track plays after rapid queue mutations | `_queueLock.run()` serialization for all queue mutations | `player_service.dart` |
+| Completed events fail to fire | Tracks get stuck at end-of-track without advancing or looping | EOF fallback watchdog checks position >= 80% duration and unexpectedly idle state to trigger auto-advance/loop | `_checkEndOfTrackFallback()` in `player_service.dart` |
 
 ## Known device reports
 

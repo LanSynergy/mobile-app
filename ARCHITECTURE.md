@@ -79,13 +79,18 @@ lib/
 │  ├─ subsonic/
 │  │  ├─ client.dart                  # SubsonicClient (implements MusicBackend)
 │  │  └─ navidrome_client.dart        # NavidromeClient (JWT auth & queue sync)
+│  ├─ lastfm/
+│  │  └─ lastfm_client.dart           # LastFmClient — speaks to ws.audioscrobbler.com API
 │  ├─ local/                          # Local mode backend
 │  │  ├─ app_database.dart            # Drift DB definition
 │  │  ├─ app_database.g.dart          # Drift codegen (DO NOT hand-edit)
-│  │  ├─ local_db.dart                # High-level queries (3 repos)
+│  │  ├─ local_db.dart                # High-level queries (6 repos)
 │  │  ├─ local_db_tracks.dart         # TrackRepository
 │  │  ├─ local_db_albums.dart         # AlbumRepository
 │  │  ├─ local_db_playlists.dart      # PlaylistRepository
+│  │  ├─ local_db_track_stats.dart    # TrackStatsRepository (playback stats)
+│  │  ├─ local_db_co_occurrences.dart # TrackCoOccurrencesRepository (smart queue relevance)
+│  │  ├─ local_db_lastfm.dart         # LocalLastFmRepository (fallback stats/offline cache)
 │  │  ├─ local_library.dart           # Scan + query interface
 │  │  ├─ local_backend.dart           # LocalBackend (implements MusicBackend)
 │  │  ├─ metadata_scanner.dart        # SAF file scanner
@@ -123,7 +128,7 @@ lib/
 │  ├─ sleep_timer/                    # SleepTimerScreen
 │  ├─ smart_playlist/                 # List + Detail + Edit screens
 │  └─ cast_picker/                    # CastPickerScreen
-├─ state/                             # Riverpod providers (13 files)
+├─ state/                             # Riverpod providers (17 files)
 │  ├─ providers.dart                  # Barrel re-export
 │  ├─ auth_providers.dart
 │  ├─ app_mode_providers.dart
@@ -137,7 +142,11 @@ lib/
 │  ├─ search_history_providers.dart
 │  ├─ music_backend_providers.dart
 │  ├─ settings_providers.dart
-│  └─ spectral_providers.dart
+│  ├─ spectral_providers.dart
+│  ├─ lastfm_metadata_providers.dart  # Bios and album wiki metadata providers
+│  ├─ lastfm_stats_providers.dart     # Personal stats charts providers
+│  ├─ lastfm_sync_provider.dart      # Two-way favorite sync provider
+│  └─ radio_providers.dart            # Similar track/artist radio provider
 ├─ widgets/                           # Shared reusable widgets (22 files)
 │  ├─ app_shell.dart                  # 4-tab shell with mini-player
 │  ├─ mini_player.dart                # 56dp floating mini-player

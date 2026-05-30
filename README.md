@@ -44,7 +44,7 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 - Shuffle, loop (off / track / queue / forNtimes repeat), playback speed (0.5×–2.0×)
 - Lock-screen and notification controls, including custom action buttons for shuffle and repeat modes
 - Sleep timer with presets and end-of-track mode
-- **Autoplay / Instant Mix** — automatically seeds and appends similar tracks when the active queue finishes, utilizing scored local SQLite recommendations (Local mode) or server recommendations (Server mode)
+- **Smart Queue Autoplay / Instant Mix** — automatically seeds and appends similar tracks when the active queue finishes. In Local mode, a scored similarity engine runs directly against local SQLite cache, learning from user play counts, skips, and track completion rates. In Server mode, it utilizes server-recommended mixes.
 - A-B loop (tap to set start/end markers, tap again to clear)
 - **Local file playback** — play music from device storage via SAF (no server needed)
 - Auto-pause on Bluetooth disconnect or headphone unplug, with a **5-minute auto-resume window** on reconnect
@@ -54,7 +54,7 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 - **M3U Export/Import** — export playlists to standard M3U files, or import playlists by pasting M3U content
 - **Android Home Screen Widget** — showing currently playing track metadata, playback state, and reactive favorite toggle, dynamically themed using the Palette API to match artwork colors
 - **Lyrics & LRC** — support for synchronized auto-scrolling lyrics (LRC), manually loading/saving sidecar `.lrc` files, and local file embedded metadata lyrics
-- **EOF Fallback** — watchdog watchdog fallback to automatically advance or loop tracks on devices with broken mpv property observation
+- **EOF Fallback** — watchdog fallback to automatically advance or loop tracks on devices with broken mpv property observation
 
 
 ### Audio
@@ -87,6 +87,14 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 - Synced lyrics (LRC, auto-scrolling)
 - Favorite toggle, quality chip, save to playlist
 - Translucent queue screen with frosted-glass effect
+- **Interactive Drag-Down Sheet** — swipe or drag down the Now Playing screen to smoothly collapse it back into the mini-player with rect-matching animations
+
+### Last.fm Integration (Optional)
+- **Two-Way Favorite Syncing** — toggling favorites in-app immediately fires signed `love`/`unlove` scrobble actions to Last.fm. Includes a manual sync tile in Settings to reconcile favorites in both directions.
+- **Listening Stats Dashboard** — view personal Top Songs, Top Artists, and Top Albums under the Profile tab with customizable period filters (7 days, 30 days, all time), falling back to on-device playback history stats when offline/disconnected.
+- **Wikis & Biographies** — Wikipedia-style expandable wiki panels on Album and Artist screens, falling back to server-supplied overview metadata.
+- **Artist & Track similar Radio** — seed custom recommendation queues directly from similar artist or similar track suggestions.
+- **Browser-Based Connection** — link your account using Last.fm's secure OAuth flow in addition to username/password.
 
 ### Settings
 - Audio output: sample rate, bit depth, exclusive mode

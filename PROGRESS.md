@@ -612,5 +612,34 @@
 - [x] Custom app widgets support local cover art (dynamically resolved and persisted local cover art).
 - [x] Removed duplicate shuffle/repeat notification actions on the lock screen / media notification.
 
+---
+
+# Modern UI/UX & Last.fm Integrations — Progress (May 2026)
+
+## Audio & Playback Core
+- [x] Fixed EQ preset scroll locks by integrating explicit safety timers and scroll boundary event listeners.
+- [x] Fixed media session positions after rebuild by re-pushing current position and state updates.
+- [x] Implemented `forNtimes` (arbitrary repeat count / repeat 2 times) mode, fully integrated with Now Playing and QuickSettings controls.
+
+## UI Restoration & Interactions
+- [x] Restored full-featured Detail Screens for Artists and Genres, with album grids, full-bleed hero artwork headers, and nested routing, functioning alongside Songs filter pills.
+- [x] Added interactive vertical drag-down sheet transition for Now Playing screen, aligning with mini-player positioning.
+- [x] Positioned mini-player layout directly behind bottom navigation bar for a premium full-bleed feel.
+- [x] Built swipeable Home screen album carousel featuring a dots page indicator.
+
+## Smart Queue Autoplay Engine
+- [x] Automated queue continuation by integrating a learning Smart Queue engine that acts as the sole autoplay mechanism.
+- [x] Tracks local play counts, skip rates, and completion percentages in SQLite `track_stats` and `track_co_occurrences` Drift schemas.
+- [x] Calculated similarities locally in milliseconds using weighted SQL query scoring, with server mixes fallback in Server mode.
+
+## Last.fm Integration & Extended Features
+- [x] Developed real-time scrobbler and now-playing updates on Last.fm.
+- [x] Designed browser-based OAuth authentication flow alongside username/password login.
+- [x] Exposed descriptive credentials privacy warnings on connection.
+- [x] Implemented Two-Way Favorite Syncing: real-time signed `love`/`unlove` calls + manual synchronization tile in Settings.
+- [x] Built Personal Listening Stats Dashboard: Top Tracks, Artists, and Albums charts under the Profile screen, with 7d/30d/overall periods and offline local SQLite history fallbacks.
+- [x] Embedded Wikipedia-style Biographies & Album Wikis: Expandable panels pulling data from Last.fm with local/server metadata fallback.
+- [x] Created Artist & Track Recommendation Radio: Seeding recommended queues using similarities, resolving candidates concurrently in batches of 5.
+
 
 
