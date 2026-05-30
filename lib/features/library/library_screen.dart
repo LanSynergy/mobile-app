@@ -11,6 +11,7 @@ import '../../widgets/async_error_view.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
+import '../../widgets/af_scrollbar.dart';
 import '../../widgets/skeletons/library_skeleton.dart';
 import '../playlist/import_m3u_dialog.dart';
 
@@ -388,31 +389,33 @@ class _SectionBody extends ConsumerWidget {
           data: (list) {
             final sorted = sortAlbums != null ? sortAlbums!(list) : list;
             return RepaintBoundary(
-              child: GridView.builder(
-                padding: padding.add(
-                  const EdgeInsets.only(
-                    bottom: AfSpacing.bottomInsetWithMiniAndNav,
+              child: AfScrollbar(
+                child: GridView.builder(
+                  padding: padding.add(
+                    const EdgeInsets.only(
+                      bottom: AfSpacing.bottomInsetWithMiniAndNav,
+                    ),
                   ),
+                  itemCount: sorted.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisExtent: 220,
+                    crossAxisSpacing: AfSpacing.s16,
+                    mainAxisSpacing: AfSpacing.s16,
+                  ),
+                  itemBuilder: (context, i) {
+                    final a = sorted[i];
+                    return Tile(
+                      title: a.name,
+                      subtitle: a.artistName,
+                      variant: TileVariant.album,
+                      imageUrl: a.imageUrl,
+                      size: double.infinity,
+                      onTap: () => context.push('/album/${a.id}'),
+                      onLongPress: () => showAlbumContextMenu(context, ref, a),
+                    );
+                  },
                 ),
-                itemCount: sorted.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisExtent: 220,
-                  crossAxisSpacing: AfSpacing.s16,
-                  mainAxisSpacing: AfSpacing.s16,
-                ),
-                itemBuilder: (context, i) {
-                  final a = sorted[i];
-                  return Tile(
-                    title: a.name,
-                    subtitle: a.artistName,
-                    variant: TileVariant.album,
-                    imageUrl: a.imageUrl,
-                    size: double.infinity,
-                    onTap: () => context.push('/album/${a.id}'),
-                    onLongPress: () => showAlbumContextMenu(context, ref, a),
-                  );
-                },
               ),
             );
           },
@@ -433,30 +436,32 @@ class _SectionBody extends ConsumerWidget {
           data: (list) {
             final sorted = sortArtists != null ? sortArtists!(list) : list;
             return RepaintBoundary(
-              child: GridView.builder(
-                padding: padding.add(
-                  const EdgeInsets.only(
-                    bottom: AfSpacing.bottomInsetWithMiniAndNav,
+              child: AfScrollbar(
+                child: GridView.builder(
+                  padding: padding.add(
+                    const EdgeInsets.only(
+                      bottom: AfSpacing.bottomInsetWithMiniAndNav,
+                    ),
                   ),
+                  itemCount: sorted.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisExtent: 180,
+                    crossAxisSpacing: AfSpacing.s12,
+                    mainAxisSpacing: AfSpacing.s12,
+                  ),
+                  itemBuilder: (context, i) {
+                    final a = sorted[i];
+                    return Tile(
+                      title: a.name,
+                      subtitle: a.statLine,
+                      variant: TileVariant.artist,
+                      imageUrl: a.imageUrl,
+                      size: double.infinity,
+                      onTap: () => context.go('/library'),
+                    );
+                  },
                 ),
-                itemCount: sorted.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  mainAxisExtent: 180,
-                  crossAxisSpacing: AfSpacing.s12,
-                  mainAxisSpacing: AfSpacing.s12,
-                ),
-                itemBuilder: (context, i) {
-                  final a = sorted[i];
-                  return Tile(
-                    title: a.name,
-                    subtitle: a.statLine,
-                    variant: TileVariant.artist,
-                    imageUrl: a.imageUrl,
-                    size: double.infinity,
-                    onTap: () => context.go('/library'),
-                  );
-                },
               ),
             );
           },
@@ -476,31 +481,33 @@ class _SectionBody extends ConsumerWidget {
             data: (list) {
               final sorted = sortTracks != null ? sortTracks!(list) : list;
               return RepaintBoundary(
-                child: ListView.builder(
-                  padding: songPadding.add(
-                    const EdgeInsets.only(
-                      bottom: AfSpacing.bottomInsetWithMiniAndNav,
-                    ),
-                  ),
-                  itemCount: sorted.length,
-                  itemBuilder: (context, i) {
-                    final t = sorted[i];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: TrackRow(
-                        track: t,
-                        steelBackground: true,
-                        isActive: t.id == activeId,
-                        isBuffering: t.id == activeId && isBuffering,
-                        activeAccent: activeAccent,
-                        onTap: () => ref
-                            .read(playActionsProvider)
-                            .playSmartQueue(t, sorted),
-                        onLongPress: () =>
-                            showTrackContextMenu(context, ref, t),
+                child: AfScrollbar(
+                  child: ListView.builder(
+                    padding: songPadding.add(
+                      const EdgeInsets.only(
+                        bottom: AfSpacing.bottomInsetWithMiniAndNav,
                       ),
-                    );
-                  },
+                    ),
+                    itemCount: sorted.length,
+                    itemBuilder: (context, i) {
+                      final t = sorted[i];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: TrackRow(
+                          track: t,
+                          steelBackground: true,
+                          isActive: t.id == activeId,
+                          isBuffering: t.id == activeId && isBuffering,
+                          activeAccent: activeAccent,
+                          onTap: () => ref
+                              .read(playActionsProvider)
+                              .playSmartQueue(t, sorted),
+                          onLongPress: () =>
+                              showTrackContextMenu(context, ref, t),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               );
             },
@@ -535,51 +542,53 @@ class _SectionBody extends ConsumerWidget {
             : tracksState.items;
 
         return RepaintBoundary(
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification is ScrollEndNotification &&
-                  notification.metrics.pixels >=
-                      notification.metrics.maxScrollExtent - 200 &&
-                  tracksState.hasMore &&
-                  !tracksState.isLoadingMore) {
-                ref.read(tracksPaginationProvider.notifier).loadNextPage();
-              }
-              return false;
-            },
-            child: ListView.separated(
-              padding: songPadding.add(
-                const EdgeInsets.only(
-                  bottom: AfSpacing.bottomInsetWithMiniAndNav,
-                ),
-              ),
-              itemCount: sorted.length + (tracksState.isLoadingMore ? 1 : 0),
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: AfSpacing.s4),
-              itemBuilder: (context, i) {
-                if (i >= sorted.length) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                  );
+          child: AfScrollbar(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is ScrollEndNotification &&
+                    notification.metrics.pixels >=
+                        notification.metrics.maxScrollExtent - 200 &&
+                    tracksState.hasMore &&
+                    !tracksState.isLoadingMore) {
+                  ref.read(tracksPaginationProvider.notifier).loadNextPage();
                 }
-                final t = sorted[i];
-                return TrackRow(
-                  track: t,
-                  steelBackground: true,
-                  isActive: t.id == activeId,
-                  isBuffering: t.id == activeId && isBuffering,
-                  activeAccent: activeAccent,
-                  onTap: () =>
-                      ref.read(playActionsProvider).playSmartQueue(t, sorted),
-                  onLongPress: () => showTrackContextMenu(context, ref, t),
-                );
+                return false;
               },
+              child: ListView.separated(
+                padding: songPadding.add(
+                  const EdgeInsets.only(
+                    bottom: AfSpacing.bottomInsetWithMiniAndNav,
+                  ),
+                ),
+                itemCount: sorted.length + (tracksState.isLoadingMore ? 1 : 0),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: AfSpacing.s4),
+                itemBuilder: (context, i) {
+                  if (i >= sorted.length) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    );
+                  }
+                  final t = sorted[i];
+                  return TrackRow(
+                    track: t,
+                    steelBackground: true,
+                    isActive: t.id == activeId,
+                    isBuffering: t.id == activeId && isBuffering,
+                    activeAccent: activeAccent,
+                    onTap: () =>
+                        ref.read(playActionsProvider).playSmartQueue(t, sorted),
+                    onLongPress: () => showTrackContextMenu(context, ref, t),
+                  );
+                },
+              ),
             ),
           ),
         );
@@ -592,37 +601,66 @@ class _SectionBody extends ConsumerWidget {
         );
         return playlists.when(
           data: (list) => RepaintBoundary(
-            child: ListView.separated(
-              padding: padding.add(
-                const EdgeInsets.only(
-                  bottom: AfSpacing.bottomInsetWithMiniAndNav,
+            child: AfScrollbar(
+              child: ListView.separated(
+                padding: padding.add(
+                  const EdgeInsets.only(
+                    bottom: AfSpacing.bottomInsetWithMiniAndNav,
+                  ),
                 ),
-              ),
-              itemCount: list.length + 1, // +1 for smart playlists tile
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: AfSpacing.s8),
-              itemBuilder: (context, i) {
-                // First item: Smart Playlists entry
-                if (i == 0) {
+                itemCount: list.length + 1, // +1 for smart playlists tile
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: AfSpacing.s8),
+                itemBuilder: (context, i) {
+                  // First item: Smart Playlists entry
+                  if (i == 0) {
+                    return ListTile(
+                      leading: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: const BoxDecoration(
+                          borderRadius: AfRadii.borderSm,
+                          color: AfColors.indigo900,
+                        ),
+                        child: const Icon(
+                          Icons.auto_awesome_rounded,
+                          color: AfColors.indigo300,
+                        ),
+                      ),
+                      title: Text(
+                        'Smart Playlists',
+                        style: AfTypography.titleSmall,
+                      ),
+                      subtitle: Text(
+                        '$smartCount playlists',
+                        style: AfTypography.bodySmall.copyWith(
+                          color: AfColors.textTertiary,
+                        ),
+                      ),
+                      tileColor: AfColors.surfaceRaised,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: AfRadii.borderMd,
+                      ),
+                      onTap: () => context.push('/smart-playlists'),
+                    );
+                  }
+                  final p = list[i - 1];
                   return ListTile(
                     leading: Container(
                       width: 48,
                       height: 48,
                       decoration: const BoxDecoration(
                         borderRadius: AfRadii.borderSm,
-                        color: AfColors.indigo900,
+                        color: AfColors.indigo800,
                       ),
                       child: const Icon(
-                        Icons.auto_awesome_rounded,
+                        Icons.playlist_play_rounded,
                         color: AfColors.indigo300,
                       ),
                     ),
-                    title: Text(
-                      'Smart Playlists',
-                      style: AfTypography.titleSmall,
-                    ),
+                    title: Text(p.name, style: AfTypography.titleSmall),
                     subtitle: Text(
-                      '$smartCount playlists',
+                      p.trackCountLabel,
                       style: AfTypography.bodySmall.copyWith(
                         color: AfColors.textTertiary,
                       ),
@@ -631,37 +669,10 @@ class _SectionBody extends ConsumerWidget {
                     shape: const RoundedRectangleBorder(
                       borderRadius: AfRadii.borderMd,
                     ),
-                    onTap: () => context.push('/smart-playlists'),
+                    onTap: () => context.push('/playlist/${p.id}'),
                   );
-                }
-                final p = list[i - 1];
-                return ListTile(
-                  leading: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: const BoxDecoration(
-                      borderRadius: AfRadii.borderSm,
-                      color: AfColors.indigo800,
-                    ),
-                    child: const Icon(
-                      Icons.playlist_play_rounded,
-                      color: AfColors.indigo300,
-                    ),
-                  ),
-                  title: Text(p.name, style: AfTypography.titleSmall),
-                  subtitle: Text(
-                    p.trackCountLabel,
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textTertiary,
-                    ),
-                  ),
-                  tileColor: AfColors.surfaceRaised,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: AfRadii.borderMd,
-                  ),
-                  onTap: () => context.push('/playlist/${p.id}'),
-                );
-              },
+                },
+              ),
             ),
           ),
           loading: () =>
@@ -679,31 +690,35 @@ class _SectionBody extends ConsumerWidget {
         final genresAsync = ref.watch(genresProvider);
         return genresAsync.when(
           data: (genres) => RepaintBoundary(
-            child: GridView.builder(
-              padding: padding.add(
-                const EdgeInsets.only(
-                  bottom: AfSpacing.bottomInsetWithMiniAndNav,
+            child: AfScrollbar(
+              child: GridView.builder(
+                padding: padding.add(
+                  const EdgeInsets.only(
+                    bottom: AfSpacing.bottomInsetWithMiniAndNav,
+                  ),
                 ),
+                itemCount: genres.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisExtent: 96,
+                  crossAxisSpacing: AfSpacing.s12,
+                  mainAxisSpacing: AfSpacing.s12,
+                ),
+                itemBuilder: (context, i) {
+                  final g = genres[i];
+                  final tint = Color(
+                    int.parse(g.tint.replaceFirst('#', '0xFF')),
+                  );
+                  return GenreTile(
+                    name: g.name,
+                    tint: tint,
+                    imageUrl: g.imageUrl,
+                    width: double.infinity,
+                    height: double.infinity,
+                    onTap: () => context.go('/library'),
+                  );
+                },
               ),
-              itemCount: genres.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisExtent: 96,
-                crossAxisSpacing: AfSpacing.s12,
-                mainAxisSpacing: AfSpacing.s12,
-              ),
-              itemBuilder: (context, i) {
-                final g = genres[i];
-                final tint = Color(int.parse(g.tint.replaceFirst('#', '0xFF')));
-                return GenreTile(
-                  name: g.name,
-                  tint: tint,
-                  imageUrl: g.imageUrl,
-                  width: double.infinity,
-                  height: double.infinity,
-                  onTap: () => context.go('/library'),
-                );
-              },
             ),
           ),
           loading: () =>
@@ -718,49 +733,53 @@ class _SectionBody extends ConsumerWidget {
         final likedAsync = ref.watch(favoriteTracksProvider);
         return likedAsync.when(
           data: (list) => list.isEmpty
-              ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.4,
-                      child: Center(
-                        child: Text(
-                          'No liked songs yet.\nTap the heart on any track.',
-                          textAlign: TextAlign.center,
-                          style: AfTypography.bodyMedium.copyWith(
-                            color: AfColors.textTertiary,
+              ? AfScrollbar(
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.4,
+                        child: Center(
+                          child: Text(
+                            'No liked songs yet.\nTap the heart on any track.',
+                            textAlign: TextAlign.center,
+                            style: AfTypography.bodyMedium.copyWith(
+                              color: AfColors.textTertiary,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 )
               : RepaintBoundary(
-                  child: ListView.builder(
-                    padding: songPadding.add(
-                      const EdgeInsets.only(
-                        bottom: AfSpacing.bottomInsetWithMiniAndNav,
-                      ),
-                    ),
-                    itemCount: list.length,
-                    itemBuilder: (context, i) {
-                      final t = list[i];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: TrackRow(
-                          track: t,
-                          steelBackground: true,
-                          isActive: t.id == activeId,
-                          isBuffering: t.id == activeId && isBuffering,
-                          activeAccent: activeAccent,
-                          onTap: () => ref
-                              .read(playActionsProvider)
-                              .playQueue(list, startIndex: i),
-                          onLongPress: () =>
-                              showTrackContextMenu(context, ref, t),
+                  child: AfScrollbar(
+                    child: ListView.builder(
+                      padding: songPadding.add(
+                        const EdgeInsets.only(
+                          bottom: AfSpacing.bottomInsetWithMiniAndNav,
                         ),
-                      );
-                    },
+                      ),
+                      itemCount: list.length,
+                      itemBuilder: (context, i) {
+                        final t = list[i];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: TrackRow(
+                            track: t,
+                            steelBackground: true,
+                            isActive: t.id == activeId,
+                            isBuffering: t.id == activeId && isBuffering,
+                            activeAccent: activeAccent,
+                            onTap: () => ref
+                                .read(playActionsProvider)
+                                .playQueue(list, startIndex: i),
+                            onLongPress: () =>
+                                showTrackContextMenu(context, ref, t),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
           loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.liked),

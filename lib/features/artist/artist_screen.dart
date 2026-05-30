@@ -16,6 +16,7 @@ import '../../widgets/async_error_view.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
+import '../../widgets/af_scrollbar.dart';
 import '../../widgets/skeletons/artist_skeleton.dart';
 
 class ArtistScreen extends ConsumerStatefulWidget {
@@ -111,120 +112,125 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                 ),
               ),
 
-              CustomScrollView(
-                controller: _scroll,
-                physics: const ClampingScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(child: SizedBox(height: heroHeight)),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AfSpacing.gutterGenerous,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            artist.name,
-                            style: AfTypography.display.copyWith(
-                              color: AfColors.textPrimary,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: AfSpacing.s4),
-                          Text(
-                            artist.statLine,
-                            style: AfTypography.bodySmall.copyWith(
-                              color: AfColors.textTertiary,
-                            ),
-                          ),
-                          const SizedBox(height: AfSpacing.s16),
-                          _ActionRow(
-                            onPlay: topTracks.isNotEmpty
-                                ? () => ref
-                                      .read(playActionsProvider)
-                                      .playQueue(topTracks, startIndex: 0)
-                                : null,
-                            onRadio: () => _startArtistRadio(
-                              context,
-                              ref,
-                              artist.name,
-                              widget.artistId,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (topTracks.isNotEmpty) ...[
-                    const SliverToBoxAdapter(
-                      child: SizedBox(height: AfSpacing.s32),
-                    ),
-                    const SliverToBoxAdapter(
+              AfScrollbar(
+                child: CustomScrollView(
+                  controller: _scroll,
+                  physics: const ClampingScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(child: SizedBox(height: heroHeight)),
+                    SliverToBoxAdapter(
                       child: Padding(
-                        padding: EdgeInsets.symmetric(
+                        padding: const EdgeInsets.symmetric(
                           horizontal: AfSpacing.gutterGenerous,
                         ),
-                        child: SectionHeader(title: 'Top Songs'),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              artist.name,
+                              style: AfTypography.display.copyWith(
+                                color: AfColors.textPrimary,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: AfSpacing.s4),
+                            Text(
+                              artist.statLine,
+                              style: AfTypography.bodySmall.copyWith(
+                                color: AfColors.textTertiary,
+                              ),
+                            ),
+                            const SizedBox(height: AfSpacing.s16),
+                            _ActionRow(
+                              onPlay: topTracks.isNotEmpty
+                                  ? () => ref
+                                        .read(playActionsProvider)
+                                        .playQueue(topTracks, startIndex: 0)
+                                  : null,
+                              onRadio: () => _startArtistRadio(
+                                context,
+                                ref,
+                                artist.name,
+                                widget.artistId,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const SliverToBoxAdapter(
-                      child: SizedBox(height: AfSpacing.s8),
+                    if (topTracks.isNotEmpty) ...[
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: AfSpacing.s32),
+                      ),
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AfSpacing.gutterGenerous,
+                          ),
+                          child: SectionHeader(title: 'Top Songs'),
+                        ),
+                      ),
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: AfSpacing.s8),
+                      ),
+                      SliverList.separated(
+                        itemCount: topTracks.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: AfSpacing.s4),
+                        itemBuilder: (context, i) => Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AfSpacing.s16,
+                          ),
+                          child: TrackRow(
+                            track: topTracks[i],
+                            leadingNumber: i + 1,
+                            isActive: topTracks[i].id == activeId,
+                            isBuffering:
+                                topTracks[i].id == activeId && isBuffering,
+                            activeAccent: activeAccent,
+                            onTap: () => ref
+                                .read(playActionsProvider)
+                                .playQueue(topTracks, startIndex: i),
+                            onLongPress: () => showTrackContextMenu(
+                              context,
+                              ref,
+                              topTracks[i],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    wikiAsync.maybeWhen(
+                      data: (wiki) {
+                        if (wiki == null ||
+                            wiki.bio == null ||
+                            wiki.bio!.isEmpty) {
+                          return const SliverToBoxAdapter(child: SizedBox());
+                        }
+                        return SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AfSpacing.gutterGenerous,
+                              vertical: AfSpacing.s24,
+                            ),
+                            child: _ArtistBiographyPanel(
+                              bio: wiki.bio!,
+                              listeners: wiki.listeners,
+                              playCount: wiki.playCount,
+                            ),
+                          ),
+                        );
+                      },
+                      orElse: () => const SliverToBoxAdapter(child: SizedBox()),
                     ),
-                    SliverList.separated(
-                      itemCount: topTracks.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: AfSpacing.s4),
-                      itemBuilder: (context, i) => Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AfSpacing.s16,
-                        ),
-                        child: TrackRow(
-                          track: topTracks[i],
-                          leadingNumber: i + 1,
-                          isActive: topTracks[i].id == activeId,
-                          isBuffering:
-                              topTracks[i].id == activeId && isBuffering,
-                          activeAccent: activeAccent,
-                          onTap: () => ref
-                              .read(playActionsProvider)
-                              .playQueue(topTracks, startIndex: i),
-                          onLongPress: () =>
-                              showTrackContextMenu(context, ref, topTracks[i]),
-                        ),
+                    const SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: AfSpacing.bottomInsetWithMiniAndNav,
                       ),
                     ),
                   ],
-                  wikiAsync.maybeWhen(
-                    data: (wiki) {
-                      if (wiki == null ||
-                          wiki.bio == null ||
-                          wiki.bio!.isEmpty) {
-                        return const SliverToBoxAdapter(child: SizedBox());
-                      }
-                      return SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AfSpacing.gutterGenerous,
-                            vertical: AfSpacing.s24,
-                          ),
-                          child: _ArtistBiographyPanel(
-                            bio: wiki.bio!,
-                            listeners: wiki.listeners,
-                            playCount: wiki.playCount,
-                          ),
-                        ),
-                      );
-                    },
-                    orElse: () => const SliverToBoxAdapter(child: SizedBox()),
-                  ),
-                  const SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: AfSpacing.bottomInsetWithMiniAndNav,
-                    ),
-                  ),
-                ],
+                ),
               ),
 
               // App bar

@@ -7,6 +7,7 @@ import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/af_scrollbar.dart';
 import '../../widgets/async_error_view.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
@@ -354,26 +355,28 @@ class _SongsList extends ConsumerWidget {
     }
 
     return RepaintBoundary(
-      child: ListView.builder(
-        padding: padding.add(
-          const EdgeInsets.only(bottom: AfSpacing.bottomInsetWithMiniAndNav),
+      child: AfScrollbar(
+        child: ListView.builder(
+          padding: padding.add(
+            const EdgeInsets.only(bottom: AfSpacing.bottomInsetWithMiniAndNav),
+          ),
+          itemCount: tracks.length,
+          itemBuilder: (context, i) {
+            final t = tracks[i];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: TrackRow(
+                track: t,
+                isActive: t.id == activeId,
+                isBuffering: t.id == activeId && ref.watch(isBufferingProvider),
+                activeAccent: ref.watch(currentSpectralProvider).energy,
+                onTap: () =>
+                    ref.read(playActionsProvider).playSmartQueue(t, tracks),
+                onLongPress: () => showTrackContextMenu(context, ref, t),
+              ),
+            );
+          },
         ),
-        itemCount: tracks.length,
-        itemBuilder: (context, i) {
-          final t = tracks[i];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: TrackRow(
-              track: t,
-              isActive: t.id == activeId,
-              isBuffering: t.id == activeId && ref.watch(isBufferingProvider),
-              activeAccent: ref.watch(currentSpectralProvider).energy,
-              onTap: () =>
-                  ref.read(playActionsProvider).playSmartQueue(t, tracks),
-              onLongPress: () => showTrackContextMenu(context, ref, t),
-            ),
-          );
-        },
       ),
     );
   }

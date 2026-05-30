@@ -7,6 +7,7 @@ import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/skeletons/playlist_skeleton.dart';
+import '../../widgets/af_scrollbar.dart';
 import 'import_m3u_dialog.dart';
 
 class PlaylistListScreen extends ConsumerWidget {
@@ -29,63 +30,65 @@ class PlaylistListScreen extends ConsumerWidget {
         },
         color: AfColors.indigo300,
         backgroundColor: AfColors.surfaceBase,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: ClampingScrollPhysics(),
-          ),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AfSpacing.s16,
-                  AfSpacing.s8,
-                  AfSpacing.s16,
-                  AfSpacing.s16,
-                ),
-                child: Row(
-                  children: [
-                    Text('Playlists', style: AfTypography.titleLarge),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(
-                        LucideIcons.listPlus,
-                        color: AfColors.indigo400,
-                        size: 22,
+        child: AfScrollbar(
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: ClampingScrollPhysics(),
+            ),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AfSpacing.s16,
+                    AfSpacing.s8,
+                    AfSpacing.s16,
+                    AfSpacing.s16,
+                  ),
+                  child: Row(
+                    children: [
+                      Text('Playlists', style: AfTypography.titleLarge),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(
+                          LucideIcons.listPlus,
+                          color: AfColors.indigo400,
+                          size: 22,
+                        ),
+                        tooltip: 'Import M3U',
+                        onPressed: () => ref
+                            .read(importM3UActionProvider)
+                            .import(context: context),
                       ),
-                      tooltip: 'Import M3U',
-                      onPressed: () => ref
-                          .read(importM3UActionProvider)
-                          .import(context: context),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-            ...playlists.when(
-              data: (list) => _buildSlivers(context, ref, list, smartCount),
-              loading: () => [
-                const SliverToBoxAdapter(child: PlaylistSkeleton()),
-              ],
-              error: (e, _) => [
-                SliverToBoxAdapter(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(AfSpacing.s24),
-                      child: Text(
-                        'Couldn\u2019t load playlists',
-                        style: AfTypography.bodyMedium.copyWith(
-                          color: AfColors.semanticError,
+              ...playlists.when(
+                data: (list) => _buildSlivers(context, ref, list, smartCount),
+                loading: () => [
+                  const SliverToBoxAdapter(child: PlaylistSkeleton()),
+                ],
+                error: (e, _) => [
+                  SliverToBoxAdapter(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AfSpacing.s24),
+                        child: Text(
+                          'Couldn\u2019t load playlists',
+                          style: AfTypography.bodyMedium.copyWith(
+                            color: AfColors.semanticError,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SliverToBoxAdapter(
-              child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
-            ),
-          ],
+                ],
+              ),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
+              ),
+            ],
+          ),
         ),
       ),
     );

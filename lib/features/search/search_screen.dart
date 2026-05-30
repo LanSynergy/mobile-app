@@ -15,6 +15,7 @@ import '../../widgets/section_header.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
+import '../../widgets/af_scrollbar.dart';
 import '../../widgets/skeletons/search_skeleton.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -363,82 +364,84 @@ class _SearchIdleStateState extends ConsumerState<_SearchIdleState> {
     final mode = ref.watch(appModeProvider);
     final isLocal = mode == AppMode.local;
 
-    return CustomScrollView(
-      physics: const ClampingScrollPhysics(),
-      slivers: [
-        if (recent.isNotEmpty) ...[
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
-              AfSpacing.s16,
-              0,
-              AfSpacing.s16,
-              0,
-            ),
-            sliver: SliverToBoxAdapter(
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: SectionHeader(title: 'Recent', uppercase: true),
-                  ),
-                  TextButton(
-                    onPressed: () =>
-                        ref.read(searchHistoryProvider.notifier).clear(),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AfColors.textTertiary,
-                      visualDensity: VisualDensity.compact,
+    return AfScrollbar(
+      child: CustomScrollView(
+        physics: const ClampingScrollPhysics(),
+        slivers: [
+          if (recent.isNotEmpty) ...[
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                0,
+                AfSpacing.s16,
+                0,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: SectionHeader(title: 'Recent', uppercase: true),
                     ),
-                    child: const Text('Clear'),
-                  ),
-                ],
+                    TextButton(
+                      onPressed: () =>
+                          ref.read(searchHistoryProvider.notifier).clear(),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AfColors.textTertiary,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      child: const Text('Clear'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                0,
+                AfSpacing.s16,
+                AfSpacing.s16,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: Wrap(
+                  spacing: AfSpacing.s8,
+                  runSpacing: AfSpacing.s8,
+                  children: [
+                    for (final q in recent)
+                      InputChip(
+                        label: Text(q),
+                        backgroundColor: AfColors.surfaceRaised,
+                        side: const BorderSide(color: AfColors.surfaceHigh),
+                        labelStyle: AfTypography.bodySmall.copyWith(
+                          color: AfColors.textPrimary,
+                        ),
+                        deleteIcon: const Icon(Icons.close_rounded, size: 16),
+                        deleteIconColor: AfColors.textTertiary,
+                        onPressed: () => widget.onRecent(q),
+                        onDeleted: () =>
+                            ref.read(searchHistoryProvider.notifier).remove(q),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+            sliver: SliverToBoxAdapter(
+              child: _IdleFilterPills(
+                selected: _filter,
+                onChanged: (v) => setState(() => _filter = v),
               ),
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
-              AfSpacing.s16,
-              0,
-              AfSpacing.s16,
-              AfSpacing.s16,
-            ),
-            sliver: SliverToBoxAdapter(
-              child: Wrap(
-                spacing: AfSpacing.s8,
-                runSpacing: AfSpacing.s8,
-                children: [
-                  for (final q in recent)
-                    InputChip(
-                      label: Text(q),
-                      backgroundColor: AfColors.surfaceRaised,
-                      side: const BorderSide(color: AfColors.surfaceHigh),
-                      labelStyle: AfTypography.bodySmall.copyWith(
-                        color: AfColors.textPrimary,
-                      ),
-                      deleteIcon: const Icon(Icons.close_rounded, size: 16),
-                      deleteIconColor: AfColors.textTertiary,
-                      onPressed: () => widget.onRecent(q),
-                      onDeleted: () =>
-                          ref.read(searchHistoryProvider.notifier).remove(q),
-                    ),
-                ],
-              ),
-            ),
+          const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
+          ..._buildGrid(isLocal),
+          const SliverToBoxAdapter(
+            child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
           ),
         ],
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-          sliver: SliverToBoxAdapter(
-            child: _IdleFilterPills(
-              selected: _filter,
-              onChanged: (v) => setState(() => _filter = v),
-            ),
-          ),
-        ),
-        const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
-        ..._buildGrid(isLocal),
-        const SliverToBoxAdapter(
-          child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
-        ),
-      ],
+      ),
     );
   }
 
@@ -660,114 +663,116 @@ class _SearchResults extends ConsumerWidget {
     final isBuffering = ref.watch(isBufferingProvider);
     final activeAccent = ref.watch(currentSpectralProvider).energy;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AfSpacing.s16,
-        0,
-        AfSpacing.s16,
-        AfSpacing.bottomInsetWithMiniAndNav,
-      ),
-      children: [
-        if (tracks.isNotEmpty) ...[
-          const SectionHeader(title: 'Tracks', uppercase: true),
-          const SizedBox(height: AfSpacing.s8),
-          for (var i = 0; i < tracks.length && (unbounded || i < 20); i++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: TrackRow(
-                track: tracks[i],
-                isActive: tracks[i].id == activeId,
-                isBuffering: tracks[i].id == activeId && isBuffering,
-                activeAccent: activeAccent,
-                onTap: () => ref
-                    .read(playActionsProvider)
-                    .playQueue(tracks, startIndex: i),
-                onLongPress: () =>
-                    showTrackContextMenu(context, ref, tracks[i]),
-              ),
-            ),
-          const SizedBox(height: AfSpacing.s16),
-        ],
-        if (albums.isNotEmpty) ...[
-          const SectionHeader(title: 'Albums', uppercase: true),
-          const SizedBox(height: AfSpacing.s8),
-          for (final a in unbounded ? albums : albums.take(10))
-            ListTile(
-              leading: SizedBox(
-                width: 44,
-                height: 44,
-                child: Artwork(url: a.imageUrl, size: 44),
-              ),
-              title: Text(a.name, style: AfTypography.bodyMedium),
-              subtitle: Text(
-                a.artistName,
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
+    return AfScrollbar(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AfSpacing.s16,
+          0,
+          AfSpacing.s16,
+          AfSpacing.bottomInsetWithMiniAndNav,
+        ),
+        children: [
+          if (tracks.isNotEmpty) ...[
+            const SectionHeader(title: 'Tracks', uppercase: true),
+            const SizedBox(height: AfSpacing.s8),
+            for (var i = 0; i < tracks.length && (unbounded || i < 20); i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: TrackRow(
+                  track: tracks[i],
+                  isActive: tracks[i].id == activeId,
+                  isBuffering: tracks[i].id == activeId && isBuffering,
+                  activeAccent: activeAccent,
+                  onTap: () => ref
+                      .read(playActionsProvider)
+                      .playQueue(tracks, startIndex: i),
+                  onLongPress: () =>
+                      showTrackContextMenu(context, ref, tracks[i]),
                 ),
               ),
-              tileColor: Colors.transparent,
-              contentPadding: EdgeInsets.zero,
-              onTap: () => context.push('/album/${a.id}'),
-            ),
-          const SizedBox(height: AfSpacing.s16),
-        ],
-        if (artists.isNotEmpty) ...[
-          const SectionHeader(title: 'Artists', uppercase: true),
-          const SizedBox(height: AfSpacing.s8),
-          for (final a in unbounded ? artists : artists.take(10))
-            ListTile(
-              // Use Artwork widget (cached_network_image) instead of raw
-              // NetworkImage to avoid repeated fetches and memory spikes.
-              leading: Artwork(
-                url: a.imageUrl,
-                size: 44,
-                radius: BorderRadius.circular(22),
-              ),
-              title: Text(a.name, style: AfTypography.bodyMedium),
-              subtitle: Text(
-                a.statLine,
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
+            const SizedBox(height: AfSpacing.s16),
+          ],
+          if (albums.isNotEmpty) ...[
+            const SectionHeader(title: 'Albums', uppercase: true),
+            const SizedBox(height: AfSpacing.s8),
+            for (final a in unbounded ? albums : albums.take(10))
+              ListTile(
+                leading: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Artwork(url: a.imageUrl, size: 44),
                 ),
-              ),
-              tileColor: Colors.transparent,
-              contentPadding: EdgeInsets.zero,
-              onTap: () => context.push('/artist/${a.id}'),
-            ),
-          const SizedBox(height: AfSpacing.s16),
-        ],
-        if (playlists.isNotEmpty) ...[
-          const SectionHeader(title: 'Playlists', uppercase: true),
-          const SizedBox(height: AfSpacing.s8),
-          for (final p in unbounded ? playlists : playlists.take(10))
-            ListTile(
-              leading: Container(
-                width: 44,
-                height: 44,
-                decoration: const BoxDecoration(
-                  borderRadius: AfRadii.borderSm,
-                  gradient: LinearGradient(
-                    colors: [AfColors.indigo700, AfColors.indigo900],
+                title: Text(a.name, style: AfTypography.bodyMedium),
+                subtitle: Text(
+                  a.artistName,
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
                   ),
                 ),
-                child: const Icon(
-                  Icons.playlist_play_rounded,
-                  color: AfColors.indigo300,
-                ),
+                tileColor: Colors.transparent,
+                contentPadding: EdgeInsets.zero,
+                onTap: () => context.push('/album/${a.id}'),
               ),
-              title: Text(p.name, style: AfTypography.bodyMedium),
-              subtitle: Text(
-                p.trackCountLabel,
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
+            const SizedBox(height: AfSpacing.s16),
+          ],
+          if (artists.isNotEmpty) ...[
+            const SectionHeader(title: 'Artists', uppercase: true),
+            const SizedBox(height: AfSpacing.s8),
+            for (final a in unbounded ? artists : artists.take(10))
+              ListTile(
+                // Use Artwork widget (cached_network_image) instead of raw
+                // NetworkImage to avoid repeated fetches and memory spikes.
+                leading: Artwork(
+                  url: a.imageUrl,
+                  size: 44,
+                  radius: BorderRadius.circular(22),
                 ),
+                title: Text(a.name, style: AfTypography.bodyMedium),
+                subtitle: Text(
+                  a.statLine,
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+                tileColor: Colors.transparent,
+                contentPadding: EdgeInsets.zero,
+                onTap: () => context.push('/artist/${a.id}'),
               ),
-              tileColor: Colors.transparent,
-              contentPadding: EdgeInsets.zero,
-              onTap: () => context.push('/playlist/${p.id}'),
-            ),
+            const SizedBox(height: AfSpacing.s16),
+          ],
+          if (playlists.isNotEmpty) ...[
+            const SectionHeader(title: 'Playlists', uppercase: true),
+            const SizedBox(height: AfSpacing.s8),
+            for (final p in unbounded ? playlists : playlists.take(10))
+              ListTile(
+                leading: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    borderRadius: AfRadii.borderSm,
+                    gradient: LinearGradient(
+                      colors: [AfColors.indigo700, AfColors.indigo900],
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.playlist_play_rounded,
+                    color: AfColors.indigo300,
+                  ),
+                ),
+                title: Text(p.name, style: AfTypography.bodyMedium),
+                subtitle: Text(
+                  p.trackCountLabel,
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+                tileColor: Colors.transparent,
+                contentPadding: EdgeInsets.zero,
+                onTap: () => context.push('/playlist/${p.id}'),
+              ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

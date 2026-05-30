@@ -18,6 +18,7 @@ import '../../widgets/async_error_view.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
+import '../../widgets/af_scrollbar.dart';
 import '../../widgets/skeletons/album_skeleton.dart';
 
 /// Mockup 07 — Album detail.
@@ -125,113 +126,121 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                 ),
               ),
 
-              CustomScrollView(
-                controller: _scroll,
-                physics: const ClampingScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(child: SizedBox(height: heroHeight)),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AfSpacing.gutterGenerous,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            album.name,
-                            style: AfTypography.display.copyWith(
-                              color: AfColors.textPrimary,
+              AfScrollbar(
+                child: CustomScrollView(
+                  controller: _scroll,
+                  physics: const ClampingScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(child: SizedBox(height: heroHeight)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AfSpacing.gutterGenerous,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              album.name,
+                              style: AfTypography.display.copyWith(
+                                color: AfColors.textPrimary,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: AfSpacing.s4),
-                          GestureDetector(
-                            onTap: album.artistId != null
-                                ? () =>
-                                      context.push('/artist/${album.artistId}')
-                                : null,
-                            child: Text(
-                              album.artistName,
-                              style: AfTypography.titleMedium.copyWith(
-                                color: AfColors.indigo300,
+                            const SizedBox(height: AfSpacing.s4),
+                            GestureDetector(
+                              onTap: album.artistId != null
+                                  ? () => context.push(
+                                      '/artist/${album.artistId}',
+                                    )
+                                  : null,
+                              child: Text(
+                                album.artistName,
+                                style: AfTypography.titleMedium.copyWith(
+                                  color: AfColors.indigo300,
+                                ),
                               ),
                             ),
-                          ),
+                            const SizedBox(height: AfSpacing.s4),
+                            Text(
+                              album.metadataLine,
+                              style: AfTypography.bodySmall.copyWith(
+                                color: AfColors.textTertiary,
+                              ),
+                            ),
+                            const SizedBox(height: AfSpacing.s16),
+                            _ActionRow(
+                              album: album,
+                              onPlay: () => ref
+                                  .read(playActionsProvider)
+                                  .playAlbum(tracks),
+                              onMore: () => showAlbumMoreSheet(
+                                context,
+                                ref,
+                                album,
+                                tracks,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(
+                      child: SizedBox(height: AfSpacing.s24),
+                    ),
+                    SliverList.separated(
+                      itemCount: tracks.length,
+                      separatorBuilder: (context, index) =>
                           const SizedBox(height: AfSpacing.s4),
-                          Text(
-                            album.metadataLine,
-                            style: AfTypography.bodySmall.copyWith(
-                              color: AfColors.textTertiary,
+                      itemBuilder: (context, i) => Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AfSpacing.s16,
+                        ),
+                        child: TrackRow(
+                          track: tracks[i],
+                          leadingNumber: i + 1,
+                          isActive: tracks[i].id == activeId,
+                          isBuffering: tracks[i].id == activeId && isBuffering,
+                          activeAccent: activeAccent,
+                          onTap: () => ref
+                              .read(playActionsProvider)
+                              .playQueue(tracks, startIndex: i),
+                          onLongPress: () =>
+                              showTrackContextMenu(context, ref, tracks[i]),
+                        ),
+                      ),
+                    ),
+                    wikiAsync.maybeWhen(
+                      data: (wiki) {
+                        if (wiki == null ||
+                            wiki.wiki == null ||
+                            wiki.wiki!.isEmpty) {
+                          return const SliverToBoxAdapter(child: SizedBox());
+                        }
+                        return SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AfSpacing.gutterGenerous,
+                              vertical: AfSpacing.s24,
+                            ),
+                            child: _AlbumWikiPanel(
+                              wiki: wiki.wiki!,
+                              listeners: wiki.listeners,
+                              playCount: wiki.playCount,
                             ),
                           ),
-                          const SizedBox(height: AfSpacing.s16),
-                          _ActionRow(
-                            album: album,
-                            onPlay: () =>
-                                ref.read(playActionsProvider).playAlbum(tracks),
-                            onMore: () =>
-                                showAlbumMoreSheet(context, ref, album, tracks),
-                          ),
-                        ],
+                        );
+                      },
+                      orElse: () => const SliverToBoxAdapter(child: SizedBox()),
+                    ),
+                    const SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: AfSpacing.bottomInsetWithMiniAndNav,
                       ),
                     ),
-                  ),
-                  const SliverToBoxAdapter(
-                    child: SizedBox(height: AfSpacing.s24),
-                  ),
-                  SliverList.separated(
-                    itemCount: tracks.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: AfSpacing.s4),
-                    itemBuilder: (context, i) => Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AfSpacing.s16,
-                      ),
-                      child: TrackRow(
-                        track: tracks[i],
-                        leadingNumber: i + 1,
-                        isActive: tracks[i].id == activeId,
-                        isBuffering: tracks[i].id == activeId && isBuffering,
-                        activeAccent: activeAccent,
-                        onTap: () => ref
-                            .read(playActionsProvider)
-                            .playQueue(tracks, startIndex: i),
-                        onLongPress: () =>
-                            showTrackContextMenu(context, ref, tracks[i]),
-                      ),
-                    ),
-                  ),
-                  wikiAsync.maybeWhen(
-                    data: (wiki) {
-                      if (wiki == null ||
-                          wiki.wiki == null ||
-                          wiki.wiki!.isEmpty) {
-                        return const SliverToBoxAdapter(child: SizedBox());
-                      }
-                      return SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AfSpacing.gutterGenerous,
-                            vertical: AfSpacing.s24,
-                          ),
-                          child: _AlbumWikiPanel(
-                            wiki: wiki.wiki!,
-                            listeners: wiki.listeners,
-                            playCount: wiki.playCount,
-                          ),
-                        ),
-                      );
-                    },
-                    orElse: () => const SliverToBoxAdapter(child: SizedBox()),
-                  ),
-                  const SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: AfSpacing.bottomInsetWithMiniAndNav,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
 
               // App bar — rendered on top of scroll content.

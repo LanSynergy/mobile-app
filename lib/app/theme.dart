@@ -66,11 +66,24 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
     highlightColor: Colors.transparent,
     hoverColor: Colors.transparent,
 
-    scrollbarTheme: const ScrollbarThemeData(
-      thumbColor: WidgetStatePropertyAll(AfColors.surfaceMax),
-      thickness: WidgetStatePropertyAll(3),
+    scrollbarTheme: ScrollbarThemeData(
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.dragged)) {
+          return AfColors.indigo400;
+        }
+        if (states.contains(WidgetState.hovered)) {
+          return AfColors.indigo300.withValues(alpha: 0.7);
+        }
+        return AfColors.surfaceMax.withValues(alpha: 0.6);
+      }),
+      trackColor: WidgetStatePropertyAll(
+        AfColors.surfaceCanvas.withValues(alpha: 0.25),
+      ),
+      trackVisibility: const WidgetStatePropertyAll(false),
+      thickness: const WidgetStatePropertyAll(10),
       radius: AfRadii.rPill,
       crossAxisMargin: 2,
+      mainAxisMargin: 2,
     ),
 
     iconTheme: const IconThemeData(color: AfColors.textPrimary, size: 24),

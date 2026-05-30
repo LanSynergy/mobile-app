@@ -9,6 +9,7 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/display_error.dart';
 import '../../widgets/af_dialog.dart';
+import '../../widgets/af_scrollbar.dart';
 import '../../widgets/async_error_view.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/track_context_menu.dart';
@@ -110,148 +111,152 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
           final tracks = _localTracks ?? detail.tracks;
 
           return SafeArea(
-            child: CustomScrollView(
-              physics: const ClampingScrollPhysics(),
-              slivers: [
-                // Header.
-                SliverToBoxAdapter(
-                  child: _Header(pl: pl, tracks: tracks),
-                ),
-
-                // Action row.
-                SliverToBoxAdapter(
-                  child: _ActionRow(
-                    tracks: tracks,
-                    onPlay: () =>
-                        ref.read(playActionsProvider).playQueue(tracks),
-                    onShuffle: () async {
-                      await ref.read(playActionsProvider).playQueue(tracks);
-                      await ref
-                          .read(playerServiceProvider)
-                          .setAfShuffleMode(true);
-                    },
-                  ),
-                ),
-
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: AfSpacing.s16),
-                ),
-
-                // Track list — reorderable when signed in.
-                if (backend != null && tracks.isNotEmpty)
+            child: AfScrollbar(
+              child: CustomScrollView(
+                physics: const ClampingScrollPhysics(),
+                slivers: [
+                  // Header.
                   SliverToBoxAdapter(
-                    child: ReorderableListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AfSpacing.s16,
+                    child: _Header(pl: pl, tracks: tracks),
+                  ),
+
+                  // Action row.
+                  SliverToBoxAdapter(
+                    child: _ActionRow(
+                      tracks: tracks,
+                      onPlay: () =>
+                          ref.read(playActionsProvider).playQueue(tracks),
+                      onShuffle: () async {
+                        await ref.read(playActionsProvider).playQueue(tracks);
+                        await ref
+                            .read(playerServiceProvider)
+                            .setAfShuffleMode(true);
+                      },
+                    ),
+                  ),
+
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: AfSpacing.s16),
+                  ),
+
+                  // Track list — reorderable when signed in.
+                  if (backend != null && tracks.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: ReorderableListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AfSpacing.s16,
+                        ),
+                        buildDefaultDragHandles: false,
+                        itemCount: tracks.length,
+                        onReorderItem: (oldIndex, newIndex) => _onReorder(
+                          oldIndex,
+                          newIndex,
+                          tracks,
+                          backend,
+                          pl.id,
+                        ),
+                        itemBuilder: (context, i) {
+                          final t = tracks[i];
+                          return Dismissible(
+                            key: ValueKey('${t.id}-$i'),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(
+                                right: AfSpacing.s16,
+                              ),
+                              color: AfColors.semanticError.withValues(
+                                alpha: 0.15,
+                              ),
+                              child: const Icon(
+                                Icons.delete_outline_rounded,
+                                color: AfColors.semanticError,
+                              ),
+                            ),
+                            confirmDismiss: (_) =>
+                                _confirmRemove(context, t.title),
+                            onDismissed: (_) =>
+                                _removeTrack(i, tracks, backend, pl.id),
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AfSpacing.s4,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: TrackRow(
+                                      track: t,
+                                      isActive: t.id == activeId,
+                                      isBuffering:
+                                          t.id == activeId && isBuffering,
+                                      activeAccent: activeAccent,
+                                      onTap: () => ref
+                                          .read(playActionsProvider)
+                                          .playQueue(tracks, startIndex: i),
+                                      onLongPress: () =>
+                                          showTrackContextMenu(context, ref, t),
+                                    ),
+                                  ),
+                                  ReorderableDragStartListener(
+                                    index: i,
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: AfSpacing.s8,
+                                      ),
+                                      child: Icon(
+                                        Icons.drag_indicator_rounded,
+                                        color: AfColors.textTertiary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                      buildDefaultDragHandles: false,
-                      itemCount: tracks.length,
-                      onReorderItem: (oldIndex, newIndex) => _onReorder(
-                        oldIndex,
-                        newIndex,
-                        tracks,
-                        backend,
-                        pl.id,
-                      ),
-                      itemBuilder: (context, i) {
-                        final t = tracks[i];
-                        return Dismissible(
-                          key: ValueKey('${t.id}-$i'),
-                          direction: DismissDirection.endToStart,
-                          background: Container(
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(
-                              right: AfSpacing.s16,
+                    )
+                  else
+                    SliverFixedExtentList(
+                      itemExtent: 68.0,
+                      delegate: SliverChildBuilderDelegate(
+                        childCount: tracks.length,
+                        (context, i) {
+                          final t = tracks[i];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AfSpacing.s16,
                             ),
-                            color: AfColors.semanticError.withValues(
-                              alpha: 0.15,
-                            ),
-                            child: const Icon(
-                              Icons.delete_outline_rounded,
-                              color: AfColors.semanticError,
-                            ),
-                          ),
-                          confirmDismiss: (_) =>
-                              _confirmRemove(context, t.title),
-                          onDismissed: (_) =>
-                              _removeTrack(i, tracks, backend, pl.id),
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: AfSpacing.s4,
-                            ),
-                            child: Row(
+                            child: Column(
                               children: [
-                                Expanded(
-                                  child: TrackRow(
-                                    track: t,
-                                    isActive: t.id == activeId,
-                                    isBuffering:
-                                        t.id == activeId && isBuffering,
-                                    activeAccent: activeAccent,
-                                    onTap: () => ref
-                                        .read(playActionsProvider)
-                                        .playQueue(tracks, startIndex: i),
-                                    onLongPress: () =>
-                                        showTrackContextMenu(context, ref, t),
-                                  ),
+                                TrackRow(
+                                  track: t,
+                                  isActive: t.id == activeId,
+                                  isBuffering: t.id == activeId && isBuffering,
+                                  activeAccent: activeAccent,
+                                  onTap: () => ref
+                                      .read(playActionsProvider)
+                                      .playQueue(tracks, startIndex: i),
+                                  onLongPress: () =>
+                                      showTrackContextMenu(context, ref, t),
                                 ),
-                                ReorderableDragStartListener(
-                                  index: i,
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: AfSpacing.s8,
-                                    ),
-                                    child: Icon(
-                                      Icons.drag_indicator_rounded,
-                                      color: AfColors.textTertiary,
-                                    ),
-                                  ),
-                                ),
+                                const SizedBox(height: 4),
                               ],
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
-                  )
-                else
-                  SliverFixedExtentList(
-                    itemExtent: 68.0,
-                    delegate: SliverChildBuilderDelegate(
-                      childCount: tracks.length,
-                      (context, i) {
-                        final t = tracks[i];
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AfSpacing.s16,
-                          ),
-                          child: Column(
-                            children: [
-                              TrackRow(
-                                track: t,
-                                isActive: t.id == activeId,
-                                isBuffering: t.id == activeId && isBuffering,
-                                activeAccent: activeAccent,
-                                onTap: () => ref
-                                    .read(playActionsProvider)
-                                    .playQueue(tracks, startIndex: i),
-                                onLongPress: () =>
-                                    showTrackContextMenu(context, ref, t),
-                              ),
-                              const SizedBox(height: 4),
-                            ],
-                          ),
-                        );
-                      },
+
+                  const SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: AfSpacing.bottomInsetWithMiniAndNav,
                     ),
                   ),
-
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
