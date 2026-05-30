@@ -1378,6 +1378,23 @@ class AfPlayerService {
 
     if (current != null) {
       await _rebuildWindow(current);
+      // Guard: ensure playback starts after rebuilding the window.
+      // The play:true parameter on the preceeding openAll call may not
+      // reliably trigger playback on all mpv builds when called
+      // immediately after a completed event, because the end-of-file
+      // state transition can pause the new media.
+      if (!_player.state.playing && !_userPaused) {
+        try {
+          await _player.play();
+        } catch (e, stack) {
+          afLog(
+            'audio',
+            'advance: play() guard failed',
+            error: e,
+            stackTrace: stack,
+          );
+        }
+      }
     }
   }
 
