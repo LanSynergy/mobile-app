@@ -63,7 +63,7 @@ class CoOccurrenceRepository {
       readsFrom: {db.trackCoOccurrences},
     );
     final row = await query.getSingleOrNull();
-    return row?.read<int>('max_count') ?? 0;
+    return row?.read<int?>('max_count') ?? 0;
   }
 
   Future<List<String>> getTopCoOccurred(
