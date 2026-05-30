@@ -623,6 +623,7 @@ class _LastFmSettingsSection extends ConsumerWidget {
     final sessionKey = ref.watch(lastfmSessionKeyProvider);
     final username = ref.watch(lastfmUsernameProvider);
     final scrobbleEnabled = ref.watch(lastfmScrobbleEnabledProvider);
+    final lastfmStatus = ref.watch(lastfmStatusProvider);
 
     final hasCredentials = apiKey.isNotEmpty && apiSecret.isNotEmpty;
     final isConnected = sessionKey.isNotEmpty;
@@ -737,6 +738,20 @@ class _LastFmSettingsSection extends ConsumerWidget {
                   unawaited(PlayerSettingsStore.saveLastFmScrobbleEnabled(v));
                 },
               ),
+              if (lastfmStatus != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                  child: Text(
+                    lastfmStatus,
+                    style: AfTypography.caption.copyWith(
+                      color: lastfmStatus.startsWith('ERROR')
+                          ? AfColors.semanticError
+                          : AfColors.textTertiary,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
             ],
           ],
         ),

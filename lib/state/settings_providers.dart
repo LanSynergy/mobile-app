@@ -54,6 +54,9 @@ final lastfmUsernameProvider = StateProvider<String>((ref) => '');
 /// Whether Last.fm scrobbling is enabled.
 final lastfmScrobbleEnabledProvider = StateProvider<bool>((ref) => true);
 
+/// Tracks the status of the last Last.fm API call (OK or error).
+final lastfmStatusProvider = StateProvider<String?>((ref) => null);
+
 /// Central Last.fm client provider, watching api key, secret and session key.
 final lastFmClientProvider = Provider<LastFmClient?>((ref) {
   final apiKey = ref.watch(lastfmApiKeyProvider);
@@ -64,6 +67,7 @@ final lastFmClientProvider = Provider<LastFmClient?>((ref) {
     apiKey: apiKey,
     apiSecret: apiSecret.isEmpty ? null : apiSecret,
     sessionKey: sessionKey.isEmpty ? null : sessionKey,
+    onStatus: (msg) => ref.read(lastfmStatusProvider.notifier).state = msg,
   );
 });
 

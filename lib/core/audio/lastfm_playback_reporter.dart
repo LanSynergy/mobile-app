@@ -76,8 +76,30 @@ class LastFmPlaybackReporter {
       }
     }
 
-    // 2. Set up the new track
+    // 2. Scrobble last track when queue ends, then clean up
     if (track == null) {
+      if (previousTrack != null) {
+        final listened = _player.listenedDuration;
+        final duration = previousTrack.duration;
+        final isThresholdMet =
+            duration >= const Duration(seconds: 30) &&
+            ((duration > Duration.zero && listened >= duration * 0.5) ||
+                listened >= const Duration(minutes: 4));
+        if (isThresholdMet) {
+          final timestamp =
+              DateTime.now().millisecondsSinceEpoch ~/ 1000 -
+              listened.inSeconds;
+          unawaited(
+            client.scrobble(
+              artist: previousTrack.artistName,
+              track: previousTrack.title,
+              album: previousTrack.albumName,
+              duration: previousTrack.duration,
+              timestamp: timestamp,
+            ),
+          );
+        }
+      }
       _lastReportedTrack = null;
       return;
     }

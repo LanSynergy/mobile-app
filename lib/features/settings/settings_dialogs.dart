@@ -763,71 +763,116 @@ void showLastFmApiConfigDialog(BuildContext context, WidgetRef ref) {
 }
 
 void showLastFmLoginDialog(BuildContext context, WidgetRef ref) {
-  showBlurDialog(context: context, child: const LastFmLoginDialogContent());
+  showBlurDialog(context: context, child: _LastFmBrowserAuthDialog());
 }
 
-class LastFmLoginDialogContent extends ConsumerStatefulWidget {
-  const LastFmLoginDialogContent({super.key});
+/// Browser-based Last.fm auth dialog.
+///
+/// Flow:
+/// 1. Get token via [LastFmClient.getToken].
+/// 2. Open browser for user to authorize at `last.fm/api/auth`.
+/// 3. Poll [LastFmClient.getSession] until user authorizes.
+/// 4. Save session key.
+class _LastFmBrowserAuthDialog extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_LastFmBrowserAuthDialog> createState() =>
+      _LastFmBrowserAuthDialogState();
+}
+
+class _LastFmBrowserAuthDialogState
+    extends ConsumerState<_LastFmBrowserAuthDialog> {
+  bool _loading = true;
+  String? _token;
+  bool _waiting = false;
+  String? _username;
+  String? _error;
+  Timer? _pollTimer;
+  String _apiKey = '';
+  String _apiSecret = '';
 
   @override
-  ConsumerState<LastFmLoginDialogContent> createState() =>
-      _LastFmLoginDialogContentState();
-}
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
 
-class _LastFmLoginDialogContentState
-    extends ConsumerState<LastFmLoginDialogContent> {
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _loading = false;
-  String? _error;
-
-  Future<void> _login() async {
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text.trim();
-    if (username.isEmpty || password.isEmpty) {
-      setState(() => _error = 'Please enter both username and password.');
-      return;
-    }
-
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    final apiKey = ref.read(lastfmApiKeyProvider);
-    final apiSecret = ref.read(lastfmApiSecretProvider);
-
-    if (apiKey.isEmpty || apiSecret.isEmpty) {
+  Future<void> _startAuth() async {
+    _apiKey = ref.read(lastfmApiKeyProvider);
+    _apiSecret = ref.read(lastfmApiSecretProvider);
+    if (_apiKey.isEmpty || _apiSecret.isEmpty) {
       setState(() {
         _loading = false;
-        _error = 'API credentials are missing.';
+        _error = 'API credentials are missing. Set them first.';
       });
       return;
     }
 
     try {
-      final client = LastFmClient(apiKey: apiKey, apiSecret: apiSecret);
-      final sessionKey = await client.authenticate(username, password);
+      final client = LastFmClient(apiKey: _apiKey, apiSecret: _apiSecret);
+      final token = await client.getToken();
 
-      ref.read(lastfmSessionKeyProvider.notifier).state = sessionKey;
-      ref.read(lastfmUsernameProvider.notifier).state = username;
-      unawaited(PlayerSettingsStore.saveLastFmSessionKey(sessionKey));
-      unawaited(PlayerSettingsStore.saveLastFmUsername(username));
+      final url = client.authPageUrl(token);
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
-      if (mounted) {
+      setState(() {
+        _loading = false;
+        _token = token;
+        _waiting = true;
+      });
+
+      _startPolling(client, token);
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _error = e.toString().replaceAll('Exception: ', '');
+      });
+    }
+  }
+
+  void _startPolling(LastFmClient client, String token) {
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      if (!mounted) return;
+      try {
+        final sessionKey = await client.getSession(token);
+        _pollTimer?.cancel();
+        if (!mounted) return;
+
+        ref.read(lastfmSessionKeyProvider.notifier).state = sessionKey;
+        // Recreate client with session key so verifySession can use it
+        final verifiedClient = LastFmClient(
+          apiKey: _apiKey,
+          apiSecret: _apiSecret,
+          sessionKey: sessionKey,
+        );
+        final verifiedName = await verifiedClient.verifySession();
+        final username = verifiedName.isNotEmpty
+            ? verifiedName
+            : (_username ?? 'Last.fm');
+        ref.read(lastfmUsernameProvider.notifier).state = username;
+        unawaited(PlayerSettingsStore.saveLastFmSessionKey(sessionKey));
+        unawaited(PlayerSettingsStore.saveLastFmUsername(username));
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Connected to Last.fm as $username!')),
         );
         Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = e.toString().replaceAll('Exception: ', '');
-        });
-      }
-    }
+      } catch (_) {}
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startAuth());
+  }
+
+  void _checkAgain() {
+    if (_token == null) return;
+    final apiKey = ref.read(lastfmApiKeyProvider);
+    final apiSecret = ref.read(lastfmApiSecretProvider);
+    if (apiKey.isEmpty || apiSecret.isEmpty) return;
+    final client = LastFmClient(apiKey: apiKey, apiSecret: apiSecret);
+    _startPolling(client, _token!);
   }
 
   @override
@@ -837,60 +882,100 @@ class _LastFmLoginDialogContentState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('Link Last.fm Account', style: AfTypography.titleMedium),
-        const SizedBox(height: AfSpacing.s8),
-        Text(
-          'Your username and password are used once to request a secure session token from Last.fm. We never save or store your password.',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        const SizedBox(height: AfSpacing.s16),
-        TextField(
-          controller: _usernameController,
-          decoration: const InputDecoration(
-            labelText: 'Last.fm Username',
-            border: OutlineInputBorder(),
-          ),
-          style: AfTypography.bodyMedium,
-          autocorrect: false,
-          enableSuggestions: false,
-        ),
         const SizedBox(height: AfSpacing.s12),
-        TextField(
-          controller: _passwordController,
-          decoration: const InputDecoration(
-            labelText: 'Password',
-            border: OutlineInputBorder(),
+        if (_loading) ...[
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: CircularProgressIndicator(),
+            ),
           ),
-          style: AfTypography.bodyMedium,
-          obscureText: true,
-          autocorrect: false,
-          enableSuggestions: false,
-        ),
-        if (_error != null) ...[
-          const SizedBox(height: AfSpacing.s12),
+        ] else if (_error != null) ...[
           Text(
             _error!,
             style: const TextStyle(color: AfColors.semanticError, fontSize: 13),
           ),
-        ],
-        const SizedBox(height: AfSpacing.s24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
-              onPressed: _loading ? null : () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            const SizedBox(width: AfSpacing.s8),
-            if (_loading)
+          const SizedBox(height: AfSpacing.s16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+              const SizedBox(width: AfSpacing.s8),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _error = null;
+                    _loading = true;
+                  });
+                  _startAuth();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ] else if (_waiting) ...[
+          Text(
+            'Authorize Aetherfin in your browser, then come back here.',
+            style: AfTypography.bodyMedium,
+          ),
+          const SizedBox(height: AfSpacing.s8),
+          Row(
+            children: [
               const SizedBox(
-                width: 24,
-                height: 24,
+                width: 16,
+                height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else
-              TextButton(onPressed: _login, child: const Text('Link Account')),
-          ],
-        ),
+              ),
+              const SizedBox(width: AfSpacing.s12),
+              Expanded(
+                child: Text(
+                  'Waiting for authorization…',
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AfSpacing.s16),
+          if (_username != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Last.fm Username (optional)',
+                  hintText: 'Your Last.fm username',
+                  border: OutlineInputBorder(),
+                ),
+                style: AfTypography.bodyMedium,
+                autocorrect: false,
+                onChanged: (v) => _username = v.trim(),
+              ),
+            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () {
+                  _pollTimer?.cancel();
+                  Navigator.pop(context);
+                },
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: AfSpacing.s8),
+              TextButton(
+                onPressed: () {
+                  _pollTimer?.cancel();
+                  _checkAgain();
+                },
+                child: const Text('Check Again'),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }

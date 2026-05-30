@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
@@ -6,23 +7,27 @@ import '../../utils/log.dart';
 
 /// Lightweight Last.fm API client for fetching similar tracks and scrobbling.
 ///
-/// Uses `track.getSimilar`, `auth.getMobileSession`, `track.updateNowPlaying`,
-/// and `track.scrobble` endpoints.
+/// Uses `track.getSimilar`, `auth.getToken` + `auth.getSession`,
+/// `track.updateNowPlaying`, and `track.scrobble` endpoints.
 class LastFmClient {
   LastFmClient({
     required String apiKey,
     String? apiSecret,
     String? sessionKey,
-    Dio? dio,
-  })  : _apiKey = apiKey,
-        _apiSecret = apiSecret,
-        _sessionKey = sessionKey,
-        _dio = dio ?? Dio(BaseOptions(baseUrl: 'https://ws.audioscrobbler.com/2.0/'));
+    void Function(String message)? onStatus,
+  }) : _apiKey = apiKey,
+       _apiSecret = apiSecret,
+       _sessionKey = sessionKey,
+       _onStatus = onStatus;
 
   final String _apiKey;
   final String? _apiSecret;
   final String? _sessionKey;
-  final Dio _dio;
+  final void Function(String message)? _onStatus;
+
+  final Dio _dio = Dio(
+    BaseOptions(baseUrl: 'https://ws.audioscrobbler.com/2.0/'),
+  );
 
   /// Helper to calculate MD5 request signature for authenticated endpoints.
   /// Concatenates parameters alphabetically by name, appends secret, and hashes.
@@ -42,45 +47,131 @@ class LastFmClient {
     return md5.convert(bytes).toString();
   }
 
-  /// Exchange username and password for a persistent Session Key.
-  /// Throws an exception if authentication fails.
-  Future<String> authenticate(String username, String password) async {
-    final params = {
-      'method': 'auth.getMobileSession',
-      'username': username,
-      'password': password,
+  /// Fetch a request token via [auth.getToken].
+  /// Throws on failure.
+  Future<String> getToken() async {
+    final params = <String, String>{
+      'method': 'auth.getToken',
       'api_key': _apiKey,
     };
+    final sig = _generateSignature(params);
+    params['api_sig'] = sig;
+    params['format'] = 'json';
+
     try {
-      final sig = _generateSignature(params);
-      params['api_sig'] = sig;
-      params['format'] = 'json';
-
-      final res = await _dio.post(
-        '/',
-        data: params,
-        options: Options(contentType: Headers.formUrlEncodedContentType),
-      );
-
+      final res = await _dio.get('/', queryParameters: params);
       final data = res.data;
       if (data is Map) {
-        final session = data['session'] as Map?;
-        if (session != null) {
-          final key = session['key'] as String?;
-          if (key != null) return key;
-        }
+        final token = data['token'] as String?;
+        if (token != null) return token;
       }
-      throw Exception('Authentication failed: missing session key in response');
+      throw Exception('getToken failed: missing token in response');
     } on DioException catch (e) {
       final data = e.response?.data;
       if (data is Map && data.containsKey('message')) {
         throw Exception(data['message']);
       }
-      throw Exception(e.message ?? 'Network error during authentication');
-    } catch (e) {
-      throw Exception(e.toString());
+      throw Exception(e.message ?? 'Network error getting token');
     }
   }
+
+  /// URL where the user must authorize the [token] in their browser.
+  String authPageUrl(String token) =>
+      'https://www.last.fm/api/auth/?api_key=$_apiKey&token=$token';
+
+  /// Exchange an authorized [token] for a permanent session key
+  /// via [auth.getSession].
+  ///
+  /// Returns the session key string on success.
+  /// Throws if the token has not been authorized yet or on network error.
+  Future<String> getSession(String token) async {
+    final params = <String, String>{
+      'method': 'auth.getSession',
+      'token': token,
+      'api_key': _apiKey,
+    };
+    final sig = _generateSignature(params);
+    params['api_sig'] = sig;
+    params['format'] = 'json';
+
+    try {
+      final res = await _dio.get('/', queryParameters: params);
+      final data = res.data;
+      if (data is Map) {
+        final session = data['session'] as Map?;
+        if (session != null) {
+          final key = session['key'] as String?;
+          final name = session['name'] as String?;
+          if (key != null) {
+            // Wrap both key and username for the caller
+            _lastSessionName = name ?? '';
+            return key;
+          }
+          if (name != null) throw Exception('Token not yet authorized');
+        }
+      }
+      throw Exception('getSession failed: missing session key');
+    } on DioException catch (e) {
+      // On 4 — token not yet authorized
+      final data = e.response?.data;
+      if (data is Map && data.containsKey('message')) {
+        throw Exception(data['message']);
+      }
+      throw Exception(e.message ?? 'Network error getting session');
+    }
+  }
+
+  /// The username returned by the last [getSession] call. Empty if unset.
+  String get lastSessionName => _lastSessionName;
+  String _lastSessionName = '';
+
+  /// Verify the session is valid and return the authenticated user's real
+  /// Last.fm username by calling [user.getInfo].
+  ///
+  /// Returns the username string (e.g. "my_lastfm_account") on success.
+  /// Returns empty string on failure.
+  Future<String> verifySession() async {
+    final sk = _sessionKey;
+    if (sk == null) return '';
+
+    final params = <String, String>{
+      'method': 'user.getInfo',
+      'api_key': _apiKey,
+      'sk': sk,
+    };
+    final sig = _generateSignature(params);
+    params['api_sig'] = sig;
+    params['format'] = 'json';
+
+    try {
+      final res = await _dio.get('/', queryParameters: params);
+      final data = res.data;
+      if (data is Map) {
+        final user = data['user'] as Map?;
+        if (user != null) {
+          final name = user['name'] as String?;
+          if (name != null && name.isNotEmpty) {
+            _lastSessionName = name;
+            return name;
+          }
+        }
+      }
+      _reportStatus(false, 'verifySession: $data');
+      return '';
+    } catch (e, stack) {
+      _reportStatus(false, 'verifySession: $e');
+      afLog(
+        'error',
+        'Last.fm verifySession failed',
+        error: e,
+        stackTrace: stack,
+      );
+      return '';
+    }
+  }
+
+  void _reportStatus(bool ok, String msg) =>
+      _onStatus?.call('${ok ? 'OK' : 'ERROR'} $msg');
 
   /// Update the "Now Playing" track on the user's Last.fm profile.
   Future<void> updateNowPlaying({
@@ -90,7 +181,10 @@ class LastFmClient {
     Duration? duration,
   }) async {
     final sk = _sessionKey;
-    if (sk == null) return;
+    if (sk == null) {
+      _reportStatus(false, 'nowplaying skipped: no session key');
+      return;
+    }
 
     final params = {
       'method': 'track.updateNowPlaying',
@@ -108,18 +202,33 @@ class LastFmClient {
       params['api_sig'] = sig;
       params['format'] = 'json';
 
-      await _dio.post(
+      final res = await _dio.post(
         '/',
         data: params,
         options: Options(contentType: Headers.formUrlEncodedContentType),
       );
+      final body = res.data;
+      if (body is Map && body['lfm'] is Map) {
+        final lfm = body['lfm'] as Map;
+        if (lfm['status'] == 'failed') {
+          final code = lfm['error'];
+          final msg = lfm['message'] ?? 'unknown error';
+          _reportStatus(false, 'nowplaying (code $code): $msg');
+          afLog('error', 'Last.fm now playing rejected: $msg (code $code)');
+          return;
+        }
+      }
+      _reportStatus(true, 'nowplaying: $artist - $track');
       afLog('data', 'Last.fm now playing updated: $artist - $track');
     } catch (e, stack) {
+      _reportStatus(false, 'nowplaying: $e');
       afLog('error', 'Last.fm now playing failed', error: e, stackTrace: stack);
     }
   }
 
-  /// Scrobble a track to Last.fm (marks as listened).
+  /// Report a [Duration] to Last.fm on the following [artist], [track].
+  /// This submits the track as listened. Only scrobble if the listener has
+  /// listened for 50% of the track or 4 minutes (for very long songs).
   Future<void> scrobble({
     required String artist,
     required String track,
@@ -128,7 +237,10 @@ class LastFmClient {
     Duration? duration,
   }) async {
     final sk = _sessionKey;
-    if (sk == null) return;
+    if (sk == null) {
+      _reportStatus(false, 'scrobble skipped: no session key');
+      return;
+    }
 
     final params = {
       'method': 'track.scrobble',
@@ -152,8 +264,10 @@ class LastFmClient {
         data: params,
         options: Options(contentType: Headers.formUrlEncodedContentType),
       );
+      _reportStatus(true, 'scrobble: $artist - $track');
       afLog('data', 'Last.fm scrobble submitted: $artist - $track');
     } catch (e, stack) {
+      _reportStatus(false, 'scrobble: $e');
       afLog('error', 'Last.fm scrobble failed', error: e, stackTrace: stack);
     }
   }
