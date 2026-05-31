@@ -19,7 +19,13 @@ class SmartPlaylistEngine {
     final where = _buildSqlWhere(playlist);
     final orderBy = _buildSqlOrderBy(playlist);
 
-    var sql = 'SELECT * FROM tracks';
+    // Column projection: only select columns needed for AfTrack construction
+    // and rule matching, skipping file_path, file_size, last_modified.
+    const trackCols =
+        'id, title, artist, album, album_artist, track_number, '
+        'duration_ms, year, genre, cover_path, codec, bitrate, sample_rate';
+
+    var sql = 'SELECT $trackCols FROM tracks';
     final hasHistoryRules =
         playlist.rules.any(
           (r) => r.field == 'playCount' || r.field == 'lastPlayed',
@@ -29,7 +35,7 @@ class SmartPlaylistEngine {
     if (hasHistoryRules) {
       sql = '''
         SELECT * FROM (
-          SELECT *,
+          SELECT $trackCols,
             (SELECT COUNT(*) FROM playback_history h WHERE h.track_id = tracks.id AND h.skipped = 0) AS play_count,
             (SELECT MAX(played_at) FROM playback_history h WHERE h.track_id = tracks.id) AS last_played
           FROM tracks
@@ -50,11 +56,8 @@ class SmartPlaylistEngine {
         .customSelect(sql, variables: where.args.map(Variable.new).toList())
         .get();
 
-    // Parse back to drift's TrackEntity, then to AfTrack
-    return rows.map((r) {
-      final entity = d.tracks.map(r.data);
-      return db.rowToTrack(entity);
-    }).toList();
+    // Parse directly to AfTrack using the raw row helper.
+    return rows.map((r) => db.tracks.rawRowToTrack(r)).toList();
   }
 
   /// Resolve against a pre-fetched list of tracks (server mode).

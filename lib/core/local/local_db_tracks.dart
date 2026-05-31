@@ -235,11 +235,15 @@ class TrackRepository {
   }) async {
     // Single query with subqueries to fetch seed metadata inline.
     // Eliminates the redundant trackById + seed SELECT.
+    // Column projection: only selects columns needed for scoring + AfTrack
+    // construction, skipping file_path, file_size, last_modified.
     final rows = await db
         .customSelect(
           r'''
       SELECT * FROM (
-        SELECT t.*, (
+        SELECT t.id, t.title, t.artist, t.album, t.album_artist,
+               t.track_number, t.duration_ms, t.year, t.genre,
+               t.cover_path, t.codec, t.bitrate, t.sample_rate, (
           (CASE WHEN t.artist = (SELECT s.artist FROM tracks s WHERE s.id = ?1)
                  OR t.album_artist = (SELECT s.artist FROM tracks s WHERE s.id = ?1)
                 THEN 5 ELSE 0 END) +
@@ -270,10 +274,7 @@ class TrackRepository {
         )
         .get();
 
-    return rows.map((r) {
-      final entity = db.tracks.map(r.data);
-      return rowToTrack(entity);
-    }).toList();
+    return rows.map(rawRowToTrack).toList();
   }
 
   Future<List<AfTrack>> searchTracks(String query) async {
@@ -281,7 +282,9 @@ class TrackRepository {
     final rows = await db
         .customSelect(
           r'''
-        SELECT * FROM tracks
+        SELECT id, title, artist, album, album_artist, track_number,
+               duration_ms, year, genre, cover_path, codec, bitrate, sample_rate
+        FROM tracks
         WHERE title  LIKE ?1 ESCAPE '\'
            OR artist LIKE ?1 ESCAPE '\'
            OR album  LIKE ?1 ESCAPE '\'
@@ -292,10 +295,7 @@ class TrackRepository {
           readsFrom: {db.tracks},
         )
         .get();
-    return rows.map((r) {
-      final entity = db.tracks.map(r.data);
-      return rowToTrack(entity);
-    }).toList();
+    return rows.map(rawRowToTrack).toList();
   }
 
   Future<int> trackCount() async {
@@ -332,6 +332,43 @@ class TrackRepository {
       imageUrl: r.coverPath != null ? 'file://${r.coverPath}' : null,
       isFavorite: isFavorite,
       genre: r.genre.isNotEmpty ? r.genre : null,
+    );
+  }
+
+  /// Convert a raw [QueryRow] (from customSelect) directly to [AfTrack],
+  /// bypassing [TrackEntity]. Allows column projection in raw SQL queries
+  /// instead of SELECT *.
+  AfTrack rawRowToTrack(QueryRow r, {bool isFavorite = false}) {
+    final codec = r.read<String>('codec');
+    final bitrate = r.read<int?>('bitrate');
+    final sampleRate = r.read<int?>('sample_rate');
+    final coverPath = r.read<String?>('cover_path');
+    final artist = r.read<String>('artist');
+    final album = r.read<String>('album');
+    final isLossless = codec == 'flac' || codec == 'alac' || codec == 'wav';
+    return AfTrack(
+      id: r.read<String>('id'),
+      title: r.read<String>('title'),
+      artistName: artist,
+      albumName: album,
+      albumId: (album.isNotEmpty && artist.isNotEmpty)
+          ? 'local:album:$album:$artist'
+          : null,
+      artistId: artist.isNotEmpty ? 'local:artist:$artist' : null,
+      trackNumber: r.read<int?>('track_number'),
+      duration: Duration(milliseconds: r.read<int>('duration_ms')),
+      quality: TrackQuality(
+        sourceCodec: codec,
+        bitrateKbps: !isLossless ? bitrate : null,
+        bitDepth: null,
+        sampleRateKhz: sampleRate != null ? sampleRate ~/ 1000 : null,
+      ),
+      imageUrl: coverPath != null ? 'file://$coverPath' : null,
+      isFavorite: isFavorite,
+      genre: () {
+        final g = r.read<String>('genre');
+        return g.isNotEmpty ? g : null;
+      }(),
     );
   }
 }

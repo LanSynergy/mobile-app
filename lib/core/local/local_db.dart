@@ -538,7 +538,9 @@ class LocalDb {
     final rows = await db
         .customSelect(
           r'''
-      SELECT * FROM tracks 
+      SELECT id, title, artist, album, album_artist, track_number,
+             duration_ms, year, genre, cover_path, codec, bitrate, sample_rate
+      FROM tracks 
       WHERE artist = ?1 COLLATE NOCASE 
         AND title = ?2 COLLATE NOCASE 
       LIMIT 1
@@ -548,7 +550,7 @@ class LocalDb {
         )
         .get();
     if (rows.isEmpty) return null;
-    return rowToTrack(db.tracks.map(rows.first.data));
+    return tracks.rawRowToTrack(rows.first);
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────────────
