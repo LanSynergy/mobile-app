@@ -106,7 +106,7 @@ On HTTP error, revert. Never store favorite state only on-device.
 | Framework | Flutter **3.44.0 stable**, Dart **3.11.5** | `flutter --version` must match. CI pins this. |
 | State | `flutter_riverpod` ^2.6 | `FutureProvider.autoDispose`, `StateNotifierProvider`. No `ChangeNotifier` for Riverpod providers. |
 | Routing | `go_router` ^14.7 | Shell route with bottom nav. See `lib/app/router.dart`. |
-| HTTP | `dio` ^5.7 + `dio_cache_interceptor` ^3.5 | One Dio per client. Jellyfin: auth header in `BaseOptions.headers`. Subsonic: auth as query params. |
+| HTTP | `dio` ^5.7 + `dio_cache_interceptor` ^3.5 | One Dio per client, each with its own `IOHttpClientAdapter` (adapter isolation — `close(force:true)` on one client does not kill another). Jellyfin: auth header in `BaseOptions.headers`. Subsonic: auth as query params. |
 | Crypto | `crypto` ^3.0.6 | Subsonic token auth: `md5(password + salt)`. |
 | Audio | `mpv_audio_kit` ^0.1.3 | libmpv-backed player. Replaces `just_audio` + `audio_session`. |
 | Lock-screen | Native MediaSession | Custom Kotlin service (`AetherfinMediaSessionService`) with `MethodChannel` (`aetherfin.media_session`). |

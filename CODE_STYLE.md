@@ -175,6 +175,9 @@ final message = displayError(e, prefix: 'Search failed');
 ```
 Sensitive query params (Subsonic token/salt, Jellyfin api_key) are automatically redacted.
 
+### AsyncErrorView long-press
+`AsyncErrorView` supports long-press to open a dialog with the full `displayError` output. This lets users inspect truncated error details (e.g. Dio stack traces) without cluttering the inline card.
+
 ### Error widget (root)
 ```dart
 ErrorWidget.builder = (details) => _RootErrorWidget(details: details);
