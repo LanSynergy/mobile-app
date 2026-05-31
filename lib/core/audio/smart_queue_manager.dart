@@ -24,6 +24,9 @@ class SmartQueueManager {
   final MusicBackend? backend;
   final LastFmClient? lastfmClient;
 
+  /// Reused across scoring passes to avoid entropy-seeded allocations.
+  final Random _random = Random();
+
   // ── Buffer ──────────────────────────────────────────────────────────────
 
   final List<AfTrack> _buffer = [];
@@ -345,7 +348,7 @@ class SmartQueueManager {
     }
 
     // 6. Randomness (+0.10)
-    s += Random().nextDouble() * 0.10;
+    s += _random.nextDouble() * 0.10;
 
     return s.clamp(0.0, 1.0);
   }
