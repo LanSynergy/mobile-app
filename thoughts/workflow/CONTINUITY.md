@@ -1,5 +1,12 @@
 # Continuity Ledger
 
+## 2026-05-31 — Fix local mode blank screen after scan + trackFavoriteOverrides worker
+*Goal:* Fix "stuck on scanning then blank screen" in local mode. Root cause: `_startScan()` set `localOnboardingCompletedProvider = true` AND called `context.go('/home')` — provider change triggered `notifyAuthChanged()` → redirect returned `/home`, then explicit `go()` raced on stale context. Fix: remove `context.go('/home')`, let redirect handle navigation. Also added `trackFavoriteOverridesProvider` (map-based) so heart buttons can watch per-track overrides without rebuilding on every toggle.
+*Commits:* 17d3013
+*Key decisions:*
+- Provider state change → `onboardingSub` → `notifyAuthChanged()` → redirect returns `/home` — single navigation path
+- No explicit `go()` after provider write — prevents double navigation blank screen
+
 ## 2026-05-31 — Fix ref.listenManual + artUri priority; all 419 tests pass
 *Goal:* Fix pre-existing test failures: audio_visual_scrubber used `ref.listen()` outside build context (→ `ref.listenManual`), artwork_manager artUri had wrong priority (memory cache before embedded cover). Also added `trackFavoriteOverridesProvider` (map-based) to close Batch 8 gap.
 *Commits:* bd3deab
@@ -34,14 +41,3 @@
 - Plans describe WHAT and WHERE but not the full code — implementer reads source
 - `thoughts/workflow/BOOTSTRAP.md` updated after every session with HEAD + test state
 - Completed plans/designs moved to `thoughts/.legacy/` after commits land
-
-## 2026-05-29 — Fix 7 flutter analyze issues (curly_braces, cancel_subscriptions, unused_import)
-*Goal:* Fix all 7 info/warning issues across 3 files: home_screen.dart (curly braces), player_providers.dart (StreamSubscription disposal), global_mini_player_overlay_test.dart (unused import).
-*Commits:* 84f3424, ac08a11
-
-## 2026-05-29 — Fix failing test after mini_player state refactor
-*Goal:* Fix `mini_player_progress_ring_test.dart` which failed because `_ReactiveProgressRingState.initState()` reads `playerServiceProvider` directly for position stream subscription.
-*Commits:* 28e0133
-*Key decisions:*
-- Rewrote test to use `createMockPlayer()` + `AfPlayerService.test()` pattern
-- All 383 tests pass, `flutter analyze`: 0 errors, 0 warnings

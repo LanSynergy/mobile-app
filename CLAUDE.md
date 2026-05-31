@@ -902,6 +902,10 @@ Old artifacts accumulate fast. The active `thoughts/` directories should contain
 
 This keeps the active directory focused on current work. Historical artifacts remain one directory away for reference.
 
+**Git tracking:**
+- `thoughts/` is in `.gitignore` — designs, plans, ledgers, and `.legacy/` stay local by default.
+- **Exception:** `thoughts/workflow/CONTINUITY.md` and `thoughts/workflow/BOOTSTRAP.md` are un-ignored (`!thoughts/workflow/CONTINUITY.md`) so session continuity survives across clones. Agents never force-add other `thoughts/` files.
+
 ## 15. Things AI agents have gotten wrong before
 
 > **Prefix legend:** ✅ ENFORCED = covered by a CI-enforced test. 📝 GUIDANCE = architectural rule, human judgment required.

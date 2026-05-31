@@ -55,6 +55,10 @@ tool/build_local.sh
 AGENTS.md
 .antigravitycli/
 thoughts/
+!thoughts/workflow/
+thoughts/workflow/*.md
+!thoughts/workflow/CONTINUITY.md
+!thoughts/workflow/BOOTSTRAP.md
 handover.md
 .mindmodel/
 .ocx/
