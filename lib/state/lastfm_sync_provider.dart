@@ -62,47 +62,72 @@ final lastFmSyncProvider = Provider<Future<({int toApp, int toLastFm})> Function
       return !backendKeys.contains(key);
     }).toList();
 
-    // Limit syncing searches in one run to protect backend rate limits
-    final limitAppSync = missingInApp.take(30);
-    for (final item in limitAppSync) {
-      try {
-        AfTrack? resolved;
-        if (backend.serverType == ServerType.local) {
-          final db = ref.read(localLibraryProvider).db;
-          resolved = await db.searchTrackByArtistAndTitle(
-            item.artist,
-            item.title,
-          );
-        } else {
-          final results = await backend.search('${item.artist} ${item.title}');
-          for (final t in results.tracks) {
-            if (t.title.toLowerCase() == item.title.toLowerCase() &&
-                t.artistName.toLowerCase() == item.artist.toLowerCase()) {
-              resolved = t;
-              break;
-            }
-          }
-          if (resolved == null) {
-            for (final t in results.tracks) {
-              if (t.title.toLowerCase().contains(item.title.toLowerCase()) &&
-                  t.artistName.toLowerCase().contains(
-                    item.artist.toLowerCase(),
-                  )) {
-                resolved = t;
-                break;
-              }
-            }
-          }
-        }
+    // Limit syncing searches in one run to protect backend rate limits.
+    // Process in batches of 5 concurrent searches to reduce sync time
+    // from ~30 sequential calls to ~6 parallel batches.
+    const batchSize = 5;
+    final limitAppSync = missingInApp.take(30).toList();
+    final resolvedTracks = <AfTrack>[];
 
-        if (resolved != null) {
-          await backend.setFavorite(resolved.id, true);
-          toApp++;
-        }
+    for (var i = 0; i < limitAppSync.length; i += batchSize) {
+      final batch = limitAppSync.sublist(
+        i,
+        i + batchSize > limitAppSync.length
+            ? limitAppSync.length
+            : i + batchSize,
+      );
+      final results = await Future.wait(
+        batch.map((item) async {
+          try {
+            if (backend.serverType == ServerType.local) {
+              final db = ref.read(localLibraryProvider).db;
+              return await db.searchTrackByArtistAndTitle(
+                item.artist,
+                item.title,
+              );
+            } else {
+              final searchResults = await backend.search(
+                '${item.artist} ${item.title}',
+              );
+              for (final t in searchResults.tracks) {
+                if (t.title.toLowerCase() == item.title.toLowerCase() &&
+                    t.artistName.toLowerCase() == item.artist.toLowerCase()) {
+                  return t;
+                }
+              }
+              for (final t in searchResults.tracks) {
+                if (t.title.toLowerCase().contains(item.title.toLowerCase()) &&
+                    t.artistName.toLowerCase().contains(
+                      item.artist.toLowerCase(),
+                    )) {
+                  return t;
+                }
+              }
+              return null;
+            }
+          } catch (e) {
+            afLog(
+              'error',
+              'Failed to resolve track ${item.artist} - ${item.title}',
+              error: e,
+            );
+            return null;
+          }
+        }),
+        eagerError: false,
+      );
+      resolvedTracks.addAll(results.whereType<AfTrack>());
+    }
+
+    // Set favorites sequentially to respect backend rate limits.
+    for (final track in resolvedTracks) {
+      try {
+        await backend.setFavorite(track.id, true);
+        toApp++;
       } catch (e) {
         afLog(
           'error',
-          'Failed to resolve/sync track ${item.artist} - ${item.title}',
+          'Failed to favorite track ${track.artistName} - ${track.title}',
           error: e,
         );
       }
