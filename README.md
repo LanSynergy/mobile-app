@@ -1,18 +1,30 @@
-# Aetherfin
+<p align="center">
+  <img src="docs/assets/wordmark.svg" width="420" alt="Aetherfin">
+</p>
 
-Your music. Your server. No compromises.
+<p align="center">
+  <strong>Your music. Your server. No compromises.</strong>
+</p>
 
-[![Flutter](https://img.shields.io/badge/Flutter-3.44.0-02569B?logo=flutter)](https://flutter.dev)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android)](https://developer.android.com)
+<p align="center">
+  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white" alt="Flutter"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
+  <a href="https://developer.android.com"><img src="https://img.shields.io/badge/Android-7.0+-3DDC84?logo=android&logoColor=white" alt="Android"></a>
+  <a href="https://github.com/Aetherfin/mobile-app/releases"><img src="https://img.shields.io/github/v/release/Aetherfin/mobile-app?label=Latest" alt="Latest Release"></a>
+</p>
 
-Aetherfin is a native Android music player for [Jellyfin](https://jellyfin.org), [Navidrome](https://www.navidrome.org), or your local files. It streams your library, decodes everything on-device with libmpv, and stays out of your way.
+<p align="center">
+  Native Android music player for <a href="https://jellyfin.org">Jellyfin</a>, <a href="https://www.navidrome.org">Navidrome</a>, and local files.<br>
+  Streams your library. Decodes on-device with libmpv. Stays out of your way.
+</p>
 
-No cloud. No telemetry. No transcoding. Just playback.
+<p align="center">
+  <em>No cloud. No telemetry. No transcoding. Just playback.</em>
+</p>
 
 ---
 
-## Screenshots
+## See it in action
 
 <p align="center">
   <img src="docs/assets/screencapture/now-playing.jpg" width="23%" hspace="4" alt="Now Playing">
@@ -21,132 +33,74 @@ No cloud. No telemetry. No transcoding. Just playback.
   <img src="docs/assets/screencapture/lyrics.jpg" width="23%" hspace="4" alt="Lyrics">
 </p>
 
-## Demo
-
-https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
+<details>
+<summary><strong>▶ Watch demo video</strong></summary>
+<br>
+<video src="docs/assets/screencapture/demo.mp4" poster="docs/assets/screencapture/demo-poster.jpg" controls width="100%"></video>
+</details>
 
 ---
 
 ## Why Aetherfin
 
-- **Direct stream** — serves raw bytes from your server. No HLS, no transcoding, no quality loss.
-- **Lossless support** — FLAC, ALAC, OPUS, WAV, whatever your library has.
-- **Real-time visualizer** — 64-band FFT driven by actual audio output. No microphone permission.
-- **Full DSP rack** — 18-band EQ with presets, compressor, echo/delay, phaser, flanger, chorus, pitch shift, and more.
-- **Works offline from Aetherfin's perspective** — there's no "Aetherfin cloud." As long as your server is reachable, you're good.
+| | |
+|---|---|
+| **Direct stream** | Raw bytes from your server. No HLS, no transcoding, no quality loss. |
+| **Lossless** | FLAC, ALAC, OPUS, WAV — whatever your library has. |
+| **Full DSP** | 86-effect rack: 18-band EQ, compressor, pitch shift, and [more](#audio). |
+| **Offline-ready** | No "Aetherfin cloud." Your server, your phone, done. |
+| **Visualizer** | 64-band FFT driven by actual audio output. No mic permission. |
 
 ---
 
 ## Features
 
 ### Playback
-- Gapless transitions via custom Dart-side `StreamPrefetcher` caching (single-track player model)
-- Shuffle, loop (off / track / queue / forNtimes repeat), playback speed (0.5×–2.0×)
-- Lock-screen and notification controls, including custom action buttons for shuffle and repeat modes
-- Sleep timer with presets and end-of-track mode
-- **Smart Queue Autoplay / Instant Mix** — automatically seeds and appends similar tracks when the active queue finishes. In Local mode, a scored similarity engine runs directly against local SQLite cache, learning from user play counts, skips, and track completion rates. In Server mode, it utilizes server-recommended mixes.
-- A-B loop (tap to set start/end markers, tap again to clear)
-- **Local file playback** — play music from device storage via SAF (no server needed)
-- Auto-pause on Bluetooth disconnect or headphone unplug, with a **5-minute auto-resume window** on reconnect
-- Instant playback — selected song starts immediately even with large queues
-- **Shuffle next** — shuffle only upcoming tracks in the queue (leaves history untouched)
-- **Queue history** — view and restore recently played queues directly from the home screen
-- **M3U Export/Import** — export playlists to standard M3U files, or import playlists by pasting M3U content
-- **Android Home Screen Widget** — showing currently playing track metadata, playback state, and reactive favorite toggle, dynamically themed using the Palette API to match artwork colors
-- **Lyrics & LRC** — support for synchronized auto-scrolling lyrics (LRC), manually loading/saving sidecar `.lrc` files, and local file embedded metadata lyrics
-- **EOF Fallback** — watchdog fallback to automatically advance or loop tracks on devices with broken mpv property observation
-
+Gapless transitions · Shuffle / loop / forNtimes repeat · Lock-screen & notification controls · Sleep timer · A-B loop · **Smart Queue Autoplay** (local similarity engine + server mixes) · Instant playback on large queues · Shuffle next · Queue history · M3U export/import · Android home screen widget · Synced lyrics (LRC) · Auto-pause on headphone/Bluetooth disconnect with 5-min auto-resume
 
 ### Audio
-- 86-effect DSP rack via mpv's ffmpeg filter pipeline
-- 18-band graphic EQ with built-in and custom presets
-- Echo/delay, phaser, flanger, chorus, tremolo, vibrato, bit-crusher
-- Dynamic compressor, noise gate, de-esser with full parameter control
-- Loudness normalization (EBU R128) and ReplayGain (track/album)
-- Pitch and tempo shifting (rubberband engine)
-- Crossfeed, stereo widening, virtual bass, harmonic exciter
-- Master bypass switch
+86-effect DSP via mpv's ffmpeg pipeline — 18-band graphic EQ with presets · Echo/delay · Phaser · Flanger · Chorus · Tremolo · Vibrato · Bit-crusher · Dynamic compressor · Noise gate · De-esser · EBU R128 loudness normalization · ReplayGain · Pitch & tempo shifting (rubberband) · Crossfeed · Stereo widening · Virtual bass · Harmonic exciter · Master bypass
 
-### Library
-- Albums, Artists, Songs, Playlists, Genres, Liked songs
-- Smart playlists — rule-based auto-updating playlists (works in both server and local mode)
-- Search across tracks, albums, artists, playlists
-- Long-press context menus (play next, add to queue, go to album/artist)
-- Drag-to-reorder queue with swipe-to-remove
-- **Playlist Undo** — undo track additions or removals within an 8-second grace period
-- **Play Queue Sync** — syncs your active playback queue with Navidrome server using its native REST API (JWT authenticated)
-
-### Home
-- Swipeable hero album carousel (up to 5 recent albums with dynamic artwork backgrounds, dot indicator)
-- Recently played tracks, artists, and genres sections
+### Library & Home
+Albums, Artists, Songs, Playlists, Genres, Liked songs · Smart playlists (rule-based, server + local) · Search · Context menus · Drag-to-reorder queue · Swipe-to-remove · Playlist undo (8s grace) · Navidrome queue sync (JWT) · Hero album carousel · Recently played sections
 
 ### Now Playing
-- FFT spectrum visualizer (64 bars, 60 fps, engine-driven)
-- Gradient background that shifts with spectral colors extracted from artwork
-- Artwork pulse on kick drums (sub-bass transient detection)
-- Synced lyrics (LRC, auto-scrolling)
-- Favorite toggle, quality chip, save to playlist
-- Translucent queue screen with frosted-glass effect
-- **Interactive Drag-Down Sheet** — swipe or drag down the Now Playing screen to smoothly collapse it back into the mini-player with rect-matching animations
+FFT visualizer (64 bars, 60 fps) · Gradient background from artwork palette · Artwork pulse on kick drums · Synced lyrics · Favorite toggle · Quality chip · Translucent frosted-glass queue · Interactive drag-down sheet
 
-### Last.fm Integration (Optional)
-- **Two-Way Favorite Syncing** — toggling favorites in-app immediately fires signed `love`/`unlove` scrobble actions to Last.fm. Includes a manual sync tile in Settings to reconcile favorites in both directions.
-- **Listening Stats Dashboard** — view personal Top Songs, Top Artists, and Top Albums under the Profile tab with customizable period filters (7 days, 30 days, all time), falling back to on-device playback history stats when offline/disconnected.
-- **Wikis & Biographies** — Wikipedia-style expandable wiki panels on Album and Artist screens, falling back to server-supplied overview metadata.
-- **Artist & Track similar Radio** — seed custom recommendation queues directly from similar artist or similar track suggestions.
-- **Browser-Based Connection** — link your account using Last.fm's secure OAuth flow in addition to username/password.
-
-### Settings
-- Audio output: sample rate, bit depth, exclusive mode
-- Network: cache duration, buffer size, keep-audio-active
-- Server: connection info, switch server, sign out
-- **App Icon Customization** — choose from multiple launcher icon themes (Default, Midnight Accent, Emerald Sunset, Crimson Wave, Golden Sands) directly in app settings
-
+### Last.fm (Optional)
+Two-way favorite sync · Listening stats dashboard (top songs/artists/albums) · Artist & track similar radio · Wikipedia-style bios · Browser-based OAuth connection
 
 ### UI/UX
-- **Lucide icons** throughout — consistent, modern icon set (replaced hugeicons)
-- **Skeleton loading** — shimmer placeholder animations on every screen while data loads
-- **Songs Screen Filter Pills** — unified Library Songs page with filter pills replacing separate artist/genre detail pages
-- Context menus as dialogs (album 3-dot, track long-press) — cleaner than bottom sheets
-- Per-sheet manual drag handles on bottom sheets — avoids floating transparent handles
+Lucide icons throughout · Skeleton shimmer loading · Filter pills for songs · Dialog-based context menus
 
 ---
 
 ## Install
 
-Grab the latest APK from [Releases](https://github.com/Aetherfin/mobile-app/releases) or the [CI build](https://github.com/Aetherfin/mobile-app/actions/workflows/build-apk.yml).
+Grab the latest APK from **[Releases](https://github.com/Aetherfin/mobile-app/releases)**.
 
-### Requirements
+**Requirements:** Android 7.0+ · A [Jellyfin 10.8+](https://jellyfin.org/downloads/server) or [Navidrome 0.49+](https://www.navidrome.org/docs/installation/) server (or local audio files)
 
-- Android 7.0+
-- **Server mode:** A reachable [Jellyfin 10.8+](https://jellyfin.org/downloads/server) or [Navidrome 0.49+](https://www.navidrome.org/docs/installation/) server (supporting standard Subsonic and native REST API calls)
-- **Local mode:** Audio files on your device (pick a folder during setup)
-
-### First run
-
-1. Choose mode: **Server** (stream from Jellyfin/Navidrome) or **Local** (play files from device)
-2. Server: enter URL + sign in. Local: pick a music folder + scan.
+**First run:**
+1. Choose **Server** or **Local** mode
+2. Enter your server URL + sign in, or pick a music folder
 3. Play something
 
 ---
 
 ## Build from source
 
-> **Note:** First build downloads ~20MB libmpv `.so` files per ABI (arm64-v8a, x86_64) from GitHub Releases. Ensure you have internet connectivity and sufficient disk space.
+> First build downloads ~20MB libmpv `.so` files per ABI from GitHub Releases.
 
 ```bash
 flutter pub get
-flutter run --debug
-
-# Release
-flutter build apk --release
-flutter build apk --release --split-per-abi
+flutter run --debug          # Debug
+flutter build apk --release  # Release
 ```
 
+Before pushing:
 ```bash
-# Before pushing
-flutter analyze
-flutter test
+flutter analyze && flutter test
 ```
 
 ---
@@ -161,7 +115,6 @@ flutter test
 │  Queue, shuffle, gapless    │       │  Metadata, artwork         │
 │  FFT visualizer (post-DSP)  │◄─meta─┤  Favorites, playlists     │
 │  Lyrics parsing + sync      │       │  Play counts               │
-│  Lock-screen controls       │       │                            │
 │  DSP effects chain          │       │                            │
 │  Cover art cache            │       │                            │
 └─────────────────────────────┘       └────────────────────────────┘
@@ -171,29 +124,22 @@ The server stores files and metadata. Aetherfin does everything else.
 
 ---
 
+## Contributing
+
+PRs welcome. Read **[CLAUDE.md](./CLAUDE.md)** first — it covers architecture, design tokens, and the rules.
+
 ## Privacy
 
-No analytics. No ads. No trackers. No Aetherfin servers. The app talks only to the server you configure. Full details in [PRIVACY.md](./PRIVACY.md).
+No analytics. No ads. No trackers. No Aetherfin servers. The app talks only to the server you configure. See [PRIVACY.md](./PRIVACY.md).
 
 ## Community
 
-<p align="center">
-  <a href="https://t.me/azrim_ci">
-    <img src="https://img.shields.io/badge/Telegram-@azrim__ci-2CA5E0?logo=telegram&style=for-the-badge" alt="Telegram">
-  </a>
-</p>
-
-## Contributing
-
-PRs welcome. Read [CLAUDE.md](./CLAUDE.md) first — it covers auth, architecture, design tokens, and the rules.
+[![Telegram](https://img.shields.io/badge/Telegram-@azrim__ci-2CA5E0?logo=telegram&style=for-the-badge)](https://t.me/azrim_ci)
 
 ## License
 
-MIT. See [LICENSE](./LICENSE).
+MIT · [LICENSE](./LICENSE)
 
 ## Acknowledgements
 
-- [Jellyfin](https://jellyfin.org) and [Navidrome](https://www.navidrome.org) — the servers
-- [mpv_audio_kit](https://pub.dev/packages/mpv_audio_kit) — libmpv audio engine
-- Custom Android MediaSession Service — platform-native lock-screen controls via MethodChannel
-- [Finamp](https://github.com/jmshrv/finamp) — prior art
+[Jellyfin](https://jellyfin.org) · [Navidrome](https://www.navidrome.org) · [mpv_audio_kit](https://pub.dev/packages/mpv_audio_kit) · [Finamp](https://github.com/jmshrv/finamp)
