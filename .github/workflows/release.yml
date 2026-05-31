@@ -105,21 +105,15 @@ jobs:
           flutter-version: "3.44.0"
           channel: stable
           cache: true
-          pub-cache: false
-
-      - name: Cache pub packages
-        uses: actions/cache@v5
-        with:
-          path: ~/.pub-cache
-          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          pub-cache: true
 
       - name: Cache build_runner outputs
         uses: actions/cache@v5
         with:
           path: .dart_tool
-          key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock') }}-${{ github.sha }}
+          key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock') }}
           restore-keys: |
-            ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock') }}-
+            ${{ runner.os }}-build-runner-
 
       - name: Sync pubspec.yaml version
         env:
@@ -166,64 +160,36 @@ jobs:
         run: |
           bash tool/build --mode release --sign --split-per-abi --progress-watch
 
-      - name: Stage universal APK for release
+      - name: Prepare release artifacts
         run: |
           mkdir -p release-artifacts
-          # tools/build renames APKs to Aetherfin-v{version}-{build_id}.apk.
-          # Locate the renamed universal APK dynamically by finding Aetherfin-v{clean_version}-*.apk
-          # and excluding split APKs (which contain ABI names in their filename).
           src=$(ls build/app/outputs/flutter-apk/Aetherfin-v${{ env.CLEAN_VERSION }}-*.apk 2>/dev/null | grep -v -E "armeabi-v7a|arm64-v8a|x86_64" | head -1 || true)
           if [ -n "$src" ] && [ -f "$src" ]; then
             cp "$src" "release-artifacts/aetherfin-v${{ inputs.version }}-universal.apk"
             echo "Staged universal APK: $src"
           else
-            echo "::error::No universal APK found matching build/app/outputs/flutter-apk/Aetherfin-v${{ env.CLEAN_VERSION }}-*.apk"
+            echo "::error::No universal APK found"
             exit 1
           fi
-
-      - name: Stage per-ABI APKs for release
-        run: |
-          # Renamed APKs follow: Aetherfin-v{version}-{abi}-{build_id}.apk
-          # Locate them using the CLEAN_VERSION and rename them to match target upload names.
           for abi in armeabi-v7a arm64-v8a x86_64; do
             src="build/app/outputs/flutter-apk/Aetherfin-v${{ env.CLEAN_VERSION }}-${abi}"-*.apk
             matched=$(ls $src 2>/dev/null | head -1 || true)
             if [ -z "$matched" ]; then
-              echo "::error::No APK found for $abi matching $src"
+              echo "::error::No APK found for $abi"
               exit 1
             fi
-            dst="release-artifacts/aetherfin-v${{ inputs.version }}-${abi}.apk"
-            cp "$matched" "$dst"
-            echo "Staged: $matched → $dst"
+            cp "$matched" "release-artifacts/aetherfin-v${{ inputs.version }}-${abi}.apk"
           done
-
-      - name: Compute SHA-256 checksums
-        working-directory: release-artifacts
-        run: |
-          sha256sum *.apk > checksums.txt
-          echo "Checksums:"
-          cat checksums.txt
-
-      - name: Show release artifacts
-        run: |
+          sha256sum release-artifacts/*.apk > release-artifacts/checksums.txt
           ls -lh release-artifacts/
-          echo ""
-          echo "Total size:"
-          du -sh release-artifacts/
-
-      - name: Notify Telegram — Init
-        env:
-          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python3 tool/telegram_notifier.py init
 
       - name: Notify Telegram — Creating release
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TG_STATUS_TEXT: "\U0001f3d7\ufe0f Creating GitHub Release..."
-          TG_ICON: "\U0001f3d7\ufe0f"
-        run: python3 tool/telegram_notifier.py update
+        run: |
+          python3 tool/telegram_notifier.py init
+          TG_STATUS_TEXT="\U0001f3d7\ufe0f Creating GitHub Release..." TG_ICON="\U0001f3d7\ufe0f" python3 tool/telegram_notifier.py update
 
       - name: Commit pubspec bump
         if: env.PUBSPEC_BUMPED == 'true'
@@ -303,16 +269,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Notify Telegram — Release published
+      - name: Notify Telegram and summarize
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TG_TAG: ${{ env.TAG }}
           TG_RELEASE_URL: https://github.com/${{ github.repository }}/releases/tag/${{ env.TAG }}
-        run: python3 tool/telegram_notifier.py release_success
-
-      - name: Summary
         run: |
+          python3 tool/telegram_notifier.py release_success
           echo "## Released $TAG :rocket:" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Artifacts published to https://github.com/${{ github.repository }}/releases/tag/$TAG" >> "$GITHUB_STEP_SUMMARY"
@@ -321,7 +285,7 @@ jobs:
           echo "|------|------|" >> "$GITHUB_STEP_SUMMARY"
           for f in release-artifacts/*.apk release-artifacts/checksums.txt; do
             SIZE=$(numfmt --to=iec --suffix=B "$(stat -c%s "$f")")
-            echo "| `$(basename "$f")` | $SIZE |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| $(basename "$f") | $SIZE |" >> "$GITHUB_STEP_SUMMARY"
           done
 
       - name: Notify Telegram — Release failed
