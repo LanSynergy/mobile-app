@@ -162,10 +162,8 @@ class SmartQueueManager {
         limit: 15,
       );
       if (coOccurred.isNotEmpty) {
-        for (final tid in coOccurred) {
-          final t = await db.trackById(tid);
-          if (t != null) candidates.add(t);
-        }
+        final coTracks = await db.tracksByIds(coOccurred);
+        candidates.addAll(coTracks);
       }
     } catch (e, stack) {
       afLog(
@@ -202,24 +200,29 @@ class SmartQueueManager {
       // Check cache first
       final cached = await localDb!.lastfm.get(seed.id);
       if (cached != null && cached.isNotEmpty) {
-        for (final tid in cached) {
-          final t = await localDb!.trackById(tid);
-          if (t != null) candidates.add(t);
-        }
+        final cachedTracks = await localDb!.tracksByIds(cached);
+        candidates.addAll(cachedTracks);
         return;
       }
       // Fetch from API
-      final results = await lastfmClient!.getSimilar(
+      final List<({String artist, String title})> results =
+          await lastfmClient!.getSimilar(
         artistName: seed.artistName,
         trackTitle: seed.title,
       );
       if (results.isEmpty) return;
+      // Batch-fetch tracks for all unique artists in one query.
+      final uniqueArtists = results
+          .where((r) => r.artist.isNotEmpty && r.title.isNotEmpty)
+          .map((r) => r.artist)
+          .toSet();
+      final Map<String, List<AfTrack>> artistTrackMap =
+          await localDb!.tracksByArtists(uniqueArtists);
       // Match results to local tracks
       final matched = <String>[];
-      for (final r in results) {
+      for (final ({String artist, String title}) r in results) {
         if (r.artist.isEmpty || r.title.isEmpty) continue;
-        final artistTracks = await localDb!.tracksByArtist(r.artist);
-        for (final t in artistTracks) {
+        for (final AfTrack t in (artistTrackMap[r.artist] ?? const <AfTrack>[])) {
           if (_fuzzyMatch(t.title, r.title)) {
             candidates.add(t);
             matched.add(t.id);
