@@ -31,7 +31,7 @@ class AfQueueManager {
 
   bool get isShuffleEnabled => _engine.isShuffleEnabled;
   bool get isTailShuffle => _engine.isTailShuffle;
-  List<AfTrack> get currentQueue => _engine.tracks;
+  List<AfTrack> get currentQueue => List<AfTrack>.unmodifiable(_engine.tracks);
   int get currentIndex => _engine.currentIndex;
   AfTrack? get currentTrack => _engine.currentTrack;
   bool get isAtQueueEnd => _engine.isAtQueueEnd;

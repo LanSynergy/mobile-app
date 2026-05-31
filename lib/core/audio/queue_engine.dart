@@ -16,7 +16,9 @@ class AfQueueEngine {
 
   List<AfTrack> _tracks = <AfTrack>[];
   int _currentIndex = -1;
+  int _logicalIndex = -1;
   List<int>? _shuffleOrder;
+  List<AfTrack>? _shuffledTracks;
   bool _playbackEnded = false;
 
   // ── forNtimes loop mode fields ────────────────────────────────────
@@ -31,14 +33,15 @@ class AfQueueEngine {
 
   List<AfTrack> get tracks {
     if (_shuffleOrder == null) return List<AfTrack>.unmodifiable(_tracks);
-    return List<AfTrack>.unmodifiable(_shuffleOrder!.map((i) => _tracks[i]));
+    _shuffledTracks ??= _shuffleOrder!
+        .map((i) => _tracks[i])
+        .toList(growable: false);
+    return List<AfTrack>.unmodifiable(_shuffledTracks!);
   }
 
-  int get currentIndex {
-    if (_shuffleOrder == null) return _currentIndex;
-    if (_currentIndex == -1) return -1;
-    return _shuffleOrder!.indexOf(_currentIndex);
-  }
+  /// Logical index in the queue (index into [_shuffleOrder] or direct
+  /// index into [_tracks] when shuffle is off).
+  int get currentIndex => _logicalIndex;
 
   bool get isShuffleEnabled => _shuffleOrder != null;
   bool get playbackEnded => _playbackEnded;
@@ -75,18 +78,22 @@ class AfQueueEngine {
     _tracks = List<AfTrack>.of(tracks);
     if (_tracks.isEmpty) {
       _currentIndex = -1;
+      _logicalIndex = -1;
     } else {
-      _currentIndex = startIndex.clamp(0, _tracks.length - 1);
+      _logicalIndex = startIndex.clamp(0, _tracks.length - 1);
+      _currentIndex = physicalIndex(_logicalIndex);
     }
     _playbackEnded = false;
     _isTailShuffle = false;
     _shuffleOrder = null;
+    _shuffledTracks = null;
     resetRepeats();
   }
 
   /// End playback: set currentIndex to -1 without clearing the queue.
   void endPlayback() {
     _currentIndex = -1;
+    _logicalIndex = -1;
     _playbackEnded = true;
     _isForNtimes = false;
     _remainingRepeats = 0;
@@ -96,7 +103,9 @@ class AfQueueEngine {
   void clear() {
     _tracks = <AfTrack>[];
     _currentIndex = -1;
+    _logicalIndex = -1;
     _shuffleOrder = null;
+    _shuffledTracks = null;
     _playbackEnded = false;
     _isForNtimes = false;
     _remainingRepeats = 0;
@@ -114,10 +123,13 @@ class AfQueueEngine {
     if (enabled) {
       _shuffleOrder = List<int>.generate(_tracks.length, (i) => i);
       _fisherYatesShuffle();
+      _logicalIndex = _currentIndex >= 0 ? 0 : -1;
     } else {
       _shuffleOrder = null;
+      _logicalIndex = _currentIndex;
       _isTailShuffle = false;
     }
+    _shuffledTracks = null;
   }
 
   /// Activate or deactivate forNtimes loop mode.
@@ -194,10 +206,9 @@ class AfQueueEngine {
   void shuffleTail() {
     if (_tracks.isEmpty) return;
 
-    final logicalCurrent = currentIndex;
-    if (logicalCurrent < 0 || logicalCurrent >= _tracks.length - 1) return;
+    if (_logicalIndex < 0 || _logicalIndex >= _tracks.length - 1) return;
 
-    final tailStart = logicalCurrent + 1;
+    final tailStart = _logicalIndex + 1;
 
     _isTailShuffle = true;
 
@@ -212,6 +223,8 @@ class AfQueueEngine {
       tail.shuffle(_random);
       _shuffleOrder = [...head, ...tail];
     }
+    _shuffledTracks = null;
+    // _currentIndex stays at physicalIndex(_logicalIndex) which is unchanged
   }
 
   /// Reset forNtimes repeats counter on track jump.
@@ -244,33 +257,34 @@ class AfQueueEngine {
 
   /// Advance to the next track. Returns new currentIndex.
   int advanceIndex() {
-    if (_tracks.isEmpty) return currentIndex;
-    final logicalIdx = currentIndex;
-    if (logicalIdx < _tracks.length - 1) {
-      _currentIndex = physicalIndex(logicalIdx + 1);
+    if (_tracks.isEmpty) return _logicalIndex;
+    if (_logicalIndex < _tracks.length - 1) {
+      _logicalIndex++;
+      _currentIndex = physicalIndex(_logicalIndex);
       resetRepeats();
     }
-    return currentIndex;
+    return _logicalIndex;
   }
 
   /// Retreat to the previous track. Returns new currentIndex.
   int retreatIndex() {
-    if (_tracks.isEmpty) return currentIndex;
-    final logicalIdx = currentIndex;
-    if (logicalIdx > 0) {
-      _currentIndex = physicalIndex(logicalIdx - 1);
+    if (_tracks.isEmpty) return _logicalIndex;
+    if (_logicalIndex > 0) {
+      _logicalIndex--;
+      _currentIndex = physicalIndex(_logicalIndex);
       resetRepeats();
     }
-    return currentIndex;
+    return _logicalIndex;
   }
 
   /// Jump to a specific logical index. Returns new currentIndex.
   int jumpTo(int logicalIndex) {
-    if (_tracks.isEmpty) return currentIndex;
+    if (_tracks.isEmpty) return _logicalIndex;
     final clamped = logicalIndex.clamp(0, _tracks.length - 1);
-    _currentIndex = physicalIndex(clamped);
+    _logicalIndex = clamped;
+    _currentIndex = physicalIndex(_logicalIndex);
     _resetRepeatsOnJump();
-    return currentIndex;
+    return _logicalIndex;
   }
 
   // ── Queue mutations (all pure Dart, 0 mpv calls) ───────────────────
@@ -290,12 +304,15 @@ class AfQueueEngine {
       _tracks.insert(insertIdx, track);
 
       // Track where the current track moved to after reorder
-      if (_currentIndex == oldIndex) {
-        _currentIndex = insertIdx;
-      } else if (oldIndex < _currentIndex && insertIdx >= _currentIndex) {
-        _currentIndex -= 1;
-      } else if (oldIndex > _currentIndex && insertIdx <= _currentIndex) {
-        _currentIndex += 1;
+      if (_logicalIndex == oldIndex) {
+        _logicalIndex = insertIdx;
+        _currentIndex = _logicalIndex;
+      } else if (oldIndex < _logicalIndex && insertIdx >= _logicalIndex) {
+        _logicalIndex--;
+        _currentIndex = _logicalIndex;
+      } else if (oldIndex > _logicalIndex && insertIdx <= _logicalIndex) {
+        _logicalIndex++;
+        _currentIndex = _logicalIndex;
       }
 
       return insertIdx;
@@ -303,6 +320,16 @@ class AfQueueEngine {
       final physicalIdx = _shuffleOrder!.removeAt(oldIndex);
       final insertIdx = newIndex > oldIndex ? newIndex - 1 : newIndex;
       _shuffleOrder!.insert(insertIdx, physicalIdx);
+
+      // Adjust logical index for shuffle order changes
+      if (_logicalIndex == oldIndex) {
+        _logicalIndex = insertIdx;
+      } else if (oldIndex < _logicalIndex && insertIdx >= _logicalIndex) {
+        _logicalIndex--;
+      } else if (oldIndex > _logicalIndex && insertIdx <= _logicalIndex) {
+        _logicalIndex++;
+      }
+      _shuffledTracks = null;
 
       return insertIdx;
     }
@@ -317,7 +344,14 @@ class AfQueueEngine {
   void remove(int index) {
     if (_shuffleOrder == null) {
       _tracks.removeAt(index);
-      _adjustIndicesAfterRemove(index, null);
+      if (_logicalIndex > index) {
+        _logicalIndex--;
+        _currentIndex = _logicalIndex;
+      } else if (_logicalIndex == index) {
+        // Removing current track — reset index
+        _logicalIndex = -1;
+        _currentIndex = -1;
+      }
     } else {
       final physicalIdx = _shuffleOrder![index];
       _tracks.removeAt(physicalIdx);
@@ -334,6 +368,12 @@ class AfQueueEngine {
       if (_currentIndex > physicalIdx) {
         _currentIndex--;
       }
+
+      // Adjust _logicalIndex
+      if (index < _logicalIndex) {
+        _logicalIndex--;
+      }
+      _shuffledTracks = null;
     }
   }
 
@@ -342,7 +382,8 @@ class AfQueueEngine {
     if (_shuffleOrder == null) {
       final clamped = index.clamp(0, _tracks.length);
       _tracks.insert(clamped, track);
-      if (clamped <= _currentIndex) {
+      if (clamped <= _logicalIndex) {
+        _logicalIndex++;
         _currentIndex++;
       }
     } else {
@@ -350,6 +391,10 @@ class AfQueueEngine {
       _tracks.add(track);
       final newPhysicalIndex = _tracks.length - 1;
       _shuffleOrder!.insert(clampedLogical, newPhysicalIndex);
+      if (clampedLogical <= _logicalIndex) {
+        _logicalIndex++;
+      }
+      _shuffledTracks = null;
     }
   }
 
@@ -358,18 +403,11 @@ class AfQueueEngine {
     _tracks.add(track);
     if (_shuffleOrder != null) {
       _shuffleOrder!.add(_tracks.length - 1);
+      _shuffledTracks = null;
     }
   }
 
   // ── Internal helpers ───────────────────────────────────────────────
-
-  void _adjustIndicesAfterRemove(int removedIndex, int? insertedAt) {
-    if (_currentIndex > removedIndex) {
-      _currentIndex--;
-    } else if (_currentIndex == removedIndex) {
-      // Can't remove current track — this shouldn't happen with canRemove guard.
-    }
-  }
 
   void updateTrackFavorite(String trackId, bool isFavorite) {
     for (var i = 0; i < _tracks.length; i++) {
