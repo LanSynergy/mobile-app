@@ -8,20 +8,24 @@ import '../../utils/log.dart';
 /// Tracks access timestamps via a metadata JSON file inside the cache
 /// directory. On eviction, the least-recently-accessed files are deleted
 /// until total size is below the configured maximum.
-///
-/// Thread-safe for reads; writes go through sync I/O which is acceptable
-/// because all callers (scanner, display) already use sync patterns for
-/// cover files.
 class CoverCacheManager {
-  /// Create manager with cache at [cacheDir] and max size [maxBytes].
-  CoverCacheManager({
+  CoverCacheManager._({
     required String cacheDir,
     int maxBytes = _kDefaultMaxBytes,
   }) : _cacheDir = cacheDir,
        _maxBytes = maxBytes,
-       _metaPath = '$cacheDir${Platform.pathSeparator}_access_meta.json' {
-    _loadMeta();
+       _metaPath = '$cacheDir${Platform.pathSeparator}_access_meta.json';
+
+  /// Async factory — loads metadata from disk before returning.
+  static Future<CoverCacheManager> create({
+    required String cacheDir,
+    int maxBytes = _kDefaultMaxBytes,
+  }) async {
+    final manager = CoverCacheManager._(cacheDir: cacheDir, maxBytes: maxBytes);
+    await manager._loadMeta();
+    return manager;
   }
+
   final String _cacheDir;
   final int _maxBytes;
   final String _metaPath;
@@ -33,11 +37,11 @@ class CoverCacheManager {
 
   // ── Metadata persistence ──────────────────────────────────────────────
 
-  void _loadMeta() {
+  Future<void> _loadMeta() async {
     final file = File(_metaPath);
-    if (!file.existsSync()) return;
+    if (!await file.exists()) return;
     try {
-      final content = file.readAsStringSync();
+      final content = await file.readAsString();
       final decoded = jsonDecode(content) as Map<String, dynamic>;
       _accessTimestamps = decoded.map(
         (k, v) => MapEntry(k, (v as num).toInt()),
@@ -48,10 +52,10 @@ class CoverCacheManager {
     }
   }
 
-  void _saveMeta() {
+  Future<void> _saveMeta() async {
     if (!_dirty) return;
     try {
-      File(_metaPath).writeAsStringSync(jsonEncode(_accessTimestamps));
+      await File(_metaPath).writeAsString(jsonEncode(_accessTimestamps));
       _dirty = false;
     } catch (e) {
       afLog('local', 'failed to save cover cache meta', error: e);
@@ -72,22 +76,19 @@ class CoverCacheManager {
   /// Evict least-recently-accessed files until total size <= maxBytes.
   ///
   /// Returns the number of files deleted, or 0 if no eviction was needed.
-  int evictIfNeeded() {
+  Future<int> evictIfNeeded() async {
     final cacheDir = Directory(_cacheDir);
-    if (!cacheDir.existsSync()) return 0;
+    if (!await cacheDir.exists()) return 0;
 
-    final files = cacheDir.listSync().whereType<File>().toList();
+    final files = (await cacheDir.list().toList()).whereType<File>().toList();
     int totalSize = 0;
     for (final f in files) {
-      // Skip the metadata file itself
       if (f.path == _metaPath) continue;
-      totalSize += f.lengthSync();
+      totalSize += await f.length();
     }
 
     if (totalSize <= _maxBytes) return 0;
 
-    // Sort by access timestamp (oldest first). Files with no recorded
-    // access (timestamp 0) are treated as oldest.
     files.sort((a, b) {
       if (a.path == _metaPath) return 1;
       if (b.path == _metaPath) return -1;
@@ -100,9 +101,9 @@ class CoverCacheManager {
     for (final f in files) {
       if (totalSize <= _maxBytes) break;
       if (f.path == _metaPath) continue;
-      final len = f.lengthSync();
+      final len = await f.length();
       try {
-        f.deleteSync();
+        await f.delete();
         _accessTimestamps.remove(f.path);
         totalSize -= len;
         deleted++;
@@ -112,37 +113,43 @@ class CoverCacheManager {
     }
 
     _dirty = true;
-    _saveMeta();
+    await _saveMeta();
     return deleted;
   }
 
   /// Remove all cached covers and reset the access log.
-  void clear() {
+  Future<void> clear() async {
     final cacheDir = Directory(_cacheDir);
-    if (cacheDir.existsSync()) {
-      for (final entity in cacheDir.listSync()) {
+    if (await cacheDir.exists()) {
+      await for (final entity in cacheDir.list()) {
         if (entity is File && entity.path != _metaPath) {
           try {
-            entity.deleteSync();
+            await entity.delete();
           } catch (_) {}
         }
       }
     }
     _accessTimestamps.clear();
     _dirty = true;
-    _saveMeta();
+    await _saveMeta();
   }
 
   /// Remove entries from the access log whose files no longer exist.
   ///
   /// Call this after external deletion (e.g., user clearing app data) to
   /// keep the metadata file consistent with on-disk state.
-  void pruneStaleEntries() {
+  Future<void> pruneStaleEntries() async {
     final before = _accessTimestamps.length;
-    _accessTimestamps.removeWhere((path, _) => !File(path).existsSync());
+    final stale = <String>[];
+    for (final path in _accessTimestamps.keys) {
+      if (!await File(path).exists()) stale.add(path);
+    }
+    for (final path in stale) {
+      _accessTimestamps.remove(path);
+    }
     if (_accessTimestamps.length != before) {
       _dirty = true;
-      _saveMeta();
+      await _saveMeta();
     }
   }
 }

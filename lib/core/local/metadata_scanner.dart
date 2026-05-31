@@ -45,7 +45,9 @@ class MetadataScanner {
       int completed = 0;
       int inserted = 0;
       final coverCacheDir = await _coverCacheDir();
-      _coverCacheManager ??= CoverCacheManager(cacheDir: coverCacheDir);
+      _coverCacheManager ??= await CoverCacheManager.create(
+        cacheDir: coverCacheDir,
+      );
 
       // 2. Batch-load last_modified for all files in this folder,
       //    replacing N per-file DB queries with a single SELECT.
@@ -128,7 +130,7 @@ class MetadataScanner {
       }
 
       // Evict old covers if cache exceeds size limit
-      final evicted = _coverCacheManager?.evictIfNeeded() ?? 0;
+      final evicted = await _coverCacheManager?.evictIfNeeded() ?? 0;
       if (evicted > 0) {
         afLog('local', 'evicted $evicted stale cover art files');
       }
