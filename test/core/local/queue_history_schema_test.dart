@@ -67,8 +67,8 @@ void main() {
       expect(rows[1].sourceId, 'album-123');
     });
 
-    test('schema version is 10', () {
-      expect(db.schemaVersion, 10);
+    test('schema version is 11', () {
+      expect(db.schemaVersion, 11);
     });
 
     test('loadRecent returns limited entries in desc order', () async {
@@ -344,7 +344,7 @@ void main() {
       await db.close();
     });
 
-    test('migration from scratch (v0 to v10) runs successfully', () async {
+    test('migration from scratch (v0 to v11) runs successfully', () async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
 
       // Verify playback_history with completionRate works
@@ -401,6 +401,7 @@ void main() {
       expect(indexNames, contains('idx_tracks_album'));
       expect(indexNames, contains('idx_tracks_genre'));
       expect(indexNames, contains('idx_tracks_last_modified'));
+      expect(indexNames, contains('idx_playback_history_played_at'));
 
       await db.close();
     });
