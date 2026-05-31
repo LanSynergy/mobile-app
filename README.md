@@ -126,7 +126,7 @@ The server stores files and metadata. Aetherfin does everything else.
 
 ## Contributing
 
-PRs welcome. Read **[CLAUDE.md](./CLAUDE.md)** first — it covers architecture, design tokens, and the rules.
+PRs welcome. Read **[CONTRIBUTING.md](./CONTRIBUTING.md)** for setup, code style, and PR guidelines.
 
 ## Privacy
 
@@ -135,6 +135,10 @@ No analytics. No ads. No trackers. No Aetherfin servers. The app talks only to t
 ## Community
 
 [![Telegram](https://img.shields.io/badge/Telegram-@azrim__ci-2CA5E0?logo=telegram&style=for-the-badge)](https://t.me/azrim_ci)
+
+## Contributing
+
+PRs welcome. Read **[CONTRIBUTING.md](./CONTRIBUTING.md)** for setup, code style, and PR guidelines.
 
 ## License
 
