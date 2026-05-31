@@ -33,7 +33,8 @@ class SmartPlaylistEngine {
         playlist.sort == 'playCount' ||
         playlist.sort == 'lastPlayed';
     if (hasHistoryRules) {
-      sql = '''
+      sql =
+          '''
         SELECT * FROM (
           SELECT $trackCols,
             (SELECT COUNT(*) FROM playback_history h WHERE h.track_id = tracks.id AND h.skipped = 0) AS play_count,

@@ -27,6 +27,12 @@ class SmartQueueManager {
   /// Reused across scoring passes to avoid entropy-seeded allocations.
   final Random _random = Random();
 
+  /// TTL cache for [_getRecentlyPlayedIds] — avoids redundant DB queries
+  /// when both `refillBuffer` and `scoreAndSort` execute in the same cycle.
+  Set<String>? _recentlyPlayedCache;
+  DateTime? _recentlyPlayedCacheTime;
+  static const Duration _recentlyPlayedTtl = Duration(seconds: 5);
+
   // ── Buffer ──────────────────────────────────────────────────────────────
 
   final List<AfTrack> _buffer = [];
@@ -67,6 +73,9 @@ class SmartQueueManager {
       } else {
         await stats.recordPlay(track.id, completionRate: completionRate);
       }
+      // Invalidate recently-played cache since history changed.
+      _recentlyPlayedCache = null;
+      _recentlyPlayedCacheTime = null;
     } catch (e, stack) {
       afLog(
         'error',
@@ -251,6 +260,13 @@ class SmartQueueManager {
 
   Future<Set<String>> _getRecentlyPlayedIds({int limit = 20}) async {
     if (localDb == null) return {};
+    // Return cached result if still within TTL.
+    final now = DateTime.now();
+    if (_recentlyPlayedCache != null && _recentlyPlayedCacheTime != null) {
+      if (now.difference(_recentlyPlayedCacheTime!) < _recentlyPlayedTtl) {
+        return _recentlyPlayedCache!;
+      }
+    }
     try {
       final rows = await localDb!.db
           .customSelect(
@@ -259,7 +275,10 @@ class SmartQueueManager {
             readsFrom: {localDb!.db.playbackHistory},
           )
           .get();
-      return rows.map((r) => r.read<String>('track_id')).toSet();
+      final result = rows.map((r) => r.read<String>('track_id')).toSet();
+      _recentlyPlayedCache = result;
+      _recentlyPlayedCacheTime = now;
+      return result;
     } catch (_) {
       return {};
     }
