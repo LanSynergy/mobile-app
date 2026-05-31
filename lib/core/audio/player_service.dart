@@ -1056,15 +1056,19 @@ class AfPlayerService {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    // 1. Cancel all stream subscriptions FIRST to prevent listeners
+    //    from firing after resources are disposed.
+    for (final s in _subs) {
+      await s.cancel();
+    }
+    // 2. Then dispose resources that streams were listening to.
     _bridge.dispose();
     _positionTracker.dispose();
     _queueManager.dispose();
     _prefetcher.cancelCurrentPrefetch();
     _mpvLoadedTrackId = null;
     _eofFallbackHandledTrackId = null;
-    for (final s in _subs) {
-      await s.cancel();
-    }
+    // 3. Close controllers and player last.
     await _loopModeController.close();
     await _player.dispose();
   }
