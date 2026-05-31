@@ -208,6 +208,28 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
+      // Create performance indexes for fresh installations too.
+      final db = m.database;
+      for (final stmt in const [
+        'CREATE INDEX IF NOT EXISTS idx_playlist_entries_playlist_id '
+            'ON playlist_entries (playlist_id)',
+        'CREATE INDEX IF NOT EXISTS idx_playback_history_track_id '
+            'ON playback_history (track_id)',
+        'CREATE INDEX IF NOT EXISTS idx_tracks_artist '
+            'ON tracks (artist)',
+        'CREATE INDEX IF NOT EXISTS idx_tracks_album '
+            'ON tracks (album)',
+        'CREATE INDEX IF NOT EXISTS idx_tracks_genre '
+            'ON tracks (genre)',
+        'CREATE INDEX IF NOT EXISTS idx_tracks_last_modified '
+            'ON tracks (last_modified)',
+      ]) {
+        try {
+          await db.customStatement(stmt);
+        } on Exception {
+          // Table may not exist — skip index, no data loss.
+        }
+      }
     },
     onUpgrade: (m, from, to) async {
       // v1 → v2 introduces local-mode favorites and user playlists
@@ -239,6 +261,34 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 9) {
         await m.createTable(lastfmSimilarCache);
+      }
+      if (from < 10) {
+        // Performance indexes for common query patterns.
+        // Drift's m.createIndex() expects an Index object. Since these aren't
+        // defined on table classes, we use raw SQL via the migrator's database.
+        // Each index is wrapped in try-catch — if the table was never created
+        // (e.g. in a partial migration test), skipping the index is harmless.
+        final db = m.database;
+        for (final stmt in const [
+          'CREATE INDEX IF NOT EXISTS idx_playlist_entries_playlist_id '
+              'ON playlist_entries (playlist_id)',
+          'CREATE INDEX IF NOT EXISTS idx_playback_history_track_id '
+              'ON playback_history (track_id)',
+          'CREATE INDEX IF NOT EXISTS idx_tracks_artist '
+              'ON tracks (artist)',
+          'CREATE INDEX IF NOT EXISTS idx_tracks_album '
+              'ON tracks (album)',
+          'CREATE INDEX IF NOT EXISTS idx_tracks_genre '
+              'ON tracks (genre)',
+          'CREATE INDEX IF NOT EXISTS idx_tracks_last_modified '
+              'ON tracks (last_modified)',
+        ]) {
+          try {
+            await db.customStatement(stmt);
+          } on Exception {
+            // Table may not exist — skip index, no data loss.
+          }
+        }
       }
     },
   );
