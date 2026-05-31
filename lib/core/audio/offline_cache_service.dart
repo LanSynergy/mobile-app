@@ -35,7 +35,7 @@ class OfflineCacheService {
     final dir = await getApplicationSupportDirectory();
     _cacheDirPath = p.join(dir.path, 'audio_cache');
     await Directory(_cacheDirPath!).create(recursive: true);
-    _cleanOrphanedTempFiles();
+    await _cleanOrphanedTempFiles();
     afLog('cache', 'OfflineCacheService initialized at $_cacheDirPath');
   }
 
@@ -51,15 +51,15 @@ class OfflineCacheService {
   File _fileFor(String trackId) => File(p.join(_cacheDir, trackId));
   File _tempFileFor(String trackId) => File(p.join(_cacheDir, '.$trackId.tmp'));
 
-  /// Check if a track is cached on disk (fast, sync).
-  bool isCached(String trackId) {
+  /// Check if a track is cached on disk (async).
+  Future<bool> isCached(String trackId) async {
     if (trackId.isEmpty) return false;
-    return _fileFor(trackId).existsSync();
+    return _fileFor(trackId).exists();
   }
 
   /// `file://` URI for a cached track, or null if not cached.
-  String? cachedFileUri(String trackId) {
-    if (!isCached(trackId)) return null;
+  Future<String?> cachedFileUri(String trackId) async {
+    if (!await isCached(trackId)) return null;
     return 'file://${_fileFor(trackId).path}';
   }
 
@@ -73,7 +73,7 @@ class OfflineCacheService {
     final realFile = _fileFor(trackId);
 
     try {
-      if (realFile.existsSync()) {
+      if (await realFile.exists()) {
         afLog('cache', 'cacheTrack: already cached $trackId');
         return;
       }
@@ -84,7 +84,7 @@ class OfflineCacheService {
         options: Options(headers: headers),
       );
 
-      if (!tempFile.existsSync()) {
+      if (!await tempFile.exists()) {
         afLog('cache', 'cacheTrack: download produced no file for $trackId');
         return;
       }
@@ -119,7 +119,7 @@ class OfflineCacheService {
         error: e,
         stackTrace: stack,
       );
-      if (tempFile.existsSync()) {
+      if (await tempFile.exists()) {
         await tempFile.delete();
       }
     }
@@ -140,7 +140,7 @@ class OfflineCacheService {
     for (final entry in sorted) {
       if (totalSize <= maxSize) break;
       final file = _fileFor(entry.trackId);
-      if (file.existsSync()) {
+      if (await file.exists()) {
         await file.delete();
         totalSize -= entry.fileSize;
         evicted++;
@@ -170,7 +170,7 @@ class OfflineCacheService {
   /// Remove all cached files and clear the manifest.
   Future<void> clearCache() async {
     final dir = Directory(_cacheDir);
-    if (dir.existsSync()) {
+    if (await dir.exists()) {
       await dir.delete(recursive: true);
       await dir.create(recursive: true);
     }
@@ -178,13 +178,13 @@ class OfflineCacheService {
     afLog('cache', 'cache cleared');
   }
 
-  void _cleanOrphanedTempFiles() {
+  Future<void> _cleanOrphanedTempFiles() async {
     final dir = Directory(_cacheDir);
-    if (!dir.existsSync()) return;
+    if (!await dir.exists()) return;
     var cleaned = 0;
-    for (final entity in dir.listSync()) {
+    await for (final entity in dir.list()) {
       if (entity is File && entity.path.endsWith('.tmp')) {
-        entity.deleteSync();
+        await entity.delete();
         cleaned++;
       }
     }

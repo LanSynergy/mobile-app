@@ -1,4 +1,4 @@
-import 'dart:async' show unawaited;
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/providers.dart';
@@ -24,11 +24,11 @@ class PlayActions {
 
     // In local mode, the track ID is the content:// URI itself.
     // In server mode, check offline cache first, then the backend.
-    String resolveStreamUrl(AfTrack t) {
+    FutureOr<String> resolveStreamUrl(AfTrack t) async {
       if (mode == AppMode.local) return t.id;
       final cache = ref.read(offlineCacheServiceProvider);
       if (ref.read(offlineCacheEnabledProvider)) {
-        final cachedUri = cache.cachedFileUri(t.id);
+        final cachedUri = await cache.cachedFileUri(t.id);
         if (cachedUri != null) return cachedUri;
       }
       if (backend != null) {
@@ -96,11 +96,11 @@ class PlayActions {
     final mode = ref.read(appModeProvider);
     final backend = ref.read(musicBackendProvider);
 
-    String resolveStreamUrl(AfTrack t) {
+    FutureOr<String> resolveStreamUrl(AfTrack t) async {
       if (mode == AppMode.local) return t.id;
       final cache = ref.read(offlineCacheServiceProvider);
       if (ref.read(offlineCacheEnabledProvider)) {
-        final cachedUri = cache.cachedFileUri(t.id);
+        final cachedUri = await cache.cachedFileUri(t.id);
         if (cachedUri != null) return cachedUri;
       }
       if (backend != null) {
@@ -254,11 +254,11 @@ class PlayActions {
           // Only append if the active track is still the seed track
           if (svc.currentTrack?.id == seed.id) {
             final mode = ref.read(appModeProvider);
-            String resolveStreamUrl(AfTrack t) {
+            FutureOr<String> resolveStreamUrl(AfTrack t) async {
               if (mode == AppMode.local) return t.id;
               final cache = ref.read(offlineCacheServiceProvider);
               if (ref.read(offlineCacheEnabledProvider)) {
-                final cachedUri = cache.cachedFileUri(t.id);
+                final cachedUri = await cache.cachedFileUri(t.id);
                 if (cachedUri != null) return cachedUri;
               }
               final maxBitrate = ref.read(maxBitrateProvider);

@@ -89,7 +89,7 @@ void main() {
       expect(file, isNotNull);
       expect(file!.existsSync(), isTrue);
       expect(file.readAsBytesSync(), equals([1, 2, 3, 4]));
-      expect(prefetcher.getCachedFile('track_123'), equals(file));
+      expect(await prefetcher.getCachedFile('track_123'), equals(file));
     });
 
     test('prefetch handles failure and cancels correctly', () async {
@@ -117,7 +117,7 @@ void main() {
 
       final file = await future;
       expect(file, isNull);
-      expect(prefetcher.getCachedFile('track_456'), isNull);
+      expect(await prefetcher.getCachedFile('track_456'), isNull);
     });
 
     test(
@@ -143,7 +143,7 @@ void main() {
         final fiveMinsAgo = DateTime.now().subtract(const Duration(minutes: 6));
         staleFile.setLastModifiedSync(fiveMinsAgo);
 
-        prefetcher.clearStaleTempFiles();
+        await prefetcher.clearStaleTempFiles();
 
         expect(freshFile.existsSync(), isTrue);
         expect(staleFile.existsSync(), isFalse);

@@ -73,7 +73,7 @@ class StreamPrefetcher {
 
       final tempDir = await getTemporaryDirectory();
       _cacheDir = tempDir.path;
-      clearStaleTempFiles();
+      await clearStaleTempFiles();
     } catch (e, stack) {
       afLog(
         'audio',
@@ -85,22 +85,22 @@ class StreamPrefetcher {
   }
 
   /// Returns the cached prefetch file for [trackId], if it exists and is valid.
-  File? getCachedFile(String trackId) {
+  Future<File?> getCachedFile(String trackId) async {
     final file = _cachedFiles[trackId];
-    if (file != null && file.existsSync()) {
-      // Check if file is still valid (not too old)
-      try {
-        final stat = file.statSync();
+    if (file == null) return null;
+    try {
+      if (await file.exists()) {
+        final stat = await file.stat();
         final ageMinutes = DateTime.now().difference(stat.modified).inMinutes;
         if (ageMinutes <= _maxCacheAgeMinutes) {
           return file;
         } else {
           // File is too old, remove it
-          _removeFromCache(trackId);
+          await _removeFromCache(trackId);
         }
-      } catch (e) {
-        afLog('audio', 'Failed to check cache file age for $trackId', error: e);
       }
+    } catch (e) {
+      afLog('audio', 'Failed to check cache file age for $trackId', error: e);
     }
     return null;
   }
@@ -131,7 +131,7 @@ class StreamPrefetcher {
     }
 
     // Check if already cached
-    final cached = getCachedFile(trackId);
+    final cached = await getCachedFile(trackId);
     if (cached != null) {
       afLog('audio', 'Using cached file for trackId=$trackId');
       return cached;
@@ -201,7 +201,7 @@ class StreamPrefetcher {
         await sink.close();
 
         // Add to cache
-        _addToCache(trackId, tempFile);
+        await _addToCache(trackId, tempFile);
 
         afLog('audio', 'Prefetch completed successfully for trackId=$trackId');
         return tempFile;
@@ -209,9 +209,9 @@ class StreamPrefetcher {
         retryCount++;
 
         // Clean up partial file
-        if (tempFile.existsSync()) {
+        if (await tempFile.exists()) {
           try {
-            tempFile.deleteSync();
+            await tempFile.delete();
           } catch (_) {}
         }
 
@@ -273,16 +273,16 @@ class StreamPrefetcher {
   }
 
   /// Adds a file to the cache with size tracking
-  void _addToCache(String trackId, File file) {
+  Future<void> _addToCache(String trackId, File file) async {
     // Remove oldest entries if cache is full
     while (_cachedFiles.length >= _maxCachedFiles ||
         _totalCacheSize >= _maxCacheSizeBytes) {
       final oldestTrackId = _cachedFiles.keys.first;
-      _removeFromCache(oldestTrackId);
+      await _removeFromCache(oldestTrackId);
     }
 
     try {
-      final size = file.lengthSync();
+      final size = await file.length();
       _cachedFiles[trackId] = file;
       _totalCacheSize += size;
       afLog(
@@ -295,14 +295,14 @@ class StreamPrefetcher {
   }
 
   /// Removes a file from the cache
-  void _removeFromCache(String trackId) {
+  Future<void> _removeFromCache(String trackId) async {
     final file = _cachedFiles.remove(trackId);
     if (file != null) {
       try {
-        final size = file.lengthSync();
+        final size = await file.length();
         _totalCacheSize -= size;
-        if (file.existsSync()) {
-          file.deleteSync();
+        if (await file.exists()) {
+          await file.delete();
         }
         afLog(
           'audio',
@@ -319,27 +319,27 @@ class StreamPrefetcher {
   }
 
   /// Deletes all prefetch_*.tmp files in the temp directory that are older than threshold.
-  void clearStaleTempFiles() {
+  Future<void> clearStaleTempFiles() async {
     // Fall back to system temp if _cacheDir not yet initialized (async init race)
     final dirPath = _cacheDir ?? Directory.systemTemp.path;
     try {
       final dir = Directory(dirPath);
-      if (!dir.existsSync()) return;
+      if (!await dir.exists()) return;
 
       final now = DateTime.now();
       final threshold = now.subtract(
         const Duration(minutes: _maxCacheAgeMinutes),
       );
 
-      final files = dir.listSync();
+      final files = await dir.list().toList();
       for (final f in files) {
         if (f is File &&
             p.basename(f.path).startsWith('prefetch_') &&
             f.path.endsWith('.tmp')) {
           try {
-            final stat = f.statSync();
+            final stat = await f.stat();
             if (stat.modified.isBefore(threshold)) {
-              f.deleteSync();
+              await f.delete();
               afLog('audio', 'Deleted stale prefetch file: ${f.path}');
             }
           } catch (e) {
@@ -353,9 +353,9 @@ class StreamPrefetcher {
   }
 
   /// Clears all cached files
-  void clearCache() {
+  Future<void> clearCache() async {
     for (final trackId in _cachedFiles.keys.toList()) {
-      _removeFromCache(trackId);
+      await _removeFromCache(trackId);
     }
     _cachedFiles.clear();
     _totalCacheSize = 0;

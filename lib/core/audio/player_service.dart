@@ -227,7 +227,7 @@ class AfPlayerService {
 
   /// Stored from [playQueue] so [skipToQueueItem] and the completed handler
   /// can lazily resolve stream URLs when rebuilding the 2-track window.
-  String Function(AfTrack)? _resolveStreamUrl;
+  FutureOr<String> Function(AfTrack)? _resolveStreamUrl;
 
   /// LRU cache for stream URLs to avoid repeated resolution
   /// Maps trackId -> resolved URL
@@ -577,7 +577,7 @@ class AfPlayerService {
   Future<void> playQueue(
     List<AfTrack> tracks, {
     int startIndex = 0,
-    required String Function(AfTrack track) resolveStreamUrl,
+    required FutureOr<String> Function(AfTrack track) resolveStreamUrl,
     Map<String, String> streamHeaders = const <String, String>{},
   }) async {
     if (tracks.isEmpty) return;
@@ -608,9 +608,9 @@ class AfPlayerService {
           'startIndex=$safeIndex first="${startTrack.title}"',
     );
 
-    final cachedFile = _prefetcher.getCachedFile(startTrack.id);
+    final cachedFile = await _prefetcher.getCachedFile(startTrack.id);
     final String url;
-    if (cachedFile != null && cachedFile.existsSync()) {
+    if (cachedFile != null) {
       url = cachedFile.uri.toString();
       afLog(
         'audio',
@@ -626,7 +626,7 @@ class AfPlayerService {
           'playQueue: using cached stream URL for "${startTrack.title}"',
         );
       } else {
-        url = resolveStreamUrl(startTrack);
+        url = await resolveStreamUrl(startTrack);
         _cacheStreamUrl(startTrack.id, url);
       }
     }
@@ -1004,7 +1004,7 @@ class AfPlayerService {
   Future<void> insertIntoQueue(
     int index,
     AfTrack track, {
-    required String Function(AfTrack) resolveStreamUrl,
+    required FutureOr<String> Function(AfTrack) resolveStreamUrl,
   }) async {
     if (_disposed) return;
     _resolveStreamUrl = resolveStreamUrl;
@@ -1018,7 +1018,7 @@ class AfPlayerService {
 
   Future<void> playNext(
     AfTrack track, {
-    required String Function(AfTrack) resolveStreamUrl,
+    required FutureOr<String> Function(AfTrack) resolveStreamUrl,
   }) async {
     if (_disposed) return;
     _resolveStreamUrl = resolveStreamUrl;
@@ -1034,7 +1034,7 @@ class AfPlayerService {
 
   Future<void> addToQueue(
     AfTrack track, {
-    required String Function(AfTrack) resolveStreamUrl,
+    required FutureOr<String> Function(AfTrack) resolveStreamUrl,
   }) async {
     if (_disposed) return;
     _resolveStreamUrl = resolveStreamUrl;
@@ -1045,7 +1045,7 @@ class AfPlayerService {
 
   Future<void> appendQueue(
     List<AfTrack> tracks, {
-    required String Function(AfTrack) resolveStreamUrl,
+    required FutureOr<String> Function(AfTrack) resolveStreamUrl,
   }) async {
     if (_disposed || tracks.isEmpty) return;
     _resolveStreamUrl = resolveStreamUrl;
@@ -1104,9 +1104,9 @@ class AfPlayerService {
     _prefetcher.cancelCurrentPrefetch();
     _prefetchStartedForTrackId = null;
 
-    final cachedFile = _prefetcher.getCachedFile(target.id);
+    final cachedFile = await _prefetcher.getCachedFile(target.id);
     final String url;
-    if (cachedFile != null && cachedFile.existsSync()) {
+    if (cachedFile != null) {
       url = cachedFile.uri.toString();
       afLog(
         'audio',
@@ -1122,7 +1122,7 @@ class AfPlayerService {
           'rebuildWindow: using cached stream URL for "${target.title}"',
         );
       } else {
-        url = _resolveStreamUrl!(target);
+        url = await _resolveStreamUrl!(target);
         _cacheStreamUrl(target.id, url);
       }
     }
@@ -1442,15 +1442,38 @@ class AfPlayerService {
         _prefetchStartedForTrackId = currentTrack.id;
         // Check stream URL cache first
         final cachedUrl = _getCachedStreamUrl(nextTrack.id);
-        final nextUrl = cachedUrl ?? _resolveStreamUrl?.call(nextTrack);
-        if (nextUrl != null) {
-          // Cache the URL if we had to resolve it
-          if (cachedUrl == null) {
-            _cacheStreamUrl(nextTrack.id, nextUrl);
-          }
+        if (cachedUrl != null) {
           unawaited(
-            _prefetcher.prefetch(nextUrl, _authHeaders, trackId: nextTrack.id),
+            _prefetcher.prefetch(
+              cachedUrl,
+              _authHeaders,
+              trackId: nextTrack.id,
+            ),
           );
+        } else {
+          // _resolveStreamUrl may return FutureOr; schedule prefetch after resolution.
+          final resolved = _resolveStreamUrl?.call(nextTrack);
+          if (resolved is Future<String>) {
+            resolved.then((nextUrl) {
+              _cacheStreamUrl(nextTrack.id, nextUrl);
+              unawaited(
+                _prefetcher.prefetch(
+                  nextUrl,
+                  _authHeaders,
+                  trackId: nextTrack.id,
+                ),
+              );
+            });
+          } else if (resolved is String) {
+            _cacheStreamUrl(nextTrack.id, resolved);
+            unawaited(
+              _prefetcher.prefetch(
+                resolved,
+                _authHeaders,
+                trackId: nextTrack.id,
+              ),
+            );
+          }
         }
       }
     }

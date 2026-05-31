@@ -109,7 +109,7 @@ void showAlbumMoreSheet(
 /// Build the stream-URL resolver for queue mutations, mirroring
 /// `track_context_menu.dart`'s helper. In local mode the track id IS
 /// the `content://` URI; in server mode the backend resolves it.
-String Function(AfTrack)? _streamResolver(WidgetRef ref) {
+FutureOr<String> Function(AfTrack)? _streamResolver(WidgetRef ref) {
   final mode = ref.read(appModeProvider);
   if (mode == AppMode.local) {
     return (t) => t.id;
@@ -118,9 +118,9 @@ String Function(AfTrack)? _streamResolver(WidgetRef ref) {
   final cacheEnabled = ref.read(offlineCacheEnabledProvider);
   final backend = ref.read(musicBackendProvider);
   if (backend == null) return null;
-  return (t) {
+  return (t) async {
     if (cacheEnabled) {
-      final cachedUri = cache.cachedFileUri(t.id);
+      final cachedUri = await cache.cachedFileUri(t.id);
       if (cachedUri != null) return cachedUri;
     }
     final maxBitrate = ref.read(maxBitrateProvider);

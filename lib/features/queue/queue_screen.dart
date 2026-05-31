@@ -365,10 +365,10 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     final backend = ref.read(musicBackendProvider);
     final cache = ref.read(offlineCacheServiceProvider);
     final cacheEnabled = ref.read(offlineCacheEnabledProvider);
-    String resolve(AfTrack t) {
+    FutureOr<String> resolve(AfTrack t) async {
       if (mode == AppMode.local) return t.id;
       if (cacheEnabled) {
-        final cachedUri = cache.cachedFileUri(t.id);
+        final cachedUri = await cache.cachedFileUri(t.id);
         if (cachedUri != null) return cachedUri;
       }
       if (backend != null) {
