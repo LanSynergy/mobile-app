@@ -215,8 +215,10 @@ class AfArtworkManager {
       if (File(cachePath).existsSync()) {
         return cachePath;
       }
-      // Stale entry — remove from set, fall through to full check.
+      // Stale entry — remove from set. File confirmed absent, no need
+      // for a second existsSync() call below.
       _diskCacheChecked.remove(trackId);
+      return null;
     }
 
     final cacheFile = File(cachePath);
