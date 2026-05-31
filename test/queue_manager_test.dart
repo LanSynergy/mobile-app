@@ -195,5 +195,227 @@ void main() {
         expect(manager.remainingRepeats, 5);
       });
     });
+
+    group('currentQueue defensive copy', () {
+      test('returns unmodifiable list', () {
+        queueManager.replaceQueue(tracks, 0);
+        final queue = queueManager.currentQueue;
+        expect(() => queue[0] = tracks[0], throwsA(isA<UnsupportedError>()));
+      });
+
+      test('is not the same reference as internal list', () {
+        // Must be a copy, not exposing the internal list
+        final ref1 = queueManager.currentQueue;
+        final ref2 = queueManager.currentQueue;
+        expect(ref1, ref2);
+        expect(identical(ref1, ref2), isFalse);
+      });
+    });
+
+    group('remove with canRemove guard', () {
+      test('remove non-current track succeeds', () {
+        queueManager.replaceQueue(tracks, 0);
+        expect(queueManager.canRemove(1), isTrue);
+        queueManager.remove(1);
+        expect(queueManager.currentQueue.length, 2);
+        expect(queueManager.currentIndex, 0);
+      });
+
+      test('canRemove returns false for current track', () {
+        queueManager.replaceQueue(tracks, 0);
+        // Current index is 0 (track '1')
+        expect(queueManager.canRemove(0), isFalse);
+        expect(queueManager.canRemove(1), isTrue);
+        expect(queueManager.canRemove(2), isTrue);
+      });
+
+      test('remove emits on queueStream', () async {
+        final emitted = <List<AfTrack>>[];
+        final sub = queueManager.queueStream.listen(emitted.add);
+
+        queueManager.replaceQueue(tracks, 0);
+        queueManager.remove(1);
+
+        await Future<void>.delayed(Duration.zero);
+        expect(emitted.length, 2); // replaceQueue + remove
+        expect(emitted.last.length, 2);
+        await sub.cancel();
+      });
+
+      test('remove last track works', () {
+        queueManager.replaceQueue(tracks, 0);
+        queueManager.remove(2);
+        expect(queueManager.currentQueue.length, 2);
+      });
+    });
+
+    group('shuffle state transitions', () {
+      test('setShuffle emits on shuffleModeStream and queueStream', () async {
+        final shuffleValues = <bool>[];
+        final queueValues = <List<AfTrack>>[];
+        final sub1 = queueManager.shuffleModeStream.listen(shuffleValues.add);
+        final sub2 = queueManager.queueStream.listen(queueValues.add);
+
+        queueManager.replaceQueue(tracks, 0);
+        expect(queueManager.isShuffleEnabled, isFalse);
+
+        queueManager.setShuffle(true);
+        expect(queueManager.isShuffleEnabled, isTrue);
+        expect(queueManager.isTailShuffle, isFalse);
+
+        queueManager.setShuffle(false);
+        expect(queueManager.isShuffleEnabled, isFalse);
+
+        await Future<void>.delayed(Duration.zero);
+        expect(shuffleValues, [false, true, false]);
+        expect(queueValues.length, 3); // replace + enable + disable
+        await sub1.cancel();
+        await sub2.cancel();
+      });
+
+      test('shuffle preserves stream queue count', () {
+        queueManager.replaceQueue(tracks, 0);
+        queueManager.setShuffle(true);
+        expect(queueManager.currentQueue.length, 3);
+        queueManager.setShuffle(false);
+        expect(queueManager.currentQueue.length, 3);
+      });
+
+      test('rapid operations keep consistency', () {
+        queueManager.replaceQueue(tracks, 0);
+        queueManager.setShuffle(true);
+
+        // Remove while shuffled
+        queueManager.remove(1);
+        expect(queueManager.currentQueue.length, 2);
+
+        // Insert while shuffled
+        const newTrack = AfTrack(
+          id: 'new',
+          title: 'New',
+          artistName: 'X',
+          albumName: 'Y',
+        );
+        queueManager.insert(1, newTrack);
+        expect(queueManager.currentQueue.length, 3);
+
+        // Turn off shuffle — must still have correct count
+        queueManager.setShuffle(false);
+        expect(queueManager.currentQueue.length, 3);
+        expect(queueManager.isShuffleEnabled, isFalse);
+      });
+    });
+
+    group('reorder edge cases', () {
+      test('same index reorder is refused', () {
+        queueManager.replaceQueue(tracks, 0);
+        expect(queueManager.canReorder(1, 1), isFalse);
+      });
+
+      test('reorder from first to end works', () {
+        queueManager.replaceQueue(tracks, 0);
+        // Move 0→3: [1,2,3] → remove 0 → [2,3] → insert at (3>0?2:3=2) → [2,3,1]
+        queueManager.reorder(0, 3);
+        expect(queueManager.currentQueue.length, 3);
+        expect(queueManager.currentQueue[0].id, '2');
+        expect(queueManager.currentQueue[1].id, '3');
+        expect(queueManager.currentQueue[2].id, '1');
+      });
+
+      test('reorder from middle to start works', () {
+        queueManager.replaceQueue(tracks, 0);
+        // Move 2→0: [1,2,3] → remove 2 → [1,2] → insert at (0>2?no→0) → [3,1,2]
+        queueManager.reorder(2, 0);
+        expect(queueManager.currentQueue[0].id, '3');
+        expect(queueManager.currentQueue[1].id, '1');
+        expect(queueManager.currentQueue[2].id, '2');
+      });
+    });
+
+    group('appendAll', () {
+      test('appendAll adds multiple tracks and emits', () async {
+        final additional = [
+          const AfTrack(
+            id: '4',
+            title: 'Track 4',
+            artistName: 'A',
+            albumName: 'B',
+          ),
+          const AfTrack(
+            id: '5',
+            title: 'Track 5',
+            artistName: 'A',
+            albumName: 'B',
+          ),
+        ];
+        final emitted = <List<AfTrack>>[];
+        final sub = queueManager.queueStream.listen(emitted.add);
+
+        queueManager.replaceQueue(tracks, 0);
+        queueManager.appendAll(additional);
+
+        await Future<void>.delayed(Duration.zero);
+        expect(queueManager.currentQueue.length, 5);
+        expect(queueManager.currentQueue[3].id, '4');
+        expect(queueManager.currentQueue[4].id, '5');
+        expect(emitted.length, 2); // replaceQueue + appendAll
+        await sub.cancel();
+      });
+
+      test('appendAll to empty queue works', () {
+        queueManager.appendAll(tracks);
+        expect(queueManager.currentQueue.length, 3);
+      });
+    });
+
+    group('updateTrackFavorite', () {
+      test('favorite update on current track emits track and queue', () async {
+        queueManager.replaceQueue(tracks, 0);
+        expect(queueManager.currentTrack?.id, '1');
+        expect(queueManager.currentTrack?.isFavorite, isFalse);
+
+        final trackValues = <AfTrack?>[];
+        final sub = queueManager.currentTrackStream.listen(trackValues.add);
+
+        queueManager.updateTrackFavorite('1', true);
+
+        await Future<void>.delayed(Duration.zero);
+        expect(queueManager.currentTrack?.isFavorite, isTrue);
+        expect(trackValues.length, greaterThanOrEqualTo(1));
+        expect(trackValues.last?.isFavorite, isTrue);
+        await sub.cancel();
+      });
+
+      test(
+        'favorite update on non-current track does not emit track stream',
+        () async {
+          queueManager.replaceQueue(tracks, 0);
+
+          final trackValues = <AfTrack?>[];
+          final sub = queueManager.currentTrackStream.listen(trackValues.add);
+
+          queueManager.updateTrackFavorite('2', true);
+
+          await Future<void>.delayed(Duration.zero);
+          // Track stream should not fire for non-current track
+          expect(trackValues, isEmpty);
+          await sub.cancel();
+        },
+      );
+
+      test('favorite update emits on queueStream with updated track', () async {
+        final emitted = <List<AfTrack>>[];
+        final sub = queueManager.queueStream.listen(emitted.add);
+
+        queueManager.replaceQueue(tracks, 0);
+        queueManager.updateTrackFavorite('1', true);
+
+        await Future<void>.delayed(Duration.zero);
+        expect(emitted.length, 2); // replaceQueue + update
+        final updatedTrack = emitted.last.firstWhere((t) => t.id == '1');
+        expect(updatedTrack.isFavorite, isTrue);
+        await sub.cancel();
+      });
+    });
   });
 }

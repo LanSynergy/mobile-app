@@ -75,24 +75,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mode = ref.watch(appModeProvider);
-    final isLocal = mode == AppMode.local;
-    // Both modes route through the MusicBackend abstraction here.
-    // LocalBackend.recentlyAddedAlbums sorts by MAX(last_modified)
-    // so the hero card reflects newly-imported music. (The Library
-    // screen still uses localAlbumsProvider for its alphabetical
-    // "Albums" listing.)
+    final isLocal = ref.watch(appModeProvider) == AppMode.local;
     final albumsAsync = ref.watch(recentlyAddedAlbumsProvider);
-    final recentTracksAsync = isLocal
-        ? ref.watch(localTracksProvider)
-        : ref.watch(recentlyPlayedTracksProvider);
-    final artistsAsync = isLocal
-        ? ref.watch(localArtistsProvider)
-        : ref.watch(allArtistsProvider);
-    final genresAsync = isLocal
-        ? ref.watch(localGenresProvider)
-        : ref.watch(allGenresProvider);
-    final lostMemoriesAsync = ref.watch(lostMemoriesProvider);
 
     return SafeArea(
       child: RefreshIndicator(
@@ -142,227 +126,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
 
-            // Recently played.
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-                child: SectionHeader(
-                  title: 'Recently played',
-                  actionLabel: 'See more',
-                  onActionTap: () => context.go('/library'),
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
-            SliverToBoxAdapter(
-              child: recentTracksAsync.when(
-                data: (tracks) => ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AfSpacing.s16,
-                  ),
-                  itemCount: tracks.take(5).length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: AfSpacing.s4),
-                  itemBuilder: (context, i) {
-                    final t = tracks[i];
-                    return TrackRow(
-                      track: t,
-                      density: TrackRowDensity.generous,
-                      onTap: () => ref.read(playActionsProvider).playSingle(t),
-                      onLongPress: () => showTrackContextMenu(context, ref, t),
-                    );
-                  },
-                ),
-                loading: () => const HomeRecentSkeleton(),
-                error: (e, _) => AsyncErrorView.compact(
-                  label: 'Couldn\u2019t load recently played',
-                  error: e,
-                  height: 80,
-                  onRetry: () => ref.invalidate(
-                    isLocal
-                        ? localTracksProvider
-                        : recentlyPlayedTracksProvider,
-                  ),
-                ),
-              ),
-            ),
+            _RecentTracksSection(isLocal: isLocal),
 
-            // Lost memories.
-            lostMemoriesAsync.when(
-              data: (tracks) {
-                if (tracks.isEmpty) {
-                  return const SliverToBoxAdapter(child: SizedBox.shrink());
-                }
-                return SliverList(
-                  delegate: SliverChildListDelegate([
-                    const SizedBox(height: AfSpacing.sectionGap),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AfSpacing.s16,
-                      ),
-                      child: SectionHeader(
-                        title: 'Lost memories',
-                        actionLabel: 'Play all',
-                        onActionTap: () =>
-                            ref.read(playActionsProvider).playQueue(tracks),
-                      ),
-                    ),
-                    const SizedBox(height: AfSpacing.s12),
-                    SizedBox(
-                      height: 172,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AfSpacing.s16,
-                        ),
-                        itemCount: tracks.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(width: AfSpacing.s12),
-                        itemBuilder: (context, i) {
-                          final t = tracks[i];
-                          return Tile(
-                            title: t.title,
-                            subtitle: t.artistName,
-                            variant: TileVariant.album,
-                            imageUrl: t.imageUrl,
-                            size: 100,
-                            onTap: () =>
-                                ref.read(playActionsProvider).playSingle(t),
-                            onLongPress: () =>
-                                showTrackContextMenu(context, ref, t),
-                          );
-                        },
-                      ),
-                    ),
-                  ]),
-                );
-              },
-              loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-              error: (e, _) =>
-                  const SliverToBoxAdapter(child: SizedBox.shrink()),
-            ),
+            const _LostMemoriesSection(),
 
             const SliverToBoxAdapter(
               child: SizedBox(height: AfSpacing.sectionGap),
             ),
 
-            // Artists.
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-                child: SectionHeader(
-                  title: 'Artists',
-                  actionLabel: 'See more',
-                  onActionTap: () {
-                    ref.read(songsPillProvider.notifier).state =
-                        SongsPill.artists;
-                    context.go('/library');
-                  },
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
-            SliverToBoxAdapter(
-              child: artistsAsync.when(
-                loading: () => const HomeArtistsSkeleton(),
-                error: (e, _) => AsyncErrorView.compact(
-                  label: 'Couldn\u2019t load artists',
-                  error: e,
-                  height: 172,
-                  onRetry: () => ref.invalidate(
-                    isLocal ? localArtistsProvider : allArtistsProvider,
-                  ),
-                ),
-                data: (artists) => SizedBox(
-                  height: 172,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AfSpacing.s16,
-                    ),
-                    itemCount: artists.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(width: AfSpacing.s12),
-                    itemBuilder: (context, i) {
-                      final a = artists[i];
-                      return Tile(
-                        title: a.name,
-                        subtitle: '${a.albumCount} albums',
-                        variant: TileVariant.artist,
-                        imageUrl: a.imageUrl,
-                        size: 100,
-                        onTap: () {
-                          ref.read(songsPillProvider.notifier).state =
-                              SongsPill.artists;
-                          context.go('/library');
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
+            _ArtistsSection(isLocal: isLocal),
 
             const SliverToBoxAdapter(
               child: SizedBox(height: AfSpacing.sectionGap),
             ),
 
-            // Genres.
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-                child: SectionHeader(
-                  title: 'Genres',
-                  actionLabel: 'See more',
-                  onActionTap: () {
-                    ref.read(songsPillProvider.notifier).state =
-                        SongsPill.genres;
-                    context.go('/library');
-                  },
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 96,
-                child: genresAsync.when(
-                  data: (genres) => ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AfSpacing.s16,
-                    ),
-                    itemCount: genres.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(width: AfSpacing.s12),
-                    itemBuilder: (context, i) {
-                      final g = genres[i];
-                      return GenreTile(
-                        name: g.name,
-                        tint: _hex(g.tint),
-                        imageUrl: g.imageUrl,
-                        onTap: () {
-                          ref.read(songsPillProvider.notifier).state =
-                              SongsPill.genres;
-                          context.go('/library');
-                        },
-                      );
-                    },
-                  ),
-                  loading: () => const SizedBox.shrink(),
-                  error: (e, _) => AsyncErrorView.compact(
-                    label: 'Couldn\u2019t load genres',
-                    error: e,
-                    height: 96,
-                    onRetry: () => ref.invalidate(
-                      isLocal ? localGenresProvider : allGenresProvider,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            _GenresSection(isLocal: isLocal),
 
             const SliverToBoxAdapter(
               child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
@@ -372,27 +150,265 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
+}
 
-  Color _hex(String hex) {
-    try {
-      final cleaned = hex.replaceFirst('#', '');
-      if (cleaned.length != 6 && cleaned.length != 8) return AfColors.indigo600;
-      final value = int.parse(
-        cleaned.length == 6 ? 'FF$cleaned' : cleaned,
-        radix: 16,
-      );
-      return Color(value);
-    } catch (_) {
-      return AfColors.indigo600;
-    }
+// ---------------------------------------------------------------------------
+// Extracted section widgets
+// ---------------------------------------------------------------------------
+
+/// Top-5 recently played tracks with header.
+class _RecentTracksSection extends ConsumerWidget {
+  const _RecentTracksSection({required this.isLocal});
+  final bool isLocal;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tracksAsync = isLocal
+        ? ref.watch(localTracksProvider)
+        : ref.watch(recentlyPlayedTracksProvider);
+    return Column(
+      children: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+            child: SectionHeader(
+              title: 'Recently played',
+              actionLabel: 'See more',
+              onActionTap: () => context.go('/library'),
+            ),
+          ),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
+        SliverToBoxAdapter(
+          child: tracksAsync.when(
+            data: (tracks) => ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+              itemCount: tracks.take(5).length,
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: AfSpacing.s4),
+              itemBuilder: (context, i) {
+                final t = tracks[i];
+                return TrackRow(
+                  track: t,
+                  density: TrackRowDensity.generous,
+                  onTap: () => ref.read(playActionsProvider).playSingle(t),
+                  onLongPress: () => showTrackContextMenu(context, ref, t),
+                );
+              },
+            ),
+            loading: () => const HomeRecentSkeleton(),
+            error: (e, _) => AsyncErrorView.compact(
+              label: 'Couldn\'t load recently played',
+              error: e,
+              height: 80,
+              onRetry: () => ref.invalidate(
+                isLocal ? localTracksProvider : recentlyPlayedTracksProvider,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Horizontal scroll of recently played-but-old tracks (lost memories).
+class _LostMemoriesSection extends ConsumerWidget {
+  const _LostMemoriesSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tracksAsync = ref.watch(lostMemoriesProvider);
+    return tracksAsync.when(
+      data: (tracks) {
+        if (tracks.isEmpty) {
+          return const SliverToBoxAdapter(child: SizedBox.shrink());
+        }
+        return SliverList(
+          delegate: SliverChildListDelegate([
+            const SizedBox(height: AfSpacing.sectionGap),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+              child: SectionHeader(
+                title: 'Lost memories',
+                actionLabel: 'Play all',
+                onActionTap: () =>
+                    ref.read(playActionsProvider).playQueue(tracks),
+              ),
+            ),
+            const SizedBox(height: AfSpacing.s12),
+            SizedBox(
+              height: 172,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+                itemCount: tracks.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(width: AfSpacing.s12),
+                itemBuilder: (context, i) {
+                  final t = tracks[i];
+                  return Tile(
+                    title: t.title,
+                    subtitle: t.artistName,
+                    variant: TileVariant.album,
+                    imageUrl: t.imageUrl,
+                    size: 100,
+                    onTap: () => ref.read(playActionsProvider).playSingle(t),
+                    onLongPress: () => showTrackContextMenu(context, ref, t),
+                  );
+                },
+              ),
+            ),
+          ]),
+        );
+      },
+      loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      error: (e, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+    );
+  }
+}
+
+/// Horizontal scroll of artists with section header.
+class _ArtistsSection extends ConsumerWidget {
+  const _ArtistsSection({required this.isLocal});
+  final bool isLocal;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final artistsAsync = isLocal
+        ? ref.watch(localArtistsProvider)
+        : ref.watch(allArtistsProvider);
+    return Column(
+      children: [
+        const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.sectionGap)),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+            child: SectionHeader(
+              title: 'Artists',
+              actionLabel: 'See more',
+              onActionTap: () {
+                ref.read(songsPillProvider.notifier).state = SongsPill.artists;
+                context.go('/library');
+              },
+            ),
+          ),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
+        SliverToBoxAdapter(
+          child: artistsAsync.when(
+            loading: () => const HomeArtistsSkeleton(),
+            error: (e, _) => AsyncErrorView.compact(
+              label: 'Couldn\'t load artists',
+              error: e,
+              height: 172,
+              onRetry: () => ref.invalidate(
+                isLocal ? localArtistsProvider : allArtistsProvider,
+              ),
+            ),
+            data: (artists) => SizedBox(
+              height: 172,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+                itemCount: artists.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(width: AfSpacing.s12),
+                itemBuilder: (context, i) {
+                  final a = artists[i];
+                  return Tile(
+                    title: a.name,
+                    subtitle: '${a.albumCount} albums',
+                    variant: TileVariant.artist,
+                    imageUrl: a.imageUrl,
+                    size: 100,
+                    onTap: () {
+                      ref.read(songsPillProvider.notifier).state =
+                          SongsPill.artists;
+                      context.go('/library');
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Horizontal scroll of genre chips with section header.
+class _GenresSection extends ConsumerWidget {
+  const _GenresSection({required this.isLocal});
+  final bool isLocal;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final genresAsync = isLocal
+        ? ref.watch(localGenresProvider)
+        : ref.watch(allGenresProvider);
+    return Column(
+      children: [
+        const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.sectionGap)),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+            child: SectionHeader(
+              title: 'Genres',
+              actionLabel: 'See more',
+              onActionTap: () {
+                ref.read(songsPillProvider.notifier).state = SongsPill.genres;
+                context.go('/library');
+              },
+            ),
+          ),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 96,
+            child: genresAsync.when(
+              data: (genres) => ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+                itemCount: genres.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(width: AfSpacing.s12),
+                itemBuilder: (context, i) {
+                  final g = genres[i];
+                  return GenreTile(
+                    name: g.name,
+                    tint: _hex(g.tint),
+                    imageUrl: g.imageUrl,
+                    onTap: () {
+                      ref.read(songsPillProvider.notifier).state =
+                          SongsPill.genres;
+                      context.go('/library');
+                    },
+                  );
+                },
+              ),
+              loading: () => const SizedBox.shrink(),
+              error: (e, _) => AsyncErrorView.compact(
+                label: 'Couldn\'t load genres',
+                error: e,
+                height: 96,
+                onRetry: () => ref.invalidate(
+                  isLocal ? localGenresProvider : allGenresProvider,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
 /// Swipeable carousel of hero album cards with a dot indicator.
-///
-/// Uses `viewportFraction: 0.92` so the next card peeks in from the
-/// right edge — gives the user a clear affordance that the section is
-/// swipeable without needing explicit "swipe" hints.
 class _HeroAlbumCarousel extends ConsumerStatefulWidget {
   const _HeroAlbumCarousel({required this.albums});
   final List<AfAlbum> albums;
@@ -419,8 +435,6 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
     return Column(
       children: [
         SizedBox(
-          // Must match HeroAlbumCard's minHeight (192) so the PageView
-          // allocates enough vertical space for two-line titles.
           height: 192,
           child: PageView.builder(
             controller: _pageController,
@@ -471,5 +485,20 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
         ],
       ],
     );
+  }
+}
+
+/// Parses a hex colour string (6 or 8 digits with optional #) into a [Color].
+Color _hex(String hex) {
+  try {
+    final cleaned = hex.replaceFirst('#', '');
+    if (cleaned.length != 6 && cleaned.length != 8) return AfColors.indigo600;
+    final value = int.parse(
+      cleaned.length == 6 ? 'FF$cleaned' : cleaned,
+      radix: 16,
+    );
+    return Color(value);
+  } catch (_) {
+    return AfColors.indigo600;
   }
 }

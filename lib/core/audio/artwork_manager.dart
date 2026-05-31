@@ -84,6 +84,10 @@ class AfArtworkManager {
   /// Memory cache: trackId -> file path
   final Map<String, String> _memoryCache = {};
 
+  /// Set of trackIds whose disk cache file has been confirmed to exist.
+  /// Avoids repeated `existsSync()` + `statSync()` calls in the hot path.
+  final Set<String> _diskCacheChecked = {};
+
   /// Disk cache directory
   String? _diskCacheDir;
 
@@ -165,8 +169,9 @@ class AfArtworkManager {
       _networkCoverPath = null;
       _networkCoverTrackId = null;
 
-      // Clear memory cache for embedded art as it's higher quality
-      _memoryCache.clear();
+      // Don't clear memory cache — _coverPath is checked first in artUri()
+      // (step 2) before the memory cache (step 1), so entries for other
+      // tracks are preserved for fast back-navigation.
 
       onArtworkChanged?.call();
     } catch (e) {
@@ -193,18 +198,37 @@ class AfArtworkManager {
   }
 
   /// Get path for disk cached artwork
+  ///
+  /// Uses [_diskCacheChecked] to avoid redundant `existsSync()` + `statSync()`
+  /// calls on confirmed-cached files. If the file was evicted between checks,
+  /// the stale entry is removed from the set and the method falls back to a
+  /// full stat cycle.
   String? _getDiskCachedPath(String trackId) {
     if (_diskCacheDir == null) return null;
-    final cacheFile = File('$_diskCacheDir/$trackId');
+    final cachePath = '$_diskCacheDir/$trackId';
+
+    // Fast path: file was confirmed to exist in a prior call.
+    // Still verify with existsSync in case LRU eviction removed it.
+    if (_diskCacheChecked.contains(trackId)) {
+      if (File(cachePath).existsSync()) {
+        return cachePath;
+      }
+      // Stale entry — remove from set, fall through to full check.
+      _diskCacheChecked.remove(trackId);
+    }
+
+    final cacheFile = File(cachePath);
     if (cacheFile.existsSync()) {
       try {
         final stat = cacheFile.statSync();
         final ageDays = DateTime.now().difference(stat.modified).inDays;
         if (ageDays <= _cacheTTL.inDays) {
+          _diskCacheChecked.add(trackId);
           return cacheFile.path;
         } else {
           // Expired, delete
           cacheFile.deleteSync();
+          _diskCacheChecked.remove(trackId);
         }
       } catch (e) {
         afLog('audio', 'Failed to check disk cache for $trackId', error: e);

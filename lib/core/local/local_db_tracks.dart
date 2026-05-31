@@ -198,49 +198,39 @@ class TrackRepository {
     String seedId, {
     int limit = 50,
   }) async {
-    final seed = await trackById(seedId);
-    if (seed == null) return const [];
-
-    final seedArtist = seed.artistName;
-    final seedRow = await (db.select(
-      db.tracks,
-    )..where((t) => t.id.equals(seedId))).getSingleOrNull();
-    if (seedRow == null) return const [];
-
-    final genre = seedRow.genre;
-    final year = seedRow.year;
-
+    // Single query with subqueries to fetch seed metadata inline.
+    // Eliminates the redundant trackById + seed SELECT.
     final rows = await db
         .customSelect(
           r'''
       SELECT * FROM (
-        SELECT *, (
-          (CASE WHEN artist = ?2 OR album_artist = ?2 THEN 5 ELSE 0 END) +
-          (CASE WHEN genre = ?3 AND genre != '' THEN 4 ELSE 0 END) +
-          (CASE WHEN year IS NOT NULL AND ?4 IS NOT NULL AND ABS(year - ?4) <= 3 THEN 3 ELSE 0 END) +
+        SELECT t.*, (
+          (CASE WHEN t.artist = (SELECT s.artist FROM tracks s WHERE s.id = ?1)
+                 OR t.album_artist = (SELECT s.artist FROM tracks s WHERE s.id = ?1)
+                THEN 5 ELSE 0 END) +
+          (CASE WHEN t.genre = (SELECT s.genre FROM tracks s WHERE s.id = ?1)
+                 AND t.genre != '' THEN 4 ELSE 0 END) +
+          (CASE WHEN t.year IS NOT NULL
+                  AND (SELECT s.year FROM tracks s WHERE s.id = ?1) IS NOT NULL
+                  AND ABS(t.year - (SELECT s.year FROM tracks s WHERE s.id = ?1)) <= 3
+                THEN 3 ELSE 0 END) +
           MIN(12, 3 * COALESCE(
             (SELECT COUNT(*) 
              FROM playback_history h1
              JOIN playback_history h2 ON h1.track_id = ?1 
-                                     AND h2.track_id = tracks.id 
+                                     AND h2.track_id = t.id 
                                      AND ABS(h1.played_at - h2.played_at) <= 3600000), 
             0
           ))
         ) AS similarity_score
-        FROM tracks
-        WHERE id != ?1
+        FROM tracks t
+        WHERE t.id != ?1
       )
       WHERE similarity_score > 0
       ORDER BY similarity_score DESC, random()
-      LIMIT ?5
+      LIMIT ?2
       ''',
-          variables: [
-            Variable<String>(seedId),
-            Variable<String>(seedArtist),
-            Variable<String>(genre),
-            Variable<int>(year),
-            Variable<int>(limit),
-          ],
+          variables: [Variable<String>(seedId), Variable<int>(limit)],
           readsFrom: {db.tracks, db.playbackHistory},
         )
         .get();

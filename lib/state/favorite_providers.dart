@@ -11,16 +11,20 @@ void _logData(String feature, {required String source, String? extra}) {
   afLog('data', '$feature source=$source$detail');
 }
 
-/// Track-level favorite overrides written immediately on heart toggle.
-final trackFavoriteOverridesProvider = StateProvider<Map<String, bool>>(
-  (ref) => const {},
+/// Per-track favorite override for optimistic UI updates.
+///
+/// Each track gets its own state (null = no override, true/false = override).
+/// Using `.family` means only the specific track's watchers rebuild on toggle,
+/// instead of every track in the library.
+final trackFavoriteOverrideProvider = StateProvider.family<bool?, String>(
+  (ref, trackId) => null,
 );
 
-/// Derives the favorite state for a specific track by merging overrides
-/// (from optimistic UI) with the server/library favorite IDs.
+/// Derives the favorite state for a specific track by merging per-track
+/// overrides (from optimistic UI) with the server/library favorite IDs.
 final isFavoriteProvider = Provider.family<bool, String>((ref, trackId) {
-  final overrides = ref.watch(trackFavoriteOverridesProvider);
-  if (overrides.containsKey(trackId)) return overrides[trackId]!;
+  final override = ref.watch(trackFavoriteOverrideProvider(trackId));
+  if (override != null) return override;
   final favIds = ref.watch(favoriteIdsProvider);
   return favIds.contains(trackId);
 });
@@ -42,12 +46,10 @@ final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
     }
 
     final backend = ref.read(musicBackendProvider);
-    final overrides = ref.read(trackFavoriteOverridesProvider);
-    final wasFavorite = overrides[track.id] ?? track.isFavorite;
+    final override = ref.read(trackFavoriteOverrideProvider(track.id));
+    final wasFavorite = override ?? track.isFavorite;
     final next = !wasFavorite;
-    ref
-        .read(trackFavoriteOverridesProvider.notifier)
-        .update((s) => {...s, track.id: next});
+    ref.read(trackFavoriteOverrideProvider(track.id).notifier).state = next;
 
     if (backend == null) {
       _logData(
@@ -98,9 +100,8 @@ final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
         ref.invalidate(recentlyPlayedTracksProvider);
       } catch (e, stack) {
         afLog('error', 'favoriteToggle failed', error: e, stackTrace: stack);
-        ref
-            .read(trackFavoriteOverridesProvider.notifier)
-            .update((s) => {...s, track.id: wasFavorite});
+        ref.read(trackFavoriteOverrideProvider(track.id).notifier).state =
+            wasFavorite;
         rethrow;
       }
     })();

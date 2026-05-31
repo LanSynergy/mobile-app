@@ -27,7 +27,12 @@ class SmartPlaylistDb {
   }
 
   Future<SmartPlaylist> save(SmartPlaylist playlist) async {
-    final isNew = (await getById(playlist.id)) == null;
+    final isNew =
+        await (db.select(db.smartPlaylists)
+              ..where((t) => t.id.equals(playlist.id))
+              ..limit(1))
+            .get()
+            .then((rows) => rows.isEmpty);
     final id = isNew && playlist.id.isEmpty ? const Uuid().v4() : playlist.id;
     final updated = playlist.copyWith(
       id: id,

@@ -59,8 +59,6 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
     final detailAsync = ref.watch(albumDetailProvider(widget.albumId));
     final activeTrack = ref.watch(currentTrackProvider);
     final activeId = activeTrack?.id;
-    final isBuffering = ref.watch(isBufferingProvider);
-    final activeAccent = ref.watch(currentSpectralProvider).energy;
 
     final detail = detailAsync.valueOrNull;
     final wikiAsync = detail != null
@@ -193,22 +191,11 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                       itemCount: tracks.length,
                       separatorBuilder: (context, index) =>
                           const SizedBox(height: AfSpacing.s4),
-                      itemBuilder: (context, i) => Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AfSpacing.s16,
-                        ),
-                        child: TrackRow(
-                          track: tracks[i],
-                          leadingNumber: i + 1,
-                          isActive: tracks[i].id == activeId,
-                          isBuffering: tracks[i].id == activeId && isBuffering,
-                          activeAccent: activeAccent,
-                          onTap: () => ref
-                              .read(playActionsProvider)
-                              .playQueue(tracks, startIndex: i),
-                          onLongPress: () =>
-                              showTrackContextMenu(context, ref, tracks[i]),
-                        ),
+                      itemBuilder: (context, i) => _TrackRowItem(
+                        track: tracks[i],
+                        index: i,
+                        activeId: activeId,
+                        tracks: tracks,
                       ),
                     ),
                     wikiAsync.maybeWhen(
@@ -512,6 +499,44 @@ class _IconCircle extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         child: Icon(icon, size: 22, color: color ?? AfColors.textPrimary),
+      ),
+    );
+  }
+}
+
+/// Track row wrapper that watches playback state providers internally.
+/// Prevents the entire AlbumScreen root from rebuilding on every
+/// buffering/spectral change — only this leaf widget rebuilds.
+class _TrackRowItem extends ConsumerWidget {
+  const _TrackRowItem({
+    required this.track,
+    required this.index,
+    required this.activeId,
+    required this.tracks,
+  });
+
+  final AfTrack track;
+  final int index;
+  final String? activeId;
+  final List<AfTrack> tracks;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isBuffering = ref.watch(isBufferingProvider);
+    final activeAccent = ref.watch(currentSpectralProvider).energy;
+    final isActive = track.id == activeId;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+      child: TrackRow(
+        track: track,
+        leadingNumber: index + 1,
+        isActive: isActive,
+        isBuffering: isActive && isBuffering,
+        activeAccent: activeAccent,
+        onTap: () =>
+            ref.read(playActionsProvider).playQueue(tracks, startIndex: index),
+        onLongPress: () => showTrackContextMenu(context, ref, track),
       ),
     );
   }
