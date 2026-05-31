@@ -84,7 +84,7 @@ class LocalLibrary {
 
   Future<List<AfArtist>> artists() => _db.allArtists();
 
-  Future<List<AfTrack>> tracks({int limit = 5000}) =>
+  Future<List<AfTrack>> tracks({int limit = 500}) =>
       _db.allTracks(limit: limit);
 
   Future<List<AfGenre>> genres() => _db.allGenres();

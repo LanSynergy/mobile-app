@@ -96,7 +96,7 @@ class LocalDb {
 
   // ── Tracks Query ────────────────────────────────────────────────────────
 
-  Future<List<AfTrack>> allTracks({int limit = 5000, int offset = 0}) =>
+  Future<List<AfTrack>> allTracks({int limit = 500, int offset = 0}) =>
       tracks.allTracks(limit: limit, offset: offset);
 
   Future<AfTrack?> trackById(String id) => tracks.trackById(id);
