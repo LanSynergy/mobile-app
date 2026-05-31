@@ -202,7 +202,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -223,6 +223,8 @@ class AppDatabase extends _$AppDatabase {
             'ON tracks (genre)',
         'CREATE INDEX IF NOT EXISTS idx_tracks_last_modified '
             'ON tracks (last_modified)',
+        'CREATE INDEX IF NOT EXISTS idx_playback_history_played_at '
+            'ON playback_history (played_at)',
       ]) {
         try {
           await db.customStatement(stmt);
@@ -288,6 +290,18 @@ class AppDatabase extends _$AppDatabase {
           } on Exception {
             // Table may not exist — skip index, no data loss.
           }
+        }
+      }
+      if (from < 11) {
+        // Index on played_at for ORDER BY queries in _getRecentlyPlayedIds
+        // and getLostMemories.
+        try {
+          await m.database.customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_playback_history_played_at '
+            'ON playback_history (played_at)',
+          );
+        } on Exception {
+          // Table may not exist — skip index, no data loss.
         }
       }
     },
