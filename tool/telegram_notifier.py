@@ -49,11 +49,11 @@ def get_header(icon="\U0001f528"):
         parts.append(f"<b>Mode:</b> <code>{mode}</code>")
     parts.append(f"<b>Build ID:</b> <code>{build_id}</code>")
     if sha and commit:
-        parts.append("\u2500" * 30)
+        parts.append("\u2500" * 12)
         parts.append(f"<b>Last Commit:</b>")
         parts.append(f"<code>{sha}</code> \u2014 {commit}")
     parts.append(f"<b>Triggered by:</b> <code>{actor}</code>")
-    parts.append("\u2500" * 30)
+    parts.append("\u2500" * 12)
     if timestamp:
         parts.append(f"<i>{timestamp}</i>")
 
@@ -136,7 +136,7 @@ def send_apk():
 
     caption_lines = [
         "\u2705 <b>Aetherfin Build Successful!</b>",
-        "\u2500" * 30,
+        "\u2500" * 12,
         "<b>App:</b> <code>{name}</code>",
         "<b>Mode:</b> <code>{mode}</code>",
         "<b>Size:</b> <code>{size}</code>",
@@ -147,7 +147,7 @@ def send_apk():
         "",
         "<b>Last Commit:</b>",
         "<code>{sha}</code> \u2014 {commit}",
-        "\u2500" * 30,
+        "\u2500" * 12,
         "<i>{timestamp}</i>",
     ]
 
@@ -213,11 +213,11 @@ def fail_message():
 
     text = (
         "\u274c <b>Aetherfin Build Failed!</b>\n"
-        "\u2500" * 30 + "\n"
+        "\u2500" * 12 + "\n"
         f"<b>Branch:</b> <code>{branch}</code>\n"
         f"<b>Build ID:</b> <code>{build_id}</code>\n"
         f"<b>Triggered by:</b> <code>{actor}</code>\n"
-        "\u2500" * 30 + "\n"
+        "\u2500" * 12 + "\n"
         "<blockquote>Build failed during compilation or testing.</blockquote>"
     )
 
@@ -259,10 +259,10 @@ def send_text():
 
     text = (
         "\u2705 <b>Aetherfin Build Successful!</b>\n"
-        "\u2500" * 30 + "\n"
+        "\u2500" * 12 + "\n"
         "<blockquote>Build completed, but the APK exceeds Telegram's 50 MB limit "
         "or was not found. Download from CI artifacts instead.</blockquote>\n"
-        "\u2500" * 30 + "\n"
+        "\u2500" * 12 + "\n"
         "<i>{timestamp}</i>"
     ).format(
         timestamp=os.environ.get('TG_TIMESTAMP', ''),
@@ -348,13 +348,13 @@ def release_success():
 
     text = (
         "\U0001f680 <b>Aetherfin Release Successful!</b>\n"
-        "\u2500" * 30 + "\n"
+        "\u2500" * 12 + "\n"
         f"<b>Tag:</b> <code>{tag}</code>\n"
         f"<b>Branch:</b> <code>{branch}</code>\n"
         f"<b>Triggered by:</b> <code>{actor}</code>\n"
-        "\u2500" * 30 + "\n"
+        "\u2500" * 12 + "\n"
         "\U00002705 Release published successfully!\n"
-        "\u2500" * 30 + "\n"
+        "\u2500" * 12 + "\n"
         f"<i>{timestamp}</i>"
     )
 
@@ -403,11 +403,11 @@ def release_fail():
 
     text = (
         "\u274c <b>Aetherfin Release Failed!</b>\n"
-        "\u2500" * 30 + "\n"
+        "\u2500" * 12 + "\n"
         f"<b>Tag:</b> <code>{tag}</code>\n"
         f"<b>Branch:</b> <code>{branch}</code>\n"
         f"<b>Triggered by:</b> <code>{actor}</code>\n"
-        "\u2500" * 30 + "\n"
+        "\u2500" * 12 + "\n"
         "<blockquote>Release failed during the workflow.</blockquote>"
     )
 

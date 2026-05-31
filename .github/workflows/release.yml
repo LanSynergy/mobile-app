@@ -19,6 +19,9 @@ on:
         type: boolean
         default: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write   # commit pubspec bump, push tag, publish release
 
@@ -207,6 +210,12 @@ jobs:
           echo ""
           echo "Total size:"
           du -sh release-artifacts/
+
+      - name: Notify Telegram — Init
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python3 tool/telegram_notifier.py init
 
       - name: Notify Telegram — Creating release
         env:
