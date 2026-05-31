@@ -8,6 +8,9 @@ on:
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 # Allow only one concurrent deployment, skip runs queued between an
 # in-progress run and the latest queued run.
 concurrency:
