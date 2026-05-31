@@ -45,7 +45,7 @@ class SharedDioClient {
     );
 
     // Add retry interceptor for transient failures
-    _dio.interceptors.add(_RetryInterceptor());
+    _dio.interceptors.add(_RetryInterceptor(_dio));
   }
 
   /// Factory constructor returns the singleton instance
@@ -55,10 +55,6 @@ class SharedDioClient {
 
   final Dio _dio;
   final MemCacheStore _cacheStore;
-
-  /// Shared HttpClient adapter with connection pooling.
-  /// Reused by [createWithOptions] so custom Dio instances share the pool.
-  final IOHttpClientAdapter _httpClientAdapter = _createAdapter();
 
   static IOHttpClientAdapter _createAdapter() {
     return IOHttpClientAdapter()
@@ -77,12 +73,11 @@ class SharedDioClient {
   /// Returns the cache store for direct access (e.g., manual cache clearing)
   MemCacheStore get cacheStore => _cacheStore;
 
-  /// Creates a Dio instance with custom base options but shared connection pooling.
-  /// Reuses the singleton's [IOHttpClientAdapter] so connections are pooled
-  /// across all backend clients (Jellyfin, Subsonic, Navidrome).
+  /// Creates a Dio instance with its own adapter so that [Dio.close]
+  /// on one backend client does not kill the adapter used by another.
   Dio createWithOptions(BaseOptions options) {
     final customDio = Dio(options);
-    customDio.httpClientAdapter = _httpClientAdapter;
+    customDio.httpClientAdapter = _createAdapter();
     return customDio;
   }
 
@@ -106,6 +101,8 @@ class SharedDioClient {
 /// Retries on connection timeouts, connection errors, and server errors
 /// (500, 502, 503, 504) with exponential backoff: 1s, 2s, 4s. Max 3 retries.
 class _RetryInterceptor extends Interceptor {
+  _RetryInterceptor(this._dio);
+  final Dio _dio;
   static const _maxRetries = 3;
   static const _retryDelays = [
     Duration(seconds: 1),
@@ -128,9 +125,13 @@ class _RetryInterceptor extends Interceptor {
         final options = err.requestOptions;
         options.extra['_retryCount'] = retryCount + 1;
         try {
-          final response = await Dio().fetch(options);
+          final response = await _dio.fetch(options);
           return handler.resolve(response);
-        } catch (_) {
+        } catch (retryErr) {
+          dev.log(
+            'Retry ${retryCount + 1}/$_maxRetries failed: $retryErr',
+            name: 'aetherfin:http',
+          );
           // Fall through to next retry or final error
         }
       }

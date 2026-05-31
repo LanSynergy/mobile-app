@@ -47,50 +47,77 @@ class AsyncErrorView extends StatelessWidget {
   /// renders a centered column with vertical breathing room.
   final double? compactHeight;
 
+  void _showFullError(BuildContext context) {
+    final fullText = displayError(error);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(label),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            fullText,
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textSecondary,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final compactHeight = this.compactHeight;
     if (compactHeight != null) {
-      return SizedBox(
-        height: compactHeight,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.cloud_off_rounded,
-                color: AfColors.semanticError,
-                size: 20,
-              ),
-              const SizedBox(width: AfSpacing.s8),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AfTypography.bodyMedium.copyWith(
-                        color: AfColors.textPrimary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      displayError(error),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AfTypography.caption.copyWith(
-                        color: AfColors.textSecondary,
-                      ),
-                    ),
-                  ],
+      return GestureDetector(
+        onLongPress: () => _showFullError(context),
+        child: SizedBox(
+          height: compactHeight,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.cloud_off_rounded,
+                  color: AfColors.semanticError,
+                  size: 20,
                 ),
-              ),
-              const SizedBox(width: AfSpacing.s8),
-              TextButton(onPressed: onRetry, child: const Text('Retry')),
-            ],
+                const SizedBox(width: AfSpacing.s8),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AfTypography.bodyMedium.copyWith(
+                          color: AfColors.textPrimary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        displayError(error),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AfTypography.caption.copyWith(
+                          color: AfColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AfSpacing.s8),
+                TextButton(onPressed: onRetry, child: const Text('Retry')),
+              ],
+            ),
           ),
         ),
       );
@@ -117,13 +144,16 @@ class AsyncErrorView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AfSpacing.s4),
-            Text(
-              displayError(error),
-              textAlign: TextAlign.center,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: AfTypography.bodySmall.copyWith(
-                color: AfColors.textSecondary,
+            GestureDetector(
+              onLongPress: () => _showFullError(context),
+              child: Text(
+                displayError(error),
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textSecondary,
+                ),
               ),
             ),
             const SizedBox(height: AfSpacing.s16),
