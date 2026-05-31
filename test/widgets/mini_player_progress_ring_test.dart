@@ -16,7 +16,7 @@ import 'package:aetherfin/widgets/mini_player.dart';
 import 'package:aetherfin/state/player_providers.dart';
 import 'package:aetherfin/state/spectral_providers.dart';
 
-import 'helpers/fake_player.dart';
+import '../helpers/fake_player.dart';
 
 void main() {
   setUpAll(() {

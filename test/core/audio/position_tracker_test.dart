@@ -5,7 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import 'package:aetherfin/core/audio/position_tracker.dart';
-import 'helpers/fake_player.dart';
+import '../../helpers/fake_player.dart';
 
 void main() {
   setUpAll(() {

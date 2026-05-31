@@ -9,7 +9,7 @@ import 'package:aetherfin/core/audio/media_session_bridge.dart';
 import 'package:aetherfin/core/audio/player_service.dart';
 import 'package:aetherfin/features/settings/settings_sections.dart';
 import 'package:aetherfin/state/providers.dart';
-import 'helpers/fake_player.dart';
+import '../../helpers/fake_player.dart';
 
 class MockMethodChannel extends Mock implements MethodChannel {}
 

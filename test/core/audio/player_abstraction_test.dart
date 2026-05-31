@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-import 'helpers/fake_player.dart';
+import '../../helpers/fake_player.dart';
 
 void main() {
   setUpAll(() {

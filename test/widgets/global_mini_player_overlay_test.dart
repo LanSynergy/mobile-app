@@ -12,7 +12,7 @@ import 'package:aetherfin/widgets/global_mini_player_overlay.dart';
 import 'package:aetherfin/widgets/mini_player.dart';
 import 'package:aetherfin/state/providers.dart';
 import 'package:aetherfin/app/router.dart';
-import 'helpers/fake_player.dart';
+import '../helpers/fake_player.dart';
 
 class MockMethodChannel extends Mock implements MethodChannel {}
 

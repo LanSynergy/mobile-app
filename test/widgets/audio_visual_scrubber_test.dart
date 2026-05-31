@@ -16,7 +16,7 @@ import 'package:aetherfin/core/audio/player_service.dart';
 import 'package:aetherfin/state/providers.dart';
 import 'package:aetherfin/widgets/audio_visual_scrubber.dart';
 
-import 'helpers/fake_player.dart';
+import '../helpers/fake_player.dart';
 
 /// Creates a mock player wired for spectrum testing.
 ///

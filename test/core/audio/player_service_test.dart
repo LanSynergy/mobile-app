@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:aetherfin/core/audio/media_session_bridge.dart';
 import 'package:aetherfin/core/audio/player_service.dart';
 import 'package:aetherfin/core/jellyfin/models/items.dart';
-import 'helpers/fake_player.dart';
+import '../../helpers/fake_player.dart';
 
 class MockMethodChannel extends Mock implements MethodChannel {}
 
