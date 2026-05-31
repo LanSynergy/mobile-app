@@ -1,7 +1,8 @@
 import 'dart:async' show unawaited, Timer, StreamSubscription;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop, MpvPlayerError;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart'
+    show Loop, MpvPlayerError, FftFrame;
 
 import '../core/audio/af_loop_mode.dart';
 import '../core/audio/jellyfin_playback_reporter.dart';
@@ -505,4 +506,25 @@ final forNtimesModeProvider = StateProvider<bool>((ref) => false);
 
 final hasActivePlaybackProvider = Provider<bool>((ref) {
   return ref.watch(currentTrackProvider) != null;
+});
+
+/// Shared FFT frame provider — wraps the player's spectrum stream as a
+/// broadcast stream so visualizer and artwork pulse share one subscription.
+final fftFrameProvider = StreamProvider.autoDispose<FftFrame?>((ref) {
+  final svc = ref.watch(playerServiceProvider);
+  return svc.spectrumStream.asBroadcastStream().map((f) => f as FftFrame?);
+});
+
+/// Sub-bass energy derived from the first 7 post-DC FFT bands.
+/// Used by the artwork pulse for kick-drum transient detection.
+final bassEnergyProvider = Provider.autoDispose<double>((ref) {
+  final frame = ref.watch(fftFrameProvider).valueOrNull;
+  if (frame == null || frame.bands.isEmpty) return 0.0;
+  final int hi = frame.bands.length < 7 ? frame.bands.length : 7;
+  double max = 0.0;
+  for (var i = 1; i < hi; i++) {
+    final v = frame.bands[i].abs();
+    if (v > max) max = v;
+  }
+  return max;
 });

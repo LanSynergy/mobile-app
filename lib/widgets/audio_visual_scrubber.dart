@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart' show FftFrame;
 
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
@@ -37,7 +36,6 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
   late final _BlockNotifier _fftNotifier;
   late final _ScrubNotifier _scrubNotifier;
   late final AnimationController _ticker;
-  StreamSubscription<FftFrame>? _fftSub;
   Timer? _silenceTimer;
   Animation<double>? _overlayAnim;
   late final AppLifecycleListener _lifecycle;
@@ -77,8 +75,13 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _fftSub = ref.read(playerServiceProvider).spectrumStream.listen((frame) {
+      // Listen through shared fftFrameProvider instead of a direct
+      // spectrumStream subscription — both visualizer and artwork pulse
+      // share one mpv stream.
+      ref.listen(fftFrameProvider, (prev, next) {
         if (!_shouldRender) return;
+        final frame = next.valueOrNull;
+        if (frame == null) return;
         _silenceTimer?.cancel();
         // Update data only — ticker handles the repaint on vsync.
         _fftNotifier.ingest(frame.bands);
@@ -117,7 +120,6 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
     _overlayAnim?.removeListener(_onVisibilityChange);
     _lifecycle.dispose();
     _silenceTimer?.cancel();
-    _fftSub?.cancel();
     _ticker.dispose();
     _fftNotifier.dispose();
     _scrubNotifier.dispose();
