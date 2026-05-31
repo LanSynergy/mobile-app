@@ -78,7 +78,7 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
       // Listen through shared fftFrameProvider instead of a direct
       // spectrumStream subscription — both visualizer and artwork pulse
       // share one mpv stream.
-      ref.listen(fftFrameProvider, (prev, next) {
+      ref.listenManual(fftFrameProvider, (prev, next) {
         if (!_shouldRender) return;
         final frame = next.valueOrNull;
         if (frame == null) return;

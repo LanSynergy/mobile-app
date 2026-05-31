@@ -102,14 +102,16 @@ class AfArtworkManager {
   /// Returns the best available artwork URI for the given track, or `null`
   /// when neither local nor remote cover is ready.
   Uri? artUri(AfTrack track) {
-    // Check memory cache first
-    if (_memoryCache.containsKey(track.id)) {
-      return Uri.file(_memoryCache[track.id]!);
-    }
-
-    // Check embedded cover art from mpv
+    // Check embedded cover art from mpv first — highest quality source.
+    // This takes priority over memory/network cache because embedded art
+    // is lossless audio metadata, not a server thumbnail.
     if (_coverPath != null) {
       return Uri.file(_coverPath!);
+    }
+
+    // Check memory cache second
+    if (_memoryCache.containsKey(track.id)) {
+      return Uri.file(_memoryCache[track.id]!);
     }
 
     // Check network cover for this specific track
@@ -169,9 +171,9 @@ class AfArtworkManager {
       _networkCoverPath = null;
       _networkCoverTrackId = null;
 
-      // Don't clear memory cache — _coverPath is checked first in artUri()
-      // (step 2) before the memory cache (step 1), so entries for other
-      // tracks are preserved for fast back-navigation.
+      // Don't clear memory cache — _coverPath is checked first in artUri() at
+      // step 1, before the memory cache at step 2, so entries for other tracks
+      // are preserved for fast back-navigation.
 
       onArtworkChanged?.call();
     } catch (e) {

@@ -11,6 +11,18 @@ void _logData(String feature, {required String source, String? extra}) {
   afLog('data', '$feature source=$source$detail');
 }
 
+/// Map-based track favorite overrides for optimistic UI updates.
+///
+/// Holds a `Map<String, bool>` of track id → overridden favorite state.
+/// Widgets that display a heart for any track watch this provider via
+/// `.select((map) => map[id] ?? ...)` so only the specific heart rebuilds.
+/// The `.family` variant below is kept for granular access from providers
+/// that need to watch a single track's override without rebuilding on
+/// other tracks' toggles.
+final trackFavoriteOverridesProvider = StateProvider<Map<String, bool>>(
+  (ref) => const {},
+);
+
 /// Per-track favorite override for optimistic UI updates.
 ///
 /// Each track gets its own state (null = no override, true/false = override).
