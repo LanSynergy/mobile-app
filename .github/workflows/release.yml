@@ -50,7 +50,7 @@ jobs:
           echo "CLEAN_VERSION=$CLEAN_VERSION" >> "$GITHUB_ENV"
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0   # full history so generate_release_notes can diff against the previous tag
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -93,7 +93,7 @@ jobs:
           echo "TG_TAG=${TAG}"                >> "${GITHUB_ENV}"
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -108,13 +108,13 @@ jobs:
           pub-cache: false
 
       - name: Cache pub packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.pub-cache
           key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
 
       - name: Cache build_runner outputs
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .dart_tool
           key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock') }}-${{ github.sha }}
