@@ -120,6 +120,16 @@ class TrackRepository {
     return rowToTrack(row);
   }
 
+  /// Batch-fetch tracks by ID list. Returns tracks in arbitrary order.
+  /// Replaces N sequential [trackById] calls with a single WHERE IN query.
+  Future<List<AfTrack>> tracksByIds(List<String> ids) async {
+    if (ids.isEmpty) return const [];
+    final rows = await (db.select(db.tracks)
+          ..where((t) => t.id.isIn(ids)))
+        .get();
+    return rows.map(rowToTrack).toList();
+  }
+
   Future<AfTrackDetails?> trackDetailsById(String id) async {
     final row = await (db.select(
       db.tracks,
@@ -178,6 +188,32 @@ class TrackRepository {
               ]))
             .get();
     return rows.map(rowToTrack).toList();
+  }
+
+  /// Batch-fetch tracks for multiple artist names in a single query.
+  /// Returns a map of artistName → tracks for that artist.
+  Future<Map<String, List<AfTrack>>> tracksByArtists(
+    Set<String> artistNames,
+  ) async {
+    if (artistNames.isEmpty) return const {};
+    final rows = await (db.select(db.tracks)
+          ..where(
+            (t) =>
+                t.artist.isIn(artistNames) |
+                t.albumArtist.isIn(artistNames),
+          ))
+        .get();
+    final map = <String, List<AfTrack>>{};
+    for (final row in rows) {
+      final track = rowToTrack(row);
+      // Index by both artist and albumArtist so lookups succeed either way.
+      map.putIfAbsent(row.artist, () => []).add(track);
+      if (row.albumArtist != row.artist &&
+          artistNames.contains(row.albumArtist)) {
+        map.putIfAbsent(row.albumArtist, () => []).add(track);
+      }
+    }
+    return map;
   }
 
   Future<List<AfTrack>> tracksByGenre(String genre) async {

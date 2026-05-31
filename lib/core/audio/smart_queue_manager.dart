@@ -104,9 +104,10 @@ class SmartQueueManager {
   Future<void> refillBuffer(AfTrack current) async {
     if (_buffer.length >= bufferSize) return;
     try {
-      final candidates = await _getCandidates(current);
+      final recentlyPlayedIds = await _getRecentlyPlayedIds();
+      final candidates = await _getCandidates(current, recentlyPlayedIds);
       if (candidates.isEmpty) return;
-      final scored = await _scoreAll(candidates, current);
+      final scored = await _scoreAll(candidates, current, recentlyPlayedIds);
       final need = bufferSize - _buffer.length;
       final toAdd = scored.take(need).map((e) => e.key).toList();
       _buffer.addAll(toAdd);
@@ -122,7 +123,10 @@ class SmartQueueManager {
 
   // ── Candidate provider ─────────────────────────────────────────────────
 
-  Future<Set<AfTrack>> _getCandidates(AfTrack seed) async {
+  Future<Set<AfTrack>> _getCandidates(
+    AfTrack seed,
+    Set<String> recentlyPlayedIds,
+  ) async {
     final candidates = <AfTrack>{};
 
     if (localDb != null) {
@@ -137,7 +141,6 @@ class SmartQueueManager {
       await _addLastFmCandidates(seed, candidates);
     }
 
-    final recentlyPlayedIds = await _getRecentlyPlayedIds();
     candidates.remove(seed);
     candidates.removeWhere((t) => recentlyPlayedIds.contains(t.id));
 
@@ -205,24 +208,22 @@ class SmartQueueManager {
         return;
       }
       // Fetch from API
-      final List<({String artist, String title})> results =
-          await lastfmClient!.getSimilar(
-        artistName: seed.artistName,
-        trackTitle: seed.title,
-      );
+      final List<({String artist, String title})> results = await lastfmClient!
+          .getSimilar(artistName: seed.artistName, trackTitle: seed.title);
       if (results.isEmpty) return;
       // Batch-fetch tracks for all unique artists in one query.
       final uniqueArtists = results
           .where((r) => r.artist.isNotEmpty && r.title.isNotEmpty)
           .map((r) => r.artist)
           .toSet();
-      final Map<String, List<AfTrack>> artistTrackMap =
-          await localDb!.tracksByArtists(uniqueArtists);
+      final Map<String, List<AfTrack>> artistTrackMap = await localDb!
+          .tracksByArtists(uniqueArtists);
       // Match results to local tracks
       final matched = <String>[];
       for (final ({String artist, String title}) r in results) {
         if (r.artist.isEmpty || r.title.isEmpty) continue;
-        for (final AfTrack t in (artistTrackMap[r.artist] ?? const <AfTrack>[])) {
+        for (final AfTrack t
+            in (artistTrackMap[r.artist] ?? const <AfTrack>[])) {
           if (_fuzzyMatch(t.title, r.title)) {
             candidates.add(t);
             matched.add(t.id);
@@ -269,11 +270,11 @@ class SmartQueueManager {
   Future<List<MapEntry<AfTrack, double>>> _scoreAll(
     Set<AfTrack> candidates,
     AfTrack seed,
+    Set<String> recentlyPlayedIds,
   ) async {
     final results = <MapEntry<AfTrack, double>>[];
     if (candidates.isEmpty) return results;
 
-    final recentlyPlayedIds = await _getRecentlyPlayedIds(limit: 20);
     final recentlyList = recentlyPlayedIds.toList();
 
     final candidateIds = candidates.map((c) => c.id).toList();

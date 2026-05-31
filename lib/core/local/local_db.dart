@@ -101,6 +101,9 @@ class LocalDb {
 
   Future<AfTrack?> trackById(String id) => tracks.trackById(id);
 
+  Future<List<AfTrack>> tracksByIds(List<String> ids) =>
+      tracks.tracksByIds(ids);
+
   Future<AfTrackDetails?> trackDetailsById(String id) =>
       tracks.trackDetailsById(id);
 
@@ -109,6 +112,11 @@ class LocalDb {
 
   Future<List<AfTrack>> tracksByArtist(String artistName) =>
       tracks.tracksByArtist(artistName);
+
+  Future<Map<String, List<AfTrack>>> tracksByArtists(
+    Set<String> artistNames,
+  ) =>
+      tracks.tracksByArtists(artistNames);
 
   Future<List<AfTrack>> tracksByGenre(String genre) =>
       tracks.tracksByGenre(genre);
