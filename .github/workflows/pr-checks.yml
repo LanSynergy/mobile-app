@@ -1,10 +1,10 @@
 name: PR checks
 
-# Runs analyze + test on every pull request and on pushes to `main`. The
-# release-signed `build-apk.yml` workflow stays manual-dispatch only — this
-# workflow exists purely to catch Dart-level regressions (lint, tests)
-# before merge. APK builds are intentionally NOT run here; trigger
-# `build-apk.yml` manually when you need a build artifact.
+# Runs analyze + test in parallel on every pull request and on pushes to
+# `main`.  Splitting into two jobs means test feedback arrives faster —
+# the slowest step (test) doesn't wait for analysis to complete.
+# APK builds are intentionally NOT run here; trigger `build-apk.yml`
+# manually when you need a build artifact.
 on:
   pull_request:
     branches: [main, master]
@@ -24,10 +24,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  analyze-test:
-    name: Analyze + test
+  analyze:
+    name: Analyze
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
@@ -41,19 +41,41 @@ jobs:
           cache: true
           pub-cache: false
 
-      - name: Cache pub packages
+      - name: Cache pub packages + build_runner outputs
         uses: actions/cache@v5
         with:
-          path: ~/.pub-cache
-          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: ${{ runner.os }}-ci-${{ hashFiles('pubspec.lock') }}
 
-      - name: Cache build_runner outputs
+      - name: Analyze (via tool/build, skip test + build)
+        run: bash tool/build --skip-build --skip-test
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.0"
+          channel: stable
+          cache: true
+          pub-cache: false
+
+      - name: Cache pub packages + build_runner outputs
         uses: actions/cache@v5
         with:
-          path: .dart_tool
-          key: ${{ runner.os }}-build-runner-${{ hashFiles('pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-build-runner-
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: ${{ runner.os }}-ci-${{ hashFiles('pubspec.lock') }}
 
-      - name: Analyze + test (via tool/build)
-        run: bash tool/build --skip-build
+      - name: Test (via tool/build, skip analyze + build)
+        run: bash tool/build --skip-build --skip-analyze
