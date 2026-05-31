@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +13,7 @@ import '../../state/radio_providers.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/async_error_view.dart';
 import '../../widgets/section_header.dart';
+import '../../widgets/opacity_app_bar.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/af_scrollbar.dart';
@@ -240,7 +240,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   top: 0,
                   left: 0,
                   right: 0,
-                  child: _OpacityAppBar(
+                  child: OpacityAppBar(
                     scrollOffset: offset,
                     threshold: heroHeight - kToolbarHeight,
                     title: artist.name,
@@ -253,101 +253,6 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         },
       ),
     );
-  }
-}
-
-class _OpacityAppBar extends StatelessWidget {
-  const _OpacityAppBar({
-    required this.scrollOffset,
-    required this.threshold,
-    required this.title,
-    required this.onBack,
-  });
-  final double scrollOffset;
-  final double threshold;
-  final String title;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = (scrollOffset / threshold).clamp(0.0, 1.0);
-    final bg = Color.lerp(
-      Colors.transparent,
-      AfColors.surfaceCanvas.withValues(alpha: 0.75),
-      t,
-    )!;
-    return t > 0.01
-        ? ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-              child: Container(
-                color: bg,
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top,
-                ),
-                child: SizedBox(
-                  height: kToolbarHeight,
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          LucideIcons.arrowLeft,
-                          color: AfColors.textPrimary,
-                          size: 24,
-                        ),
-                        onPressed: onBack,
-                      ),
-                      Expanded(
-                        child: Opacity(
-                          opacity: t,
-                          child: Text(
-                            title,
-                            textAlign: TextAlign.center,
-                            style: AfTypography.titleSmall,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 48),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          )
-        : Container(
-            color: bg,
-            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
-            child: SizedBox(
-              height: kToolbarHeight,
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      LucideIcons.arrowLeft,
-                      color: AfColors.textPrimary,
-                      size: 24,
-                    ),
-                    onPressed: onBack,
-                  ),
-                  Expanded(
-                    child: Opacity(
-                      opacity: t,
-                      child: Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        style: AfTypography.titleSmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                ],
-              ),
-            ),
-          );
   }
 }
 

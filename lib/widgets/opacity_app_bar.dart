@@ -1,0 +1,129 @@
+import 'dart:ui';
+
+import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+import '../design_tokens/tokens.dart';
+
+/// Scroll-aware app bar that fades in with a blur background as the user
+/// scrolls past [threshold]. Used on detail screens (album, artist, genre).
+class OpacityAppBar extends StatelessWidget {
+  const OpacityAppBar({
+    super.key,
+    required this.scrollOffset,
+    required this.threshold,
+    required this.title,
+    required this.onBack,
+    this.onMore,
+  });
+
+  final double scrollOffset;
+  final double threshold;
+  final String title;
+  final VoidCallback onBack;
+
+  /// Optional trailing action. When null, a 48dp spacer is shown instead.
+  final VoidCallback? onMore;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = (scrollOffset / threshold).clamp(0.0, 1.0);
+    final bg = Color.lerp(
+      Colors.transparent,
+      AfColors.surfaceCanvas.withValues(alpha: 0.75),
+      t,
+    )!;
+    return t > 0.01
+        ? ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                color: bg,
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top,
+                ),
+                child: SizedBox(
+                  height: kToolbarHeight,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          LucideIcons.arrowLeft,
+                          color: AfColors.textPrimary,
+                          size: 24,
+                        ),
+                        onPressed: onBack,
+                      ),
+                      Expanded(
+                        child: Opacity(
+                          opacity: t,
+                          child: Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            style: AfTypography.titleSmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      if (onMore != null)
+                        IconButton(
+                          icon: const Icon(
+                            LucideIcons.ellipsis,
+                            color: AfColors.textPrimary,
+                            size: 24,
+                          ),
+                          onPressed: onMore,
+                        )
+                      else
+                        const SizedBox(width: 48),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          )
+        : Container(
+            color: bg,
+            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+            child: SizedBox(
+              height: kToolbarHeight,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      LucideIcons.arrowLeft,
+                      color: AfColors.textPrimary,
+                      size: 24,
+                    ),
+                    onPressed: onBack,
+                  ),
+                  Expanded(
+                    child: Opacity(
+                      opacity: t,
+                      child: Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: AfTypography.titleSmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  if (onMore != null)
+                    IconButton(
+                      icon: const Icon(
+                        LucideIcons.ellipsis,
+                        color: AfColors.textPrimary,
+                        size: 24,
+                      ),
+                      onPressed: onMore,
+                    )
+                  else
+                    const SizedBox(width: 48),
+                ],
+              ),
+            ),
+          );
+  }
+}
