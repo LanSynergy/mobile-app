@@ -10,6 +10,7 @@ import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import 'artwork.dart';
+import 'marquee_text.dart';
 import 'circular_progress_ring.dart';
 import 'press_scale.dart';
 
@@ -177,18 +178,24 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _MarqueeText(
+                                  MarqueeText(
                                     text: track.title,
                                     style: AfTypography.bodyMedium.copyWith(
                                       color: AfColors.textPrimary,
                                       fontWeight: FontWeight.w600,
                                     ),
+                                    speedPxPerSec: 25.0,
+                                    minDurationMs: 6000,
+                                    maxDurationMs: 25000,
                                   ),
-                                  _MarqueeText(
+                                  MarqueeText(
                                     text: track.artistName,
                                     style: AfTypography.bodySmall.copyWith(
                                       color: AfColors.textSecondary,
                                     ),
+                                    speedPxPerSec: 25.0,
+                                    minDurationMs: 6000,
+                                    maxDurationMs: 25000,
                                   ),
                                 ],
                               ),
@@ -293,107 +300,6 @@ class _ReactiveProgressRing extends ConsumerWidget {
       strokeWidth: 2,
       isIndeterminate: isBuffering,
       child: child,
-    );
-  }
-}
-
-/// Scrolls [text] when it overflows. Fixed layout — uses [ClipRect] +
-/// [SizedBox] + [Stack] so parent constraints are never broken.
-class _MarqueeText extends StatefulWidget {
-  const _MarqueeText({required this.text, required this.style});
-  final String text;
-  final TextStyle style;
-
-  @override
-  State<_MarqueeText> createState() => _MarqueeTextState();
-}
-
-class _MarqueeTextState extends State<_MarqueeText>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  double _offset = 0.0;
-  bool _shouldScroll = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this);
-  }
-
-  @override
-  void didUpdateWidget(covariant _MarqueeText old) {
-    super.didUpdateWidget(old);
-    if (old.text != widget.text) {
-      _controller.stop();
-      _controller.value = 0;
-      _shouldScroll = false;
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth;
-        final tp = TextPainter(
-          text: TextSpan(text: widget.text, style: widget.style),
-          maxLines: 1,
-          textDirection: TextDirection.ltr,
-        )..layout();
-
-        if (tp.width <= maxWidth) {
-          if (_shouldScroll) {
-            _controller.stop();
-            _controller.value = 0;
-            _shouldScroll = false;
-          }
-          return SizedBox(
-            width: maxWidth,
-            child: Text(widget.text, maxLines: 1, style: widget.style),
-          );
-        }
-
-        if (!_shouldScroll) {
-          _shouldScroll = true;
-          _offset = tp.width + 32.0;
-          final durationMs = (_offset / 25.0 * 1000).round().clamp(6000, 25000);
-          _controller.duration = Duration(milliseconds: durationMs);
-          _controller.repeat();
-        }
-
-        return ClipRect(
-          child: SizedBox(
-            width: maxWidth,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, _) {
-                    return Transform.translate(
-                      offset: Offset(-_offset * _controller.value, 0),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(widget.text, maxLines: 1, style: widget.style),
-                          const SizedBox(width: 32),
-                          Text(widget.text, maxLines: 1, style: widget.style),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }

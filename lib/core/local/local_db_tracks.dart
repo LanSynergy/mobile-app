@@ -124,9 +124,9 @@ class TrackRepository {
   /// Replaces N sequential [trackById] calls with a single WHERE IN query.
   Future<List<AfTrack>> tracksByIds(List<String> ids) async {
     if (ids.isEmpty) return const [];
-    final rows = await (db.select(db.tracks)
-          ..where((t) => t.id.isIn(ids)))
-        .get();
+    final rows = await (db.select(
+      db.tracks,
+    )..where((t) => t.id.isIn(ids))).get();
     return rows.map(rowToTrack).toList();
   }
 
@@ -196,13 +196,12 @@ class TrackRepository {
     Set<String> artistNames,
   ) async {
     if (artistNames.isEmpty) return const {};
-    final rows = await (db.select(db.tracks)
-          ..where(
-            (t) =>
-                t.artist.isIn(artistNames) |
-                t.albumArtist.isIn(artistNames),
-          ))
-        .get();
+    final rows =
+        await (db.select(db.tracks)..where(
+              (t) =>
+                  t.artist.isIn(artistNames) | t.albumArtist.isIn(artistNames),
+            ))
+            .get();
     final map = <String, List<AfTrack>>{};
     for (final row in rows) {
       final track = rowToTrack(row);
