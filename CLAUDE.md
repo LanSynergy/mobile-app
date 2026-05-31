@@ -265,7 +265,7 @@ lib/
 │  │  ├─ app_database.g.dart    ← Drift-generated code (DO NOT hand-edit)
 │  │  ├─ local_db.dart          ← High-level query methods composing 3 repositories:
 │  │  │                           TrackRepository + AlbumRepository + PlaylistRepository
-│  │  ├─ local_db_tracks.dart   ← TrackRepository: track CRUD + queries + rowToTrack
+│  │  ├─ local_db_tracks.dart   ← TrackRepository: track CRUD + queries + rowToTrack + rawRowToTrack
 │  │  ├─ local_db_albums.dart   ← AlbumRepository: all album aggregation queries
 │  │  ├─ local_db_playlists.dart← PlaylistRepository: CRUD + transaction logic
 │  │  ├─ local_library.dart     ← High-level interface: scan, query albums/artists/tracks/genres
@@ -947,7 +947,7 @@ This keeps the active directory focused on current work. Historical artifacts re
 35. 📝 GUIDANCE **"Use `Timer.periodic` for the progress reporting loop."** No. `Timer.periodic` doesn't await the callback — requests pile up. Use a serialized `while (_running)` loop with `Future.delayed`.
 36. 📝 GUIDANCE **"Keep a manual drag handle on bottom sheets."** Now handled per-sheet. The theme sets `showDragHandle: false` with `Colors.transparent` background. Each sheet (`album_more_sheet.dart`, `track_details_sheet.dart`, `save_to_playlist_sheet.dart`) adds its own manual drag handle inside the frosted-glass container. This avoids the floating transparent handle on dark backgrounds.
 37. 📝 GUIDANCE **"Use `builder` for overlay routes like `/lyrics` and `/queue`."** No. Use `pageBuilder` with `NoTransitionPage` — the default `MaterialPage` slide transition renders content out of frame when pushed on `_rootKey`.
-38. 📝 GUIDANCE **"Load all tracks to prune deleted files."** No. `allTracks()` has a 5000 limit. Use a SQL prefix query (`trackIdsByPrefix`) to get only the tracks matching the folder, with no limit.
+38. 📝 GUIDANCE **"Load all tracks to prune deleted files."** No. `allTracks()` has a 500 limit. Use a SQL prefix query (`trackIdsByPrefix`) to get only the tracks matching the folder, with no limit.
 39. 📝 GUIDANCE **"Call `_nudgeAudioDevice()` without a generation counter."** No. Rapid seeks/play/pause stack multiple nudge chains (3 delayed `setAudioDevice` calls each). Use `_nudgeGen` to cancel stale chains.
 40. 📝 GUIDANCE **"Call `setAudioDriver()`/`setAudioBuffer()` in the constructor without error handling."** No. Both return `Future<void>` from a sync constructor — if the native plugin throws, the error becomes an unhandled future rejection. Wrap each with `.catchError((Object e, StackTrace? stack) { ... })` and explicitly type the parameters to satisfy `argument_type_not_assignable`.
 41. 📝 GUIDANCE **"Let `playQueue` fail without cleaning up mpv's playlist."** No. When `Future.wait(addFutures...)` throws, some tracks may have already been added to mpv's internal playlist via `_player.add()`. Clear Dart-side state AND call `await _player.stop()` to reset mpv's playlist.
@@ -1014,7 +1014,7 @@ This keeps the active directory focused on current work. Historical artifacts re
 - **`_isLoadingQueue`**: Guard flag in `AfPlayerService` that prevents playback controls (`play`, `pause`, `seek`, skip, queue mutations) and the `completed` handler from running while `playQueue` is actively loading tracks into mpv.
 - **`JellyfinResponseParser`**: Extracted from `JellyfinClient` (`lib/core/jellyfin/response_parser.dart`). All JSON→domain parsing logic + field string constants.
 - **`JellyfinUrlBuilder`**: Extracted from `JellyfinClient` (`lib/core/jellyfin/url_builder.dart`). Auth header construction, stream URL building, and image URL generation.
-- **`TrackRepository`**: CRUD for tracks at `lib/core/local/local_db_tracks.dart`. Row-to-track mapping, query helpers, 5000-row limit on `allTracks()`.
+- **`TrackRepository`**: CRUD for tracks at `lib/core/local/local_db_tracks.dart`. Row-to-track mapping (`rowToTrack` for Drift entities, `rawRowToTrack` for raw SQL column projection), query helpers, 500-row limit on `allTracks()`.
 - **`AlbumRepository`**: Aggregation queries for albums at `lib/core/local/local_db_albums.dart`. Album artist, year, track-count queries.
 - **`PlaylistRepository`**: CRUD for playlists at `lib/core/local/local_db_playlists.dart`. Transaction-based insert/delete/reorder.
 - **`AfAsyncLock`**: Utility class in `player_service.dart` used to serialize asynchronous queue mutations and loads sequentially using a single future chain.
