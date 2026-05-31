@@ -317,7 +317,7 @@ Environment variables (secrets in CI): `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYST
 ```bash
 # Development
 flutter pub get
-dart run build_runner build --delete-conflicting-outputs  # codegen (drift)
+dart run build_runner build  # codegen (drift)
 flutter analyze --no-fatal-infos
 flutter test
 flutter run --debug

@@ -507,7 +507,7 @@ echo "  Version:     $VERSION"
 # ---------------------------------------------------------------------------
 if [ "$SKIP_CODEGEN" = "false" ]; then
   _tg_transition "⚡ Running code generation..." "⚡"
-  step "Run code generation" $DART run build_runner build --delete-conflicting-outputs
+  step "Run code generation" $DART run build_runner build
 fi
 
 # ---------------------------------------------------------------------------

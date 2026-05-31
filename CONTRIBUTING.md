@@ -111,7 +111,7 @@ flutter run --debug -d <device-id>
 Aetherfin uses `drift` for database code generation. After modifying drift files:
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs
+dart run build_runner build
 ```
 
 ---
