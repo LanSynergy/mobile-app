@@ -1,5 +1,13 @@
 # Continuity Ledger
 
+## 2026-05-31 — Fix ref.listenManual + artUri priority; all 419 tests pass
+*Goal:* Fix pre-existing test failures: audio_visual_scrubber used `ref.listen()` outside build context (→ `ref.listenManual`), artwork_manager artUri had wrong priority (memory cache before embedded cover). Also added `trackFavoriteOverridesProvider` (map-based) to close Batch 8 gap.
+*Commits:* bd3deab
+*Key decisions:*
+- `ref.listen()` inside `initState.addPostFrameCallback` fails in test — must use `ref.listenManual()` which doesn't require build context
+- `artUri()` priority: embedded cover (_coverPath) first as highest-quality source, then memory cache, then network cache
+- `trackFavoriteOverridesProvider` lives in `favorite_providers.dart`, consumers resolve via `select((map) => map[id])`
+
 ## 2026-05-31 — Optimization audit: all 9 batches committed
 *Goal:* Execute 9-batch optimization audit covering shared_dio_client retry interceptor, home_screen section extraction, album_screen consumer granularity, artwork_manager cache fix, local_db_tracks + smart_playlist_db query opt, schema v10 indexes, favorite_providers TrackFavoriteOverride, shared FFT provider.
 *Commits:* ddff930, 63aea6f, c388b05, 5bb7386, 1f7121b, 7c889e8, 78db855

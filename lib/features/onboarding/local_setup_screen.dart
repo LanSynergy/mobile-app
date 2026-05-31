@@ -86,8 +86,11 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
       await prefs.setBool('af.local_onboarding_completed', true);
 
       if (mounted) {
+        // Setting this provider triggers onboardingSub in main.dart, which
+        // calls notifyAuthChanged() → router redirect returns '/home'.
+        // Do NOT call context.go('/home') — that races with the redirect's
+        // internal navigation and produces a blank screen.
         ref.read(localOnboardingCompletedProvider.notifier).state = true;
-        context.go('/home');
       }
     } catch (e) {
       if (mounted) {
