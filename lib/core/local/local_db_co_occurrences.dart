@@ -44,7 +44,9 @@ class CoOccurrenceRepository {
     for (var i = 0; i < candidateIds.length; i += chunkSize) {
       final chunk = candidateIds.sublist(
         i,
-        i + chunkSize > candidateIds.length ? candidateIds.length : i + chunkSize,
+        i + chunkSize > candidateIds.length
+            ? candidateIds.length
+            : i + chunkSize,
       );
       final query = db.select(db.trackCoOccurrences)
         ..where((t) => t.trackAId.equals(seedId) & t.trackBId.isIn(chunk));

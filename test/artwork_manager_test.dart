@@ -4,9 +4,25 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show CoverArt;
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'package:aetherfin/core/audio/artwork_manager.dart';
 import 'package:aetherfin/core/jellyfin/models/items.dart';
+
+class MockPathProviderPlatform extends Fake
+    with MockPlatformInterfaceMixin
+    implements PathProviderPlatform {
+  @override
+  Future<String?> getTemporaryPath() async {
+    return Directory.systemTemp.path;
+  }
+
+  @override
+  Future<String?> getApplicationCachePath() async {
+    return Directory.systemTemp.path;
+  }
+}
 
 class MockHttpClient extends Fake implements HttpClient {
   static int mockStatusCode = 200;
@@ -121,6 +137,7 @@ class TestHttpOverrides extends HttpOverrides {
 void main() {
   setUpAll(() {
     HttpOverrides.global = TestHttpOverrides();
+    PathProviderPlatform.instance = MockPathProviderPlatform();
   });
 
   tearDownAll(() {

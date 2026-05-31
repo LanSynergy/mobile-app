@@ -150,26 +150,44 @@ class AfQueueEngine {
 
   /// Fisher-Yates shuffle of the current [_shuffleOrder].
   /// Preserves the current track's position so playback isn't interrupted.
+  ///
+  /// Optimized to use in-place shuffling to reduce memory allocations.
   void _fisherYatesShuffle() {
     if (_shuffleOrder == null || _tracks.isEmpty) return;
 
-    // Remove current track from the pool, shuffle the rest, then reinsert.
     final currentTrackId = _currentIndex >= 0 && _currentIndex < _tracks.length
         ? _tracks[_currentIndex].id
         : null;
 
-    // Build the mapping: shuffled position → original index.
-    // The current track stays at its current position (index 0).
-    final indices = List<int>.generate(_tracks.length, (i) => i);
+    // Use in-place shuffling to reduce memory allocations
+    final indices = _shuffleOrder!;
+
     if (currentTrackId != null) {
-      // Swap current track to front, shuffle the rest.
-      indices.remove(_currentIndex);
-      indices.shuffle(_random);
-      indices.insert(0, _currentIndex);
+      // Find current index in shuffle order
+      final currentPos = indices.indexOf(_currentIndex);
+
+      if (currentPos > 0) {
+        // Swap current to front
+        indices[currentPos] = indices[0];
+        indices[0] = _currentIndex;
+      }
+
+      // Shuffle the rest (positions 1 to end) using Fisher-Yates
+      for (var i = 1; i < indices.length; i++) {
+        final j = i + _random.nextInt(indices.length - i);
+        final temp = indices[i];
+        indices[i] = indices[j];
+        indices[j] = temp;
+      }
     } else {
-      indices.shuffle(_random);
+      // Shuffle all positions using Fisher-Yates
+      for (var i = 0; i < indices.length; i++) {
+        final j = i + _random.nextInt(indices.length - i);
+        final temp = indices[i];
+        indices[i] = indices[j];
+        indices[j] = temp;
+      }
     }
-    _shuffleOrder = indices;
   }
 
   /// Shuffle only the tail — everything after the current logical position.

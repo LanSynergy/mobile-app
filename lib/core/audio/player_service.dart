@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:flutter/foundation.dart' show VoidCallback, visibleForTesting;
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -175,6 +176,31 @@ class AfPlayerService {
     _lastPosition = null;
   }
 
+  /// Gets a cached stream URL for the given track, or null if not cached
+  String? _getCachedStreamUrl(String trackId) {
+    return _streamUrlCache[trackId];
+  }
+
+  /// Caches a stream URL for the given track, with LRU eviction
+  void _cacheStreamUrl(String trackId, String url) {
+    // If already cached, update and move to end (most recently used)
+    if (_streamUrlCache.containsKey(trackId)) {
+      _streamUrlCache.remove(trackId);
+    }
+
+    _streamUrlCache[trackId] = url;
+
+    // Evict oldest if at capacity
+    if (_streamUrlCache.length > _streamUrlCacheSize) {
+      _streamUrlCache.remove(_streamUrlCache.keys.first);
+    }
+  }
+
+  /// Clears the stream URL cache
+  void _clearStreamUrlCache() {
+    _streamUrlCache.clear();
+  }
+
   void Function(AfTrack? track)? onTrackChanged;
   void Function(String? trackId)? onMpvLoadedTrackChanged;
   void Function(AfTrack track)? onTrackCompleted;
@@ -202,6 +228,15 @@ class AfPlayerService {
   /// Stored from [playQueue] so [skipToQueueItem] and the completed handler
   /// can lazily resolve stream URLs when rebuilding the 2-track window.
   String Function(AfTrack)? _resolveStreamUrl;
+
+  /// LRU cache for stream URLs to avoid repeated resolution
+  /// Maps trackId -> resolved URL
+  static const int _streamUrlCacheSize = 100;
+  final LinkedHashMap<String, String> _streamUrlCache =
+      LinkedHashMap<String, String>(
+        equals: (a, b) => a == b,
+        hashCode: (a) => a.hashCode,
+      );
 
   bool _userPaused = false;
   final AfAsyncLock _queueLock = AfAsyncLock();
@@ -582,7 +617,18 @@ class AfPlayerService {
         'playQueue: using prefetched file for "${startTrack.title}"',
       );
     } else {
-      url = resolveStreamUrl(startTrack);
+      // Check stream URL cache first
+      final cachedUrl = _getCachedStreamUrl(startTrack.id);
+      if (cachedUrl != null) {
+        url = cachedUrl;
+        afLog(
+          'audio',
+          'playQueue: using cached stream URL for "${startTrack.title}"',
+        );
+      } else {
+        url = resolveStreamUrl(startTrack);
+        _cacheStreamUrl(startTrack.id, url);
+      }
     }
     final medias = <Media>[Media(url)];
 
@@ -651,6 +697,7 @@ class AfPlayerService {
     _mpvLoadedTrackId = null;
     onMpvLoadedTrackChanged?.call(null);
     _eofFallbackHandledTrackId = null;
+    _clearStreamUrlCache();
     try {
       await _player.stop();
     } catch (e, stack) {
@@ -1041,7 +1088,18 @@ class AfPlayerService {
         'rebuildWindow: using prefetched file for "${target.title}"',
       );
     } else {
-      url = _resolveStreamUrl!(target);
+      // Check stream URL cache first
+      final cachedUrl = _getCachedStreamUrl(target.id);
+      if (cachedUrl != null) {
+        url = cachedUrl;
+        afLog(
+          'audio',
+          'rebuildWindow: using cached stream URL for "${target.title}"',
+        );
+      } else {
+        url = _resolveStreamUrl!(target);
+        _cacheStreamUrl(target.id, url);
+      }
     }
 
     try {
@@ -1357,8 +1415,14 @@ class AfPlayerService {
       if (duration > Duration.zero &&
           duration - pos <= const Duration(seconds: 3)) {
         _prefetchStartedForTrackId = currentTrack.id;
-        final nextUrl = _resolveStreamUrl?.call(nextTrack);
+        // Check stream URL cache first
+        final cachedUrl = _getCachedStreamUrl(nextTrack.id);
+        final nextUrl = cachedUrl ?? _resolveStreamUrl?.call(nextTrack);
         if (nextUrl != null) {
+          // Cache the URL if we had to resolve it
+          if (cachedUrl == null) {
+            _cacheStreamUrl(nextTrack.id, nextUrl);
+          }
           unawaited(
             _prefetcher.prefetch(nextUrl, _authHeaders, trackId: nextTrack.id),
           );

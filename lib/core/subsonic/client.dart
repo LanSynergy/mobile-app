@@ -4,7 +4,6 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, visibleForTesting;
 
 import '../../utils/log.dart';
@@ -14,6 +13,7 @@ import '../jellyfin/models/items.dart';
 import '../jellyfin/models/library.dart';
 import '../jellyfin/models/quality.dart';
 import '../jellyfin/models/server.dart';
+import '../network/shared_dio_client.dart';
 
 const _kSubsonicApiVersion = '1.16.1';
 const _kClientName = 'Aetherfin';
@@ -25,39 +25,43 @@ const _kClientName = 'Aetherfin';
 /// identically. Auth uses the Subsonic token scheme:
 /// `t = md5(password + salt)`, `s = salt`, sent as query params on
 /// every request alongside `u`, `v`, `c`, `f=json`.
+///
+/// Uses [SharedDioClient] for connection pooling and shared caching.
 class SubsonicClient implements MusicBackend {
   SubsonicClient({
     required this.server,
     required this.username,
     required String password,
     required this.clientVersion,
+    SharedDioClient? sharedClient,
   }) : _passwordBytes = utf8.encode(password),
-       _cacheStore = MemCacheStore(
-         maxSize: 20 * 1024 * 1024,
-         maxEntrySize: 1 * 1024 * 1024,
-       ),
-       _dio = Dio(
-         BaseOptions(
-           baseUrl: _buildBaseUrl(server.baseUrl),
-           connectTimeout: const Duration(seconds: 5),
-           sendTimeout: const Duration(seconds: 10),
-           receiveTimeout: const Duration(seconds: 15),
-           headers: {
-             'User-Agent': 'Aetherfin/$clientVersion (Android)',
-             'Accept': 'application/json',
-           },
-         ),
-       ) {
-    _dio.interceptors.add(
-      DioCacheInterceptor(
-        options: CacheOptions(
-          store: _cacheStore,
-          policy: CachePolicy.request,
-          maxStale: const Duration(minutes: 5),
-          priority: CachePriority.normal,
-        ),
+       _sharedClient = sharedClient ?? SharedDioClient() {
+    _dio = _createDioWithOptions(server, clientVersion, _sharedClient);
+    _configureInterceptors();
+  }
+
+  Dio _createDioWithOptions(
+    JellyfinServer server,
+    String clientVersion,
+    SharedDioClient sharedClient,
+  ) {
+    return sharedClient.createWithOptions(
+      BaseOptions(
+        baseUrl: _buildBaseUrl(server.baseUrl),
+        connectTimeout: const Duration(seconds: 5),
+        sendTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
+        headers: {
+          'User-Agent': 'Aetherfin/$clientVersion (Android)',
+          'Accept': 'application/json',
+        },
+        followRedirects: true,
+        maxRedirects: 5,
       ),
     );
+  }
+
+  void _configureInterceptors() {
     if (kDebugMode) {
       _dio.interceptors.add(
         InterceptorsWrapper(
@@ -80,6 +84,7 @@ class SubsonicClient implements MusicBackend {
       );
     }
   }
+
   final JellyfinServer server;
   final String username;
 
@@ -98,12 +103,12 @@ class SubsonicClient implements MusicBackend {
   /// bump can't leave stale strings in scrobbles or session logs.
   final String clientVersion;
 
-  final Dio _dio;
+  late final Dio _dio;
 
   @visibleForTesting
   Dio get dio => _dio;
 
-  final MemCacheStore _cacheStore;
+  final SharedDioClient _sharedClient;
   final Random _rng = Random.secure();
 
   /// Cached OpenSubsonic extensions/capabilities supported by the server.
@@ -238,7 +243,7 @@ class SubsonicClient implements MusicBackend {
   Map<String, String> get authHeaders => const {};
 
   @override
-  void clearCache() => _cacheStore.clean();
+  void clearCache() => _sharedClient.clearCache();
 
   @override
   void close() {
@@ -251,7 +256,9 @@ class SubsonicClient implements MusicBackend {
     for (var i = 0; i < _passwordBytes.length; i++) {
       _passwordBytes[i] = 0;
     }
-    _cacheStore.close();
+    // Note: We don't close the shared client here as it's shared across
+    // all backend instances. The shared client should be closed by the
+    // app lifecycle manager.
     _dio.close(force: true);
   }
 

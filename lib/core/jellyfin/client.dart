@@ -1,10 +1,10 @@
 import 'package:dio/dio.dart';
-import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 
 import '../../utils/log.dart';
 import '../../utils/url.dart';
 import '../backend/music_backend.dart';
+import '../network/shared_dio_client.dart';
 import 'models/items.dart';
 import 'models/library.dart';
 import 'models/server.dart';
@@ -15,6 +15,8 @@ import 'url_builder.dart';
 ///
 /// Hand-rolled per design spec §11.1 — community Dart SDKs are stale and
 /// the surface we need is small.
+///
+/// Uses [SharedDioClient] for connection pooling and shared caching.
 class JellyfinClient implements MusicBackend {
   JellyfinClient({
     required this.server,
@@ -22,70 +24,80 @@ class JellyfinClient implements MusicBackend {
     required this.clientVersion,
     this.accessToken,
     this.userId,
-  }) : _cacheStore = MemCacheStore(
-         maxSize: 20 * 1024 * 1024,
-         maxEntrySize: 1 * 1024 * 1024,
-       ),
+    SharedDioClient? sharedClient,
+  }) : _sharedClient = sharedClient ?? SharedDioClient(),
        _urlBuilder = JellyfinUrlBuilder(
          baseUrl: server.baseUrl,
          deviceId: deviceId,
          clientVersion: clientVersion,
          accessToken: accessToken,
          userId: userId,
-       ),
-       _dio = Dio(
-         BaseOptions(
-           // Trailing slash is REQUIRED so Dio's Uri.resolve preserves the
-           // server's base path (e.g. https://example.com/jellyfin/). All
-           // paths below are written WITHOUT a leading slash for the same
-           // reason.
-           baseUrl: server.baseUrl.endsWith('/')
-               ? server.baseUrl
-               : '${server.baseUrl}/',
-           connectTimeout: const Duration(seconds: 5),
-           sendTimeout: const Duration(seconds: 10),
-           receiveTimeout: const Duration(seconds: 15),
-           // Header shape mirrors UnicornsOnLSD/finamp's getAuthHeader()
-           // (lib/services/jellyfin_api.dart line 408) which is the most
-           // battle-tested Flutter client. Key differences from our old
-           // implementation:
-           //   • Token field is OMITTED entirely when not authenticated
-           //     (vs sending `Token=""`). Some Jellyfin plugins read the
-           //     header into a struct that treats empty-string and missing
-           //     differently, and the official Jellyfin docs example also
-           //     omits the field during initial auth.
-           //   • Only `Authorization` is sent — Finamp does not send
-           //     `X-Emby-Authorization` and Jellyfin's parser consumes only
-           //     one of them. Sending both is redundant and a known cause
-           //     of confused middleware in plugin-heavy installs.
-           //   • `Content-Type: application/json` is set explicitly here
-           //     so it doesn't depend on Dio's auto-content-type logic
-           //     (which only fires when there's a body — meaning GETs go
-           //     out without Content-Type, and some plugins choke on that).
-           headers: {
-             'Authorization': JellyfinUrlBuilder.buildAuthHeader(
-               deviceId: deviceId,
-               token: accessToken,
-               userId: userId,
-               clientVersion: clientVersion,
-             ),
-             'Content-Type': 'application/json',
-             'User-Agent': JellyfinUrlBuilder.userAgentFor(clientVersion),
-             'Accept': 'application/json',
-           },
-         ),
        ) {
+    _dio = _createDioWithOptions(
+      server,
+      deviceId,
+      accessToken,
+      userId,
+      clientVersion,
+      _sharedClient,
+    );
     _parser = JellyfinResponseParser(_urlBuilder);
-    _dio.interceptors.add(
-      DioCacheInterceptor(
-        options: CacheOptions(
-          store: _cacheStore,
-          policy: CachePolicy.request,
-          maxStale: const Duration(minutes: 5),
-          priority: CachePriority.normal,
-        ),
+    _configureInterceptors();
+  }
+
+  Dio _createDioWithOptions(
+    JellyfinServer server,
+    String deviceId,
+    String? accessToken,
+    String? userId,
+    String clientVersion,
+    SharedDioClient sharedClient,
+  ) {
+    final baseUrl = server.baseUrl.endsWith('/')
+        ? server.baseUrl
+        : '${server.baseUrl}/';
+
+    return sharedClient.createWithOptions(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 5),
+        sendTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
+        // Header shape mirrors UnicornsOnLSD/finamp's getAuthHeader()
+        // (lib/services/jellyfin_api.dart line 408) which is the most
+        // battle-tested Flutter client. Key differences from our old
+        // implementation:
+        //   • Token field is OMITTED entirely when not authenticated
+        //     (vs sending `Token=""`). Some Jellyfin plugins read the
+        //     header into a struct that treats empty-string and missing
+        //     differently, and the official Jellyfin docs example also
+        //     omits the field during initial auth.
+        //   • Only `Authorization` is sent — Finamp does not send
+        //     `X-Emby-Authorization` and Jellyfin's parser consumes only
+        //     one of them. Sending both is redundant and a known cause
+        //     of confused middleware in plugin-heavy installs.
+        //   • `Content-Type: application/json` is set explicitly here
+        //     so it doesn't depend on Dio's auto-content-type logic
+        //     (which only fires when there's a body — meaning GETs go
+        //     out without Content-Type, and some plugins choke on that).
+        headers: {
+          'Authorization': JellyfinUrlBuilder.buildAuthHeader(
+            deviceId: deviceId,
+            token: accessToken,
+            userId: userId,
+            clientVersion: clientVersion,
+          ),
+          'Content-Type': 'application/json',
+          'User-Agent': JellyfinUrlBuilder.userAgentFor(clientVersion),
+          'Accept': 'application/json',
+        },
+        followRedirects: true,
+        maxRedirects: 5,
       ),
     );
+  }
+
+  void _configureInterceptors() {
     // Debug-only HTTP trace. In release builds we skip these prints
     // entirely so URLs, headers, and bodies never reach logcat where
     // any app on the device with READ_LOGS could capture them.
@@ -133,6 +145,8 @@ class JellyfinClient implements MusicBackend {
       );
     }
   }
+
+  final SharedDioClient _sharedClient;
   static final _genreSplitRe = RegExp(r'[,;]');
 
   final JellyfinServer server;
@@ -147,8 +161,7 @@ class JellyfinClient implements MusicBackend {
   /// a `pubspec.yaml` bump can't leave stale strings in HTTP traffic.
   final String clientVersion;
 
-  final Dio _dio;
-  final MemCacheStore _cacheStore;
+  late final Dio _dio;
   final JellyfinUrlBuilder _urlBuilder;
   late final JellyfinResponseParser _parser;
 
@@ -160,12 +173,14 @@ class JellyfinClient implements MusicBackend {
 
   @override
   void clearCache() {
-    _cacheStore.clean();
+    _sharedClient.clearCache();
   }
 
   @override
   void close() {
-    _cacheStore.close();
+    // Note: We don't close the shared client here as it's shared across
+    // all backend instances. The shared client should be closed by the
+    // app lifecycle manager.
     _dio.close(force: true);
   }
 

@@ -11,7 +11,9 @@ class TrackStatsRepository {
     return query.getSingleOrNull();
   }
 
-  Future<Map<String, TrackStatsEntity>> getStatsForTracks(List<String> trackIds) async {
+  Future<Map<String, TrackStatsEntity>> getStatsForTracks(
+    List<String> trackIds,
+  ) async {
     if (trackIds.isEmpty) return const {};
     final result = <String, TrackStatsEntity>{};
     const chunkSize = 500;
@@ -20,7 +22,8 @@ class TrackStatsRepository {
         i,
         i + chunkSize > trackIds.length ? trackIds.length : i + chunkSize,
       );
-      final query = db.select(db.trackStats)..where((t) => t.trackId.isIn(chunk));
+      final query = db.select(db.trackStats)
+        ..where((t) => t.trackId.isIn(chunk));
       final rows = await query.get();
       for (final row in rows) {
         result[row.trackId] = row;
