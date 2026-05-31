@@ -949,6 +949,18 @@ class AfPlayerService {
 
   Future<void> reorderQueue(int oldIndex, int newIndex) async {
     if (_disposed) return;
+    final queueSize = _queueManager.currentQueue.length;
+    if (oldIndex < 0 ||
+        oldIndex >= queueSize ||
+        newIndex < 0 ||
+        newIndex >= queueSize) {
+      afLog(
+        'audio',
+        'reorderQueue refused — index out of bounds: '
+            'old=$oldIndex new=$newIndex size=$queueSize',
+      );
+      return;
+    }
     if (!_queueManager.canReorder(oldIndex, newIndex)) return;
 
     _queueManager.reorder(oldIndex, newIndex);
@@ -963,6 +975,15 @@ class AfPlayerService {
   /// currently-playing item. Returns `true` when the removal took effect.
   Future<bool> removeFromQueue(int index) async {
     if (_disposed) return false;
+    final queueSize = _queueManager.currentQueue.length;
+    if (index < 0 || index >= queueSize) {
+      afLog(
+        'audio',
+        'removeFromQueue refused — index out of bounds: '
+            'index=$index size=$queueSize',
+      );
+      return false;
+    }
     if (!_queueManager.canRemove(index)) {
       afLog(
         'audio',

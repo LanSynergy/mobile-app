@@ -47,13 +47,18 @@ class MetadataScanner {
       final coverCacheDir = await _coverCacheDir();
       _coverCacheManager ??= CoverCacheManager(cacheDir: coverCacheDir);
 
-      // 2. Process in batches of 50 for DB efficiency
+      // 2. Batch-load last_modified for all files in this folder,
+      //    replacing N per-file DB queries with a single SELECT.
+      final prefix = treeUri.endsWith('/') ? treeUri : '$treeUri/';
+      final existingModified = await db.getTrackLastModifiedByPrefix(prefix);
+
+      // 3. Process in batches of 50 for DB efficiency
       final batch = <Map<String, dynamic>>[];
 
       for (final file in files) {
-        // Check if file is already in DB and unchanged
-        final existingModified = await db.getTrackLastModified(file.uri);
-        if (existingModified != null && existingModified == file.lastModified) {
+        // Check if file is already in DB and unchanged (O(1) map lookup)
+        final mod = existingModified[file.uri];
+        if (mod != null && mod == file.lastModified) {
           completed++;
           onProgress?.call(completed, files.length);
           continue;
@@ -152,13 +157,15 @@ class MetadataScanner {
     final prefix = treeUri.endsWith('/') ? treeUri : '$treeUri/';
 
     final trackIds = await db.trackIdsByPrefix(prefix);
-    int pruned = 0;
+    final idsToDelete = <String>[];
     for (final id in trackIds) {
       if (!existingUris.contains(id)) {
-        await db.deleteTrack(id);
-        pruned++;
+        idsToDelete.add(id);
       }
     }
+    if (idsToDelete.isEmpty) return 0;
+    await db.deleteTracksByIds(idsToDelete);
+    final pruned = idsToDelete.length;
     if (pruned > 0) {
       afLog('local', 'pruned $pruned deleted tracks');
     }

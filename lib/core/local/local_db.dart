@@ -88,6 +88,12 @@ class LocalDb {
   Future<int?> getTrackLastModified(String id) =>
       tracks.getTrackLastModified(id);
 
+  Future<Map<String, int?>> getTrackLastModifiedByPrefix(String prefix) =>
+      tracks.getTrackLastModifiedByPrefix(prefix);
+
+  Future<void> deleteTracksByIds(List<String> ids) =>
+      tracks.deleteTracksByIds(ids);
+
   // ── Tracks Query ────────────────────────────────────────────────────────
 
   Future<List<AfTrack>> allTracks({int limit = 5000, int offset = 0}) =>

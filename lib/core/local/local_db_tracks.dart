@@ -73,6 +73,29 @@ class TrackRepository {
     return result?.lastModified;
   }
 
+  /// Batch-load last_modified values for all tracks whose id starts with
+  /// [prefix]. Returns a map of id → lastModified (null if never scanned).
+  /// Replaces N per-file queries with a single SELECT when scanning a folder.
+  Future<Map<String, int?>> getTrackLastModifiedByPrefix(String prefix) async {
+    final rows = await db
+        .customSelect(
+          'SELECT id, last_modified FROM tracks WHERE id LIKE ?1 ESCAPE \'\\\'',
+          variables: [Variable<String>('${escapeSqlLike(prefix)}%')],
+          readsFrom: {db.tracks},
+        )
+        .get();
+    return {
+      for (final r in rows) r.read<String>('id'): r.read<int?>('last_modified'),
+    };
+  }
+
+  /// Batch-delete tracks by ID list. Replaces N per-file deletes with a
+  /// single `WHERE id IN (...)` statement during prune.
+  Future<void> deleteTracksByIds(List<String> ids) async {
+    if (ids.isEmpty) return;
+    await (db.delete(db.tracks)..where((t) => t.id.isIn(ids))).go();
+  }
+
   // ── Query ───────────────────────────────────────────────────────────────
 
   Future<List<AfTrack>> allTracks({int limit = 100, int offset = 0}) async {
