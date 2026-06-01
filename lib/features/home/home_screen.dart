@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -8,13 +10,13 @@ import '../../core/battery_opt.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/artwork.dart';
 import '../../widgets/async_error_view.dart';
-import '../../widgets/hero_album_card.dart';
+import '../../widgets/press_scale.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/stagger_reveal.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
-import '../../widgets/track_row.dart';
 import '../../widgets/skeletons/home_skeleton.dart';
 import '../library/songs_screen.dart' show SongsPill, songsPillProvider;
 
@@ -95,17 +97,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   AfSpacing.s16,
                   AfSpacing.s8,
                   AfSpacing.s16,
-                  AfSpacing.s16,
+                  AfSpacing.s32,
                 ),
                 child: Row(
                   children: [
-                    Text('Listen', style: AfTypography.titleLarge),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(LucideIcons.cast),
-                      onPressed: () => context.push('/cast'),
-                      tooltip: 'Output',
+                    ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [AfColors.indigo300, AfColors.indigo500],
+                      ).createShader(bounds),
+                      child: Text(
+                        'Listen',
+                        style: AfTypography.display.copyWith(
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
+                    const Spacer(),
+                    _GlassCastButton(onTap: () => context.push('/cast')),
                   ],
                 ),
               ),
@@ -121,7 +129,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 error: (e, _) => AsyncErrorView.compact(
                   label: 'Couldn\u2019t load recent albums',
                   error: e,
-                  height: 192,
+                  height: 240,
                   onRetry: () => ref.invalidate(recentlyAddedAlbumsProvider),
                 ),
               ),
@@ -157,7 +165,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 // Extracted section widgets
 // ---------------------------------------------------------------------------
 
-/// Top-5 recently played tracks with header.
+/// Top-5 recently played tracks with glass-morphism cards.
 class _RecentTracksSection extends ConsumerWidget {
   const _RecentTracksSection({required this.isLocal});
   final bool isLocal;
@@ -182,14 +190,10 @@ class _RecentTracksSection extends ConsumerWidget {
           data: (tracks) => StaggerReveal(
             children: [
               for (final t in tracks.take(5))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AfSpacing.s4),
-                  child: TrackRow(
-                    track: t,
-                    density: TrackRowDensity.generous,
-                    onTap: () => ref.read(playActionsProvider).playSingle(t),
-                    onLongPress: () => showTrackContextMenu(context, ref, t),
-                  ),
+                _GlassTrackRow(
+                  track: t,
+                  onTap: () => ref.read(playActionsProvider).playSingle(t),
+                  onLongPress: () => showTrackContextMenu(context, ref, t),
                 ),
             ],
           ),
@@ -204,6 +208,89 @@ class _RecentTracksSection extends ConsumerWidget {
           ),
         ),
       ]),
+    );
+  }
+}
+
+/// Glass-morphism track row — translucent background with subtle border.
+class _GlassTrackRow extends StatelessWidget {
+  const _GlassTrackRow({
+    required this.track,
+    required this.onTap,
+    required this.onLongPress,
+  });
+  final AfTrack track;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      ensureHitTarget: true,
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Container(
+        margin: const EdgeInsets.symmetric(
+          horizontal: AfSpacing.s16,
+          vertical: AfSpacing.s2,
+        ),
+        padding: const EdgeInsets.all(AfSpacing.s12),
+        decoration: BoxDecoration(
+          borderRadius: AfRadii.borderMd,
+          gradient: LinearGradient(
+            colors: [
+              Colors.white.withValues(alpha: 0.04),
+              Colors.white.withValues(alpha: 0.02),
+            ],
+          ),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.06),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Artwork(
+              url: track.imageUrl,
+              size: 48,
+              radius: BorderRadius.circular(AfRadii.sm),
+            ),
+            const SizedBox(width: AfSpacing.s12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    track.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AfTypography.bodyMedium.copyWith(
+                      color: AfColors.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    track.artistName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              LucideIcons.heart,
+              size: 16,
+              color: track.isFavorite
+                  ? AfColors.indigo400
+                  : AfColors.surfaceMax,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -264,10 +351,20 @@ class _LostMemoriesSection extends ConsumerWidget {
   }
 }
 
-/// Horizontal scroll of artists with section header.
+/// Horizontal scroll of artists with radial glow backdrop.
 class _ArtistsSection extends ConsumerWidget {
   const _ArtistsSection({required this.isLocal});
   final bool isLocal;
+
+  // Spectral accent colors for each artist
+  static const _accents = [
+    AfColors.indigo500,
+    AfColors.semanticError,
+    AfColors.semanticSuccess,
+    AfColors.semanticInfo,
+    AfColors.semanticWarning,
+    AfColors.indigo300,
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -294,13 +391,13 @@ class _ArtistsSection extends ConsumerWidget {
           error: (e, _) => AsyncErrorView.compact(
             label: 'Couldn\'t load artists',
             error: e,
-            height: 172,
+            height: 180,
             onRetry: () => ref.invalidate(
               isLocal ? localArtistsProvider : allArtistsProvider,
             ),
           ),
           data: (artists) => SizedBox(
-            height: 172,
+            height: 180,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
@@ -309,17 +406,78 @@ class _ArtistsSection extends ConsumerWidget {
                   const SizedBox(width: AfSpacing.s12),
               itemBuilder: (context, i) {
                 final a = artists[i];
-                return Tile(
-                  title: a.name,
-                  subtitle: '${a.albumCount} albums',
-                  variant: TileVariant.artist,
-                  imageUrl: a.imageUrl,
-                  size: 100,
+                final accent = _accents[i % _accents.length];
+                return PressScale(
+                  ensureHitTarget: false,
                   onTap: () {
                     ref.read(songsPillProvider.notifier).state =
                         SongsPill.artists;
                     context.go('/library');
                   },
+                  child: SizedBox(
+                    width: 108,
+                    child: Column(
+                      children: [
+                        // Artwork with radial glow behind it
+                        SizedBox(
+                          width: 108,
+                          height: 108,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Glow
+                              Positioned(
+                                child: Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: RadialGradient(
+                                      colors: [
+                                        accent.withValues(alpha: 0.2),
+                                        accent.withValues(alpha: 0.0),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Artwork
+                              Artwork(
+                                url: a.imageUrl,
+                                size: 88,
+                                radius: BorderRadius.circular(44),
+                              ),
+                              // Ring
+                              Positioned(
+                                child: Container(
+                                  width: 96,
+                                  height: 96,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: accent.withValues(alpha: 0.2),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: AfSpacing.s8),
+                        Text(
+                          a.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: AfTypography.bodySmall.copyWith(
+                            color: AfColors.textPrimary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               },
             ),
@@ -330,7 +488,7 @@ class _ArtistsSection extends ConsumerWidget {
   }
 }
 
-/// Horizontal scroll of genre chips with section header.
+/// Horizontal scroll of large genre cards with gradient overlay.
 class _GenresSection extends ConsumerWidget {
   const _GenresSection({required this.isLocal});
   final bool isLocal;
@@ -356,7 +514,7 @@ class _GenresSection extends ConsumerWidget {
         ),
         const SizedBox(height: AfSpacing.s12),
         SizedBox(
-          height: 96,
+          height: 100,
           child: genresAsync.when(
             data: (genres) => ListView.separated(
               scrollDirection: Axis.horizontal,
@@ -366,15 +524,79 @@ class _GenresSection extends ConsumerWidget {
                   const SizedBox(width: AfSpacing.s12),
               itemBuilder: (context, i) {
                 final g = genres[i];
-                return GenreTile(
-                  name: g.name,
-                  tint: _hex(g.tint),
-                  imageUrl: g.imageUrl,
+                final tint = _hex(g.tint);
+                return PressScale(
+                  ensureHitTarget: false,
                   onTap: () {
                     ref.read(songsPillProvider.notifier).state =
                         SongsPill.genres;
                     context.go('/library');
                   },
+                  child: Container(
+                    width: 140,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      borderRadius: AfRadii.borderLg,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          tint.withValues(alpha: 0.3),
+                          tint.withValues(alpha: 0.1),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: tint.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Stack(
+                      children: [
+                        // Artwork background
+                        if (g.imageUrl != null)
+                          Positioned.fill(
+                            child: ClipRRect(
+                              borderRadius: AfRadii.borderLg,
+                              child: Artwork(
+                                url: g.imageUrl,
+                                size: 140,
+                                radius: BorderRadius.zero,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        // Gradient overlay
+                        Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: AfRadii.borderLg,
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  tint.withValues(alpha: 0.3),
+                                  AfColors.surfaceCanvas.withValues(
+                                    alpha: 0.85,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Label
+                        Positioned(
+                          left: AfSpacing.s12,
+                          bottom: AfSpacing.s12,
+                          child: Text(
+                            g.name,
+                            style: AfTypography.titleSmall.copyWith(
+                              color: AfColors.textOnPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               },
             ),
@@ -382,7 +604,7 @@ class _GenresSection extends ConsumerWidget {
             error: (e, _) => AsyncErrorView.compact(
               label: 'Couldn\'t load genres',
               error: e,
-              height: 96,
+              height: 100,
               onRetry: () => ref.invalidate(
                 isLocal ? localGenresProvider : allGenresProvider,
               ),
@@ -418,57 +640,218 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
     final albums = widget.albums.take(5).toList();
     if (albums.isEmpty) return const SizedBox.shrink();
 
-    return Column(
+    return StaggerReveal(
       children: [
-        SizedBox(
-          height: 192,
-          child: PageView.builder(
-            controller: _pageController,
-            itemCount: albums.length,
-            onPageChanged: (i) => setState(() => _currentPage = i),
-            itemBuilder: (context, i) {
-              final album = albums[i];
-              return Consumer(
-                builder: (context, ref, _) {
-                  return HeroAlbumCard(
-                    album: album,
-                    onTap: () => context.push('/album/${album.id}'),
-                    onPlay: () async {
-                      final tracks = ref.read(playActionsProvider);
-                      final detail = await ref.read(
-                        albumDetailProvider(album.id).future,
+        Column(
+          children: [
+            SizedBox(
+              height: 240,
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: albums.length,
+                onPageChanged: (i) => setState(() => _currentPage = i),
+                itemBuilder: (context, i) {
+                  final album = albums[i];
+                  return Consumer(
+                    builder: (context, ref, _) {
+                      return PressScale(
+                        ensureHitTarget: false,
+                        onTap: () => context.push('/album/${album.id}'),
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: AfSpacing.s16,
+                          ),
+                          decoration: const BoxDecoration(
+                            borderRadius: AfRadii.borderXl,
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              // Artwork
+                              Artwork(
+                                url: album.imageUrl,
+                                size: double.infinity,
+                                radius: BorderRadius.zero,
+                                fit: BoxFit.cover,
+                              ),
+                              // Spectral glow accent
+                              Positioned(
+                                left: -40,
+                                bottom: -40,
+                                width: 160,
+                                height: 160,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: RadialGradient(
+                                      colors: [
+                                        AfColors.indigo500.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        Colors.transparent,
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Content
+                              Padding(
+                                padding: const EdgeInsets.all(AfSpacing.s20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Tag pill
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: AfSpacing.s12,
+                                        vertical: AfSpacing.s4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: AfRadii.borderPill,
+                                        border: Border.all(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'NEW RELEASE',
+                                        style: AfTypography.label.copyWith(
+                                          color: AfColors.indigo300,
+                                          fontSize: 10,
+                                          letterSpacing: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    // Album title — dramatic sizing
+                                    Text(
+                                      album.name,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AfTypography.titleLarge.copyWith(
+                                        color: AfColors.textOnPrimary,
+                                        fontSize: 28,
+                                        height: 1.1,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: -0.6,
+                                      ),
+                                    ),
+                                    const SizedBox(height: AfSpacing.s4),
+                                    Text(
+                                      album.artistName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AfTypography.bodyLarge.copyWith(
+                                        color: AfColors.indigo300,
+                                      ),
+                                    ),
+                                    const SizedBox(height: AfSpacing.s16),
+                                    // Play button with glow
+                                    PressScale(
+                                      ensureHitTarget: false,
+                                      onTap: () async {
+                                        final tracks = ref.read(
+                                          playActionsProvider,
+                                        );
+                                        final detail = await ref.read(
+                                          albumDetailProvider(album.id).future,
+                                        );
+                                        if (detail != null) {
+                                          await tracks.playAlbum(detail.tracks);
+                                        }
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AfSpacing.s20,
+                                          vertical: AfSpacing.s8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              AfColors.indigo500,
+                                              AfColors.indigo600,
+                                            ],
+                                          ),
+                                          borderRadius: AfRadii.borderPill,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AfColors.indigo500
+                                                  .withValues(alpha: 0.35),
+                                              blurRadius: 16,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.play_arrow_rounded,
+                                              color: AfColors.textOnPrimary,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: AfSpacing.s8),
+                                            Text(
+                                              'Play',
+                                              style: AfTypography.bodyMedium
+                                                  .copyWith(
+                                                    color:
+                                                        AfColors.textOnPrimary,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       );
-                      if (detail != null) {
-                        await tracks.playAlbum(detail.tracks);
-                      }
                     },
                   );
                 },
-              );
-            },
-          ),
-        ),
-        if (albums.length > 1) ...[
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              albums.length,
-              (i) => AnimatedContainer(
-                duration: AfDurations.quick,
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: _currentPage == i ? 16 : 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: _currentPage == i
-                      ? AfColors.indigo400
-                      : AfColors.surfaceMax,
-                  borderRadius: AfRadii.borderPill,
-                ),
               ),
             ),
-          ),
-        ],
+            // Dot indicators
+            if (albums.length > 1)
+              Padding(
+                padding: const EdgeInsets.only(top: AfSpacing.s12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    albums.length,
+                    (i) => AnimatedContainer(
+                      duration: AfDurations.quick,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: _currentPage == i ? 20 : 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        gradient: _currentPage == i
+                            ? const LinearGradient(
+                                colors: [
+                                  AfColors.indigo400,
+                                  AfColors.indigo600,
+                                ],
+                              )
+                            : null,
+                        color: _currentPage == i ? null : AfColors.surfaceMax,
+                        borderRadius: AfRadii.borderPill,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ],
     );
   }
@@ -486,5 +869,45 @@ Color _hex(String hex) {
     return Color(value);
   } catch (_) {
     return AfColors.indigo600;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Glass morphism helpers
+// ---------------------------------------------------------------------------
+
+/// Glass pill button for the cast icon in the header.
+class _GlassCastButton extends StatelessWidget {
+  const _GlassCastButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      ensureHitTarget: false,
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: AfRadii.borderPill,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.all(AfSpacing.s12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.06),
+              borderRadius: AfRadii.borderPill,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.08),
+                width: 1,
+              ),
+            ),
+            child: const Icon(
+              LucideIcons.cast,
+              size: 18,
+              color: AfColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
