@@ -54,6 +54,8 @@ class AfPositionTracker {
   bool _disposed = false;
 
   void start() {
+    if (_disposed) return;
+    _positionPollTimer?.cancel();
     _positionPollTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
       if (_disposed) return;
       _pollAndEmitPosition();
@@ -154,7 +156,8 @@ class AfPositionTracker {
       final secs = parseSeconds(raw);
       if (secs == null || secs < 0) return Duration.zero;
       return Duration(milliseconds: (secs * 1000).round());
-    } catch (_) {
+    } catch (e) {
+      afLog('audio', 'getRawPosition failed', error: e);
       return Duration.zero;
     }
   }
@@ -166,7 +169,8 @@ class AfPositionTracker {
       final secs = parseSeconds(raw);
       if (secs == null || secs <= 0) return Duration.zero;
       return Duration(milliseconds: (secs * 1000).round());
-    } catch (_) {
+    } catch (e) {
+      afLog('audio', 'getRawDuration failed', error: e);
       return Duration.zero;
     }
   }
@@ -272,7 +276,8 @@ class AfPositionTracker {
       } else if (rawPos == Duration.zero) {
         _resetRawPositionStaleDetector(Duration.zero);
       }
-    } catch (_) {
+    } catch (e) {
+      afLog('audio', '_executePoll failed', error: e);
       // Poll failed silently — next tick will retry.
     }
   }

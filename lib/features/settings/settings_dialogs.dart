@@ -830,6 +830,7 @@ class _LastFmBrowserAuthDialogState
   }
 
   void _startPolling(LastFmClient client, String token) {
+    _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
       if (!mounted) return;
       try {

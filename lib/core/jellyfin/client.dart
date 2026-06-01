@@ -281,7 +281,7 @@ class JellyfinClient implements MusicBackend {
         if (name.toLowerCase() == wanted) {
           return JellyfinAuth(
             server: server,
-            userId: u['Id'] as String,
+            userId: (u['Id'] ?? '').toString(),
             userName: name,
             accessToken: apiKey,
           );

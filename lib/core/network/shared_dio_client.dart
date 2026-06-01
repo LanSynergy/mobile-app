@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
@@ -111,32 +112,47 @@ class _RetryInterceptor extends Interceptor {
   ];
 
   @override
-  void onError(DioException err, ErrorInterceptorHandler handler) async {
+  void onError(DioException err, ErrorInterceptorHandler handler) {
     if (_shouldRetry(err)) {
       final retryCount = (err.requestOptions.extra['_retryCount'] as int?) ?? 0;
       if (retryCount < _maxRetries) {
-        final delay = _retryDelays[retryCount];
-        dev.log(
-          'Retrying ${err.requestOptions.method} ${err.requestOptions.uri} '
-          '(attempt ${retryCount + 1}/$_maxRetries) after ${delay.inSeconds}s',
-          name: 'aetherfin:http',
-        );
-        await Future.delayed(delay);
-        final options = err.requestOptions;
-        options.extra['_retryCount'] = retryCount + 1;
-        try {
-          final response = await _dio.fetch(options);
-          return handler.resolve(response);
-        } catch (retryErr) {
-          dev.log(
-            'Retry ${retryCount + 1}/$_maxRetries failed: $retryErr',
-            name: 'aetherfin:http',
-          );
-          // Fall through to next retry or final error
-        }
+        _retry(err, handler, retryCount);
+        return;
       }
     }
-    return handler.next(err);
+    handler.next(err);
+  }
+
+  Future<void> _retry(
+    DioException err,
+    ErrorInterceptorHandler handler,
+    int retryCount,
+  ) async {
+    final delay = _retryDelays[retryCount];
+    dev.log(
+      'Retrying ${err.requestOptions.method} ${err.requestOptions.uri} '
+      '(attempt ${retryCount + 1}/$_maxRetries) after ${delay.inSeconds}s',
+      name: 'aetherfin:http',
+    );
+    await Future.delayed(delay);
+    final options = err.requestOptions;
+    options.extra['_retryCount'] = retryCount + 1;
+    try {
+      final response = await _dio.fetch(options);
+      handler.resolve(response);
+    } catch (retryErr) {
+      dev.log(
+        'Retry ${retryCount + 1}/$_maxRetries failed: $retryErr',
+        name: 'aetherfin:http',
+      );
+      // If this was the last retry, forward the original error
+      if (retryCount + 1 >= _maxRetries) {
+        handler.next(err);
+      } else {
+        // Try next retry
+        unawaited(_retry(err, handler, retryCount + 1));
+      }
+    }
   }
 
   bool _shouldRetry(DioException err) {

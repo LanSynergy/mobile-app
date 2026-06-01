@@ -47,9 +47,13 @@ class AfPlayerService {
 
     // Check for pending startup shortcut actions
     Future.microtask(() async {
-      final action = await _bridge.getShortcutAction();
-      if (action != null) {
-        _handleShortcutAction(action);
+      try {
+        final action = await _bridge.getShortcutAction();
+        if (action != null) {
+          _handleShortcutAction(action);
+        }
+      } catch (e) {
+        afLog('audio', 'getShortcutAction failed', error: e);
       }
     });
 
@@ -83,7 +87,9 @@ class AfPlayerService {
           orElse: () => _player.state.audioDevice,
         );
         _player.setAudioDevice(auto);
-      } catch (_) {}
+      } catch (e) {
+        afLog('audio', 'setAudioDevice(auto) failed', error: e);
+      }
     });
   }
 
@@ -867,7 +873,9 @@ class AfPlayerService {
     if (_disposed) return;
     if (_queueManager.isShuffleEnabled == enabled) return;
 
-    _queueManager.setShuffle(enabled);
+    await _queueLock.run(() async {
+      _queueManager.setShuffle(enabled);
+    });
     unawaited(PlayerSettingsStore.saveShuffleEnabled(enabled));
 
     // Don't emitCurrentTrack or fire onTrackChanged — the current track
@@ -963,7 +971,9 @@ class AfPlayerService {
     }
     if (!_queueManager.canReorder(oldIndex, newIndex)) return;
 
-    _queueManager.reorder(oldIndex, newIndex);
+    await _queueLock.run(() async {
+      _queueManager.reorder(oldIndex, newIndex);
+    });
     afLog(
       'audio',
       'reorderQueue oldIndex=$oldIndex newIndex=$newIndex '
@@ -992,7 +1002,9 @@ class AfPlayerService {
       return false;
     }
 
-    _queueManager.remove(index);
+    await _queueLock.run(() async {
+      _queueManager.remove(index);
+    });
     afLog(
       'audio',
       'removeFromQueue index=$index currentIndex=${_queueManager.currentIndex} '
@@ -1008,7 +1020,9 @@ class AfPlayerService {
   }) async {
     if (_disposed) return;
     _resolveStreamUrl = resolveStreamUrl;
-    _queueManager.insert(index, track);
+    await _queueLock.run(() async {
+      _queueManager.insert(index, track);
+    });
     afLog(
       'audio',
       'insertIntoQueue "${track.title}" at index=$index '
@@ -1022,13 +1036,15 @@ class AfPlayerService {
   }) async {
     if (_disposed) return;
     _resolveStreamUrl = resolveStreamUrl;
-    _queueManager.engine.insert(
-      _queueManager.currentIndex >= 0
-          ? _queueManager.currentIndex + 1
-          : _queueManager.currentQueue.length,
-      track,
-    );
-    _queueManager.emitQueue();
+    await _queueLock.run(() async {
+      _queueManager.engine.insert(
+        _queueManager.currentIndex >= 0
+            ? _queueManager.currentIndex + 1
+            : _queueManager.currentQueue.length,
+        track,
+      );
+      _queueManager.emitQueue();
+    });
     afLog('audio', 'playNext "${track.title}"');
   }
 
@@ -1038,8 +1054,10 @@ class AfPlayerService {
   }) async {
     if (_disposed) return;
     _resolveStreamUrl = resolveStreamUrl;
-    _queueManager.engine.append(track);
-    _queueManager.emitQueue();
+    await _queueLock.run(() async {
+      _queueManager.engine.append(track);
+      _queueManager.emitQueue();
+    });
     afLog('audio', 'addToQueue "${track.title}" at end');
   }
 
@@ -1049,7 +1067,9 @@ class AfPlayerService {
   }) async {
     if (_disposed || tracks.isEmpty) return;
     _resolveStreamUrl = resolveStreamUrl;
-    _queueManager.appendAll(tracks);
+    await _queueLock.run(() async {
+      _queueManager.appendAll(tracks);
+    });
     afLog('audio', 'appendQueue added ${tracks.length} tracks at end');
   }
 
@@ -1193,6 +1213,8 @@ class AfPlayerService {
           // This prevents stale/duplicate completed events from the previous
           // track (which fires when stopping/replacing the media in openAll)
           // from being treated as the completion of the newly-advanced track.
+          // Guard checks run OUTSIDE the lock so they read the state at event
+          // time, not after a prior handler has already mutated the queue.
           final currentTrackId = _queueManager.currentTrack?.id;
           if (currentTrackId == null || _mpvLoadedTrackId != currentTrackId) {
             afLog(
@@ -1218,13 +1240,17 @@ class AfPlayerService {
             return;
           }
 
-          // Loop.file: restart current track regardless of queue position.
-          // mpv's single-track model may fire `completed` even with
-          // Loop.file set. Don't advance — explicitly seek to 0 and play.
-          // Don't set _completedHandledForTrackId so the next completion
-          // (after the track loops) is processed.
-          if (loopAtEvent == Loop.file) {
-            return _queueLock.run(() async {
+          // All guard checks passed — now serialize the queue mutations
+          // through the lock to prevent interleaving with skipToNext etc.
+          await _queueLock.run(() async {
+            if (_disposed) return;
+
+            // Loop.file: restart current track regardless of queue position.
+            // mpv's single-track model may fire `completed` even with
+            // Loop.file set. Don't advance — explicitly seek to 0 and play.
+            // Don't set _completedHandledForTrackId so the next completion
+            // (after the track loops) is processed.
+            if (loopAtEvent == Loop.file) {
               _onTrackChangedOrRestarted();
               try {
                 await _player.seek(Duration.zero);
@@ -1245,125 +1271,128 @@ class AfPlayerService {
               }
               _updateMediaSession();
               afLog('audio', 'Loop.file — restarted current track');
-            });
-          }
+              return;
+            }
 
-          // Check for N-times repeat before advancing or ending
-          if (loopAtEvent == Loop.off &&
-              _queueManager.engine.isForNtimes &&
-              _queueManager.engine.remainingRepeats > 0) {
-            _queueManager.engine.decrementRepeats();
-            afLog(
-              'audio',
-              'forNtimes: restarting track, '
-                  '${_queueManager.engine.remainingRepeats} repeats remaining',
-            );
-            try {
-              _onTrackChangedOrRestarted();
-              await _player.seek(Duration.zero);
-              if (!playingAtEvent) {
-                await _player.play();
-              }
-            } catch (e, stack) {
+            // Check for N-times repeat before advancing or ending
+            if (loopAtEvent == Loop.off &&
+                _queueManager.engine.isForNtimes &&
+                _queueManager.engine.remainingRepeats > 0) {
+              _queueManager.engine.decrementRepeats();
               afLog(
                 'audio',
-                'forNtimes: seek(0) failed',
-                error: e,
-                stackTrace: stack,
+                'forNtimes: restarting track, '
+                    '${_queueManager.engine.remainingRepeats} repeats remaining',
               );
+              try {
+                _onTrackChangedOrRestarted();
+                await _player.seek(Duration.zero);
+                if (!playingAtEvent) {
+                  await _player.play();
+                }
+              } catch (e, stack) {
+                afLog(
+                  'audio',
+                  'forNtimes: seek(0) failed',
+                  error: e,
+                  stackTrace: stack,
+                );
+              }
+              _updateMediaSession();
+              return;
             }
-            _updateMediaSession();
-            return;
-          }
 
-          // Mark this track's completion as handled so duplicate events
-          // (from loop mode toggles) are ignored.
-          _completedHandledForTrackId = currentTrackId;
+            // Mark this track's completion as handled so duplicate events
+            // (from loop mode toggles) are ignored.
+            _completedHandledForTrackId = currentTrackId;
 
-          if (!_queueManager.engine.isAtQueueEnd) {
-            return _queueLock.run(_advanceToNextTrack);
-          } else {
-            // End of queue
-            var autoplayTriggered = false;
-            if (loopAtEvent == Loop.off && onGetSimilarTracks != null) {
-              final lastTrack = _queueManager.currentTrack;
-              if (lastTrack != null) {
-                try {
-                  final similar = await onGetSimilarTracks!(lastTrack);
-                  if (similar.isNotEmpty) {
-                    for (final t in similar) {
-                      _queueManager.engine.append(t);
-                    }
-                    _queueManager.emitQueue();
+            if (!_queueManager.engine.isAtQueueEnd) {
+              await _advanceToNextTrack();
+            } else {
+              // End of queue
+              var autoplayTriggered = false;
+              if (loopAtEvent == Loop.off && onGetSimilarTracks != null) {
+                final lastTrack = _queueManager.currentTrack;
+                if (lastTrack != null) {
+                  try {
+                    final similar = await onGetSimilarTracks!(lastTrack);
+                    if (similar.isNotEmpty) {
+                      for (final t in similar) {
+                        _queueManager.engine.append(t);
+                      }
+                      _queueManager.emitQueue();
 
-                    // Now the queue is extended! Slide and play the next track.
-                    return _queueLock.run(() async {
+                      // Now the queue is extended! Slide and play the next track.
                       await _advanceToNextTrack();
                       autoplayTriggered = true;
-                    });
+                    }
+                  } catch (e, stack) {
+                    afLog(
+                      'audio',
+                      'autoplay check failed',
+                      error: e,
+                      stackTrace: stack,
+                    );
                   }
-                } catch (e, stack) {
-                  afLog(
-                    'audio',
-                    'autoplay check failed',
-                    error: e,
-                    stackTrace: stack,
-                  );
+                }
+              }
+
+              if (!autoplayTriggered) {
+                switch (loopAtEvent) {
+                  case Loop.off:
+                    _userPaused = true;
+                    _positionTracker.onStop();
+                    _mpvLoadedTrackId = null;
+                    try {
+                      await _player.stop();
+                    } catch (e, stack) {
+                      afLog(
+                        'audio',
+                        'stop failed on queue completion',
+                        error: e,
+                        stackTrace: stack,
+                      );
+                    }
+                    _queueManager.endPlayback();
+                    onTrackChanged?.call(null);
+                    _updateMediaSession();
+                    afLog('audio', 'queue end, auto-stop (loop=off)');
+
+                  case Loop.playlist:
+                    _queueManager.engine.jumpTo(0);
+                    _onTrackChangedOrRestarted();
+                    final track = _queueManager.currentTrack;
+                    if (track != null) {
+                      await _rebuildWindow(track);
+                    }
+                    _updateMediaSession();
+                    afLog('audio', 'queue end, looping playlist');
+                  case Loop.file:
+                    // Loop.file is handled early (before isAtQueueEnd check).
+                    // This branch should never be reached, but if it is,
+                    // restart the track defensively.
+                    _onTrackChangedOrRestarted();
+                    try {
+                      await _player.seek(Duration.zero);
+                      if (!_player.state.playing) {
+                        await _player.play();
+                      }
+                    } catch (e, stack) {
+                      afLog(
+                        'audio',
+                        'Loop.file fallback restart failed',
+                        error: e,
+                        stackTrace: stack,
+                      );
+                    }
+                    afLog(
+                      'audio',
+                      'queue end, loop=file — restarted (fallback)',
+                    );
                 }
               }
             }
-
-            if (!autoplayTriggered) {
-              switch (loopAtEvent) {
-                case Loop.off:
-                  _userPaused = true;
-                  _positionTracker.onStop();
-                  _mpvLoadedTrackId = null;
-                  try {
-                    await _player.stop();
-                  } catch (e, stack) {
-                    afLog(
-                      'audio',
-                      'stop failed on queue completion',
-                      error: e,
-                      stackTrace: stack,
-                    );
-                  }
-                  _queueManager.endPlayback();
-                  onTrackChanged?.call(null);
-                  _updateMediaSession();
-                  afLog('audio', 'queue end, auto-stop (loop=off)');
-
-                case Loop.playlist:
-                  return _queueLock.run(() async {
-                    _queueManager.engine.jumpTo(0);
-                    _onTrackChangedOrRestarted();
-                    await _rebuildWindow(_queueManager.currentTrack!);
-                    _updateMediaSession();
-                    afLog('audio', 'queue end, looping playlist');
-                  });
-                case Loop.file:
-                  // Loop.file is handled early (before isAtQueueEnd check).
-                  // This branch should never be reached, but if it is,
-                  // restart the track defensively.
-                  _onTrackChangedOrRestarted();
-                  try {
-                    await _player.seek(Duration.zero);
-                    if (!_player.state.playing) {
-                      await _player.play();
-                    }
-                  } catch (e, stack) {
-                    afLog(
-                      'audio',
-                      'Loop.file fallback restart failed',
-                      error: e,
-                      stackTrace: stack,
-                    );
-                  }
-                  afLog('audio', 'queue end, loop=file — restarted (fallback)');
-              }
-            }
-          }
+          });
         } catch (e, stack) {
           afLog(
             'audio',
@@ -1563,14 +1592,23 @@ class AfPlayerService {
     if (_player.state.playing) return;
 
     // All conditions met — advance to next track.
-    _eofFallbackHandledTrackId = currentTrack.id;
+    // Move the guard assignment INSIDE the lock to prevent double-advance
+    // when position ticks fire rapidly before the lock is acquired.
     afLog(
       'audio',
       'EOF fallback triggered for track "${currentTrack.id}" '
           'pos=${pos.inMilliseconds}ms duration=${duration.inMilliseconds}ms',
     );
 
-    unawaited(_queueLock.run(_advanceToNextTrack));
+    unawaited(
+      _queueLock.run(() async {
+        // Double-check inside the lock — another position tick may have
+        // already queued the advance before we got the lock.
+        if (_eofFallbackHandledTrackId == currentTrack.id) return;
+        _eofFallbackHandledTrackId = currentTrack.id;
+        await _advanceToNextTrack();
+      }),
+    );
   }
 
   int _lastMediaSessionUpdateMs = 0;

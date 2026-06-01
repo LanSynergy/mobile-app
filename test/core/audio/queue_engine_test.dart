@@ -77,7 +77,7 @@ void main() {
         // All 5 tracks should be present in the mapping
         final seen = <String>{};
         for (var i = 0; i < 5; i++) {
-          seen.add(engine.trackAt(i).id);
+          seen.add(engine.trackAt(i)!.id);
         }
         expect(seen, equals({'1', '2', '3', '4', '5'}));
       });
@@ -101,7 +101,7 @@ void main() {
         engine.replaceAll(tracks, 2);
         engine.setShuffle(true);
         // trackAt(0) should be the current track (id='3')
-        expect(engine.trackAt(0).id, '3');
+        expect(engine.trackAt(0)!.id, '3');
       });
 
       test('physicalIndex and logicalIndex roundtrip', () {

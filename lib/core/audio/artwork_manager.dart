@@ -192,6 +192,16 @@ class AfArtworkManager {
       if (!await dir.exists()) {
         await dir.create(recursive: true);
       }
+      // Initialize disk cache size from actual files on disk.
+      // Without this, _diskCacheSize stays 0 after app restart while
+      // actual disk usage may be larger, defeating eviction tracking.
+      int totalSize = 0;
+      await for (final entity in dir.list()) {
+        if (entity is File && !entity.path.endsWith('.tmp')) {
+          totalSize += await entity.length();
+        }
+      }
+      _diskCacheSize = totalSize;
       // Clean up expired files on startup
       _cleanupExpiredCache();
     } catch (e) {

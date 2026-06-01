@@ -235,7 +235,9 @@ class AfQueueEngine {
   }
 
   /// Map a logical queue index to the actual track.
-  AfTrack trackAt(int logicalIndex) {
+  /// Returns `null` if [logicalIndex] is out of bounds.
+  AfTrack? trackAt(int logicalIndex) {
+    if (logicalIndex < 0 || logicalIndex >= _tracks.length) return null;
     final actualIndex = _shuffleOrder != null
         ? _shuffleOrder![logicalIndex]
         : logicalIndex;

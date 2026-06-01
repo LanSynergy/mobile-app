@@ -28,6 +28,7 @@ class StreamPrefetcher {
   String? _cacheDir;
   final Map<String, File> _cachedFiles = {};
   final Map<String, Future<File?>> _prefetchFutures = {};
+  final Map<String, CancelToken> _cancelTokens = {};
   final List<({String url, Map<String, String> headers, String trackId})>
   _prefetchQueue = [];
 
@@ -152,10 +153,12 @@ class StreamPrefetcher {
       future
           .then((file) {
             _prefetchFutures.remove(trackId);
+            _cancelTokens.remove(trackId);
             _processPrefetchQueue();
           })
           .catchError((_) {
             _prefetchFutures.remove(trackId);
+            _cancelTokens.remove(trackId);
             _processPrefetchQueue();
           }),
     );
@@ -186,7 +189,10 @@ class StreamPrefetcher {
       ),
     );
 
-    afLog('audio', 'Starting prefetch for trackId=$trackId, url=$url');
+    afLog('audio', 'Starting prefetch for trackId=$trackId');
+
+    final cancelToken = CancelToken();
+    _cancelTokens[trackId] = cancelToken;
 
     int retryCount = 0;
     while (true) {
@@ -194,10 +200,18 @@ class StreamPrefetcher {
         final response = await _dio.get<ResponseBody>(
           url,
           options: Options(headers: headers, responseType: ResponseType.stream),
+          cancelToken: cancelToken,
         );
 
+        final body = response.data;
+        if (body == null) {
+          afLog('audio', 'Prefetch got null body for trackId=$trackId');
+          _cancelTokens.remove(trackId);
+          return null;
+        }
+
         final sink = tempFile.openWrite();
-        await response.data!.stream.forEach(sink.add);
+        await body.stream.forEach(sink.add);
         await sink.close();
 
         // Add to cache
@@ -265,9 +279,13 @@ class StreamPrefetcher {
 
   /// Cancels the current prefetch download and deletes the partial temp file.
   void cancelCurrentPrefetch() {
-    // Cancel all ongoing prefetches
-    // We can't directly cancel Dio requests without CancelToken
-    // This will be handled by the timeout in _dio.options
+    // Cancel all in-flight Dio requests via CancelToken
+    for (final token in _cancelTokens.values) {
+      if (!token.isCancelled) {
+        token.cancel('Prefetch cancelled');
+      }
+    }
+    _cancelTokens.clear();
     _prefetchFutures.clear();
     _prefetchQueue.clear();
   }
