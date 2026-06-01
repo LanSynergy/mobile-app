@@ -66,6 +66,7 @@ handover.md
 .logs/
 .lcm/
 .zed/
+.agents/
 
 # Auto-generated build metadata
 lib/build_id.dart
