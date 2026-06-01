@@ -285,13 +285,16 @@ class _ReactiveProgressRing extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final position = ref.watch(positionStreamProvider);
     final mpvDuration = ref.watch(durationStreamProvider);
+    final isBuffering = ref.watch(isBufferingProvider);
+    // Show metadata duration immediately, but freeze progress bar at 0
+    // while buffering — mpv's position isn't meaningful until playback starts.
     final duration = mpvDuration > Duration.zero ? mpvDuration : track.duration;
+    final effectivePosition = isBuffering ? Duration.zero : position;
     final ringProgress = duration.inMilliseconds == 0
         ? 0.0
-        : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
+        : (effectivePosition.inMilliseconds / duration.inMilliseconds)
+            .clamp(0.0, 1.0);
     final energyColor = ref.watch(currentSpectralProvider).energy;
-
-    final isBuffering = ref.watch(isBufferingProvider);
 
     return CircularProgressRing(
       progress: ringProgress,

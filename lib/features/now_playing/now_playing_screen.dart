@@ -508,18 +508,24 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
     final position = ref.watch(positionStreamProvider);
     final spectral = ref.watch(currentSpectralProvider);
     final mpvDuration = ref.watch(durationStreamProvider);
+    final isBuffering = ref.watch(isBufferingProvider);
     // Use mpv's reported duration as source of truth. Fall back to
     // track metadata only if mpv hasn't probed the file yet.
     final duration = mpvDuration > Duration.zero
         ? mpvDuration
         : widget.track.duration;
 
+    // Freeze progress bar at 0 while buffering — mpv's position
+    // isn't meaningful until playback actually starts.
+    final effectivePosition = isBuffering ? Duration.zero : position;
+
     // Only use engine position if NOT dragging — prevents the playhead
     // from stuttering between the drag position and the engine's real
     // position (which keeps advancing during the gesture).
     final engineProgress = duration.inMilliseconds == 0
         ? 0.0
-        : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
+        : (effectivePosition.inMilliseconds / duration.inMilliseconds)
+            .clamp(0.0, 1.0);
     final displayProgress = _isDragging
         ? (_scrubPreview ?? engineProgress)
         : engineProgress;
@@ -528,7 +534,7 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
         ? Duration(
             milliseconds: (_scrubPreview! * duration.inMilliseconds).round(),
           )
-        : position;
+        : effectivePosition;
     final remaining = duration > displayPosition
         ? duration - displayPosition
         : Duration.zero;

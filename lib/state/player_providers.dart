@@ -376,6 +376,10 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
           ref.read(durationStreamProvider.notifier).state = rawDur;
         }
       } else {
+        // Don't fallback to metadata duration while mpv is still
+        // buffering — the real duration isn't known yet and the
+        // progress bar would move prematurely.
+        if (svc.isBuffering || svc.isPausedForCache) continue;
         final track = ref.read(currentTrackProvider);
         if (track != null && track.duration > Duration.zero) {
           if (disposed) return;

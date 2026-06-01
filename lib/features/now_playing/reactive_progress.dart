@@ -40,8 +40,12 @@ class _ReactiveProgressState extends ConsumerState<ReactiveProgress> {
   Widget build(BuildContext context) {
     final pos = ref.watch(positionStreamProvider);
     final dur = ref.watch(durationStreamProvider);
+    final isBuffering = ref.watch(isBufferingProvider);
+    // Freeze scrubber at 0 while buffering — mpv's position isn't
+    // meaningful until playback actually starts.
+    final effectivePos = isBuffering ? Duration.zero : pos;
     if (!_isDragging) {
-      _sliderValue = _computeSliderValue(pos, dur);
+      _sliderValue = _computeSliderValue(effectivePos, dur);
     }
 
     return Column(
@@ -69,7 +73,7 @@ class _ReactiveProgressState extends ConsumerState<ReactiveProgress> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _format(pos),
+                _format(effectivePos),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(
                     context,
