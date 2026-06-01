@@ -79,6 +79,7 @@ class SharedDioClient {
   Dio createWithOptions(BaseOptions options) {
     final customDio = Dio(options);
     customDio.httpClientAdapter = _createAdapter();
+    customDio.interceptors.add(_RetryInterceptor(customDio));
     return customDio;
   }
 
@@ -116,7 +117,7 @@ class _RetryInterceptor extends Interceptor {
     if (_shouldRetry(err)) {
       final retryCount = (err.requestOptions.extra['_retryCount'] as int?) ?? 0;
       if (retryCount < _maxRetries) {
-        _retry(err, handler, retryCount);
+        unawaited(_retry(err, handler, retryCount));
         return;
       }
     }
@@ -145,19 +146,21 @@ class _RetryInterceptor extends Interceptor {
         'Retry ${retryCount + 1}/$_maxRetries failed: $retryErr',
         name: 'aetherfin:http',
       );
-      // If this was the last retry, forward the original error
-      if (retryCount + 1 >= _maxRetries) {
-        handler.next(err);
-      } else {
-        // Try next retry
-        unawaited(_retry(err, handler, retryCount + 1));
+      if (retryErr is DioException && _shouldRetry(retryErr)) {
+        final nextCount = retryCount + 1;
+        if (nextCount < _maxRetries) {
+          unawaited(_retry(retryErr, handler, nextCount));
+          return;
+        }
       }
+      handler.next(err);
     }
   }
 
   bool _shouldRetry(DioException err) {
     if (err.type == DioExceptionType.connectionTimeout ||
-        err.type == DioExceptionType.connectionError) {
+        err.type == DioExceptionType.connectionError ||
+        err.type == DioExceptionType.receiveTimeout) {
       return true;
     }
     if (err.response != null) {
