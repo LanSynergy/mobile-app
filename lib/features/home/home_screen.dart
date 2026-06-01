@@ -11,6 +11,7 @@ import '../../state/providers.dart';
 import '../../widgets/async_error_view.dart';
 import '../../widgets/hero_album_card.dart';
 import '../../widgets/section_header.dart';
+import '../../widgets/stagger_reveal.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
@@ -178,22 +179,19 @@ class _RecentTracksSection extends ConsumerWidget {
         ),
         const SizedBox(height: AfSpacing.s12),
         tracksAsync.when(
-          data: (tracks) => ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-            itemCount: tracks.take(5).length,
-            separatorBuilder: (context, index) =>
-                const SizedBox(height: AfSpacing.s4),
-            itemBuilder: (context, i) {
-              final t = tracks[i];
-              return TrackRow(
-                track: t,
-                density: TrackRowDensity.generous,
-                onTap: () => ref.read(playActionsProvider).playSingle(t),
-                onLongPress: () => showTrackContextMenu(context, ref, t),
-              );
-            },
+          data: (tracks) => StaggerReveal(
+            children: [
+              for (final t in tracks.take(5))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AfSpacing.s4),
+                  child: TrackRow(
+                    track: t,
+                    density: TrackRowDensity.generous,
+                    onTap: () => ref.read(playActionsProvider).playSingle(t),
+                    onLongPress: () => showTrackContextMenu(context, ref, t),
+                  ),
+                ),
+            ],
           ),
           loading: () => const HomeRecentSkeleton(),
           error: (e, _) => AsyncErrorView.compact(

@@ -19,6 +19,7 @@ import '../../widgets/opacity_app_bar.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/af_scrollbar.dart';
 import '../../widgets/skeletons/album_skeleton.dart';
+import '../../widgets/stagger_reveal.dart';
 
 /// Mockup 07 — Album detail.
 ///
@@ -91,36 +92,45 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
 
           return Stack(
             children: [
-              // Hero artwork — parallax via Transform.translate, scroll-linked.
+              // Hero artwork — parallax via Transform.translate + scale, scroll-linked.
               // Uses ValueListenableBuilder so only the artwork + app bar
               // rebuild on scroll, not the entire screen.
               ValueListenableBuilder<double>(
                 valueListenable: _scrollOffset,
-                builder: (context, offset, _) => Positioned(
-                  top: -offset * 0.5,
-                  left: 0,
-                  right: 0,
-                  child: SizedBox(
-                    height: heroHeight,
-                    child: ShaderMask(
-                      shaderCallback: (rect) {
-                        return const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          stops: [0.6, 1.0],
-                          colors: [Colors.white, Colors.transparent],
-                        ).createShader(rect);
-                      },
-                      blendMode: BlendMode.dstIn,
-                      child: Artwork(
-                        url: album.imageUrl,
-                        size: width,
-                        height: heroHeight,
-                        radius: BorderRadius.zero,
+                builder: (context, offset, _) {
+                  // Subtle scale: 1.0 at top → 0.92 as user scrolls past hero.
+                  final scaleProgress = (offset / heroHeight).clamp(0.0, 1.0);
+                  final scale = 1.0 - (scaleProgress * 0.08);
+
+                  return Positioned(
+                    top: -offset * 0.5,
+                    left: 0,
+                    right: 0,
+                    child: SizedBox(
+                      height: heroHeight,
+                      child: Transform.scale(
+                        scale: scale,
+                        child: ShaderMask(
+                          shaderCallback: (rect) {
+                            return const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              stops: [0.6, 1.0],
+                              colors: [Colors.white, Colors.transparent],
+                            ).createShader(rect);
+                          },
+                          blendMode: BlendMode.dstIn,
+                          child: Artwork(
+                            url: album.imageUrl,
+                            size: width,
+                            height: heroHeight,
+                            radius: BorderRadius.zero,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
 
               AfScrollbar(
@@ -186,15 +196,19 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                     const SliverToBoxAdapter(
                       child: SizedBox(height: AfSpacing.s24),
                     ),
-                    SliverList.separated(
-                      itemCount: tracks.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: AfSpacing.s4),
-                      itemBuilder: (context, i) => _TrackRowItem(
-                        track: tracks[i],
-                        index: i,
-                        activeId: activeId,
-                        tracks: tracks,
+                    SliverToBoxAdapter(
+                      child: StaggerReveal(
+                        children: [
+                          for (var i = 0; i < tracks.length; i++) ...[
+                            if (i > 0) const SizedBox(height: AfSpacing.s4),
+                            _TrackRowItem(
+                              track: tracks[i],
+                              index: i,
+                              activeId: activeId,
+                              tracks: tracks,
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                     wikiAsync.maybeWhen(

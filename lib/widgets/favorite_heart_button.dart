@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -57,8 +59,26 @@ class FavoriteHeartButton extends ConsumerStatefulWidget {
       _FavoriteHeartButtonState();
 }
 
-class _FavoriteHeartButtonState extends ConsumerState<FavoriteHeartButton> {
+class _FavoriteHeartButtonState extends ConsumerState<FavoriteHeartButton>
+    with SingleTickerProviderStateMixin {
   bool _busy = false;
+
+  /// Pulse animation on toggle (scale 1.0 → 1.3 → 1.0).
+  late final AnimationController _pulseCtrl = AnimationController(
+    vsync: this,
+    duration: AfDurations.quick,
+    reverseDuration: AfDurations.standard,
+  );
+  late final Animation<double> _pulseScale = TweenSequence([
+    TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.35), weight: 40),
+    TweenSequenceItem(tween: Tween(begin: 1.35, end: 1.0), weight: 60),
+  ]).animate(CurvedAnimation(parent: _pulseCtrl, curve: AfCurves.easeStandard));
+
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
 
   /// Authoritative "is this track favorited *right now*" — overrides
   /// the (potentially stale) `widget.track.isFavorite` field cached on
@@ -81,6 +101,9 @@ class _FavoriteHeartButtonState extends ConsumerState<FavoriteHeartButton> {
     ref
         .read(trackFavoriteOverridesProvider.notifier)
         .update((s) => {...s, widget.track.id: next});
+
+    // Trigger pulse animation on toggle (fire-and-forget).
+    unawaited(_pulseCtrl.forward(from: 0));
 
     // Keep `currentTrackProvider` in sync if this is the playing track,
     // so Now Playing's icon doesn't lag a list-screen toggle.
@@ -135,12 +158,13 @@ class _FavoriteHeartButtonState extends ConsumerState<FavoriteHeartButton> {
         (map) => map[widget.track.id] ?? widget.track.isFavorite,
       ),
     );
+    final icon = Icon(
+      isFavorite ? LucideIcons.heart : LucideIcons.heart,
+      color: isFavorite ? AfColors.semanticError : AfColors.textTertiary,
+      size: widget.size,
+    );
     return IconButton(
-      icon: Icon(
-        isFavorite ? LucideIcons.heart : LucideIcons.heart,
-        color: isFavorite ? AfColors.semanticError : AfColors.textTertiary,
-        size: widget.size,
-      ),
+      icon: ScaleTransition(scale: _pulseScale, child: icon),
       onPressed: _toggle,
       tooltip: isFavorite ? 'Unfavorite' : 'Favorite',
       padding: EdgeInsets.zero,

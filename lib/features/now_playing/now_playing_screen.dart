@@ -524,8 +524,10 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
     // position (which keeps advancing during the gesture).
     final engineProgress = duration.inMilliseconds == 0
         ? 0.0
-        : (effectivePosition.inMilliseconds / duration.inMilliseconds)
-            .clamp(0.0, 1.0);
+        : (effectivePosition.inMilliseconds / duration.inMilliseconds).clamp(
+            0.0,
+            1.0,
+          );
     final displayProgress = _isDragging
         ? (_scrubPreview ?? engineProgress)
         : engineProgress;

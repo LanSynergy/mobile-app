@@ -369,6 +369,7 @@ lib/
 │  ├─ album_more_sheet.dart ← Album 3-dot action sheet (dialog-based)
 │  ├─ bottom_sheet.dart     ← Shared bottom sheet wrapper with frosted glass
 │  ├─ press_scale.dart      ← Press-down scale animation wrapper
+│  ├─ stagger_reveal.dart   ← Staggered fade+slide-up reveal for lists/grids
 │  ├─ save_to_playlist_sheet.dart ← Save-track-to-playlist bottom sheet
 │  ├─ track_details_sheet.dart  ← Track info bottom sheet
 │  ├─ track_context_menu.dart   ← Long-press context menu builder
@@ -417,6 +418,12 @@ android/app/src/main/kotlin/dev/aetherfin/aetherfin/
 - Exactly five easing curves: `easeStandard`, `easeEmphasized`, `easeOut`,
   `easeIn`, `linear`. Audio-coupled animations (visualizer, progress scrubber,
   lyric scroll) MUST use `linear`.
+- **Stagger conventions** (`AfStagger`): 40ms per item, max 8 staggered items,
+  160ms per-item animation (fade + 12dp slide up). Use `StaggerReveal` widget
+  for list/grid entrance animations.
+- **Page transitions**: Slide + fade + subtle scale (0.96→1.0) with
+  `easeStandard / 240ms`. Reduced-motion → instant fade only.
+- **Tab switching**: `AnimatedSwitcher` cross-fade with `easeOut`/`easeIn` curves.
 
 ### 4.3 Mini-player rules
 - **56 dp tall, 12 dp horizontal margin, 16 dp gap to bottom nav.**
@@ -973,6 +980,9 @@ This keeps the active directory focused on current work. Historical artifacts re
 61. 📝 GUIDANCE **"QS media session progress bar after queue end is correct."** No. After the queue ends, the QS media session can keep running because `playing=false` events are throttled (arriving <100ms apart) while a transient `playing=true` event at ~54ms pushes `playing=true` to native. Android QS then extrapolates position from the last known speed=1.0 forever. Fix: `trackEnded` fallback in `_updateMediaSession` overrides transient `playing=true` when position >= duration at queue end.
 62. 📝 GUIDANCE **"Forgetting to pass `isFavorite` in MethodChannel `updateState` args."** This causes the home screen widget's favorite/heart star to fail to update when favorited inside the app's Flutter UI.
 63. 📝 GUIDANCE **"Declaring LAUNCHER intent filter on MainActivity while aliases are active."** If you declare category LAUNCHER in both `MainActivity` and `<activity-alias>` elements, Android lists both icons in the app drawer. Remove the launcher filter from `MainActivity` and declare it only inside `<activity-alias>` configurations.
+64. 📝 GUIDANCE **"Use hardcoded durations (200ms, 300ms, 500ms) for animations."** No. Use `AfDurations` tokens (80/160/240/400/600ms) and `AfCurves` tokens. All animation durations in widgets must reference the design tokens, not literal values. The `global_mini_player_overlay.dart` previously had hardcoded `300ms`/`200ms` — this was a bug.
+65. 📝 GUIDANCE **"Use `ListView.separated` for staggered list animations."** No. Use `StaggerReveal` widget (`lib/widgets/stagger_reveal.dart`) which wraps children with staggered fade+slide-up reveal using `Interval` timing per `AfStagger` tokens. `ListView.separated` doesn't support staggered entrance animations.
+66. 📝 GUIDANCE **"Use `NoTransitionPage` for all shell tab switches."** No. Shell tabs use `AnimatedSwitcher` cross-fade with `AfDurations.quick`. `NoTransitionPage` is only for overlay routes like `/lyrics` and `/queue` that sit above the now-playing overlay.
 
 ## 16. Glossary
 
@@ -1025,6 +1035,7 @@ This keeps the active directory focused on current work. Historical artifacts re
 - **`SettingsKey<T>`**: Typed descriptor pattern in `player_settings_store.dart` for persisted settings. Each setting has `keyName`, `defaultValue`, `encoder`, `decoder`. Eliminates hand-rolled save/load triples.
 - **`ShimmerLayout`**: Base skeleton widget in `lib/widgets/skeleton.dart`. Applies `LinearGradient` shimmer animation over a gray placeholder. Each screen has a dedicated `*_skeleton.dart` in `widgets/skeletons/`.
 - **`_scrollSafetyTimer`**: Fallback timer in `eq_dsp_screen.dart` that resets `_isScrollActive` after 300ms of no scroll activity. Compensates for `ScrollEndNotification` not always firing on Android at scroll boundaries.
+- **`StaggerReveal`**: Reusable widget (`lib/widgets/stagger_reveal.dart`) that wraps children in a staggered fade+slide-up reveal animation. Uses `Interval` timing per `AfStagger` tokens. Items beyond `AfStagger.maxStaggered` (8) share the last stagger slot. Used on Home, Album, and Artist screens for entrance animations.
 - **`AfLoopMode`**: Custom loop mode enum (`off`, `playlist`, `file`, `forNtimes`) extending beyond mpv's native Loop modes.
 - **`ShuffleMode`**: Custom shuffle mode enum (`off`, `all`, `tail`) supporting Shuffle Next.
 - **`PlaylistUndoBuffer`**: Ephemeral playlist operation undo buffer class that tracks the last add/remove action per playlist for 8 seconds.

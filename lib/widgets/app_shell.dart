@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../design_tokens/tokens.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
 import 'bottom_nav.dart';
 import 'global_mini_player_overlay.dart';
@@ -126,10 +127,16 @@ class AppShell extends ConsumerWidget {
           ),
 
           // Tab content — transparent so gradient shows through
+          // AnimatedSwitcher cross-fades between tab changes.
           RepaintBoundary(
-            child: KeyedSubtree(
-              key: const ValueKey('shell-content'),
-              child: shell,
+            child: AnimatedSwitcher(
+              duration: AfDurations.quick,
+              switchInCurve: AfCurves.easeOut,
+              switchOutCurve: AfCurves.easeIn,
+              child: KeyedSubtree(
+                key: ValueKey('shell-tab-${shell.currentIndex}'),
+                child: shell,
+              ),
             ),
           ),
 

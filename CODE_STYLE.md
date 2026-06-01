@@ -310,6 +310,8 @@ class AfAlbum {
 - ✅ Redact PII (tokens, URLs, usernames) in release build logs/UI
 - ✅ Use generation counters to cancel stale async operations
 - ✅ Document regression tests with block comments explaining past bugs
+- ✅ Use `AfDurations` and `AfCurves` tokens for all animation timings (never literal ms values)
+- ✅ Use `StaggerReveal` for list/grid entrance animations (not `ListView.separated` with manual stagger)
 
 ### Don't
 - ❌ Never use `print()` — use `afLog()`
@@ -321,6 +323,8 @@ class AfAlbum {
 - ❌ Never use `Future.delayed` for auto-advance — use stream callbacks
 - ❌ Never use `.then()` for jump+play — use `async/await`
 - ❌ Never use 200/300/500ms durations — use the 5 token tiers only
+- ❌ Never hardcode animation durations (e.g. `Duration(milliseconds: 300)`) — use `AfDurations.standard` etc.
+- ❌ Never use `NoTransitionPage` for tab switches — use `AnimatedSwitcher` with `AfDurations.quick`
 - ❌ Never hardcode auth header values in clients — use `aetherfinVersionProvider`
 - ❌ Never store credentials in `shared_preferences` — use `flutter_secure_storage`
 - ❌ Never use `context.go()` for overlay screens (lyrics, queue, settings)

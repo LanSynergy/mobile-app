@@ -68,17 +68,17 @@ class _GlobalMiniPlayerOverlayState
       left: 0,
       right: 0,
       bottom: targetBottom,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
+      duration: AfDurations.standard,
+      curve: AfCurves.easeStandard,
       child: AnimatedOpacity(
         opacity: showMini ? 1.0 : 0.0,
-        duration: const Duration(milliseconds: 200),
+        duration: AfDurations.quick,
         child: IgnorePointer(
           ignoring: !showMini,
           child: AnimatedSlide(
             offset: showMini ? Offset.zero : const Offset(0, 1.5),
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutCubic,
+            duration: AfDurations.standard,
+            curve: AfCurves.easeStandard,
             child: MiniPlayer(
               onTap: () {
                 final size = MediaQuery.of(context).size;

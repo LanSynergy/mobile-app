@@ -232,8 +232,8 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
   );
 }
 
-/// Push: new page slides in from the right at `easeStandard / 240ms`.
-/// Pop: current page slides out to the right.
+/// Push: new page slides in from the right with a subtle fade + scale for
+/// depth. Pop: reverses. Reduced-motion → instant fade only.
 /// See `aetherfin-motion.md` §5.7.
 class _AfHorizontalSlideTransition extends PageTransitionsBuilder {
   const _AfHorizontalSlideTransition();
@@ -257,12 +257,25 @@ class _AfHorizontalSlideTransition extends PageTransitionsBuilder {
       reverseCurve: AfCurves.easeStandard,
     );
 
+    // Subtle fade: opacity goes from 0.0 → 1.0 (adds depth to slide).
+    final fade = FadeTransition(
+      opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curved),
+      child: child,
+    );
+
+    // Subtle scale: incoming page starts at 96% and scales to 100%.
+    final scale = ScaleTransition(
+      scale: Tween<double>(begin: 0.96, end: 1.0).animate(curved),
+      child: fade,
+    );
+
+    // Slide from right.
     return SlideTransition(
       position: Tween<Offset>(
-        begin: const Offset(1, 0),
+        begin: const Offset(0.12, 0),
         end: Offset.zero,
       ).animate(curved),
-      child: child,
+      child: scale,
     );
   }
 }

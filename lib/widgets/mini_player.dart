@@ -292,8 +292,10 @@ class _ReactiveProgressRing extends ConsumerWidget {
     final effectivePosition = isBuffering ? Duration.zero : position;
     final ringProgress = duration.inMilliseconds == 0
         ? 0.0
-        : (effectivePosition.inMilliseconds / duration.inMilliseconds)
-            .clamp(0.0, 1.0);
+        : (effectivePosition.inMilliseconds / duration.inMilliseconds).clamp(
+            0.0,
+            1.0,
+          );
     final energyColor = ref.watch(currentSpectralProvider).energy;
 
     return CircularProgressRing(

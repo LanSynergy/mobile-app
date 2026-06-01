@@ -156,6 +156,7 @@ lib/
 │  ├─ audio_visual_scrubber.dart      # Combined FFT + scrubber
 │  ├─ hero_album_card.dart            # Home carousel card
 │  ├─ press_scale.dart                # Press-scale wrapper
+│  ├─ stagger_reveal.dart             # Staggered fade+slide reveal for lists/grids
 │  └─ ...                             # See full list below
 └─ utils/
    ├─ log.dart                        # afLog() wrapper
@@ -240,6 +241,7 @@ Centralized in `lib/design_tokens/`. Single import: `package:aetherfin/design_to
 | `AfColors` | 12-step indigo scale, 6 surface depths, 6 text, 5 semantic |
 | `AfDurations` | 5 tiers: 80/160/240/400/600ms |
 | `AfCurves` | 5 curves: easeStandard, easeEmphasized, easeOut, easeIn, linear |
+| `AfStagger` | perItem 40ms, maxStaggered 8, itemDuration 160ms |
 | `AfSpacing` | 4px grid: s4..s64, gutter, miniPlayer, bottomInset |
 | `AfRadii` | borderSm, rXs, rSm, rMd, rLg, rXl, rFull |
 | `AfTypography` | 9 text styles: display..caption |

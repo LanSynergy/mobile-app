@@ -18,6 +18,7 @@ import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/af_scrollbar.dart';
 import '../../widgets/skeletons/artist_skeleton.dart';
+import '../../widgets/stagger_reveal.dart';
 
 class ArtistScreen extends ConsumerStatefulWidget {
   const ArtistScreen({super.key, required this.artistId});
@@ -82,34 +83,42 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
 
           return Stack(
             children: [
-              // Hero artwork — parallax via Transform.translate
+              // Hero artwork — parallax via Transform.translate + scroll-linked scale
               ValueListenableBuilder<double>(
                 valueListenable: _scrollOffset,
-                builder: (context, offset, _) => Positioned(
-                  top: -offset * 0.5,
-                  left: 0,
-                  right: 0,
-                  child: SizedBox(
-                    height: heroHeight,
-                    child: ShaderMask(
-                      shaderCallback: (rect) {
-                        return const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          stops: [0.6, 1.0],
-                          colors: [Colors.white, Colors.transparent],
-                        ).createShader(rect);
-                      },
-                      blendMode: BlendMode.dstIn,
-                      child: Artwork(
-                        url: heroUrl,
-                        size: width,
-                        height: heroHeight,
-                        radius: AfRadii.borderMd,
+                builder: (context, offset, _) {
+                  final scaleProgress = (offset / heroHeight).clamp(0.0, 1.0);
+                  final scale = 1.0 - (scaleProgress * 0.08);
+
+                  return Positioned(
+                    top: -offset * 0.5,
+                    left: 0,
+                    right: 0,
+                    child: SizedBox(
+                      height: heroHeight,
+                      child: Transform.scale(
+                        scale: scale,
+                        child: ShaderMask(
+                          shaderCallback: (rect) {
+                            return const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              stops: [0.6, 1.0],
+                              colors: [Colors.white, Colors.transparent],
+                            ).createShader(rect);
+                          },
+                          blendMode: BlendMode.dstIn,
+                          child: Artwork(
+                            url: heroUrl,
+                            size: width,
+                            height: heroHeight,
+                            radius: AfRadii.borderMd,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
 
               AfScrollbar(
@@ -174,30 +183,33 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                       const SliverToBoxAdapter(
                         child: SizedBox(height: AfSpacing.s8),
                       ),
-                      SliverList.separated(
-                        itemCount: topTracks.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: AfSpacing.s4),
-                        itemBuilder: (context, i) => Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AfSpacing.s16,
-                          ),
-                          child: TrackRow(
-                            track: topTracks[i],
-                            leadingNumber: i + 1,
-                            isActive: topTracks[i].id == activeId,
-                            isBuffering:
-                                topTracks[i].id == activeId && isBuffering,
-                            activeAccent: activeAccent,
-                            onTap: () => ref
-                                .read(playActionsProvider)
-                                .playQueue(topTracks, startIndex: i),
-                            onLongPress: () => showTrackContextMenu(
-                              context,
-                              ref,
-                              topTracks[i],
-                            ),
-                          ),
+                      SliverToBoxAdapter(
+                        child: StaggerReveal(
+                          children: [
+                            for (var i = 0; i < topTracks.length; i++)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AfSpacing.s16,
+                                ),
+                                child: TrackRow(
+                                  track: topTracks[i],
+                                  leadingNumber: i + 1,
+                                  isActive: topTracks[i].id == activeId,
+                                  isBuffering:
+                                      topTracks[i].id == activeId &&
+                                      isBuffering,
+                                  activeAccent: activeAccent,
+                                  onTap: () => ref
+                                      .read(playActionsProvider)
+                                      .playQueue(topTracks, startIndex: i),
+                                  onLongPress: () => showTrackContextMenu(
+                                    context,
+                                    ref,
+                                    topTracks[i],
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ],

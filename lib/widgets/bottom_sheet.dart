@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../design_tokens/tokens.dart';
 
-/// A reusable function to show a blurred, transparent bottom sheet.
+/// A reusable function to show a blurred, transparent bottom sheet
+/// with a smooth slide-up + fade transition.
 Future<T?> showBlurBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -17,6 +18,13 @@ Future<T?> showBlurBottomSheet<T>({
     isScrollControlled: isScrollControlled,
     enableDrag: enableDrag,
     backgroundColor: Colors.transparent,
+    // Custom transition: slide up + fade with emphasized curve.
+    sheetAnimationStyle: const AnimationStyle(
+      duration: AfDurations.standard,
+      reverseDuration: AfDurations.quick,
+      curve: AfCurves.easeEmphasized,
+      reverseCurve: AfCurves.easeIn,
+    ),
     builder: (BuildContext context) {
       return Padding(
         padding: EdgeInsets.only(
