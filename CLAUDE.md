@@ -467,6 +467,27 @@ Uses `player.setAudioEffects(AudioEffects(...))` API. State persisted via
 (main screen), `eq_preset.dart` (kEqBands, kBuiltInPresets), `eq_dsp_widgets.dart`
 (reusable widget builders).
 
+### 4.6 Design token usage rules
+
+All visual values MUST come from `lib/design_tokens/`. Import via
+`package:aetherfin/design_tokens/tokens.dart`.
+
+**Spacing:** Use `AfSpacing.*` — `SizedBox(height: AfSpacing.s8)`,
+`EdgeInsets.all(AfSpacing.s16)`. Never raw ints for layout spacing.
+
+**Border radii:** Use `AfRadii.*` — `AfRadii.borderSm` (8dp),
+`AfRadii.borderMd` (12dp), `AfRadii.borderPill` (999dp). Never
+`BorderRadius.circular(N)`.
+
+**Typography:** Use `AfTypography.*` text styles with `.copyWith()` for
+color/weight overrides. Never raw `TextStyle(...)` or bare `fontSize:`.
+
+**Colors:** Use `AfColors.*` — never `Colors.white`, `Colors.black`,
+or raw `Color(0xFF...)` outside `design_tokens/colors.dart`.
+
+**Lint enforcement:** `flutter analyze` must report 0 errors, 0 warnings.
+`dart fix --apply` auto-fixes `prefer_const_constructors` info-level lints.
+
 ## 5. Jellyfin auth — battle-tested format
 
 Every Jellyfin request carries:

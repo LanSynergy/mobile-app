@@ -312,6 +312,10 @@ class AfAlbum {
 - ✅ Document regression tests with block comments explaining past bugs
 - ✅ Use `AfDurations` and `AfCurves` tokens for all animation timings (never literal ms values)
 - ✅ Use `StaggerReveal` for list/grid entrance animations (not `ListView.separated` with manual stagger)
+- ✅ Use `AfSpacing.*` for all spacing — `SizedBox(height: AfSpacing.s8)`, `EdgeInsets.all(AfSpacing.s16)`
+- ✅ Use `AfRadii.*` for all border radii — `AfRadii.borderSm`, `AfRadii.borderMd`, `AfRadii.borderPill`
+- ✅ Use `AfTypography.*` text styles with `.copyWith()` — never raw `TextStyle(...)`
+- ✅ Use `AfColors.*` for all colors — never `Colors.white`, `Colors.black`, or raw `Color(0x...)`
 
 ### Don't
 - ❌ Never use `print()` — use `afLog()`
@@ -334,3 +338,8 @@ class AfAlbum {
 - ❌ Never create a separate HTTP client — add to `JellyfinClient` or `SubsonicClient`
 - ❌ Never store Subsonic auth token — store password, generate `md5(password + salt)` per request
 - ❌ Never reuse Subsonic salt — generate fresh random salt per request
+- ❌ Never hardcode colors (e.g. `Colors.white`, `Color(0xFF...)`) — use `AfColors.*` tokens
+- ❌ Never hardcode spacing (e.g. `SizedBox(height: 8)`) — use `AfSpacing.*` tokens
+- ❌ Never hardcode border radii (e.g. `BorderRadius.circular(8)`) — use `AfRadii.*` tokens
+- ❌ Never hardcode font sizes (e.g. `fontSize: 11`) — use `AfTypography.*` text styles
+- ❌ Never use raw `TextStyle(...)` — use `AfTypography.*.copyWith(...)` instead

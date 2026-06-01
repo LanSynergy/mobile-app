@@ -233,7 +233,7 @@ class _SmartPlaylistEditScreenState
                       style: SegmentedButton.styleFrom(
                         backgroundColor: AfColors.surfaceHigh,
                         selectedBackgroundColor: AfColors.indigo600,
-                        selectedForegroundColor: Colors.white,
+                        selectedForegroundColor: AfColors.textOnPrimary,
                       ),
                     ),
                   ],
@@ -400,20 +400,20 @@ class _SmartPlaylistEditScreenState
                           ),
                           filled: true,
                           fillColor: AfColors.surfaceHigh,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                          border: const OutlineInputBorder(
+                            borderRadius: AfRadii.borderSm,
                             borderSide: BorderSide.none,
                           ),
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 8,
+                            horizontal: AfSpacing.s8,
+                            vertical: AfSpacing.s8,
                           ),
                         ),
                         onChanged: (v) => _limit = int.tryParse(v),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AfSpacing.s8),
                     Text(
                       'tracks',
                       style: AfTypography.bodySmall.copyWith(
@@ -510,12 +510,12 @@ class _RuleRow extends StatelessWidget {
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+                    horizontal: AfSpacing.s12,
+                    vertical: AfSpacing.s4,
                   ),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AfColors.surfaceHigh,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AfRadii.borderSm,
                   ),
                   child: DropdownButton<String>(
                     value: rule.field,
@@ -546,17 +546,17 @@ class _RuleRow extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AfSpacing.s8),
               // Operator
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+                    horizontal: AfSpacing.s12,
+                    vertical: AfSpacing.s4,
                   ),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AfColors.surfaceHigh,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AfRadii.borderSm,
                   ),
                   child: DropdownButton<String>(
                     value: effectiveOp,
@@ -586,7 +586,7 @@ class _RuleRow extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AfSpacing.s8),
               // Delete button
               GestureDetector(
                 onTap: onDelete,
@@ -606,7 +606,7 @@ class _RuleRow extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AfSpacing.s8),
           // Value row
           _buildValueInput(),
         ],
@@ -632,10 +632,13 @@ class _RuleRow extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AfSpacing.s12,
+        vertical: AfSpacing.s8,
+      ),
+      decoration: const BoxDecoration(
         color: AfColors.surfaceHigh,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AfRadii.borderSm,
       ),
       child: TextField(
         controller: TextEditingController(text: '${rule.value}'),

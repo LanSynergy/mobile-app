@@ -278,15 +278,18 @@ Future<void> _startArtistRadio(
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: Card(
           color: AfColors.surfaceBase,
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.s24,
+              vertical: AfSpacing.s16,
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
@@ -294,10 +297,12 @@ Future<void> _startArtistRadio(
                     color: AfColors.indigo300,
                   ),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: AfSpacing.s16),
                 Text(
                   'Generating Artist Radio...',
-                  style: TextStyle(color: AfColors.textPrimary),
+                  style: AfTypography.bodyMedium.copyWith(
+                    color: AfColors.textPrimary,
+                  ),
                 ),
               ],
             ),
@@ -427,12 +432,11 @@ class _ArtistBiographyPanelState extends State<_ArtistBiographyPanel> {
         children: [
           Text('Biography', style: AfTypography.titleSmall),
           if (stats.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AfSpacing.s4),
             Text(
               stats.join(' · '),
-              style: AfTypography.bodySmall.copyWith(
+              style: AfTypography.caption.copyWith(
                 color: AfColors.textTertiary,
-                fontSize: 11,
               ),
             ),
           ],
@@ -446,7 +450,7 @@ class _ArtistBiographyPanelState extends State<_ArtistBiographyPanel> {
               height: 1.4,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AfSpacing.s8),
           GestureDetector(
             onTap: () => setState(() => _expanded = !_expanded),
             child: Text(

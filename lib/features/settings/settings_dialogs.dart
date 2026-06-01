@@ -562,9 +562,11 @@ Future<bool> showOfflineCacheClearDialog(
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text(
+              child: Text(
                 'Clear cache',
-                style: TextStyle(color: AfColors.semanticError),
+                style: AfTypography.bodyMedium.copyWith(
+                  color: AfColors.semanticError,
+                ),
               ),
             ),
           ],
@@ -888,14 +890,16 @@ class _LastFmBrowserAuthDialogState
         if (_loading) ...[
           const Center(
             child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
+              padding: EdgeInsets.symmetric(vertical: AfSpacing.s24),
               child: CircularProgressIndicator(),
             ),
           ),
         ] else if (_error != null) ...[
           Text(
             _error!,
-            style: const TextStyle(color: AfColors.semanticError, fontSize: 13),
+            style: AfTypography.bodyMediumSmall.copyWith(
+              color: AfColors.semanticError,
+            ),
           ),
           const SizedBox(height: AfSpacing.s16),
           Row(
@@ -1009,9 +1013,11 @@ Future<void> showLastFmSignOutDialog(
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text(
+              child: Text(
                 'Disconnect',
-                style: TextStyle(color: AfColors.semanticError),
+                style: AfTypography.bodyMedium.copyWith(
+                  color: AfColors.semanticError,
+                ),
               ),
             ),
           ],

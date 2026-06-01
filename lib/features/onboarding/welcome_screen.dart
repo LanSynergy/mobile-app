@@ -72,7 +72,7 @@ class WelcomeScreen extends ConsumerWidget {
                     height: 80,
                     decoration: BoxDecoration(
                       color: AfColors.surfaceBase.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: AfRadii.borderRounded,
                       border: Border.all(
                         color: AfColors.indigo400.withValues(alpha: 0.3),
                       ),
@@ -219,9 +219,9 @@ class _ModeCard extends StatelessWidget {
                     end: Alignment.bottomRight,
                     colors: iconGradient,
                   ),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: AfRadii.borderMd,
                 ),
-                child: Icon(icon, color: Colors.white, size: 24),
+                child: Icon(icon, color: AfColors.textOnPrimary, size: 24),
               ),
               const SizedBox(width: AfSpacing.s16),
               Expanded(
@@ -229,7 +229,7 @@ class _ModeCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title, style: AfTypography.titleSmall),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AfSpacing.s2),
                     Text(
                       subtitle,
                       style: AfTypography.bodySmall.copyWith(

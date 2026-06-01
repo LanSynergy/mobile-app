@@ -9,6 +9,7 @@ abstract final class AfSpacing {
   /// 4dp base unit. Multiply for everything else.
   static const double unit = 4;
 
+  static const double s2 = 2;
   static const double s4 = 4;
   static const double s8 = 8;
   static const double s12 = 12;

@@ -348,7 +348,7 @@ class _MetadataRow extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               MarqueeText(text: track.title, style: AfTypography.titleLarge),
-              const SizedBox(height: 2),
+              const SizedBox(height: AfSpacing.s2),
               // Tap the artist name to jump to the artist. Mirrors the
               // album-label affordance in the top bar.
               InkWell(
@@ -767,8 +767,8 @@ class _TopBar extends ConsumerWidget {
                   color: AfColors.textPrimary,
                   size: 24,
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: AfRadii.borderLg,
                 ),
                 onSelected: (action) async {
                   switch (action) {
@@ -977,12 +977,12 @@ class _TransportRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: AfColors.textOnPrimary.withValues(alpha: 0.08),
         borderRadius: AfRadii.borderPill,
       ),
       child: Row(
         children: [
-          const SizedBox(width: 4),
+          const SizedBox(width: AfSpacing.s4),
           GestureDetector(
             onLongPress: onShuffleLongPress,
             child: _TransportButton(
@@ -1005,9 +1005,9 @@ class _TransportRow extends StatelessWidget {
             ),
             onTap: onPrev,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AfSpacing.s12),
           _PlayButton(isPlaying: isPlaying, onTap: onPlayPause),
-          const SizedBox(width: 12),
+          const SizedBox(width: AfSpacing.s12),
           _TransportButton(
             icon: const Icon(
               LucideIcons.skipForward,
@@ -1038,9 +1038,8 @@ class _TransportRow extends StatelessWidget {
                       ),
                       child: Text(
                         '$repeatCount',
-                        style: const TextStyle(
-                          fontSize: 9,
-                          color: Colors.white,
+                        style: AfTypography.caption.copyWith(
+                          color: AfColors.textOnPrimary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1086,22 +1085,22 @@ class _PlayButton extends ConsumerWidget {
         width: 60,
         height: 60,
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: AfColors.textOnPrimary,
           shape: BoxShape.circle,
         ),
         child: Center(
           child: isBuffering
               ? const SizedBox(
-                  width: 24,
-                  height: 24,
+                  width: AfSpacing.s24,
+                  height: AfSpacing.s24,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    color: Colors.black,
+                    color: AfColors.surfaceCanvas,
                   ),
                 )
               : Icon(
                   isPlaying ? LucideIcons.pause : LucideIcons.play,
-                  color: Colors.black,
+                  color: AfColors.surfaceCanvas,
                   size: 28,
                 ),
         ),

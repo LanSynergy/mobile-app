@@ -118,9 +118,9 @@ class SettingsScreen extends ConsumerWidget {
                                     TextButton(
                                       onPressed: () =>
                                           Navigator.pop(context, true),
-                                      child: const Text(
+                                      child: Text(
                                         'Sign out',
-                                        style: TextStyle(
+                                        style: AfTypography.bodyMedium.copyWith(
                                           color: AfColors.semanticError,
                                         ),
                                       ),
@@ -454,9 +454,9 @@ class SettingsScreen extends ConsumerWidget {
                                 ),
                                 TextButton(
                                   onPressed: () => Navigator.pop(context, true),
-                                  child: const Text(
+                                  child: Text(
                                     'Clear data',
-                                    style: TextStyle(
+                                    style: AfTypography.bodyMedium.copyWith(
                                       color: AfColors.semanticError,
                                     ),
                                   ),
@@ -683,18 +683,18 @@ class _LastFmSettingsSection extends ConsumerWidget {
                     showDialog(
                       context: context,
                       barrierDismissible: false,
-                      builder: (context) => const Center(
+                      builder: (context) => Center(
                         child: Card(
                           color: AfColors.surfaceBase,
                           child: Padding(
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 24,
                               vertical: 16,
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                SizedBox(
+                                const SizedBox(
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
@@ -702,10 +702,12 @@ class _LastFmSettingsSection extends ConsumerWidget {
                                     color: AfColors.indigo300,
                                   ),
                                 ),
-                                SizedBox(width: 16),
+                                const SizedBox(width: AfSpacing.s16),
                                 Text(
                                   'Syncing favorites...',
-                                  style: TextStyle(color: AfColors.textPrimary),
+                                  style: AfTypography.bodyMedium.copyWith(
+                                    color: AfColors.textPrimary,
+                                  ),
                                 ),
                               ],
                             ),
@@ -753,7 +755,12 @@ class _LastFmSettingsSection extends ConsumerWidget {
               ),
               if (lastfmStatus != null)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                  padding: const EdgeInsets.fromLTRB(
+                    AfSpacing.s16,
+                    AfSpacing.s4,
+                    AfSpacing.s16,
+                    AfSpacing.s4,
+                  ),
                   child: Text(
                     lastfmStatus,
                     style: AfTypography.caption.copyWith(

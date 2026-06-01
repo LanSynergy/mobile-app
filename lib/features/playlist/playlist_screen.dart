@@ -76,16 +76,18 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: _PlaylistAction.delete,
                   child: ListTile(
-                    leading: Icon(
+                    leading: const Icon(
                       Icons.delete_outline_rounded,
                       color: AfColors.semanticError,
                     ),
                     title: Text(
                       'Delete playlist',
-                      style: TextStyle(color: AfColors.semanticError),
+                      style: AfTypography.bodyMedium.copyWith(
+                        color: AfColors.semanticError,
+                      ),
                     ),
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -242,7 +244,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                   onLongPress: () =>
                                       showTrackContextMenu(context, ref, t),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: AfSpacing.s4),
                               ],
                             ),
                           );
@@ -319,9 +321,11 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(context, true),
-                    child: const Text(
+                    child: Text(
                       'Remove',
-                      style: TextStyle(color: AfColors.semanticError),
+                      style: AfTypography.bodyMedium.copyWith(
+                        color: AfColors.semanticError,
+                      ),
                     ),
                   ),
                 ],
@@ -473,9 +477,11 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(context, true),
-                    child: const Text(
+                    child: Text(
                       'Delete',
-                      style: TextStyle(color: AfColors.semanticError),
+                      style: AfTypography.bodyMedium.copyWith(
+                        color: AfColors.semanticError,
+                      ),
                     ),
                   ),
                 ],

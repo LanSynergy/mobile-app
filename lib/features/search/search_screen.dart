@@ -236,7 +236,7 @@ class _SearchFilterChips extends StatelessWidget {
               fontWeight: active ? FontWeight.w600 : FontWeight.w400,
             ),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: AfRadii.borderPill,
               side: BorderSide(
                 color: active ? AfColors.indigo300 : AfColors.surfaceHigh,
               ),
@@ -677,7 +677,7 @@ class _SearchResults extends ConsumerWidget {
             const SizedBox(height: AfSpacing.s8),
             for (var i = 0; i < tracks.length && (unbounded || i < 20); i++)
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.only(bottom: AfSpacing.s4),
                 child: TrackRow(
                   track: tracks[i],
                   isActive: tracks[i].id == activeId,
@@ -725,7 +725,7 @@ class _SearchResults extends ConsumerWidget {
                 leading: Artwork(
                   url: a.imageUrl,
                   size: 44,
-                  radius: BorderRadius.circular(22),
+                  radius: AfRadii.borderPill,
                 ),
                 title: Text(a.name, style: AfTypography.bodyMedium),
                 subtitle: Text(

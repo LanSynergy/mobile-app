@@ -68,6 +68,30 @@ abstract final class AfTypography {
     letterSpacing: 0.2,
   );
 
+  /// Between bodySmall(12) and bodyMedium(14).
+  static TextStyle get bodyMediumSmall => _inter(
+    fontSize: 13,
+    height: 18 / 13,
+    weight: FontWeight.w400,
+    letterSpacing: 0.1,
+  );
+
+  /// Between titleMedium(20) and titleSmall(16).
+  static TextStyle get titleMediumLarge => _inter(
+    fontSize: 18,
+    height: 24 / 18,
+    weight: FontWeight.w600,
+    letterSpacing: -0.1,
+  );
+
+  /// Tiny label — overline, micro text, timestamps.
+  static TextStyle get overline => _inter(
+    fontSize: 9,
+    height: 12 / 9,
+    weight: FontWeight.w500,
+    letterSpacing: 0.4,
+  );
+
   /// JetBrains Mono — bitrate, codec, hash readouts only.
   static TextStyle get mono => GoogleFonts.jetBrainsMono(
     fontSize: 11,

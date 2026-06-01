@@ -718,7 +718,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AfSpacing.s8),
             TextButton.icon(
               onPressed: _saveCurrentAsPreset,
               icon: const Icon(Icons.save_outlined, size: 16),
@@ -987,13 +987,13 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           unawaited(_apply());
         }),
         Padding(
-          padding: const EdgeInsets.only(top: 4, bottom: 8),
+          padding: const EdgeInsets.only(
+            top: AfSpacing.s4,
+            bottom: AfSpacing.s8,
+          ),
           child: Text(
             'Separate multiple taps with | (pipe)',
-            style: AfTypography.bodySmall.copyWith(
-              color: AfColors.textTertiary,
-              fontSize: 11,
-            ),
+            style: AfTypography.caption.copyWith(color: AfColors.textTertiary),
           ),
         ),
       ],
@@ -1322,13 +1322,13 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           unawaited(_apply());
         }),
         Padding(
-          padding: const EdgeInsets.only(top: 4, bottom: 8),
+          padding: const EdgeInsets.only(
+            top: AfSpacing.s4,
+            bottom: AfSpacing.s8,
+          ),
           child: Text(
             'Separate multiple voices with | (pipe)',
-            style: AfTypography.bodySmall.copyWith(
-              color: AfColors.textTertiary,
-              fontSize: 11,
-            ),
+            style: AfTypography.caption.copyWith(color: AfColors.textTertiary),
           ),
         ),
       ],
@@ -1609,9 +1609,11 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                   Navigator.pop(context);
                   _deletePreset(name);
                 },
-                child: const Text(
+                child: Text(
                   'Delete',
-                  style: TextStyle(color: AfColors.semanticError),
+                  style: AfTypography.bodyMedium.copyWith(
+                    color: AfColors.semanticError,
+                  ),
                 ),
               ),
             ],
@@ -1635,15 +1637,14 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
       final freq = entry.value;
       final gain = _eqBands[bandKey] ?? 1.0;
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s2),
         child: Row(
           children: [
             SizedBox(
               width: 58,
               child: Text(
                 freq,
-                style: AfTypography.mono.copyWith(
-                  fontSize: 11,
+                style: AfTypography.caption.copyWith(
                   color: AfColors.textTertiary,
                 ),
               ),
@@ -1681,8 +1682,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
               child: Text(
                 gain.toStringAsFixed(1),
                 textAlign: TextAlign.right,
-                style: AfTypography.mono.copyWith(
-                  fontSize: 11,
+                style: AfTypography.caption.copyWith(
                   color: AfColors.textTertiary,
                 ),
               ),

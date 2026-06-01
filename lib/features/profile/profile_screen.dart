@@ -120,7 +120,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: AfSpacing.s12),
                 Text(name, style: AfTypography.titleLarge),
-                const SizedBox(height: 2),
+                const SizedBox(height: AfSpacing.s2),
                 Text(
                   serverName,
                   style: AfTypography.bodySmall.copyWith(
@@ -196,7 +196,7 @@ class _StatCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(value, style: AfTypography.titleLarge),
-            const SizedBox(height: 2),
+            const SizedBox(height: AfSpacing.s2),
             Text(
               label,
               style: AfTypography.bodySmall.copyWith(
@@ -247,16 +247,13 @@ class _PinnedRow extends StatelessWidget {
                   Artwork(url: a.imageUrl, size: 120, radius: AfRadii.borderMd),
                   Positioned.fill(
                     child: Container(
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         borderRadius: AfRadii.borderMd,
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.55),
-                          ],
-                          stops: const [0.5, 1.0],
+                          colors: [Colors.transparent, AfColors.surfaceScrim],
+                          stops: [0.5, 1.0],
                         ),
                       ),
                       alignment: Alignment.bottomLeft,
@@ -344,9 +341,11 @@ class _AvatarImagePicker extends StatelessWidget {
                         Icons.photo_camera_outlined,
                         color: AfColors.textPrimary,
                       ),
-                      title: const Text(
+                      title: Text(
                         'Take Photo',
-                        style: TextStyle(color: AfColors.textPrimary),
+                        style: AfTypography.bodyMedium.copyWith(
+                          color: AfColors.textPrimary,
+                        ),
                       ),
                       onTap: () {
                         Navigator.pop(context);
@@ -358,9 +357,11 @@ class _AvatarImagePicker extends StatelessWidget {
                         Icons.photo_library_outlined,
                         color: AfColors.textPrimary,
                       ),
-                      title: const Text(
+                      title: Text(
                         'Choose from Gallery',
-                        style: TextStyle(color: AfColors.textPrimary),
+                        style: AfTypography.bodyMedium.copyWith(
+                          color: AfColors.textPrimary,
+                        ),
                       ),
                       onTap: () {
                         Navigator.pop(context);
@@ -373,9 +374,11 @@ class _AvatarImagePicker extends StatelessWidget {
                           Icons.delete_outline,
                           color: AfColors.semanticError,
                         ),
-                        title: const Text(
+                        title: Text(
                           'Remove Photo',
-                          style: TextStyle(color: AfColors.semanticError),
+                          style: AfTypography.bodyMedium.copyWith(
+                            color: AfColors.semanticError,
+                          ),
                         ),
                         onTap: () {
                           Navigator.pop(context);
@@ -420,9 +423,9 @@ class _AvatarImagePicker extends StatelessWidget {
           if (isUploading)
             Positioned.fill(
               child: Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.black.withValues(alpha: 0.5),
+                  color: AfColors.surfaceScrim,
                 ),
                 child: const Center(
                   child: SizedBox(
@@ -482,7 +485,7 @@ class _LastFmConnectionCTA extends StatelessWidget {
                 color: AfColors.textOnPrimary,
                 size: 20,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AfSpacing.s8),
               Text(
                 'Connect to Last.fm',
                 style: AfTypography.titleSmall.copyWith(
@@ -491,14 +494,14 @@ class _LastFmConnectionCTA extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AfSpacing.s8),
           Text(
             'Sync your listening habits globally, unlock detailed statistics, and get smart recommendations.',
             style: AfTypography.bodySmall.copyWith(
               color: AfColors.textOnPrimary.withValues(alpha: 0.9),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AfSpacing.s12),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
@@ -537,13 +540,13 @@ class _StatsDashboard extends ConsumerWidget {
                 value: '7day',
                 activeValue: activePeriod,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AfSpacing.s8),
               _PeriodButton(
                 label: '30 Days',
                 value: '1month',
                 activeValue: activePeriod,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AfSpacing.s8),
               _PeriodButton(
                 label: 'All Time',
                 value: 'overall',
@@ -551,12 +554,12 @@ class _StatsDashboard extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AfSpacing.s12),
         ],
 
         // Tabs Selector (Songs | Artists | Albums)
         Container(
-          padding: const EdgeInsets.all(2),
+          padding: const EdgeInsets.all(AfSpacing.s2),
           decoration: const BoxDecoration(
             color: AfColors.surfaceBase,
             borderRadius: AfRadii.borderMd,
@@ -581,7 +584,7 @@ class _StatsDashboard extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AfSpacing.s12),
 
         // List render
         _renderActiveList(context, ref, activeTab),
@@ -736,7 +739,8 @@ class _SongsList extends ConsumerWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: tracks.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 8),
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: AfSpacing.s8),
       itemBuilder: (context, i) {
         final t = tracks[i];
         return ListTile(
@@ -786,17 +790,11 @@ class _SongsList extends ConsumerWidget {
             t.artist,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AfTypography.bodySmall.copyWith(
-              color: AfColors.textTertiary,
-              fontSize: 11,
-            ),
+            style: AfTypography.caption.copyWith(color: AfColors.textTertiary),
           ),
           trailing: Text(
             '${t.playCount} plays',
-            style: AfTypography.bodySmall.copyWith(
-              color: AfColors.indigo300,
-              fontSize: 11,
-            ),
+            style: AfTypography.caption.copyWith(color: AfColors.indigo300),
           ),
           onTap: () => _playTrackFromStats(context, ref, t.artist, t.title),
         );
@@ -818,7 +816,8 @@ class _ArtistsList extends ConsumerWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: artists.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 8),
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: AfSpacing.s8),
       itemBuilder: (context, i) {
         final a = artists[i];
         return ListTile(
@@ -852,10 +851,7 @@ class _ArtistsList extends ConsumerWidget {
           ),
           trailing: Text(
             '${a.playCount} plays',
-            style: AfTypography.bodySmall.copyWith(
-              color: AfColors.indigo300,
-              fontSize: 11,
-            ),
+            style: AfTypography.caption.copyWith(color: AfColors.indigo300),
           ),
           onTap: () => _navigateToArtistFromStats(context, ref, a.artist),
         );
@@ -878,7 +874,8 @@ class _AlbumsList extends ConsumerWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: albums.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 8),
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: AfSpacing.s8),
       itemBuilder: (context, i) {
         final alb = albums[i];
         return ListTile(
@@ -928,17 +925,11 @@ class _AlbumsList extends ConsumerWidget {
             alb.artist,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AfTypography.bodySmall.copyWith(
-              color: AfColors.textTertiary,
-              fontSize: 11,
-            ),
+            style: AfTypography.caption.copyWith(color: AfColors.textTertiary),
           ),
           trailing: Text(
             '${alb.playCount} plays',
-            style: AfTypography.bodySmall.copyWith(
-              color: AfColors.indigo300,
-              fontSize: 11,
-            ),
+            style: AfTypography.caption.copyWith(color: AfColors.indigo300),
           ),
           onTap: () =>
               _navigateToAlbumFromStats(context, ref, alb.artist, alb.album),
@@ -951,7 +942,10 @@ class _AlbumsList extends ConsumerWidget {
 Widget _emptyState(String text) {
   return Center(
     child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      padding: const EdgeInsets.symmetric(
+        vertical: AfSpacing.s24,
+        horizontal: AfSpacing.s16,
+      ),
       child: Text(
         text,
         style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
@@ -973,15 +967,18 @@ Future<void> _playTrackFromStats(
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: Card(
           color: AfColors.surfaceBase,
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.s24,
+              vertical: AfSpacing.s16,
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
@@ -989,10 +986,12 @@ Future<void> _playTrackFromStats(
                     color: AfColors.indigo300,
                   ),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: AfSpacing.s16),
                 Text(
                   'Locating track in library...',
-                  style: TextStyle(color: AfColors.textPrimary),
+                  style: AfTypography.bodyMedium.copyWith(
+                    color: AfColors.textPrimary,
+                  ),
                 ),
               ],
             ),
@@ -1062,15 +1061,18 @@ Future<void> _navigateToArtistFromStats(
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: Card(
           color: AfColors.surfaceBase,
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.s24,
+              vertical: AfSpacing.s16,
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
@@ -1078,10 +1080,12 @@ Future<void> _navigateToArtistFromStats(
                     color: AfColors.indigo300,
                   ),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: AfSpacing.s16),
                 Text(
                   'Locating artist...',
-                  style: TextStyle(color: AfColors.textPrimary),
+                  style: AfTypography.bodyMedium.copyWith(
+                    color: AfColors.textPrimary,
+                  ),
                 ),
               ],
             ),
@@ -1141,15 +1145,18 @@ Future<void> _navigateToAlbumFromStats(
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: Card(
           color: AfColors.surfaceBase,
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.s24,
+              vertical: AfSpacing.s16,
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
@@ -1157,10 +1164,12 @@ Future<void> _navigateToAlbumFromStats(
                     color: AfColors.indigo300,
                   ),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: AfSpacing.s16),
                 Text(
                   'Locating album...',
-                  style: TextStyle(color: AfColors.textPrimary),
+                  style: AfTypography.bodyMedium.copyWith(
+                    color: AfColors.textPrimary,
+                  ),
                 ),
               ],
             ),
