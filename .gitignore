@@ -67,6 +67,7 @@ handover.md
 .lcm/
 .zed/
 .agents/
+skills-lock.json
 
 # Auto-generated build metadata
 lib/build_id.dart
