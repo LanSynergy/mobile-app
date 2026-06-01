@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
     show
@@ -32,6 +31,7 @@ import '../../design_tokens/tokens.dart';
 import '../../utils/display_error.dart';
 import '../../state/providers.dart';
 import '../../widgets/af_dialog.dart';
+import 'eq_band_painter.dart';
 import 'eq_dsp_widgets.dart';
 import 'eq_preset.dart';
 
@@ -46,18 +46,8 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   // ── Master toggle ──
   bool _masterEnabled = true;
 
-  /// True while the user's finger is in an active scroll gesture.
-  /// Used to IgnorePointer all list items during scroll so that Slider/Switch/
-  /// ChoiceChip widgets don't receive phantom touch events when the list is
-  /// held at its top or bottom boundary (ClampingScrollPhysics releases the
-  /// gesture recognizer at the boundary, causing pointer events to fall
-  /// through to children and trigger spurious active states).
-  final ValueNotifier<bool> _isScrollActive = ValueNotifier(false);
-
-  /// Safety timer: guarantees _isScrollActive is reset even when
-  /// ScrollEndNotification is missing (e.g. fast finger-lift at boundary
-  /// on Android 16 with slow system animation scale).
-  Timer? _scrollSafetyTimer;
+  /// Scroll-absorb state to prevent phantom touches during scroll.
+  final ScrollAbsorbController _scrollCtrl = ScrollAbsorbController();
 
   // ── Tone ──
   double _bass = 0.0;
@@ -71,20 +61,20 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   double _compAttack = 20.0;
   double _compRelease = 250.0;
 
-  // ── Gate (fine-tuning) ──
+  // ── Gate ──
   bool _gate = false;
   double _gateThreshold = 0.01;
   double _gateRatio = 2.0;
   double _gateAttack = 20.0;
   double _gateRelease = 250.0;
 
-  // ── De-esser (fine-tuning) ──
+  // ── De-esser ──
   bool _deesser = false;
   double _deesserIntensity = 0.0;
   double _deesserMix = 0.5;
   double _deesserFreq = 0.5;
 
-  // ── 18-band EQ (linear gain; 1.0 = flat, range 0–4) ──
+  // ── 18-band EQ ──
   bool _eqEnabled = false;
   final Map<String, double> _eqBands = {for (final k in kEqBands.keys) k: 1.0};
 
@@ -158,6 +148,12 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   @override
   void initState() {
     super.initState();
+    _loadFxState();
+    _loadMasterState();
+    _loadPresets();
+  }
+
+  void _loadFxState() {
     final fx = ref.read(playerServiceProvider).audioEffects;
     _bass = fx.bass.g;
     _treble = fx.treble.g;
@@ -229,8 +225,6 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     _crusherBits = fx.acrusher.bits;
     _crusherMix = fx.acrusher.mix;
     _crusherSamples = fx.acrusher.samples;
-    _loadMasterState();
-    _loadPresets();
   }
 
   Future<void> _loadMasterState() async {
@@ -247,32 +241,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _scrollSafetyTimer?.cancel();
-    super.dispose();
-  }
-
-  /// Resets the scroll-active flag and cancels any pending safety timer.
-  /// Always call this instead of directly setting _isScrollActive = false.
-  void _resetScrollActive() {
-    _scrollSafetyTimer?.cancel();
-    _scrollSafetyTimer = null;
-    if (_isScrollActive.value) {
-      _isScrollActive.value = false;
-    }
-  }
-
-  /// Arms a safety timer that resets _isScrollActive after [ms] milliseconds.
-  /// Called on every scroll event to keep the window alive while scrolling,
-  /// and fires a final reset if no ScrollEndNotification arrives in time
-  /// (e.g. fast finger-lift at boundary on Android 16 slow animations).
-  void _armScrollSafetyTimer({int ms = 300}) {
-    _scrollSafetyTimer?.cancel();
-    _scrollSafetyTimer = Timer(Duration(milliseconds: ms), () {
-      if (mounted) _resetScrollActive();
-    });
-  }
+  // ── Apply / Reset ────────────────────────────────────────────────────────
 
   Future<void> _apply() async {
     if (!_masterEnabled) return;
@@ -544,6 +513,16 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     });
   }
 
+  Map<String, double> _buildEqParams() {
+    final params = <String, double>{};
+    for (final entry in _eqBands.entries) {
+      if (entry.value != 1.0) params[entry.key] = entry.value;
+    }
+    return params;
+  }
+
+  // ── Build ────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -581,51 +560,19 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
       ),
       body: Stack(
         children: [
-          NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification is ScrollStartNotification) {
-                _scrollSafetyTimer?.cancel();
-                if (!_isScrollActive.value) {
-                  _isScrollActive.value = true;
-                }
-                _armScrollSafetyTimer(ms: 300);
-              } else if (notification is ScrollUpdateNotification) {
-                _armScrollSafetyTimer(ms: 200);
-              } else if (notification is ScrollEndNotification) {
-                _resetScrollActive();
-              } else if (notification is UserScrollNotification &&
-                  notification.direction == ScrollDirection.idle) {
-                _resetScrollActive();
-              }
-              return false;
-            },
-            child: NotificationListener<OverscrollIndicatorNotification>(
-              onNotification: (notification) {
-                notification.disallowIndicator();
-                return true;
-              },
-              child: ListView(
-                physics: const ClampingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.s16,
-                  vertical: AfSpacing.s8,
-                ),
-                children: _buildSections()
-                    .map(
-                      (child) => Opacity(
-                        opacity: _masterEnabled ? 1.0 : 0.4,
-                        child: AbsorbPointer(
-                          absorbing: !_masterEnabled,
-                          child: child,
-                        ),
-                      ),
-                    )
-                    .toList(),
+          ScrollAbsorbNotification(
+            controller: _scrollCtrl,
+            child: ListView(
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AfSpacing.s16,
+                vertical: AfSpacing.s8,
               ),
+              children: _buildSections(),
             ),
           ),
           ValueListenableBuilder<bool>(
-            valueListenable: _isScrollActive,
+            valueListenable: _scrollCtrl,
             builder: (_, active, _) => active
                 ? const Positioned.fill(
                     child: AbsorbPointer(child: SizedBox.expand()),
@@ -639,102 +586,174 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
 
   // ── Sections ─────────────────────────────────────────────────────────────
 
-  /// Build the flat list of section widgets for the ListView.
-  /// Each item is a section label or a card.
-  List<Widget> _buildSections() => [
-    // ── EQ Presets ─────────────────────────────────────────────────
-    eqSectionLabel('EQ Presets'),
-    eqCard([_buildPresetChips()]),
-    const SizedBox(height: AfSpacing.s16),
+  List<Widget> _buildSections() {
+    final sections = <Widget>[
+      // EQ Presets
+      eqSectionLabel('EQ Presets'),
+      eqCard([_buildPresetChips()]),
+      const SizedBox(height: AfSpacing.s16),
 
-    // ── Tone shelves ───────────────────────────────────────────────
-    eqSectionLabel('Tone'),
-    eqCard([
-      eqSliderRow(
-        'Bass',
-        _bass,
-        -12,
-        12,
-        24,
-        (v) {
-          setState(() {
-            _bass = v;
-            _activePreset = null;
-          });
-        },
-        _apply,
-        suffix: 'dB',
-      ),
-      eqSliderRow(
-        'Treble',
-        _treble,
-        -12,
-        12,
-        24,
-        (v) {
-          setState(() {
-            _treble = v;
-            _activePreset = null;
-          });
-        },
-        _apply,
-        suffix: 'dB',
-      ),
-    ]),
-    const SizedBox(height: AfSpacing.s16),
-
-    // ── 18-band graphic EQ ─────────────────────────────────────────
-    eqSectionLabel('18-band Equalizer'),
-    eqCard([
-      SwitchListTile.adaptive(
-        value: _eqEnabled,
-        onChanged: (v) {
-          setState(() => _eqEnabled = v);
-          unawaited(_apply());
-        },
-        title: Text('Enable graphic EQ', style: AfTypography.bodyMedium),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
-      ),
-      if (_eqEnabled) ..._buildEqBands(),
-      if (_eqEnabled)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  for (final k in _eqBands.keys) {
-                    _eqBands[k] = 1.0;
-                  }
-                  _activePreset = null;
-                });
-                unawaited(_apply());
-              },
-              child: Text(
-                'Flatten EQ',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
-                ),
-              ),
-            ),
-            const SizedBox(width: AfSpacing.s8),
-            TextButton.icon(
-              onPressed: _saveCurrentAsPreset,
-              icon: const Icon(Icons.save_outlined, size: 16),
-              label: Text(
-                'Save preset',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.indigo400,
-                ),
-              ),
-            ),
-          ],
+      // Tone
+      eqSectionLabel('Tone'),
+      eqCard([
+        eqSliderRow(
+          'Bass',
+          _bass,
+          -12,
+          12,
+          24,
+          (v) {
+            setState(() {
+              _bass = v;
+              _activePreset = null;
+            });
+          },
+          _apply,
+          suffix: 'dB',
         ),
-    ]),
-    const SizedBox(height: AfSpacing.s16),
+        eqSliderRow(
+          'Treble',
+          _treble,
+          -12,
+          12,
+          24,
+          (v) {
+            setState(() {
+              _treble = v;
+              _activePreset = null;
+            });
+          },
+          _apply,
+          suffix: 'dB',
+        ),
+      ]),
+      const SizedBox(height: AfSpacing.s16),
 
-    // ── Dynamics ───────────────────────────────────────────────────
+      // 18-band EQ
+      eqSectionLabel('18-band Equalizer'),
+      eqCard([
+        EqEffectToggle(
+          title: 'Enable graphic EQ',
+          subtitle: '18-band ISO frequency equalizer',
+          value: _eqEnabled,
+          onChanged: (v) {
+            setState(() => _eqEnabled = v);
+            unawaited(_apply());
+          },
+        ),
+        EqExpandableContent(
+          visible: _eqEnabled,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Visual EQ bars.
+              SizedBox(
+                height: 120,
+                child: EqBandVisualization(
+                  labels: kEqBands.values.toList(),
+                  gains: kEqBands.keys.map((k) => _eqBands[k] ?? 1.0).toList(),
+                  onGainChanged: (index, gain) {
+                    final key = kEqBands.keys.elementAt(index);
+                    setState(() {
+                      _eqBands[key] = gain;
+                      _activePreset = null;
+                    });
+                  },
+                  onGainChangeEnd: _apply,
+                ),
+              ),
+              const SizedBox(height: AfSpacing.s8),
+              // Detailed sliders.
+              ...kEqBands.entries.map((entry) {
+                final gain = _eqBands[entry.key] ?? 1.0;
+                return EqBandSlider(
+                  bandKey: entry.key,
+                  freq: entry.value,
+                  gain: gain,
+                  onChanged: (v) {
+                    setState(() {
+                      _eqBands[entry.key] = v;
+                      _activePreset = null;
+                    });
+                  },
+                  onChangeEnd: _apply,
+                );
+              }),
+              // Action buttons.
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        for (final k in _eqBands.keys) {
+                          _eqBands[k] = 1.0;
+                        }
+                        _activePreset = null;
+                      });
+                      unawaited(_apply());
+                    },
+                    child: Text(
+                      'Flatten EQ',
+                      style: AfTypography.bodySmall.copyWith(
+                        color: AfColors.textTertiary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AfSpacing.s8),
+                  TextButton.icon(
+                    onPressed: _saveCurrentAsPreset,
+                    icon: const Icon(Icons.save_outlined, size: 16),
+                    label: Text(
+                      'Save preset',
+                      style: AfTypography.bodySmall.copyWith(
+                        color: AfColors.indigo400,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ]),
+      const SizedBox(height: AfSpacing.s16),
+
+      // Dynamics
+      ..._buildDynamicsSection(),
+
+      // Echo / Delay
+      ..._buildEchoSection(),
+
+      // Pitch & Tempo
+      ..._buildPitchTempoSection(),
+
+      // Spatial
+      ..._buildSpatialSection(),
+
+      // Modulation
+      ..._buildModulationSection(),
+
+      // Creative
+      ..._buildCreativeSection(),
+
+      const SizedBox(height: AfSpacing.s24),
+    ];
+
+    // Wrap each section in opacity + AbsorbPointer when master is off.
+    return sections
+        .map(
+          (child) => Opacity(
+            opacity: _masterEnabled ? 1.0 : 0.4,
+            child: AbsorbPointer(absorbing: !_masterEnabled, child: child),
+          ),
+        )
+        .toList();
+  }
+
+  // ── Dynamics ─────────────────────────────────────────────────────────────
+
+  List<Widget> _buildDynamicsSection() => [
     eqSectionLabel('Dynamics'),
     eqCard([
       eqToggleTile('Loudness normalization', 'EBU R128 (-16 LUFS)', _loudnorm, (
@@ -743,326 +762,320 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         setState(() => _loudnorm = v);
         unawaited(_apply());
       }),
-      SwitchListTile.adaptive(
+      EqEffectToggle(
+        title: 'Dynamic compressor',
+        subtitle: 'Reduces volume spikes',
         value: _compressor,
         onChanged: (v) {
           setState(() => _compressor = v);
           unawaited(_apply());
         },
-        title: Text('Dynamic compressor', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Reduces volume spikes',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_compressor) ...[
-        eqSliderRow(
-          'Threshold',
-          _compThreshold,
-          0.001,
-          1.0,
-          100,
-          (v) {
-            setState(() => _compThreshold = v);
-          },
-          _apply,
-          precision: 3,
+      EqExpandableContent(
+        visible: _compressor,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            eqSliderRow(
+              'Threshold',
+              _compThreshold,
+              0.001,
+              1.0,
+              100,
+              (v) => setState(() => _compThreshold = v),
+              _apply,
+              precision: 3,
+            ),
+            eqSliderRow(
+              'Ratio',
+              _compRatio,
+              1.0,
+              20.0,
+              38,
+              (v) => setState(() => _compRatio = v),
+              _apply,
+              precision: 1,
+              suffix: ':1',
+            ),
+            eqSliderRow(
+              'Attack',
+              _compAttack,
+              0.01,
+              200.0,
+              100,
+              (v) => setState(() => _compAttack = v),
+              _apply,
+              precision: 1,
+              suffix: 'ms',
+            ),
+            eqSliderRow(
+              'Release',
+              _compRelease,
+              5.0,
+              2000.0,
+              100,
+              (v) => setState(() => _compRelease = v),
+              _apply,
+              precision: 0,
+              suffix: 'ms',
+            ),
+          ],
         ),
-        eqSliderRow(
-          'Ratio',
-          _compRatio,
-          1.0,
-          20.0,
-          38,
-          (v) {
-            setState(() => _compRatio = v);
-          },
-          _apply,
-          precision: 1,
-          suffix: ':1',
-        ),
-        eqSliderRow(
-          'Attack',
-          _compAttack,
-          0.01,
-          200.0,
-          100,
-          (v) {
-            setState(() => _compAttack = v);
-          },
-          _apply,
-          precision: 1,
-          suffix: 'ms',
-        ),
-        eqSliderRow(
-          'Release',
-          _compRelease,
-          5.0,
-          2000.0,
-          100,
-          (v) {
-            setState(() => _compRelease = v);
-          },
-          _apply,
-          precision: 0,
-          suffix: 'ms',
-        ),
-      ],
-      SwitchListTile.adaptive(
+      ),
+      EqEffectToggle(
+        title: 'Noise gate',
+        subtitle: 'Silences signal below threshold',
         value: _gate,
         onChanged: (v) {
           setState(() => _gate = v);
           unawaited(_apply());
         },
-        title: Text('Noise gate', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Silences signal below threshold',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_gate) ...[
-        eqSliderRow(
-          'Threshold',
-          _gateThreshold,
-          0.001,
-          1.0,
-          100,
-          (v) {
-            setState(() => _gateThreshold = v);
-          },
-          _apply,
-          precision: 3,
+      EqExpandableContent(
+        visible: _gate,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            eqSliderRow(
+              'Threshold',
+              _gateThreshold,
+              0.001,
+              1.0,
+              100,
+              (v) => setState(() => _gateThreshold = v),
+              _apply,
+              precision: 3,
+            ),
+            eqSliderRow(
+              'Ratio',
+              _gateRatio,
+              1.0,
+              20.0,
+              38,
+              (v) => setState(() => _gateRatio = v),
+              _apply,
+              precision: 1,
+              suffix: ':1',
+            ),
+            eqSliderRow(
+              'Attack',
+              _gateAttack,
+              0.01,
+              200.0,
+              100,
+              (v) => setState(() => _gateAttack = v),
+              _apply,
+              precision: 1,
+              suffix: 'ms',
+            ),
+            eqSliderRow(
+              'Release',
+              _gateRelease,
+              5.0,
+              2000.0,
+              100,
+              (v) => setState(() => _gateRelease = v),
+              _apply,
+              precision: 0,
+              suffix: 'ms',
+            ),
+          ],
         ),
-        eqSliderRow(
-          'Ratio',
-          _gateRatio,
-          1.0,
-          20.0,
-          38,
-          (v) {
-            setState(() => _gateRatio = v);
-          },
-          _apply,
-          precision: 1,
-          suffix: ':1',
-        ),
-        eqSliderRow(
-          'Attack',
-          _gateAttack,
-          0.01,
-          200.0,
-          100,
-          (v) {
-            setState(() => _gateAttack = v);
-          },
-          _apply,
-          precision: 1,
-          suffix: 'ms',
-        ),
-        eqSliderRow(
-          'Release',
-          _gateRelease,
-          5.0,
-          2000.0,
-          100,
-          (v) {
-            setState(() => _gateRelease = v);
-          },
-          _apply,
-          precision: 0,
-          suffix: 'ms',
-        ),
-      ],
-      SwitchListTile.adaptive(
+      ),
+      EqEffectToggle(
+        title: 'De-esser',
+        subtitle: 'Reduces sibilance',
         value: _deesser,
         onChanged: (v) {
           setState(() => _deesser = v);
           unawaited(_apply());
         },
-        title: Text('De-esser', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Reduces sibilance',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_deesser) ...[
-        eqSliderRow(
-          'Intensity',
-          _deesserIntensity,
-          0.0,
-          1.0,
-          20,
-          (v) {
-            setState(() => _deesserIntensity = v);
-          },
-          _apply,
-          precision: 2,
+      EqExpandableContent(
+        visible: _deesser,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            eqSliderRow(
+              'Intensity',
+              _deesserIntensity,
+              0.0,
+              1.0,
+              20,
+              (v) => setState(() => _deesserIntensity = v),
+              _apply,
+              precision: 2,
+            ),
+            eqSliderRow(
+              'Mix',
+              _deesserMix,
+              0.0,
+              1.0,
+              20,
+              (v) => setState(() => _deesserMix = v),
+              _apply,
+              precision: 2,
+            ),
+            eqSliderRow(
+              'Frequency keep',
+              _deesserFreq,
+              0.0,
+              1.0,
+              20,
+              (v) => setState(() => _deesserFreq = v),
+              _apply,
+              precision: 2,
+            ),
+          ],
         ),
-        eqSliderRow(
-          'Mix',
-          _deesserMix,
-          0.0,
-          1.0,
-          20,
-          (v) {
-            setState(() => _deesserMix = v);
-          },
-          _apply,
-          precision: 2,
-        ),
-        eqSliderRow(
-          'Frequency keep',
-          _deesserFreq,
-          0.0,
-          1.0,
-          20,
-          (v) {
-            setState(() => _deesserFreq = v);
-          },
-          _apply,
-          precision: 2,
-        ),
-      ],
+      ),
     ]),
     const SizedBox(height: AfSpacing.s16),
+  ];
 
-    // ── Echo / Delay ───────────────────────────────────────────────
+  // ── Echo / Delay ─────────────────────────────────────────────────────────
+
+  List<Widget> _buildEchoSection() => [
     eqSectionLabel('Echo / Delay'),
     eqCard([
-      SwitchListTile.adaptive(
+      EqEffectToggle(
+        title: 'Echo',
+        subtitle: 'Multi-tap delay effect',
         value: _echoEnabled,
         onChanged: (v) {
           setState(() => _echoEnabled = v);
           unawaited(_apply());
         },
-        title: Text('Echo', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Multi-tap delay effect',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_echoEnabled) ...[
-        eqSliderRow(
-          'In gain',
-          _echoInGain,
-          0.0,
-          1.0,
-          20,
-          (v) {
-            setState(() => _echoInGain = v);
-          },
-          _apply,
-          precision: 2,
+      EqExpandableContent(
+        visible: _echoEnabled,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            eqSliderRow(
+              'In gain',
+              _echoInGain,
+              0.0,
+              1.0,
+              20,
+              (v) => setState(() => _echoInGain = v),
+              _apply,
+              precision: 2,
+            ),
+            eqSliderRow(
+              'Out gain',
+              _echoOutGain,
+              0.0,
+              1.0,
+              20,
+              (v) => setState(() => _echoOutGain = v),
+              _apply,
+              precision: 2,
+            ),
+            eqTextFieldRow(
+              context,
+              'Delays (ms)',
+              _echoDelays,
+              'e.g. 500|250',
+              (v) {
+                setState(() => _echoDelays = v);
+                unawaited(_apply());
+              },
+            ),
+            eqTextFieldRow(
+              context,
+              'Decays (0-1)',
+              _echoDecays,
+              'e.g. 0.5|0.3',
+              (v) {
+                setState(() => _echoDecays = v);
+                unawaited(_apply());
+              },
+            ),
+            Padding(
+              padding: const EdgeInsets.only(
+                top: AfSpacing.s4,
+                bottom: AfSpacing.s8,
+              ),
+              child: Text(
+                'Separate multiple taps with | (pipe)',
+                style: AfTypography.caption.copyWith(
+                  color: AfColors.textTertiary,
+                ),
+              ),
+            ),
+          ],
         ),
-        eqSliderRow(
-          'Out gain',
-          _echoOutGain,
-          0.0,
-          1.0,
-          20,
-          (v) {
-            setState(() => _echoOutGain = v);
-          },
-          _apply,
-          precision: 2,
-        ),
-        eqTextFieldRow(context, 'Delays (ms)', _echoDelays, 'e.g. 500|250', (
-          v,
-        ) {
-          setState(() => _echoDelays = v);
-          unawaited(_apply());
-        }),
-        eqTextFieldRow(context, 'Decays (0-1)', _echoDecays, 'e.g. 0.5|0.3', (
-          v,
-        ) {
-          setState(() => _echoDecays = v);
-          unawaited(_apply());
-        }),
-        Padding(
-          padding: const EdgeInsets.only(
-            top: AfSpacing.s4,
-            bottom: AfSpacing.s8,
-          ),
-          child: Text(
-            'Separate multiple taps with | (pipe)',
-            style: AfTypography.caption.copyWith(color: AfColors.textTertiary),
-          ),
-        ),
-      ],
+      ),
     ]),
     const SizedBox(height: AfSpacing.s16),
+  ];
 
-    // ── Pitch & Tempo ──────────────────────────────────────────────
+  // ── Pitch & Tempo ────────────────────────────────────────────────────────
+
+  List<Widget> _buildPitchTempoSection() => [
     eqSectionLabel('Pitch & Tempo'),
     eqCard([
-      SwitchListTile.adaptive(
+      EqEffectToggle(
+        title: 'Enable pitch/tempo shift',
+        subtitle: 'High-quality rubberband engine',
         value: _rubberbandEnabled,
         onChanged: (v) {
           setState(() => _rubberbandEnabled = v);
           unawaited(_apply());
         },
-        title: Text('Enable pitch/tempo shift', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'High-quality rubberband engine',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_rubberbandEnabled) ...[
-        eqSliderRow(
-          'Pitch',
-          _pitch,
-          0.5,
-          2.0,
-          30,
-          (v) => setState(() => _pitch = v),
-          _apply,
-          suffix: '×',
-          precision: 2,
+      EqExpandableContent(
+        visible: _rubberbandEnabled,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            eqSliderRow(
+              'Pitch',
+              _pitch,
+              0.5,
+              2.0,
+              30,
+              (v) => setState(() => _pitch = v),
+              _apply,
+              suffix: '×',
+              precision: 2,
+            ),
+            eqSliderRow(
+              'Tempo',
+              _tempo,
+              0.5,
+              2.0,
+              30,
+              (v) => setState(() => _tempo = v),
+              _apply,
+              suffix: '×',
+              precision: 2,
+            ),
+          ],
         ),
-        eqSliderRow(
-          'Tempo',
-          _tempo,
-          0.5,
-          2.0,
-          30,
-          (v) => setState(() => _tempo = v),
-          _apply,
-          suffix: '×',
-          precision: 2,
-        ),
-      ],
+      ),
     ]),
     const SizedBox(height: AfSpacing.s16),
+  ];
 
-    // ── Spatial ────────────────────────────────────────────────────
+  // ── Spatial ──────────────────────────────────────────────────────────────
+
+  List<Widget> _buildSpatialSection() => [
     eqSectionLabel('Spatial'),
     eqCard([
-      SwitchListTile.adaptive(
+      EqEffectToggle(
+        title: 'Crossfeed',
+        subtitle: 'Headphone crossfeed for natural imaging',
         value: _crossfeed,
         onChanged: (v) {
           setState(() => _crossfeed = v);
           unawaited(_apply());
         },
-        title: Text('Crossfeed', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Headphone crossfeed for natural imaging',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_crossfeed)
-        eqSliderRow(
+      EqExpandableContent(
+        visible: _crossfeed,
+        child: eqSliderRow(
           'Strength',
           _crossfeedStrength,
           0.0,
@@ -1072,22 +1085,19 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           _apply,
           precision: 2,
         ),
-      SwitchListTile.adaptive(
+      ),
+      EqEffectToggle(
+        title: 'Stereo widening',
+        subtitle: 'Expands stereo image',
         value: _stereoWiden,
         onChanged: (v) {
           setState(() => _stereoWiden = v);
           unawaited(_apply());
         },
-        title: Text('Stereo widening', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Expands stereo image',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_stereoWiden)
-        eqSliderRow(
+      EqExpandableContent(
+        visible: _stereoWiden,
+        child: eqSliderRow(
           'Delay',
           _stereoWidenDelay,
           1.0,
@@ -1098,344 +1108,332 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           suffix: 'ms',
           precision: 0,
         ),
+      ),
     ]),
     const SizedBox(height: AfSpacing.s16),
+  ];
 
-    // ── Modulation ─────────────────────────────────────────────────
+  // ── Modulation ───────────────────────────────────────────────────────────
+
+  List<Widget> _buildModulationSection() => [
     eqSectionLabel('Modulation'),
     eqCard([
-      SwitchListTile.adaptive(
+      EqEffectToggle(
+        title: 'Phaser',
+        subtitle: 'Phase-shifting sweep effect',
         value: _phaser,
         onChanged: (v) {
           setState(() => _phaser = v);
           unawaited(_apply());
         },
-        title: Text('Phaser', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Phase-shifting sweep effect',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_phaser) ...[
-        eqSliderRow(
-          'In gain',
-          _phaserInGain,
-          0.0,
-          1.0,
-          20,
-          (v) {
-            setState(() => _phaserInGain = v);
-          },
-          _apply,
-          precision: 2,
+      EqExpandableContent(
+        visible: _phaser,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            eqSliderRow(
+              'In gain',
+              _phaserInGain,
+              0.0,
+              1.0,
+              20,
+              (v) => setState(() => _phaserInGain = v),
+              _apply,
+              precision: 2,
+            ),
+            eqSliderRow(
+              'Out gain',
+              _phaserOutGain,
+              0.0,
+              1.0,
+              20,
+              (v) => setState(() => _phaserOutGain = v),
+              _apply,
+              precision: 2,
+            ),
+            eqSliderRow(
+              'Delay',
+              _phaserDelay,
+              0.0,
+              5.0,
+              50,
+              (v) => setState(() => _phaserDelay = v),
+              _apply,
+              precision: 1,
+              suffix: 'ms',
+            ),
+            eqSliderRow(
+              'Decay',
+              _phaserDecay,
+              0.0,
+              0.99,
+              99,
+              (v) => setState(() => _phaserDecay = v),
+              _apply,
+              precision: 2,
+            ),
+            eqSliderRow(
+              'Speed',
+              _phaserSpeed,
+              0.1,
+              2.0,
+              19,
+              (v) => setState(() => _phaserSpeed = v),
+              _apply,
+              precision: 2,
+              suffix: 'Hz',
+            ),
+          ],
         ),
-        eqSliderRow(
-          'Out gain',
-          _phaserOutGain,
-          0.0,
-          1.0,
-          20,
-          (v) {
-            setState(() => _phaserOutGain = v);
-          },
-          _apply,
-          precision: 2,
-        ),
-        eqSliderRow(
-          'Delay',
-          _phaserDelay,
-          0.0,
-          5.0,
-          50,
-          (v) {
-            setState(() => _phaserDelay = v);
-          },
-          _apply,
-          precision: 1,
-          suffix: 'ms',
-        ),
-        eqSliderRow(
-          'Decay',
-          _phaserDecay,
-          0.0,
-          0.99,
-          99,
-          (v) {
-            setState(() => _phaserDecay = v);
-          },
-          _apply,
-          precision: 2,
-        ),
-        eqSliderRow(
-          'Speed',
-          _phaserSpeed,
-          0.1,
-          2.0,
-          19,
-          (v) {
-            setState(() => _phaserSpeed = v);
-          },
-          _apply,
-          precision: 2,
-          suffix: 'Hz',
-        ),
-      ],
-      SwitchListTile.adaptive(
+      ),
+      EqEffectToggle(
+        title: 'Flanger',
+        subtitle: 'Flanging with feedback',
         value: _flanger,
         onChanged: (v) {
           setState(() => _flanger = v);
           unawaited(_apply());
         },
-        title: Text('Flanger', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Flanging with feedback',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_flanger) ...[
-        eqSliderRow(
-          'Delay',
-          _flangerDelay,
-          0.0,
-          30.0,
-          60,
-          (v) {
-            setState(() => _flangerDelay = v);
-          },
-          _apply,
-          precision: 1,
-          suffix: 'ms',
+      EqExpandableContent(
+        visible: _flanger,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            eqSliderRow(
+              'Delay',
+              _flangerDelay,
+              0.0,
+              30.0,
+              60,
+              (v) => setState(() => _flangerDelay = v),
+              _apply,
+              precision: 1,
+              suffix: 'ms',
+            ),
+            eqSliderRow(
+              'Depth',
+              _flangerDepth,
+              0.0,
+              10.0,
+              20,
+              (v) => setState(() => _flangerDepth = v),
+              _apply,
+              precision: 1,
+            ),
+            eqSliderRow(
+              'Regen',
+              _flangerRegen,
+              -95.0,
+              95.0,
+              38,
+              (v) => setState(() => _flangerRegen = v),
+              _apply,
+              precision: 0,
+              suffix: '%',
+            ),
+            eqSliderRow(
+              'Width',
+              _flangerWidth,
+              0.0,
+              100.0,
+              20,
+              (v) => setState(() => _flangerWidth = v),
+              _apply,
+              precision: 0,
+              suffix: '%',
+            ),
+            eqSliderRow(
+              'Speed',
+              _flangerSpeed,
+              0.1,
+              10.0,
+              99,
+              (v) => setState(() => _flangerSpeed = v),
+              _apply,
+              precision: 1,
+              suffix: 'Hz',
+            ),
+          ],
         ),
-        eqSliderRow(
-          'Depth',
-          _flangerDepth,
-          0.0,
-          10.0,
-          20,
-          (v) {
-            setState(() => _flangerDepth = v);
-          },
-          _apply,
-          precision: 1,
-        ),
-        eqSliderRow(
-          'Regen',
-          _flangerRegen,
-          -95.0,
-          95.0,
-          38,
-          (v) {
-            setState(() => _flangerRegen = v);
-          },
-          _apply,
-          precision: 0,
-          suffix: '%',
-        ),
-        eqSliderRow(
-          'Width',
-          _flangerWidth,
-          0.0,
-          100.0,
-          20,
-          (v) {
-            setState(() => _flangerWidth = v);
-          },
-          _apply,
-          precision: 0,
-          suffix: '%',
-        ),
-        eqSliderRow(
-          'Speed',
-          _flangerSpeed,
-          0.1,
-          10.0,
-          99,
-          (v) {
-            setState(() => _flangerSpeed = v);
-          },
-          _apply,
-          precision: 1,
-          suffix: 'Hz',
-        ),
-      ],
-      SwitchListTile.adaptive(
+      ),
+      EqEffectToggle(
+        title: 'Chorus',
+        subtitle: 'Multi-voice chorus effect',
         value: _chorus,
         onChanged: (v) {
           setState(() => _chorus = v);
           unawaited(_apply());
         },
-        title: Text('Chorus', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Multi-voice chorus effect',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_chorus) ...[
-        eqSliderRow(
-          'In gain',
-          _chorusInGain,
-          0.0,
-          1.0,
-          20,
-          (v) {
-            setState(() => _chorusInGain = v);
-          },
-          _apply,
-          precision: 2,
+      EqExpandableContent(
+        visible: _chorus,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            eqSliderRow(
+              'In gain',
+              _chorusInGain,
+              0.0,
+              1.0,
+              20,
+              (v) => setState(() => _chorusInGain = v),
+              _apply,
+              precision: 2,
+            ),
+            eqSliderRow(
+              'Out gain',
+              _chorusOutGain,
+              0.0,
+              1.0,
+              20,
+              (v) => setState(() => _chorusOutGain = v),
+              _apply,
+              precision: 2,
+            ),
+            eqTextFieldRow(
+              context,
+              'Delays (ms)',
+              _chorusDelays,
+              'e.g. 40|60',
+              (v) {
+                setState(() => _chorusDelays = v);
+                unawaited(_apply());
+              },
+            ),
+            eqTextFieldRow(context, 'Decays', _chorusDecays, 'e.g. 0.4|0.32', (
+              v,
+            ) {
+              setState(() => _chorusDecays = v);
+              unawaited(_apply());
+            }),
+            eqTextFieldRow(
+              context,
+              'Speeds (Hz)',
+              _chorusSpeeds,
+              'e.g. 0.25|0.4',
+              (v) {
+                setState(() => _chorusSpeeds = v);
+                unawaited(_apply());
+              },
+            ),
+            eqTextFieldRow(context, 'Depths', _chorusDepths, 'e.g. 2|3', (v) {
+              setState(() => _chorusDepths = v);
+              unawaited(_apply());
+            }),
+            Padding(
+              padding: const EdgeInsets.only(
+                top: AfSpacing.s4,
+                bottom: AfSpacing.s8,
+              ),
+              child: Text(
+                'Separate multiple voices with | (pipe)',
+                style: AfTypography.caption.copyWith(
+                  color: AfColors.textTertiary,
+                ),
+              ),
+            ),
+          ],
         ),
-        eqSliderRow(
-          'Out gain',
-          _chorusOutGain,
-          0.0,
-          1.0,
-          20,
-          (v) {
-            setState(() => _chorusOutGain = v);
-          },
-          _apply,
-          precision: 2,
-        ),
-        eqTextFieldRow(context, 'Delays (ms)', _chorusDelays, 'e.g. 40|60', (
-          v,
-        ) {
-          setState(() => _chorusDelays = v);
-          unawaited(_apply());
-        }),
-        eqTextFieldRow(context, 'Decays', _chorusDecays, 'e.g. 0.4|0.32', (v) {
-          setState(() => _chorusDecays = v);
-          unawaited(_apply());
-        }),
-        eqTextFieldRow(context, 'Speeds (Hz)', _chorusSpeeds, 'e.g. 0.25|0.4', (
-          v,
-        ) {
-          setState(() => _chorusSpeeds = v);
-          unawaited(_apply());
-        }),
-        eqTextFieldRow(context, 'Depths', _chorusDepths, 'e.g. 2|3', (v) {
-          setState(() => _chorusDepths = v);
-          unawaited(_apply());
-        }),
-        Padding(
-          padding: const EdgeInsets.only(
-            top: AfSpacing.s4,
-            bottom: AfSpacing.s8,
-          ),
-          child: Text(
-            'Separate multiple voices with | (pipe)',
-            style: AfTypography.caption.copyWith(color: AfColors.textTertiary),
-          ),
-        ),
-      ],
-      SwitchListTile.adaptive(
+      ),
+      EqEffectToggle(
+        title: 'Tremolo',
+        subtitle: 'Amplitude modulation',
         value: _tremolo,
         onChanged: (v) {
           setState(() => _tremolo = v);
           unawaited(_apply());
         },
-        title: Text('Tremolo', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Amplitude modulation',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_tremolo) ...[
-        eqSliderRow(
-          'Frequency',
-          _tremoloFreq,
-          0.1,
-          20.0,
-          40,
-          (v) {
-            setState(() => _tremoloFreq = v);
-          },
-          _apply,
-          precision: 1,
-          suffix: 'Hz',
+      EqExpandableContent(
+        visible: _tremolo,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            eqSliderRow(
+              'Frequency',
+              _tremoloFreq,
+              0.1,
+              20.0,
+              40,
+              (v) => setState(() => _tremoloFreq = v),
+              _apply,
+              precision: 1,
+              suffix: 'Hz',
+            ),
+            eqSliderRow(
+              'Depth',
+              _tremoloDepth,
+              0.0,
+              1.0,
+              20,
+              (v) => setState(() => _tremoloDepth = v),
+              _apply,
+              precision: 2,
+            ),
+          ],
         ),
-        eqSliderRow(
-          'Depth',
-          _tremoloDepth,
-          0.0,
-          1.0,
-          20,
-          (v) {
-            setState(() => _tremoloDepth = v);
-          },
-          _apply,
-          precision: 2,
-        ),
-      ],
-      SwitchListTile.adaptive(
+      ),
+      EqEffectToggle(
+        title: 'Vibrato',
+        subtitle: 'Pitch modulation',
         value: _vibrato,
         onChanged: (v) {
           setState(() => _vibrato = v);
           unawaited(_apply());
         },
-        title: Text('Vibrato', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Pitch modulation',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_vibrato) ...[
-        eqSliderRow(
-          'Frequency',
-          _vibratoFreq,
-          0.1,
-          20.0,
-          40,
-          (v) {
-            setState(() => _vibratoFreq = v);
-          },
-          _apply,
-          precision: 1,
-          suffix: 'Hz',
+      EqExpandableContent(
+        visible: _vibrato,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            eqSliderRow(
+              'Frequency',
+              _vibratoFreq,
+              0.1,
+              20.0,
+              40,
+              (v) => setState(() => _vibratoFreq = v),
+              _apply,
+              precision: 1,
+              suffix: 'Hz',
+            ),
+            eqSliderRow(
+              'Depth',
+              _vibratoDepth,
+              0.0,
+              1.0,
+              20,
+              (v) => setState(() => _vibratoDepth = v),
+              _apply,
+              precision: 2,
+            ),
+          ],
         ),
-        eqSliderRow(
-          'Depth',
-          _vibratoDepth,
-          0.0,
-          1.0,
-          20,
-          (v) {
-            setState(() => _vibratoDepth = v);
-          },
-          _apply,
-          precision: 2,
-        ),
-      ],
+      ),
     ]),
     const SizedBox(height: AfSpacing.s16),
+  ];
 
-    // ── Creative ───────────────────────────────────────────────────
+  // ── Creative ─────────────────────────────────────────────────────────────
+
+  List<Widget> _buildCreativeSection() => [
     eqSectionLabel('Creative'),
     eqCard([
-      SwitchListTile.adaptive(
+      EqEffectToggle(
+        title: 'Harmonic exciter',
+        subtitle: 'Adds harmonic overtones',
         value: _exciter,
         onChanged: (v) {
           setState(() => _exciter = v);
           unawaited(_apply());
         },
-        title: Text('Harmonic exciter', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Adds harmonic overtones',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_exciter)
-        eqSliderRow(
+      EqExpandableContent(
+        visible: _exciter,
+        child: eqSliderRow(
           'Amount',
           _exciterAmount,
           0.0,
@@ -1445,22 +1443,19 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           _apply,
           precision: 1,
         ),
-      SwitchListTile.adaptive(
+      ),
+      EqEffectToggle(
+        title: 'Crystalizer',
+        subtitle: 'Audio sharpener / brightener',
         value: _crystalizer,
         onChanged: (v) {
           setState(() => _crystalizer = v);
           unawaited(_apply());
         },
-        title: Text('Crystalizer', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Audio sharpener / brightener',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_crystalizer)
-        eqSliderRow(
+      EqExpandableContent(
+        visible: _crystalizer,
+        child: eqSliderRow(
           'Intensity',
           _crystalizerIntensity,
           -10.0,
@@ -1470,22 +1465,19 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           _apply,
           precision: 1,
         ),
-      SwitchListTile.adaptive(
+      ),
+      EqEffectToggle(
+        title: 'Virtual bass',
+        subtitle: 'Psychoacoustic bass enhancement',
         value: _virtualBass,
         onChanged: (v) {
           setState(() => _virtualBass = v);
           unawaited(_apply());
         },
-        title: Text('Virtual bass', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Psychoacoustic bass enhancement',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_virtualBass)
-        eqSliderRow(
+      EqExpandableContent(
+        visible: _virtualBass,
+        child: eqSliderRow(
           'Cutoff',
           _virtualBassCutoff,
           100.0,
@@ -1496,62 +1488,58 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           suffix: 'Hz',
           precision: 0,
         ),
-      SwitchListTile.adaptive(
+      ),
+      EqEffectToggle(
+        title: 'Bit-crusher',
+        subtitle: 'Lo-fi resolution and rate reduction',
         value: _crusher,
         onChanged: (v) {
           setState(() => _crusher = v);
           unawaited(_apply());
         },
-        title: Text('Bit-crusher', style: AfTypography.bodyMedium),
-        subtitle: Text(
-          'Lo-fi resolution and rate reduction',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
-      if (_crusher) ...[
-        eqSliderRow(
-          'Bits',
-          _crusherBits,
-          1.0,
-          16.0,
-          15,
-          (v) {
-            setState(() => _crusherBits = v);
-          },
-          _apply,
-          precision: 0,
+      EqExpandableContent(
+        visible: _crusher,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            eqSliderRow(
+              'Bits',
+              _crusherBits,
+              1.0,
+              16.0,
+              15,
+              (v) => setState(() => _crusherBits = v),
+              _apply,
+              precision: 0,
+            ),
+            eqSliderRow(
+              'Mix',
+              _crusherMix,
+              0.0,
+              1.0,
+              20,
+              (v) => setState(() => _crusherMix = v),
+              _apply,
+              precision: 2,
+            ),
+            eqSliderRow(
+              'Samples',
+              _crusherSamples,
+              1.0,
+              250.0,
+              50,
+              (v) => setState(() => _crusherSamples = v),
+              _apply,
+              precision: 0,
+            ),
+          ],
         ),
-        eqSliderRow(
-          'Mix',
-          _crusherMix,
-          0.0,
-          1.0,
-          20,
-          (v) {
-            setState(() => _crusherMix = v);
-          },
-          _apply,
-          precision: 2,
-        ),
-        eqSliderRow(
-          'Samples',
-          _crusherSamples,
-          1.0,
-          250.0,
-          50,
-          (v) {
-            setState(() => _crusherSamples = v);
-          },
-          _apply,
-          precision: 0,
-        ),
-      ],
+      ),
     ]),
-
-    const SizedBox(height: AfSpacing.s24),
   ];
+
+  // ── Presets ──────────────────────────────────────────────────────────────
 
   Widget _buildPresetChips() {
     final allPresets = <String, EqPreset>{...kBuiltInPresets, ..._userPresets};
@@ -1621,75 +1609,5 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         ],
       ),
     );
-  }
-
-  Map<String, double> _buildEqParams() {
-    final params = <String, double>{};
-    for (final entry in _eqBands.entries) {
-      if (entry.value != 1.0) params[entry.key] = entry.value;
-    }
-    return params;
-  }
-
-  List<Widget> _buildEqBands() {
-    return kEqBands.entries.map((entry) {
-      final bandKey = entry.key;
-      final freq = entry.value;
-      final gain = _eqBands[bandKey] ?? 1.0;
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s2),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 58,
-              child: Text(
-                freq,
-                style: AfTypography.caption.copyWith(
-                  color: AfColors.textTertiary,
-                ),
-              ),
-            ),
-            Expanded(
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackHeight: 2,
-                  thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 6,
-                  ),
-                  overlayShape: const RoundSliderOverlayShape(
-                    overlayRadius: 12,
-                  ),
-                ),
-                child: Slider(
-                  key: ValueKey(bandKey),
-                  value: gain.clamp(0.0, 4.0),
-                  min: 0,
-                  max: 4,
-                  divisions: 40,
-                  activeColor: AfColors.indigo400,
-                  onChanged: (v) {
-                    setState(() {
-                      _eqBands[bandKey] = v;
-                      _activePreset = null;
-                    });
-                  },
-                  onChangeEnd: (_) => _apply(),
-                ),
-              ),
-            ),
-            SizedBox(
-              width: 36,
-              child: Text(
-                gain.toStringAsFixed(1),
-                textAlign: TextAlign.right,
-                style: AfTypography.caption.copyWith(
-                  color: AfColors.textTertiary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }).toList();
   }
 }
