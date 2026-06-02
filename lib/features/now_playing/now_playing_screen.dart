@@ -12,19 +12,13 @@ import '../../core/audio/play_actions.dart';
 import '../../core/audio/af_loop_mode.dart';
 import '../../core/audio/shuffle_mode.dart';
 import '../../core/jellyfin/models/items.dart';
-import '../../core/jellyfin/models/quality.dart';
 import '../../design_tokens/tokens.dart';
-import '../../features/sleep_timer/sleep_timer_screen.dart';
 import '../../state/providers.dart';
 import '../../utils/oklch.dart';
 import '../../utils/time_format.dart';
-import '../../widgets/marquee_text.dart';
-import '../../widgets/artwork.dart';
 import '../../widgets/audio_visual_scrubber.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/press_scale.dart';
-import '../../widgets/quality_chip.dart';
-import 'sleep_timer_dialog.dart';
 import 'utility_row.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -39,6 +33,14 @@ import 'utility_row.dart';
 //
 // High-frequency streams (position, FFT) are isolated to leaf widgets
 // so they never trigger rebuilds of the artwork, gradient, or metadata.
+//
+// Layout: Full-bleed immersive Stack.
+//   Stack(fit: StackFit.expand)
+//   ├── _ReactiveBackground (color fill)
+//   ├── Artwork (Positioned.fill, BoxFit.cover)
+//   ├── Gradient scrim (bottom 65%)
+//   ├── _FrostedTopBar (top)
+//   └── _FrostedBottomPanel (bottom)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class NowPlayingScreen extends ConsumerWidget {
@@ -46,7 +48,6 @@ class NowPlayingScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Only watches track identity — rebuilds on skip, not on position tick.
     final track = ref.watch(currentTrackProvider);
 
     if (track == null) {
@@ -65,71 +66,56 @@ class NowPlayingScreen extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
       body: _ReactiveBackground(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous,
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final double maxHeight = constraints.maxHeight;
-                final bool useScroll = maxHeight < 620.0;
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // ── Full-bleed artwork ──
+            _ReactiveArtwork(track: track),
 
-                // Adjust spacing tokens dynamically based on vertical space to prevent layout overflows
-                final double spacing16 = maxHeight < 620
-                    ? 8.0
-                    : (maxHeight < 720 ? 12.0 : 16.0);
-                final double spacing24 = maxHeight < 620
-                    ? 12.0
-                    : (maxHeight < 720 ? 18.0 : 24.0);
-
-                // Scale down artwork and scrubber heights if height budget is tight
-                final double artworkSize = (maxHeight * 0.35).clamp(
-                  160.0,
-                  300.0,
-                );
-                final double scrubberHeight = (maxHeight * 0.15).clamp(
-                  80.0,
-                  120.0,
-                );
-
-                final List<Widget> content = [
-                  _TopBar(track: track),
-                  if (useScroll)
-                    const SizedBox(height: AfSpacing.s16)
-                  else
-                    const Spacer(),
-                  UnconstrainedBox(
-                    clipBehavior: Clip.none,
-                    child: _ReactiveArtwork(track: track, size: artworkSize),
+            // ── Gradient scrim (transparent → surfaceCanvas) ──
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: MediaQuery.of(context).size.height * 0.65,
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      AfColors.surfaceCanvas,
+                      AfColors.surfaceCanvas,
+                    ],
+                    stops: [0.0, 0.35, 1.0],
                   ),
-                  if (useScroll)
-                    const SizedBox(height: AfSpacing.s16)
-                  else
-                    const Spacer(),
-                  _MetadataRow(track: track),
-                  SizedBox(height: spacing16),
-                  _ReactiveProgress(
-                    track: track,
-                    scrubberHeight: scrubberHeight,
-                  ),
-                  SizedBox(height: spacing24),
-                  _ReactiveTransport(track: track),
-                  SizedBox(height: spacing24),
-                  const UtilityRow(),
-                  SizedBox(height: spacing16),
-                ];
-
-                if (useScroll) {
-                  return SingleChildScrollView(
-                    child: Column(children: content),
-                  );
-                } else {
-                  return Column(children: content);
-                }
-              },
+                ),
+              ),
             ),
-          ),
+
+            // ── Top bar ──
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                bottom: false,
+                child: _FrostedTopBar(track: track),
+              ),
+            ),
+
+            // ── Bottom panel ──
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SafeArea(
+                top: false,
+                child: _FrostedBottomPanel(track: track),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -179,10 +165,10 @@ class _ReactiveBackground extends ConsumerWidget {
 /// Artwork with sub-bass driven scale pulse.
 /// Bin 0 (kick drum / sub-bass) drives a ±8% scale bump via asymmetric lerp.
 /// ValueNotifier + Transform.scale — no setState, no rebuild of parent.
+/// Full-bleed: Positioned.fill + BoxFit.cover.
 class _ReactiveArtwork extends ConsumerStatefulWidget {
-  const _ReactiveArtwork({required this.track, required this.size});
+  const _ReactiveArtwork({required this.track});
   final AfTrack track;
-  final double size;
 
   @override
   ConsumerState<_ReactiveArtwork> createState() => _ReactiveArtworkState();
@@ -208,7 +194,6 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
           duration: const Duration(milliseconds: 16),
         )..addListener(() {
           if (_scale.value > 1.001) {
-            // Exponential spring decay back to 1.0.
             _scale.value = 1.0 + (_scale.value - 1.0) * 0.85;
           } else {
             _scale.value = 1.0;
@@ -218,7 +203,6 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Don't subscribe to FFT if pulse animation is disabled.
       final pulseEnabled = ref.read(artworkPulseEnabledProvider);
       if (!pulseEnabled) return;
 
@@ -226,16 +210,8 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
         if (!mounted) return;
         if (frame.bands.isEmpty) return;
 
-        // Process every frame. At 60 fps input the pulse detector
-        // is ~0.1 μs/frame (7-band sum + compare) — negligible.
-
         _silenceTimer?.cancel();
 
-        // Kick / low-bass pool. With the player configured for 64
-        // log-spaced bands over 20 Hz..20 kHz, the geometric ratio
-        // is ~1.114/band, so band 0 ≈ 20–22 Hz (mostly room rumble)
-        // and bands 1..6 span ≈ 22–45 Hz — the kick-drum fundamental
-        // region on most music. Pool the peak of that window.
         final int hi = frame.bands.length < 7 ? frame.bands.length : 7;
         double rawBass = 0.0;
         for (var i = 1; i < hi; i++) {
@@ -246,23 +222,15 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
         final delta = rawBass - _prevBass;
         _prevBass = rawBass;
 
-        // Asymmetric baseline: drops fast (0.12) so quiet passages
-        // lower the floor quickly; rises slow (0.03) so kick peaks
-        // stay well above the running average.
         _bassAverage +=
             (rawBass - _bassAverage) * (rawBass < _bassAverage ? 0.12 : 0.03);
 
-        // Transient detection — tuned for the wide 140 dB spectrum
-        // range (-105..+35 dB). At that range a perceptually obvious
-        // 10 dB kick only yields ~1.13× in normalised [0,1] space,
-        // so the old 1.5× ratio was unreachable. Fire on either a
-        // ratio spike (1.12×) or a sharp frame-to-frame delta (0.04).
         if (_cooldown > 0) {
           _cooldown--;
         } else if ((rawBass > _bassAverage * 1.12 || delta > 0.04) &&
             rawBass > 0.015) {
-          _scale.value = 1.06; // +6% bump
-          _cooldown = 15; // ~250ms lockout at 60 fps
+          _scale.value = 1.06;
+          _cooldown = 15;
           if (!_ticker.isAnimating) _ticker.repeat();
         }
 
@@ -294,44 +262,255 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
     final pulseEnabled = ref.watch(artworkPulseEnabledProvider);
     final artworkUri = ref.watch(currentArtworkUriProvider);
 
-    final artworkWidget = Center(
-      child: Hero(
-        tag: 'now-playing-artwork',
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: AfRadii.borderLg,
-            boxShadow: [
-              BoxShadow(
-                color: spectral.glow.withValues(alpha: 0.30),
-                blurRadius: 40,
-                spreadRadius: 4,
-              ),
-            ],
-          ),
-          child: Artwork(
-            url: artworkUri?.toString() ?? widget.track.imageUrl,
-            size: widget.size,
-            radius: AfRadii.borderLg,
+    final artworkWidget = Hero(
+      tag: 'now-playing-artwork',
+      child: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: spectral.glow.withValues(alpha: 0.30),
+              blurRadius: 40,
+              spreadRadius: 4,
+            ),
+          ],
+        ),
+        child: ClipRect(
+          child: Image.network(
+            artworkUri?.toString() ?? widget.track.imageUrl ?? '',
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
           ),
         ),
       ),
     );
 
-    if (!pulseEnabled) return artworkWidget;
+    if (!pulseEnabled) {
+      return Positioned.fill(child: artworkWidget);
+    }
 
-    return ValueListenableBuilder<double>(
-      valueListenable: _scale,
-      builder: (context, scaleVal, child) => Transform.scale(
-        scale: scaleVal,
-        alignment: Alignment.center,
-        child: child,
+    return Positioned.fill(
+      child: ValueListenableBuilder<double>(
+        valueListenable: _scale,
+        builder: (context, scaleVal, child) => Transform.scale(
+          scale: scaleVal,
+          alignment: Alignment.center,
+          child: child,
+        ),
+        child: artworkWidget,
       ),
-      child: artworkWidget,
     );
   }
 }
 
-/// Static metadata row — only rebuilds when track changes (on skip).
+/// Frosted top bar — pill-shaped, blurred backdrop.
+class _FrostedTopBar extends ConsumerWidget {
+  const _FrostedTopBar({required this.track});
+  final AfTrack track;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AfSpacing.s16,
+        vertical: AfSpacing.s8,
+      ),
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: AfRadii.borderPill,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.1),
+                width: 0.5,
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.s8,
+              vertical: 4,
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(
+                    LucideIcons.chevronDown,
+                    color: AfColors.textPrimary,
+                    size: 22,
+                  ),
+                  onPressed: () => Navigator.maybePop(context),
+                ),
+                const SizedBox(width: AfSpacing.s8),
+                Expanded(
+                  child: InkWell(
+                    borderRadius: AfRadii.borderSm,
+                    onTap: track.albumId == null
+                        ? null
+                        : () => context.push('/album/${track.albumId}'),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Column(
+                        children: [
+                          Text(
+                            'PLAYING FROM ALBUM',
+                            style: AfTypography.caption.copyWith(
+                              color: AfColors.textTertiary,
+                              letterSpacing: 0.8,
+                              fontSize: 10,
+                            ),
+                          ),
+                          Text(
+                            track.albumName,
+                            style: AfTypography.titleSmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AfSpacing.s8),
+                PopupMenuButton<_NowPlayingAction>(
+                  icon: const Icon(
+                    LucideIcons.ellipsis,
+                    color: AfColors.textPrimary,
+                    size: 20,
+                  ),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AfRadii.borderLg,
+                  ),
+                  onSelected: (action) async {
+                    switch (action) {
+                      case _NowPlayingAction.startRadio:
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Starting Instant Mix…'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                        await ref
+                            .read(playActionsProvider)
+                            .playInstantMix(track);
+                        if (!context.mounted) return;
+                        break;
+                      case _NowPlayingAction.goToAlbum:
+                        if (track.albumId != null) {
+                          unawaited(context.push('/album/${track.albumId}'));
+                        }
+                        break;
+                      case _NowPlayingAction.goToArtist:
+                        if (track.artistId != null) {
+                          unawaited(context.push('/artist/${track.artistId}'));
+                        }
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: _NowPlayingAction.startRadio,
+                      child: ListTile(
+                        leading: Icon(
+                          LucideIcons.radio,
+                          color: AfColors.textSecondary,
+                          size: 24,
+                        ),
+                        title: Text('Start radio'),
+                        subtitle: Text('Similar songs from your library'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    if (track.albumId != null)
+                      const PopupMenuItem(
+                        value: _NowPlayingAction.goToAlbum,
+                        child: ListTile(
+                          leading: Icon(
+                            LucideIcons.disc3,
+                            color: AfColors.textSecondary,
+                            size: 24,
+                          ),
+                          title: Text('Go to album'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    if (track.artistId != null)
+                      const PopupMenuItem(
+                        value: _NowPlayingAction.goToArtist,
+                        child: ListTile(
+                          leading: Icon(
+                            LucideIcons.user,
+                            color: AfColors.textSecondary,
+                            size: 24,
+                          ),
+                          title: Text('Go to artist'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+enum _NowPlayingAction { startRadio, goToAlbum, goToArtist }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Frosted bottom panel
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Frosted glass bottom panel — houses metadata, scrubber, transport, utilities.
+class _FrostedBottomPanel extends StatelessWidget {
+  const _FrostedBottomPanel({required this.track});
+  final AfTrack track;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AfColors.surfaceCanvas.withValues(alpha: 0.72),
+            border: Border(
+              top: BorderSide(
+                color: Colors.white.withValues(alpha: 0.08),
+                width: 0.5,
+              ),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.s20,
+          ).copyWith(top: AfSpacing.s20, bottom: AfSpacing.s24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _MetadataRow(track: track),
+              const SizedBox(height: AfSpacing.s16),
+              _ReactiveProgress(track: track),
+              const SizedBox(height: AfSpacing.s20),
+              _ReactiveTransport(track: track),
+              const SizedBox(height: AfSpacing.s16),
+              const UtilityRow(),
+              const SizedBox(height: AfSpacing.s4),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Metadata row — mini artwork + title + artist + heart + quality badge
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _MetadataRow extends ConsumerWidget {
   const _MetadataRow({required this.track});
   final AfTrack track;
@@ -340,17 +519,31 @@ class _MetadataRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isFav = ref.watch(isFavoriteProvider(track.id));
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        // Mini artwork
+        ClipRRect(
+          borderRadius: AfRadii.borderSm,
+          child: Image.network(
+            track.imageUrl ?? '',
+            width: 48,
+            height: 48,
+            fit: BoxFit.cover,
+          ),
+        ),
+        const SizedBox(width: AfSpacing.s12),
+        // Title + artist
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              MarqueeText(text: track.title, style: AfTypography.titleLarge),
+              Text(
+                track.title,
+                style: AfTypography.titleMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               const SizedBox(height: AfSpacing.s2),
-              // Tap the artist name to jump to the artist. Mirrors the
-              // album-label affordance in the top bar.
               InkWell(
                 borderRadius: AfRadii.borderSm,
                 onTap: track.artistId == null
@@ -361,22 +554,26 @@ class _MetadataRow extends ConsumerWidget {
                       ? null
                       : 'Go to artist ${track.artistName}',
                   button: track.artistId != null,
-                  child: MarqueeText(
-                    text: track.artistName,
-                    style: AfTypography.bodyMedium.copyWith(
+                  child: Text(
+                    track.artistName,
+                    style: AfTypography.bodySmall.copyWith(
                       color: AfColors.textSecondary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
             ],
           ),
         ),
+        const SizedBox(width: AfSpacing.s8),
+        // Heart
         IconButton(
           icon: Icon(
             isFav ? LucideIcons.heart : LucideIcons.heart,
             color: isFav ? AfColors.semanticError : AfColors.textPrimary,
-            size: 24,
+            size: 22,
           ),
           tooltip: isFav ? 'Remove from favorites' : 'Add to favorites',
           onPressed: () async {
@@ -394,85 +591,29 @@ class _MetadataRow extends ConsumerWidget {
             }
           },
         ),
-        _AbLoopButton(),
-        _NowPlayingMetaChip(quality: track.quality),
+        if (track.quality != null)
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.s8,
+              vertical: 3,
+            ),
+            decoration: BoxDecoration(
+              color: AfColors.indigo400.withValues(alpha: 0.15),
+              borderRadius: AfRadii.borderPill,
+            ),
+            child: Text(
+              track.quality!.chipLabel,
+              style: AfTypography.caption.copyWith(color: AfColors.textPrimary),
+            ),
+          ),
       ],
     );
   }
 }
 
-class _AbLoopButton extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final loopA = ref.watch(abLoopAProvider);
-    final loopB = ref.watch(abLoopBProvider);
-    final active = loopA != null;
-    final fullyActive = loopA != null && loopB != null;
-
-    return IconButton(
-      icon: Icon(
-        loopA == null ? LucideIcons.arrowLeftRight : LucideIcons.flag,
-        color: fullyActive
-            ? ref.watch(currentSpectralProvider).energy
-            : active
-            ? AfColors.semanticWarning
-            : AfColors.textTertiary,
-        size: 22,
-      ),
-      tooltip: 'A-B Loop',
-      onPressed: () async {
-        final svc = ref.read(playerServiceProvider);
-        final pos = await svc.getRawPosition();
-
-        if (loopA == null) {
-          // Set A marker
-          await svc.setAbLoopA(pos);
-          ref.read(abLoopAProvider.notifier).state = pos;
-          if (context.mounted) {
-            ScaffoldMessenger.of(context)
-              ..clearSnackBars()
-              ..showSnackBar(
-                const SnackBar(
-                  content: Text('Loop start set — tap again for end'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-          }
-        } else if (loopB == null) {
-          // Set B marker
-          await svc.setAbLoopB(pos);
-          ref.read(abLoopBProvider.notifier).state = pos;
-          if (context.mounted) {
-            ScaffoldMessenger.of(context)
-              ..clearSnackBars()
-              ..showSnackBar(
-                const SnackBar(
-                  content: Text('A-B loop active — tap to clear'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-          }
-        } else {
-          // Clear both
-          await svc.setAbLoopA(null);
-          await svc.setAbLoopB(null);
-          ref.read(abLoopAProvider.notifier).state = null;
-          ref.read(abLoopBProvider.notifier).state = null;
-          if (context.mounted) {
-            ScaffoldMessenger.of(context)
-              ..clearSnackBars()
-              ..showSnackBar(
-                const SnackBar(
-                  content: Text('A-B loop cleared'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-          }
-        }
-      },
-    );
-  }
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Reactive progress
+// ─────────────────────────────────────────────────────────────────────────────
 
 /// Watches positionStreamProvider — the only widget that does.
 /// Rebuilds at position tick rate; everything above is unaffected.
@@ -481,16 +622,14 @@ class _AbLoopButton extends ConsumerWidget {
 ///   onScrub    → local preview only (no seek, no audio pipeline churn)
 ///   onScrubEnd → single committed seek
 class _ReactiveProgress extends ConsumerStatefulWidget {
-  const _ReactiveProgress({required this.track, this.scrubberHeight = 120.0});
+  const _ReactiveProgress({required this.track});
   final AfTrack track;
-  final double scrubberHeight;
 
   @override
   ConsumerState<_ReactiveProgress> createState() => _ReactiveProgressState();
 }
 
 class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
-  // Local scrub preview — updated during drag without seeking.
   double? _scrubPreview;
   bool _isDragging = false;
 
@@ -509,19 +648,12 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
     final spectral = ref.watch(currentSpectralProvider);
     final mpvDuration = ref.watch(durationStreamProvider);
     final isBuffering = ref.watch(isBufferingProvider);
-    // Use mpv's reported duration as source of truth. Fall back to
-    // track metadata only if mpv hasn't probed the file yet.
     final duration = mpvDuration > Duration.zero
         ? mpvDuration
         : widget.track.duration;
 
-    // Freeze progress bar at 0 while buffering — mpv's position
-    // isn't meaningful until playback actually starts.
     final effectivePosition = isBuffering ? Duration.zero : position;
 
-    // Only use engine position if NOT dragging — prevents the playhead
-    // from stuttering between the drag position and the engine's real
-    // position (which keeps advancing during the gesture).
     final engineProgress = duration.inMilliseconds == 0
         ? 0.0
         : (effectivePosition.inMilliseconds / duration.inMilliseconds).clamp(
@@ -541,64 +673,60 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
         ? duration - displayPosition
         : Duration.zero;
 
-    return RepaintBoundary(
-      child: Column(
-        children: [
-          AudioVisualScrubber(
-            progress: displayProgress,
-            playedColor: spectral.energy,
-            height: widget.scrubberHeight,
-            onScrub: (p) => setState(() {
-              _isDragging = true;
-              _scrubPreview = p;
-            }),
-            onScrubEnd: (p) async {
-              final newPos = Duration(
-                milliseconds: (p * duration.inMilliseconds).round(),
-              );
-              final svc = ref.read(playerServiceProvider);
-              // Detect "seek after track completed" scenario:
-              // when the queue ended, _userPaused=true and player is stopped.
-              // Seeking alone won't resume — we need to call play() as well.
-              final wasCompletedAtEnd = svc.isCompleted && svc.isUserPaused;
-              try {
-                await svc.seek(newPos).timeout(const Duration(seconds: 2));
-                // Resume playback only when the user seeks into a completed track.
-                if (wasCompletedAtEnd && mounted) {
-                  await svc.play().timeout(const Duration(seconds: 2));
-                }
-              } catch (_) {
-                // Timeout or seek error — still release the drag lock.
+    return Column(
+      children: [
+        AudioVisualScrubber(
+          progress: displayProgress,
+          playedColor: spectral.energy,
+          height: 100.0,
+          onScrub: (p) => setState(() {
+            _isDragging = true;
+            _scrubPreview = p;
+          }),
+          onScrubEnd: (p) async {
+            final newPos = Duration(
+              milliseconds: (p * duration.inMilliseconds).round(),
+            );
+            final svc = ref.read(playerServiceProvider);
+            final wasCompletedAtEnd = svc.isCompleted && svc.isUserPaused;
+            try {
+              await svc.seek(newPos).timeout(const Duration(seconds: 2));
+              if (wasCompletedAtEnd && mounted) {
+                await svc.play().timeout(const Duration(seconds: 2));
               }
-              if (mounted) {
-                setState(() {
-                  _isDragging = false;
-                  _scrubPreview = null;
-                });
-              }
-            },
-          ),
-          const SizedBox(height: AfSpacing.s4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                formatTrackDuration(displayPosition),
-                style: AfTypography.mono.copyWith(
-                  color: AfColors.textSecondary,
-                ),
-              ),
-              Text(
-                formatRemaining(remaining),
-                style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
-              ),
-            ],
-          ),
-        ],
-      ),
+            } catch (_) {
+              // Timeout or seek error — still release the drag lock.
+            }
+            if (mounted) {
+              setState(() {
+                _isDragging = false;
+                _scrubPreview = null;
+              });
+            }
+          },
+        ),
+        const SizedBox(height: AfSpacing.s4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              formatTrackDuration(displayPosition),
+              style: AfTypography.mono.copyWith(color: AfColors.textSecondary),
+            ),
+            Text(
+              formatRemaining(remaining),
+              style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reactive transport
+// ─────────────────────────────────────────────────────────────────────────────
 
 /// Watches playing/shuffle/loop — rebuilds on transport state changes only.
 class _ReactiveTransport extends ConsumerWidget {
@@ -696,240 +824,9 @@ class _ReactiveTransport extends ConsumerWidget {
   }
 }
 
-class _TopBar extends ConsumerWidget {
-  const _TopBar({required this.track});
-  final AfTrack track;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AfColors.surfaceCanvas.withValues(alpha: 0.20),
-            borderRadius: AfRadii.borderPill,
-          ),
-          margin: const EdgeInsets.symmetric(
-            horizontal: AfSpacing.s8,
-            vertical: 0,
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AfSpacing.s8,
-            vertical: 4,
-          ),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(
-                  LucideIcons.chevronDown,
-                  color: AfColors.textPrimary,
-                  size: 24,
-                ),
-                onPressed: () => Navigator.maybePop(context),
-              ),
-              const SizedBox(width: AfSpacing.s8),
-              Expanded(
-                // Tap the album label to jump to the album. Faster than
-                // ⋯ → Go to album. The popup menu still offers the same
-                // action for users who go looking for it there.
-                child: InkWell(
-                  borderRadius: AfRadii.borderSm,
-                  onTap: track.albumId == null
-                      ? null
-                      : () => context.push('/album/${track.albumId}'),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Column(
-                      children: [
-                        Text(
-                          'Playing from album',
-                          style: AfTypography.caption.copyWith(
-                            color: AfColors.textTertiary,
-                          ),
-                        ),
-                        Text(
-                          track.albumName,
-                          style: AfTypography.titleSmall,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: AfSpacing.s8),
-              PopupMenuButton<_NowPlayingAction>(
-                icon: const Icon(
-                  LucideIcons.ellipsis,
-                  color: AfColors.textPrimary,
-                  size: 24,
-                ),
-                shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderLg,
-                ),
-                onSelected: (action) async {
-                  switch (action) {
-                    case _NowPlayingAction.startRadio:
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Starting Instant Mix…'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                      await ref.read(playActionsProvider).playInstantMix(track);
-                      // Guard navigation after async gap.
-                      if (!context.mounted) return;
-                      break;
-                    case _NowPlayingAction.goToAlbum:
-                      if (track.albumId != null) {
-                        unawaited(context.push('/album/${track.albumId}'));
-                      }
-                      break;
-                    case _NowPlayingAction.goToArtist:
-                      if (track.artistId != null) {
-                        unawaited(context.push('/artist/${track.artistId}'));
-                      }
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: _NowPlayingAction.startRadio,
-                    child: ListTile(
-                      leading: Icon(
-                        LucideIcons.radio,
-                        color: AfColors.textSecondary,
-                        size: 24,
-                      ),
-                      title: Text('Start radio'),
-                      subtitle: Text('Similar songs from your library'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                  if (track.albumId != null)
-                    const PopupMenuItem(
-                      value: _NowPlayingAction.goToAlbum,
-                      child: ListTile(
-                        leading: Icon(
-                          LucideIcons.disc3,
-                          color: AfColors.textSecondary,
-                          size: 24,
-                        ),
-                        title: Text('Go to album'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  if (track.artistId != null)
-                    const PopupMenuItem(
-                      value: _NowPlayingAction.goToArtist,
-                      child: ListTile(
-                        leading: Icon(
-                          LucideIcons.user,
-                          color: AfColors.textSecondary,
-                          size: 24,
-                        ),
-                        title: Text('Go to artist'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-enum _NowPlayingAction { startRadio, goToAlbum, goToArtist }
-
-/// Combined chip rendered in the Now Playing metadata row (right of the
-/// favorite + A-B-loop buttons). Replaces the old _SleepTimerBadge that
-/// lived next to the ⋯ menu in the top bar — the chip slot is unified so
-/// the header stays compact and the metadata row only ever shows one chip.
-///
-/// Visual modes:
-///   • Sleep timer armed → bedtime icon + remaining time (or just the icon
-///     for end-of-track timers). Tapping opens the sleep timer dialog so
-///     the user can adjust or cancel without diving into the More sheet.
-///   • Sleep timer off → [QualityChip] for the current track (FLAC, bit
-///     depth, sample rate). The chip's warning border still surfaces
-///     transcode / degradation.
-///   • Neither (no timer + no quality info) → empty.
-class _NowPlayingMetaChip extends ConsumerWidget {
-  const _NowPlayingMetaChip({required this.quality});
-  final TrackQuality? quality;
-
-  static String _formatRemaining(Duration d) {
-    if (d.isNegative) return '0:00';
-    // Round up so the user never sees 0:00 while the timer is still
-    // technically running.
-    final totalSeconds = d.inSeconds + (d.inMilliseconds % 1000 > 0 ? 1 : 0);
-    if (totalSeconds >= 3600) {
-      final h = totalSeconds ~/ 3600;
-      final m = ((totalSeconds % 3600) / 60).ceil();
-      return '$h:${m.toString().padLeft(2, '0')}';
-    }
-    final m = totalSeconds ~/ 60;
-    final s = totalSeconds % 60;
-    return '$m:${s.toString().padLeft(2, '0')}';
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final active = ref.watch(sleepTimerProvider);
-    if (active != null) {
-      final remaining = ref.watch(sleepTimerRemainingProvider);
-      return Material(
-        color: AfColors.surfaceHigh,
-        shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderPill),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () {
-            showBlurDialog<void>(
-              context: context,
-              child: const SleepTimerDialogContent(),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.s12,
-              vertical: 6,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  LucideIcons.moon,
-                  size: 13,
-                  color: AfColors.indigo300,
-                ),
-                if (remaining != null) ...[
-                  const SizedBox(width: AfSpacing.s4),
-                  Text(
-                    _formatRemaining(remaining),
-                    style: AfTypography.mono.copyWith(
-                      fontSize: 11,
-                      color: AfColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-    if (quality != null) {
-      return QualityChip(quality: quality!);
-    }
-    return const SizedBox.shrink();
-  }
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Transport row
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _TransportRow extends StatelessWidget {
   const _TransportRow({
@@ -974,87 +871,88 @@ class _TransportRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      decoration: BoxDecoration(
-        color: AfColors.textOnPrimary.withValues(alpha: 0.08),
-        borderRadius: AfRadii.borderPill,
-      ),
-      child: Row(
-        children: [
-          const SizedBox(width: AfSpacing.s4),
-          GestureDetector(
-            onLongPress: onShuffleLongPress,
-            child: _TransportButton(
-              icon: Icon(
-                shuffleMode == ShuffleMode.tail
-                    ? LucideIcons.arrowDownWideNarrow
-                    : LucideIcons.shuffle,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Shuffle
+        GestureDetector(
+          onLongPress: onShuffleLongPress,
+          child: _TransportButton(
+            icon: Icon(
+              shuffleMode == ShuffleMode.tail
+                  ? LucideIcons.arrowDownWideNarrow
+                  : LucideIcons.shuffle,
+              size: 20,
+              color: shuffleOn ? accent : AfColors.textTertiary,
+            ),
+            onTap: onShuffle,
+          ),
+        ),
+        const SizedBox(width: AfSpacing.s12),
+        // Previous
+        _TransportButton(
+          icon: const Icon(
+            LucideIcons.skipBack,
+            size: 26,
+            color: AfColors.textPrimary,
+          ),
+          onTap: onPrev,
+        ),
+        const SizedBox(width: AfSpacing.s16),
+        // Play / Pause
+        _PlayButton(isPlaying: isPlaying, onTap: onPlayPause),
+        const SizedBox(width: AfSpacing.s16),
+        // Next
+        _TransportButton(
+          icon: const Icon(
+            LucideIcons.skipForward,
+            size: 26,
+            color: AfColors.textPrimary,
+          ),
+          onTap: onNext,
+        ),
+        const SizedBox(width: AfSpacing.s12),
+        // Repeat
+        _TransportButton(
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                _loopIcon(loopMode),
                 size: 20,
-                color: shuffleOn ? accent : AfColors.textTertiary,
+                color: _loopColor(loopMode, accent),
               ),
-              onTap: onShuffle,
-            ),
-          ),
-          const Spacer(),
-          _TransportButton(
-            icon: const Icon(
-              LucideIcons.skipBack,
-              size: 24,
-              color: AfColors.textPrimary,
-            ),
-            onTap: onPrev,
-          ),
-          const SizedBox(width: AfSpacing.s12),
-          _PlayButton(isPlaying: isPlaying, onTap: onPlayPause),
-          const SizedBox(width: AfSpacing.s12),
-          _TransportButton(
-            icon: const Icon(
-              LucideIcons.skipForward,
-              size: 24,
-              color: AfColors.textPrimary,
-            ),
-            onTap: onNext,
-          ),
-          const Spacer(),
-          _TransportButton(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(
-                  _loopIcon(loopMode),
-                  size: 20,
-                  color: _loopColor(loopMode, accent),
-                ),
-                if (loopMode == AfLoopMode.forNtimes)
-                  Positioned(
-                    right: -6,
-                    top: -4,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        color: AfColors.indigo400,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '$repeatCount',
-                        style: AfTypography.caption.copyWith(
-                          color: AfColors.textOnPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
+              if (loopMode == AfLoopMode.forNtimes)
+                Positioned(
+                  right: -6,
+                  top: -4,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: AfColors.indigo400,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '$repeatCount',
+                      style: AfTypography.caption.copyWith(
+                        color: AfColors.textOnPrimary,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-              ],
-            ),
-            onTap: onRepeat,
+                ),
+            ],
           ),
-          const SizedBox(width: 4),
-        ],
-      ),
+          onTap: onRepeat,
+        ),
+      ],
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared transport widgets
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _TransportButton extends StatelessWidget {
   const _TransportButton({required this.icon, required this.onTap});

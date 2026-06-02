@@ -1,130 +1,144 @@
-# Design Implementation Plan: 4-Target Visual Refresh
+# Design Implementation Plan: Now Playing Redesign
 
 ## Summary
-- **Scope:** 4 screens (Library, Playlist, Settings, EQ/DSP)
-- **Date:** 2026-06-02
-- **Method:** Design and Refine — 5 variants per target, user-selected winners
+- **Scope:** Page (full screen)
+- **Target:** `lib/features/now_playing/now_playing_screen.dart`
+- **Winner:** Variant F — Full-Bleed Immersive + Visualizer
+- **Key improvements:** Artwork-dominant Roon-inspired layout, A-B loop removed from main view, frosted glass controls, modern premium feel
 
-## Winners
+## Architecture Changes
 
-| Target | Winner | Pattern | File |
-|--------|--------|---------|------|
-| Library | E | Premium Expressive | `lib/features/library/library_screen.dart` |
-| Playlist | D | Dashboard | `lib/features/playlist/playlist_screen.dart` |
-| Settings | B | iOS-Style | `lib/features/settings/settings_screen.dart` |
-| EQ/DSP | D | Accordion Sections | `lib/features/now_playing/eq_dsp_screen.dart` + `eq_dsp_widgets.dart` |
+### Current → New Layout Model
+```
+Current:  Column (vertical stack, artwork ~35% height)
+New:      Stack (artwork fills screen, frosted bottom panel)
+```
 
----
+### Reactive Islands (PRESERVED)
+The current architecture isolates high-frequency rebuilds to leaf widgets. This MUST be preserved:
+- `NowPlayingScreen` → watches `currentTrackProvider` (skip only)
+- `_ReactiveBackground` → watches `currentSpectralProvider` (color extraction)
+- `_ReactiveArtwork` → watches `currentSpectralProvider` (artwork + pulse)
+- `_ReactiveProgress` → watches `positionStreamProvider` (high-frequency)
+- `_ReactiveTransport` → watches playing/shuffle/loop
 
-## Library — Premium Expressive (Variant E)
+## Files to Change
 
-### Changes Applied
-- **Title**: ShaderMask gradient (indigo300 → indigo500) on "Library" text
-- **Tab indicator**: Glow-dot pattern (8dp circle, indigo400, BoxShadow blur 8/spread 2)
-- **Album cards**: Glass-morphism (gradient overlay, surfaceHigh border, indigo shadow, bottom gradient with text)
-- **Artist cards**: Circular with indigo300 border ring, user icon, name below
-- **Genre tiles**: LinearGradient from genre tint (0.7 → 0.2 alpha)
-- **Playlist rows**: surfaceRaised bg, gradient leading icon, title/subtitle
-- **Press scale**: All tappable items scale to 1.02 on tap
+- [ ] `lib/features/now_playing/now_playing_screen.dart` — Major refactor
+- [ ] `lib/features/now_playing/utility_row.dart` — Add A-B loop to More sheet
+- [ ] `DESIGN_MEMORY.md` — Update interaction patterns
 
-### Component API
-- `_AlbumCard` — glass-morphism album tile (private)
-- `_ArtistCard` — circular artist tile with ring (private)
-- `_GenreCard` — gradient genre tile (private)
-- `_PlaylistCard` — elevated playlist row (private)
-- Restyled `_SegmentedPill` — glow-dot indicator
+## Implementation Steps
 
----
+### Step 1: Restructure layout (now_playing_screen.dart)
+Replace `Column` layout with `Stack`:
+1. `_ReactiveBackground` → fills entire screen (not just `color:`)
+2. Add gradient scrim positioned at bottom 65%
+3. Move `_TopBar` to positioned overlay (frosted pill)
+4. Create new `_FrostedBottomPanel` container
+5. Move metadata, progress, transport, utility into bottom panel
 
-## Playlist — Dashboard (Variant D)
+### Step 2: Redesign bottom panel
+New widget `_FrostedBottomPanel`:
+- `BackdropFilter` blur (sigma 30)
+- `fixtureBackground` at 0.72 alpha
+- Top border: white at 0.08 alpha
+- Padding: 20h, 24v
+- Contains: metadata → visualizer → time labels → transport → utility
 
-### Changes Applied
-- **Hero**: Centered 128dp artwork with indigo gradient + 32dp shadow
-- **Name**: Centered below artwork, titleLarge
-- **Stats**: Mono badge row (tracks · duration · artists) — surfaceLow bg, surfaceHigh border
-- **Controls**: Segmented pill (Play | Shuffle) — indigo600 when selected
-- **Track container**: surfaceRaised bg, rounded top corners (AfRadii.xl)
-- **Track numbers**: Overline text, 32dp wide, centered
-- **Active track**: indigo900 at 0.3 alpha background
-- **Drag handle**: textDisabled, 18dp
+### Step 3: Redesign metadata row
+Replace `_MetadataRow`:
+- Mini artwork thumbnail (48dp, `AfRadii.borderSm`)
+- Title + artist in column
+- Favorite icon button
+- Quality chip badge (indigo accent bg)
+- **Remove:** `_AbLoopButton` (moved to More sheet)
+- **Remove:** `_NowPlayingMetaChip` sleep timer logic (keep in separate widget)
 
-### Component API
-- `_StatBadge` — mono stat chip (private)
-- `_SegmentedControl` — Play/Shuffle toggle (private)
-- `_DashboardTrackRow` — numbered track row with overline index (private)
-- `_Pressable` — scale-on-press wrapper (private)
+### Step 4: Redesign transport row
+Replace `_TransportRow`:
+- Single row: shuffle · skipBack · play/pause · skipForward · repeat
+- Remove pill container background (let frosted panel handle it)
+- Play button: 60dp, white, circular
+- Transport buttons: 44dp hit targets
+- Shuffle/Repeat show active state via spectral energy color
 
----
+### Step 5: Redesign utility row
+Replace `UtilityRow`:
+- Row of 5 actions: Lyrics · EQ · Save · Queue · More
+- Same icon + label pattern
+- No visual changes needed (already clean)
 
-## Settings — iOS-Style (Variant B)
+### Step 6: Move A-B loop to More sheet (utility_row.dart)
+Add A-B Loop as first item in `_MoreMenu`:
+- Icon: `LucideIcons.arrowLeftRight`
+- Label: "A-B Loop"
+- Shows current state (A set / A+B active / off)
+- Opens the existing A-B loop dialog
+- Keep `abLoopAProvider` / `abLoopBProvider` providers unchanged
 
-### Changes Applied
-- **Header**: Large title (titleLarge) with s56 top padding, no AppBar
-- **Sections**: UPPERCASE bold headers (titleSmall)
-- **Groups**: Continuous rounded corners (first/last/middle pattern)
-- **Tiles**: 32dp rounded-square icon containers (surfaceHigh bg), chevron disclosure
-- **Switches**: indigo500 active track, textOnPrimary thumb
-- **Danger items**: semanticError icon container + title text
-- **Footer**: Caption text with version info
-- **Values**: Trailing mono text for current settings values
+### Step 7: Top bar redesign
+Refactor `_TopBar`:
+- Frosted pill: `BackdropFilter` blur 20, white 0.08 bg
+- Center: "PLAYING FROM ALBUM" overline + album name
+- Left: chevron down (dismiss)
+- Right: ellipsis (more menu)
+- Keep album tap → navigate to album
 
-### Component API
-- `_IosGroup` — continuous rounded-corner group container (private)
-- `_IosTile` — iOS-style setting tile with icon container + chevron (private)
-- `_IosSwitch` — tile with inline switch (private)
-- `_IconContainer` — 32dp rounded-square icon wrapper (private)
-- `_Chevron` — disclosure indicator (private)
-- `_SectionHeader` — bold uppercase section label (private)
+### Step 8: Artwork changes
+`_ReactiveArtwork`:
+- Remove `UnconstrainedBox` wrapper (artwork fills available space)
+- Keep Hero animation (`now-playing-artwork`)
+- Keep sub-bass pulse animation
+- Keep spectral glow shadow
+- Artwork uses `BoxFit.cover` to fill background
+- Size: fills screen (remove height clamping)
 
----
+### Step 9: Remove scroll behavior
+Current: scroll when `maxHeight < 620`
+New: No scroll — frosted panel is fixed at bottom, artwork is absolute background
+- Keep `LayoutBuilder` for responsive adjustments to bottom panel height
+- Remove `SingleChildScrollView` branch
 
-## EQ/DSP — Accordion Sections (Variant D)
+## Component API
 
-### Changes Applied
-- **Master banner**: Gradient bg (indigo700 → indigo900), glowing icon, custom toggle pill
-- **Presets**: Horizontal scroll chips — surfaceBase bg, indigo600 at 0.3 active
-- **Sections**: Single-open accordion pattern
-  - Collapsed: surfaceLow bg, surfaceHigh border, UPPERCASE label
-  - Open: surfaceBase bg, indigo600 at 0.4 border
-  - Badge: pill with active effect count (indigo600 at 0.3 bg)
-  - Chevron: AnimatedRotation, AfDurations.quick
-  - Content: AnimatedCrossFade, AfDurations.standard
-- **Toggles**: Compact pill rows (44x26) — indigo500 when on, surfaceHigh when off
-- **Sliders**: 72dp label, indigo300 mono value, trackHeight 2, thumbRadius 5
+### _FrostedBottomPanel (NEW)
+- No props — reads all state from providers internally
+- Internal: metadata, visualizer, time, transport, utility
 
-### Component API
-- `EqMasterBanner` — gradient master toggle with glow (public, in eq_dsp_widgets.dart)
-- `EqAccordionSection` — expandable section with badge (public, in eq_dsp_widgets.dart)
-- Restyled `EqEffectToggle` — compact pill toggle (public, in eq_dsp_widgets.dart)
-- Updated `EqSliderRow` — indigo300 mono, compact track (public, in eq_dsp_widgets.dart)
+### _MetadataRow (REFACTORED)
+- Props: `AfTrack track`
+- Removed: `_AbLoopButton`, `_NowPlayingMetaChip` inline
+- Added: mini artwork thumbnail
 
----
+### _TransportRow (REFACTORED)
+- Props: `isPlaying`, `shuffleOn`, `shuffleMode`, `loopMode`, `accent`, callbacks
+- Removed: pill container background
 
-## Testing
+### A-B Loop (MOVED to More sheet)
+- Existing `showAbLoopDialog` reused in `utility_row.dart`
+- Added as first `MoreItem` in `_MoreMenu`
 
-### Test Results
-- **417 passed** / 1 pre-existing failure (global_mini_player_overlay_test.dart — unrelated)
+## Required UI States
+- **Loading:** Artwork placeholder + skeleton (existing pattern)
+- **Empty:** "Nothing playing yet" (existing)
+- **Buffering:** Play button shows `CircularProgressIndicator` (existing)
+- **Favorite:** Heart filled red (existing)
 
-### Verification
-- `dart analyze` — 0 issues
-- `dart format` — all files formatted
-- All existing functionality preserved:
-  - Library: sorting, section switching, data providers, error/loading states
-  - Playlist: reorder, dismiss, undo, rename, delete, export
-  - Settings: all sections, dialogs, toggles, server/local mode
-  - EQ/DSP: all 80+ state variables, apply/reset/preset logic, scroll absorb
-
----
+## Accessibility Checklist
+- [ ] All buttons have 44dp min hit targets
+- [ ] `Semantics` labels on interactive elements
+- [ ] `tooltip` on icon buttons
+- [ ] Keyboard navigation via focus order
+- [ ] Color contrast: text on frosted panels meets APCA Lc ≥ 60
 
 ## Design Tokens Used
-
-All changes use ONLY existing `Af*` tokens:
-- **Colors**: `AfColors.indigo50-1000`, `surfaceCanvas/Low/Base/Raised/High/Max`, `textPrimary/Secondary/Tertiary/Disabled/OnPrimary`, `semanticSuccess/Warning/Error`
-- **Typography**: `AfTypography.display`, `titleLarge/Medium/Small`, `bodyLarge/Medium/Small`, `label`, `caption`, `mono`, `overline`
-- **Spacing**: `AfSpacing.s2-s136`, `gutter`, `rhythm`, `sectionGap`, `minHitTarget`
-- **Radii**: `AfRadii.xs-sm-md-lg-xl-rounded-pill`, `borderXs-pill`
-- **Motion**: `AfCurves.easeStandard/easeEmphasized`, `AfDurations.instant/quick/standard/expressive`
-
----
-
-*Generated by Design and Refine skill*
+- `AfColors.surfaceCanvas` — background
+- `AfColors.textOnPrimary` — play button fill
+- `AfColors.textPrimary/Secondary/Tertiary` — text hierarchy
+- `AfColors.indigo400/600` — accent states
+- `AfTypography.titleMedium/titleSmall/bodySmall/caption/mono`
+- `AfSpacing.s4` through `AfSpacing.gutterGenerous`
+- `AfRadii.borderPill/borderSm/borderLg/borderXl`
+- `AfDurations.expressive/quick/standard`
+- `AfCurves.easeStandard`

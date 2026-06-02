@@ -230,12 +230,26 @@ Dark-only ("Nocturne" theme). No light mode. Spectral accent from artwork at run
 
 ---
 
+### Full-Bleed Immersive (Now Playing)
+- Artwork fills screen edge-to-edge via `BoxFit.cover` on background
+- Gradient scrim: bottom 65%, transparent → surfaceCanvas at 0.92 alpha
+- Frosted top bar: `BackdropFilter` blur 20, white 0.08 bg, `AfRadii.borderPill`
+- Frosted bottom panel: `BackdropFilter` blur 30, `surfaceCanvas` at 0.72 alpha
+- Bottom panel contains: metadata → AudioVisualScrubber → time → transport → utility
+- Mini artwork thumbnail (48dp) in metadata row
+- Transport: prev · play(60dp white circle) · next · shuffle · repeat
+- A-B loop REMOVED from main view → lives in More sheet
+- No scroll — artwork is absolute background, panel is fixed bottom
+
+---
+
 ## History
 
 | Date | Change | Context |
 |------|--------|---------|
 | 2026-06-02 | Initial creation | Home screen redesign — Variant E (Premium Expressive) |
 | 2026-06-02 | Library + Playlist + Settings + EQ/DSP redesigns | 4-target visual refresh batch |
+| 2026-06-02 | Now Playing redesign — Variant F (Full-Bleed + Visualizer) | Artwork-dominant, A-B loop moved to More |
 
 ---
 

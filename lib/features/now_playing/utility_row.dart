@@ -144,6 +144,20 @@ class _MoreMenu extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         MoreItem(
+          icon: Icon(
+            LucideIcons.arrowLeftRight,
+            size: 22,
+            color: ref.watch(abLoopAProvider) != null
+                ? AfColors.indigo300
+                : AfColors.textSecondary,
+          ),
+          label: 'A-B Loop',
+          onTap: () {
+            Navigator.of(dialogCtx).pop();
+            showAbLoopDialog(this.context, ref);
+          },
+        ),
+        MoreItem(
           icon: const Icon(
             LucideIcons.moon,
             size: 22,
