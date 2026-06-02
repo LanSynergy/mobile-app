@@ -15,6 +15,7 @@ import '../../widgets/async_error_view.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/stagger_reveal.dart';
+import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/skeletons/home_skeleton.dart';
 import '../../utils/color_parse.dart';
@@ -108,7 +109,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   children: [
                     ShaderMask(
                       shaderCallback: (bounds) => const LinearGradient(
-                        colors: [AfColors.accentPrimary, AfColors.accentMuted],
+                        colors: [
+                          AfColors.accentPrimary,
+                          AfColors.accentSecondary,
+                        ],
                       ).createShader(bounds),
                       child: Text(
                         'Listen',
@@ -618,78 +622,17 @@ class _GenresSection extends ConsumerWidget {
               itemBuilder: (context, i) {
                 final g = genres[i];
                 final tint = _hex(g.tint);
-                return PressScale(
-                  ensureHitTarget: false,
+                return GenreTile(
+                  name: g.name,
+                  tint: tint,
+                  imageUrl: g.imageUrl,
+                  width: 140,
+                  height: 100,
                   onTap: () {
                     ref.read(songsPillProvider.notifier).state =
                         SongsPill.genres;
                     context.go('/library');
                   },
-                  child: Container(
-                    width: 140,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      borderRadius: AfRadii.borderLg,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          tint.withValues(alpha: 0.3),
-                          tint.withValues(alpha: 0.1),
-                        ],
-                      ),
-                      border: Border.all(
-                        color: tint.withValues(alpha: 0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: Stack(
-                      children: [
-                        // Artwork background
-                        if (g.imageUrl != null)
-                          Positioned.fill(
-                            child: ClipRRect(
-                              borderRadius: AfRadii.borderLg,
-                              child: Artwork(
-                                url: g.imageUrl,
-                                size: 140,
-                                radius: BorderRadius.zero,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                        // Glass overlay gradient
-                        Positioned.fill(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: AfRadii.borderLg,
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  tint.withValues(alpha: 0.3),
-                                  AfColors.surfaceCanvas.withValues(
-                                    alpha: 0.85,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Label
-                        Positioned(
-                          left: AfSpacing.s12,
-                          bottom: AfSpacing.s12,
-                          child: Text(
-                            g.name,
-                            style: AfTypography.titleSmall.copyWith(
-                              color: AfColors.textOnPrimary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 );
               },
             ),

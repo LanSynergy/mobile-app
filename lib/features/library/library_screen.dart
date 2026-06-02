@@ -10,6 +10,7 @@ import '../../state/providers.dart';
 import '../../widgets/af_scrollbar.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/async_error_view.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
@@ -731,40 +732,13 @@ class _RecentlyAddedSection extends ConsumerWidget {
                     const SizedBox(width: AfSpacing.s12),
                 itemBuilder: (context, i) {
                   final a = recent[i];
-                  return PressScale(
+                  return Tile(
+                    title: a.name,
+                    subtitle: a.artistName,
+                    imageUrl: a.imageUrl,
+                    variant: TileVariant.album,
+                    size: 140,
                     onTap: () => context.push('/album/${a.id}'),
-                    child: SizedBox(
-                      width: 140,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Artwork(
-                            url: a.imageUrl,
-                            size: 140,
-                            radius: AfRadii.borderMd,
-                          ),
-                          const SizedBox(height: AfSpacing.s8),
-                          Text(
-                            a.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AfTypography.bodyMedium.copyWith(
-                              color: AfColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            a.artistName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AfTypography.bodySmall.copyWith(
-                              color: AfColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   );
                 },
               ),
@@ -965,34 +939,10 @@ class _SongsList extends ConsumerWidget {
     const padding = EdgeInsets.symmetric(horizontal: AfSpacing.s8);
 
     if (tracks.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: const BoxDecoration(
-                color: AfColors.surfaceRaised,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                LucideIcons.music,
-                size: 56,
-                color: AfColors.textTertiary,
-              ),
-            ),
-            const SizedBox(height: AfSpacing.s12),
-            Text('No songs yet', style: AfTypography.titleMedium),
-            const SizedBox(height: AfSpacing.s8),
-            Text(
-              'Songs from your library will appear here',
-              style: AfTypography.bodySmall.copyWith(
-                color: AfColors.textTertiary,
-              ),
-            ),
-          ],
-        ),
+      return const EmptyState(
+        icon: LucideIcons.music,
+        title: 'No songs yet',
+        body: 'Songs from your library will appear here',
       );
     }
 
@@ -1040,34 +990,10 @@ class _ArtistsGrid extends ConsumerWidget {
     return async.when(
       data: (list) {
         if (list.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: const BoxDecoration(
-                    color: AfColors.surfaceRaised,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    LucideIcons.users,
-                    size: 56,
-                    color: AfColors.textTertiary,
-                  ),
-                ),
-                const SizedBox(height: AfSpacing.s12),
-                Text('No artists found', style: AfTypography.titleMedium),
-                const SizedBox(height: AfSpacing.s8),
-                Text(
-                  'Artists from your library will appear here',
-                  style: AfTypography.bodySmall.copyWith(
-                    color: AfColors.textTertiary,
-                  ),
-                ),
-              ],
-            ),
+          return const EmptyState(
+            icon: LucideIcons.users,
+            title: 'No artists found',
+            body: 'Artists from your library will appear here',
           );
         }
         const padding = EdgeInsets.symmetric(horizontal: AfSpacing.s16);
@@ -1125,34 +1051,10 @@ class _AlbumsGrid extends ConsumerWidget {
     return async.when(
       data: (list) {
         if (list.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: const BoxDecoration(
-                    color: AfColors.surfaceRaised,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    LucideIcons.disc,
-                    size: 56,
-                    color: AfColors.textTertiary,
-                  ),
-                ),
-                const SizedBox(height: AfSpacing.s12),
-                Text('No albums found', style: AfTypography.titleMedium),
-                const SizedBox(height: AfSpacing.s8),
-                Text(
-                  'Albums from your library will appear here',
-                  style: AfTypography.bodySmall.copyWith(
-                    color: AfColors.textTertiary,
-                  ),
-                ),
-              ],
-            ),
+          return const EmptyState(
+            icon: LucideIcons.disc,
+            title: 'No albums found',
+            body: 'Albums from your library will appear here',
           );
         }
         const padding = EdgeInsets.symmetric(horizontal: AfSpacing.s16);
@@ -1211,34 +1113,10 @@ class _GenresGrid extends ConsumerWidget {
     return async.when(
       data: (list) {
         if (list.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: const BoxDecoration(
-                    color: AfColors.surfaceRaised,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    LucideIcons.music2,
-                    size: 56,
-                    color: AfColors.textTertiary,
-                  ),
-                ),
-                const SizedBox(height: AfSpacing.s12),
-                Text('No genres found', style: AfTypography.titleMedium),
-                const SizedBox(height: AfSpacing.s8),
-                Text(
-                  'Genres from your library will appear here',
-                  style: AfTypography.bodySmall.copyWith(
-                    color: AfColors.textTertiary,
-                  ),
-                ),
-              ],
-            ),
+          return const EmptyState(
+            icon: LucideIcons.music2,
+            title: 'No genres found',
+            body: 'Genres from your library will appear here',
           );
         }
         const padding = EdgeInsets.symmetric(horizontal: AfSpacing.s16);

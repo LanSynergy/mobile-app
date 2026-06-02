@@ -12,6 +12,7 @@ import '../../utils/display_error.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/af_scrollbar.dart';
 import '../../widgets/async_error_view.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/track_row.dart';
@@ -333,42 +334,13 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                     ),
 
                   if (tracks.isEmpty)
-                    SliverToBoxAdapter(
+                    const SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.only(top: AfSpacing.s48),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 72,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                  color: AfColors.accentPrimary.withValues(
-                                    alpha: 0.08,
-                                  ),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  LucideIcons.listMusic,
-                                  size: 36,
-                                  color: AfColors.accentMuted,
-                                ),
-                              ),
-                              const SizedBox(height: AfSpacing.s12),
-                              Text(
-                                'Empty playlist',
-                                style: AfTypography.titleSmall,
-                              ),
-                              const SizedBox(height: AfSpacing.s8),
-                              Text(
-                                'Add songs to get started',
-                                style: AfTypography.bodySmall.copyWith(
-                                  color: AfColors.textTertiary,
-                                ),
-                              ),
-                            ],
-                          ),
+                        padding: EdgeInsets.only(top: AfSpacing.s48),
+                        child: EmptyState(
+                          icon: LucideIcons.listMusic,
+                          title: 'Empty playlist',
+                          body: 'Add songs to get started',
                         ),
                       ),
                     ),
