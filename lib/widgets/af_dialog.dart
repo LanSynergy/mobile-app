@@ -70,6 +70,7 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
   late final Animation<double> _fadeAnim;
   late final Animation<double> _scaleAnim;
   bool _dismissed = false;
+  bool _ready = false;
 
   static const _borderRadius = AfRadii.lg;
   static const _blurSigma = 15.0;
@@ -87,6 +88,10 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
       begin: 0.92,
       end: 1.0,
     ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeEmphasized));
+    // Delay content until BackdropFilter has rendered one frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _ready = true);
+    });
     _ctrl.forward();
   }
 
@@ -116,7 +121,7 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
             onTap: widget.barrierDismissible ? _dismiss : null,
             behavior: HitTestBehavior.opaque,
             child: Opacity(
-              opacity: opacity,
+              opacity: _ready ? opacity : 0.0,
               child: Center(
                 child: Transform.scale(
                   scale: scale,

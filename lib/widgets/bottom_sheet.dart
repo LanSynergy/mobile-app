@@ -69,6 +69,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
   late final Animation<double> _slideAnim;
   late final Animation<double> _fadeAnim;
   bool _dismissed = false;
+  bool _ready = false;
 
   @override
   void initState() {
@@ -83,6 +84,10 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
       end: 0.0,
     ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeEmphasized));
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: AfCurves.easeOut);
+    // Delay content until BackdropFilter has rendered one frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _ready = true);
+    });
     _ctrl.forward();
   }
 
@@ -114,7 +119,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
             onTap: widget.isDismissible ? _dismiss : null,
             behavior: HitTestBehavior.opaque,
             child: Opacity(
-              opacity: opacity,
+              opacity: _ready ? opacity : 0.0,
               child: Align(
                 alignment: Alignment.bottomCenter,
                 child: Transform.translate(
