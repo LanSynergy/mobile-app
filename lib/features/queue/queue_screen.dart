@@ -12,6 +12,7 @@ import '../../utils/display_error.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
+import '../../widgets/ultra_gradient.dart';
 
 /// Live queue mirror. Watches `playerQueueProvider` (a broadcast stream
 /// on top of `AfPlayerService.queueStream`) so the list reflects the
@@ -154,13 +155,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         children: [
           // Full-bleed background
           const Positioned.fill(
-            child: RepaintBoundary(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AfColors.surfaceCanvas,
-                ),
-              ),
-            ),
+            child: UltraGradient(seed: 13),
           ),
           SafeArea(
             child: _items.isEmpty

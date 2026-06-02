@@ -8,6 +8,7 @@ import '../../core/local/app_mode_store.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/log.dart';
+import '../../widgets/ultra_gradient.dart';
 
 /// Landing screen: server vs local mode selection.
 ///
@@ -25,12 +26,8 @@ class WelcomeScreen extends ConsumerWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background — solid color
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              color: AfColors.surfaceCanvas,
-            ),
-          ),
+          // Background — ultra gradient
+          const UltraGradient(seed: 7),
 
           // Radial glow behind logo — warm amber tint
           Positioned(

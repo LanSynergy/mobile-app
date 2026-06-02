@@ -9,6 +9,7 @@ import '../features/sleep_timer/sleep_timer_screen.dart';
 import '../state/providers.dart';
 import 'bottom_nav.dart';
 import 'global_mini_player_overlay.dart';
+import 'ultra_gradient.dart';
 
 /// App shell — wraps every authed-app tab with the persistent 4-tab
 /// bottom nav and the floating mini-player.
@@ -124,15 +125,9 @@ class AppShell extends ConsumerWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Full-bleed background — solid color + blur
+          // Full-bleed background — ultra gradient (no banding)
           const Positioned.fill(
-            child: RepaintBoundary(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AfColors.surfaceCanvas,
-                ),
-              ),
-            ),
+            child: UltraGradient(),
           ),
 
           // Tab content — transparent so gradient shows through.
