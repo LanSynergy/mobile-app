@@ -72,23 +72,17 @@ class NowPlayingScreen extends ConsumerWidget {
             // ── Full-bleed artwork ──
             _ReactiveArtwork(track: track),
 
-            // ── Gradient scrim (bottom 65%) ──
+            // ── Scrim (bottom 65%) — blur, no gradient ──
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
               height: MediaQuery.of(context).size.height * 0.65,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      AfColors.surfaceCanvas.withValues(alpha: 0.55),
-                      AfColors.surfaceCanvas.withValues(alpha: 0.85),
-                    ],
-                    stops: const [0.0, 0.4, 1.0],
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                  child: ColoredBox(
+                    color: AfColors.surfaceCanvas.withValues(alpha: 0.65),
                   ),
                 ),
               ),
@@ -338,17 +332,11 @@ class _Vignette extends StatelessWidget {
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: IgnorePointer(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment.center,
-              radius: 1.0,
-              colors: [
-                Colors.transparent,
-                Colors.transparent,
-                AfColors.surfaceCanvas.withValues(alpha: 0.40),
-              ],
-              stops: const [0.0, 0.55, 1.0],
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
+            child: ColoredBox(
+              color: AfColors.surfaceCanvas.withValues(alpha: 0.3),
             ),
           ),
         ),
