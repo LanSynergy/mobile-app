@@ -7,8 +7,9 @@ import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/artwork.dart';
 import '../../widgets/async_error_view.dart';
-import '../../widgets/tile.dart';
+import '../../widgets/press_scale.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/af_scrollbar.dart';
@@ -221,7 +222,18 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 ),
                 child: Row(
                   children: [
-                    Text('Library', style: AfTypography.titleLarge),
+                    // ── 1. Gradient-mask title ──
+                    ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [AfColors.indigo300, AfColors.indigo500],
+                      ).createShader(bounds),
+                      child: Text(
+                        'Library',
+                        style: AfTypography.display.copyWith(
+                          color: AfColors.textPrimary,
+                        ),
+                      ),
+                    ),
                     const Spacer(),
                     if (_section == LibrarySection.playlists)
                       IconButton(
@@ -296,6 +308,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 }
 
+// ── 2. Glow-Dot Tab Indicator ────────────────────────────────────────────────
+
 class _SegmentedPill extends ConsumerWidget {
   const _SegmentedPill({required this.value, required this.onChanged});
   final LibrarySection value;
@@ -309,34 +323,63 @@ class _SegmentedPill extends ConsumerWidget {
         : LibrarySection.values;
 
     return SizedBox(
-      height: 40,
+      height: 48,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         itemCount: sections.length,
         separatorBuilder: (context, index) =>
-            const SizedBox(width: AfSpacing.s8),
+            const SizedBox(width: AfSpacing.s4),
         itemBuilder: (context, i) {
           final s = sections[i];
           final selected = s == value;
           return GestureDetector(
             onTap: () => onChanged(s),
-            child: AnimatedContainer(
-              duration: AfDurations.quick,
-              curve: AfCurves.easeStandard,
-              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-              decoration: BoxDecoration(
-                color: selected ? AfColors.indigo600 : AfColors.surfaceRaised,
-                borderRadius: AfRadii.borderPill,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AfSpacing.s12,
+                vertical: AfSpacing.s8,
               ),
-              alignment: Alignment.center,
-              child: Text(
-                _label(s),
-                style: AfTypography.bodyMedium.copyWith(
-                  color: selected
-                      ? AfColors.textOnPrimary
-                      : AfColors.textSecondary,
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedDefaultTextStyle(
+                    duration: AfDurations.quick,
+                    curve: AfCurves.easeStandard,
+                    style: selected
+                        ? AfTypography.titleMediumLarge.copyWith(
+                            color: AfColors.textPrimary,
+                          )
+                        : AfTypography.titleMediumLarge.copyWith(
+                            color: AfColors.textDisabled,
+                          ),
+                    child: Text(_label(s)),
+                  ),
+                  const SizedBox(height: AfSpacing.s4),
+                  // Animated glow-dot
+                  AnimatedContainer(
+                    duration: AfDurations.quick,
+                    curve: AfCurves.easeStandard,
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: selected ? AfColors.indigo400 : Colors.transparent,
+                      boxShadow: selected
+                          ? [
+                              BoxShadow(
+                                color: AfColors.indigo400.withValues(
+                                  alpha: 0.6,
+                                ),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ]
+                          : null,
+                    ),
+                  ),
+                ],
               ),
             ),
           );
@@ -353,6 +396,332 @@ class _SegmentedPill extends ConsumerWidget {
     LibrarySection.genres => 'Genres',
     LibrarySection.liked => 'Liked',
   };
+}
+
+// ── 3. Album Glass-Morphism Card ─────────────────────────────────────────────
+
+class _AlbumCard extends StatelessWidget {
+  const _AlbumCard({
+    required this.album,
+    required this.onTap,
+    this.onLongPress,
+  });
+  final AfAlbum album;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  /// Deterministic accent derived from album id for visual variety.
+  Color get _accent {
+    final h = album.id.hashCode;
+    final hue = (h % 360).toDouble();
+    return HSLColor.fromAHSL(1.0, hue, 0.45, 0.55).toColor();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      ensureHitTarget: false,
+      onTap: onTap,
+      onLongPress: onLongPress,
+      pressedScale: 1.02,
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: AfRadii.borderLg,
+          boxShadow: [
+            BoxShadow(
+              color: _accent.withValues(alpha: 0.15),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // ── Artwork background ──
+            Artwork(
+              url: album.imageUrl,
+              size: double.infinity,
+              radius: AfRadii.borderLg,
+              fit: BoxFit.cover,
+            ),
+            // ── Glass-morphism gradient overlay ──
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: AfRadii.borderLg,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    _accent.withValues(alpha: 0.15),
+                    AfColors.surfaceRaised.withValues(alpha: 0.7),
+                  ],
+                ),
+                border: Border.all(
+                  color: AfColors.surfaceHigh.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+              ),
+            ),
+            // ── Bottom gradient (transparent → surfaceCanvas) ──
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 80,
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, AfColors.surfaceCanvas],
+                  ),
+                ),
+              ),
+            ),
+            // ── Title + artist text ──
+            Positioned(
+              left: AfSpacing.s12,
+              right: AfSpacing.s12,
+              bottom: AfSpacing.s12,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    album.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AfTypography.titleSmall.copyWith(
+                      color: AfColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    album.artistName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── 4. Artist Indigo-Ring Card ───────────────────────────────────────────────
+
+class _ArtistCard extends StatelessWidget {
+  const _ArtistCard({required this.artist, required this.onTap});
+  final AfArtist artist;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      ensureHitTarget: false,
+      onTap: onTap,
+      pressedScale: 1.02,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── Circular avatar with indigo ring ──
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AfColors.indigo300, width: 2),
+            ),
+            child: ClipOval(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Inner circle — artwork or fallback
+                  if (artist.imageUrl != null && artist.imageUrl!.isNotEmpty)
+                    Artwork(
+                      url: artist.imageUrl,
+                      size: 100,
+                      radius: BorderRadius.circular(50),
+                    )
+                  else
+                    Container(
+                      color: AfColors.indigo400.withValues(alpha: 0.4),
+                      child: const Icon(
+                        LucideIcons.user,
+                        color: AfColors.indigo300,
+                        size: 36,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AfSpacing.s8),
+          // ── Name ──
+          Text(
+            artist.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── 5. Genre Gradient Tile ───────────────────────────────────────────────────
+
+class _GenreCard extends StatelessWidget {
+  const _GenreCard({
+    required this.name,
+    required this.tint,
+    this.imageUrl,
+    this.onTap,
+  });
+  final String name;
+  final Color tint;
+  final String? imageUrl;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      ensureHitTarget: false,
+      onTap: onTap,
+      pressedScale: 1.02,
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: AfRadii.borderMd,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [tint.withValues(alpha: 0.7), tint.withValues(alpha: 0.2)],
+          ),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Artwork background (if available)
+            if (imageUrl != null)
+              Artwork(
+                url: imageUrl,
+                size: 200,
+                radius: BorderRadius.zero,
+                fit: BoxFit.cover,
+              ),
+            // Bottom-aligned text
+            Positioned(
+              left: AfSpacing.s12,
+              right: AfSpacing.s12,
+              bottom: AfSpacing.s12,
+              child: Text(
+                name,
+                style: AfTypography.titleMediumLarge.copyWith(
+                  color: AfColors.textOnPrimary,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── 6. Playlist Elevated Card ────────────────────────────────────────────────
+
+class _PlaylistCard extends StatelessWidget {
+  const _PlaylistCard({
+    required this.title,
+    required this.subtitle,
+    this.isSmart = false,
+    this.onTap,
+  });
+  final String title;
+  final String subtitle;
+  final bool isSmart;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      ensureHitTarget: false,
+      onTap: onTap,
+      pressedScale: 1.02,
+      child: Container(
+        padding: const EdgeInsets.all(AfSpacing.s12),
+        decoration: const BoxDecoration(
+          color: AfColors.surfaceRaised,
+          borderRadius: AfRadii.borderMd,
+        ),
+        child: Row(
+          children: [
+            // ── 48dp leading gradient icon ──
+            Container(
+              width: 48,
+              height: 48,
+              decoration: const BoxDecoration(
+                borderRadius: AfRadii.borderSm,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AfColors.indigo600, AfColors.indigo900],
+                ),
+              ),
+              child: Icon(
+                isSmart ? Icons.auto_awesome_rounded : LucideIcons.listMusic,
+                color: AfColors.indigo300,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: AfSpacing.s12),
+            // ── Title + subtitle ──
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AfTypography.titleSmall.copyWith(
+                      color: AfColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _SectionBody extends ConsumerWidget {
@@ -405,12 +774,8 @@ class _SectionBody extends ConsumerWidget {
                   ),
                   itemBuilder: (context, i) {
                     final a = sorted[i];
-                    return Tile(
-                      title: a.name,
-                      subtitle: a.artistName,
-                      variant: TileVariant.album,
-                      imageUrl: a.imageUrl,
-                      size: double.infinity,
+                    return _AlbumCard(
+                      album: a,
                       onTap: () => context.push('/album/${a.id}'),
                       onLongPress: () => showAlbumContextMenu(context, ref, a),
                     );
@@ -452,12 +817,8 @@ class _SectionBody extends ConsumerWidget {
                   ),
                   itemBuilder: (context, i) {
                     final a = sorted[i];
-                    return Tile(
-                      title: a.name,
-                      subtitle: a.statLine,
-                      variant: TileVariant.artist,
-                      imageUrl: a.imageUrl,
-                      size: double.infinity,
+                    return _ArtistCard(
+                      artist: a,
                       onTap: () => context.go('/library'),
                     );
                   },
@@ -614,61 +975,17 @@ class _SectionBody extends ConsumerWidget {
                 itemBuilder: (context, i) {
                   // First item: Smart Playlists entry
                   if (i == 0) {
-                    return ListTile(
-                      leading: Container(
-                        width: 48,
-                        height: 48,
-                        decoration: const BoxDecoration(
-                          borderRadius: AfRadii.borderSm,
-                          color: AfColors.indigo900,
-                        ),
-                        child: const Icon(
-                          Icons.auto_awesome_rounded,
-                          color: AfColors.indigo300,
-                        ),
-                      ),
-                      title: Text(
-                        'Smart Playlists',
-                        style: AfTypography.titleSmall,
-                      ),
-                      subtitle: Text(
-                        '$smartCount playlists',
-                        style: AfTypography.bodySmall.copyWith(
-                          color: AfColors.textTertiary,
-                        ),
-                      ),
-                      tileColor: AfColors.surfaceRaised,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: AfRadii.borderMd,
-                      ),
+                    return _PlaylistCard(
+                      title: 'Smart Playlists',
+                      subtitle: '$smartCount playlists',
+                      isSmart: true,
                       onTap: () => context.push('/smart-playlists'),
                     );
                   }
                   final p = list[i - 1];
-                  return ListTile(
-                    leading: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: const BoxDecoration(
-                        borderRadius: AfRadii.borderSm,
-                        color: AfColors.indigo800,
-                      ),
-                      child: const Icon(
-                        Icons.playlist_play_rounded,
-                        color: AfColors.indigo300,
-                      ),
-                    ),
-                    title: Text(p.name, style: AfTypography.titleSmall),
-                    subtitle: Text(
-                      p.trackCountLabel,
-                      style: AfTypography.bodySmall.copyWith(
-                        color: AfColors.textTertiary,
-                      ),
-                    ),
-                    tileColor: AfColors.surfaceRaised,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: AfRadii.borderMd,
-                    ),
+                  return _PlaylistCard(
+                    title: p.name,
+                    subtitle: p.trackCountLabel,
                     onTap: () => context.push('/playlist/${p.id}'),
                   );
                 },
@@ -709,12 +1026,10 @@ class _SectionBody extends ConsumerWidget {
                   final tint = Color(
                     int.parse(g.tint.replaceFirst('#', '0xFF')),
                   );
-                  return GenreTile(
+                  return _GenreCard(
                     name: g.name,
                     tint: tint,
                     imageUrl: g.imageUrl,
-                    width: double.infinity,
-                    height: double.infinity,
                     onTap: () => context.go('/library'),
                   );
                 },

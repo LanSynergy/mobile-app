@@ -11,7 +11,6 @@ import '../../utils/display_error.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/af_scrollbar.dart';
 import '../../widgets/async_error_view.dart';
-import '../../widgets/press_scale.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/skeletons/playlist_skeleton.dart';
@@ -141,114 +140,190 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                     child: SizedBox(height: AfSpacing.s16),
                   ),
 
-                  // Track list — reorderable when signed in.
+                  // Track list — wrapped in surfaceRaised container.
                   if (backend != null && tracks.isNotEmpty)
                     SliverToBoxAdapter(
-                      child: ReorderableListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AfSpacing.s16,
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: AfColors.surfaceRaised,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(AfRadii.xl),
+                            topRight: Radius.circular(AfRadii.xl),
+                          ),
                         ),
-                        buildDefaultDragHandles: false,
-                        itemCount: tracks.length,
-                        onReorderItem: (oldIndex, newIndex) => _onReorder(
-                          oldIndex,
-                          newIndex,
-                          tracks,
-                          backend,
-                          pl.id,
+                        child: ReorderableListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AfSpacing.s16,
+                          ),
+                          buildDefaultDragHandles: false,
+                          itemCount: tracks.length,
+                          onReorderItem: (oldIndex, newIndex) => _onReorder(
+                            oldIndex,
+                            newIndex,
+                            tracks,
+                            backend,
+                            pl.id,
+                          ),
+                          itemBuilder: (context, i) {
+                            final t = tracks[i];
+                            final isActive = t.id == activeId;
+                            return Dismissible(
+                              key: ValueKey('${t.id}-$i'),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(
+                                  right: AfSpacing.s16,
+                                ),
+                                color: AfColors.semanticError.withValues(
+                                  alpha: 0.15,
+                                ),
+                                child: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  color: AfColors.semanticError,
+                                ),
+                              ),
+                              confirmDismiss: (_) =>
+                                  _confirmRemove(context, t.title),
+                              onDismissed: (_) =>
+                                  _removeTrack(i, tracks, backend, pl.id),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: isActive
+                                      ? AfColors.indigo900.withValues(
+                                          alpha: 0.3,
+                                        )
+                                      : null,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: AfSpacing.s2,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      // Overline track number.
+                                      SizedBox(
+                                        width: AfSpacing.s32,
+                                        child: Text(
+                                          '${i + 1}',
+                                          style: AfTypography.overline.copyWith(
+                                            color: isActive
+                                                ? AfColors.indigo400
+                                                : AfColors.textDisabled,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: TrackRow(
+                                          track: t,
+                                          isActive: isActive,
+                                          isBuffering:
+                                              t.id == activeId && isBuffering,
+                                          activeAccent: activeAccent,
+                                          onTap: () => ref
+                                              .read(playActionsProvider)
+                                              .playQueue(tracks, startIndex: i),
+                                          onLongPress: () =>
+                                              showTrackContextMenu(
+                                                context,
+                                                ref,
+                                                t,
+                                              ),
+                                        ),
+                                      ),
+                                      ReorderableDragStartListener(
+                                        index: i,
+                                        child: const Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: AfSpacing.s8,
+                                          ),
+                                          child: Icon(
+                                            Icons.drag_indicator_rounded,
+                                            color: AfColors.textDisabled,
+                                            size: 18,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                        itemBuilder: (context, i) {
-                          final t = tracks[i];
-                          return Dismissible(
-                            key: ValueKey('${t.id}-$i'),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(
-                                right: AfSpacing.s16,
-                              ),
-                              color: AfColors.semanticError.withValues(
-                                alpha: 0.15,
-                              ),
-                              child: const Icon(
-                                Icons.delete_outline_rounded,
-                                color: AfColors.semanticError,
-                              ),
-                            ),
-                            confirmDismiss: (_) =>
-                                _confirmRemove(context, t.title),
-                            onDismissed: (_) =>
-                                _removeTrack(i, tracks, backend, pl.id),
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AfSpacing.s4,
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: TrackRow(
-                                      track: t,
-                                      isActive: t.id == activeId,
-                                      isBuffering:
-                                          t.id == activeId && isBuffering,
-                                      activeAccent: activeAccent,
-                                      onTap: () => ref
-                                          .read(playActionsProvider)
-                                          .playQueue(tracks, startIndex: i),
-                                      onLongPress: () =>
-                                          showTrackContextMenu(context, ref, t),
-                                    ),
-                                  ),
-                                  ReorderableDragStartListener(
-                                    index: i,
-                                    child: const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: AfSpacing.s8,
-                                      ),
-                                      child: Icon(
-                                        Icons.drag_indicator_rounded,
-                                        color: AfColors.textTertiary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
                       ),
                     )
-                  else
-                    SliverFixedExtentList(
-                      itemExtent: 68.0,
-                      delegate: SliverChildBuilderDelegate(
-                        childCount: tracks.length,
-                        (context, i) {
-                          final t = tracks[i];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AfSpacing.s16,
-                            ),
-                            child: Column(
-                              children: [
-                                TrackRow(
-                                  track: t,
-                                  isActive: t.id == activeId,
-                                  isBuffering: t.id == activeId && isBuffering,
-                                  activeAccent: activeAccent,
-                                  onTap: () => ref
-                                      .read(playActionsProvider)
-                                      .playQueue(tracks, startIndex: i),
-                                  onLongPress: () =>
-                                      showTrackContextMenu(context, ref, t),
+                  else if (tracks.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: AfColors.surfaceRaised,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(AfRadii.xl),
+                            topRight: Radius.circular(AfRadii.xl),
+                          ),
+                        ),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AfSpacing.s16,
+                          ),
+                          itemCount: tracks.length,
+                          itemBuilder: (context, i) {
+                            final t = tracks[i];
+                            final isActive = t.id == activeId;
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? AfColors.indigo900.withValues(alpha: 0.3)
+                                    : null,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                  bottom: AfSpacing.s2,
                                 ),
-                                const SizedBox(height: AfSpacing.s4),
-                              ],
-                            ),
-                          );
-                        },
+                                child: Row(
+                                  children: [
+                                    // Overline track number.
+                                    SizedBox(
+                                      width: AfSpacing.s32,
+                                      child: Text(
+                                        '${i + 1}',
+                                        style: AfTypography.overline.copyWith(
+                                          color: isActive
+                                              ? AfColors.indigo400
+                                              : AfColors.textDisabled,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: TrackRow(
+                                        track: t,
+                                        isActive: isActive,
+                                        isBuffering:
+                                            t.id == activeId && isBuffering,
+                                        activeAccent: activeAccent,
+                                        onTap: () => ref
+                                            .read(playActionsProvider)
+                                            .playQueue(tracks, startIndex: i),
+                                        onLongPress: () => showTrackContextMenu(
+                                          context,
+                                          ref,
+                                          t,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
 
@@ -560,8 +635,24 @@ class _Header extends StatelessWidget {
   final AfPlaylist pl;
   final List<AfTrack> tracks;
 
+  String _formatDuration(Duration d) {
+    final totalMinutes = d.inMinutes;
+    if (totalMinutes < 1) return '${d.inSeconds}s';
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    if (hours > 0) return '${hours}h ${minutes}m';
+    final seconds = d.inSeconds % 60;
+    return seconds > 0 ? '${minutes}m ${seconds}s' : '${minutes}m';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final totalDuration = tracks.fold<Duration>(
+      Duration.zero,
+      (sum, t) => sum + t.duration,
+    );
+    final artistCount = tracks.map((t) => t.artistName).toSet().length;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AfSpacing.s16,
@@ -569,46 +660,61 @@ class _Header extends StatelessWidget {
         AfSpacing.s16,
         AfSpacing.s16,
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
         children: [
+          // Centered hero artwork 128dp.
           Container(
-            width: 96,
-            height: 96,
+            width: 128,
+            height: 128,
             decoration: const BoxDecoration(
-              borderRadius: AfRadii.borderMd,
+              borderRadius: AfRadii.borderXl,
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [AfColors.indigo700, AfColors.indigo950],
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: AfColors.indigo900,
+                  blurRadius: 32,
+                  offset: Offset(0, 8),
+                ),
+              ],
             ),
             child: const Icon(
               Icons.playlist_play_rounded,
               color: AfColors.indigo300,
-              size: 40,
+              size: 56,
             ),
           ),
-          const SizedBox(width: AfSpacing.s16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  pl.name,
-                  style: AfTypography.titleLarge,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: AfSpacing.s4),
-                Text(
-                  '${tracks.length} ${tracks.length == 1 ? "track" : "tracks"}',
-                  style: AfTypography.bodySmall.copyWith(
-                    color: AfColors.textTertiary,
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: AfSpacing.s16),
+
+          // Centered playlist name.
+          Text(
+            pl.name,
+            style: AfTypography.titleLarge,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AfSpacing.s12),
+
+          // Mono stat badges.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _StatBadge(
+                label:
+                    '${tracks.length} ${tracks.length == 1 ? "track" : "tracks"}',
+              ),
+              const SizedBox(width: AfSpacing.s8),
+              _StatBadge(label: _formatDuration(totalDuration)),
+              const SizedBox(width: AfSpacing.s8),
+              _StatBadge(
+                label:
+                    '$artistCount ${artistCount == 1 ? "artist" : "artists"}',
+              ),
+            ],
           ),
         ],
       ),
@@ -630,64 +736,115 @@ class _ActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+      child: _SegmentedControl(
+        onLeft: tracks.isEmpty ? null : onPlay,
+        onRight: tracks.isEmpty ? null : onShuffle,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Design-system widgets
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Mono stat badge used in the playlist hero header.
+class _StatBadge extends StatelessWidget {
+  const _StatBadge({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AfSpacing.s12,
+        vertical: AfSpacing.s4,
+      ),
+      decoration: const BoxDecoration(
+        color: AfColors.surfaceLow,
+        borderRadius: AfRadii.borderSm,
+        border: Border.fromBorderSide(BorderSide(color: AfColors.surfaceHigh)),
+      ),
+      child: Text(
+        label,
+        style: AfTypography.mono.copyWith(
+          fontSize: 10,
+          color: AfColors.textTertiary,
+        ),
+      ),
+    );
+  }
+}
+
+/// Play / Shuffle segmented control.
+class _SegmentedControl extends StatefulWidget {
+  const _SegmentedControl({required this.onLeft, required this.onRight});
+  final VoidCallback? onLeft;
+  final VoidCallback? onRight;
+
+  @override
+  State<_SegmentedControl> createState() => _SegmentedControlState();
+}
+
+class _SegmentedControlState extends State<_SegmentedControl> {
+  bool _isRightSelected = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      decoration: const BoxDecoration(
+        color: AfColors.surfaceLow,
+        borderRadius: AfRadii.borderPill,
+        border: Border.fromBorderSide(BorderSide(color: AfColors.surfaceHigh)),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Row(
         children: [
-          Expanded(
-            child: PressScale(
-              onTap: tracks.isEmpty ? null : onPlay,
-              child: Container(
-                height: 48,
-                decoration: const BoxDecoration(
-                  color: AfColors.indigo600,
-                  borderRadius: AfRadii.borderPill,
-                ),
-                alignment: Alignment.center,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.play_arrow_rounded,
-                      color: AfColors.textOnPrimary,
-                    ),
-                    const SizedBox(width: AfSpacing.s8),
-                    Text(
-                      'Play',
-                      style: AfTypography.bodyMedium.copyWith(
-                        color: AfColors.textOnPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: AfSpacing.s12),
-          Expanded(
-            child: PressScale(
-              onTap: tracks.isEmpty ? null : onShuffle,
-              child: Container(
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AfColors.surfaceBase,
-                  borderRadius: AfRadii.borderPill,
-                  border: Border.all(color: AfColors.surfaceHigh, width: 1),
-                ),
-                alignment: Alignment.center,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.shuffle_rounded,
-                      color: AfColors.textPrimary,
-                    ),
-                    const SizedBox(width: AfSpacing.s8),
-                    Text('Shuffle', style: AfTypography.bodyMedium),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          Expanded(child: _buildOption(isRight: false)),
+          Expanded(child: _buildOption(isRight: true)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildOption({required bool isRight}) {
+    final isSelected = _isRightSelected == isRight;
+    final label = isRight ? 'Shuffle' : 'Play';
+    final icon = isRight ? Icons.shuffle_rounded : Icons.play_arrow_rounded;
+    final onTap = isRight ? widget.onRight : widget.onLeft;
+
+    return AnimatedContainer(
+      duration: AfDurations.quick,
+      curve: AfCurves.easeStandard,
+      decoration: BoxDecoration(
+        color: isSelected ? AfColors.indigo600 : Colors.transparent,
+      ),
+      child: InkWell(
+        onTap: onTap == null
+            ? null
+            : () => setState(() => _isRightSelected = isRight),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected
+                  ? AfColors.textOnPrimary
+                  : AfColors.textTertiary,
+            ),
+            const SizedBox(width: AfSpacing.s8),
+            Text(
+              label,
+              style: AfTypography.bodyMedium.copyWith(
+                color: isSelected
+                    ? AfColors.textOnPrimary
+                    : AfColors.textTertiary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

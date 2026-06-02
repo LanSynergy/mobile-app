@@ -10,6 +10,7 @@ import '../features/artist/artist_screen.dart';
 import '../features/cast_picker/cast_picker_screen.dart';
 import '../features/genre/genre_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/library/library_screen.dart';
 import '../features/library/songs_screen.dart';
 import '../features/lyrics/lyrics_screen.dart';
 import '../features/now_playing/now_playing_screen.dart';
@@ -160,7 +161,7 @@ final _router = GoRouter(
             GoRoute(
               path: '/library',
               pageBuilder: (_, state) =>
-                  const NoTransitionPage(child: SongsScreen()),
+                  const NoTransitionPage(child: LibraryScreen()),
             ),
           ],
         ),

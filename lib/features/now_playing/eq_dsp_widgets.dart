@@ -37,11 +37,253 @@ Widget eqCard(List<Widget> children) => Material(
   ),
 );
 
-// ─── Animated Effect Toggle ─────────────────────────────────────────────────
+// ─── Master Banner ──────────────────────────────────────────────────────────
 
-/// A [SwitchListTile] wrapper that animates its content opacity
-/// and provides a subtle scale pulse on toggle.
-class EqEffectToggle extends StatefulWidget {
+/// Prominent DSP master toggle banner with gradient bg and glow.
+class EqMasterBanner extends StatelessWidget {
+  const EqMasterBanner({
+    super.key,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: AfDurations.standard,
+      curve: AfCurves.easeStandard,
+      decoration: BoxDecoration(
+        gradient: enabled
+            ? const LinearGradient(
+                colors: [AfColors.indigo700, AfColors.indigo900],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+        color: enabled ? null : AfColors.surfaceLow,
+        borderRadius: AfRadii.borderLg,
+      ),
+      padding: const EdgeInsets.all(AfSpacing.s16),
+      child: Row(
+        children: [
+          // Glowing icon circle
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: enabled
+                  ? AfColors.indigo500.withValues(alpha: 0.3)
+                  : AfColors.surfaceHigh,
+              boxShadow: enabled
+                  ? [
+                      BoxShadow(
+                        color: AfColors.indigo400.withValues(alpha: 0.4),
+                        blurRadius: 8,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Icon(
+              Icons.graphic_eq_rounded,
+              size: 20,
+              color: enabled ? AfColors.indigo300 : AfColors.textTertiary,
+            ),
+          ),
+          const SizedBox(width: AfSpacing.s12),
+          // Title + subtitle
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  enabled ? 'DSP Processing Active' : 'DSP Bypassed',
+                  style: AfTypography.bodyMedium.copyWith(
+                    color: AfColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: AfSpacing.s2),
+                Text(
+                  enabled
+                      ? 'All effects are processing audio'
+                      : 'Audio passes through unprocessed',
+                  style: AfTypography.bodySmall.copyWith(
+                    color: enabled ? AfColors.indigo300 : AfColors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Custom pill toggle 52x30
+          GestureDetector(
+            onTap: () => onChanged(!enabled),
+            child: AnimatedContainer(
+              duration: AfDurations.quick,
+              width: 52,
+              height: 30,
+              decoration: BoxDecoration(
+                color: enabled ? AfColors.indigo400 : AfColors.surfaceHigh,
+                borderRadius: AfRadii.borderPill,
+                boxShadow: enabled
+                    ? [
+                        BoxShadow(
+                          color: AfColors.indigo400.withValues(alpha: 0.4),
+                          blurRadius: 8,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: AnimatedAlign(
+                duration: AfDurations.quick,
+                alignment: enabled
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                curve: AfCurves.easeStandard,
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: const BoxDecoration(
+                    color: AfColors.textPrimary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Accordion Section ──────────────────────────────────────────────────────
+
+/// Single-open accordion container with header, badge, chevron, animated content.
+class EqAccordionSection extends StatelessWidget {
+  const EqAccordionSection({
+    super.key,
+    required this.label,
+    required this.isOpen,
+    required this.onTap,
+    required this.child,
+    this.badgeCount,
+  });
+
+  final String label;
+  final bool isOpen;
+  final VoidCallback onTap;
+  final Widget child;
+  final int? badgeCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: AfDurations.standard,
+      curve: AfCurves.easeStandard,
+      decoration: BoxDecoration(
+        color: isOpen ? AfColors.surfaceBase : AfColors.surfaceLow,
+        borderRadius: AfRadii.borderLg,
+        border: Border.all(
+          color: isOpen
+              ? AfColors.indigo600.withValues(alpha: 0.4)
+              : AfColors.surfaceHigh,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                minHeight: AfSpacing.minHitTarget,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.s16,
+                  vertical: AfSpacing.s12,
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      label.toUpperCase(),
+                      style: AfTypography.label.copyWith(
+                        color: isOpen
+                            ? AfColors.indigo400
+                            : AfColors.textSecondary,
+                      ),
+                    ),
+                    if (badgeCount != null) ...[
+                      const SizedBox(width: AfSpacing.s8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AfSpacing.s8,
+                          vertical: AfSpacing.s2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AfColors.indigo600.withValues(alpha: 0.3),
+                          borderRadius: AfRadii.borderPill,
+                        ),
+                        child: Text(
+                          '$badgeCount',
+                          style: AfTypography.overline.copyWith(
+                            color: AfColors.indigo400,
+                          ),
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
+                    AnimatedRotation(
+                      turns: isOpen ? 0.5 : 0,
+                      duration: AfDurations.standard,
+                      curve: AfCurves.easeStandard,
+                      child: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 24,
+                        color: AfColors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Content with animated cross-fade
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                0,
+                AfSpacing.s16,
+                AfSpacing.s16,
+              ),
+              child: child,
+            ),
+            crossFadeState: isOpen
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: AfDurations.standard,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Compact Effect Toggle ──────────────────────────────────────────────────
+
+/// Compact toggle row: title + subtitle column + custom pill toggle.
+class EqEffectToggle extends StatelessWidget {
   const EqEffectToggle({
     super.key,
     required this.title,
@@ -56,55 +298,63 @@ class EqEffectToggle extends StatefulWidget {
   final ValueChanged<bool> onChanged;
 
   @override
-  State<EqEffectToggle> createState() => _EqEffectToggleState();
-}
-
-class _EqEffectToggleState extends State<EqEffectToggle>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulseCtrl;
-  late final Animation<double> _pulse;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseCtrl = AnimationController(vsync: this, duration: AfDurations.quick);
-    _pulse = Tween<double>(begin: 1, end: 0.97).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: AfCurves.easeStandard),
-    );
-  }
-
-  @override
-  void dispose() {
-    _pulseCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final reduced = MediaQuery.of(context).disableAnimations;
-    return ScaleTransition(
-      scale: reduced ? const AlwaysStoppedAnimation(1) : _pulse,
-      child: SwitchListTile.adaptive(
-        value: widget.value,
-        onChanged: (v) {
-          widget.onChanged(v);
-          if (!reduced) {
-            _pulseCtrl.forward().then((_) => _pulseCtrl.reverse());
-          }
-        },
-        title: Text(widget.title, style: AfTypography.bodyMedium),
-        subtitle: Text(
-          widget.subtitle,
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onChanged(!value),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title, style: AfTypography.bodyMedium),
+                  const SizedBox(height: AfSpacing.s2),
+                  Text(
+                    subtitle,
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AfSpacing.s8),
+            // Custom pill toggle 44x26
+            AnimatedContainer(
+              duration: AfDurations.quick,
+              width: 44,
+              height: 26,
+              decoration: BoxDecoration(
+                color: value ? AfColors.indigo500 : AfColors.surfaceHigh,
+                borderRadius: AfRadii.borderPill,
+              ),
+              child: AnimatedAlign(
+                duration: AfDurations.quick,
+                alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+                curve: AfCurves.easeStandard,
+                child: Container(
+                  width: 22,
+                  height: 22,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: const BoxDecoration(
+                    color: AfColors.textPrimary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        activeThumbColor: AfColors.indigo500,
-        contentPadding: EdgeInsets.zero,
       ),
     );
   }
 }
 
-// ─── Animated Toggle Tile (for simple on/off without SwitchListTile) ────────
+// ─── Animated Toggle Tile ───────────────────────────────────────────────────
 
 Widget eqToggleTile(
   String title,
@@ -121,9 +371,9 @@ Widget eqToggleTile(
   );
 }
 
-// ─── Animated Slider Row ────────────────────────────────────────────────────
+// ─── Slider Row ─────────────────────────────────────────────────────────────
 
-/// Custom slider with animated value display and optional suffix.
+/// Custom slider with label, value display and optional suffix.
 class EqSliderRow extends StatelessWidget {
   const EqSliderRow({
     super.key,
@@ -160,22 +410,32 @@ class EqSliderRow extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(label, style: AfTypography.bodyMedium),
+            SizedBox(
+              width: 72,
+              child: Text(label, style: AfTypography.bodyMedium),
+            ),
             const Spacer(),
             Text(
               suffix != null ? '$display $suffix' : display,
-              style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
+              style: AfTypography.mono.copyWith(color: AfColors.indigo300),
             ),
           ],
         ),
-        Slider(
-          value: value.clamp(min, max),
-          min: min,
-          max: max,
-          divisions: divisions,
-          activeColor: AfColors.indigo400,
-          onChanged: enabled ? onChanged : null,
-          onChangeEnd: enabled ? (_) => onChangeEnd() : null,
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 2,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+          ),
+          child: Slider(
+            value: value.clamp(min, max),
+            min: min,
+            max: max,
+            divisions: divisions,
+            activeColor: AfColors.indigo400,
+            onChanged: enabled ? onChanged : null,
+            onChangeEnd: enabled ? (_) => onChangeEnd() : null,
+          ),
         ),
       ],
     );

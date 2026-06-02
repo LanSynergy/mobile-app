@@ -23,7 +23,224 @@ import '../../widgets/af_dialog.dart';
 import '../../widgets/af_scrollbar.dart';
 import 'settings_dialogs.dart';
 import 'settings_sections.dart';
-import 'settings_widgets.dart';
+
+// ── Private iOS-style helper widgets ─────────────────────────────────────────
+
+class _IconContainer extends StatelessWidget {
+  const _IconContainer({required this.icon, this.color});
+  final IconData icon;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: const BoxDecoration(
+        color: AfColors.surfaceHigh,
+        borderRadius: AfRadii.borderSm,
+      ),
+      child: Icon(icon, size: 16, color: color ?? AfColors.indigo400),
+    );
+  }
+}
+
+const _chevron = Icon(
+  LucideIcons.chevronRight,
+  size: 16,
+  color: AfColors.textDisabled,
+);
+
+class _IosGroup extends StatelessWidget {
+  const _IosGroup({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: const BoxDecoration(
+        color: AfColors.surfaceRaised,
+        borderRadius: AfRadii.borderLg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (int i = 0; i < children.length; i++) ...[
+            children[i],
+            if (i < children.length - 1)
+              const Divider(
+                height: 0,
+                thickness: 0.5,
+                indent: 64,
+                color: AfColors.surfaceHigh,
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _IosTile extends StatelessWidget {
+  const _IosTile({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    this.onTap,
+    this.danger = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AfSpacing.minHitTarget),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.s16,
+            vertical: AfSpacing.s12,
+          ),
+          child: Row(
+            children: [
+              _IconContainer(
+                icon: icon,
+                color: danger ? AfColors.semanticError : AfColors.indigo400,
+              ),
+              const SizedBox(width: AfSpacing.s12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: AfTypography.bodyMedium.copyWith(
+                        color: danger
+                            ? AfColors.semanticError
+                            : AfColors.textPrimary,
+                      ),
+                    ),
+                    if (subtitle != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          subtitle!,
+                          style: AfTypography.bodySmall.copyWith(
+                            color: AfColors.textTertiary,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: AfSpacing.s8),
+                trailing!,
+              ] else if (onTap != null) ...[
+                const SizedBox(width: AfSpacing.s8),
+                _chevron,
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IosSwitch extends StatelessWidget {
+  const _IosSwitch({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => onChanged(!value),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AfSpacing.minHitTarget),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.s16,
+            vertical: AfSpacing.s12,
+          ),
+          child: Row(
+            children: [
+              _IconContainer(icon: icon),
+              const SizedBox(width: AfSpacing.s12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title, style: AfTypography.bodyMedium),
+                    if (subtitle != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          subtitle!,
+                          style: AfTypography.bodySmall.copyWith(
+                            color: AfColors.textTertiary,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AfSpacing.s8),
+              Switch.adaptive(
+                value: value,
+                onChanged: onChanged,
+                activeThumbColor: AfColors.textOnPrimary,
+                activeTrackColor: AfColors.indigo500,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Section header ───────────────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.label);
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: AfSpacing.s4, bottom: AfSpacing.s8),
+      child: Text(
+        label.toUpperCase(),
+        style: AfTypography.titleSmall.copyWith(color: AfColors.textPrimary),
+      ),
+    );
+  }
+}
+
+// ── Screen ───────────────────────────────────────────────────────────────────
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -34,62 +251,73 @@ class SettingsScreen extends ConsumerWidget {
     final svc = ref.read(playerServiceProvider);
     final mode = ref.watch(appModeProvider);
     final isLocal = mode == AppMode.local;
+
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
-      appBar: AppBar(
-        backgroundColor: AfColors.surfaceCanvas,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(
-            LucideIcons.arrowLeft,
-            color: AfColors.textPrimary,
-            size: 24,
-          ),
-          onPressed: () => context.pop(),
-        ),
-        title: Text('Settings', style: AfTypography.display),
-        centerTitle: false,
-        titleSpacing: 0,
-      ),
       body: SafeArea(
         child: AfScrollbar(
           child: ListView(
+            physics: const ClampingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
             children: [
-              const SizedBox(height: AfSpacing.s8),
+              // ── Back button ──────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.only(top: AfSpacing.s8),
+                child: GestureDetector(
+                  onTap: () => context.pop(),
+                  child: const SizedBox(
+                    width: AfSpacing.minHitTarget,
+                    height: AfSpacing.minHitTarget,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Icon(
+                        LucideIcons.arrowLeft,
+                        size: 24,
+                        color: AfColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
 
-              // ── Server (server mode) / Music Folders (local mode) ──────
+              // ── Page header ─────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.only(
+                  bottom: AfSpacing.s24,
+                  left: AfSpacing.s4,
+                ),
+                child: Text('Settings', style: AfTypography.titleLarge),
+              ),
+
+              // ── Server (server mode) ────────────────────────────────
               if (!isLocal) ...[
-                SettingsGroup(
+                _IosGroup(
                   children: [
-                    SettingsTile(
+                    _IosTile(
                       icon: LucideIcons.server,
-                      iconColor: AfColors.textSecondary,
                       title: auth?.server.name ?? 'Not connected',
                       subtitle: auth?.server.baseUrl,
                     ),
                     if (auth != null)
-                      SettingsTile(
+                      _IosTile(
                         icon: LucideIcons.user,
-                        iconColor: AfColors.textSecondary,
                         title: auth.userName,
                         subtitle:
                             auth.serverType.name[0].toUpperCase() +
                             auth.serverType.name.substring(1),
                       ),
-                    SettingsTile(
+                    _IosTile(
                       icon: LucideIcons.arrowLeftRight,
-                      iconColor: AfColors.textSecondary,
                       title: 'Switch server',
                       subtitle: 'Connect to a different server',
                       onTap: () => context.go('/onboarding/discover'),
                     ),
                     if (auth != null)
-                      SettingsTile(
+                      _IosTile(
                         icon: LucideIcons.logOut,
-                        iconColor: AfColors.textSecondary,
                         title: 'Sign out',
                         subtitle: 'Disconnect from ${auth.server.name}',
+                        danger: true,
                         onTap: () async {
                           final confirmed = await showBlurDialog<bool>(
                             context: context,
@@ -142,20 +370,19 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ],
 
-              // ── Music Folders (local mode only) ────────────────────────
+              // ── Music Folders (local mode only) ─────────────────────
               if (isLocal) ...[
-                const SettingsLabel('Music folders'),
+                const _SectionHeader('Music folders'),
                 const MusicFoldersCard(),
               ],
 
               const SizedBox(height: AfSpacing.s16),
 
-              // ── Switch mode ────────────────────────────────────────────
-              SettingsGroup(
+              // ── Switch mode ─────────────────────────────────────────
+              _IosGroup(
                 children: [
-                  SettingsTile(
+                  _IosTile(
                     icon: LucideIcons.arrowLeftRight,
-                    iconColor: AfColors.textSecondary,
                     title: 'Switch mode',
                     subtitle: isLocal
                         ? 'Currently: Local files'
@@ -210,14 +437,22 @@ class SettingsScreen extends ConsumerWidget {
 
               const SizedBox(height: AfSpacing.s16),
 
-              // ── Appearance ─────────────────────────────────────────────
-              const SettingsLabel('Appearance'),
-              SettingsGroup(
+              // ── Appearance ───────────────────────────────────────────
+              const _SectionHeader('Appearance'),
+              _IosGroup(
                 children: [
-                  const ArtworkPulseSwitch(),
-                  SettingsTile(
+                  _IosSwitch(
+                    icon: LucideIcons.sparkles,
+                    title: 'Artwork pulse',
+                    subtitle: 'Scale artwork on kick drums',
+                    value: ref.watch(artworkPulseEnabledProvider),
+                    onChanged: (v) {
+                      ref.read(artworkPulseEnabledProvider.notifier).state = v;
+                      unawaited(PlayerSettingsStore.saveArtworkPulse(v));
+                    },
+                  ),
+                  _IosTile(
                     icon: LucideIcons.smartphone,
-                    iconColor: AfColors.textSecondary,
                     title: 'App icon',
                     subtitle: switch (ref.watch(appIconProvider)) {
                       'MidnightIcon' => 'Midnight',
@@ -232,9 +467,9 @@ class SettingsScreen extends ConsumerWidget {
 
               const SizedBox(height: AfSpacing.s16),
 
-              // ── Audio output ───────────────────────────────────────────
-              const SettingsLabel('Audio output'),
-              SettingsGroup(
+              // ── Audio output ─────────────────────────────────────────
+              const _SectionHeader('Audio output'),
+              _IosGroup(
                 children: [
                   StreamBuilder<AudioParams>(
                     stream: ref
@@ -247,9 +482,8 @@ class SettingsScreen extends ConsumerWidget {
                       final fmt = params?.format;
                       final ch = params?.channelCount;
                       final hasData = rate != null && rate > 0;
-                      return SettingsTile(
+                      return _IosTile(
                         icon: LucideIcons.waves,
-                        iconColor: AfColors.textSecondary,
                         title: 'Current output',
                         subtitle: hasData
                             ? '$rate Hz · ${fmt?.name ?? "auto"} · ${ch}ch'
@@ -257,16 +491,14 @@ class SettingsScreen extends ConsumerWidget {
                       );
                     },
                   ),
-                  SettingsTile(
+                  _IosTile(
                     icon: LucideIcons.gauge,
-                    iconColor: AfColors.textSecondary,
                     title: 'Sample rate',
                     subtitle: 'Force output sample rate for DAC',
                     onTap: () => showSampleRateDialog(context, ref),
                   ),
-                  SettingsTile(
+                  _IosTile(
                     icon: LucideIcons.cpu,
-                    iconColor: AfColors.textSecondary,
                     title: 'Bit depth',
                     subtitle: 'Force output format',
                     onTap: () => showFormatDialog(context, ref),
@@ -276,9 +508,8 @@ class SettingsScreen extends ConsumerWidget {
                     initialData: svc.audioExclusive,
                     builder: (context, snap) {
                       final enabled = snap.data ?? false;
-                      return SettingsSwitchTile(
+                      return _IosSwitch(
                         icon: LucideIcons.lock,
-                        iconColor: AfColors.textSecondary,
                         title: 'Exclusive mode',
                         subtitle: 'Bypass OS mixer for bit-perfect output',
                         value: enabled,
@@ -294,29 +525,26 @@ class SettingsScreen extends ConsumerWidget {
 
               const SizedBox(height: AfSpacing.s16),
 
-              // ── Network & cache ────────────────────────────────────────
-              const SettingsLabel('Network & cache'),
-              SettingsGroup(
+              // ── Network & cache ──────────────────────────────────────
+              const _SectionHeader('Network & cache'),
+              _IosGroup(
                 children: [
-                  SettingsTile(
+                  _IosTile(
                     icon: LucideIcons.music,
-                    iconColor: AfColors.textSecondary,
                     title: 'Streaming quality',
                     subtitle: ref.watch(maxBitrateProvider) == 0
                         ? 'Original / Lossless'
                         : '${ref.watch(maxBitrateProvider)} kbps',
                     onTap: () => showStreamingQualityDialog(context, ref),
                   ),
-                  SettingsTile(
+                  _IosTile(
                     icon: LucideIcons.rotateCcw,
-                    iconColor: AfColors.textSecondary,
                     title: 'Cache duration',
                     subtitle: 'How far ahead to buffer',
                     onTap: () => showCacheDurationDialog(context, ref),
                   ),
-                  SettingsTile(
+                  _IosTile(
                     icon: LucideIcons.hardDrive,
-                    iconColor: AfColors.textSecondary,
                     title: 'Buffer size',
                     subtitle: 'Audio hardware buffer (latency vs stability)',
                     onTap: () => showAudioBufferDialog(context, ref),
@@ -326,9 +554,8 @@ class SettingsScreen extends ConsumerWidget {
                     initialData: svc.audioStreamSilence,
                     builder: (context, snap) {
                       final enabled = snap.data ?? false;
-                      return SettingsSwitchTile(
+                      return _IosSwitch(
                         icon: LucideIcons.volume2,
-                        iconColor: AfColors.textSecondary,
                         title: 'Keep audio active on pause',
                         subtitle: 'Eliminates click/pop on resume',
                         value: enabled,
@@ -344,17 +571,16 @@ class SettingsScreen extends ConsumerWidget {
 
               const SizedBox(height: AfSpacing.s16),
 
-              // ── Offline cache (server mode only) ───────────────────────
+              // ── Offline cache (server mode only) ─────────────────────
               if (!isLocal) ...[
-                const SettingsLabel('Offline cache'),
-                SettingsGroup(
+                const _SectionHeader('Offline cache'),
+                _IosGroup(
                   children: [
                     Consumer(
                       builder: (context, ref2, _) {
                         final enabled = ref2.watch(offlineCacheEnabledProvider);
-                        return SettingsSwitchTile(
+                        return _IosSwitch(
                           icon: LucideIcons.hardDrive,
-                          iconColor: AfColors.textSecondary,
                           title: 'Cache tracks offline',
                           subtitle: enabled
                               ? 'Save streamed tracks to device storage'
@@ -373,9 +599,8 @@ class SettingsScreen extends ConsumerWidget {
                       },
                     ),
                     _CacheUsageTile(),
-                    SettingsTile(
+                    _IosTile(
                       icon: LucideIcons.hardDrive,
-                      iconColor: AfColors.textSecondary,
                       title: 'Max cache size',
                       subtitle: OfflineCacheService.formatSize(
                         ref.watch(offlineCacheMaxSizeProvider),
@@ -388,45 +613,61 @@ class SettingsScreen extends ConsumerWidget {
 
               const SizedBox(height: AfSpacing.s16),
 
-              // ── Audio processing ───────────────────────────────────────
-              const SettingsLabel('Audio processing'),
-              SettingsGroup(
+              // ── Audio processing ─────────────────────────────────────
+              const _SectionHeader('Audio processing'),
+              _IosGroup(
                 children: [
-                  SettingsTile(
+                  _IosTile(
                     icon: LucideIcons.slidersHorizontal,
-                    iconColor: AfColors.textSecondary,
                     title: 'ReplayGain',
                     subtitle: 'Volume normalization across tracks',
                     onTap: () => showReplayGainDialog(context, ref),
                   ),
-                  SettingsTile(
+                  _IosTile(
                     icon: LucideIcons.skipForward,
-                    iconColor: AfColors.textSecondary,
                     title: 'Gapless playback',
                     subtitle: 'Seamless transitions between tracks',
                     onTap: () => showGaplessDialog(context, ref),
                   ),
-                  PrefetchToggle(svc: svc),
-                  const SmartQueueToggle(),
+                  _IosSwitch(
+                    icon: LucideIcons.download,
+                    title: 'Prefetch next track',
+                    subtitle: 'Pre-load next playlist entry in background',
+                    value: svc.prefetchPlaylist,
+                    onChanged: (v) {
+                      unawaited(svc.setPrefetchPlaylist(v));
+                      unawaited(PlayerSettingsStore.savePrefetchPlaylist(v));
+                    },
+                  ),
+                  _IosSwitch(
+                    icon: LucideIcons.lightbulb,
+                    title: 'Smart queue',
+                    subtitle:
+                        'Learn from skips and plays for better suggestions',
+                    value: ref.watch(smartQueueEnabledProvider),
+                    onChanged: (v) {
+                      ref.read(smartQueueEnabledProvider.notifier).state = v;
+                    },
+                  ),
                 ],
               ),
 
               const SizedBox(height: AfSpacing.s16),
 
-              // ── Last.fm Scrobbling ──────────────────────────────────────
+              // ── Last.fm Scrobbling ───────────────────────────────────
               const _LastFmSettingsSection(),
 
               const SizedBox(height: AfSpacing.s16),
 
-              // ── Advanced ───────────────────────────────────────────────
-              const SettingsLabel('Advanced'),
-              SettingsGroup(
+              // ── Advanced ─────────────────────────────────────────────
+              const _SectionHeader('Advanced'),
+              _IosGroup(
                 children: [
-                  SettingsTile(
+                  _IosTile(
                     icon: LucideIcons.trash2,
-                    iconColor: AfColors.textSecondary,
                     title: 'Clear app data',
                     subtitle: 'Reset app to initial state',
+                    danger: true,
                     onTap: () async {
                       final confirmed = await showBlurDialog<bool>(
                         context: context,
@@ -473,7 +714,8 @@ class SettingsScreen extends ConsumerWidget {
                         const secureStorage = FlutterSecureStorage();
                         await secureStorage.deleteAll();
 
-                        // Close the database connection before deleting the file!
+                        // Close the database connection before
+                        // deleting the file!
                         final db = ref.read(appDatabaseProvider);
                         await db.close();
 
@@ -486,7 +728,8 @@ class SettingsScreen extends ConsumerWidget {
                           await dbFile.delete();
                         }
 
-                        // Invalidate the provider so a fresh database is opened on next request.
+                        // Invalidate the provider so a fresh
+                        // database is opened on next request.
                         ref.invalidate(appDatabaseProvider);
 
                         await AppModeStore.clear();
@@ -507,9 +750,9 @@ class SettingsScreen extends ConsumerWidget {
 
               const SizedBox(height: AfSpacing.s16),
 
-              // ── About ──────────────────────────────────────────────────
-              const SettingsLabel('About'),
-              SettingsGroup(
+              // ── About ────────────────────────────────────────────────
+              const _SectionHeader('About'),
+              _IosGroup(
                 children: [
                   FutureBuilder<PackageInfo>(
                     future: PackageInfo.fromPlatform(),
@@ -517,17 +760,15 @@ class SettingsScreen extends ConsumerWidget {
                       final version = snap.data != null
                           ? 'v${snap.data!.version}+${snap.data!.buildNumber} ($kBuildId)'
                           : '...';
-                      return SettingsTile(
+                      return _IosTile(
                         icon: LucideIcons.info,
-                        iconColor: AfColors.textSecondary,
                         title: 'Aetherfin $version',
                         subtitle: 'Jellyfin-backed music player · FOSS',
                       );
                     },
                   ),
-                  SettingsTile(
+                  _IosTile(
                     icon: LucideIcons.code,
-                    iconColor: AfColors.textSecondary,
                     title: 'Source code',
                     subtitle: 'github.com/Aetherfin/mobile-app',
                     trailing: const Icon(
@@ -539,9 +780,8 @@ class SettingsScreen extends ConsumerWidget {
                       'https://github.com/Aetherfin/mobile-app',
                     ),
                   ),
-                  SettingsTile(
+                  _IosTile(
                     icon: LucideIcons.fileText,
-                    iconColor: AfColors.textSecondary,
                     title: 'Licenses',
                     subtitle: 'Open-source licenses',
                     onTap: () => showLicensePage(
@@ -553,6 +793,27 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
 
+              // ── Footer caption ───────────────────────────────────────
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AfSpacing.s24),
+                  child: FutureBuilder<PackageInfo>(
+                    future: PackageInfo.fromPlatform(),
+                    builder: (context, snap) {
+                      final version = snap.data != null
+                          ? 'v${snap.data!.version}+${snap.data!.buildNumber}'
+                          : '...';
+                      return Text(
+                        'Aetherfin $version · Android',
+                        style: AfTypography.caption.copyWith(
+                          color: AfColors.textDisabled,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+
               const SizedBox(height: AfSpacing.s24),
             ],
           ),
@@ -561,6 +822,8 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 }
+
+// ── Cache usage tile ─────────────────────────────────────────────────────────
 
 class _CacheUsageTile extends ConsumerStatefulWidget {
   @override
@@ -609,9 +872,8 @@ class _CacheUsageTileState extends ConsumerState<_CacheUsageTile> {
     final maxSize = ref.watch(offlineCacheMaxSizeProvider);
     final usedLabel = OfflineCacheService.formatSize(_cacheSize);
     final maxLabel = OfflineCacheService.formatSize(maxSize);
-    return SettingsTile(
+    return _IosTile(
       icon: LucideIcons.database,
-      iconColor: AfColors.textSecondary,
       title: _loading ? 'Cache usage…' : 'Cache usage',
       subtitle: _loading
           ? null
@@ -625,6 +887,8 @@ class _CacheUsageTileState extends ConsumerState<_CacheUsageTile> {
     );
   }
 }
+
+// ── Last.fm section ──────────────────────────────────────────────────────────
 
 class _LastFmSettingsSection extends ConsumerWidget {
   const _LastFmSettingsSection();
@@ -645,12 +909,11 @@ class _LastFmSettingsSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SettingsLabel('Last.fm'),
-        SettingsGroup(
+        const _SectionHeader('Last.fm'),
+        _IosGroup(
           children: [
-            SettingsTile(
+            _IosTile(
               icon: LucideIcons.key,
-              iconColor: AfColors.textSecondary,
               title: 'API Credentials',
               subtitle: hasCredentials
                   ? 'Key: ${apiKey.substring(0, apiKey.length > 8 ? 8 : apiKey.length)}…'
@@ -658,24 +921,21 @@ class _LastFmSettingsSection extends ConsumerWidget {
               onTap: () => showLastFmApiConfigDialog(context, ref),
             ),
             if (hasCredentials && !isConnected)
-              SettingsTile(
+              _IosTile(
                 icon: LucideIcons.link,
-                iconColor: AfColors.textSecondary,
                 title: 'Link Last.fm Account',
                 subtitle: 'Log in with username and password',
                 onTap: () => showLastFmLoginDialog(context, ref),
               ),
             if (isConnected) ...[
-              SettingsTile(
+              _IosTile(
                 icon: LucideIcons.user,
-                iconColor: AfColors.textSecondary,
                 title: 'Connected as $username',
                 subtitle: 'Tap to disconnect / sign out',
                 onTap: () => showLastFmSignOutDialog(context, ref),
               ),
-              SettingsTile(
+              _IosTile(
                 icon: LucideIcons.refreshCw,
-                iconColor: AfColors.textSecondary,
                 title: 'Sync Liked Tracks',
                 subtitle: 'Sync favorites between library and Last.fm',
                 onTap: () async {
@@ -720,7 +980,9 @@ class _LastFmSettingsSection extends ConsumerWidget {
                   try {
                     final syncFn = ref.read(lastFmSyncProvider);
                     final result = await syncFn();
-                    if (context.mounted) Navigator.pop(context); // Close dialog
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                    } // Close dialog
 
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -733,7 +995,9 @@ class _LastFmSettingsSection extends ConsumerWidget {
                       );
                     }
                   } catch (e) {
-                    if (context.mounted) Navigator.pop(context); // Close dialog
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                    } // Close dialog
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Sync failed: $e')),
@@ -742,9 +1006,8 @@ class _LastFmSettingsSection extends ConsumerWidget {
                   }
                 },
               ),
-              SettingsSwitchTile(
+              _IosSwitch(
                 icon: LucideIcons.checkSquare,
-                iconColor: AfColors.textSecondary,
                 title: 'Scrobble tracks',
                 subtitle: 'Submit played tracks to profile',
                 value: scrobbleEnabled,
