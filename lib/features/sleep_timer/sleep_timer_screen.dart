@@ -203,29 +203,15 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
                 runSpacing: AfSpacing.s12,
                 children: [
                   for (final m in _presets)
-                    ChoiceChip(
-                      label: Text('$m min'),
+                    _TimerChip(
+                      label: '$m min',
                       selected: _selectedMinutes == m,
-                      onSelected: (_) => setState(() => _selectedMinutes = m),
-                      selectedColor: AfColors.indigo600,
-                      backgroundColor: AfColors.surfaceBase,
-                      labelStyle: AfTypography.bodyMedium.copyWith(
-                        color: _selectedMinutes == m
-                            ? AfColors.textOnPrimary
-                            : AfColors.textPrimary,
-                      ),
+                      onTap: () => setState(() => _selectedMinutes = m),
                     ),
-                  ChoiceChip(
-                    label: const Text('End of track'),
+                  _TimerChip(
+                    label: 'End of track',
                     selected: _selectedMinutes == 0,
-                    onSelected: (_) => setState(() => _selectedMinutes = 0),
-                    selectedColor: AfColors.indigo600,
-                    backgroundColor: AfColors.surfaceBase,
-                    labelStyle: AfTypography.bodyMedium.copyWith(
-                      color: _selectedMinutes == 0
-                          ? AfColors.textOnPrimary
-                          : AfColors.textPrimary,
-                    ),
+                    onTap: () => setState(() => _selectedMinutes = 0),
                   ),
                 ],
               ),
@@ -240,6 +226,46 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
               ),
               const SizedBox(height: AfSpacing.s24),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Styled timer preset chip matching the design system pill shape.
+class _TimerChip extends StatelessWidget {
+  const _TimerChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: AfDurations.quick,
+        curve: AfCurves.easeStandard,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AfSpacing.s16,
+          vertical: AfSpacing.s8,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? AfColors.indigo600 : AfColors.surfaceBase,
+          borderRadius: AfRadii.borderPill,
+          border: Border.all(
+            color: selected ? AfColors.indigo400 : AfColors.surfaceHigh,
+          ),
+        ),
+        child: Text(
+          label,
+          style: AfTypography.bodyMedium.copyWith(
+            color: selected ? AfColors.textOnPrimary : AfColors.textPrimary,
           ),
         ),
       ),

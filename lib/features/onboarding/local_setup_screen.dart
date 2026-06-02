@@ -247,25 +247,9 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
               const Spacer(),
 
               // Scan button
-              FilledButton(
+              ElevatedButton(
                 onPressed: _folderUri != null && !_scanning ? _startScan : null,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AfColors.indigo600,
-                  disabledBackgroundColor: AfColors.surfaceHigh,
-                  padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: AfRadii.borderMd,
-                  ),
-                ),
-                child: Text(
-                  _scanning ? 'Scanning...' : 'Scan & continue',
-                  style: AfTypography.bodyMedium.copyWith(
-                    color: _folderUri != null && !_scanning
-                        ? AfColors.textOnPrimary
-                        : AfColors.textDisabled,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                child: Text(_scanning ? 'Scanning...' : 'Scan & continue'),
               ),
               const SizedBox(height: AfSpacing.s32),
             ],

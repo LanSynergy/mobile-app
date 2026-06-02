@@ -135,9 +135,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           const SizedBox(height: AfSpacing.s12),
 
           // ── Section Content ──
-          Expanded(
-            child: _PillContent(pill: _pill),
-          ),
+          Expanded(child: _PillContent(pill: _pill)),
         ],
       ),
     );
@@ -153,8 +151,7 @@ class _CommandPaletteSearch extends ConsumerStatefulWidget {
       _CommandPaletteSearchState();
 }
 
-class _CommandPaletteSearchState
-    extends ConsumerState<_CommandPaletteSearch> {
+class _CommandPaletteSearchState extends ConsumerState<_CommandPaletteSearch> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
   String _query = '';
@@ -415,9 +412,7 @@ class _RecentAndSuggestions extends ConsumerWidget {
                 spacing: AfSpacing.s8,
                 runSpacing: AfSpacing.s8,
                 children: list.take(8).map((g) {
-                  final tint = Color(
-                    int.parse(g.tint.replaceFirst('#', '0xFF')),
-                  );
+                  final tint = _parseGenreTint(g.tint);
                   return PressScale(
                     onTap: () {
                       Navigator.pop(context);
@@ -479,9 +474,11 @@ class _LiveResults extends ConsumerWidget {
           albumsAsync.when(
             data: (list) {
               final filtered = list
-                  .where((a) =>
-                      a.name.toLowerCase().contains(query) ||
-                      a.artistName.toLowerCase().contains(query))
+                  .where(
+                    (a) =>
+                        a.name.toLowerCase().contains(query) ||
+                        a.artistName.toLowerCase().contains(query),
+                  )
                   .take(4)
                   .toList();
               if (filtered.isEmpty) return const SizedBox.shrink();
@@ -596,14 +593,21 @@ class _LiveResults extends ConsumerWidget {
                 return tracks.when(
                   data: (list) {
                     final filtered = list
-                        .where((t) =>
-                            t.title.toLowerCase().contains(query) ||
-                            t.artistName.toLowerCase().contains(query))
+                        .where(
+                          (t) =>
+                              t.title.toLowerCase().contains(query) ||
+                              t.artistName.toLowerCase().contains(query),
+                        )
                         .take(10)
                         .toList();
                     if (filtered.isEmpty) return const SizedBox.shrink();
                     return _buildTrackResults(
-                      filtered, activeId, isBuffering, accent, ref, context,
+                      filtered,
+                      activeId,
+                      isBuffering,
+                      accent,
+                      ref,
+                      context,
                     );
                   },
                   loading: () => const SizedBox.shrink(),
@@ -612,14 +616,21 @@ class _LiveResults extends ConsumerWidget {
               } else {
                 final state = ref.watch(tracksPaginationProvider);
                 final filtered = state.items
-                    .where((t) =>
-                        t.title.toLowerCase().contains(query) ||
-                        t.artistName.toLowerCase().contains(query))
+                    .where(
+                      (t) =>
+                          t.title.toLowerCase().contains(query) ||
+                          t.artistName.toLowerCase().contains(query),
+                    )
                     .take(10)
                     .toList();
                 if (filtered.isEmpty) return const SizedBox.shrink();
                 return _buildTrackResults(
-                  filtered, activeId, isBuffering, accent, ref, context,
+                  filtered,
+                  activeId,
+                  isBuffering,
+                  accent,
+                  ref,
+                  context,
                 );
               }
             },
@@ -957,9 +968,32 @@ class _SongsList extends ConsumerWidget {
 
     if (tracks.isEmpty) {
       return Center(
-        child: Text(
-          'No songs found',
-          style: AfTypography.bodyMedium.copyWith(color: AfColors.textTertiary),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: AfColors.surfaceRaised,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                LucideIcons.music,
+                size: 40,
+                color: AfColors.textTertiary,
+              ),
+            ),
+            const SizedBox(height: AfSpacing.s12),
+            Text('No songs yet', style: AfTypography.titleSmall),
+            const SizedBox(height: AfSpacing.s8),
+            Text(
+              'Songs from your library will appear here',
+              style: AfTypography.bodySmall.copyWith(
+                color: AfColors.textTertiary,
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -1009,11 +1043,32 @@ class _ArtistsGrid extends ConsumerWidget {
       data: (list) {
         if (list.isEmpty) {
           return Center(
-            child: Text(
-              'No artists found',
-              style: AfTypography.bodyMedium.copyWith(
-                color: AfColors.textTertiary,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: const BoxDecoration(
+                    color: AfColors.surfaceRaised,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    LucideIcons.users,
+                    size: 40,
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+                const SizedBox(height: AfSpacing.s12),
+                Text('No artists found', style: AfTypography.titleSmall),
+                const SizedBox(height: AfSpacing.s8),
+                Text(
+                  'Artists from your library will appear here',
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+              ],
             ),
           );
         }
@@ -1073,11 +1128,32 @@ class _AlbumsGrid extends ConsumerWidget {
       data: (list) {
         if (list.isEmpty) {
           return Center(
-            child: Text(
-              'No albums found',
-              style: AfTypography.bodyMedium.copyWith(
-                color: AfColors.textTertiary,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: const BoxDecoration(
+                    color: AfColors.surfaceRaised,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    LucideIcons.disc,
+                    size: 40,
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+                const SizedBox(height: AfSpacing.s12),
+                Text('No albums found', style: AfTypography.titleSmall),
+                const SizedBox(height: AfSpacing.s8),
+                Text(
+                  'Albums from your library will appear here',
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+              ],
             ),
           );
         }
@@ -1138,11 +1214,32 @@ class _GenresGrid extends ConsumerWidget {
       data: (list) {
         if (list.isEmpty) {
           return Center(
-            child: Text(
-              'No genres found',
-              style: AfTypography.bodyMedium.copyWith(
-                color: AfColors.textTertiary,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: const BoxDecoration(
+                    color: AfColors.surfaceRaised,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    LucideIcons.music2,
+                    size: 40,
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+                const SizedBox(height: AfSpacing.s12),
+                Text('No genres found', style: AfTypography.titleSmall),
+                const SizedBox(height: AfSpacing.s8),
+                Text(
+                  'Genres from your library will appear here',
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+              ],
             ),
           );
         }
@@ -1163,7 +1260,7 @@ class _GenresGrid extends ConsumerWidget {
             ),
             itemBuilder: (context, i) {
               final g = list[i];
-              final tint = Color(int.parse(g.tint.replaceFirst('#', '0xFF')));
+              final tint = _parseGenreTint(g.tint);
               return GenreTile(
                 name: g.name,
                 tint: tint,
@@ -1183,5 +1280,20 @@ class _GenresGrid extends ConsumerWidget {
         onRetry: () => ref.invalidate(provider),
       ),
     );
+  }
+}
+
+/// Parse a hex color string from the server, falling back to indigo on error.
+Color _parseGenreTint(String hex) {
+  try {
+    final cleaned = hex.replaceFirst('#', '');
+    if (cleaned.length != 6 && cleaned.length != 8) return AfColors.indigo600;
+    final value = int.parse(
+      cleaned.length == 6 ? 'FF$cleaned' : cleaned,
+      radix: 16,
+    );
+    return Color(value);
+  } catch (_) {
+    return AfColors.indigo600;
   }
 }

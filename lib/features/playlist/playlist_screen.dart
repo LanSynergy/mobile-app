@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/audio/play_actions.dart';
 import '../../core/backend/music_backend.dart';
@@ -323,6 +324,45 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                               ),
                             );
                           },
+                        ),
+                      ),
+                    ),
+
+                  if (tracks.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: AfSpacing.s48),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 64,
+                                height: 64,
+                                decoration: const BoxDecoration(
+                                  color: AfColors.surfaceRaised,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  LucideIcons.listMusic,
+                                  size: 40,
+                                  color: AfColors.textTertiary,
+                                ),
+                              ),
+                              const SizedBox(height: AfSpacing.s12),
+                              Text(
+                                'Empty playlist',
+                                style: AfTypography.titleSmall,
+                              ),
+                              const SizedBox(height: AfSpacing.s8),
+                              Text(
+                                'Add songs to get started',
+                                style: AfTypography.bodySmall.copyWith(
+                                  color: AfColors.textTertiary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

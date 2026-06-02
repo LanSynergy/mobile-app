@@ -112,17 +112,32 @@ class _AllSetScreenState extends ConsumerState<AllSetScreen>
   }
 }
 
-class _StatRow extends StatelessWidget {
+class _StatRow extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    const tracks = 0;
-    const albums = 0;
-    final hours = (0 / 60).round();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLocal = ref.watch(appModeProvider) == AppMode.local;
+
+    final tracksAsync = isLocal
+        ? ref.watch(localTracksProvider)
+        : ref.watch(allTracksProvider);
+    final albumsAsync = isLocal
+        ? ref.watch(localAlbumsProvider)
+        : ref.watch(allAlbumsProvider);
+
+    final trackCount = tracksAsync.maybeWhen(
+      data: (list) => list.length,
+      orElse: () => 0,
+    );
+    final albumCount = albumsAsync.maybeWhen(
+      data: (list) => list.length,
+      orElse: () => 0,
+    );
+
     return Row(
       children: [
-        const _Stat(label: 'Tracks', value: '$tracks'),
-        const _Stat(label: 'Albums', value: '$albums'),
-        _Stat(label: 'Hours', value: '$hours'),
+        _Stat(label: 'Tracks', value: '$trackCount'),
+        const SizedBox(width: AfSpacing.s12),
+        _Stat(label: 'Albums', value: '$albumCount'),
       ],
     );
   }
@@ -141,7 +156,7 @@ class _Stat extends StatelessWidget {
           vertical: AfSpacing.s16,
           horizontal: AfSpacing.s12,
         ),
-        margin: const EdgeInsets.only(right: 8),
+        margin: const EdgeInsets.only(right: AfSpacing.s8),
         decoration: const BoxDecoration(
           color: AfColors.surfaceBase,
           borderRadius: AfRadii.borderMd,

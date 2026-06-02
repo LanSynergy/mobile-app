@@ -382,7 +382,8 @@ void main() {
       expect(
         RegExp(r'(?:^|\s)showDialog[<(]').hasMatch(afDialog),
         isFalse,
-        reason: 'showBlurDialog must not call showDialog (breaks BackdropFilter)',
+        reason:
+            'showBlurDialog must not call showDialog (breaks BackdropFilter)',
       );
       expect(
         afDialog.contains('showModalBottomSheet'),

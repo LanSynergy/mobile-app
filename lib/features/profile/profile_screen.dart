@@ -17,6 +17,7 @@ import '../../state/providers.dart';
 import '../../utils/display_error.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/bottom_sheet.dart';
+import '../../widgets/press_scale.dart';
 import '../../widgets/section_header.dart';
 
 /// Mockup 09 — Profile.
@@ -153,12 +154,14 @@ class ProfileScreen extends ConsumerWidget {
 
           const SectionHeader(title: 'Account', uppercase: true),
           const SizedBox(height: AfSpacing.s8),
-          ListTile(
-            leading: const Icon(Icons.settings_outlined),
-            title: const Text('Settings'),
-            tileColor: AfColors.surfaceBase,
-            shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderMd),
+          PressScale(
             onTap: () => context.push('/settings'),
+            child: const ListTile(
+              leading: Icon(Icons.settings_outlined),
+              title: Text('Settings'),
+              tileColor: AfColors.surfaceBase,
+              shape: RoundedRectangleBorder(borderRadius: AfRadii.borderMd),
+            ),
           ),
           const SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
         ],

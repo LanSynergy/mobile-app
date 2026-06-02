@@ -136,13 +136,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               AfSpacing.s16,
               AfSpacing.s16,
             ),
-            child: Row(
-              children: [
-                Text('Search', style: AfTypography.titleLarge),
-                const Spacer(),
-                const SizedBox(width: 48), // match icon width for alignment
-              ],
-            ),
+            child: Text('Search', style: AfTypography.titleLarge),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
@@ -307,17 +301,43 @@ class _LiveSearchResults extends ConsumerWidget {
             artists.isEmpty &&
             playlists.isEmpty;
         if (empty) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.s16,
-              vertical: AfSpacing.s24,
-            ),
-            child: Text(
-              filter == SearchFilter.all
-                  ? 'No results for "$query".'
-                  : 'No ${filter.label.toLowerCase()} found for "$query".',
-              style: AfTypography.bodyMedium.copyWith(
-                color: AfColors.textTertiary,
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AfSpacing.s16,
+                vertical: AfSpacing.s24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: const BoxDecoration(
+                      color: AfColors.surfaceRaised,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      LucideIcons.searchX,
+                      size: 40,
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                  const SizedBox(height: AfSpacing.s12),
+                  Text(
+                    filter == SearchFilter.all
+                        ? 'No results for "$query"'
+                        : 'No ${filter.label.toLowerCase()} found for "$query"',
+                    style: AfTypography.titleSmall,
+                  ),
+                  const SizedBox(height: AfSpacing.s8),
+                  Text(
+                    'Try a different search term',
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                ],
               ),
             ),
           );
