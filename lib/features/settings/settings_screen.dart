@@ -943,40 +943,28 @@ class _LastFmSettingsSection extends ConsumerWidget {
                 subtitle: 'Sync favorites between library and Last.fm',
                 onTap: () async {
                   unawaited(
-                    showDialog(
+                    showBlurDialog(
                       context: context,
                       barrierDismissible: false,
-                      builder: (context) => Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AfSpacing.s24,
-                            vertical: AfSpacing.s16,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AfColors.accentPrimary,
+                            ),
                           ),
-                          decoration: const BoxDecoration(
-                            color: AfColors.surfaceBase,
-                            borderRadius: AfRadii.borderLg,
+                          const SizedBox(width: AfSpacing.s16),
+                          Text(
+                            'Syncing favorites...',
+                            style: AfTypography.bodyMedium.copyWith(
+                              color: AfColors.textPrimary,
+                            ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AfColors.accentPrimary,
-                                ),
-                              ),
-                              const SizedBox(width: AfSpacing.s16),
-                              Text(
-                                'Syncing favorites...',
-                                style: AfTypography.bodyMedium.copyWith(
-                                  color: AfColors.textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        ],
                       ),
                     ),
                   );

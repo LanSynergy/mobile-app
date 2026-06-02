@@ -16,6 +16,7 @@ import '../../state/lastfm_stats_providers.dart';
 import '../../state/providers.dart';
 import '../../utils/display_error.dart';
 import '../../widgets/artwork.dart';
+import '../../widgets/af_dialog.dart';
 import '../../widgets/bottom_sheet.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/section_header.dart';
@@ -967,39 +968,28 @@ Future<void> _playTrackFromStats(
   String title,
 ) async {
   unawaited(
-    showDialog(
+    showBlurDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Center(
-        child: Card(
-          color: AfColors.surfaceBase,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.s24,
-              vertical: AfSpacing.s16,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AfColors.accentPrimary,
-                  ),
-                ),
-                const SizedBox(width: AfSpacing.s16),
-                Text(
-                  'Locating track in library...',
-                  style: AfTypography.bodyMedium.copyWith(
-                    color: AfColors.textPrimary,
-                  ),
-                ),
-              ],
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AfColors.accentPrimary,
             ),
           ),
-        ),
+          const SizedBox(width: AfSpacing.s16),
+          Text(
+            'Locating track in library...',
+            style: AfTypography.bodyMedium.copyWith(
+              color: AfColors.textPrimary,
+            ),
+          ),
+        ],
       ),
     ),
   );
@@ -1061,39 +1051,28 @@ Future<void> _navigateToArtistFromStats(
   String artistName,
 ) async {
   unawaited(
-    showDialog(
+    showBlurDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Center(
-        child: Card(
-          color: AfColors.surfaceBase,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.s24,
-              vertical: AfSpacing.s16,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AfColors.accentPrimary,
-                  ),
-                ),
-                const SizedBox(width: AfSpacing.s16),
-                Text(
-                  'Locating artist...',
-                  style: AfTypography.bodyMedium.copyWith(
-                    color: AfColors.textPrimary,
-                  ),
-                ),
-              ],
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AfColors.accentPrimary,
             ),
           ),
-        ),
+          const SizedBox(width: AfSpacing.s16),
+          Text(
+            'Locating artist...',
+            style: AfTypography.bodyMedium.copyWith(
+              color: AfColors.textPrimary,
+            ),
+          ),
+        ],
       ),
     ),
   );
@@ -1145,39 +1124,28 @@ Future<void> _navigateToAlbumFromStats(
   String albumName,
 ) async {
   unawaited(
-    showDialog(
+    showBlurDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Center(
-        child: Card(
-          color: AfColors.surfaceBase,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.s24,
-              vertical: AfSpacing.s16,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AfColors.accentPrimary,
-                  ),
-                ),
-                const SizedBox(width: AfSpacing.s16),
-                Text(
-                  'Locating album...',
-                  style: AfTypography.bodyMedium.copyWith(
-                    color: AfColors.textPrimary,
-                  ),
-                ),
-              ],
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AfColors.accentPrimary,
             ),
           ),
-        ),
+          const SizedBox(width: AfSpacing.s16),
+          Text(
+            'Locating album...',
+            style: AfTypography.bodyMedium.copyWith(
+              color: AfColors.textPrimary,
+            ),
+          ),
+        ],
       ),
     ),
   );

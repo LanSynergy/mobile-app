@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../design_tokens/tokens.dart';
 import '../utils/display_error.dart';
+import 'af_dialog.dart';
 
 /// Inline error card for failed `AsyncValue` fetches.
 ///
@@ -38,22 +39,37 @@ class AsyncErrorView extends StatelessWidget {
 
   void _showFullError(BuildContext context) {
     final fullText = displayError(error);
-    showDialog<void>(
+    showBlurDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(label),
-        content: SingleChildScrollView(
-          child: SelectableText(
-            fullText,
-            style: AfTypography.bodySmall.copyWith(
-              color: AfColors.textSecondary,
+      builder: (context, dismiss) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AfTypography.titleMedium.copyWith(
+              color: AfColors.textPrimary,
             ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Close'),
+          const SizedBox(height: AfSpacing.s16),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 300),
+            child: SingleChildScrollView(
+              child: SelectableText(
+                fullText,
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textSecondary,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: AfSpacing.s16),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => dismiss(),
+              child: const Text('Close'),
+            ),
           ),
         ],
       ),

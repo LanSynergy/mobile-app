@@ -10,11 +10,17 @@ import '../design_tokens/tokens.dart';
 /// Unlike [showDialog], this inserts an [OverlayEntry] into the existing
 /// route's Navigator overlay, so [BackdropFilter] can actually see and
 /// blur the content behind the dialog — no new route, no opaque barrier.
+///
+/// Pass [child] for simple content, or [builder] when the child needs to
+/// dismiss the dialog programmatically (e.g. a Close button).
 Future<T?> showBlurDialog<T>({
   required BuildContext context,
-  required Widget child,
+  Widget? child,
+  Widget Function(BuildContext context, void Function([T? result]) dismiss)?
+      builder,
   bool barrierDismissible = true,
 }) {
+  assert(child != null || builder != null, 'Provide child or builder');
   final overlay = Navigator.of(context, rootNavigator: true).overlay;
   if (overlay == null) return Future.value(null);
 
@@ -28,7 +34,12 @@ Future<T?> showBlurDialog<T>({
         entry.remove();
         if (!completer.isCompleted) completer.complete(result);
       },
-      child: child,
+      child: builder != null
+          ? builder(context, ([T? result]) {
+              entry.remove();
+              if (!completer.isCompleted) completer.complete(result);
+            })
+          : child!,
     ),
   );
 
@@ -119,6 +130,9 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
                           sigmaY: _blurSigma,
                         ),
                         child: Container(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: AfSpacing.s24,
+                          ),
                           padding: const EdgeInsets.all(AfSpacing.s16),
                           decoration: BoxDecoration(
                             color: AfColors.surfaceRaised.withValues(
