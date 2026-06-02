@@ -13,7 +13,7 @@ void showTrackDetailsSheet(BuildContext context, WidgetRef ref, AfTrack track) {
   HapticFeedback.mediumImpact();
   showBlurBottomSheet<void>(
     context: context,
-    builder: (_) => SafeArea(
+    child: SafeArea(
       top: false,
       child: Column(
         mainAxisSize: MainAxisSize.min,

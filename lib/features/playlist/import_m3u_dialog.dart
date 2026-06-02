@@ -21,7 +21,7 @@ class ImportM3UAction {
     final controller = TextEditingController();
     final content = await showBlurDialog<String>(
       context: context,
-      child: Column(
+      builder: (context, dismiss) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -59,12 +59,12 @@ class ImportM3UAction {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => dismiss(),
                 child: const Text('Cancel'),
               ),
               const SizedBox(width: AfSpacing.s8),
               FilledButton.icon(
-                onPressed: () => Navigator.of(context).pop(controller.text),
+                onPressed: () => dismiss(controller.text),
                 icon: const Icon(LucideIcons.download, size: 18),
                 label: const Text('Import'),
                 style: FilledButton.styleFrom(

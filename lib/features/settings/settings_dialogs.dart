@@ -37,7 +37,7 @@ void showSampleRateDialog(BuildContext context, WidgetRef ref) {
 
   showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Column(
+    builder: (context, dismiss) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -58,7 +58,7 @@ void showSampleRateDialog(BuildContext context, WidgetRef ref) {
                 ref.read(playerServiceProvider).setAudioSampleRate(rate),
               );
               unawaited(PlayerSettingsStore.saveSampleRate(rate));
-              Navigator.of(dialogCtx).pop();
+              dismiss();
             },
           ),
       ],
@@ -84,7 +84,7 @@ void showFormatDialog(BuildContext context, WidgetRef ref) {
 
   showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Column(
+    builder: (context, dismiss) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -103,7 +103,7 @@ void showFormatDialog(BuildContext context, WidgetRef ref) {
             onTap: () {
               unawaited(ref.read(playerServiceProvider).setAudioFormat(format));
               unawaited(PlayerSettingsStore.saveFormat(format));
-              Navigator.of(dialogCtx).pop();
+              dismiss();
             },
           ),
       ],
@@ -129,7 +129,7 @@ void showCacheDurationDialog(BuildContext context, WidgetRef ref) {
 
   showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Column(
+    builder: (context, dismiss) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -167,7 +167,7 @@ void showCacheDurationDialog(BuildContext context, WidgetRef ref) {
                 ),
               );
               unawaited(PlayerSettingsStore.saveCacheSecs(secs));
-              Navigator.of(dialogCtx).pop();
+              dismiss();
             },
           ),
       ],
@@ -189,7 +189,7 @@ void showAudioBufferDialog(BuildContext context, WidgetRef ref) {
 
   showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Column(
+    builder: (context, dismiss) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -223,7 +223,7 @@ void showAudioBufferDialog(BuildContext context, WidgetRef ref) {
                     .setAudioBuffer(Duration(milliseconds: ms)),
               );
               unawaited(PlayerSettingsStore.saveBufferMs(ms));
-              Navigator.of(dialogCtx).pop();
+              dismiss();
             },
           ),
       ],
@@ -243,7 +243,7 @@ void showGaplessDialog(BuildContext context, WidgetRef ref) {
 
   showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Column(
+    builder: (context, dismiss) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -274,7 +274,7 @@ void showGaplessDialog(BuildContext context, WidgetRef ref) {
             onTap: () {
               unawaited(svc.setGapless(mode));
               unawaited(PlayerSettingsStore.saveGapless(mode));
-              Navigator.of(dialogCtx).pop();
+              dismiss();
             },
           ),
       ],
@@ -285,7 +285,7 @@ void showGaplessDialog(BuildContext context, WidgetRef ref) {
 void showReplayGainDialog(BuildContext context, WidgetRef ref) {
   showBlurBottomSheet<void>(
     context: context,
-    builder: (_) => const ReplayGainDialogContent(),
+    builder: (context, dismiss) => const ReplayGainDialogContent(),
   );
 }
 
@@ -485,7 +485,7 @@ void showOfflineCacheSizeDialog(BuildContext context, WidgetRef ref) {
 
   showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Column(
+    builder: (context, dismiss) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -518,7 +518,7 @@ void showOfflineCacheSizeDialog(BuildContext context, WidgetRef ref) {
               // Trigger eviction with new limit.
               final cache = ref.read(offlineCacheServiceProvider);
               unawaited(cache.evictLRU(maxCacheSizeBytes: bytes));
-              Navigator.of(dialogCtx).pop();
+              dismiss();
             },
           ),
       ],
@@ -540,7 +540,7 @@ Future<bool> showOfflineCacheClearDialog(
 
   final confirmed = await showBlurDialog<bool>(
     context: context,
-    child: Column(
+    builder: (context, dismiss) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -557,11 +557,11 @@ Future<bool> showOfflineCacheClearDialog(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => dismiss(false),
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => dismiss(true),
               child: Text(
                 'Clear cache',
                 style: AfTypography.bodyMedium.copyWith(
@@ -596,7 +596,7 @@ void showStreamingQualityDialog(BuildContext context, WidgetRef ref) {
 
   showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Column(
+    builder: (context, dismiss) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -627,7 +627,7 @@ void showStreamingQualityDialog(BuildContext context, WidgetRef ref) {
             onTap: () {
               ref.read(maxBitrateProvider.notifier).state = kbps;
               unawaited(PlayerSettingsStore.saveMaxBitrate(kbps));
-              Navigator.of(dialogCtx).pop();
+              dismiss();
             },
           ),
       ],
@@ -647,7 +647,7 @@ void showAppIconDialog(BuildContext context, WidgetRef ref) {
 
   showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Column(
+    builder: (context, dismiss) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -677,7 +677,7 @@ void showAppIconDialog(BuildContext context, WidgetRef ref) {
             isActive: iconName == currentIcon,
             onTap: () {
               unawaited(ref.read(appIconProvider.notifier).setIcon(iconName));
-              Navigator.of(dialogCtx).pop();
+              dismiss();
             },
           ),
       ],
@@ -695,7 +695,7 @@ void showLastFmApiConfigDialog(BuildContext context, WidgetRef ref) {
 
   showBlurDialog(
     context: context,
-    child: Column(
+    builder: (context, dismiss) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -742,7 +742,7 @@ void showLastFmApiConfigDialog(BuildContext context, WidgetRef ref) {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => dismiss(),
               child: const Text('Cancel'),
             ),
             TextButton(
@@ -753,7 +753,7 @@ void showLastFmApiConfigDialog(BuildContext context, WidgetRef ref) {
                 ref.read(lastfmApiSecretProvider.notifier).state = secret;
                 unawaited(PlayerSettingsStore.saveLastFmApiKey(key));
                 unawaited(PlayerSettingsStore.saveLastFmApiSecret(secret));
-                Navigator.pop(context);
+                dismiss();
               },
               child: const Text('Save'),
             ),
@@ -765,7 +765,10 @@ void showLastFmApiConfigDialog(BuildContext context, WidgetRef ref) {
 }
 
 void showLastFmLoginDialog(BuildContext context, WidgetRef ref) {
-  showBlurDialog(context: context, child: _LastFmBrowserAuthDialog());
+  showBlurDialog(
+    context: context,
+    builder: (context, dismiss) => _LastFmBrowserAuthDialog(dismiss: dismiss),
+  );
 }
 
 /// Browser-based Last.fm auth dialog.
@@ -776,6 +779,8 @@ void showLastFmLoginDialog(BuildContext context, WidgetRef ref) {
 /// 3. Poll [LastFmClient.getSession] until user authorizes.
 /// 4. Save session key.
 class _LastFmBrowserAuthDialog extends ConsumerStatefulWidget {
+  const _LastFmBrowserAuthDialog({required this.dismiss});
+  final VoidCallback dismiss;
   @override
   ConsumerState<_LastFmBrowserAuthDialog> createState() =>
       _LastFmBrowserAuthDialogState();
@@ -859,7 +864,7 @@ class _LastFmBrowserAuthDialogState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Connected to Last.fm as $username!')),
         );
-        Navigator.pop(context);
+        widget.dismiss();
       } catch (_) {}
     });
   }
@@ -906,7 +911,7 @@ class _LastFmBrowserAuthDialogState
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => widget.dismiss(),
                 child: const Text('Close'),
               ),
               const SizedBox(width: AfSpacing.s8),
@@ -967,7 +972,7 @@ class _LastFmBrowserAuthDialogState
               TextButton(
                 onPressed: () {
                   _pollTimer?.cancel();
-                  Navigator.pop(context);
+                  widget.dismiss();
                 },
                 child: const Text('Cancel'),
               ),
@@ -993,7 +998,7 @@ Future<void> showLastFmSignOutDialog(
 ) async {
   final confirmed = await showBlurDialog<bool>(
     context: context,
-    child: Column(
+    builder: (context, dismiss) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1008,11 +1013,11 @@ Future<void> showLastFmSignOutDialog(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => dismiss(false),
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => dismiss(true),
               child: Text(
                 'Disconnect',
                 style: AfTypography.bodyMedium.copyWith(

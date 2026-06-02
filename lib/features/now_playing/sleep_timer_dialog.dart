@@ -10,7 +10,8 @@ import '../sleep_timer/sleep_timer_screen.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 class SleepTimerDialogContent extends ConsumerStatefulWidget {
-  const SleepTimerDialogContent({super.key});
+  const SleepTimerDialogContent({super.key, this.dismiss});
+  final VoidCallback? dismiss;
 
   @override
   ConsumerState<SleepTimerDialogContent> createState() =>
@@ -64,13 +65,21 @@ class SleepTimerDialogContentState
         minutes: _selectedMinutes!,
       );
     }
-    Navigator.of(context).pop();
+    if (widget.dismiss != null) {
+      widget.dismiss!();
+    } else {
+      Navigator.of(context).pop();
+    }
   }
 
   void _cancelTimer() {
     ref.read(sleepTimerProvider.notifier).state = null;
     ref.read(sleepTimerRemainingProvider.notifier).state = null;
-    Navigator.of(context).pop();
+    if (widget.dismiss != null) {
+      widget.dismiss!();
+    } else {
+      Navigator.of(context).pop();
+    }
   }
 
   void _applyCustom() {

@@ -56,8 +56,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   void _openSearch(BuildContext context) {
     showBlurBottomSheet(
       context: context,
-      isScrollControlled: true,
-      builder: (_) => const _CommandPaletteSearch(),
+      child: const _CommandPaletteSearch(),
     );
   }
 

@@ -33,7 +33,7 @@ void showSaveToPlaylistSheet(
   HapticFeedback.mediumImpact();
   showBlurBottomSheet<void>(
     context: context,
-    builder: (_) => ConstrainedBox(
+    child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
       child: SaveToPlaylistSheet(track: track, backend: backend),
     ),

@@ -848,7 +848,7 @@ class _ReactiveTransport extends ConsumerWidget {
   void _showShuffleOptions(BuildContext context, WidgetRef ref) {
     showBlurDialog(
       context: context,
-      child: Column(
+      builder: (context, dismiss) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -858,7 +858,7 @@ class _ReactiveTransport extends ConsumerWidget {
             leading: const Icon(LucideIcons.shuffle),
             title: const Text('Shuffle all'),
             onTap: () {
-              Navigator.of(context).pop();
+              dismiss();
               ref.read(playerServiceProvider).setAfShuffleMode(true);
             },
           ),
@@ -867,7 +867,7 @@ class _ReactiveTransport extends ConsumerWidget {
             title: const Text('Shuffle next'),
             subtitle: const Text('Only upcoming tracks'),
             onTap: () {
-              Navigator.of(context).pop();
+              dismiss();
               ref.read(playerServiceProvider).setAfShuffleTail();
             },
           ),

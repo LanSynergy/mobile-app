@@ -10,14 +10,20 @@ import '../design_tokens/tokens.dart';
 /// Unlike [showModalBottomSheet], this inserts an [OverlayEntry] into the
 /// existing route's Navigator overlay, so [BackdropFilter] can actually
 /// see and blur the content behind the sheet.
+///
+/// Pass [child] for simple content, or [builder] when the child needs to
+/// dismiss the sheet programmatically (e.g. a close button).
 Future<T?> showBlurBottomSheet<T>({
   required BuildContext context,
-  required WidgetBuilder builder,
+  Widget? child,
+  Widget Function(BuildContext context, void Function([T? result]) dismiss)?
+      builder,
   bool isDismissible = true,
   bool isScrollControlled = true,
   bool enableDrag = true,
   double topRadius = AfRadii.xl,
 }) {
+  assert(child != null || builder != null, 'Provide child or builder');
   final overlay = Navigator.of(context, rootNavigator: true).overlay;
   if (overlay == null) return Future.value(null);
 
@@ -26,7 +32,12 @@ Future<T?> showBlurBottomSheet<T>({
 
   entry = OverlayEntry(
     builder: (context) => _BlurBottomSheetOverlay<T>(
-      builder: builder,
+      builder: builder != null
+          ? (context) => builder(context, ([T? result]) {
+                entry.remove();
+                if (!completer.isCompleted) completer.complete(result);
+              })
+          : (context) => child!,
       isDismissible: isDismissible,
       enableDrag: enableDrag,
       topRadius: topRadius,

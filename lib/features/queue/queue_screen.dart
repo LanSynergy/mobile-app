@@ -415,7 +415,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     try {
       name = await showBlurDialog<String>(
         context: context,
-        child: Column(
+        builder: (context, dismiss) => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -429,19 +429,18 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                 hintText: 'Playlist name',
                 border: OutlineInputBorder(),
               ),
-              onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
+              onSubmitted: (v) => dismiss(v.trim()),
             ),
             const SizedBox(height: AfSpacing.s24),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => dismiss(),
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
-                  onPressed: () =>
-                      Navigator.of(context).pop(controller.text.trim()),
+                  onPressed: () => dismiss(controller.text.trim()),
                   child: const Text('Save'),
                 ),
               ],

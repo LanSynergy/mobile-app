@@ -21,87 +21,85 @@ void showAlbumMoreSheet(
   HapticFeedback.mediumImpact();
   showBlurDialog<void>(
     context: context,
-    child: Builder(
-      builder: (dialogCtx) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.gutterGenerous,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  album.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AfTypography.titleSmall,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  album.artistName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AfTypography.bodySmall.copyWith(
-                    color: AfColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
+    builder: (context, dismiss) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.gutterGenerous,
           ),
-          const SizedBox(height: AfSpacing.s8),
-          const Divider(height: 1, color: AfColors.surfaceHigh),
-          _MenuItem(
-            icon: LucideIcons.shuffle,
-            label: 'Shuffle play',
-            enabled: tracks.isNotEmpty,
-            onTap: () async {
-              Navigator.of(dialogCtx).pop();
-              await ref.read(playActionsProvider).playAlbum(tracks);
-              await ref.read(playerServiceProvider).setAfShuffleMode(true);
-            },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                album.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AfTypography.titleSmall,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                album.artistName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textSecondary,
+                ),
+              ),
+            ],
           ),
+        ),
+        const SizedBox(height: AfSpacing.s8),
+        const Divider(height: 1, color: AfColors.surfaceHigh),
+        _MenuItem(
+          icon: LucideIcons.shuffle,
+          label: 'Shuffle play',
+          enabled: tracks.isNotEmpty,
+          onTap: () async {
+            dismiss();
+            await ref.read(playActionsProvider).playAlbum(tracks);
+            await ref.read(playerServiceProvider).setAfShuffleMode(true);
+          },
+        ),
+        _MenuItem(
+          icon: LucideIcons.play,
+          label: 'Play next',
+          enabled: tracks.isNotEmpty,
+          onTap: () {
+            dismiss();
+            _enqueue(ref, tracks, atFront: true);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(_enqueueLabel(tracks.length, 'will play next')),
+              ),
+            );
+          },
+        ),
+        _MenuItem(
+          icon: LucideIcons.list,
+          label: 'Add to queue',
+          enabled: tracks.isNotEmpty,
+          onTap: () {
+            dismiss();
+            _enqueue(ref, tracks, atFront: false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(_enqueueLabel(tracks.length, 'added to queue')),
+              ),
+            );
+          },
+        ),
+        if (album.artistId != null)
           _MenuItem(
-            icon: LucideIcons.play,
-            label: 'Play next',
-            enabled: tracks.isNotEmpty,
+            icon: LucideIcons.user,
+            label: 'Go to artist',
             onTap: () {
-              Navigator.of(dialogCtx).pop();
-              _enqueue(ref, tracks, atFront: true);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(_enqueueLabel(tracks.length, 'will play next')),
-                ),
-              );
+              dismiss();
+              context.push('/artist/${album.artistId}');
             },
           ),
-          _MenuItem(
-            icon: LucideIcons.list,
-            label: 'Add to queue',
-            enabled: tracks.isNotEmpty,
-            onTap: () {
-              Navigator.of(dialogCtx).pop();
-              _enqueue(ref, tracks, atFront: false);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(_enqueueLabel(tracks.length, 'added to queue')),
-                ),
-              );
-            },
-          ),
-          if (album.artistId != null)
-            _MenuItem(
-              icon: LucideIcons.user,
-              label: 'Go to artist',
-              onTap: () {
-                Navigator.of(dialogCtx).pop();
-                context.push('/artist/${album.artistId}');
-              },
-            ),
-        ],
-      ),
+      ],
     ),
   );
 }

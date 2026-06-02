@@ -30,7 +30,7 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
   HapticFeedback.mediumImpact();
   showBlurDialog<void>(
     context: context,
-    child: Consumer(
+    builder: (context, dismiss) => Consumer(
       builder: (ctx, innerRef, _) {
         final overrides = innerRef.watch(trackFavoriteOverridesProvider);
         final isFavorite = overrides[track.id] ?? track.isFavorite;
@@ -71,7 +71,7 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
               iconColor: isFavorite ? AfColors.indigo300 : null,
               label: isFavorite ? 'Remove from liked' : 'Add to liked',
               onTap: () async {
-                Navigator.of(ctx).pop();
+                dismiss();
                 try {
                   await innerRef.read(favoriteToggleProvider)(track);
                   if (context.mounted) {
@@ -101,7 +101,7 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
               label: 'Play next',
               onTap: () {
                 _playNext(innerRef, track);
-                Navigator.of(ctx).pop();
+                dismiss();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('"${track.title}" will play next')),
                 );
@@ -112,7 +112,7 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
               label: 'Add to queue',
               onTap: () {
                 _addToQueue(innerRef, track);
-                Navigator.of(ctx).pop();
+                dismiss();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('"${track.title}" added to queue')),
                 );
@@ -122,12 +122,12 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
               icon: LucideIcons.radio,
               label: 'Start Radio',
               onTap: () async {
-                // Resolve providers BEFORE popping the dialog — the ref
+                // Resolve providers BEFORE dismissing — the ref
                 // comes from a Consumer inside the dialog and becomes
                 // stale once the dialog is dismissed.
                 final radioGen = innerRef.read(radioGeneratorProvider);
                 final playActions = innerRef.read(playActionsProvider);
-                Navigator.of(ctx).pop();
+                dismiss();
                 await _startTrackRadio(context, radioGen, playActions, track);
               },
             ),
@@ -135,7 +135,7 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
               icon: LucideIcons.plus,
               label: 'Save to playlist',
               onTap: () {
-                Navigator.of(ctx).pop();
+                dismiss();
                 showSaveToPlaylistSheet(context, innerRef, track);
               },
             ),
@@ -144,7 +144,7 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
                 icon: LucideIcons.disc3,
                 label: 'Go to album',
                 onTap: () {
-                  Navigator.of(ctx).pop();
+                  dismiss();
                   context.push('/album/${track.albumId}');
                 },
               ),
@@ -153,7 +153,7 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
                 icon: LucideIcons.user,
                 label: 'Go to artist',
                 onTap: () {
-                  Navigator.of(ctx).pop();
+                  dismiss();
                   context.push('/artist/${track.artistId}');
                 },
               ),
@@ -161,7 +161,7 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
               icon: LucideIcons.info,
               label: 'Show details',
               onTap: () {
-                Navigator.of(ctx).pop();
+                dismiss();
                 showTrackDetailsSheet(context, innerRef, track);
               },
             ),
@@ -177,7 +177,7 @@ void showAlbumContextMenu(BuildContext context, WidgetRef ref, AfAlbum album) {
   HapticFeedback.mediumImpact();
   showBlurDialog<void>(
     context: context,
-    child: Builder(
+    builder: (context, dismiss) => Builder(
       builder: (dialogCtx) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -213,7 +213,7 @@ void showAlbumContextMenu(BuildContext context, WidgetRef ref, AfAlbum album) {
             icon: LucideIcons.play,
             label: 'Play album',
             onTap: () async {
-              Navigator.of(dialogCtx).pop();
+              dismiss();
               final detail = await ref.read(
                 albumDetailProvider(album.id).future,
               );
@@ -227,7 +227,7 @@ void showAlbumContextMenu(BuildContext context, WidgetRef ref, AfAlbum album) {
               icon: LucideIcons.user,
               label: 'Go to artist',
               onTap: () {
-                Navigator.of(dialogCtx).pop();
+                dismiss();
                 context.push('/artist/${album.artistId}');
               },
             ),

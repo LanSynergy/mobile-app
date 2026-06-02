@@ -98,7 +98,7 @@ void showMoreSheet(BuildContext context, WidgetRef ref) {
 
   showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => ValueListenableBuilder<_MorePage>(
+    builder: (context, dismiss) => ValueListenableBuilder<_MorePage>(
       valueListenable: pageNotifier,
       builder: (context, page, _) {
         if (page == _MorePage.details) {
@@ -113,7 +113,7 @@ void showMoreSheet(BuildContext context, WidgetRef ref) {
           );
         }
         return _MoreMenu(
-          dialogCtx: dialogCtx,
+          dismiss: dismiss,
           context: context,
           ref: ref,
           pageNotifier: pageNotifier,
@@ -127,13 +127,13 @@ enum _MorePage { menu, details }
 
 class _MoreMenu extends StatelessWidget {
   const _MoreMenu({
-    required this.dialogCtx,
+    required this.dismiss,
     required this.context,
     required this.ref,
     required this.pageNotifier,
   });
 
-  final BuildContext dialogCtx;
+  final void Function() dismiss;
   final BuildContext context;
   final WidgetRef ref;
   final ValueNotifier<_MorePage> pageNotifier;
@@ -154,7 +154,7 @@ class _MoreMenu extends StatelessWidget {
           ),
           label: 'A-B Loop',
           onTap: () {
-            Navigator.of(dialogCtx).pop();
+            dismiss();
             showAbLoopDialog(this.context, ref);
           },
         ),
@@ -166,7 +166,7 @@ class _MoreMenu extends StatelessWidget {
           ),
           label: 'Sleep timer',
           onTap: () {
-            Navigator.of(dialogCtx).pop();
+            dismiss();
             showSleepDialog(this.context, ref);
           },
         ),
@@ -178,7 +178,7 @@ class _MoreMenu extends StatelessWidget {
           ),
           label: 'Playback speed',
           onTap: () {
-            Navigator.of(dialogCtx).pop();
+            dismiss();
             showSpeedDialog(this.context, ref);
           },
         ),
@@ -190,7 +190,7 @@ class _MoreMenu extends StatelessWidget {
           ),
           label: 'Audio output',
           onTap: () {
-            Navigator.of(dialogCtx).pop();
+            dismiss();
             showOutputDialog(this.context, ref);
           },
         ),
@@ -202,7 +202,7 @@ class _MoreMenu extends StatelessWidget {
           ),
           label: 'Volume',
           onTap: () {
-            Navigator.of(dialogCtx).pop();
+            dismiss();
             showVolumeDialog(this.context, ref);
           },
         ),
@@ -214,7 +214,7 @@ class _MoreMenu extends StatelessWidget {
           ),
           label: 'Audio delay',
           onTap: () {
-            Navigator.of(dialogCtx).pop();
+            dismiss();
             showAudioDelayDialog(this.context, ref);
           },
         ),
@@ -319,7 +319,7 @@ void showVolumeDialog(BuildContext context, WidgetRef ref) {
   bool muted = svc.isMuted;
   showBlurDialog<void>(
     context: context,
-    child: StatefulBuilder(
+    builder: (context, dismiss) => StatefulBuilder(
       builder: (ctx, setDialogState) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -382,7 +382,7 @@ void showAudioDelayDialog(BuildContext context, WidgetRef ref) {
   double delayMs = svc.audioDelay.inMilliseconds.toDouble();
   showBlurDialog<void>(
     context: context,
-    child: StatefulBuilder(
+    builder: (context, dismiss) => StatefulBuilder(
       builder: (ctx, setDialogState) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -434,7 +434,7 @@ void showAudioDelayDialog(BuildContext context, WidgetRef ref) {
               ),
               const SizedBox(width: AfSpacing.s8),
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => dismiss(),
                 child: const Text('Done'),
               ),
             ],
@@ -453,7 +453,7 @@ void showAbLoopDialog(BuildContext context, WidgetRef ref) {
   final svc = ref.read(playerServiceProvider);
   showBlurDialog<void>(
     context: context,
-    child: Column(
+    builder: (context, dismiss) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -469,7 +469,7 @@ void showAbLoopDialog(BuildContext context, WidgetRef ref) {
             final pos = await svc.getRawPosition();
             await svc.setAbLoopA(pos);
             ref.read(abLoopAProvider.notifier).state = pos;
-            if (context.mounted) Navigator.pop(context);
+            dismiss();
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Loop start: ${fmtDuration(pos)}')),
@@ -489,7 +489,7 @@ void showAbLoopDialog(BuildContext context, WidgetRef ref) {
             final pos = await svc.getRawPosition();
             await svc.setAbLoopB(pos);
             ref.read(abLoopBProvider.notifier).state = pos;
-            if (context.mounted) Navigator.pop(context);
+            dismiss();
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Loop end: ${fmtDuration(pos)}')),
@@ -510,7 +510,7 @@ void showAbLoopDialog(BuildContext context, WidgetRef ref) {
             await svc.setAbLoopB(null);
             ref.read(abLoopAProvider.notifier).state = null;
             ref.read(abLoopBProvider.notifier).state = null;
-            if (context.mounted) Navigator.pop(context);
+            dismiss();
             if (context.mounted) {
               ScaffoldMessenger.of(
                 context,
@@ -554,7 +554,7 @@ void showSpeedDialog(BuildContext context, WidgetRef ref) {
   final current = ref.read(playerServiceProvider).speed;
   showBlurBottomSheet<void>(
     context: context,
-    builder: (dialogCtx) => Column(
+    builder: (context, dismiss) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -576,7 +576,7 @@ void showSpeedDialog(BuildContext context, WidgetRef ref) {
                 : null,
             onTap: () {
               unawaited(ref.read(playerServiceProvider).setAfSpeed(s));
-              Navigator.of(dialogCtx).pop();
+              dismiss();
             },
           ),
       ],
@@ -591,7 +591,7 @@ void showSpeedDialog(BuildContext context, WidgetRef ref) {
 void showSleepDialog(BuildContext context, WidgetRef ref) {
   showBlurBottomSheet<void>(
     context: context,
-    builder: (_) => const SleepTimerDialogContent(),
+    builder: (context, dismiss) => SleepTimerDialogContent(dismiss: dismiss),
   );
 }
 
@@ -602,9 +602,9 @@ void showSleepDialog(BuildContext context, WidgetRef ref) {
 void showOutputDialog(BuildContext context, WidgetRef ref) {
   showBlurBottomSheet<void>(
     context: context,
-    builder: (_) => ConstrainedBox(
+    builder: (context, dismiss) => ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
-      child: const OutputDialogContent(),
+      child: OutputDialogContent(dismiss: dismiss),
     ),
   );
 }
@@ -614,7 +614,9 @@ void showOutputDialog(BuildContext context, WidgetRef ref) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class OutputDialogContent extends ConsumerWidget {
-  const OutputDialogContent({super.key});
+  const OutputDialogContent({super.key, required this.dismiss});
+
+  final void Function() dismiss;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -682,7 +684,7 @@ class OutputDialogContent extends ConsumerWidget {
                             : null,
                         onTap: () async {
                           await svc.setAudioDevice(device);
-                          if (context.mounted) Navigator.of(context).pop();
+                          dismiss();
                         },
                       );
                     }),
