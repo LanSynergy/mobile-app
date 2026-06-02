@@ -18,7 +18,7 @@ import '../../widgets/stagger_reveal.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/skeletons/home_skeleton.dart';
-import '../library/songs_screen.dart' show SongsPill, songsPillProvider;
+import '../library/library_screen.dart' show SongsPill, songsPillProvider;
 
 /// Mockup 04 — Home.
 class HomeScreen extends ConsumerStatefulWidget {

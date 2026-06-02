@@ -26,9 +26,9 @@ class AppShell extends ConsumerWidget {
       label: 'Home',
     ),
     const AfBottomNavItem(
-      icon: LucideIcons.disc3,
-      filledIcon: LucideIcons.disc3,
-      label: 'Songs',
+      icon: LucideIcons.library,
+      filledIcon: LucideIcons.library,
+      label: 'Library',
     ),
     const AfBottomNavItem(
       icon: LucideIcons.listMusic,
