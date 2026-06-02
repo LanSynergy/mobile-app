@@ -11,7 +11,6 @@ import '../features/cast_picker/cast_picker_screen.dart';
 import '../features/genre/genre_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/library/library_screen.dart';
-import '../features/library/songs_screen.dart';
 import '../features/lyrics/lyrics_screen.dart';
 import '../features/now_playing/now_playing_screen.dart';
 import '../features/now_playing/eq_dsp_screen.dart';
