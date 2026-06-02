@@ -30,7 +30,7 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
   HapticFeedback.mediumImpact();
   showBlurDialog<void>(
     context: context,
-    builder: (context, dismiss) => Consumer(
+    builder: (_, dismiss) => Consumer(
       builder: (ctx, innerRef, _) {
         final overrides = innerRef.watch(trackFavoriteOverridesProvider);
         final isFavorite = overrides[track.id] ?? track.isFavorite;
@@ -177,7 +177,7 @@ void showAlbumContextMenu(BuildContext context, WidgetRef ref, AfAlbum album) {
   HapticFeedback.mediumImpact();
   showBlurDialog<void>(
     context: context,
-    builder: (context, dismiss) => Builder(
+    builder: (_, dismiss) => Builder(
       builder: (dialogCtx) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

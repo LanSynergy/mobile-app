@@ -394,7 +394,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
   Future<bool> _confirmRemove(BuildContext context, String title) async {
     return await showBlurDialog<bool>(
           context: context,
-          child: Column(
+          builder: (context, dismiss) => Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -409,11 +409,11 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () => dismiss(false),
                     child: const Text('Cancel'),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.pop(context, true),
+                    onPressed: () => dismiss(true),
                     child: Text(
                       'Remove',
                       style: AfTypography.bodyMedium.copyWith(
@@ -550,7 +550,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
       case _PlaylistAction.delete:
         final confirmed = await showBlurDialog<bool>(
           context: context,
-          child: Column(
+          builder: (context, dismiss) => Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -565,11 +565,11 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () => dismiss(false),
                     child: const Text('Cancel'),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.pop(context, true),
+                    onPressed: () => dismiss(true),
                     child: Text(
                       'Delete',
                       style: AfTypography.bodyMedium.copyWith(
@@ -607,7 +607,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     try {
       return await showBlurDialog<String>(
         context: context,
-        child: Column(
+        builder: (context, dismiss) => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -617,18 +617,18 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
               controller: ctl,
               autofocus: true,
               decoration: const InputDecoration(hintText: 'Playlist name'),
-              onSubmitted: (v) => Navigator.pop(context, v),
+              onSubmitted: (v) => dismiss(v),
             ),
             const SizedBox(height: AfSpacing.s24),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => dismiss(),
                   child: const Text('Cancel'),
                 ),
                 TextButton(
-                  onPressed: () => Navigator.pop(context, ctl.text),
+                  onPressed: () => dismiss(ctl.text),
                   child: const Text('Rename'),
                 ),
               ],
