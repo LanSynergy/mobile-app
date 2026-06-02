@@ -124,25 +124,15 @@ class AppShell extends ConsumerWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Full-bleed gradient background — deep dark (#0A0A0A → #111111)
-          // 8 stops eliminate banding on ultra-dark surfaces.
+          // Full-bleed gradient background — deep dark (canvas → low)
           const RepaintBoundary(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF0A0A0A), // surfaceCanvas
-                    Color(0xFF0B0B0B),
-                    Color(0xFF0C0C0C),
-                    Color(0xFF0D0D0D),
-                    Color(0xFF0E0E0E),
-                    Color(0xFF0F0F0F),
-                    Color(0xFF101010),
-                    Color(0xFF111111), // surfaceLow
-                  ],
-                  stops: [0.0, 0.14, 0.29, 0.43, 0.57, 0.71, 0.86, 1.0],
+                  colors: [AfColors.surfaceCanvas, AfColors.surfaceLow],
+                  stops: [0.0, 1.0],
                 ),
               ),
             ),

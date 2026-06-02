@@ -10,13 +10,16 @@ abstract final class AfColors {
   // ---------------------------------------------------------------------------
   // Surface scale — True blacks, no tint
   // Depth via tone, NOT blur, NOT shadow-as-decoration.
+  //
+  // Spaced ≥12 per channel so any 2-stop gradient between adjacent tokens
+  // produces smooth transitions on 8-bit displays without extra stops.
   // ---------------------------------------------------------------------------
   static const surfaceCanvas = Color(0xFF0A0A0A);
-  static const surfaceLow = Color(0xFF111111);
-  static const surfaceBase = Color(0xFF181818);
-  static const surfaceRaised = Color(0xFF222222);
-  static const surfaceHigh = Color(0xFF2A2A2A);
-  static const surfaceMax = Color(0xFF333333);
+  static const surfaceLow = Color(0xFF161616);
+  static const surfaceBase = Color(0xFF222222);
+  static const surfaceRaised = Color(0xFF2E2E2E);
+  static const surfaceHigh = Color(0xFF3A3A3A);
+  static const surfaceMax = Color(0xFF464646);
   static const surfaceScrim = Color(0xCC000000);
 
   // ---------------------------------------------------------------------------
@@ -53,32 +56,6 @@ abstract final class AfColors {
   static const semanticInfo = Color(0xFF7BA3B8);
   static const semanticOffline = Color(0xFF706A64);
 
-  // ---------------------------------------------------------------------------
-  // Gradient helpers — anti-banding for ultra-dark surfaces
-  // ---------------------------------------------------------------------------
-
-  /// Generates smooth gradient stops between [begin] and [end].
-  ///
-  /// Dark surfaces with minimal color distance (e.g. 0x0A → 0x11) produce
-  /// severe banding with only 2 stops. This inserts [steps] intermediate
-  /// colors so each segment covers a smaller value range.
-  ///
-  /// Returns `(colors, stops)` ready for `LinearGradient` / `RadialGradient`.
-  static (List<Color>, List<double>) smoothStops(
-    Color begin,
-    Color end, {
-    int steps = 6,
-  }) {
-    final colors = <Color>[];
-    final stops = <double>[];
-    final total = steps + 1;
-    for (var i = 0; i <= total; i++) {
-      final t = i / total;
-      colors.add(Color.lerp(begin, end, t)!);
-      stops.add(t);
-    }
-    return (colors, stops);
-  }
 }
 
 /// Spectral accent triple, extracted from current artwork at runtime.

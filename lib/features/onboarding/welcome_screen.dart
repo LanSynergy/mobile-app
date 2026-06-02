@@ -32,17 +32,11 @@ class WelcomeScreen extends ConsumerWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFF111111), // surfaceLow
-                  Color(0xFF101010),
-                  Color(0xFF0F0F0F),
-                  Color(0xFF0E0E0E),
-                  Color(0xFF0D0D0D),
-                  Color(0xFF0C0C0C),
-                  Color(0xFF0B0B0B),
-                  Color(0xFF0A0A0A), // surfaceCanvas
-                  Color(0xFF0A0A0A), // surfaceCanvas — flat after 30%
+                  AfColors.surfaceLow,
+                  AfColors.surfaceCanvas,
+                  AfColors.surfaceCanvas,
                 ],
-                stops: [0.0, 0.04, 0.09, 0.13, 0.17, 0.22, 0.26, 0.3, 1.0],
+                stops: [0.0, 0.3, 1.0],
               ),
             ),
           ),

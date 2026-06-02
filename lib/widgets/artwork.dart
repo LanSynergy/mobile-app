@@ -58,17 +58,7 @@ class Artwork extends ConsumerWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF181818), // surfaceBase
-            Color(0xFF171717),
-            Color(0xFF161616),
-            Color(0xFF151515),
-            Color(0xFF141414),
-            Color(0xFF131313),
-            Color(0xFF121212),
-            Color(0xFF111111), // surfaceLow
-          ],
-          stops: [0.0, 0.14, 0.29, 0.43, 0.57, 0.71, 0.86, 1.0],
+          colors: [AfColors.surfaceBase, AfColors.surfaceLow],
         ),
       ),
       child: const Center(
