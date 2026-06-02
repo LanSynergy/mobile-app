@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,50 +7,24 @@ import '../core/jellyfin/models/quality.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import '../utils/time_format.dart';
+import 'bottom_sheet.dart';
 
 void showTrackDetailsSheet(BuildContext context, WidgetRef ref, AfTrack track) {
   HapticFeedback.mediumImpact();
-  showModalBottomSheet<void>(
+  showBlurBottomSheet<void>(
     context: context,
-    backgroundColor: Colors.transparent,
-    builder: (sheetCtx) => ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: AfRadii.rXl),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xB30B0B14),
-            border: Border(
-              top: BorderSide(color: AfColors.surfaceLow, width: 1),
+    builder: (_) => SafeArea(
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 400),
+              child: TrackDetailsBody(track: track),
             ),
           ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: AfSpacing.s12),
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AfColors.textTertiary.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AfSpacing.s12),
-                Flexible(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 400),
-                    child: TrackDetailsBody(track: track),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        ],
       ),
     ),
   );

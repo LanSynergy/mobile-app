@@ -18,6 +18,7 @@ import '../../widgets/track_row.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/skeletons/library_skeleton.dart';
 import '../../utils/color_parse.dart';
+import '../../widgets/bottom_sheet.dart';
 
 enum SongsPill { songs, artists, albums, genres }
 
@@ -53,10 +54,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 
   void _openSearch(BuildContext context) {
-    showModalBottomSheet(
+    showBlurBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (_) => const _CommandPaletteSearch(),
     );
   }
