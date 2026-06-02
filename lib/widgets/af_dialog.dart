@@ -127,27 +127,29 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
                   scale: scale,
                   child: GestureDetector(
                     onTap: () {},
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(_borderRadius),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(
-                          sigmaX: _blurSigma,
-                          sigmaY: _blurSigma,
-                        ),
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: AfSpacing.s24,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.s24,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(_borderRadius),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(
+                            sigmaX: _blurSigma,
+                            sigmaY: _blurSigma,
                           ),
-                          padding: const EdgeInsets.all(AfSpacing.s16),
-                          decoration: BoxDecoration(
-                            color: AfColors.surfaceRaised.withValues(
-                              alpha: 0.85,
+                          child: Container(
+                            padding: const EdgeInsets.all(AfSpacing.s16),
+                            decoration: BoxDecoration(
+                              color: AfColors.surfaceRaised.withValues(
+                                alpha: 0.85,
+                              ),
+                              borderRadius: BorderRadius.circular(_borderRadius),
                             ),
-                            borderRadius: BorderRadius.circular(_borderRadius),
-                          ),
-                          child: ListTileTheme(
-                            tileColor: Colors.transparent,
-                            child: widget.child,
+                            child: ListTileTheme(
+                              tileColor: Colors.transparent,
+                              child: widget.child,
+                            ),
                           ),
                         ),
                       ),
