@@ -72,23 +72,24 @@ class NowPlayingScreen extends ConsumerWidget {
             // ── Full-bleed artwork ──
             _ReactiveArtwork(track: track),
 
-            // ── Gradient scrim (transparent → surfaceCanvas) ──
+            // ── Gradient scrim (transparent → semi-transparent) ──
+            // Artwork stays visible; frosted panels provide legibility.
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
               height: MediaQuery.of(context).size.height * 0.65,
               child: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      AfColors.surfaceCanvas,
-                      AfColors.surfaceCanvas,
+                      AfColors.surfaceCanvas.withValues(alpha: 0.55),
+                      AfColors.surfaceCanvas.withValues(alpha: 0.80),
                     ],
-                    stops: [0.0, 0.35, 1.0],
+                    stops: const [0.0, 0.4, 1.0],
                   ),
                 ),
               ),

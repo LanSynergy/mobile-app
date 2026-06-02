@@ -372,11 +372,17 @@ void main() {
         isTrue,
         reason: 'af_dialog.dart must define showBlurDialog function',
       );
-      // showBlurDialog uses showDialog (not showModalBottomSheet).
+      // showBlurDialog uses OverlayEntry (not showDialog / showModalBottomSheet).
       expect(
-        afDialog.contains('showDialog<'),
+        afDialog.contains('OverlayEntry'),
         isTrue,
-        reason: 'showBlurDialog must use showDialog, not showModalBottomSheet',
+        reason: 'showBlurDialog must use OverlayEntry for cross-route blur',
+      );
+      // showDialog must NOT appear as a function call (doc comments are OK).
+      expect(
+        RegExp(r'(?:^|\s)showDialog[<(]').hasMatch(afDialog),
+        isFalse,
+        reason: 'showBlurDialog must not call showDialog (breaks BackdropFilter)',
       );
       expect(
         afDialog.contains('showModalBottomSheet'),

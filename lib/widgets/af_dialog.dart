@@ -1,50 +1,142 @@
+import 'dart:async';
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../design_tokens/tokens.dart';
 
-/// A reusable function to show a blurred, transparent dialog.
+/// Shows a blurred dialog that renders in the current route's overlay.
+///
+/// Unlike [showDialog], this inserts an [OverlayEntry] into the existing
+/// route's Navigator overlay, so [BackdropFilter] can actually see and
+/// blur the content behind the dialog — no new route, no opaque barrier.
 Future<T?> showBlurDialog<T>({
   required BuildContext context,
   required Widget child,
   bool barrierDismissible = true,
 }) {
-  return showDialog<T>(
-    context: context,
-    barrierDismissible: barrierDismissible,
-    barrierColor: AfColors.surfaceScrim,
-    builder: (BuildContext context) {
-      return _BlurDialog(child: child);
-    },
+  final overlay = Navigator.of(context, rootNavigator: true).overlay;
+  if (overlay == null) return Future.value(null);
+
+  final completer = Completer<T?>();
+  late OverlayEntry entry;
+
+  entry = OverlayEntry(
+    builder: (context) => _BlurDialogOverlay<T>(
+      barrierDismissible: barrierDismissible,
+      onDismiss: (result) {
+        entry.remove();
+        if (!completer.isCompleted) completer.complete(result);
+      },
+      child: child,
+    ),
   );
+
+  overlay.insert(entry);
+  return completer.future;
 }
 
-/// The actual Blur Dialog widget.
-class _BlurDialog extends StatelessWidget {
-  const _BlurDialog({required this.child});
+/// Overlay-based blur dialog. Lives in the same overlay as the route content
+/// so BackdropFilter can blur what's behind it.
+class _BlurDialogOverlay<T> extends StatefulWidget {
+  const _BlurDialogOverlay({
+    required this.child,
+    required this.barrierDismissible,
+    required this.onDismiss,
+  });
+
   final Widget child;
+  final bool barrierDismissible;
+  final void Function(T?) onDismiss;
+
+  @override
+  State<_BlurDialogOverlay<T>> createState() => _BlurDialogOverlayState<T>();
+}
+
+class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _fadeAnim;
+  late final Animation<double> _scaleAnim;
+  bool _dismissed = false;
+
+  static const _borderRadius = 20.0;
+  static const _blurSigma = 15.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: AfDurations.standard,
+      reverseDuration: AfDurations.quick,
+    );
+    _fadeAnim = CurvedAnimation(parent: _ctrl, curve: AfCurves.easeOut);
+    _scaleAnim = Tween<double>(
+      begin: 0.92,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeEmphasized));
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _dismiss([T? result]) {
+    if (_dismissed) return;
+    _dismissed = true;
+    _ctrl.reverse().then((_) => widget.onDismiss(result));
+  }
 
   @override
   Widget build(BuildContext context) {
-    const borderRadius = 20.0;
-    const blurSigma = 15.0;
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-          child: Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: AfColors.surfaceRaised.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(borderRadius),
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        final opacity = _fadeAnim.value;
+        final scale = _scaleAnim.value;
+
+        return Material(
+          type: MaterialType.transparency,
+          child: GestureDetector(
+            onTap: widget.barrierDismissible ? _dismiss : null,
+            behavior: HitTestBehavior.opaque,
+            child: Opacity(
+              opacity: opacity,
+              child: Center(
+                child: Transform.scale(
+                  scale: scale,
+                  child: GestureDetector(
+                    onTap: () {}, // absorb taps on dialog content
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(_borderRadius),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(
+                          sigmaX: _blurSigma,
+                          sigmaY: _blurSigma,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: AfColors.surfaceRaised.withValues(
+                              alpha: 0.85,
+                            ),
+                            borderRadius: BorderRadius.circular(_borderRadius),
+                          ),
+                          child: widget.child,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
-            child: child,
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
