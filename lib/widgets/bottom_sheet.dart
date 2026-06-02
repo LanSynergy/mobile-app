@@ -160,7 +160,10 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                                   ),
                                 ),
                                 const SizedBox(height: AfSpacing.s12),
-                                widget.builder(context),
+                                ListTileTheme(
+                                  tileColor: Colors.transparent,
+                                  child: widget.builder(context),
+                                ),
                               ],
                             ),
                           ),

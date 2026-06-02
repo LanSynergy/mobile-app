@@ -140,7 +140,10 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
                             ),
                             borderRadius: BorderRadius.circular(_borderRadius),
                           ),
-                          child: widget.child,
+                          child: ListTileTheme(
+                            tileColor: Colors.transparent,
+                            child: widget.child,
+                          ),
                         ),
                       ),
                     ),
