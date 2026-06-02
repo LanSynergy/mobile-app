@@ -215,7 +215,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                                 width: 48,
                                 height: 48,
                                 decoration: const BoxDecoration(
-                                  color: Colors.white,
+                                  color: AfColors.textOnPrimary,
                                   shape: BoxShape.circle,
                                 ),
                                 child: Center(

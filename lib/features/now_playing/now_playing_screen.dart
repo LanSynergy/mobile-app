@@ -19,6 +19,7 @@ import '../../utils/time_format.dart';
 import '../../widgets/audio_visual_scrubber.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/press_scale.dart';
+import '../../widgets/empty_state.dart';
 import 'utility_row.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,34 +137,10 @@ class _EmptyState extends StatelessWidget {
           onPressed: () => Navigator.maybePop(context),
         ),
       ),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: const BoxDecoration(
-                color: AfColors.surfaceRaised,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                LucideIcons.music,
-                size: 40,
-                color: AfColors.textTertiary,
-              ),
-            ),
-            const SizedBox(height: AfSpacing.s12),
-            Text('Nothing playing yet', style: AfTypography.titleSmall),
-            const SizedBox(height: AfSpacing.s8),
-            Text(
-              'Start playing to see your music here',
-              style: AfTypography.bodySmall.copyWith(
-                color: AfColors.textTertiary,
-              ),
-            ),
-          ],
-        ),
+      body: const EmptyState(
+        icon: LucideIcons.music,
+        title: 'Nothing playing yet',
+        body: 'Start playing to see your music here',
       ),
     );
   }
@@ -429,7 +406,9 @@ class _FrostedTopBar extends ConsumerWidget {
                         ? null
                         : () => context.push('/album/${track.albumId}'),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AfSpacing.s4,
+                      ),
                       child: Column(
                         children: [
                           Text(
@@ -659,7 +638,7 @@ class _MetadataOverlay extends ConsumerWidget {
                 vertical: 3,
               ),
               decoration: BoxDecoration(
-                color: AfColors.indigo400.withValues(alpha: 0.15),
+                color: AfColors.accentMuted.withValues(alpha: 0.2),
                 borderRadius: AfRadii.borderPill,
               ),
               child: Text(
@@ -1040,7 +1019,11 @@ class _TransportButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return PressScale(
       onTap: onTap,
-      child: SizedBox(width: 44, height: 44, child: Center(child: icon)),
+      child: SizedBox(
+        width: AfSpacing.minHitTarget,
+        height: AfSpacing.minHitTarget,
+        child: Center(child: icon),
+      ),
     );
   }
 }

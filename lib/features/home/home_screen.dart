@@ -17,6 +17,7 @@ import '../../widgets/section_header.dart';
 import '../../widgets/stagger_reveal.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/skeletons/home_skeleton.dart';
+import '../../utils/color_parse.dart';
 import '../library/library_screen.dart' show SongsPill, songsPillProvider;
 
 /// Home screen — Dark Moody edition.
@@ -265,11 +266,7 @@ class _CompactTrackRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Artwork(
-              url: track.imageUrl,
-              size: 48,
-              radius: BorderRadius.circular(AfRadii.sm),
-            ),
+            Artwork(url: track.imageUrl, size: 48, radius: AfRadii.borderSm),
             const SizedBox(width: AfSpacing.s12),
             Expanded(
               child: Column(
@@ -925,21 +922,7 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
 }
 
 /// Parses a hex colour string (6 or 8 digits with optional #) into a [Color].
-Color _hex(String hex) {
-  try {
-    final cleaned = hex.replaceFirst('#', '');
-    if (cleaned.length != 6 && cleaned.length != 8) {
-      return AfColors.accentPrimary;
-    }
-    final value = int.parse(
-      cleaned.length == 6 ? 'FF$cleaned' : cleaned,
-      radix: 16,
-    );
-    return Color(value);
-  } catch (_) {
-    return AfColors.accentPrimary;
-  }
-}
+Color _hex(String hex) => parseHexColor(hex);
 
 // ---------------------------------------------------------------------------
 // Glass morphism helpers

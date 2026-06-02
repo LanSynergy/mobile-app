@@ -16,7 +16,9 @@ import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/af_scrollbar.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/skeletons/search_skeleton.dart';
+import '../../utils/color_parse.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SearchScreen
@@ -317,37 +319,12 @@ class _LiveSearchResults extends ConsumerWidget {
                 horizontal: AfSpacing.s16,
                 vertical: AfSpacing.s24,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: const BoxDecoration(
-                      color: AfColors.surfaceRaised,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      LucideIcons.searchX,
-                      size: 40,
-                      color: AfColors.textTertiary,
-                    ),
-                  ),
-                  const SizedBox(height: AfSpacing.s12),
-                  Text(
-                    filter == SearchFilter.all
-                        ? 'No results for "$query"'
-                        : 'No ${filter.label.toLowerCase()} found for "$query"',
-                    style: AfTypography.titleSmall,
-                  ),
-                  const SizedBox(height: AfSpacing.s8),
-                  Text(
-                    'Try a different search term',
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textTertiary,
-                    ),
-                  ),
-                ],
+              child: EmptyState(
+                icon: LucideIcons.searchX,
+                title: filter == SearchFilter.all
+                    ? 'No results for "$query"'
+                    : 'No ${filter.label.toLowerCase()} found for "$query"',
+                body: 'Try a different search term',
               ),
             ),
           );
@@ -510,9 +487,7 @@ class _IdleFilterPills extends StatelessWidget {
               curve: AfCurves.easeStandard,
               padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
               decoration: BoxDecoration(
-                color: active
-                    ? AfColors.accentSecondary
-                    : AfColors.surfaceRaised,
+                color: active ? AfColors.accentPrimary : AfColors.surfaceRaised,
                 borderRadius: AfRadii.borderPill,
               ),
               alignment: Alignment.center,
@@ -533,21 +508,8 @@ class _IdleFilterPills extends StatelessWidget {
 }
 
 /// Parse a hex color string from the server, falling back to indigo on error.
-Color _parseTint(String hex) {
-  try {
-    final cleaned = hex.replaceFirst('#', '');
-    if (cleaned.length != 6 && cleaned.length != 8) {
-      return AfColors.accentSecondary;
-    }
-    final value = int.parse(
-      cleaned.length == 6 ? 'FF$cleaned' : cleaned,
-      radix: 16,
-    );
-    return Color(value);
-  } catch (_) {
-    return AfColors.accentSecondary;
-  }
-}
+Color _parseTint(String hex) =>
+    parseHexColor(hex, fallback: AfColors.accentSecondary);
 
 class _ArtistIdleGrid extends ConsumerWidget {
   const _ArtistIdleGrid({required this.isLocal});

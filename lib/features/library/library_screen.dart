@@ -14,7 +14,9 @@ import '../../widgets/press_scale.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
+import '../../widgets/section_header.dart';
 import '../../widgets/skeletons/library_skeleton.dart';
+import '../../utils/color_parse.dart';
 
 enum SongsPill { songs, artists, albums, genres }
 
@@ -210,7 +212,7 @@ class _CommandPaletteSearchState extends ConsumerState<_CommandPaletteSearch> {
                           width: 36,
                           height: 4,
                           decoration: const BoxDecoration(
-                            color: AfColors.accentPrimary,
+                            color: AfColors.surfaceMax,
                             borderRadius: AfRadii.borderPill,
                           ),
                         ),
@@ -714,14 +716,9 @@ class _RecentlyAddedSection extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-              child: Text(
-                'RECENTLY ADDED',
-                style: AfTypography.label.copyWith(
-                  color: AfColors.textTertiary,
-                ),
-              ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+              child: SectionHeader(title: 'Recently Added', uppercase: true),
             ),
             const SizedBox(height: AfSpacing.s12),
             SizedBox(
@@ -856,7 +853,7 @@ class _PillBarState extends State<_PillBar>
                         child: const IgnorePointer(
                           child: DecoratedBox(
                             decoration: BoxDecoration(
-                              color: AfColors.indigo600,
+                              color: AfColors.accentPrimary,
                               borderRadius: AfRadii.borderPill,
                             ),
                           ),
@@ -1285,16 +1282,5 @@ class _GenresGrid extends ConsumerWidget {
 }
 
 /// Parse a hex color string from the server, falling back to indigo on error.
-Color _parseGenreTint(String hex) {
-  try {
-    final cleaned = hex.replaceFirst('#', '');
-    if (cleaned.length != 6 && cleaned.length != 8) return AfColors.indigo600;
-    final value = int.parse(
-      cleaned.length == 6 ? 'FF$cleaned' : cleaned,
-      radix: 16,
-    );
-    return Color(value);
-  } catch (_) {
-    return AfColors.indigo600;
-  }
-}
+Color _parseGenreTint(String hex) =>
+    parseHexColor(hex, fallback: AfColors.indigo600);

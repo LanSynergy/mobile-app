@@ -234,7 +234,7 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(left: AfSpacing.s4, bottom: AfSpacing.s8),
       child: Text(
         label.toUpperCase(),
-        style: AfTypography.titleSmall.copyWith(color: AfColors.textPrimary),
+        style: AfTypography.label.copyWith(color: AfColors.textTertiary),
       ),
     );
   }
@@ -805,7 +805,7 @@ class SettingsScreen extends ConsumerWidget {
                           : '...';
                       return Text(
                         'Aetherfin $version · Android',
-                        style: AfTypography.caption.copyWith(
+                        style: AfTypography.overline.copyWith(
                           color: AfColors.textDisabled,
                         ),
                       );
@@ -944,33 +944,34 @@ class _LastFmSettingsSection extends ConsumerWidget {
                       context: context,
                       barrierDismissible: false,
                       builder: (context) => Center(
-                        child: Card(
-                          color: AfColors.surfaceBase,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 16,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AfColors.accentPrimary,
-                                  ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AfSpacing.s24,
+                            vertical: AfSpacing.s16,
+                          ),
+                          decoration: const BoxDecoration(
+                            color: AfColors.surfaceBase,
+                            borderRadius: AfRadii.borderLg,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AfColors.accentPrimary,
                                 ),
-                                const SizedBox(width: AfSpacing.s16),
-                                Text(
-                                  'Syncing favorites...',
-                                  style: AfTypography.bodyMedium.copyWith(
-                                    color: AfColors.textPrimary,
-                                  ),
+                              ),
+                              const SizedBox(width: AfSpacing.s16),
+                              Text(
+                                'Syncing favorites...',
+                                style: AfTypography.bodyMedium.copyWith(
+                                  color: AfColors.textPrimary,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

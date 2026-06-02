@@ -155,14 +155,13 @@ class SettingsSwitchTile extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                // ignore: deprecated_member_use
-                color: iconColor.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: AfColors.surfaceHigh,
+                borderRadius: AfRadii.borderSm,
               ),
-              child: Icon(icon, size: 20, color: iconColor),
+              child: Icon(icon, size: 16, color: iconColor),
             ),
             const SizedBox(width: AfSpacing.s12),
             Expanded(
@@ -188,6 +187,7 @@ class SettingsSwitchTile extends StatelessWidget {
             Switch.adaptive(
               value: value,
               onChanged: onChanged,
+              activeThumbColor: AfColors.textOnPrimary,
               activeTrackColor: AfColors.accentPrimary,
             ),
           ],

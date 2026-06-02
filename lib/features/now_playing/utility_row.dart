@@ -39,7 +39,11 @@ class UtilityRow extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         UtilityIcon(
-          icon: const Icon(LucideIcons.mic2, size: 22, color: AfColors.textSecondary),
+          icon: const Icon(
+            LucideIcons.mic2,
+            size: 22,
+            color: AfColors.textSecondary,
+          ),
           label: 'Lyrics',
           onTap: () => context.push('/lyrics'),
         ),
