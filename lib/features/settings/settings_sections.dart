@@ -249,26 +249,6 @@ class PrefetchToggleState extends State<PrefetchToggle> {
   }
 }
 
-class ArtworkPulseSwitch extends ConsumerWidget {
-  const ArtworkPulseSwitch({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final enabled = ref.watch(artworkPulseEnabledProvider);
-    return SettingsSwitchTile(
-      icon: LucideIcons.sparkles,
-      iconColor: AfColors.textSecondary,
-      title: 'Artwork pulse',
-      subtitle: 'Scale artwork on kick drums',
-      value: enabled,
-      onChanged: (v) {
-        ref.read(artworkPulseEnabledProvider.notifier).state = v;
-        unawaited(PlayerSettingsStore.saveArtworkPulse(v));
-      },
-    );
-  }
-}
-
 class SmartQueueToggle extends ConsumerWidget {
   const SmartQueueToggle({super.key});
 

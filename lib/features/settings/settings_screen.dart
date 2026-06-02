@@ -444,16 +444,6 @@ class SettingsScreen extends ConsumerWidget {
               const _SectionHeader('Appearance'),
               _IosGroup(
                 children: [
-                  _IosSwitch(
-                    icon: LucideIcons.sparkles,
-                    title: 'Artwork pulse',
-                    subtitle: 'Scale artwork on kick drums',
-                    value: ref.watch(artworkPulseEnabledProvider),
-                    onChanged: (v) {
-                      ref.read(artworkPulseEnabledProvider.notifier).state = v;
-                      unawaited(PlayerSettingsStore.saveArtworkPulse(v));
-                    },
-                  ),
                   _IosTile(
                     icon: LucideIcons.smartphone,
                     title: 'App icon',

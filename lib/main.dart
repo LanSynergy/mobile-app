@@ -111,10 +111,7 @@ Future<void> main() async {
       final persistedMode = await AppModeStore.load();
       _boot('appMode=${persistedMode?.name ?? "null"}');
 
-      // Load persisted artwork pulse setting.
       final prefs = await SharedPreferences.getInstance();
-      final artworkPulse = prefs.getBool('af.artwork_pulse_enabled') ?? true;
-      _boot('artworkPulse=$artworkPulse');
 
       final localOnboardingCompleted =
           prefs.getBool('af.local_onboarding_completed') ?? false;
@@ -175,7 +172,6 @@ Future<void> main() async {
           aetherfinVersionProvider.overrideWithValue(aetherfinVersion),
           if (persistedMode != null)
             appModeProvider.overrideWith((ref) => persistedMode),
-          artworkPulseEnabledProvider.overrideWith((ref) => artworkPulse),
           offlineCacheEnabledProvider.overrideWith(
             (ref) => offlineCacheEnabled,
           ),

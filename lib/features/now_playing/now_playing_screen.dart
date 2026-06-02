@@ -20,6 +20,7 @@ import '../../widgets/audio_visual_scrubber.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/empty_state.dart';
+import 'reactive_artwork.dart';
 import 'utility_row.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -31,7 +32,7 @@ import 'utility_row.dart';
 // Rebuild topology (reactive islands):
 //   NowPlayingScreen    watches: currentTrackProvider (changes on skip only)
 //   _ReactiveBackground watches: currentSpectralProvider (gradient color)
-//   _ReactiveArtwork    watches: currentSpectralProvider + FFT (bass pulse)
+//   ReactiveArtwork     watches: currentArtworkUriProvider
 //   _ReactiveProgress   watches: positionStreamProvider (high-frequency)
 //   _ReactiveTransport  watches: playingStreamProvider, shuffle, loop
 //
@@ -41,7 +42,7 @@ import 'utility_row.dart';
 // Layout: Full-bleed immersive Stack.
 //   Stack(fit: StackFit.expand)
 //   ├── _ReactiveBackground (spectral-derived color fill)
-//   ├── Artwork (Positioned.fill, BoxFit.cover, Hero, bass pulse)
+//   ├── Artwork (Positioned.fill, Hero)
 //   ├── Gradient scrim (bottom 65%: transparent → surfaceCanvas)
 //   ├── Vignette overlay (depth + edge darkening)
 //   ├── _FrostedTopBar (top, minimal)
@@ -70,7 +71,7 @@ class NowPlayingScreen extends ConsumerWidget {
           fit: StackFit.expand,
           children: [
             // ── Full-bleed artwork ──
-            _ReactiveArtwork(track: track),
+            ReactiveArtwork(track: track),
 
             // ── Scrim (bottom 65%) — blur, no gradient ──
             Positioned(
@@ -175,147 +176,6 @@ class _ReactiveBackground extends ConsumerWidget {
         curve: AfCurves.easeStandard,
         color: background,
         child: child,
-      ),
-    );
-  }
-}
-
-/// Artwork with sub-bass driven scale pulse.
-/// Bin 0 (kick drum / sub-bass) drives a ±6% scale bump via asymmetric lerp.
-/// ValueNotifier + Transform.scale — no setState, no rebuild of parent.
-/// Full-bleed: Positioned.fill + BoxFit.cover.
-class _ReactiveArtwork extends ConsumerStatefulWidget {
-  const _ReactiveArtwork({required this.track});
-  final AfTrack track;
-
-  @override
-  ConsumerState<_ReactiveArtwork> createState() => _ReactiveArtworkState();
-}
-
-class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
-    with SingleTickerProviderStateMixin {
-  final ValueNotifier<double> _scale = ValueNotifier(1.0);
-  late final AnimationController _ticker;
-  StreamSubscription<dynamic>? _fftSub;
-  Timer? _silenceTimer;
-
-  double _bassAverage = 0.0;
-  double _prevBass = 0.0;
-  int _cooldown = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _ticker =
-        AnimationController(
-          vsync: this,
-          duration: const Duration(milliseconds: 16),
-        )..addListener(() {
-          if (_scale.value > 1.001) {
-            _scale.value = 1.0 + (_scale.value - 1.0) * 0.85;
-          } else {
-            _scale.value = 1.0;
-            _ticker.stop();
-          }
-        });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final pulseEnabled = ref.read(artworkPulseEnabledProvider);
-      if (!pulseEnabled) return;
-
-      _fftSub = ref.read(playerServiceProvider).spectrumStream.listen((frame) {
-        if (!mounted) return;
-        if (frame.bands.isEmpty) return;
-
-        _silenceTimer?.cancel();
-
-        final int hi = frame.bands.length < 7 ? frame.bands.length : 7;
-        double rawBass = 0.0;
-        for (var i = 1; i < hi; i++) {
-          final v = frame.bands[i].abs();
-          if (v > rawBass) rawBass = v;
-        }
-
-        final delta = rawBass - _prevBass;
-        _prevBass = rawBass;
-
-        _bassAverage +=
-            (rawBass - _bassAverage) * (rawBass < _bassAverage ? 0.12 : 0.03);
-
-        if (_cooldown > 0) {
-          _cooldown--;
-        } else if ((rawBass > _bassAverage * 1.12 || delta > 0.04) &&
-            rawBass > 0.015) {
-          _scale.value = 1.06;
-          _cooldown = 15;
-          if (!_ticker.isAnimating) _ticker.repeat();
-        }
-
-        _silenceTimer?.cancel();
-        if (mounted) {
-          _silenceTimer = Timer(const Duration(milliseconds: 300), () {
-            if (mounted) {
-              _bassAverage = 0.0;
-              _prevBass = 0.0;
-            }
-          });
-        }
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _silenceTimer?.cancel();
-    _fftSub?.cancel();
-    _ticker.dispose();
-    _scale.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final spectral = ref.watch(currentSpectralProvider);
-    final pulseEnabled = ref.watch(artworkPulseEnabledProvider);
-    final artworkUri = ref.watch(currentArtworkUriProvider);
-
-    final artworkWidget = Hero(
-      tag: 'now-playing-artwork',
-      child: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: spectral.glow.withValues(alpha: 0.30),
-              blurRadius: 40,
-              spreadRadius: 4,
-            ),
-          ],
-        ),
-        child: ClipRect(
-          child: Image.network(
-            artworkUri?.toString() ?? widget.track.imageUrl ?? '',
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-          ),
-        ),
-      ),
-    );
-
-    if (!pulseEnabled) {
-      return Positioned.fill(child: artworkWidget);
-    }
-
-    return Positioned.fill(
-      child: ValueListenableBuilder<double>(
-        valueListenable: _scale,
-        builder: (context, scaleVal, child) => Transform.scale(
-          scale: scaleVal,
-          alignment: Alignment.center,
-          child: child,
-        ),
-        child: artworkWidget,
       ),
     );
   }

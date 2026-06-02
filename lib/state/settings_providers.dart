@@ -20,8 +20,6 @@ final discoveredServersProvider = StateProvider<List<JellyfinServer>>(
   (ref) => const <JellyfinServer>[],
 );
 
-final artworkPulseEnabledProvider = StateProvider<bool>((ref) => true);
-
 /// Shared [OfflineCacheService] instance.
 final offlineCacheServiceProvider = Provider<OfflineCacheService>((ref) {
   final db = ref.watch(appDatabaseProvider);
