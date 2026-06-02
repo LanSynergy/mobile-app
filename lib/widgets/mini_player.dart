@@ -64,7 +64,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
   }
 
   void _animateDismiss() {
-    _snapCtrl.duration = AfDurations.standard;
+    _snapCtrl.duration = AfDurations.expressive;
     _snapCtrl.value = _dragDistance / (_maxDragDistance * 2);
     _snapCtrl.forward().then((_) {
       if (mounted) widget.onDismiss?.call();

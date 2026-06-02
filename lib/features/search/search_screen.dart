@@ -236,9 +236,9 @@ class _SearchFilterChips extends StatelessWidget {
             selected: active,
             onSelected: (_) => onChanged(f),
             backgroundColor: AfColors.surfaceBase,
-            selectedColor: AfColors.accentMuted,
+            selectedColor: AfColors.accentPrimary,
             labelStyle: AfTypography.bodySmall.copyWith(
-              color: active ? AfColors.accentPrimary : AfColors.textSecondary,
+              color: active ? AfColors.textOnPrimary : AfColors.textSecondary,
               fontWeight: active ? FontWeight.w600 : FontWeight.w400,
             ),
             shape: RoundedRectangleBorder(

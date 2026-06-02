@@ -21,6 +21,7 @@ import '../../state/lastfm_sync_provider.dart';
 import '../../state/providers.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/af_scrollbar.dart';
+import '../../widgets/press_scale.dart';
 import 'settings_dialogs.dart';
 import 'settings_sections.dart';
 
@@ -101,8 +102,9 @@ class _IosTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return PressScale(
       onTap: onTap,
+      ensureHitTarget: true,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: AfSpacing.minHitTarget),
         child: Padding(
@@ -175,8 +177,9 @@ class _IosSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return PressScale(
       onTap: () => onChanged(!value),
+      ensureHitTarget: true,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: AfSpacing.minHitTarget),
         child: Padding(

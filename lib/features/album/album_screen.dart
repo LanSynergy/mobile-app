@@ -415,7 +415,7 @@ class _IconCircle extends StatelessWidget {
         height: 48,
         alignment: Alignment.center,
         decoration: const BoxDecoration(
-          color: AfColors.surfaceBase,
+          color: AfColors.surfaceRaised,
           shape: BoxShape.circle,
         ),
         child: Icon(icon, size: 22, color: color ?? AfColors.textPrimary),

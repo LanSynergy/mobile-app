@@ -426,6 +426,7 @@ class _ActionRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(
+          flex: 3,
           child: ElevatedButton.icon(
             onPressed: onPlay,
             icon: const Icon(
@@ -439,6 +440,7 @@ class _ActionRow extends StatelessWidget {
         if (onRadio != null) ...[
           const SizedBox(width: AfSpacing.s12),
           Expanded(
+            flex: 2,
             child: OutlinedButton.icon(
               onPressed: onRadio,
               style: OutlinedButton.styleFrom(

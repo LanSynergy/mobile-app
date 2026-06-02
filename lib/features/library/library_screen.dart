@@ -978,12 +978,12 @@ class _SongsList extends ConsumerWidget {
               ),
               child: const Icon(
                 LucideIcons.music,
-                size: 40,
+                size: 56,
                 color: AfColors.textTertiary,
               ),
             ),
             const SizedBox(height: AfSpacing.s12),
-            Text('No songs yet', style: AfTypography.titleSmall),
+            Text('No songs yet', style: AfTypography.titleMedium),
             const SizedBox(height: AfSpacing.s8),
             Text(
               'Songs from your library will appear here',
@@ -1053,12 +1053,12 @@ class _ArtistsGrid extends ConsumerWidget {
                   ),
                   child: const Icon(
                     LucideIcons.users,
-                    size: 40,
+                    size: 56,
                     color: AfColors.textTertiary,
                   ),
                 ),
                 const SizedBox(height: AfSpacing.s12),
-                Text('No artists found', style: AfTypography.titleSmall),
+                Text('No artists found', style: AfTypography.titleMedium),
                 const SizedBox(height: AfSpacing.s8),
                 Text(
                   'Artists from your library will appear here',
@@ -1138,12 +1138,12 @@ class _AlbumsGrid extends ConsumerWidget {
                   ),
                   child: const Icon(
                     LucideIcons.disc,
-                    size: 40,
+                    size: 56,
                     color: AfColors.textTertiary,
                   ),
                 ),
                 const SizedBox(height: AfSpacing.s12),
-                Text('No albums found', style: AfTypography.titleSmall),
+                Text('No albums found', style: AfTypography.titleMedium),
                 const SizedBox(height: AfSpacing.s8),
                 Text(
                   'Albums from your library will appear here',
@@ -1224,12 +1224,12 @@ class _GenresGrid extends ConsumerWidget {
                   ),
                   child: const Icon(
                     LucideIcons.music2,
-                    size: 40,
+                    size: 56,
                     color: AfColors.textTertiary,
                   ),
                 ),
                 const SizedBox(height: AfSpacing.s12),
-                Text('No genres found', style: AfTypography.titleSmall),
+                Text('No genres found', style: AfTypography.titleMedium),
                 const SizedBox(height: AfSpacing.s8),
                 Text(
                   'Genres from your library will appear here',

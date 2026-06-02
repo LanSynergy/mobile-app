@@ -74,14 +74,14 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
       ensureHitTarget: false,
       onTap: () => widget.onSelect(index),
       child: AnimatedContainer(
-        duration: AfDurations.standard,
+        duration: AfDurations.quick,
         curve: AfCurves.easeStandard,
         height: 48,
         padding: EdgeInsets.symmetric(
           horizontal: active ? AfSpacing.s16 : AfSpacing.s12,
         ),
         decoration: BoxDecoration(
-          color: active ? accent.withValues(alpha: 0.15) : Colors.transparent,
+          color: active ? accent.withValues(alpha: 0.22) : Colors.transparent,
           borderRadius: AfRadii.borderPill,
         ),
         child: Row(

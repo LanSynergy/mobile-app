@@ -27,7 +27,7 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final titleStyle = uppercase
-        ? AfTypography.label.copyWith(color: AfColors.textTertiary)
+        ? AfTypography.label.copyWith(color: AfColors.textSecondary)
         : AfTypography.titleMedium.copyWith(color: AfColors.textPrimary);
 
     return Row(

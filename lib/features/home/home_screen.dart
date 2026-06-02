@@ -838,7 +838,9 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
                                           gradient: LinearGradient(
                                             colors: [
                                               spectral.energy,
-                                              spectral.shadow,
+                                              spectral.energy.withValues(
+                                                alpha: 0.7,
+                                              ),
                                             ],
                                           ),
                                           borderRadius: AfRadii.borderPill,

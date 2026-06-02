@@ -318,22 +318,36 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                       curve: AfCurves.easeOut,
                       // Fixed vertical padding matches _rowHeight assumption.
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: AnimatedScale(
-                        scale: isActive ? 1.04 : 1.0,
+                      child: AnimatedContainer(
                         duration: AfDurations.quick,
                         curve: AfCurves.easeOut,
-                        alignment: Alignment.centerLeft,
-                        child: AnimatedDefaultTextStyle(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isActive ? AfSpacing.s8 : 0,
+                          vertical: 0,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? spectral.energy.withValues(alpha: 0.08)
+                              : Colors.transparent,
+                          borderRadius: AfRadii.borderSm,
+                        ),
+                        child: AnimatedScale(
+                          scale: isActive ? 1.04 : 1.0,
                           duration: AfDurations.quick,
-                          style: AfTypography.titleMedium.copyWith(
-                            color: isActive
-                                ? spectral.energy
-                                : AfColors.textSecondary,
-                            fontWeight: isActive
-                                ? FontWeight.w600
-                                : FontWeight.w400,
+                          curve: AfCurves.easeOut,
+                          alignment: Alignment.centerLeft,
+                          child: AnimatedDefaultTextStyle(
+                            duration: AfDurations.quick,
+                            style: AfTypography.titleMedium.copyWith(
+                              color: isActive
+                                  ? spectral.energy
+                                  : AfColors.textSecondary,
+                              fontWeight: isActive
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
+                            child: Text(line.text),
                           ),
-                          child: Text(line.text),
                         ),
                       ),
                     ),

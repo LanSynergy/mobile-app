@@ -13,6 +13,7 @@ import '../../widgets/af_dialog.dart';
 import '../../widgets/af_scrollbar.dart';
 import '../../widgets/async_error_view.dart';
 import '../../widgets/track_context_menu.dart';
+import '../../widgets/press_scale.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/skeletons/playlist_skeleton.dart';
 import 'export_m3u_dialog.dart';
@@ -868,7 +869,8 @@ class _SegmentedControlState extends State<_SegmentedControl> {
       decoration: BoxDecoration(
         color: isSelected ? AfColors.accentPrimary : Colors.transparent,
       ),
-      child: InkWell(
+      child: PressScale(
+        ensureHitTarget: false,
         onTap: onTap == null
             ? null
             : () => setState(() => _isRightSelected = isRight),
