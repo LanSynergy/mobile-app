@@ -81,7 +81,9 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
         duration: AfDurations.standard,
         curve: AfCurves.easeStandard,
         height: 48,
-        padding: EdgeInsets.symmetric(horizontal: active ? 16 : 12),
+        padding: EdgeInsets.symmetric(
+          horizontal: active ? AfSpacing.s16 : AfSpacing.s12,
+        ),
         decoration: BoxDecoration(
           color: active ? AfColors.indigo900 : Colors.transparent,
           borderRadius: AfRadii.borderPill,
@@ -105,7 +107,7 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
                 alignment: Alignment.centerLeft,
                 widthFactor: active ? 1.0 : 0.0,
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 6),
+                  padding: const EdgeInsets.only(left: AfSpacing.s4),
                   child: Text(
                     item.label,
                     maxLines: 1,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/local/app_mode_store.dart';
 import '../../design_tokens/tokens.dart';
@@ -133,7 +134,7 @@ class WelcomeScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: AfSpacing.s16),
                       _ModeCard(
-                        icon: Icons.cloud_outlined,
+                        icon: LucideIcons.cloud,
                         iconGradient: const [
                           AfColors.indigo400,
                           AfColors.indigo600,
@@ -151,7 +152,7 @@ class WelcomeScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: AfSpacing.s12),
                       _ModeCard(
-                        icon: Icons.phone_android_rounded,
+                        icon: LucideIcons.smartphone,
                         iconGradient: const [
                           AfColors.semanticSuccess,
                           Color(0xFF2D9B5E),
@@ -240,7 +241,7 @@ class _ModeCard extends StatelessWidget {
                 ),
               ),
               const Icon(
-                Icons.arrow_forward_rounded,
+                LucideIcons.chevronRight,
                 color: AfColors.textTertiary,
                 size: 20,
               ),

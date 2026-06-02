@@ -82,8 +82,8 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
             (_scrollController.position.viewportDimension * 0.3);
         _scrollController.animateTo(
           targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
+          duration: AfDurations.standard,
+          curve: AfCurves.easeOut,
         );
       });
     }

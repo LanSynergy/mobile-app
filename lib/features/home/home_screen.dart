@@ -269,7 +269,7 @@ class _GlassTrackRow extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AfSpacing.s4),
                   Text(
                     track.artistName,
                     maxLines: 1,
@@ -356,14 +356,14 @@ class _ArtistsSection extends ConsumerWidget {
   const _ArtistsSection({required this.isLocal});
   final bool isLocal;
 
-  // Spectral accent colors for each artist
+  // Indigo scale accent colors for each artist ring
   static const _accents = [
-    AfColors.indigo500,
-    AfColors.semanticError,
-    AfColors.semanticSuccess,
-    AfColors.semanticInfo,
-    AfColors.semanticWarning,
+    AfColors.indigo400,
     AfColors.indigo300,
+    AfColors.indigo500,
+    AfColors.indigo600,
+    AfColors.indigo700,
+    AfColors.indigo200,
   ];
 
   @override
@@ -701,32 +701,6 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Tag pill
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: AfSpacing.s12,
-                                        vertical: AfSpacing.s4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: AfRadii.borderPill,
-                                        border: Border.all(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.15,
-                                          ),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'NEW RELEASE',
-                                        style: AfTypography.label.copyWith(
-                                          color: AfColors.indigo300,
-                                          fontSize: 10,
-                                          letterSpacing: 1.0,
-                                        ),
-                                      ),
-                                    ),
                                     const Spacer(),
                                     // Album title — dramatic sizing
                                     Text(
@@ -735,10 +709,7 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
                                       overflow: TextOverflow.ellipsis,
                                       style: AfTypography.titleLarge.copyWith(
                                         color: AfColors.textOnPrimary,
-                                        fontSize: 28,
-                                        height: 1.1,
                                         fontWeight: FontWeight.w700,
-                                        letterSpacing: -0.6,
                                       ),
                                     ),
                                     const SizedBox(height: AfSpacing.s4),
@@ -791,7 +762,7 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             const Icon(
-                                              Icons.play_arrow_rounded,
+                                              LucideIcons.play,
                                               color: AfColors.textOnPrimary,
                                               size: 20,
                                             ),
@@ -831,7 +802,9 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
                     albums.length,
                     (i) => AnimatedContainer(
                       duration: AfDurations.quick,
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.s4,
+                      ),
                       width: _currentPage == i ? 20 : 6,
                       height: 6,
                       decoration: BoxDecoration(

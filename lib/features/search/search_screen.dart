@@ -136,7 +136,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               AfSpacing.s16,
               AfSpacing.s16,
             ),
-            child: Text('Search', style: AfTypography.titleLarge),
+            child: ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [AfColors.indigo300, AfColors.indigo500],
+              ).createShader(bounds),
+              child: Text(
+                'Search',
+                style: AfTypography.display.copyWith(
+                  color: AfColors.textPrimary,
+                ),
+              ),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),

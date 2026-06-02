@@ -77,7 +77,7 @@ class UtilityRow extends ConsumerWidget {
         ),
         UtilityIcon(
           icon: const Icon(
-            LucideIcons.slidersHorizontal,
+            LucideIcons.ellipsis,
             size: 22,
             color: AfColors.textSecondary,
           ),
@@ -215,18 +215,6 @@ class _MoreMenu extends StatelessWidget {
           onTap: () {
             Navigator.of(dialogCtx).pop();
             showAudioDelayDialog(this.context, ref);
-          },
-        ),
-        MoreItem(
-          icon: const Icon(
-            LucideIcons.repeat,
-            size: 22,
-            color: AfColors.textSecondary,
-          ),
-          label: 'A-B Loop',
-          onTap: () {
-            Navigator.of(dialogCtx).pop();
-            showAbLoopDialog(this.context, ref);
           },
         ),
         Padding(

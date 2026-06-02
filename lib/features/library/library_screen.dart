@@ -712,7 +712,7 @@ class _RecentlyAddedSection extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s20),
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
               child: Text(
                 'RECENTLY ADDED',
                 style: AfTypography.label.copyWith(
@@ -725,7 +725,7 @@ class _RecentlyAddedSection extends ConsumerWidget {
               height: 180,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s20),
+                padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
                 itemCount: recent.length,
                 separatorBuilder: (_, _) =>
                     const SizedBox(width: AfSpacing.s12),
@@ -800,10 +800,8 @@ class _PillBarState extends State<_PillBar>
     super.initState();
     _toIndex = SongsPill.values.indexOf(widget.selected);
     _fromIndex = _toIndex;
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    )..value = 1.0;
+    _ctrl = AnimationController(vsync: this, duration: AfDurations.long)
+      ..value = 1.0;
   }
 
   @override

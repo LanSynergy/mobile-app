@@ -52,13 +52,42 @@ class NowPlayingScreen extends ConsumerWidget {
 
     if (track == null) {
       return Scaffold(
+        backgroundColor: AfColors.surfaceCanvas,
         appBar: AppBar(
           leading: IconButton(
-            icon: const Icon(Icons.arrow_downward_rounded),
+            icon: const Icon(LucideIcons.chevronDown),
             onPressed: () => Navigator.maybePop(context),
           ),
         ),
-        body: const Center(child: Text('Nothing playing yet.')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: const BoxDecoration(
+                  color: AfColors.surfaceRaised,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  LucideIcons.music,
+                  size: 40,
+                  color: AfColors.textTertiary,
+                ),
+              ),
+              const SizedBox(height: AfSpacing.s12),
+              Text('Nothing playing yet', style: AfTypography.titleSmall),
+              const SizedBox(height: AfSpacing.s8),
+              Text(
+                'Start playing to see your music here',
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textTertiary,
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
@@ -330,7 +359,7 @@ class _FrostedTopBar extends ConsumerWidget {
             ),
             padding: const EdgeInsets.symmetric(
               horizontal: AfSpacing.s8,
-              vertical: 4,
+              vertical: AfSpacing.s4,
             ),
             child: Row(
               children: [
@@ -355,10 +384,8 @@ class _FrostedTopBar extends ConsumerWidget {
                         children: [
                           Text(
                             'PLAYING FROM ALBUM',
-                            style: AfTypography.caption.copyWith(
+                            style: AfTypography.overline.copyWith(
                               color: AfColors.textTertiary,
-                              letterSpacing: 0.8,
-                              fontSize: 10,
                             ),
                           ),
                           Text(
