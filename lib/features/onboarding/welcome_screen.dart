@@ -25,19 +25,10 @@ class WelcomeScreen extends ConsumerWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background gradient — deep black to surfaceCanvas
+          // Background — solid color
           const DecoratedBox(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AfColors.surfaceLow,
-                  AfColors.surfaceCanvas,
-                  AfColors.surfaceCanvas,
-                ],
-                stops: [0.0, 0.3, 1.0],
-              ),
+              color: AfColors.surfaceCanvas,
             ),
           ),
 

@@ -124,15 +124,12 @@ class AppShell extends ConsumerWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Full-bleed gradient background — deep dark (canvas → low)
-          const RepaintBoundary(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [AfColors.surfaceCanvas, AfColors.surfaceLow],
-                  stops: [0.0, 1.0],
+          // Full-bleed background — solid color + blur
+          const Positioned.fill(
+            child: RepaintBoundary(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AfColors.surfaceCanvas,
                 ),
               ),
             ),

@@ -152,17 +152,12 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
       ),
       body: Stack(
         children: [
-          // Full-bleed gradient background
+          // Full-bleed background
           const Positioned.fill(
             child: RepaintBoundary(
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [AfColors.surfaceLow, AfColors.surfaceCanvas],
-                    stops: [0.0, 1.0],
-                  ),
+                  color: AfColors.surfaceCanvas,
                 ),
               ),
             ),

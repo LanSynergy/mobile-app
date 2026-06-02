@@ -55,11 +55,7 @@ class Artwork extends ConsumerWidget {
       height: h.isFinite ? h : null,
       decoration: BoxDecoration(
         borderRadius: radius,
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AfColors.surfaceBase, AfColors.surfaceLow],
-        ),
+        color: AfColors.surfaceBase,
       ),
       child: const Center(
         child: Icon(LucideIcons.music, color: AfColors.accentMuted, size: 28),
