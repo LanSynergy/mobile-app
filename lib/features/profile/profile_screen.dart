@@ -157,7 +157,7 @@ class ProfileScreen extends ConsumerWidget {
           PressScale(
             onTap: () => context.push('/settings'),
             child: const ListTile(
-              leading: Icon(Icons.settings_outlined),
+              leading: Icon(LucideIcons.settings),
               title: Text('Settings'),
               tileColor: AfColors.surfaceBase,
               shape: RoundedRectangleBorder(borderRadius: AfRadii.borderMd),
@@ -341,7 +341,7 @@ class _AvatarImagePicker extends StatelessWidget {
                   children: [
                     ListTile(
                       leading: const Icon(
-                        Icons.photo_camera_outlined,
+                        LucideIcons.camera,
                         color: AfColors.textPrimary,
                       ),
                       title: Text(
@@ -357,7 +357,7 @@ class _AvatarImagePicker extends StatelessWidget {
                     ),
                     ListTile(
                       leading: const Icon(
-                        Icons.photo_library_outlined,
+                        LucideIcons.image,
                         color: AfColors.textPrimary,
                       ),
                       title: Text(
@@ -374,7 +374,7 @@ class _AvatarImagePicker extends StatelessWidget {
                     if (hasPhoto)
                       ListTile(
                         leading: const Icon(
-                          Icons.delete_outline,
+                          LucideIcons.trash2,
                           color: AfColors.semanticError,
                         ),
                         title: Text(
@@ -401,7 +401,7 @@ class _AvatarImagePicker extends StatelessWidget {
             height: 96,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: AfColors.indigo600, width: 2),
+              border: Border.all(color: AfColors.accentSecondary, width: 2),
             ),
             child: ClipOval(child: avatarContent),
           ),
@@ -414,10 +414,10 @@ class _AvatarImagePicker extends StatelessWidget {
                 height: 28,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AfColors.indigo600,
+                  color: AfColors.accentSecondary,
                 ),
                 child: const Icon(
-                  Icons.camera_alt_outlined,
+                  LucideIcons.camera,
                   size: 14,
                   color: AfColors.textOnPrimary,
                 ),
@@ -436,7 +436,7 @@ class _AvatarImagePicker extends StatelessWidget {
                     height: 24,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
-                      color: AfColors.indigo300,
+                      color: AfColors.accentPrimary,
                     ),
                   ),
                 ),
@@ -451,7 +451,7 @@ class _AvatarImagePicker extends StatelessWidget {
     return Container(
       width: 96,
       height: 96,
-      color: AfColors.indigo800,
+      color: AfColors.accentMuted,
       alignment: Alignment.center,
       child: Text(
         name.isEmpty ? 'A' : name[0].toUpperCase(),
@@ -473,7 +473,7 @@ class _LastFmConnectionCTA extends StatelessWidget {
       decoration: const BoxDecoration(
         borderRadius: AfRadii.borderMd,
         gradient: LinearGradient(
-          colors: [AfColors.indigo800, AfColors.semanticError],
+          colors: [AfColors.accentMuted, AfColors.semanticError],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -508,7 +508,7 @@ class _LastFmConnectionCTA extends StatelessWidget {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: AfColors.indigo800,
+              foregroundColor: AfColors.accentMuted,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -636,7 +636,7 @@ class _StatsDashboard extends ConsumerWidget {
           height: 24,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            color: AfColors.indigo300,
+            color: AfColors.accentPrimary,
           ),
         ),
       ),
@@ -675,7 +675,7 @@ class _PeriodButton extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? AfColors.indigo600 : AfColors.surfaceBase,
+          color: active ? AfColors.accentSecondary : AfColors.surfaceBase,
           borderRadius: AfRadii.borderSm,
         ),
         child: Text(
@@ -797,7 +797,7 @@ class _SongsList extends ConsumerWidget {
           ),
           trailing: Text(
             '${t.playCount} plays',
-            style: AfTypography.caption.copyWith(color: AfColors.indigo300),
+            style: AfTypography.caption.copyWith(color: AfColors.accentPrimary),
           ),
           onTap: () => _playTrackFromStats(context, ref, t.artist, t.title),
         );
@@ -854,7 +854,7 @@ class _ArtistsList extends ConsumerWidget {
           ),
           trailing: Text(
             '${a.playCount} plays',
-            style: AfTypography.caption.copyWith(color: AfColors.indigo300),
+            style: AfTypography.caption.copyWith(color: AfColors.accentPrimary),
           ),
           onTap: () => _navigateToArtistFromStats(context, ref, a.artist),
         );
@@ -932,7 +932,7 @@ class _AlbumsList extends ConsumerWidget {
           ),
           trailing: Text(
             '${alb.playCount} plays',
-            style: AfTypography.caption.copyWith(color: AfColors.indigo300),
+            style: AfTypography.caption.copyWith(color: AfColors.accentPrimary),
           ),
           onTap: () =>
               _navigateToAlbumFromStats(context, ref, alb.artist, alb.album),
@@ -986,7 +986,7 @@ Future<void> _playTrackFromStats(
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: AfColors.indigo300,
+                    color: AfColors.accentPrimary,
                   ),
                 ),
                 const SizedBox(width: AfSpacing.s16),
@@ -1080,7 +1080,7 @@ Future<void> _navigateToArtistFromStats(
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: AfColors.indigo300,
+                    color: AfColors.accentPrimary,
                   ),
                 ),
                 const SizedBox(width: AfSpacing.s16),
@@ -1164,7 +1164,7 @@ Future<void> _navigateToAlbumFromStats(
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: AfColors.indigo300,
+                    color: AfColors.accentPrimary,
                   ),
                 ),
                 const SizedBox(width: AfSpacing.s16),

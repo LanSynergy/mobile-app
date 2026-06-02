@@ -41,8 +41,6 @@ class _ReactiveProgressState extends ConsumerState<ReactiveProgress> {
     final pos = ref.watch(positionStreamProvider);
     final dur = ref.watch(durationStreamProvider);
     final isBuffering = ref.watch(isBufferingProvider);
-    // Freeze scrubber at 0 while buffering — mpv's position isn't
-    // meaningful until playback actually starts.
     final effectivePos = isBuffering ? Duration.zero : pos;
     if (!_isDragging) {
       _sliderValue = _computeSliderValue(effectivePos, dur);
@@ -74,18 +72,14 @@ class _ReactiveProgressState extends ConsumerState<ReactiveProgress> {
             children: [
               Text(
                 _format(effectivePos),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textTertiary,
                 ),
               ),
               Text(
                 _format(dur),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textTertiary,
                 ),
               ),
             ],

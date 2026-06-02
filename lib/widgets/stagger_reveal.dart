@@ -11,16 +11,6 @@ import '../design_tokens/tokens.dart';
 ///
 /// The animation plays once on first build. Subsequent rebuilds reuse the
 /// completed state — no re-trigger.
-///
-/// ```dart
-/// StaggerReveal(
-///   children: [
-///     Text('First'),
-///     Text('Second'),
-///     Text('Third'),
-///   ],
-/// )
-/// ```
 class StaggerReveal extends StatefulWidget {
   const StaggerReveal({
     super.key,
@@ -49,7 +39,6 @@ class _StaggerRevealState extends State<StaggerReveal>
   @override
   void initState() {
     super.initState();
-    // Total duration = per-item delay × max staggered items + item anim time.
     final total =
         widget.duration ??
         Duration(
@@ -77,9 +66,7 @@ class _StaggerRevealState extends State<StaggerReveal>
         for (var i = 0; i < widget.children.length; i++)
           _StaggeredItem(
             controller: _ctrl,
-            // Start time for this item's animation.
             begin: (AfStagger.perItem.inMilliseconds * i) / totalMs,
-            // End time: start + item anim fraction, clamped to 1.0.
             end: ((AfStagger.perItem.inMilliseconds * i) + itemMs) / totalMs,
             slideOffset: widget.slideOffset,
             child: widget.children[i],
@@ -109,7 +96,6 @@ class _StaggeredItem extends StatelessWidget {
     final reduced = MediaQuery.of(context).disableAnimations;
     if (reduced) return child;
 
-    // Each item fades in + slides up within its interval.
     final fade = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: controller,

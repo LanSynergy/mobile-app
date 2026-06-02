@@ -6,12 +6,12 @@ import '../design_tokens/tokens.dart';
 /// Quality chip — mono-font, honest. Shown on the active track row's right
 /// side and in Now Playing's metadata block.
 ///
-/// Per non-negotiable §4.1: NEVER fake "high quality" badges. The label
-/// reflects what the server actually delivers (FLAC 24/96 vs AAC 192
-/// transcoded), and the warning border appears whenever the audio path
-/// is degraded.
+/// NEVER fake "high quality" badges. The label reflects what the server
+/// actually delivers (FLAC 24/96 vs AAC 192 transcoded), and the warning
+/// border appears whenever the audio path is degraded.
 class QualityChip extends StatelessWidget {
   const QualityChip({super.key, required this.quality, this.compact = false});
+
   final TrackQuality quality;
   final bool compact;
 
@@ -20,7 +20,7 @@ class QualityChip extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? AfSpacing.s8 : AfSpacing.s12,
-        vertical: compact ? 4 : 6,
+        vertical: compact ? AfSpacing.s2 : 4,
       ),
       decoration: BoxDecoration(
         color: AfColors.surfaceHigh,

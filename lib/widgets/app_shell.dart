@@ -6,15 +6,20 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../design_tokens/tokens.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
+import '../state/providers.dart';
 import 'bottom_nav.dart';
 import 'global_mini_player_overlay.dart';
 
 /// App shell — wraps every authed-app tab with the persistent 4-tab
 /// bottom nav and the floating mini-player.
 ///
-/// The mini-player is rendered as a `Positioned` overlay 16dp above the
-/// bottom nav so it floats independently of the tab content (per
-/// non-negotiable §4.1).
+/// Design:
+///   - Full-bleed gradient background: deep dark (#0A0A0A → #111111)
+///   - Tab content with AnimatedSwitcher cross-fade
+///   - Sleep timer watcher (zero-sized, invisible)
+///   - Global mini-player overlay (positioned above bottom nav)
+///   - Bottom nav bar
+///   - PopScope for Android back handling (non-Home → Home; Home → exit)
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell});
   final StatefulNavigationShell shell;
@@ -88,6 +93,9 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Watch spectral for a dynamic accent on the bottom nav pill.
+    final spectral = ref.watch(currentSpectralProvider);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -101,32 +109,36 @@ class AppShell extends ConsumerWidget {
           await SystemNavigator.pop();
         }
       },
-      child: _buildScaffold(context, ref),
+      child: _buildScaffold(context, ref, spectral),
     );
   }
 
-  Widget _buildScaffold(BuildContext context, WidgetRef ref) {
+  Widget _buildScaffold(
+    BuildContext context,
+    WidgetRef ref,
+    Spectral spectral,
+  ) {
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Full-bleed gradient background
+          // Full-bleed gradient background — deep dark (#0A0A0A → #111111)
           const RepaintBoundary(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xFF271640), Color(0xFF040319)],
+                  colors: [AfColors.surfaceCanvas, AfColors.surfaceLow],
                   stops: [0.0, 1.0],
                 ),
               ),
             ),
           ),
 
-          // Tab content — transparent so gradient shows through
+          // Tab content — transparent so gradient shows through.
           // AnimatedSwitcher cross-fades between tab changes.
           RepaintBoundary(
             child: AnimatedSwitcher(
@@ -155,6 +167,7 @@ class AppShell extends ConsumerWidget {
         currentIndex: shell.currentIndex,
         onSelect: (i) => _onSelect(context, i),
         items: _items,
+        accentColor: spectral.energy,
       ),
     );
   }

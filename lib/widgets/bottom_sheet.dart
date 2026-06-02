@@ -16,7 +16,7 @@ Future<T?> showBlurBottomSheet<T>({
   bool isDismissible = true,
   bool isScrollControlled = true,
   bool enableDrag = true,
-  double topRadius = 24.0,
+  double topRadius = AfRadii.xl,
 }) {
   final overlay = Navigator.of(context, rootNavigator: true).overlay;
   if (overlay == null) return Future.value(null);
@@ -148,7 +148,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const SizedBox(height: 12),
+                                const SizedBox(height: AfSpacing.s12),
                                 Container(
                                   width: 40,
                                   height: 4,
@@ -159,7 +159,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: AfSpacing.s12),
                                 widget.builder(context),
                               ],
                             ),

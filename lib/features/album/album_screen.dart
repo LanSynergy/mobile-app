@@ -165,7 +165,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                               child: Text(
                                 album.artistName,
                                 style: AfTypography.titleMedium.copyWith(
-                                  color: AfColors.indigo300,
+                                  color: AfColors.accentPrimary,
                                 ),
                               ),
                             ),
@@ -179,6 +179,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                             const SizedBox(height: AfSpacing.s16),
                             _ActionRow(
                               album: album,
+                              tracks: tracks,
                               onPlay: () => ref
                                   .read(playActionsProvider)
                                   .playAlbum(tracks),
@@ -273,10 +274,12 @@ class _ActionRow extends ConsumerStatefulWidget {
     required this.onPlay,
     required this.onMore,
     required this.album,
+    required this.tracks,
   });
   final VoidCallback onPlay;
   final VoidCallback onMore;
   final AfAlbum album;
+  final List<AfTrack> tracks;
 
   @override
   ConsumerState<_ActionRow> createState() => _ActionRowState();
@@ -355,7 +358,22 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
               color: AfColors.textOnPrimary,
               size: 22,
             ),
-            label: const Text('Play'),
+            label: const Text('Play All'),
+          ),
+        ),
+        const SizedBox(width: AfSpacing.s12),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () {
+              final shuffled = List<AfTrack>.from(widget.tracks)..shuffle();
+              ref.read(playActionsProvider).playQueue(shuffled);
+            },
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AfColors.accentPrimary, width: 1.5),
+              foregroundColor: AfColors.accentPrimary,
+            ),
+            icon: const Icon(LucideIcons.shuffle, size: 20),
+            label: const Text('Shuffle'),
           ),
         ),
         const SizedBox(width: AfSpacing.s12),
@@ -519,7 +537,7 @@ class _AlbumWikiPanelState extends State<_AlbumWikiPanel> {
             child: Text(
               _expanded ? 'Show less' : 'Read more',
               style: AfTypography.bodySmall.copyWith(
-                color: AfColors.indigo300,
+                color: AfColors.accentPrimary,
                 fontWeight: FontWeight.bold,
               ),
             ),

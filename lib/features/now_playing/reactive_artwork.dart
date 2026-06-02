@@ -47,8 +47,6 @@ class _ReactiveArtworkState extends ConsumerState<ReactiveArtwork>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Listen through shared fftFrameProvider instead of direct spectrumStream
-    // subscription — both visualizer and artwork pulse share one mpv stream.
     ref.listen(fftFrameProvider, (prev, next) {
       if (!mounted) return;
       if (!ref.read(artworkPulseEnabledProvider)) return;

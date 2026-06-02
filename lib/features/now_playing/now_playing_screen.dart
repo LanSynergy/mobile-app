@@ -22,12 +22,15 @@ import '../../widgets/press_scale.dart';
 import 'utility_row.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NowPlayingScreen — Reactive Islands architecture
+// NowPlayingScreen — "Dark Moody" immersive rebuild
 //
-// Rebuild topology:
+// Design system: Deep blacks (#0A0A0A), warm amber accents (#D4A574),
+//   Playfair Display headlines, Inter body.
+//
+// Rebuild topology (reactive islands):
 //   NowPlayingScreen    watches: currentTrackProvider (changes on skip only)
-//   _ReactiveBackground watches: currentSpectralProvider (color extraction)
-//   _ReactiveArtwork    watches: currentSpectralProvider (artwork + visualizer)
+//   _ReactiveBackground watches: currentSpectralProvider (gradient color)
+//   _ReactiveArtwork    watches: currentSpectralProvider + FFT (bass pulse)
 //   _ReactiveProgress   watches: positionStreamProvider (high-frequency)
 //   _ReactiveTransport  watches: playingStreamProvider, shuffle, loop
 //
@@ -36,11 +39,15 @@ import 'utility_row.dart';
 //
 // Layout: Full-bleed immersive Stack.
 //   Stack(fit: StackFit.expand)
-//   ├── _ReactiveBackground (color fill)
-//   ├── Artwork (Positioned.fill, BoxFit.cover)
-//   ├── Gradient scrim (bottom 65%)
-//   ├── _FrostedTopBar (top)
-//   └── _FrostedBottomPanel (bottom)
+//   ├── _ReactiveBackground (spectral-derived color fill)
+//   ├── Artwork (Positioned.fill, BoxFit.cover, Hero, bass pulse)
+//   ├── Gradient scrim (bottom 65%: transparent → surfaceCanvas)
+//   ├── Vignette overlay (depth + edge darkening)
+//   ├── _FrostedTopBar (top, minimal)
+//   ├── _MetadataOverlay (bottom-left, over artwork)
+//   ├── _ReactiveProgress (AudioVisualScrubber)
+//   ├── _ReactiveTransport (play/pause/skip/shuffle/repeat)
+//   └── UtilityRow (like, lyrics, queue, more)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class NowPlayingScreen extends ConsumerWidget {
@@ -51,44 +58,7 @@ class NowPlayingScreen extends ConsumerWidget {
     final track = ref.watch(currentTrackProvider);
 
     if (track == null) {
-      return Scaffold(
-        backgroundColor: AfColors.surfaceCanvas,
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(LucideIcons.chevronDown),
-            onPressed: () => Navigator.maybePop(context),
-          ),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: const BoxDecoration(
-                  color: AfColors.surfaceRaised,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  LucideIcons.music,
-                  size: 40,
-                  color: AfColors.textTertiary,
-                ),
-              ),
-              const SizedBox(height: AfSpacing.s12),
-              Text('Nothing playing yet', style: AfTypography.titleSmall),
-              const SizedBox(height: AfSpacing.s8),
-              Text(
-                'Start playing to see your music here',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _EmptyState();
     }
 
     return Scaffold(
@@ -101,8 +71,7 @@ class NowPlayingScreen extends ConsumerWidget {
             // ── Full-bleed artwork ──
             _ReactiveArtwork(track: track),
 
-            // ── Gradient scrim (transparent → semi-transparent) ──
-            // Artwork stays visible; frosted panels provide legibility.
+            // ── Gradient scrim (bottom 65%) ──
             Positioned(
               left: 0,
               right: 0,
@@ -116,13 +85,16 @@ class NowPlayingScreen extends ConsumerWidget {
                     colors: [
                       Colors.transparent,
                       AfColors.surfaceCanvas.withValues(alpha: 0.55),
-                      AfColors.surfaceCanvas.withValues(alpha: 0.80),
+                      AfColors.surfaceCanvas.withValues(alpha: 0.85),
                     ],
                     stops: const [0.0, 0.4, 1.0],
                   ),
                 ),
               ),
             ),
+
+            // ── Vignette overlay for depth ──
+            const _Vignette(),
 
             // ── Top bar ──
             Positioned(
@@ -135,14 +107,59 @@ class NowPlayingScreen extends ConsumerWidget {
               ),
             ),
 
-            // ── Bottom panel ──
+            // ── Bottom content zone ──
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              child: SafeArea(
-                top: false,
-                child: _FrostedBottomPanel(track: track),
+              child: SafeArea(top: false, child: _BottomContent(track: track)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Empty state
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _EmptyState extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AfColors.surfaceCanvas,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(LucideIcons.chevronDown),
+          onPressed: () => Navigator.maybePop(context),
+        ),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: AfColors.surfaceRaised,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                LucideIcons.music,
+                size: 40,
+                color: AfColors.textTertiary,
+              ),
+            ),
+            const SizedBox(height: AfSpacing.s12),
+            Text('Nothing playing yet', style: AfTypography.titleSmall),
+            const SizedBox(height: AfSpacing.s8),
+            Text(
+              'Start playing to see your music here',
+              style: AfTypography.bodySmall.copyWith(
+                color: AfColors.textTertiary,
               ),
             ),
           ],
@@ -193,7 +210,7 @@ class _ReactiveBackground extends ConsumerWidget {
 }
 
 /// Artwork with sub-bass driven scale pulse.
-/// Bin 0 (kick drum / sub-bass) drives a ±8% scale bump via asymmetric lerp.
+/// Bin 0 (kick drum / sub-bass) drives a ±6% scale bump via asymmetric lerp.
 /// ValueNotifier + Transform.scale — no setState, no rebuild of parent.
 /// Full-bleed: Positioned.fill + BoxFit.cover.
 class _ReactiveArtwork extends ConsumerStatefulWidget {
@@ -333,7 +350,40 @@ class _ReactiveArtworkState extends ConsumerState<_ReactiveArtwork>
   }
 }
 
-/// Frosted top bar — pill-shaped, blurred backdrop.
+// ─────────────────────────────────────────────────────────────────────────────
+// Vignette overlay — radial gradient from transparent center to dark edges
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _Vignette extends StatelessWidget {
+  const _Vignette();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.center,
+              radius: 1.0,
+              colors: [
+                Colors.transparent,
+                Colors.transparent,
+                AfColors.surfaceCanvas.withValues(alpha: 0.40),
+              ],
+              stops: const [0.0, 0.55, 1.0],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Frosted top bar — minimal, transparent backdrop
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _FrostedTopBar extends ConsumerWidget {
   const _FrostedTopBar({required this.track});
   final AfTrack track;
@@ -413,16 +463,17 @@ class _FrostedTopBar extends ConsumerWidget {
                   onSelected: (action) async {
                     switch (action) {
                       case _NowPlayingAction.startRadio:
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Starting Instant Mix…'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Starting Instant Mix…'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
                         await ref
                             .read(playActionsProvider)
                             .playInstantMix(track);
-                        if (!context.mounted) return;
                         break;
                       case _NowPlayingAction.goToAlbum:
                         if (track.albumId != null) {
@@ -490,157 +541,142 @@ class _FrostedTopBar extends ConsumerWidget {
 enum _NowPlayingAction { startRadio, goToAlbum, goToArtist }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Frosted bottom panel
+// Bottom content zone — metadata overlay + controls
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Frosted glass bottom panel — houses metadata, scrubber, transport, utilities.
-class _FrostedBottomPanel extends StatelessWidget {
-  const _FrostedBottomPanel({required this.track});
+/// Houses all bottom-aligned content: metadata overlay, visualizer scrubber,
+/// transport controls, and utility row. Separated from artwork so the
+/// gradient scrim provides enough contrast.
+class _BottomContent extends StatelessWidget {
+  const _BottomContent({required this.track});
   final AfTrack track;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AfColors.surfaceCanvas.withValues(alpha: 0.72),
-            border: Border(
-              top: BorderSide(
-                color: Colors.white.withValues(alpha: 0.08),
-                width: 0.5,
-              ),
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AfSpacing.s20,
-          ).copyWith(top: AfSpacing.s20, bottom: AfSpacing.s24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _MetadataRow(track: track),
-              const SizedBox(height: AfSpacing.s16),
-              _ReactiveProgress(track: track),
-              const SizedBox(height: AfSpacing.s20),
-              _ReactiveTransport(track: track),
-              const SizedBox(height: AfSpacing.s16),
-              const UtilityRow(),
-              const SizedBox(height: AfSpacing.s4),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Metadata row — mini artwork + title + artist + heart + quality badge
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _MetadataRow extends ConsumerWidget {
-  const _MetadataRow({required this.track});
-  final AfTrack track;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isFav = ref.watch(isFavoriteProvider(track.id));
-    return Row(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        // Mini artwork
-        ClipRRect(
-          borderRadius: AfRadii.borderSm,
-          child: Image.network(
-            track.imageUrl ?? '',
-            width: 48,
-            height: 48,
-            fit: BoxFit.cover,
-          ),
-        ),
-        const SizedBox(width: AfSpacing.s12),
-        // Title + artist
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                track.title,
-                style: AfTypography.titleMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: AfSpacing.s2),
-              InkWell(
-                borderRadius: AfRadii.borderSm,
-                onTap: track.artistId == null
-                    ? null
-                    : () => context.push('/artist/${track.artistId}'),
-                child: Semantics(
-                  label: track.artistId == null
-                      ? null
-                      : 'Go to artist ${track.artistName}',
-                  button: track.artistId != null,
-                  child: Text(
-                    track.artistName,
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: AfSpacing.s8),
-        // Heart
-        IconButton(
-          icon: Icon(
-            isFav ? LucideIcons.heart : LucideIcons.heart,
-            color: isFav ? AfColors.semanticError : AfColors.textPrimary,
-            size: 22,
-          ),
-          tooltip: isFav ? 'Remove from favorites' : 'Add to favorites',
-          onPressed: () async {
-            try {
-              await ref.read(favoriteToggleProvider)(track);
-            } catch (_) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Could not update favorite'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              }
-            }
-          },
-        ),
-        if (track.quality != null)
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.s8,
-              vertical: 3,
-            ),
-            decoration: BoxDecoration(
-              color: AfColors.indigo400.withValues(alpha: 0.15),
-              borderRadius: AfRadii.borderPill,
-            ),
-            child: Text(
-              track.quality!.chipLabel,
-              style: AfTypography.caption.copyWith(color: AfColors.textPrimary),
-            ),
-          ),
+        // ── Metadata overlay (title + artist) ──
+        _MetadataOverlay(track: track),
+        const SizedBox(height: AfSpacing.s16),
+
+        // ── Visualizer scrubber ──
+        _ReactiveProgress(track: track),
+        const SizedBox(height: AfSpacing.s8),
+
+        // ── Transport controls ──
+        _ReactiveTransport(track: track),
+        const SizedBox(height: AfSpacing.s8),
+
+        // ── Utility row ──
+        const UtilityRow(),
+        const SizedBox(height: AfSpacing.s4),
       ],
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Reactive progress
+// Metadata overlay — title + artist, bottom-left over artwork
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MetadataOverlay extends ConsumerWidget {
+  const _MetadataOverlay({required this.track});
+  final AfTrack track;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isFav = ref.watch(isFavoriteProvider(track.id));
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
+      child: Row(
+        children: [
+          // Title + artist
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  track.title,
+                  style: AfTypography.titleMedium,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AfSpacing.s4),
+                InkWell(
+                  borderRadius: AfRadii.borderSm,
+                  onTap: track.artistId == null
+                      ? null
+                      : () => context.push('/artist/${track.artistId}'),
+                  child: Semantics(
+                    label: track.artistId == null
+                        ? null
+                        : 'Go to artist ${track.artistName}',
+                    button: track.artistId != null,
+                    child: Text(
+                      track.artistName,
+                      style: AfTypography.bodySmall.copyWith(
+                        color: AfColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AfSpacing.s12),
+          // Heart toggle
+          IconButton(
+            icon: Icon(
+              isFav ? LucideIcons.heart : LucideIcons.heart,
+              color: isFav ? AfColors.semanticError : AfColors.textSecondary,
+              size: 22,
+            ),
+            tooltip: isFav ? 'Remove from favorites' : 'Add to favorites',
+            onPressed: () async {
+              try {
+                await ref.read(favoriteToggleProvider)(track);
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Could not update favorite'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+          // Quality badge
+          if (track.quality != null)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AfSpacing.s8,
+                vertical: 3,
+              ),
+              decoration: BoxDecoration(
+                color: AfColors.indigo400.withValues(alpha: 0.15),
+                borderRadius: AfRadii.borderPill,
+              ),
+              child: Text(
+                track.quality!.chipLabel,
+                style: AfTypography.caption.copyWith(
+                  color: AfColors.textPrimary,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reactive progress — AudioVisualScrubber integration
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Watches positionStreamProvider — the only widget that does.
@@ -701,59 +737,69 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
         ? duration - displayPosition
         : Duration.zero;
 
-    return Column(
-      children: [
-        AudioVisualScrubber(
-          progress: displayProgress,
-          playedColor: spectral.energy,
-          height: 100.0,
-          onScrub: (p) => setState(() {
-            _isDragging = true;
-            _scrubPreview = p;
-          }),
-          onScrubEnd: (p) async {
-            final newPos = Duration(
-              milliseconds: (p * duration.inMilliseconds).round(),
-            );
-            final svc = ref.read(playerServiceProvider);
-            final wasCompletedAtEnd = svc.isCompleted && svc.isUserPaused;
-            try {
-              await svc.seek(newPos).timeout(const Duration(seconds: 2));
-              if (wasCompletedAtEnd && mounted) {
-                await svc.play().timeout(const Duration(seconds: 2));
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
+      child: Column(
+        children: [
+          AudioVisualScrubber(
+            progress: displayProgress,
+            playedColor: spectral.energy,
+            height: 100.0,
+            onScrub: (p) => setState(() {
+              _isDragging = true;
+              _scrubPreview = p;
+            }),
+            onScrubEnd: (p) async {
+              final newPos = Duration(
+                milliseconds: (p * duration.inMilliseconds).round(),
+              );
+              final svc = ref.read(playerServiceProvider);
+              final wasCompletedAtEnd = svc.isCompleted && svc.isUserPaused;
+              try {
+                await svc.seek(newPos).timeout(const Duration(seconds: 2));
+                if (wasCompletedAtEnd && mounted) {
+                  await svc.play().timeout(const Duration(seconds: 2));
+                }
+              } catch (_) {
+                // Timeout or seek error — still release the drag lock.
               }
-            } catch (_) {
-              // Timeout or seek error — still release the drag lock.
-            }
-            if (mounted) {
-              setState(() {
-                _isDragging = false;
-                _scrubPreview = null;
-              });
-            }
-          },
-        ),
-        const SizedBox(height: AfSpacing.s4),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              formatTrackDuration(displayPosition),
-              style: AfTypography.mono.copyWith(color: AfColors.textSecondary),
+              if (mounted) {
+                setState(() {
+                  _isDragging = false;
+                  _scrubPreview = null;
+                });
+              }
+            },
+          ),
+          const SizedBox(height: AfSpacing.s4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  formatTrackDuration(displayPosition),
+                  style: AfTypography.mono.copyWith(
+                    color: AfColors.textSecondary,
+                  ),
+                ),
+                Text(
+                  formatRemaining(remaining),
+                  style: AfTypography.mono.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+              ],
             ),
-            Text(
-              formatRemaining(remaining),
-              style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
-            ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Reactive transport
+// Reactive transport — play/pause/skip/shuffle/repeat
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Watches playing/shuffle/loop — rebuilds on transport state changes only.
@@ -899,81 +945,84 @@ class _TransportRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Shuffle
-        GestureDetector(
-          onLongPress: onShuffleLongPress,
-          child: _TransportButton(
-            icon: Icon(
-              shuffleMode == ShuffleMode.tail
-                  ? LucideIcons.arrowDownWideNarrow
-                  : LucideIcons.shuffle,
-              size: 20,
-              color: shuffleOn ? accent : AfColors.textTertiary,
-            ),
-            onTap: onShuffle,
-          ),
-        ),
-        const SizedBox(width: AfSpacing.s12),
-        // Previous
-        _TransportButton(
-          icon: const Icon(
-            LucideIcons.skipBack,
-            size: 26,
-            color: AfColors.textPrimary,
-          ),
-          onTap: onPrev,
-        ),
-        const SizedBox(width: AfSpacing.s16),
-        // Play / Pause
-        _PlayButton(isPlaying: isPlaying, onTap: onPlayPause),
-        const SizedBox(width: AfSpacing.s16),
-        // Next
-        _TransportButton(
-          icon: const Icon(
-            LucideIcons.skipForward,
-            size: 26,
-            color: AfColors.textPrimary,
-          ),
-          onTap: onNext,
-        ),
-        const SizedBox(width: AfSpacing.s12),
-        // Repeat
-        _TransportButton(
-          icon: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Icon(
-                _loopIcon(loopMode),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Shuffle
+          GestureDetector(
+            onLongPress: onShuffleLongPress,
+            child: _TransportButton(
+              icon: Icon(
+                shuffleMode == ShuffleMode.tail
+                    ? LucideIcons.arrowDownWideNarrow
+                    : LucideIcons.shuffle,
                 size: 20,
-                color: _loopColor(loopMode, accent),
+                color: shuffleOn ? accent : AfColors.textTertiary,
               ),
-              if (loopMode == AfLoopMode.forNtimes)
-                Positioned(
-                  right: -6,
-                  top: -4,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: const BoxDecoration(
-                      color: AfColors.indigo400,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '$repeatCount',
-                      style: AfTypography.caption.copyWith(
-                        color: AfColors.textOnPrimary,
-                        fontWeight: FontWeight.bold,
+              onTap: onShuffle,
+            ),
+          ),
+          const SizedBox(width: AfSpacing.s12),
+          // Previous
+          _TransportButton(
+            icon: const Icon(
+              LucideIcons.skipBack,
+              size: 26,
+              color: AfColors.textPrimary,
+            ),
+            onTap: onPrev,
+          ),
+          const SizedBox(width: AfSpacing.s16),
+          // Play / Pause — spectral glow
+          _PlayButton(isPlaying: isPlaying, accent: accent, onTap: onPlayPause),
+          const SizedBox(width: AfSpacing.s16),
+          // Next
+          _TransportButton(
+            icon: const Icon(
+              LucideIcons.skipForward,
+              size: 26,
+              color: AfColors.textPrimary,
+            ),
+            onTap: onNext,
+          ),
+          const SizedBox(width: AfSpacing.s12),
+          // Repeat
+          _TransportButton(
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  _loopIcon(loopMode),
+                  size: 20,
+                  color: _loopColor(loopMode, accent),
+                ),
+                if (loopMode == AfLoopMode.forNtimes)
+                  Positioned(
+                    right: -6,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: AfColors.indigo400,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '$repeatCount',
+                        style: AfTypography.caption.copyWith(
+                          color: AfColors.textOnPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
+            onTap: onRepeat,
           ),
-          onTap: onRepeat,
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -996,9 +1045,17 @@ class _TransportButton extends StatelessWidget {
   }
 }
 
+/// Play/pause button with spectral ambient glow.
+/// 60dp circle with [accent] background and a pulsing outer glow shadow
+/// driven by the spectral energy color.
 class _PlayButton extends ConsumerWidget {
-  const _PlayButton({required this.isPlaying, required this.onTap});
+  const _PlayButton({
+    required this.isPlaying,
+    required this.accent,
+    required this.onTap,
+  });
   final bool isPlaying;
+  final Color accent;
   final VoidCallback onTap;
 
   @override
@@ -1010,27 +1067,47 @@ class _PlayButton extends ConsumerWidget {
       child: Container(
         width: 60,
         height: 60,
-        decoration: const BoxDecoration(
-          color: AfColors.textOnPrimary,
+        decoration: BoxDecoration(
+          color: accent,
           shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: 0.40),
+              blurRadius: 24,
+              spreadRadius: 2,
+            ),
+            BoxShadow(
+              color: accent.withValues(alpha: 0.15),
+              blurRadius: 48,
+              spreadRadius: 4,
+            ),
+          ],
         ),
         child: Center(
           child: isBuffering
-              ? const SizedBox(
+              ? SizedBox(
                   width: AfSpacing.s24,
                   height: AfSpacing.s24,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    color: AfColors.surfaceCanvas,
+                    color: _contrastColor(accent),
                   ),
                 )
               : Icon(
                   isPlaying ? LucideIcons.pause : LucideIcons.play,
-                  color: AfColors.surfaceCanvas,
+                  color: _contrastColor(accent),
                   size: 28,
                 ),
         ),
       ),
     );
+  }
+
+  /// Returns black or white depending on the accent color luminance
+  /// for maximum contrast on the spectral background.
+  static Color _contrastColor(Color accent) {
+    return accent.computeLuminance() > 0.45
+        ? AfColors.surfaceCanvas
+        : AfColors.textOnPrimary;
   }
 }

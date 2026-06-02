@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/local/app_mode_store.dart';
@@ -8,6 +9,8 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 
 /// Onboarding screen for local mode: pick a folder, scan it, then proceed.
+///
+/// SAF folder picker with permission request flow and library path display.
 class LocalSetupScreen extends ConsumerStatefulWidget {
   const LocalSetupScreen({super.key});
 
@@ -110,7 +113,7 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
         backgroundColor: AfColors.surfaceCanvas,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const Icon(LucideIcons.arrowLeft),
           onPressed: () async {
             // Reset mode on back — user wants to re-decide at the
             // WelcomeScreen. This also prevents stale redirects on
@@ -150,25 +153,35 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
 
               // Folder selection
               Material(
-                color: AfColors.surfaceBase,
+                color: AfColors.surfaceRaised,
                 borderRadius: AfRadii.borderLg,
                 child: InkWell(
                   onTap: _scanning ? null : _pickFolder,
                   borderRadius: AfRadii.borderLg,
-                  child: Padding(
+                  child: Container(
                     padding: const EdgeInsets.all(AfSpacing.s16),
+                    decoration: BoxDecoration(
+                      borderRadius: AfRadii.borderLg,
+                      border: Border.all(
+                        color: _folderUri != null
+                            ? AfColors.accentPrimary.withValues(alpha: 0.4)
+                            : AfColors.surfaceHigh,
+                      ),
+                    ),
                     child: Row(
                       children: [
                         Container(
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: AfColors.indigo500.withValues(alpha: 0.15),
+                            color: AfColors.accentPrimary.withValues(
+                              alpha: 0.15,
+                            ),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
-                            Icons.folder_open_rounded,
-                            color: AfColors.indigo400,
+                            LucideIcons.folderOpen,
+                            color: AfColors.accentPrimary,
                           ),
                         ),
                         const SizedBox(width: AfSpacing.s12),
@@ -196,12 +209,12 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
                         ),
                         if (_folderUri == null)
                           const Icon(
-                            Icons.add_rounded,
+                            LucideIcons.plus,
                             color: AfColors.textTertiary,
                           ),
                         if (_folderUri != null)
                           const Icon(
-                            Icons.check_circle_rounded,
+                            LucideIcons.checkCircle,
                             color: AfColors.semanticSuccess,
                           ),
                       ],
@@ -217,8 +230,10 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
                 LinearProgressIndicator(
                   value: _totalCount > 0 ? _scannedCount / _totalCount : null,
                   backgroundColor: AfColors.surfaceHigh,
-                  valueColor: const AlwaysStoppedAnimation(AfColors.indigo500),
-                  borderRadius: BorderRadius.circular(2),
+                  valueColor: const AlwaysStoppedAnimation(
+                    AfColors.accentPrimary,
+                  ),
+                  borderRadius: AfRadii.borderXs,
                 ),
                 const SizedBox(height: AfSpacing.s8),
                 Text(

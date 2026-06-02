@@ -138,7 +138,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
             child: ShaderMask(
               shaderCallback: (bounds) => const LinearGradient(
-                colors: [AfColors.indigo300, AfColors.indigo500],
+                colors: [AfColors.accentPrimary, AfColors.accentSecondary],
               ).createShader(bounds),
               child: Text(
                 'Search',
@@ -234,15 +234,15 @@ class _SearchFilterChips extends StatelessWidget {
             selected: active,
             onSelected: (_) => onChanged(f),
             backgroundColor: AfColors.surfaceBase,
-            selectedColor: AfColors.indigo700,
+            selectedColor: AfColors.accentMuted,
             labelStyle: AfTypography.bodySmall.copyWith(
-              color: active ? AfColors.indigo300 : AfColors.textSecondary,
+              color: active ? AfColors.accentPrimary : AfColors.textSecondary,
               fontWeight: active ? FontWeight.w600 : FontWeight.w400,
             ),
             shape: RoundedRectangleBorder(
               borderRadius: AfRadii.borderPill,
               side: BorderSide(
-                color: active ? AfColors.indigo300 : AfColors.surfaceHigh,
+                color: active ? AfColors.accentPrimary : AfColors.surfaceHigh,
               ),
             ),
             showCheckmark: false,
@@ -445,7 +445,7 @@ class _SearchIdleStateState extends ConsumerState<_SearchIdleState> {
                         labelStyle: AfTypography.bodySmall.copyWith(
                           color: AfColors.textPrimary,
                         ),
-                        deleteIcon: const Icon(Icons.close_rounded, size: 16),
+                        deleteIcon: const Icon(LucideIcons.x, size: 16),
                         deleteIconColor: AfColors.textTertiary,
                         onPressed: () => widget.onRecent(q),
                         onDeleted: () =>
@@ -510,7 +510,9 @@ class _IdleFilterPills extends StatelessWidget {
               curve: AfCurves.easeStandard,
               padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
               decoration: BoxDecoration(
-                color: active ? AfColors.indigo600 : AfColors.surfaceRaised,
+                color: active
+                    ? AfColors.accentSecondary
+                    : AfColors.surfaceRaised,
                 borderRadius: AfRadii.borderPill,
               ),
               alignment: Alignment.center,
@@ -534,14 +536,16 @@ class _IdleFilterPills extends StatelessWidget {
 Color _parseTint(String hex) {
   try {
     final cleaned = hex.replaceFirst('#', '');
-    if (cleaned.length != 6 && cleaned.length != 8) return AfColors.indigo600;
+    if (cleaned.length != 6 && cleaned.length != 8) {
+      return AfColors.accentSecondary;
+    }
     final value = int.parse(
       cleaned.length == 6 ? 'FF$cleaned' : cleaned,
       radix: 16,
     );
     return Color(value);
   } catch (_) {
-    return AfColors.indigo600;
+    return AfColors.accentSecondary;
   }
 }
 
@@ -781,12 +785,12 @@ class _SearchResults extends ConsumerWidget {
                   decoration: const BoxDecoration(
                     borderRadius: AfRadii.borderSm,
                     gradient: LinearGradient(
-                      colors: [AfColors.indigo700, AfColors.indigo900],
+                      colors: [AfColors.accentMuted, AfColors.surfaceLow],
                     ),
                   ),
                   child: const Icon(
-                    Icons.playlist_play_rounded,
-                    color: AfColors.indigo300,
+                    LucideIcons.listMusic,
+                    color: AfColors.accentPrimary,
                   ),
                 ),
                 title: Text(p.name, style: AfTypography.bodyMedium),

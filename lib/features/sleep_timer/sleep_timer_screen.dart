@@ -152,15 +152,15 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
                     vertical: AfSpacing.s12,
                   ),
                   decoration: BoxDecoration(
-                    color: AfColors.indigo800.withValues(alpha: 0.4),
+                    color: AfColors.accentMuted.withValues(alpha: 0.4),
                     borderRadius: AfRadii.borderMd,
-                    border: Border.all(color: AfColors.indigo600, width: 1),
+                    border: Border.all(color: AfColors.accentPrimary, width: 1),
                   ),
                   child: Row(
                     children: [
                       const Icon(
                         Icons.bedtime_rounded,
-                        color: AfColors.indigo300,
+                        color: AfColors.accentPrimary,
                         size: 20,
                       ),
                       const SizedBox(width: AfSpacing.s12),
@@ -170,7 +170,7 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
                               ? 'Pausing after current track'
                               : 'Pausing in ${remaining != null ? _formatRemaining(remaining) : '…'}',
                           style: AfTypography.bodyMedium.copyWith(
-                            color: AfColors.indigo300,
+                            color: AfColors.accentPrimary,
                           ),
                         ),
                       ),
@@ -256,10 +256,10 @@ class _TimerChip extends StatelessWidget {
           vertical: AfSpacing.s8,
         ),
         decoration: BoxDecoration(
-          color: selected ? AfColors.indigo600 : AfColors.surfaceBase,
+          color: selected ? AfColors.accentPrimary : AfColors.surfaceBase,
           borderRadius: AfRadii.borderPill,
           border: Border.all(
-            color: selected ? AfColors.indigo400 : AfColors.surfaceHigh,
+            color: selected ? AfColors.accentPrimary : AfColors.surfaceHigh,
           ),
         ),
         child: Text(

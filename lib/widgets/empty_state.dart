@@ -4,8 +4,7 @@ import '../design_tokens/tokens.dart';
 
 /// Soft empty illustration + copy + optional CTA.
 ///
-/// Per spec §8.2: "Your library is quiet. Add music to your Jellyfin
-/// server to see it here." This widget is the canonical layout.
+/// Canonical layout for empty states across the app.
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
@@ -15,6 +14,7 @@ class EmptyState extends StatelessWidget {
     this.actionLabel,
     this.onAction,
   });
+
   final IconData icon;
   final String title;
   final String? body;
@@ -32,7 +32,7 @@ class EmptyState extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, size: 48, color: AfColors.indigo400),
+          Icon(icon, size: 48, color: AfColors.accentMuted),
           const SizedBox(height: AfSpacing.s16),
           Text(
             title,

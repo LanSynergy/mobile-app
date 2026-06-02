@@ -3,20 +3,18 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import '../utils/url.dart';
 
-/// Network artwork that gracefully degrades to a deterministic indigo
-/// gradient when the URL is null or fails to load. Used everywhere we
+/// Network artwork that gracefully degrades to a dark placeholder
+/// when the URL is null or fails to load. Used everywhere we
 /// need an album/playlist/track cover.
 ///
-/// The widget reads `jellyfinClientProvider` so it can send the active
-/// `Authorization` header alongside the image fetch. The token used to
-/// ride in the URL as `?api_key=…`; review S2 moved it to a header,
-/// which means Jellyfin servers with auth-required image endpoints
-/// would 401 here without this wiring.
+/// The widget reads `musicBackendProvider` so it can send the active
+/// auth header alongside the image fetch.
 class Artwork extends ConsumerWidget {
   const Artwork({
     super.key,
@@ -27,6 +25,7 @@ class Artwork extends ConsumerWidget {
     this.fit = BoxFit.cover,
     this.semanticLabel,
   });
+
   final String? url;
   final double size;
   final double? height;
@@ -40,9 +39,6 @@ class Artwork extends ConsumerWidget {
     final h = height ?? size;
     final isFinite = w.isFinite;
 
-    // Only use LayoutBuilder when size is dynamic (e.g. double.infinity).
-    // For fixed sizes (common in list items), skip it to avoid an extra
-    // layout pass on every build.
     final double layoutW;
     final double layoutH;
     if (isFinite) {
@@ -62,15 +58,11 @@ class Artwork extends ConsumerWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AfColors.indigo800, AfColors.indigo950],
+          colors: [AfColors.surfaceBase, AfColors.surfaceLow],
         ),
       ),
       child: const Center(
-        child: Icon(
-          Icons.music_note_rounded,
-          color: AfColors.indigo300,
-          size: 28,
-        ),
+        child: Icon(LucideIcons.music, color: AfColors.accentMuted, size: 28),
       ),
     );
 
@@ -141,6 +133,7 @@ class CircularArtwork extends StatelessWidget {
     this.size = 64,
     this.semanticLabel,
   });
+
   final String? url;
   final double size;
   final String? semanticLabel;

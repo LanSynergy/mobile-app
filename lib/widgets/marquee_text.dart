@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 /// Auto-scrolling marquee text that animates when content overflows.
+///
+/// Measures text width via [LayoutBuilder], then scrolls a duplicated
+/// text row at [speedPxPerSec] when the content exceeds the available
+/// width. Pauses briefly at each edge before repeating.
 class MarqueeText extends StatefulWidget {
   const MarqueeText({
     super.key,

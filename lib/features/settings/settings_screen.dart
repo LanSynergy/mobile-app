@@ -40,7 +40,7 @@ class _IconContainer extends StatelessWidget {
         color: AfColors.surfaceHigh,
         borderRadius: AfRadii.borderSm,
       ),
-      child: Icon(icon, size: 16, color: color ?? AfColors.indigo400),
+      child: Icon(icon, size: 16, color: color ?? AfColors.accentPrimary),
     );
   }
 }
@@ -114,7 +114,7 @@ class _IosTile extends StatelessWidget {
             children: [
               _IconContainer(
                 icon: icon,
-                color: danger ? AfColors.semanticError : AfColors.indigo400,
+                color: danger ? AfColors.semanticError : AfColors.accentPrimary,
               ),
               const SizedBox(width: AfSpacing.s12),
               Expanded(
@@ -212,7 +212,7 @@ class _IosSwitch extends StatelessWidget {
                 value: value,
                 onChanged: onChanged,
                 activeThumbColor: AfColors.textOnPrimary,
-                activeTrackColor: AfColors.indigo500,
+                activeTrackColor: AfColors.accentPrimary,
               ),
             ],
           ),
@@ -772,7 +772,7 @@ class SettingsScreen extends ConsumerWidget {
                     title: 'Source code',
                     subtitle: 'github.com/Aetherfin/mobile-app',
                     trailing: const Icon(
-                      Icons.open_in_new_rounded,
+                      LucideIcons.externalLink,
                       color: AfColors.textTertiary,
                       size: 16,
                     ),
@@ -959,7 +959,7 @@ class _LastFmSettingsSection extends ConsumerWidget {
                                   height: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: AfColors.indigo300,
+                                    color: AfColors.accentPrimary,
                                   ),
                                 ),
                                 const SizedBox(width: AfSpacing.s16),

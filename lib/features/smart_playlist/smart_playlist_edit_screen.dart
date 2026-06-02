@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/smart_playlist/smart_playlist_model.dart';
@@ -8,7 +9,7 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/skeletons/track_row_skeleton.dart';
 
-/// Create or edit a smart playlist — Samsung One UI style rule builder.
+/// Create or edit a smart playlist — Dark Moody rule builder.
 class SmartPlaylistEditScreen extends ConsumerStatefulWidget {
   // null = create new
   const SmartPlaylistEditScreen({super.key, this.playlistId});
@@ -140,7 +141,7 @@ class _SmartPlaylistEditScreenState
         backgroundColor: AfColors.surfaceCanvas,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const Icon(LucideIcons.arrowLeft),
           onPressed: () => context.pop(),
         ),
         title: Text(
@@ -155,7 +156,7 @@ class _SmartPlaylistEditScreenState
             child: Text(
               'Save',
               style: AfTypography.bodyMedium.copyWith(
-                color: AfColors.indigo400,
+                color: AfColors.accentPrimary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -210,13 +211,13 @@ class _SmartPlaylistEditScreenState
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: AfColors.semanticInfo.withValues(alpha: 0.15),
+                        color: AfColors.accentSecondary.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.filter_list_rounded,
-                        size: 20,
-                        color: AfColors.semanticInfo,
+                        LucideIcons.filter,
+                        size: 18,
+                        color: AfColors.accentSecondary,
                       ),
                     ),
                     const SizedBox(width: AfSpacing.s12),
@@ -232,8 +233,8 @@ class _SmartPlaylistEditScreenState
                           setState(() => _combinator = v.first),
                       style: SegmentedButton.styleFrom(
                         backgroundColor: AfColors.surfaceHigh,
-                        selectedBackgroundColor: AfColors.indigo600,
-                        selectedForegroundColor: AfColors.textOnPrimary,
+                        selectedBackgroundColor: AfColors.accentPrimary,
+                        selectedForegroundColor: AfColors.surfaceCanvas,
                       ),
                     ),
                   ],
@@ -271,10 +272,10 @@ class _SmartPlaylistEditScreenState
             padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s4),
             child: OutlinedButton.icon(
               onPressed: _addRule,
-              icon: const Icon(Icons.add_rounded, size: 18),
+              icon: const Icon(LucideIcons.plus, size: 18),
               label: const Text('Add rule'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AfColors.indigo400,
+                foregroundColor: AfColors.accentPrimary,
                 side: const BorderSide(color: AfColors.surfaceHigh),
                 shape: const RoundedRectangleBorder(
                   borderRadius: AfRadii.borderLg,
@@ -306,8 +307,8 @@ class _SmartPlaylistEditScreenState
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.sort_rounded,
-                        size: 20,
+                        LucideIcons.arrowUpDown,
+                        size: 18,
                         color: AfColors.semanticSuccess,
                       ),
                     ),
@@ -319,7 +320,7 @@ class _SmartPlaylistEditScreenState
                       underline: const SizedBox.shrink(),
                       dropdownColor: AfColors.surfaceRaised,
                       style: AfTypography.bodySmall.copyWith(
-                        color: AfColors.indigo300,
+                        color: AfColors.accentPrimary,
                       ),
                       items: kSmartSortOptions.entries
                           .map(
@@ -334,9 +335,9 @@ class _SmartPlaylistEditScreenState
                     IconButton(
                       icon: Icon(
                         _sortOrder == 'asc'
-                            ? Icons.arrow_upward_rounded
-                            : Icons.arrow_downward_rounded,
-                        size: 20,
+                            ? LucideIcons.arrowUp
+                            : LucideIcons.arrowDown,
+                        size: 18,
                         color: AfColors.textSecondary,
                       ),
                       onPressed: () => setState(
@@ -374,8 +375,8 @@ class _SmartPlaylistEditScreenState
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.playlist_remove_rounded,
-                        size: 20,
+                        LucideIcons.listX,
+                        size: 18,
                         color: AfColors.semanticWarning,
                       ),
                     ),
@@ -391,10 +392,10 @@ class _SmartPlaylistEditScreenState
                         ),
                         textAlign: TextAlign.center,
                         style: AfTypography.bodyMedium.copyWith(
-                          color: AfColors.indigo300,
+                          color: AfColors.accentPrimary,
                         ),
                         decoration: InputDecoration(
-                          hintText: '∞',
+                          hintText: '\u221e',
                           hintStyle: AfTypography.bodyMedium.copyWith(
                             color: AfColors.textTertiary,
                           ),
@@ -434,7 +435,7 @@ class _SmartPlaylistEditScreenState
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared One UI components
+// Shared settings UI components
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
@@ -452,7 +453,7 @@ class _SectionLabel extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AfTypography.bodySmall.copyWith(
+        style: AfTypography.label.copyWith(
           color: AfColors.textTertiary,
           fontWeight: FontWeight.w500,
         ),
@@ -598,7 +599,7 @@ class _RuleRow extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    Icons.close_rounded,
+                    LucideIcons.x,
                     size: 16,
                     color: AfColors.semanticError,
                   ),
@@ -625,7 +626,7 @@ class _RuleRow extends StatelessWidget {
             onChanged: (v) => onChanged(
               SmartRule(field: rule.field, operator: rule.operator, value: v),
             ),
-            activeTrackColor: AfColors.indigo500,
+            activeTrackColor: AfColors.accentPrimary,
           ),
         ],
       );

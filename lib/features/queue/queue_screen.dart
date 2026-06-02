@@ -160,7 +160,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xFF271640), Color(0xFF040319)],
+                    colors: [AfColors.surfaceLow, AfColors.surfaceCanvas],
                     stops: [0.0, 1.0],
                   ),
                 ),

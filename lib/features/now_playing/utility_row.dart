@@ -39,11 +39,7 @@ class UtilityRow extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         UtilityIcon(
-          icon: const Icon(
-            LucideIcons.mic2,
-            size: 22,
-            color: AfColors.textSecondary,
-          ),
+          icon: const Icon(LucideIcons.mic2, size: 22, color: AfColors.textSecondary),
           label: 'Lyrics',
           onTap: () => context.push('/lyrics'),
         ),
@@ -60,11 +56,11 @@ class UtilityRow extends ConsumerWidget {
           icon: Icon(
             LucideIcons.plus,
             size: 22,
-            color: isSaved ? AfColors.indigo300 : AfColors.textSecondary,
+            color: isSaved ? AfColors.accentPrimary : AfColors.textSecondary,
           ),
           label: isSaved ? 'Saved' : 'Save',
           onTap: () => showSaveDialog(context, ref),
-          color: isSaved ? AfColors.indigo300 : null,
+          color: isSaved ? AfColors.accentPrimary : null,
         ),
         UtilityIcon(
           icon: const Icon(
@@ -132,6 +128,7 @@ class _MoreMenu extends StatelessWidget {
     required this.ref,
     required this.pageNotifier,
   });
+
   final BuildContext dialogCtx;
   final BuildContext context;
   final WidgetRef ref;
@@ -148,7 +145,7 @@ class _MoreMenu extends StatelessWidget {
             LucideIcons.arrowLeftRight,
             size: 22,
             color: ref.watch(abLoopAProvider) != null
-                ? AfColors.indigo300
+                ? AfColors.accentPrimary
                 : AfColors.textSecondary,
           ),
           label: 'A-B Loop',
@@ -238,6 +235,7 @@ class _MoreMenu extends StatelessWidget {
 
 class _DetailsView extends ConsumerWidget {
   const _DetailsView({required this.track, required this.onBack});
+
   final AfTrack track;
   final VoidCallback onBack;
 
@@ -249,6 +247,7 @@ class _DetailsView extends ConsumerWidget {
 
 class _TrackDetailsWrapper extends StatefulWidget {
   const _TrackDetailsWrapper({required this.track, required this.onBack});
+
   final AfTrack track;
   final VoidCallback onBack;
 
@@ -340,18 +339,25 @@ void showVolumeDialog(BuildContext context, WidgetRef ref) {
             ],
           ),
           const SizedBox(height: AfSpacing.s16),
-          Slider(
-            value: volume.clamp(0, 150),
-            min: 0,
-            max: 150,
-            divisions: 30,
-            activeColor: AfColors.indigo400,
-            label: '${volume.round()}%',
-            onChanged: (v) {
-              volume = v;
-              svc.setVolume(v);
-              setDialogState(() {});
-            },
+          SliderTheme(
+            data: SliderThemeData(
+              activeTrackColor: AfColors.accentPrimary,
+              inactiveTrackColor: AfColors.surfaceHigh,
+              thumbColor: AfColors.accentPrimary,
+              overlayColor: AfColors.accentPrimary.withValues(alpha: 0.1),
+            ),
+            child: Slider(
+              value: volume.clamp(0, 150),
+              min: 0,
+              max: 150,
+              divisions: 30,
+              label: '${volume.round()}%',
+              onChanged: (v) {
+                volume = v;
+                svc.setVolume(v);
+                setDialogState(() {});
+              },
+            ),
           ),
           Text(
             '${volume.round()}%',
@@ -386,18 +392,25 @@ void showAudioDelayDialog(BuildContext context, WidgetRef ref) {
             ),
           ),
           const SizedBox(height: AfSpacing.s16),
-          Slider(
-            value: delayMs.clamp(-500, 500),
-            min: -500,
-            max: 500,
-            divisions: 20,
-            activeColor: AfColors.indigo400,
-            label: '${delayMs.round()} ms',
-            onChanged: (v) {
-              delayMs = v;
-              svc.setAudioDelay(Duration(milliseconds: v.round()));
-              setDialogState(() {});
-            },
+          SliderTheme(
+            data: SliderThemeData(
+              activeTrackColor: AfColors.accentPrimary,
+              inactiveTrackColor: AfColors.surfaceHigh,
+              thumbColor: AfColors.accentPrimary,
+              overlayColor: AfColors.accentPrimary.withValues(alpha: 0.1),
+            ),
+            child: Slider(
+              value: delayMs.clamp(-500, 500),
+              min: -500,
+              max: 500,
+              divisions: 20,
+              label: '${delayMs.round()} ms',
+              onChanged: (v) {
+                delayMs = v;
+                svc.setAudioDelay(Duration(milliseconds: v.round()));
+                setDialogState(() {});
+              },
+            ),
           ),
           Text(
             '${delayMs.round()} ms',
@@ -459,9 +472,12 @@ void showAbLoopDialog(BuildContext context, WidgetRef ref) {
               );
             }
           },
-          icon: const Icon(Icons.flag_rounded, size: 18),
+          icon: const Icon(LucideIcons.flag, size: 18),
           label: const Text('Set A (start)'),
-          style: FilledButton.styleFrom(backgroundColor: AfColors.indigo600),
+          style: FilledButton.styleFrom(
+            backgroundColor: AfColors.accentPrimary,
+            foregroundColor: AfColors.surfaceCanvas,
+          ),
         ),
         const SizedBox(height: AfSpacing.s8),
         FilledButton.icon(
@@ -476,9 +492,12 @@ void showAbLoopDialog(BuildContext context, WidgetRef ref) {
               );
             }
           },
-          icon: const Icon(Icons.flag_outlined, size: 18),
+          icon: const Icon(LucideIcons.flag, size: 18),
           label: const Text('Set B (end)'),
-          style: FilledButton.styleFrom(backgroundColor: AfColors.indigo600),
+          style: FilledButton.styleFrom(
+            backgroundColor: AfColors.accentPrimary,
+            foregroundColor: AfColors.surfaceCanvas,
+          ),
         ),
         const SizedBox(height: AfSpacing.s8),
         OutlinedButton.icon(
@@ -494,7 +513,7 @@ void showAbLoopDialog(BuildContext context, WidgetRef ref) {
               ).showSnackBar(const SnackBar(content: Text('A-B loop cleared')));
             }
           },
-          icon: const Icon(Icons.clear_rounded, size: 18),
+          icon: const Icon(LucideIcons.x, size: 18),
           label: const Text('Clear loop'),
           style: OutlinedButton.styleFrom(
             foregroundColor: AfColors.semanticError,
@@ -549,7 +568,7 @@ void showSpeedDialog(BuildContext context, WidgetRef ref) {
               style: AfTypography.bodyMedium,
             ),
             trailing: (s - current).abs() < 0.001
-                ? const Icon(Icons.check_rounded, size: 20)
+                ? const Icon(LucideIcons.check, size: 20)
                 : null,
             onTap: () {
               unawaited(ref.read(playerServiceProvider).setAfSpeed(s));
@@ -641,7 +660,7 @@ class OutputDialogContent extends ConsumerWidget {
                               ? device.description
                               : device.name,
                           color: isActive
-                              ? AfColors.indigo300
+                              ? AfColors.accentPrimary
                               : AfColors.textSecondary,
                         ),
                         title: Text(
@@ -652,8 +671,8 @@ class OutputDialogContent extends ConsumerWidget {
                         ),
                         trailing: isActive
                             ? const Icon(
-                                Icons.check_rounded,
-                                color: AfColors.indigo300,
+                                LucideIcons.check,
+                                color: AfColors.accentPrimary,
                                 size: 20,
                               )
                             : null,
@@ -681,18 +700,18 @@ class OutputDialogContent extends ConsumerWidget {
         n.contains('headset') ||
         n.contains('earphone') ||
         n.contains('airpod')) {
-      return Icon(Icons.headphones_rounded, color: color, size: 22);
+      return Icon(LucideIcons.headphones, color: color, size: 22);
     }
     if (n.contains('speaker')) {
-      return Icon(Icons.speaker_rounded, color: color, size: 22);
+      return Icon(LucideIcons.speaker, color: color, size: 22);
     }
     if (n.contains('hdmi')) {
-      return Icon(Icons.tv_rounded, color: color, size: 22);
+      return Icon(LucideIcons.monitor, color: color, size: 22);
     }
     if (n.contains('usb')) {
-      return Icon(Icons.usb_rounded, color: color, size: 22);
+      return Icon(LucideIcons.usb, color: color, size: 22);
     }
-    return Icon(Icons.smartphone_rounded, color: color, size: 22);
+    return Icon(LucideIcons.smartphone, color: color, size: 22);
   }
 }
 
@@ -708,6 +727,7 @@ class UtilityIcon extends StatelessWidget {
     required this.onTap,
     this.color,
   });
+
   final Widget icon;
   final String label;
   final VoidCallback onTap;
@@ -722,7 +742,7 @@ class UtilityIcon extends StatelessWidget {
         child: Column(
           children: [
             icon,
-            const SizedBox(height: 4),
+            const SizedBox(height: AfSpacing.s4),
             Text(
               label,
               style: AfTypography.caption.copyWith(
@@ -747,6 +767,7 @@ class MoreItem extends StatelessWidget {
     required this.label,
     required this.onTap,
   });
+
   final Widget icon;
   final String label;
   final VoidCallback onTap;

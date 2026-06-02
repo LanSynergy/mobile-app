@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/smart_playlist/smart_playlist_model.dart';
 import '../../design_tokens/tokens.dart';
@@ -9,7 +10,7 @@ import '../../widgets/af_dialog.dart';
 import '../../widgets/async_error_view.dart';
 import '../../widgets/skeletons/playlist_skeleton.dart';
 
-/// Lists all user-created smart playlists — Samsung One UI style.
+/// Lists all user-created smart playlists — Dark Moody style.
 class SmartPlaylistListScreen extends ConsumerWidget {
   const SmartPlaylistListScreen({super.key});
 
@@ -23,7 +24,7 @@ class SmartPlaylistListScreen extends ConsumerWidget {
         backgroundColor: AfColors.surfaceCanvas,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const Icon(LucideIcons.arrowLeft),
           onPressed: () => context.pop(),
         ),
         title: Text('Smart Playlists', style: AfTypography.display),
@@ -32,8 +33,8 @@ class SmartPlaylistListScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/smart-playlist/new'),
-        backgroundColor: AfColors.indigo600,
-        child: const Icon(Icons.add_rounded, color: Colors.white),
+        backgroundColor: AfColors.accentPrimary,
+        child: const Icon(LucideIcons.plus, color: AfColors.surfaceCanvas),
       ),
       body: playlistsAsync.when(
         data: (playlists) => playlists.isEmpty
@@ -45,13 +46,13 @@ class SmartPlaylistListScreen extends ConsumerWidget {
                       width: 72,
                       height: 72,
                       decoration: BoxDecoration(
-                        color: AfColors.indigo500.withValues(alpha: 0.12),
+                        color: AfColors.accentPrimary.withValues(alpha: 0.08),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.auto_awesome_rounded,
+                        LucideIcons.sparkles,
                         size: 36,
-                        color: AfColors.indigo400,
+                        color: AfColors.accentPrimary,
                       ),
                     ),
                     const SizedBox(height: AfSpacing.s16),
@@ -146,16 +147,16 @@ class _PlaylistTile extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: AfColors.indigo500.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
+                color: AfColors.accentPrimary.withValues(alpha: 0.12),
+                borderRadius: AfRadii.borderSm,
               ),
               child: const Icon(
-                Icons.auto_awesome_rounded,
+                LucideIcons.sparkles,
                 size: 20,
-                color: AfColors.indigo400,
+                color: AfColors.accentPrimary,
               ),
             ),
             const SizedBox(width: AfSpacing.s12),
@@ -180,9 +181,9 @@ class _PlaylistTile extends StatelessWidget {
               ),
             ),
             const Icon(
-              Icons.chevron_right_rounded,
-              color: AfColors.textTertiary,
-              size: 20,
+              LucideIcons.chevronRight,
+              color: AfColors.textDisabled,
+              size: 18,
             ),
           ],
         ),

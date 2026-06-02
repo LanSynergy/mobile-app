@@ -1,29 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../design_tokens/tokens.dart';
 import '../utils/display_error.dart';
 
 /// Inline error card for failed `AsyncValue` fetches.
 ///
-/// Replaces the `AsyncValue.maybeWhen(data:, orElse: …)` anti-pattern
-/// that used to collapse `loading` **and** `error` into a blank
-/// placeholder (or an infinite spinner). When the server was
-/// unreachable, the auth token had expired, or the backend returned a
-/// 5xx, the user got no feedback — natural read was "library is empty"
-/// or "this is just taking forever".
-///
 /// Two layouts:
 ///
 /// - **Compact** (`compactHeight` provided): an inline horizontal row
-///   sized to match the loading skeleton, so layout doesn't jump when
-///   an error surfaces mid-fetch on a Home rail.
+///   sized to match the loading skeleton.
 /// - **Centered** (`compactHeight == null`): a centered column suitable
-///   for full-screen sections (Library Albums / Artists / Songs /
-///   Playlists / Genres / Liked).
-///
-/// In both cases the rendered error message goes through
-/// [displayError], which strips the `api_key` / `t` / `s` / `u` query
-/// params Dio embeds in `DioException.toString()`.
+///   for full-screen sections.
 class AsyncErrorView extends StatelessWidget {
   const AsyncErrorView({
     super.key,
@@ -39,6 +27,7 @@ class AsyncErrorView extends StatelessWidget {
     required this.onRetry,
     required double height,
   }) : compactHeight = height;
+
   final String label;
   final Object error;
   final VoidCallback onRetry;
@@ -84,7 +73,7 @@ class AsyncErrorView extends StatelessWidget {
             child: Row(
               children: [
                 const Icon(
-                  Icons.cloud_off_rounded,
+                  LucideIcons.cloudOff,
                   color: AfColors.semanticError,
                   size: 20,
                 ),
@@ -123,7 +112,6 @@ class AsyncErrorView extends StatelessWidget {
       );
     }
 
-    // Centered layout — used by full-screen sections (Library tabs).
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s24),
@@ -131,7 +119,7 @@ class AsyncErrorView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              Icons.cloud_off_rounded,
+              LucideIcons.cloudOff,
               color: AfColors.semanticError,
               size: 40,
             ),

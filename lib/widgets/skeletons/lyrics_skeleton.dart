@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:aetherfin/design_tokens/tokens.dart';
-import 'package:aetherfin/widgets/skeleton.dart';
+
+import '../../design_tokens/tokens.dart';
+import '../skeleton.dart';
 
 /// Shimmer skeleton for the lyrics screen.
+///
+/// Two stanzas of varied-width bars centered vertically, mimicking
+/// lyric line layout with natural rhythm breaks.
 class LyricsSkeleton extends StatelessWidget {
   const LyricsSkeleton({super.key});
 
@@ -13,7 +17,7 @@ class LyricsSkeleton extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Lines 1-4
+          // Stanza 1
           FractionallySizedBox(
             widthFactor: 0.90,
             child: SkeletonBar(height: 16),
@@ -34,7 +38,7 @@ class LyricsSkeleton extends StatelessWidget {
             child: SkeletonBar(height: 16),
           ),
           SizedBox(height: AfSpacing.s24), // stanza break
-          // Lines 5-8
+          // Stanza 2
           FractionallySizedBox(
             widthFactor: 0.95,
             child: SkeletonBar(height: 16),

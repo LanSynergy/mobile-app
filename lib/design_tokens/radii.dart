@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-/// Container shape radii.
+/// Container shape radii — Dark Moody edition.
 ///
 /// All radii are in dp (logical pixels in Flutter).
 /// `pill` is 999dp — used for buttons, chips, pills.

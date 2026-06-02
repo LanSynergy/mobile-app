@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:aetherfin/design_tokens/tokens.dart';
-import 'package:aetherfin/widgets/skeleton.dart';
-import 'package:aetherfin/widgets/skeletons/track_row_skeleton.dart';
+
+import '../../design_tokens/tokens.dart';
+import '../skeleton.dart';
+import 'track_row_skeleton.dart';
 
 /// Shimmer skeleton for the home screen hero album carousel.
 class HomeCarouselSkeleton extends StatelessWidget {

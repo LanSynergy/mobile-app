@@ -20,12 +20,8 @@ enum TrackRowDensity { compact, comfortable, generous }
 ///   `| 🎵 | Artist · Album · 3:42`
 ///   `+----+`
 ///
-/// Active rows render a 2dp left bar in `spectral.energy` and tint the
-/// background to `surface.base`.
-///
-/// When [steelBackground] is true, the row gets a frosted-glass steel
-/// look similar to [MiniPlayer] — semi-transparent white bg, rounded
-/// corners, subtle border.
+/// Active rows render a 2dp left bar in `accentPrimary` and tint the
+/// background to `surfaceBase`.
 class TrackRow extends StatelessWidget {
   const TrackRow({
     super.key,
@@ -41,6 +37,7 @@ class TrackRow extends StatelessWidget {
     this.steelBackground = false,
     this.isBuffering = false,
   });
+
   final AfTrack track;
   final TrackRowDensity density;
   final bool isActive;
@@ -60,7 +57,7 @@ class TrackRow extends StatelessWidget {
       TrackRowDensity.comfortable => (64.0, 44.0),
       TrackRowDensity.generous => (80.0, 56.0),
     };
-    final accent = activeAccent ?? AfColors.indigo300;
+    final accent = activeAccent ?? AfColors.accentPrimary;
 
     final titleStyle = AfTypography.bodyMedium.copyWith(
       fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
@@ -97,7 +94,7 @@ class TrackRow extends StatelessWidget {
               width: artSize,
               height: artSize,
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.5),
+                color: AfColors.surfaceCanvas.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(AfRadii.sm),
               ),
               child: const Center(
@@ -106,7 +103,7 @@ class TrackRow extends StatelessWidget {
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: AfColors.textPrimary,
                   ),
                 ),
               ),
@@ -127,8 +124,8 @@ class TrackRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: steelBackground
               ? (isActive
-                    ? Colors.white.withValues(alpha: 0.15)
-                    : Colors.white.withValues(alpha: 0.08))
+                    ? AfColors.surfaceHigh.withValues(alpha: 0.6)
+                    : AfColors.surfaceHigh.withValues(alpha: 0.3))
               : (isActive ? AfColors.surfaceBase : Colors.transparent),
           borderRadius: BorderRadius.circular(
             steelBackground ? AfRadii.lg : AfRadii.sm,
@@ -189,10 +186,6 @@ class TrackRow extends StatelessWidget {
             ],
             if (showHeart) ...[
               const SizedBox(width: AfSpacing.s4),
-              // Self-contained heart that talks to the backend directly
-              // and manages its own optimistic flip — see
-              // FavoriteHeartButton for the rationale (`onHeartTap`
-              // used to be a dead callback in every list screen).
               FavoriteHeartButton(track: track),
             ],
           ],

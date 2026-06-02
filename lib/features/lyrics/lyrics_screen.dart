@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/local/local_backend.dart';
 import '../../core/local/saf_picker.dart';
@@ -162,7 +163,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+          icon: const Icon(LucideIcons.chevronDown),
           onPressed: () => Navigator.maybePop(context),
         ),
         title: Column(
@@ -184,7 +185,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.queue_music_rounded),
+            icon: const Icon(LucideIcons.listMusic),
             onPressed: () => context.push('/queue'),
             tooltip: 'Queue',
           ),
@@ -203,7 +204,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                     children: [
                       const CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          AfColors.indigo400,
+                          AfColors.accentPrimary,
                         ),
                       ),
                       const SizedBox(height: AfSpacing.s16),
@@ -276,13 +277,10 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                                 }
                               }
                             },
-                            icon: const Icon(
-                              Icons.upload_file_rounded,
-                              size: 18,
-                            ),
+                            icon: const Icon(LucideIcons.upload, size: 18),
                             label: const Text('Load LRC File'),
                             style: FilledButton.styleFrom(
-                              backgroundColor: AfColors.indigo600,
+                              backgroundColor: AfColors.accentSecondary,
                             ),
                           ),
                         ],

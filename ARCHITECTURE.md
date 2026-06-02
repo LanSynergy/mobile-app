@@ -233,20 +233,7 @@ Three implementations:
 ### State Management (Riverpod)
 13 provider files in `lib/state/`, barrel-exported by `providers.dart`. Providers use `musicBackendProvider` (not `jellyfinClientProvider`) for backend ops. Pattern: `FutureProvider.autoDispose` for async data, `StateNotifierProvider` for mutable state.
 
-### Design Tokens
-Centralized in `lib/design_tokens/`. Single import: `package:aetherfin/design_tokens/tokens.dart`.
-
-| Token class | Contents |
-|---|---|
-| `AfColors` | 12-step indigo scale, 6 surface depths, 6 text, 5 semantic |
-| `AfDurations` | 5 tiers: 80/160/240/400/600ms |
-| `AfCurves` | 5 curves: easeStandard, easeEmphasized, easeOut, easeIn, linear |
-| `AfStagger` | perItem 40ms, maxStaggered 8, itemDuration 160ms |
-| `AfSpacing` | 4px grid: s2, s4..s64, gutter, miniPlayer, bottomInset |
-| `AfRadii` | xxs(2), xxxs(6), xs(4), sm(8), md(12), lg(16), rounded(20), capsule(22), xl(24), pill(999) |
-| `AfTypography` | 12 text styles: display, titleLarge, titleMedium, titleMediumLarge(18), titleSmall, bodyLarge, bodyMedium, bodyMediumSmall(13), bodySmall, label, caption, overline(9), mono |
-
-**Usage rules:**
+**Token usage rules:**
 - Never hardcode colors — use `AfColors.*` tokens.
 - Never hardcode spacing — use `AfSpacing.*` tokens (e.g. `SizedBox(height: AfSpacing.s8)`).
 - Never hardcode border radii — use `AfRadii.*` tokens (e.g. `BorderRadius: AfRadii.borderSm`).

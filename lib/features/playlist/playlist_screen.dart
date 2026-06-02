@@ -49,21 +49,21 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
       appBar: AppBar(
         backgroundColor: AfColors.surfaceCanvas,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const Icon(LucideIcons.arrowLeft),
           onPressed: () => context.pop(),
         ),
         title: Text('Playlist', style: AfTypography.titleSmall),
         actions: [
           if (backend != null)
             PopupMenuButton<_PlaylistAction>(
-              icon: const Icon(Icons.more_vert_rounded),
+              icon: const Icon(LucideIcons.ellipsisVertical),
               onSelected: (action) =>
                   _handleAction(context, action, detailAsync.valueOrNull),
               itemBuilder: (context) => [
                 const PopupMenuItem(
                   value: _PlaylistAction.rename,
                   child: ListTile(
-                    leading: Icon(Icons.edit_outlined),
+                    leading: Icon(LucideIcons.pencil, size: 20),
                     title: Text('Rename'),
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -71,7 +71,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                 const PopupMenuItem(
                   value: _PlaylistAction.exportM3U,
                   child: ListTile(
-                    leading: Icon(Icons.download_rounded),
+                    leading: Icon(LucideIcons.download, size: 20),
                     title: Text('Export M3U'),
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -80,8 +80,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                   value: _PlaylistAction.delete,
                   child: ListTile(
                     leading: const Icon(
-                      Icons.delete_outline_rounded,
+                      LucideIcons.trash2,
                       color: AfColors.semanticError,
+                      size: 20,
                     ),
                     title: Text(
                       'Delete playlist',
@@ -182,7 +183,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                   alpha: 0.15,
                                 ),
                                 child: const Icon(
-                                  Icons.delete_outline_rounded,
+                                  LucideIcons.trash2,
                                   color: AfColors.semanticError,
                                 ),
                               ),
@@ -193,8 +194,8 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: isActive
-                                      ? AfColors.indigo900.withValues(
-                                          alpha: 0.3,
+                                      ? AfColors.accentPrimary.withValues(
+                                          alpha: 0.08,
                                         )
                                       : null,
                                 ),
@@ -211,7 +212,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                           '${i + 1}',
                                           style: AfTypography.overline.copyWith(
                                             color: isActive
-                                                ? AfColors.indigo400
+                                                ? AfColors.accentPrimary
                                                 : AfColors.textDisabled,
                                           ),
                                           textAlign: TextAlign.center,
@@ -242,7 +243,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                             horizontal: AfSpacing.s8,
                                           ),
                                           child: Icon(
-                                            Icons.drag_indicator_rounded,
+                                            LucideIcons.gripVertical,
                                             color: AfColors.textDisabled,
                                             size: 18,
                                           ),
@@ -280,7 +281,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                             return Container(
                               decoration: BoxDecoration(
                                 color: isActive
-                                    ? AfColors.indigo900.withValues(alpha: 0.3)
+                                    ? AfColors.accentPrimary.withValues(
+                                        alpha: 0.08,
+                                      )
                                     : null,
                               ),
                               child: Padding(
@@ -296,7 +299,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                         '${i + 1}',
                                         style: AfTypography.overline.copyWith(
                                           color: isActive
-                                              ? AfColors.indigo400
+                                              ? AfColors.accentPrimary
                                               : AfColors.textDisabled,
                                         ),
                                         textAlign: TextAlign.center,
@@ -337,16 +340,18 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
-                                width: 64,
-                                height: 64,
-                                decoration: const BoxDecoration(
-                                  color: AfColors.surfaceRaised,
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  color: AfColors.accentPrimary.withValues(
+                                    alpha: 0.08,
+                                  ),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
                                   LucideIcons.listMusic,
-                                  size: 40,
-                                  color: AfColors.textTertiary,
+                                  size: 36,
+                                  color: AfColors.accentMuted,
                                 ),
                               ),
                               const SizedBox(height: AfSpacing.s12),
@@ -706,30 +711,33 @@ class _Header extends StatelessWidget {
           Container(
             width: 128,
             height: 128,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               borderRadius: AfRadii.borderXl,
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [AfColors.indigo700, AfColors.indigo950],
+                colors: [
+                  AfColors.accentPrimary.withValues(alpha: 0.3),
+                  AfColors.surfaceLow,
+                ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AfColors.indigo900,
+                  color: AfColors.accentPrimary.withValues(alpha: 0.15),
                   blurRadius: 32,
-                  offset: Offset(0, 8),
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
             child: const Icon(
-              Icons.playlist_play_rounded,
-              color: AfColors.indigo300,
+              LucideIcons.listMusic,
+              color: AfColors.accentPrimary,
               size: 56,
             ),
           ),
           const SizedBox(height: AfSpacing.s16),
 
-          // Centered playlist name.
+          // Centered playlist name — serif headline.
           Text(
             pl.name,
             style: AfTypography.titleLarge,
@@ -851,14 +859,14 @@ class _SegmentedControlState extends State<_SegmentedControl> {
   Widget _buildOption({required bool isRight}) {
     final isSelected = _isRightSelected == isRight;
     final label = isRight ? 'Shuffle' : 'Play';
-    final icon = isRight ? Icons.shuffle_rounded : Icons.play_arrow_rounded;
+    final icon = isRight ? LucideIcons.shuffle : LucideIcons.play;
     final onTap = isRight ? widget.onRight : widget.onLeft;
 
     return AnimatedContainer(
       duration: AfDurations.quick,
       curve: AfCurves.easeStandard,
       decoration: BoxDecoration(
-        color: isSelected ? AfColors.indigo600 : Colors.transparent,
+        color: isSelected ? AfColors.accentPrimary : Colors.transparent,
       ),
       child: InkWell(
         onTap: onTap == null
@@ -871,15 +879,16 @@ class _SegmentedControlState extends State<_SegmentedControl> {
               icon,
               size: 20,
               color: isSelected
-                  ? AfColors.textOnPrimary
+                  ? AfColors.surfaceCanvas
                   : AfColors.textTertiary,
             ),
             const SizedBox(width: AfSpacing.s8),
             Text(
               label,
               style: AfTypography.bodyMedium.copyWith(
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected
-                    ? AfColors.textOnPrimary
+                    ? AfColors.surfaceCanvas
                     : AfColors.textTertiary,
               ),
             ),

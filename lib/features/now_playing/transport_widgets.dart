@@ -47,14 +47,14 @@ class PlayButton extends ConsumerWidget {
       child: Container(
         width: 64,
         height: 64,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          color: Theme.of(context).colorScheme.primary,
+          color: AfColors.accentPrimary,
         ),
         child: Icon(
           isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
           size: 32,
-          color: Theme.of(context).colorScheme.onPrimary,
+          color: AfColors.surfaceCanvas,
         ),
       ),
     );

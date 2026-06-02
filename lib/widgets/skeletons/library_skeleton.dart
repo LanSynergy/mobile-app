@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:aetherfin/design_tokens/tokens.dart';
-import 'package:aetherfin/widgets/skeleton.dart';
-import 'package:aetherfin/widgets/skeletons/track_row_skeleton.dart';
-import 'package:aetherfin/widgets/skeletons/album_card_skeleton.dart';
+
+import '../../design_tokens/tokens.dart';
+import '../skeleton.dart';
+import 'album_card_skeleton.dart';
+import 'track_row_skeleton.dart';
 
 /// Which library section to show a skeleton for.
 enum LibrarySkeletonMode { albums, artists, songs, playlists, genres, liked }
@@ -167,12 +168,10 @@ class _GenreGridSkeleton extends StatelessWidget {
         crossAxisSpacing: AfSpacing.s12,
         childAspectRatio: 2.5,
         children: List.generate(8, (_) {
-          return const SizedBox(
-            width: double.infinity,
-            height: double.infinity,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: AfColors.surfaceBase,
+          return ShimmerWrap(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: AfColors.surfaceRaised,
                 borderRadius: AfRadii.borderPill,
               ),
             ),

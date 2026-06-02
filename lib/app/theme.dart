@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../design_tokens/tokens.dart';
 import '../utils/oklch.dart';
 
-/// Builds the Aetherfin "Nocturne" (dark) theme.
+/// Builds the Aetherfin "Nocturne" (dark) theme — Dark Moody edition.
 ///
-/// Per design spec §11.5:
+/// Deep blacks, warm amber accents, no Material ripple.
+/// Per design spec:
 ///   - Material ripple is OFF globally (use scale/tint press states).
 ///   - Bouncy physics is OFF globally (use [ClampingScrollPhysics]).
 ///   - All text is theme-driven; no hard-coded colors in widgets.
 ThemeData buildNocturneTheme() {
-  return _buildTheme(AfColors.indigo600);
+  return _buildTheme(AfColors.accentPrimary);
 }
 
 /// Same as [buildNocturneTheme] but substitutes the given [accent] colour
-/// as the primary accent instead of the static indigo palette. Used when
+/// as the primary accent instead of the static amber palette. Used when
 /// a pastel colour from the current artwork is available.
 ThemeData buildNocturneThemeFromAccent(Color accent) {
-  // Convert accent to OKLCH and derive a full pastel palette from its hue.
   final oklch = srgbToOklch(accent);
   final triple = buildPastelTriple(oklch.h);
   return _buildTheme(accent, secondaryAccent: triple.muted);
@@ -69,10 +70,10 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
     scrollbarTheme: ScrollbarThemeData(
       thumbColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.dragged)) {
-          return AfColors.indigo400;
+          return AfColors.accentPrimary;
         }
         if (states.contains(WidgetState.hovered)) {
-          return AfColors.indigo300.withValues(alpha: 0.7);
+          return AfColors.accentPrimary.withValues(alpha: 0.7);
         }
         return AfColors.surfaceMax.withValues(alpha: 0.6);
       }),
@@ -94,8 +95,8 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
       foregroundColor: AfColors.textPrimary,
       elevation: 0,
       scrolledUnderElevation: 0,
-      systemOverlayStyle: null,
-      centerTitle: true,
+      systemOverlayStyle: SystemUiOverlayStyle.light,
+      centerTitle: false,
     ),
 
     bottomSheetTheme: const BottomSheetThemeData(
@@ -214,9 +215,9 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
 
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
-        TargetPlatform.android: _AfHorizontalSlideTransition(),
-        TargetPlatform.iOS: _AfHorizontalSlideTransition(),
-        TargetPlatform.fuchsia: _AfHorizontalSlideTransition(),
+        TargetPlatform.android: _AfSlideUpTransition(),
+        TargetPlatform.iOS: _AfSlideUpTransition(),
+        TargetPlatform.fuchsia: _AfSlideUpTransition(),
       },
     ),
 
@@ -232,11 +233,10 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
   );
 }
 
-/// Push: new page slides in from the right with a subtle fade + scale for
-/// depth. Pop: reverses. Reduced-motion → instant fade only.
-/// See `aetherfin-motion.md` §5.7.
-class _AfHorizontalSlideTransition extends PageTransitionsBuilder {
-  const _AfHorizontalSlideTransition();
+/// Push: new page slides up from bottom with subtle scale + fade for depth.
+/// Pop: reverses. Reduced-motion → instant fade only.
+class _AfSlideUpTransition extends PageTransitionsBuilder {
+  const _AfSlideUpTransition();
 
   @override
   Widget buildTransitions<T>(
@@ -263,16 +263,16 @@ class _AfHorizontalSlideTransition extends PageTransitionsBuilder {
       child: child,
     );
 
-    // Subtle scale: incoming page starts at 96% and scales to 100%.
+    // Subtle scale: incoming page starts at 97% and scales to 100%.
     final scale = ScaleTransition(
-      scale: Tween<double>(begin: 0.96, end: 1.0).animate(curved),
+      scale: Tween<double>(begin: 0.97, end: 1.0).animate(curved),
       child: fade,
     );
 
-    // Slide from right.
+    // Slide from bottom (subtle — 15% of screen height).
     return SlideTransition(
       position: Tween<Offset>(
-        begin: const Offset(0.12, 0),
+        begin: const Offset(0, 0.15),
         end: Offset.zero,
       ).animate(curved),
       child: scale,

@@ -14,8 +14,7 @@ A native-feeling Android music player that operates in one of two modes:
 The only first-class platform is Android. iOS may follow but is not
 considered when making trade-offs.
 
-> **North star:** Spotify's polish, Apple Music's typography, Soulseek's
-> respect for the listener. Aetherfin must read as a *premium music* app,
+> Aetherfin must read as a *premium music* app,
 > not "a Jellyfin/Navidrome client."
 
 ### 1.1 App modes
@@ -402,72 +401,7 @@ android/app/src/main/kotlin/dev/aetherfin/aetherfin/
                                 readCoverArt(uri) → ByteArray? (embedded art)
 ```
 
-## 4. Design spec — non-negotiables
-
-### 4.1 Colour
-- Indigo scale (`AfColors.indigo50…900`) is derived from **OKLCH**. Do not
-  eyeball-adjust hexes. Derive new colors in `lib/utils/oklch.dart` first.
-- `AfColors.surfaceCanvas = #0B0B14`. `textPrimary` is white with 92% alpha.
-- Runtime spectral accent (`Spectral.energy / .shadow / .glow`) is extracted
-  from current artwork via `palette_generator_master`. Never hardcode it.
-
-### 4.2 Motion (`lib/design_tokens/motion.dart`)
-- **Exactly five** duration tiers: `instant 80ms`, `quick 160ms`,
-  `standard 240ms`, `expressive 400ms`, `long 600ms`. Material defaults
-  (200/300/500ms) are forbidden — `test/design_tokens_test.dart` enforces this.
-- Exactly five easing curves: `easeStandard`, `easeEmphasized`, `easeOut`,
-  `easeIn`, `linear`. Audio-coupled animations (visualizer, progress scrubber,
-  lyric scroll) MUST use `linear`.
-- **Stagger conventions** (`AfStagger`): 40ms per item, max 8 staggered items,
-  160ms per-item animation (fade + 12dp slide up). Use `StaggerReveal` widget
-  for list/grid entrance animations.
-- **Page transitions**: Slide + fade + subtle scale (0.96→1.0) with
-  `easeStandard / 240ms`. Reduced-motion → instant fade only.
-- **Tab switching**: `AnimatedSwitcher` cross-fade with `easeOut`/`easeIn` curves.
-
-### 4.3 Mini-player rules
-- **56 dp tall, 12 dp horizontal margin, 16 dp gap to bottom nav.**
-- `AfSpacing.bottomInsetWithMiniAndNav` is the canonical bottom-inset for
-  every scrollable.
-- Visible only when the queue is non-empty.
-
-### 4.4 Now Playing screen layout (order matters)
-```
-TopBar (album context + overflow menu)
-Artwork (240dp, spectral glow BoxShadow, FFT-driven scale pulse)
-Metadata (title + artist + favorite + quality chip)
-AudioVisualScrubber (120dp — FFT bars + scrubber overlay merged)
-Time labels (position / remaining)
-Transport controls (shuffle, prev, play/pause, next, repeat)
-Utility row (lyrics, save, queue, more)
-```
-
-The utility row was reduced from 6 icons to 4. The **"More"** button opens
-a popup dialog containing: Sleep timer, Playback speed, Audio output,
-Equalizer & DSP.
-
-### 4.5 EQ/DSP screen (full-screen route)
-
-Accessible via Now Playing → More → Equalizer & DSP. Navigates to `/eq-dsp`
-route (full Scaffold with AppBar). Sections:
-- EQ Presets (8 built-in + user-saved custom presets)
-- Tone: Bass/Treble shelves (-12 to +12 dB)
-- 18-band graphic EQ (ISO frequencies, 0–4 linear gain)
-- Dynamics: Loudness normalization, Compressor (with threshold/ratio/attack/release),
-  Noise gate (with fine-tuning), De-esser (intensity/mix/frequency)
-- Echo / Delay (multi-tap, pipe-separated delays/decays)
-- Pitch & Tempo (rubberband engine, 0.5×–2.0×)
-- Spatial: Crossfeed, Stereo widening
-- Modulation: Phaser, Flanger, Chorus, Tremolo, Vibrato
-- Creative: Exciter, Crystalizer, Virtual bass, Bit-crusher
-- Master on/off switch in AppBar (bypasses all effects, dims UI but keeps scrollable)
-
-Uses `player.setAudioEffects(AudioEffects(...))` API. State persisted via
-`PlayerSettingsStore.saveAudioEffects()`. Files: `lib/features/now_playing/eq_dsp_screen.dart`
-(main screen), `eq_preset.dart` (kEqBands, kBuiltInPresets), `eq_dsp_widgets.dart`
-(reusable widget builders).
-
-### 4.6 Design token usage rules
+## 4. Design token usage rules
 
 All visual values MUST come from `lib/design_tokens/`. Import via
 `package:aetherfin/design_tokens/tokens.dart`.
@@ -780,7 +714,7 @@ git commit -m "type(scope): description"
 git push
 
 # 5. Post-commit housekeeping (see §14.6)
-#   - Archive completed plan+design to thoughts/.legacy/
+#   - Archive completed plan to thoughts/.legacy/
 #   - Prune duplicate session ledgers from thoughts/ledgers/
 #   - Update thoughts/workflow/BOOTSTRAP.md
 ```
@@ -811,7 +745,7 @@ Insert `stopAndClear()` immediately after the `stop()` method in `AfPlayerServic
 - **Class context:** If two methods share a name, include the class: "In `MusicFoldersCardState`, add `_startScan()` before `_addFolder()`"
 - **Getters/setters:** "Add the `replayGainMode` getter after the `audioEffects` getter in `PlayerSettingsStore`"
 
-Design documents and plan documents MUST use relative-position anchors. The
+Plan documents MUST use relative-position anchors. The
 plans folder (`thoughts/shared/plans/`) follows this convention.
 
 ### 14.2a Lean plans — no inline code
@@ -841,7 +775,6 @@ edge cases (empty file, malformed headers, unicode paths)
 **Plan structure:**
 - **Dependency graph** — batch/parallel structure (unchanged)
 - **Per-task:** file path, test path, method/anchor, approach description, key edge cases — **no code**
-- **Design reference** — single line linking to the design doc
 
 Implementer agents write the actual code and tests. The plan gives them the shape, location, and edge cases to cover, not the byte-level implementation.
 
@@ -917,13 +850,12 @@ Old artifacts accumulate fast. The active `thoughts/` directories should contain
 
 **Archive rules:**
 - **Plans:** Move from `thoughts/shared/plans/` to `thoughts/.legacy/` once all implementation batches for that plan are committed.
-- **Designs:** Move from `thoughts/shared/designs/` to `thoughts/.legacy/` once the plan that references it is fully committed.
 - **Session ledgers:** Prune per-session ledger files from `thoughts/ledgers/` after their entry is reflected in the rolling `CONTINUITY.md`. Keep them accessible in `.legacy/` for 30 days.
 - **Bootstrap:** Keep `BOOTSTRAP.md` at `thoughts/workflow/` (not archived — it's the entry point for next session).
 
 **The verify gate's final step** (after commit) includes:
 ```
-1. If this session completed a plan: mv that plan+design → thoughts/.legacy/
+1. If this session completed a plan: mv that plan → thoughts/.legacy/
 2. Prune redundant session ledgers from thoughts/ledgers/
 3. Update BOOTSTRAP.md with new HEAD and state
 ```

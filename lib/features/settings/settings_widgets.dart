@@ -188,7 +188,7 @@ class SettingsSwitchTile extends StatelessWidget {
             Switch.adaptive(
               value: value,
               onChanged: onChanged,
-              activeTrackColor: AfColors.indigo500,
+              activeTrackColor: AfColors.accentPrimary,
             ),
           ],
         ),
@@ -225,7 +225,7 @@ class OptionTile extends StatelessWidget {
               width: 3,
               height: subtitle != null ? 28 : 20,
               decoration: BoxDecoration(
-                color: isActive ? AfColors.indigo400 : Colors.transparent,
+                color: isActive ? AfColors.accentPrimary : Colors.transparent,
                 borderRadius: BorderRadius.circular(1.5),
               ),
             ),
@@ -239,7 +239,7 @@ class OptionTile extends StatelessWidget {
                     label,
                     style: AfTypography.bodyMedium.copyWith(
                       color: isActive
-                          ? AfColors.indigo300
+                          ? AfColors.accentPrimary
                           : AfColors.textPrimary,
                       fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                     ),

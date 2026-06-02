@@ -53,7 +53,7 @@ class EqBandPainter extends CustomPainter {
       final isBoost = normalized >= 0;
       final color = enabled
           ? (isBoost
-                ? AfColors.indigo400
+                ? AfColors.accentPrimary
                 : AfColors.textTertiary.withValues(alpha: 0.4))
           : AfColors.surfaceHigh;
 

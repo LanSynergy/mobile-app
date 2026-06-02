@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
     show
         AcompressorSettings,
@@ -816,11 +817,11 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                   const SizedBox(width: AfSpacing.s8),
                   TextButton.icon(
                     onPressed: _saveCurrentAsPreset,
-                    icon: const Icon(Icons.save_outlined, size: 16),
+                    icon: const Icon(LucideIcons.save, size: 16),
                     label: Text(
                       'Save preset',
                       style: AfTypography.bodySmall.copyWith(
-                        color: AfColors.indigo400,
+                        color: AfColors.accentPrimary,
                       ),
                     ),
                   ),
@@ -1655,13 +1656,18 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                 label: Text(entry.key),
                 selected: isActive,
                 onSelected: (_) => _applyPreset(entry.key, entry.value),
-                selectedColor: AfColors.indigo600.withValues(alpha: 0.3),
+                selectedColor: AfColors.accentSecondary.withValues(alpha: 0.3),
                 backgroundColor: AfColors.surfaceBase,
                 labelStyle: AfTypography.bodySmall.copyWith(
-                  color: isActive ? AfColors.indigo300 : AfColors.textSecondary,
+                  color: isActive
+                      ? AfColors.accentPrimary
+                      : AfColors.textSecondary,
                 ),
                 side: isActive
-                    ? const BorderSide(color: AfColors.indigo500, width: 1.5)
+                    ? const BorderSide(
+                        color: AfColors.accentPrimary,
+                        width: 1.5,
+                      )
                     : const BorderSide(color: AfColors.surfaceHigh),
               ),
             ),

@@ -9,7 +9,10 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/log.dart';
 
-/// Full-bleed welcome screen with gradient background and floating mode cards.
+/// Landing screen: server vs local mode selection.
+///
+/// Large serif "Aetherfin" title, tagline, two floating mode cards with
+/// surfaceRaised background and accent border on hover.
 class WelcomeScreen extends ConsumerWidget {
   const WelcomeScreen({super.key});
 
@@ -22,24 +25,23 @@ class WelcomeScreen extends ConsumerWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background gradient
+          // Background gradient — deep black to surfaceCanvas
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  AfColors.indigo900,
-                  AfColors.indigo950,
+                  AfColors.surfaceLow,
                   AfColors.surfaceCanvas,
                   AfColors.surfaceCanvas,
                 ],
-                stops: [0.0, 0.3, 0.55, 1.0],
+                stops: [0.0, 0.3, 1.0],
               ),
             ),
           ),
 
-          // Radial glow behind logo
+          // Radial glow behind logo — warm amber tint
           Positioned(
             top: -80,
             left: 0,
@@ -51,7 +53,7 @@ class WelcomeScreen extends ConsumerWidget {
                   center: Alignment.center,
                   radius: 0.8,
                   colors: [
-                    AfColors.indigo600.withValues(alpha: 0.3),
+                    AfColors.accentPrimary.withValues(alpha: 0.12),
                     Colors.transparent,
                   ],
                 ),
@@ -75,11 +77,11 @@ class WelcomeScreen extends ConsumerWidget {
                       color: AfColors.surfaceBase.withValues(alpha: 0.6),
                       borderRadius: AfRadii.borderRounded,
                       border: Border.all(
-                        color: AfColors.indigo400.withValues(alpha: 0.3),
+                        color: AfColors.accentPrimary.withValues(alpha: 0.3),
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AfColors.indigo500.withValues(alpha: 0.3),
+                          color: AfColors.accentPrimary.withValues(alpha: 0.15),
                           blurRadius: 40,
                           spreadRadius: 8,
                         ),
@@ -99,12 +101,12 @@ class WelcomeScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AfSpacing.s24),
-                SvgPicture.asset(
-                  'assets/brand/wordmark.svg',
-                  width: 160,
-                  colorFilter: const ColorFilter.mode(
-                    AfColors.textOnPrimary,
-                    BlendMode.srcIn,
+
+                // Serif "Aetherfin" title
+                Text(
+                  'Aetherfin',
+                  style: AfTypography.display.copyWith(
+                    color: AfColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: AfSpacing.s12),
@@ -135,10 +137,6 @@ class WelcomeScreen extends ConsumerWidget {
                       const SizedBox(height: AfSpacing.s16),
                       _ModeCard(
                         icon: LucideIcons.cloud,
-                        iconGradient: const [
-                          AfColors.indigo400,
-                          AfColors.indigo600,
-                        ],
                         title: 'Stream from server',
                         subtitle: 'Jellyfin or Navidrome',
                         onTap: () async {
@@ -152,11 +150,7 @@ class WelcomeScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: AfSpacing.s12),
                       _ModeCard(
-                        icon: LucideIcons.smartphone,
-                        iconGradient: const [
-                          AfColors.semanticSuccess,
-                          Color(0xFF2D9B5E),
-                        ],
+                        icon: LucideIcons.folderOpen,
                         title: 'Play local files',
                         subtitle: 'Music on your device',
                         onTap: () async {
@@ -181,33 +175,43 @@ class WelcomeScreen extends ConsumerWidget {
   }
 }
 
-class _ModeCard extends StatelessWidget {
+class _ModeCard extends StatefulWidget {
   const _ModeCard({
     required this.icon,
-    required this.iconGradient,
     required this.title,
     required this.subtitle,
     required this.onTap,
   });
   final IconData icon;
-  final List<Color> iconGradient;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
 
   @override
+  State<_ModeCard> createState() => _ModeCardState();
+}
+
+class _ModeCardState extends State<_ModeCard> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AfColors.surfaceBase,
-      borderRadius: AfRadii.borderLg,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: AfDurations.quick,
+          curve: AfCurves.easeStandard,
           padding: const EdgeInsets.all(AfSpacing.s16),
           decoration: BoxDecoration(
-            border: Border.all(color: AfColors.surfaceHigh, width: 1),
+            color: AfColors.surfaceRaised,
             borderRadius: AfRadii.borderLg,
+            border: Border.all(
+              color: _hovered ? AfColors.accentPrimary : AfColors.surfaceHigh,
+              width: 1,
+            ),
           ),
           child: Row(
             children: [
@@ -215,24 +219,24 @@ class _ModeCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: iconGradient,
-                  ),
+                  color: AfColors.accentPrimary.withValues(alpha: 0.15),
                   borderRadius: AfRadii.borderMd,
                 ),
-                child: Icon(icon, color: AfColors.textOnPrimary, size: 24),
+                child: Icon(
+                  widget.icon,
+                  color: AfColors.accentPrimary,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: AfSpacing.s16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: AfTypography.titleSmall),
+                    Text(widget.title, style: AfTypography.titleSmall),
                     const SizedBox(height: AfSpacing.s2),
                     Text(
-                      subtitle,
+                      widget.subtitle,
                       style: AfTypography.bodySmall.copyWith(
                         color: AfColors.textTertiary,
                       ),
@@ -240,9 +244,11 @@ class _ModeCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 LucideIcons.chevronRight,
-                color: AfColors.textTertiary,
+                color: _hovered
+                    ? AfColors.accentPrimary
+                    : AfColors.textTertiary,
                 size: 20,
               ),
             ],

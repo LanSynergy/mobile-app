@@ -12,6 +12,7 @@ import '../../state/providers.dart';
 import '../../state/radio_providers.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/async_error_view.dart';
+import '../../widgets/press_scale.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/opacity_app_bar.dart';
 import '../../widgets/track_context_menu.dart';
@@ -236,6 +237,82 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                       },
                       orElse: () => const SliverToBoxAdapter(child: SizedBox()),
                     ),
+                    // ── Discography ──
+                    if (albums.isNotEmpty) ...[
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: AfSpacing.s24),
+                      ),
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AfSpacing.gutterGenerous,
+                          ),
+                          child: SectionHeader(title: 'Discography'),
+                        ),
+                      ),
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: AfSpacing.s8),
+                      ),
+                      SliverToBoxAdapter(
+                        child: SizedBox(
+                          height: 240,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AfSpacing.gutterGenerous,
+                            ),
+                            itemCount: albums.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: AfSpacing.s12),
+                            itemBuilder: (context, i) {
+                              final a = albums[i];
+                              return PressScale(
+                                onTap: () => context.push('/album/${a.id}'),
+                                child: SizedBox(
+                                  width: 152,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Artwork(
+                                        url: a.imageUrl,
+                                        size: 152,
+                                        radius: AfRadii.borderMd,
+                                      ),
+                                      const SizedBox(height: AfSpacing.s8),
+                                      Text(
+                                        a.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AfTypography.bodyMedium.copyWith(
+                                          color: AfColors.textPrimary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Text(
+                                        a.artistName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AfTypography.bodySmall.copyWith(
+                                          color: AfColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                    // ── Similar Artists placeholder ──
+                    // Only visible when the backend provides similar-artist
+                    // data through the artist detail. The SliverToBoxAdapter
+                    // with zero height is a no-op if no similar artists are
+                    // available — the real list would be wired through a
+                    // dedicated provider when the backend exposes it.
                     const SliverToBoxAdapter(
                       child: SizedBox(
                         height: AfSpacing.bottomInsetWithMiniAndNav,
@@ -294,7 +371,7 @@ Future<void> _startArtistRadio(
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: AfColors.indigo300,
+                    color: AfColors.accentPrimary,
                   ),
                 ),
                 const SizedBox(width: AfSpacing.s16),
@@ -365,8 +442,11 @@ class _ActionRow extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: onRadio,
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AfColors.indigo600, width: 1.5),
-                foregroundColor: AfColors.indigo300,
+                side: const BorderSide(
+                  color: AfColors.accentPrimary,
+                  width: 1.5,
+                ),
+                foregroundColor: AfColors.accentPrimary,
               ),
               icon: const Icon(LucideIcons.radio, size: 20),
               label: const Text('Artist Radio'),
@@ -456,7 +536,7 @@ class _ArtistBiographyPanelState extends State<_ArtistBiographyPanel> {
             child: Text(
               _expanded ? 'Show less' : 'Read more',
               style: AfTypography.bodySmall.copyWith(
-                color: AfColors.indigo300,
+                color: AfColors.accentPrimary,
                 fontWeight: FontWeight.bold,
               ),
             ),

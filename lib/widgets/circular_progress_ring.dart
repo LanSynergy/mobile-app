@@ -4,30 +4,27 @@ import 'package:flutter/material.dart';
 
 import '../design_tokens/tokens.dart';
 
-/// A 36dp circular ring around the play/pause glyph in the mini-player.
+/// A circular ring around the play/pause glyph in the mini-player.
 ///
-/// Per non-negotiable §4.1: this is the ONLY progress affordance on the
-/// mini-player — never a linear hairline bar.
-///
-/// Track stroke 2dp `surface.high`, progress arc 2dp `spectral.energy`,
+/// Track stroke 2dp `surfaceHigh`, progress arc 2dp `accentPrimary`,
 /// `strokeLinecap: round`, sweep clockwise from 12 o'clock.
 ///
-/// Driven by [progress] in [0, 1] with a [linear] paint — there is NO
+/// Driven by [progress] in [0, 1] with a linear paint — there is NO
 /// AnimationController internal to this widget. The caller wires it
-/// directly to the single `Stream<Duration>` from the audio service so
-/// the ring tells audio time honestly.
+/// directly to the single `Stream<Duration>` from the audio service.
 class CircularProgressRing extends StatelessWidget {
   const CircularProgressRing({
     super.key,
     required this.progress,
     required this.child,
     this.trackColor = AfColors.surfaceHigh,
-    this.progressColor = AfColors.indigo300,
+    this.progressColor = AfColors.accentPrimary,
     this.size = 36,
     this.strokeWidth = 2,
     this.isIndeterminate = false,
   });
-  final double progress; // 0 .. 1
+
+  final double progress;
   final Color trackColor;
   final Color progressColor;
   final double size;
@@ -35,7 +32,7 @@ class CircularProgressRing extends StatelessWidget {
   final Widget child;
 
   /// True when buffering / loading — renders the indeterminate variant
-  /// (90° arc rotating at 800ms per revolution, full-track at 30% alpha).
+  /// (90 degree arc rotating at 800ms per revolution, full-track at 30% alpha).
   final bool isIndeterminate;
 
   @override
@@ -77,6 +74,7 @@ class _RingPainter extends CustomPainter {
     required this.progressColor,
     required this.strokeWidth,
   });
+
   final double progress;
   final Color trackColor;
   final Color progressColor;
@@ -84,8 +82,7 @@ class _RingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final center = rect.center;
+    final center = Offset(size.width / 2, size.height / 2);
     final radius = (math.min(size.width, size.height) - strokeWidth) / 2;
 
     final track = Paint()
@@ -105,8 +102,6 @@ class _RingPainter extends CustomPainter {
       fg..style = PaintingStyle.fill,
     );
 
-    // Always draw at least a tiny arc so the ring never appears empty
-    // when position briefly resets to 0 during track transitions.
     final sweepProgress = math.max(progress, 0.005);
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
@@ -133,6 +128,7 @@ class _IndeterminateArc extends StatefulWidget {
     required this.trackColor,
     required this.progressColor,
   });
+
   final double size;
   final double strokeWidth;
   final Color trackColor;
@@ -182,6 +178,7 @@ class _IndeterminatePainter extends CustomPainter {
     required this.progressColor,
     required this.strokeWidth,
   });
+
   final double value;
   final Color trackColor;
   final Color progressColor;
@@ -189,8 +186,7 @@ class _IndeterminatePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final center = rect.center;
+    final center = Offset(size.width / 2, size.height / 2);
     final radius = (math.min(size.width, size.height) - strokeWidth) / 2;
 
     final track = Paint()

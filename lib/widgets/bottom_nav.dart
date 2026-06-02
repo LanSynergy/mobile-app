@@ -1,21 +1,18 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design_tokens/tokens.dart';
 import 'press_scale.dart';
 
-const _navBg = Color(0xB30B0B14);
-
-/// Google-style bottom navigation bar.
+/// Custom bottom navigation bar — Dark Moody edition.
 ///
-/// Per §7.7:
-///   - 4 destinations only.
-///   - 72dp height (excluding gesture inset).
-///   - Active tab shows a colored pill background behind icon + label.
-///   - Pill slides between tabs with 240ms `easeStandard` animation.
-///   - Inactive tabs show icon only; label appears only on the active tab.
+/// Four tabs: Home, Library, Playlists, Profile.
+///   - True black background (AfColors.surfaceCanvas) with subtle top border.
+///   - Active tab: warm amber accent pill background.
+///   - Icons: Lucide icons, warm inactive color (textTertiary), white active.
+///   - Height: 64dp.
+///   - Animated pill slides between tabs with easeStandard.
+///   - Inactive: icon only; Active: icon + label.
 class AfBottomNavItem {
   const AfBottomNavItem({
     required this.icon,
@@ -33,10 +30,14 @@ class AfBottomNav extends ConsumerStatefulWidget {
     required this.currentIndex,
     required this.onSelect,
     required this.items,
+    this.accentColor,
   });
   final int currentIndex;
   final ValueChanged<int> onSelect;
   final List<AfBottomNavItem> items;
+
+  /// Pill accent color for the active tab. Defaults to warm amber.
+  final Color? accentColor;
 
   @override
   ConsumerState<AfBottomNav> createState() => _AfBottomNavState();
@@ -46,34 +47,29 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final accent = widget.accentColor ?? AfColors.accentPrimary;
 
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: _navBg,
-            border: Border(
-              top: BorderSide(color: AfColors.surfaceLow, width: 1),
-            ),
-          ),
-          padding: EdgeInsets.only(bottom: bottomInset),
-          child: SizedBox(
-            height: AfSpacing.bottomNavHeight,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(
-                widget.items.length,
-                (i) => _buildTab(i, widget.items[i], i == widget.currentIndex),
-              ),
-            ),
+    return Container(
+      decoration: const BoxDecoration(
+        color: AfColors.surfaceCanvas,
+        border: Border(top: BorderSide(color: AfColors.surfaceLow, width: 1)),
+      ),
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: SizedBox(
+        height: AfSpacing.bottomNavHeight,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: List.generate(
+            widget.items.length,
+            (i) =>
+                _buildTab(i, widget.items[i], i == widget.currentIndex, accent),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTab(int index, AfBottomNavItem item, bool active) {
+  Widget _buildTab(int index, AfBottomNavItem item, bool active, Color accent) {
     return PressScale(
       ensureHitTarget: false,
       onTap: () => widget.onSelect(index),
@@ -85,7 +81,7 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
           horizontal: active ? AfSpacing.s16 : AfSpacing.s12,
         ),
         decoration: BoxDecoration(
-          color: active ? AfColors.indigo900 : Colors.transparent,
+          color: active ? accent.withValues(alpha: 0.15) : Colors.transparent,
           borderRadius: AfRadii.borderPill,
         ),
         child: Row(
@@ -97,7 +93,7 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
                 active ? item.filledIcon : item.icon,
                 key: ValueKey(active),
                 size: 24,
-                color: active ? AfColors.textPrimary : AfColors.textTertiary,
+                color: active ? accent : AfColors.textTertiary,
               ),
             ),
             ClipRect(
@@ -112,7 +108,8 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
                     item.label,
                     maxLines: 1,
                     style: AfTypography.caption.copyWith(
-                      color: AfColors.textPrimary,
+                      color: accent,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),

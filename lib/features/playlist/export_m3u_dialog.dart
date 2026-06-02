@@ -30,7 +30,6 @@ class ExportM3UAction {
 
     final m3uContent = M3uParser.write(entries);
 
-    // Save to a temp file and show a toast/snack confirmation
     try {
       final tempDir = Directory.systemTemp;
       final file = File('${tempDir.path}/$playlistName.m3u');
@@ -40,7 +39,7 @@ class ExportM3UAction {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Exported "$playlistName.m3u" (${tracks.length} tracks) to temp storage',
+              'Exported "$playlistName.m3u" (${tracks.length} tracks)',
             ),
             duration: const Duration(seconds: 3),
           ),
@@ -48,9 +47,9 @@ class ExportM3UAction {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to export: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to export: $e')));
       }
     }
   }

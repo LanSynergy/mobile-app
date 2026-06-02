@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-/// Spatial grid.
+/// Spatial grid — Dark Moody edition.
 ///
 /// 4dp base, 8dp default sibling rhythm, 24dp section gap,
 /// 16dp gutters (24 for "generous" surfaces — Now Playing, Lyrics).
@@ -41,21 +41,21 @@ abstract final class AfSpacing {
   static const double minHitTarget = s48;
 
   /// Mini-player height.
-  static const double miniPlayerHeight = s56;
+  static const double miniPlayerHeight = 64;
 
   /// Bottom-nav height (excluding gesture inset).
-  static const double bottomNavHeight = 72;
+  static const double bottomNavHeight = 64;
 
   /// Side margin on the floating mini-player.
   static const double miniPlayerSideMargin = s12;
 
   /// Gap between the mini-player's bottom edge and the top of the bottom nav.
-  static const double miniPlayerNavGap = s16;
+  static const double miniPlayerNavGap = s12;
 
   /// Total bottom inset to apply to scrollables when both mini-player
-  /// and bottom-nav are present (per design spec §11.5 rule 8).
+  /// and bottom-nav are present.
   ///
-  /// `mini-player(56) + gap(16) + nav(72) = 144` minus 8dp visual
+  /// `mini-player(64) + gap(12) + nav(64) = 140` minus 4dp visual
   /// breathing room collapses to a working 136dp inset.
   static const double bottomInsetWithMiniAndNav = s136;
 

@@ -89,7 +89,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 Expanded(
                   child: ShaderMask(
                     shaderCallback: (bounds) => const LinearGradient(
-                      colors: [AfColors.indigo300, AfColors.indigo500],
+                      colors: [
+                        AfColors.accentPrimary,
+                        AfColors.accentSecondary,
+                      ],
                     ).createShader(bounds),
                     child: Text(
                       'Library',
@@ -207,7 +210,7 @@ class _CommandPaletteSearchState extends ConsumerState<_CommandPaletteSearch> {
                           width: 36,
                           height: 4,
                           decoration: const BoxDecoration(
-                            color: AfColors.surfaceHigh,
+                            color: AfColors.accentPrimary,
                             borderRadius: AfRadii.borderPill,
                           ),
                         ),
@@ -282,7 +285,7 @@ class _CommandPaletteSearchState extends ConsumerState<_CommandPaletteSearch> {
                     ),
                     focusedBorder: const OutlineInputBorder(
                       borderRadius: AfRadii.borderPill,
-                      borderSide: BorderSide(color: AfColors.indigo400),
+                      borderSide: BorderSide(color: AfColors.accentPrimary),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: AfSpacing.s16,

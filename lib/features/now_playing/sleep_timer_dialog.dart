@@ -27,19 +27,14 @@ class SleepTimerDialogContentState
   @override
   void initState() {
     super.initState();
-    // Pre-select the currently active timer duration so the chip is
-    // highlighted when re-opening the dialog.
     final activeTimer = ref.read(sleepTimerProvider);
     if (activeTimer != null) {
       final remaining = activeTimer.difference(DateTime.now());
-      // End-of-track is set to 24h; detect when remaining exceeds
-      // any reasonable timer value (max preset is 60 min).
       final isEndOfTrack = remaining.inMinutes > 120;
       if (isEndOfTrack) {
         _selectedMinutes = 0;
       } else {
         final mins = remaining.inMinutes;
-        // Find the closest preset, or keep the raw remaining value.
         final closest = _presets.cast<int?>().firstWhere(
           (p) => (p! - mins).abs() <= 2,
           orElse: () => null,
@@ -108,14 +103,14 @@ class SleepTimerDialogContentState
                 vertical: AfSpacing.s8,
               ),
               decoration: BoxDecoration(
-                color: AfColors.indigo800.withValues(alpha: 0.4),
+                color: AfColors.accentPrimary.withValues(alpha: 0.15),
                 borderRadius: AfRadii.borderMd,
               ),
               child: Row(
                 children: [
                   const Icon(
                     LucideIcons.moon,
-                    color: AfColors.indigo300,
+                    color: AfColors.accentPrimary,
                     size: 18,
                   ),
                   const SizedBox(width: AfSpacing.s8),
@@ -123,7 +118,7 @@ class SleepTimerDialogContentState
                     child: Text(
                       'Timer active',
                       style: AfTypography.bodySmall.copyWith(
-                        color: AfColors.indigo300,
+                        color: AfColors.accentPrimary,
                       ),
                     ),
                   ),
@@ -153,11 +148,11 @@ class SleepTimerDialogContentState
                     _selectedMinutes = m;
                     _showCustomInput = false;
                   }),
-                  selectedColor: AfColors.indigo600,
+                  selectedColor: AfColors.accentPrimary,
                   backgroundColor: AfColors.surfaceRaised,
                   labelStyle: AfTypography.bodySmall.copyWith(
                     color: _selectedMinutes == m
-                        ? AfColors.textOnPrimary
+                        ? AfColors.surfaceCanvas
                         : AfColors.textPrimary,
                   ),
                 ),
@@ -168,11 +163,11 @@ class SleepTimerDialogContentState
                   _selectedMinutes = 0;
                   _showCustomInput = false;
                 }),
-                selectedColor: AfColors.indigo600,
+                selectedColor: AfColors.accentPrimary,
                 backgroundColor: AfColors.surfaceRaised,
                 labelStyle: AfTypography.bodySmall.copyWith(
                   color: _selectedMinutes == 0
-                      ? AfColors.textOnPrimary
+                      ? AfColors.surfaceCanvas
                       : AfColors.textPrimary,
                 ),
               ),
@@ -191,7 +186,7 @@ class SleepTimerDialogContentState
                         _selectedMinutes != 0 &&
                         !_presets.contains(_selectedMinutes)),
                 onSelected: (_) => setState(() => _showCustomInput = true),
-                selectedColor: AfColors.indigo600,
+                selectedColor: AfColors.accentPrimary,
                 backgroundColor: AfColors.surfaceRaised,
                 labelStyle: AfTypography.bodySmall.copyWith(
                   color:
@@ -199,7 +194,7 @@ class SleepTimerDialogContentState
                           (_selectedMinutes != null &&
                               _selectedMinutes != 0 &&
                               !_presets.contains(_selectedMinutes))
-                      ? AfColors.textOnPrimary
+                      ? AfColors.surfaceCanvas
                       : AfColors.textPrimary,
                 ),
               ),

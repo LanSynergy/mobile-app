@@ -3,11 +3,10 @@ import 'package:flutter/material.dart';
 import '../design_tokens/tokens.dart';
 
 /// Replaces Material's default ripple with the Aetherfin press grammar:
-/// a brief 0.97 scale-down on press + an optional tint shift on the child.
+/// a brief 0.96 scale-down on press for tactile feedback.
 ///
-/// Per §7.1 / motion §7.2 — Material ripple is OFF GLOBALLY in the theme;
-/// every tappable element should wrap its target in [PressScale] (or its
-/// helper variants) so we keep press feedback consistent.
+/// Every tappable element should wrap its target in [PressScale] so press
+/// feedback stays consistent across the app.
 class PressScale extends StatefulWidget {
   const PressScale({
     super.key,
@@ -15,10 +14,11 @@ class PressScale extends StatefulWidget {
     this.onTap,
     this.onLongPress,
     this.duration = AfDurations.instant,
-    this.pressedScale = 0.97,
+    this.pressedScale = 0.96,
     this.behavior = HitTestBehavior.opaque,
     this.ensureHitTarget = true,
   });
+
   final Widget child;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
@@ -27,7 +27,7 @@ class PressScale extends StatefulWidget {
   final HitTestBehavior behavior;
 
   /// Minimum hit-target enforcement. Defaults to true — every tap target
-  /// inflates to 48×48 dp via transparent padding.
+  /// inflates to 48x48 dp via transparent padding.
   final bool ensureHitTarget;
 
   @override
@@ -39,7 +39,7 @@ class _PressScaleState extends State<PressScale>
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
     duration: widget.duration,
-    reverseDuration: const Duration(milliseconds: 120),
+    reverseDuration: AfDurations.quick,
     lowerBound: 0,
     upperBound: 1,
   );

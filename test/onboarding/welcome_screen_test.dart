@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'package:aetherfin/features/onboarding/welcome_screen.dart';
 import 'package:aetherfin/state/providers.dart';
@@ -44,9 +45,9 @@ void main() {
 
       // Hero with logo mark
       expect(find.byType(Hero), findsOneWidget);
-      // Mode cards with icons
-      expect(find.byIcon(Icons.cloud_outlined), findsOneWidget);
-      expect(find.byIcon(Icons.phone_android_rounded), findsOneWidget);
+      // Mode cards with Lucide icons
+      expect(find.byIcon(LucideIcons.cloud), findsOneWidget);
+      expect(find.byIcon(LucideIcons.folderOpen), findsOneWidget);
     });
 
     testWidgets('displays mode selection text', (tester) async {

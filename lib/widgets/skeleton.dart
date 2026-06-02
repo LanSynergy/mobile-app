@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:aetherfin/design_tokens/tokens.dart';
+
+import '../design_tokens/tokens.dart';
 
 // ---------------------------------------------------------------------------
 // ShimmerWrap — animation engine for shimmer skeletons
@@ -7,8 +8,8 @@ import 'package:aetherfin/design_tokens/tokens.dart';
 
 /// Wraps a child widget and paints a shimmer sweep over it via [ShaderMask].
 ///
-/// The sweep is a `LinearGradient` with three stops (transparent →
-/// semi-transparent white → transparent) that moves from left (-1.0) to
+/// The sweep is a `LinearGradient` with three stops (transparent ->
+/// semi-transparent white -> transparent) that moves from left (-1.0) to
 /// right (2.0) over 1.5s, repeating indefinitely.
 ///
 /// Each [ShimmerWrap] has its own [AnimationController] so multiple
@@ -17,7 +18,7 @@ class ShimmerWrap extends StatefulWidget {
   const ShimmerWrap({super.key, required this.child});
 
   /// The skeleton content to paint the shimmer over. Should be a
-  /// [Container] with [AfColors.surfaceBase] fill and the desired shape.
+  /// [Container] with [AfColors.surfaceRaised] fill and the desired shape.
   final Widget child;
 
   @override
@@ -48,17 +49,14 @@ class _ShimmerState extends State<ShimmerWrap>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        // Map animation value 0→1 to gradient position -1.0→2.0
         final dx = -1.0 + (_controller.value * 3.0);
 
-        // Clamp stops to [0, 1] so the gradient never wraps
         final stopA = (dx - 0.2).clamp(0.0, 1.0);
         final stopB = dx.clamp(0.0, 1.0);
         final stopC = (dx + 0.2).clamp(0.0, 1.0);
 
         return ShaderMask(
           shaderCallback: (bounds) {
-            // Guard against zero/infinite bounds
             if (bounds.isEmpty || bounds.isInfinite) {
               return const LinearGradient(
                 colors: [Colors.transparent, Colors.transparent],
@@ -109,7 +107,7 @@ class SkeletonBar extends StatelessWidget {
   /// Border radius. Defaults to [AfRadii.borderSm].
   final BorderRadiusGeometry? borderRadius;
 
-  /// Fill color. Defaults to [AfColors.surfaceBase].
+  /// Fill color. Defaults to [AfColors.surfaceRaised].
   final Color? color;
 
   @override
@@ -119,7 +117,7 @@ class SkeletonBar extends StatelessWidget {
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: color ?? AfColors.surfaceBase,
+          color: color ?? AfColors.surfaceRaised,
           borderRadius: borderRadius ?? AfRadii.borderSm,
         ),
       ),
@@ -153,7 +151,7 @@ class SkeletonBlock extends StatelessWidget {
   /// Border radius. Defaults to [AfRadii.borderMd].
   final BorderRadiusGeometry? borderRadius;
 
-  /// Fill color. Defaults to [AfColors.surfaceBase].
+  /// Fill color. Defaults to [AfColors.surfaceRaised].
   final Color? color;
 
   @override
@@ -163,7 +161,7 @@ class SkeletonBlock extends StatelessWidget {
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: color ?? AfColors.surfaceBase,
+          color: color ?? AfColors.surfaceRaised,
           borderRadius: borderRadius ?? AfRadii.borderMd,
         ),
       ),
@@ -184,7 +182,7 @@ class SkeletonCircle extends StatelessWidget {
   /// Diameter of the circle.
   final double size;
 
-  /// Fill color. Defaults to [AfColors.surfaceBase].
+  /// Fill color. Defaults to [AfColors.surfaceRaised].
   final Color? color;
 
   @override
@@ -194,7 +192,7 @@ class SkeletonCircle extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: color ?? AfColors.surfaceBase,
+          color: color ?? AfColors.surfaceRaised,
           shape: BoxShape.circle,
         ),
       ),

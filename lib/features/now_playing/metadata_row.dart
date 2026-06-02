@@ -20,9 +20,7 @@ class MetadataRow extends ConsumerWidget {
       children: [
         Text(
           track.title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          style: AfTypography.titleLarge,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
           maxLines: 1,
@@ -38,10 +36,8 @@ class MetadataRow extends ConsumerWidget {
                     : null,
                 child: Text(
                   track.artistName,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.7),
+                  style: AfTypography.bodyLarge.copyWith(
+                    color: AfColors.textSecondary,
                   ),
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
@@ -50,7 +46,12 @@ class MetadataRow extends ConsumerWidget {
               ),
             ),
             if (track.albumName.isNotEmpty) ...[
-              const Text(' · '),
+              Text(
+                ' · ',
+                style: AfTypography.bodyLarge.copyWith(
+                  color: AfColors.textTertiary,
+                ),
+              ),
               Flexible(
                 child: GestureDetector(
                   onTap: track.albumId != null
@@ -58,10 +59,8 @@ class MetadataRow extends ConsumerWidget {
                       : null,
                   child: Text(
                     track.albumName,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.7),
+                    style: AfTypography.bodyLarge.copyWith(
+                      color: AfColors.textSecondary,
                     ),
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
@@ -100,7 +99,6 @@ class _AbLoopButton extends ConsumerWidget {
     final active = abA != null || abB != null;
     return GestureDetector(
       onTap: () {
-        // Clear existing A-B loop
         if (active) {
           ref.read(playerServiceProvider).setAbLoopA(null);
           ref.read(playerServiceProvider).setAbLoopB(null);
@@ -108,17 +106,14 @@ class _AbLoopButton extends ConsumerWidget {
           ref.read(abLoopBProvider.notifier).state = null;
           return;
         }
-        // Set A at current position
         final pos = ref.read(positionStreamProvider);
         ref.read(playerServiceProvider).setAbLoopA(pos);
         ref.read(abLoopAProvider.notifier).state = pos;
       },
       child: Icon(
-        active ? LucideIcons.repeat1 : LucideIcons.repeat1,
+        LucideIcons.repeat1,
         size: 20,
-        color: active
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+        color: active ? AfColors.accentPrimary : AfColors.textTertiary,
       ),
     );
   }

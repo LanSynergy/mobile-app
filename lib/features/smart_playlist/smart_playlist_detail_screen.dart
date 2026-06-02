@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/audio/play_actions.dart';
 import '../../design_tokens/tokens.dart';
@@ -10,7 +11,7 @@ import '../../widgets/skeletons/track_row_skeleton.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 
-/// Shows the resolved tracks for a smart playlist — Samsung One UI style.
+/// Shows the resolved tracks for a smart playlist — Dark Moody style.
 class SmartPlaylistDetailScreen extends ConsumerWidget {
   const SmartPlaylistDetailScreen({super.key, required this.playlistId});
   final String playlistId;
@@ -34,7 +35,7 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
         backgroundColor: AfColors.surfaceCanvas,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const Icon(LucideIcons.arrowLeft),
           onPressed: () => context.pop(),
         ),
         title: Text(
@@ -45,7 +46,7 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
         titleSpacing: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit_rounded),
+            icon: const Icon(LucideIcons.pencil, size: 20),
             onPressed: () => context.push('/smart-playlist/$playlistId/edit'),
             tooltip: 'Edit rules',
           ),
@@ -66,7 +67,7 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
-                      Icons.music_off_rounded,
+                      LucideIcons.music,
                       size: 36,
                       color: AfColors.textTertiary,
                     ),
@@ -110,13 +111,13 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: AfColors.indigo500.withValues(alpha: 0.15),
+                          color: AfColors.accentPrimary.withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
-                          Icons.auto_awesome_rounded,
-                          size: 20,
-                          color: AfColors.indigo400,
+                          LucideIcons.sparkles,
+                          size: 18,
+                          color: AfColors.accentPrimary,
                         ),
                       ),
                       const SizedBox(width: AfSpacing.s12),
@@ -152,17 +153,18 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
                               .read(playerServiceProvider)
                               .setAfShuffleMode(true);
                         },
-                        icon: const Icon(Icons.shuffle_rounded),
+                        icon: const Icon(LucideIcons.shuffle, size: 20),
                         color: AfColors.textSecondary,
                         tooltip: 'Shuffle',
                       ),
                       FilledButton.icon(
                         onPressed: () =>
                             ref.read(playActionsProvider).playQueue(tracks),
-                        icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                        icon: const Icon(LucideIcons.play, size: 18),
                         label: const Text('Play'),
                         style: FilledButton.styleFrom(
-                          backgroundColor: AfColors.indigo600,
+                          backgroundColor: AfColors.accentPrimary,
+                          foregroundColor: AfColors.surfaceCanvas,
                           padding: const EdgeInsets.symmetric(
                             horizontal: AfSpacing.s16,
                             vertical: AfSpacing.s8,

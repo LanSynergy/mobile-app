@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
@@ -30,7 +31,7 @@ class HeroAlbumCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         decoration: BoxDecoration(
           borderRadius: AfRadii.borderLg,
-          color: hasArt ? null : AfColors.indigo800,
+          color: hasArt ? null : AfColors.surfaceRaised,
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
@@ -146,15 +147,15 @@ class _PlayPill extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              Icons.play_arrow_rounded,
-              color: AfColors.indigo700,
+              LucideIcons.play,
+              color: AfColors.surfaceCanvas,
               size: 18,
             ),
             const SizedBox(width: 4),
             Text(
               'Play',
               style: AfTypography.bodyMedium.copyWith(
-                color: AfColors.indigo700,
+                color: AfColors.surfaceCanvas,
                 fontWeight: FontWeight.w600,
               ),
             ),

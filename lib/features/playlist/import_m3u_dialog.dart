@@ -2,10 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/local/local_backend.dart';
 import '../../core/local/m3u_parser.dart';
+import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/af_dialog.dart';
 
 /// Service/Action to import an M3U playlist.
 class ImportM3UAction {
@@ -16,38 +19,60 @@ class ImportM3UAction {
   /// and create a new playlist.
   Future<void> import({required BuildContext context}) async {
     final controller = TextEditingController();
-    final content = await showDialog<String>(
+    final content = await showBlurDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Import M3U Playlist'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Paste the M3U content below to import it as a new playlist. '
-              'Tracks will be resolved by ID or name search.',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Import M3U Playlist', style: AfTypography.titleMedium),
+          const SizedBox(height: AfSpacing.s12),
+          Text(
+            'Paste M3U content below to import as a new playlist. '
+            'Tracks will be resolved by ID or name search.',
+            style: AfTypography.bodySmall.copyWith(
+              color: AfColors.textTertiary,
             ),
-            const SizedBox(height: 12),
-            TextField(
+          ),
+          const SizedBox(height: AfSpacing.s16),
+          Container(
+            decoration: const BoxDecoration(
+              color: AfColors.surfaceHigh,
+              borderRadius: AfRadii.borderSm,
+            ),
+            child: TextField(
               controller: controller,
               maxLines: 8,
-              decoration: const InputDecoration(
-                hintText: 'Paste M3U content here...',
-                border: OutlineInputBorder(),
+              style: AfTypography.bodyMedium,
+              decoration: InputDecoration(
+                hintText: '#EXTM3U\n#EXTINF:180,Artist - Title\n...',
+                hintStyle: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textDisabled,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.all(AfSpacing.s12),
               ),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: const Text('Import'),
+          const SizedBox(height: AfSpacing.s24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: AfSpacing.s8),
+              FilledButton.icon(
+                onPressed: () => Navigator.of(context).pop(controller.text),
+                icon: const Icon(LucideIcons.download, size: 18),
+                label: const Text('Import'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AfColors.accentPrimary,
+                  foregroundColor: AfColors.surfaceCanvas,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -72,13 +97,22 @@ class ImportM3UAction {
       return;
     }
 
-    // Show loading dialog during resolution
+    // Show loading dialog during resolution.
     if (!context.mounted) return;
     unawaited(
       showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
+        builder: (_) => const Center(
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: CircularProgressIndicator(
+              color: AfColors.accentPrimary,
+              strokeWidth: 2.5,
+            ),
+          ),
+        ),
       ),
     );
 
@@ -162,7 +196,7 @@ class ImportM3UAction {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create playlist: ${e.toString()}')),
+          SnackBar(content: Text('Failed to create playlist: $e')),
         );
       }
     }

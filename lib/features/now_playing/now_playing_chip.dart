@@ -13,17 +13,15 @@ class NowPlayingMetaChip extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AfSpacing.s8,
-        vertical: 2.0,
+        vertical: AfSpacing.s2,
       ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+      decoration: const BoxDecoration(
+        color: AfColors.surfaceHigh,
         borderRadius: AfRadii.borderPill,
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-        ),
+        style: AfTypography.caption.copyWith(color: AfColors.textSecondary),
       ),
     );
   }

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:aetherfin/design_tokens/tokens.dart';
-import 'package:aetherfin/widgets/skeleton.dart';
-import 'package:aetherfin/widgets/section_header.dart';
-import 'package:aetherfin/widgets/skeletons/track_row_skeleton.dart';
-import 'package:aetherfin/widgets/skeletons/album_card_skeleton.dart';
+
+import '../../design_tokens/tokens.dart';
+import '../skeleton.dart';
+import '../section_header.dart';
+import 'album_card_skeleton.dart';
+import 'track_row_skeleton.dart';
 
 /// Shimmer skeleton for the artist detail screen.
+///
+/// Circle avatar, name bar, top songs section, albums grid.
 class ArtistSkeleton extends StatelessWidget {
   const ArtistSkeleton({super.key});
 

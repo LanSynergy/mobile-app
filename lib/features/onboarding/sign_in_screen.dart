@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/jellyfin/client.dart';
 import '../../core/jellyfin/models/server.dart';
@@ -13,6 +14,10 @@ import '../../utils/log.dart';
 import '../../utils/url.dart';
 import '../../widgets/server_pill.dart';
 
+/// Server sign-in form.
+///
+/// Shows server URL, username/password fields, sign-in button with
+/// accentPrimary styling, error handling, and cleartext HTTP warning.
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({
     super.key,
@@ -214,7 +219,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const Icon(LucideIcons.arrowLeft),
           onPressed: () => context.pop(),
         ),
         title: Text('Sign in', style: AfTypography.titleMedium),
@@ -279,7 +284,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     Switch.adaptive(
                       value: _useToken,
                       onChanged: (v) => setState(() => _useToken = v),
-                      activeThumbColor: AfColors.indigo500,
+                      activeThumbColor: AfColors.accentPrimary,
                     ),
                     const SizedBox(width: AfSpacing.s8),
                     Expanded(
@@ -326,16 +331,16 @@ class _CleartextWarning extends StatelessWidget {
         vertical: AfSpacing.s8,
       ),
       decoration: BoxDecoration(
-        color: AfColors.semanticError.withValues(alpha: 0.12),
+        color: AfColors.semanticWarning.withValues(alpha: 0.12),
         borderRadius: AfRadii.borderMd,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
-            Icons.lock_open_rounded,
+            LucideIcons.lockOpen,
             size: 18,
-            color: AfColors.semanticError,
+            color: AfColors.semanticWarning,
           ),
           const SizedBox(width: AfSpacing.s8),
           Expanded(

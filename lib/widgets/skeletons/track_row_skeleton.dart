@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:aetherfin/design_tokens/tokens.dart';
-import 'package:aetherfin/widgets/skeleton.dart';
 
-/// A shimmer skeleton matching a single [TrackRow] layout.
+import '../../design_tokens/tokens.dart';
+import '../skeleton.dart';
+
+/// A shimmer skeleton matching a single track row layout.
 ///
 /// 48dp tall, circle leading + two text bars.
 class TrackRowSkeleton extends StatelessWidget {

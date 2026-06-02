@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../design_tokens/tokens.dart';
 
+/// Section title with optional "See all" action.
+///
 /// `Recently Played                    See More ›`
 ///
-/// Section title + optional trailing action. 24dp top spacing,
-/// 12dp bottom spacing (callers handle the spacing wrappers).
+/// 24dp top spacing, 12dp bottom spacing (callers handle the spacing wrappers).
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     super.key,
@@ -14,6 +15,7 @@ class SectionHeader extends StatelessWidget {
     this.onActionTap,
     this.uppercase = false,
   });
+
   final String title;
   final String? actionLabel;
   final VoidCallback? onActionTap;
@@ -26,7 +28,7 @@ class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final titleStyle = uppercase
         ? AfTypography.label.copyWith(color: AfColors.textTertiary)
-        : AfTypography.titleSmall.copyWith(color: AfColors.textPrimary);
+        : AfTypography.titleMedium.copyWith(color: AfColors.textPrimary);
 
     return Row(
       children: [
@@ -49,7 +51,7 @@ class SectionHeader extends StatelessWidget {
               child: Text(
                 '$actionLabel ›',
                 style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
+                  color: AfColors.accentPrimary,
                 ),
               ),
             ),

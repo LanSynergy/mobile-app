@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/jellyfin/client.dart';
 import '../../core/jellyfin/discovery.dart';
@@ -13,13 +14,13 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/log.dart';
 import '../../widgets/press_scale.dart';
+import '../../widgets/skeleton.dart';
 
-/// Mockup 02 — Server discovery.
+/// LAN/URL server discovery screen.
 ///
-///   Top: indigo gradient hero, brand mark in top-left (animates from
-///   the previous screen via a Hero), "Find your server" title, body.
-///   Middle: scanning indicator → list of `_jellyfin._tcp.local` servers.
-///   Bottom: "Enter manually" affordance with URL input.
+/// Scans for Jellyfin/Navidrome servers via mDNS with shimmer loading
+/// skeletons, shows discovered server cards with status indicators,
+/// and provides manual URL input.
 class ServerDiscoveryScreen extends ConsumerStatefulWidget {
   const ServerDiscoveryScreen({super.key});
 
@@ -154,7 +155,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
     } catch (e, stack) {
       afLog('error', 'server discovery failed', error: e, stackTrace: stack);
       setState(() {
-        _manualError = 'Couldn’t reach ${server.baseUrl}. $e';
+        _manualError = 'Couldn\'t reach ${server.baseUrl}. $e';
         _busy = false;
       });
     }
@@ -177,7 +178,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const Icon(LucideIcons.arrowLeft),
           onPressed: () async {
             // Reset mode on back — user wants to re-decide at the
             // WelcomeScreen. This also prevents stale redirects on
@@ -209,18 +210,16 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
                 ),
               ),
               const SizedBox(height: AfSpacing.s24),
-              if (_scanning && servers.isEmpty)
-                const Center(
-                  child: SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2.5),
-                  ),
-                ),
+
+              // Scanning skeleton
+              if (_scanning && servers.isEmpty) const _ScanSkeleton(),
+
+              // Discovered server cards
               for (final s in servers) ...[
                 _ServerCard(server: s, onTap: () => _continueWith(s)),
                 const SizedBox(height: AfSpacing.s12),
               ],
+
               if (!_scanning && servers.isEmpty)
                 Text(
                   'No servers found. Make sure your server (Jellyfin '
@@ -271,6 +270,47 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
   }
 }
 
+/// Shimmer skeleton shown during mDNS scan.
+class _ScanSkeleton extends StatelessWidget {
+  const _ScanSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(3, (_) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AfSpacing.s12),
+          child: ShimmerWrap(
+            child: Container(
+              padding: const EdgeInsets.all(AfSpacing.s16),
+              decoration: const BoxDecoration(
+                color: AfColors.surfaceRaised,
+                borderRadius: AfRadii.borderLg,
+              ),
+              child: const Row(
+                children: [
+                  SkeletonCircle(size: 40),
+                  SizedBox(width: AfSpacing.s16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SkeletonBar(width: 120, height: 16),
+                        SizedBox(height: AfSpacing.s4),
+                        SkeletonBar(width: 200, height: 12),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
 class _ServerCard extends StatelessWidget {
   const _ServerCard({required this.server, required this.onTap});
   final JellyfinServer server;
@@ -284,13 +324,26 @@ class _ServerCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AfSpacing.s16),
         decoration: BoxDecoration(
-          color: AfColors.surfaceBase,
+          color: AfColors.surfaceRaised,
           borderRadius: AfRadii.borderLg,
           border: Border.all(color: AfColors.surfaceHigh, width: 1),
         ),
         child: Row(
           children: [
-            const Icon(Icons.dns_outlined, color: AfColors.indigo300),
+            // Status indicator
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AfColors.accentPrimary.withValues(alpha: 0.15),
+                borderRadius: AfRadii.borderMd,
+              ),
+              child: const Icon(
+                LucideIcons.server,
+                color: AfColors.accentPrimary,
+                size: 20,
+              ),
+            ),
             const SizedBox(width: AfSpacing.s16),
             Expanded(
               child: Column(
@@ -307,10 +360,19 @@ class _ServerCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AfColors.textTertiary,
+            // Reachable status dot
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: server.isReachable
+                    ? AfColors.semanticSuccess
+                    : AfColors.textTertiary,
+                shape: BoxShape.circle,
+              ),
             ),
+            const SizedBox(width: AfSpacing.s8),
+            const Icon(LucideIcons.chevronRight, color: AfColors.textTertiary),
           ],
         ),
       ),

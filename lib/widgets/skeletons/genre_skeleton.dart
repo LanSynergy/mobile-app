@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:aetherfin/design_tokens/tokens.dart';
-import 'package:aetherfin/widgets/skeleton.dart';
-import 'package:aetherfin/widgets/skeletons/album_card_skeleton.dart';
+
+import '../../design_tokens/tokens.dart';
+import '../skeleton.dart';
+import 'album_card_skeleton.dart';
 
 /// Shimmer skeleton for the genre detail screen.
+///
+/// Genre name bar and a grid of album cards.
 class GenreSkeleton extends StatelessWidget {
   const GenreSkeleton({super.key});
 
@@ -14,6 +17,7 @@ class GenreSkeleton extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Genre title
           const SkeletonBar(width: 120, height: 20),
           const SizedBox(height: AfSpacing.s12),
           Expanded(

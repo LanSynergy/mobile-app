@@ -28,7 +28,7 @@ class PlaylistListScreen extends ConsumerWidget {
           ref.invalidate(allPlaylistsProvider);
           await ref.read(allPlaylistsProvider.future);
         },
-        color: AfColors.indigo300,
+        color: AfColors.accentPrimary,
         backgroundColor: AfColors.surfaceBase,
         child: AfScrollbar(
           child: CustomScrollView(
@@ -36,6 +36,7 @@ class PlaylistListScreen extends ConsumerWidget {
               parent: ClampingScrollPhysics(),
             ),
             slivers: [
+              // ── Header ──────────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(
@@ -46,12 +47,12 @@ class PlaylistListScreen extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      Text('Playlists', style: AfTypography.titleLarge),
+                      Text('Playlists', style: AfTypography.display),
                       const Spacer(),
                       IconButton(
                         icon: const Icon(
                           LucideIcons.listPlus,
-                          color: AfColors.indigo400,
+                          color: AfColors.accentPrimary,
                           size: 22,
                         ),
                         tooltip: 'Import M3U',
@@ -63,6 +64,8 @@ class PlaylistListScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+
+              // ── Playlist body ───────────────────────────────────────────
               ...playlists.when(
                 data: (list) => _buildSlivers(context, ref, list, smartCount),
                 loading: () => [
@@ -84,6 +87,7 @@ class PlaylistListScreen extends ConsumerWidget {
                   ),
                 ],
               ),
+
               const SliverToBoxAdapter(
                 child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
               ),
@@ -102,6 +106,7 @@ class PlaylistListScreen extends ConsumerWidget {
   ) {
     final slivers = <Widget>[];
 
+    // ── Smart playlist shortcut ──────────────────────────────────────────
     if (smartCount > 0) {
       slivers.add(
         SliverToBoxAdapter(
@@ -112,9 +117,7 @@ class PlaylistListScreen extends ConsumerWidget {
             ),
             child: Text(
               'Smart Playlists',
-              style: AfTypography.titleSmall.copyWith(
-                color: AfColors.textTertiary,
-              ),
+              style: AfTypography.label.copyWith(color: AfColors.textTertiary),
             ),
           ),
         ),
@@ -123,30 +126,13 @@ class PlaylistListScreen extends ConsumerWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-            child: ListTile(
-              leading: Container(
-                width: 48,
-                height: 48,
-                decoration: const BoxDecoration(
-                  borderRadius: AfRadii.borderSm,
-                  color: AfColors.indigo900,
-                ),
-                child: const Icon(
-                  Icons.auto_awesome_rounded,
-                  color: AfColors.indigo300,
-                ),
+            child: _PlaylistCard(
+              leading: const _IconBadge(
+                icon: LucideIcons.sparkles,
+                tint: AfColors.accentPrimary,
               ),
-              title: Text('Smart Playlists', style: AfTypography.titleSmall),
-              subtitle: Text(
-                '$smartCount playlists',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
-                ),
-              ),
-              tileColor: AfColors.surfaceRaised,
-              shape: const RoundedRectangleBorder(
-                borderRadius: AfRadii.borderMd,
-              ),
+              title: 'Smart Playlists',
+              subtitle: '$smartCount playlists',
               onTap: () => context.push('/smart-playlists'),
             ),
           ),
@@ -157,6 +143,7 @@ class PlaylistListScreen extends ConsumerWidget {
       );
     }
 
+    // ── User playlists ───────────────────────────────────────────────────
     if (list.isNotEmpty) {
       slivers.add(
         SliverToBoxAdapter(
@@ -167,9 +154,7 @@ class PlaylistListScreen extends ConsumerWidget {
             ),
             child: Text(
               'My Playlists',
-              style: AfTypography.titleSmall.copyWith(
-                color: AfColors.textTertiary,
-              ),
+              style: AfTypography.label.copyWith(color: AfColors.textTertiary),
             ),
           ),
         ),
@@ -183,30 +168,13 @@ class PlaylistListScreen extends ConsumerWidget {
                 const SizedBox(height: AfSpacing.s8),
             itemBuilder: (context, i) {
               final p = list[i];
-              return ListTile(
-                leading: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: const BoxDecoration(
-                    borderRadius: AfRadii.borderSm,
-                    color: AfColors.indigo800,
-                  ),
-                  child: const Icon(
-                    Icons.playlist_play_rounded,
-                    color: AfColors.indigo300,
-                  ),
+              return _PlaylistCard(
+                leading: const _IconBadge(
+                  icon: LucideIcons.listMusic,
+                  tint: AfColors.accentMuted,
                 ),
-                title: Text(p.name, style: AfTypography.titleSmall),
-                subtitle: Text(
-                  p.trackCountLabel,
-                  style: AfTypography.bodySmall.copyWith(
-                    color: AfColors.textTertiary,
-                  ),
-                ),
-                tileColor: AfColors.surfaceRaised,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderMd,
-                ),
+                title: p.name,
+                subtitle: p.trackCountLabel,
                 onTap: () => context.push('/playlist/${p.id}'),
               );
             },
@@ -214,21 +182,32 @@ class PlaylistListScreen extends ConsumerWidget {
         ),
       );
     } else {
+      // ── Empty state ────────────────────────────────────────────────────
       slivers.add(
         SliverFillRemaining(
           child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  LucideIcons.listMusic,
-                  color: AfColors.textTertiary,
-                  size: 48,
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: AfColors.accentPrimary.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    LucideIcons.listMusic,
+                    color: AfColors.accentMuted,
+                    size: 36,
+                  ),
                 ),
                 const SizedBox(height: AfSpacing.s16),
+                Text('No playlists yet', style: AfTypography.titleSmall),
+                const SizedBox(height: AfSpacing.s4),
                 Text(
-                  'No playlists yet',
-                  style: AfTypography.bodyMedium.copyWith(
+                  'Create one or import an M3U file',
+                  style: AfTypography.bodySmall.copyWith(
                     color: AfColors.textTertiary,
                   ),
                 ),
@@ -240,5 +219,92 @@ class PlaylistListScreen extends ConsumerWidget {
     }
 
     return slivers;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared sub-widgets
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _PlaylistCard extends StatelessWidget {
+  const _PlaylistCard({
+    required this.leading,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final Widget leading;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AfColors.surfaceRaised,
+      borderRadius: AfRadii.borderMd,
+      child: InkWell(
+        borderRadius: AfRadii.borderMd,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.s16,
+            vertical: AfSpacing.s12,
+          ),
+          child: Row(
+            children: [
+              leading,
+              const SizedBox(width: AfSpacing.s12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: AfTypography.bodyMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: AfTypography.bodySmall.copyWith(
+                        color: AfColors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                LucideIcons.chevronRight,
+                color: AfColors.textDisabled,
+                size: 18,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IconBadge extends StatelessWidget {
+  const _IconBadge({required this.icon, required this.tint});
+  final IconData icon;
+  final Color tint;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: tint.withValues(alpha: 0.12),
+        borderRadius: AfRadii.borderSm,
+      ),
+      child: Icon(icon, color: tint, size: 20),
+    );
   }
 }

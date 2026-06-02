@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design_tokens/tokens.dart';
 
@@ -58,7 +59,7 @@ class EqMasterBanner extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: enabled
             ? const LinearGradient(
-                colors: [AfColors.indigo700, AfColors.indigo900],
+                colors: [AfColors.accentMuted, AfColors.surfaceLow],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
@@ -76,21 +77,21 @@ class EqMasterBanner extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: enabled
-                  ? AfColors.indigo500.withValues(alpha: 0.3)
+                  ? AfColors.accentSecondary.withValues(alpha: 0.3)
                   : AfColors.surfaceHigh,
               boxShadow: enabled
                   ? [
                       BoxShadow(
-                        color: AfColors.indigo400.withValues(alpha: 0.4),
+                        color: AfColors.accentPrimary.withValues(alpha: 0.4),
                         blurRadius: 8,
                       ),
                     ]
                   : null,
             ),
             child: Icon(
-              Icons.graphic_eq_rounded,
+              LucideIcons.audioWaveform,
               size: 20,
-              color: enabled ? AfColors.indigo300 : AfColors.textTertiary,
+              color: enabled ? AfColors.accentPrimary : AfColors.textTertiary,
             ),
           ),
           const SizedBox(width: AfSpacing.s12),
@@ -113,7 +114,9 @@ class EqMasterBanner extends StatelessWidget {
                       ? 'All effects are processing audio'
                       : 'Audio passes through unprocessed',
                   style: AfTypography.bodySmall.copyWith(
-                    color: enabled ? AfColors.indigo300 : AfColors.textTertiary,
+                    color: enabled
+                        ? AfColors.accentPrimary
+                        : AfColors.textTertiary,
                   ),
                 ),
               ],
@@ -127,12 +130,12 @@ class EqMasterBanner extends StatelessWidget {
               width: 52,
               height: 30,
               decoration: BoxDecoration(
-                color: enabled ? AfColors.indigo400 : AfColors.surfaceHigh,
+                color: enabled ? AfColors.accentPrimary : AfColors.surfaceHigh,
                 borderRadius: AfRadii.borderPill,
                 boxShadow: enabled
                     ? [
                         BoxShadow(
-                          color: AfColors.indigo400.withValues(alpha: 0.4),
+                          color: AfColors.accentPrimary.withValues(alpha: 0.4),
                           blurRadius: 8,
                         ),
                       ]
@@ -191,7 +194,7 @@ class EqAccordionSection extends StatelessWidget {
         borderRadius: AfRadii.borderLg,
         border: Border.all(
           color: isOpen
-              ? AfColors.indigo600.withValues(alpha: 0.4)
+              ? AfColors.accentSecondary.withValues(alpha: 0.4)
               : AfColors.surfaceHigh,
         ),
       ),
@@ -218,7 +221,7 @@ class EqAccordionSection extends StatelessWidget {
                       label.toUpperCase(),
                       style: AfTypography.label.copyWith(
                         color: isOpen
-                            ? AfColors.indigo400
+                            ? AfColors.accentPrimary
                             : AfColors.textSecondary,
                       ),
                     ),
@@ -230,13 +233,15 @@ class EqAccordionSection extends StatelessWidget {
                           vertical: AfSpacing.s2,
                         ),
                         decoration: BoxDecoration(
-                          color: AfColors.indigo600.withValues(alpha: 0.3),
+                          color: AfColors.accentSecondary.withValues(
+                            alpha: 0.3,
+                          ),
                           borderRadius: AfRadii.borderPill,
                         ),
                         child: Text(
                           '$badgeCount',
                           style: AfTypography.overline.copyWith(
-                            color: AfColors.indigo400,
+                            color: AfColors.accentPrimary,
                           ),
                         ),
                       ),
@@ -247,7 +252,7 @@ class EqAccordionSection extends StatelessWidget {
                       duration: AfDurations.standard,
                       curve: AfCurves.easeStandard,
                       child: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
+                        LucideIcons.chevronDown,
                         size: 24,
                         color: AfColors.textTertiary,
                       ),
@@ -329,7 +334,7 @@ class EqEffectToggle extends StatelessWidget {
               width: 44,
               height: 26,
               decoration: BoxDecoration(
-                color: value ? AfColors.indigo500 : AfColors.surfaceHigh,
+                color: value ? AfColors.accentSecondary : AfColors.surfaceHigh,
                 borderRadius: AfRadii.borderPill,
               ),
               child: AnimatedAlign(
@@ -417,7 +422,7 @@ class EqSliderRow extends StatelessWidget {
             const Spacer(),
             Text(
               suffix != null ? '$display $suffix' : display,
-              style: AfTypography.mono.copyWith(color: AfColors.indigo300),
+              style: AfTypography.mono.copyWith(color: AfColors.accentPrimary),
             ),
           ],
         ),
@@ -432,7 +437,7 @@ class EqSliderRow extends StatelessWidget {
             min: min,
             max: max,
             divisions: divisions,
-            activeColor: AfColors.indigo400,
+            activeColor: AfColors.accentPrimary,
             onChanged: enabled ? onChanged : null,
             onChangeEnd: enabled ? (_) => onChangeEnd() : null,
           ),
@@ -638,7 +643,7 @@ class EqBandBar extends StatelessWidget {
                 ? '+${((gain - 1) * 12).toStringAsFixed(0)}'
                 : ((gain - 1) * 12).toStringAsFixed(0),
             style: AfTypography.caption.copyWith(
-              color: isFlat ? AfColors.textTertiary : AfColors.indigo400,
+              color: isFlat ? AfColors.textTertiary : AfColors.accentPrimary,
               fontSize: 9,
             ),
           ),
@@ -657,7 +662,7 @@ class EqBandBar extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isFlat
                         ? AfColors.surfaceHigh
-                        : AfColors.indigo500.withValues(alpha: 0.6),
+                        : AfColors.accentSecondary.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: Align(
@@ -667,7 +672,7 @@ class EqBandBar extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isFlat
                             ? AfColors.surfaceHigh
-                            : AfColors.indigo400,
+                            : AfColors.accentPrimary,
                         borderRadius: BorderRadius.circular(3),
                       ),
                     ),
@@ -740,7 +745,7 @@ class EqBandSlider extends StatelessWidget {
                 min: 0,
                 max: 4,
                 divisions: 40,
-                activeColor: AfColors.indigo400,
+                activeColor: AfColors.accentPrimary,
                 onChanged: onChanged,
                 onChangeEnd: (_) => onChangeEnd(),
               ),

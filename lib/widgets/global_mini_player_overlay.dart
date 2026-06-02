@@ -49,13 +49,11 @@ class _GlobalMiniPlayerOverlayState
     final hasMini = ref.watch(hasActivePlaybackProvider);
     if (!hasMini) return const SizedBox.shrink();
 
-    // Determine current route location
     final routeMatchList = appRouter.routerDelegate.currentConfiguration;
     final location = routeMatchList.isEmpty
         ? '/'
         : routeMatchList.last.matchedLocation;
 
-    // Check if location is in hidden set or is an onboarding sub-path
     final isHidden =
         _hiddenLocations.contains(location) ||
         location.startsWith('/onboarding');
@@ -87,7 +85,12 @@ class _GlobalMiniPlayerOverlayState
                     (bottomNav +
                         AfSpacing.miniPlayerNavGap +
                         AfSpacing.miniPlayerHeight);
-                final rect = Rect.fromLTWH(12, miniY, size.width - 24, 56);
+                final rect = Rect.fromLTWH(
+                  AfSpacing.miniPlayerSideMargin,
+                  miniY,
+                  size.width - (AfSpacing.miniPlayerSideMargin * 2),
+                  AfSpacing.miniPlayerHeight,
+                );
                 appRouter.push('/now-playing', extra: rect);
               },
               onPlayPause: () {

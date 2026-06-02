@@ -15,12 +15,15 @@ import '../../widgets/async_error_view.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/stagger_reveal.dart';
-import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/skeletons/home_skeleton.dart';
 import '../library/library_screen.dart' show SongsPill, songsPillProvider;
 
-/// Mockup 04 — Home.
+/// Home screen — Dark Moody edition.
+///
+/// Large serif "Listen" header with amber gradient text, hero album
+/// carousel, recently played tracks with spectral accent, lost memories,
+/// artists with warm glow rings, and genre glass cards.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -36,7 +39,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Required for reliable auto-advance when the screen is off —
     // without this, Doze can freeze the Dart isolate between tracks
     // on Samsung, Xiaomi, and other aggressive OEMs.
-    // The system shows its own dialog; we only fire it if not already exempt.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _requestBatteryExemptionIfNeeded();
     });
@@ -80,17 +82,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final isLocal = ref.watch(appModeProvider) == AppMode.local;
     final albumsAsync = ref.watch(recentlyAddedAlbumsProvider);
+    final spectral = ref.watch(currentSpectralProvider);
 
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: _onRefresh,
-        color: AfColors.indigo300,
+        color: AfColors.accentPrimary,
         backgroundColor: AfColors.surfaceBase,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(
             parent: ClampingScrollPhysics(),
           ),
           slivers: [
+            // Header — "Listen" with amber gradient + cast button
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -103,7 +107,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   children: [
                     ShaderMask(
                       shaderCallback: (bounds) => const LinearGradient(
-                        colors: [AfColors.indigo300, AfColors.indigo500],
+                        colors: [AfColors.accentPrimary, AfColors.accentMuted],
                       ).createShader(bounds),
                       child: Text(
                         'Listen',
@@ -124,7 +128,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: albumsAsync.when(
                 data: (albums) => albums.isEmpty
                     ? const SizedBox.shrink()
-                    : _HeroAlbumCarousel(albums: albums),
+                    : _HeroAlbumCarousel(albums: albums, spectral: spectral),
                 loading: () => const HomeCarouselSkeleton(),
                 error: (e, _) => AsyncErrorView.compact(
                   label: 'Couldn\u2019t load recent albums',
@@ -135,7 +139,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
 
-            _RecentTracksSection(isLocal: isLocal),
+            _RecentTracksSection(isLocal: isLocal, spectral: spectral),
 
             const _LostMemoriesSection(),
 
@@ -165,16 +169,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 // Extracted section widgets
 // ---------------------------------------------------------------------------
 
-/// Top-5 recently played tracks with glass-morphism cards.
+/// Recently played tracks — compact rows with spectral accent on active track.
 class _RecentTracksSection extends ConsumerWidget {
-  const _RecentTracksSection({required this.isLocal});
+  const _RecentTracksSection({required this.isLocal, required this.spectral});
   final bool isLocal;
+  final Spectral spectral;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tracksAsync = isLocal
         ? ref.watch(localTracksProvider)
         : ref.watch(recentlyPlayedTracksProvider);
+    final currentTrack = ref.watch(currentTrackProvider);
+
     return SliverList(
       delegate: SliverChildListDelegate([
         Padding(
@@ -190,8 +197,10 @@ class _RecentTracksSection extends ConsumerWidget {
           data: (tracks) => StaggerReveal(
             children: [
               for (final t in tracks.take(5))
-                _GlassTrackRow(
+                _CompactTrackRow(
                   track: t,
+                  isActive: t.id == currentTrack?.id,
+                  spectral: spectral,
                   onTap: () => ref.read(playActionsProvider).playSingle(t),
                   onLongPress: () => showTrackContextMenu(context, ref, t),
                 ),
@@ -212,14 +221,18 @@ class _RecentTracksSection extends ConsumerWidget {
   }
 }
 
-/// Glass-morphism track row — translucent background with subtle border.
-class _GlassTrackRow extends StatelessWidget {
-  const _GlassTrackRow({
+/// Compact track row — translucent background, spectral accent on active track.
+class _CompactTrackRow extends StatelessWidget {
+  const _CompactTrackRow({
     required this.track,
+    required this.isActive,
+    required this.spectral,
     required this.onTap,
     required this.onLongPress,
   });
   final AfTrack track;
+  final bool isActive;
+  final Spectral spectral;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
@@ -244,7 +257,9 @@ class _GlassTrackRow extends StatelessWidget {
             ],
           ),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.06),
+            color: isActive
+                ? spectral.energy.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.06),
             width: 1,
           ),
         ),
@@ -265,7 +280,7 @@ class _GlassTrackRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AfTypography.bodyMedium.copyWith(
-                      color: AfColors.textPrimary,
+                      color: isActive ? spectral.energy : AfColors.textPrimary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -282,10 +297,12 @@ class _GlassTrackRow extends StatelessWidget {
               ),
             ),
             Icon(
-              LucideIcons.heart,
+              isActive ? LucideIcons.volume2 : LucideIcons.heart,
               size: 16,
-              color: track.isFavorite
-                  ? AfColors.indigo400
+              color: isActive
+                  ? spectral.energy
+                  : track.isFavorite
+                  ? AfColors.accentPrimary
                   : AfColors.surfaceMax,
             ),
           ],
@@ -330,12 +347,8 @@ class _LostMemoriesSection extends ConsumerWidget {
                     const SizedBox(width: AfSpacing.s12),
                 itemBuilder: (context, i) {
                   final t = tracks[i];
-                  return Tile(
-                    title: t.title,
-                    subtitle: t.artistName,
-                    variant: TileVariant.album,
-                    imageUrl: t.imageUrl,
-                    size: 100,
+                  return _LostMemoryTile(
+                    track: t,
                     onTap: () => ref.read(playActionsProvider).playSingle(t),
                     onLongPress: () => showTrackContextMenu(context, ref, t),
                   );
@@ -351,19 +364,102 @@ class _LostMemoriesSection extends ConsumerWidget {
   }
 }
 
-/// Horizontal scroll of artists with radial glow backdrop.
+/// Lost memory tile with vignette edges.
+class _LostMemoryTile extends StatelessWidget {
+  const _LostMemoryTile({
+    required this.track,
+    required this.onTap,
+    required this.onLongPress,
+  });
+  final AfTrack track;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      ensureHitTarget: false,
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: SizedBox(
+        width: 100,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Album art with vignette edges
+            ClipRRect(
+              borderRadius: AfRadii.borderSm,
+              child: SizedBox(
+                width: 100,
+                height: 100,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Artwork(
+                      url: track.imageUrl,
+                      size: 100,
+                      radius: BorderRadius.zero,
+                      fit: BoxFit.cover,
+                    ),
+                    // Vignette edges
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: AfRadii.borderSm,
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              AfColors.surfaceCanvas.withValues(alpha: 0.6),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AfSpacing.s4),
+            Text(
+              track.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AfTypography.bodySmall.copyWith(
+                color: AfColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: AfSpacing.s2),
+            Text(
+              track.artistName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AfTypography.caption.copyWith(
+                color: AfColors.textTertiary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Horizontal scroll of artists with warm glow ring backdrop.
 class _ArtistsSection extends ConsumerWidget {
   const _ArtistsSection({required this.isLocal});
   final bool isLocal;
 
-  // Indigo scale accent colors for each artist ring
+  // Warm amber accent colors for each artist ring
   static const _accents = [
-    AfColors.indigo400,
-    AfColors.indigo300,
-    AfColors.indigo500,
-    AfColors.indigo600,
-    AfColors.indigo700,
-    AfColors.indigo200,
+    AfColors.accentPrimary,
+    AfColors.accentSecondary,
+    AfColors.accentMuted,
+    AfColors.accentPrimary,
+    AfColors.accentSecondary,
+    AfColors.accentMuted,
   ];
 
   @override
@@ -418,14 +514,14 @@ class _ArtistsSection extends ConsumerWidget {
                     width: 108,
                     child: Column(
                       children: [
-                        // Artwork with radial glow behind it
+                        // Artwork with warm glow ring behind it
                         SizedBox(
                           width: 108,
                           height: 108,
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
-                              // Glow
+                              // Warm glow
                               Positioned(
                                 child: Container(
                                   width: 100,
@@ -447,7 +543,7 @@ class _ArtistsSection extends ConsumerWidget {
                                 size: 88,
                                 radius: BorderRadius.circular(44),
                               ),
-                              // Ring
+                              // Warm ring
                               Positioned(
                                 child: Container(
                                   width: 96,
@@ -455,7 +551,7 @@ class _ArtistsSection extends ConsumerWidget {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: accent.withValues(alpha: 0.2),
+                                      color: accent.withValues(alpha: 0.3),
                                       width: 1.5,
                                     ),
                                   ),
@@ -488,7 +584,7 @@ class _ArtistsSection extends ConsumerWidget {
   }
 }
 
-/// Horizontal scroll of large genre cards with gradient overlay.
+/// Horizontal scroll of large genre cards with tint colour and glass overlay.
 class _GenresSection extends ConsumerWidget {
   const _GenresSection({required this.isLocal});
   final bool isLocal;
@@ -565,7 +661,7 @@ class _GenresSection extends ConsumerWidget {
                               ),
                             ),
                           ),
-                        // Gradient overlay
+                        // Glass overlay gradient
                         Positioned.fill(
                           child: DecoratedBox(
                             decoration: BoxDecoration(
@@ -618,8 +714,9 @@ class _GenresSection extends ConsumerWidget {
 
 /// Swipeable carousel of hero album cards with a dot indicator.
 class _HeroAlbumCarousel extends ConsumerStatefulWidget {
-  const _HeroAlbumCarousel({required this.albums});
+  const _HeroAlbumCarousel({required this.albums, required this.spectral});
   final List<AfAlbum> albums;
+  final Spectral spectral;
 
   @override
   ConsumerState<_HeroAlbumCarousel> createState() => _HeroAlbumCarouselState();
@@ -639,6 +736,7 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
   Widget build(BuildContext context) {
     final albums = widget.albums.take(5).toList();
     if (albums.isEmpty) return const SizedBox.shrink();
+    final spectral = widget.spectral;
 
     return StaggerReveal(
       children: [
@@ -686,9 +784,7 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
                                     shape: BoxShape.circle,
                                     gradient: RadialGradient(
                                       colors: [
-                                        AfColors.indigo500.withValues(
-                                          alpha: 0.3,
-                                        ),
+                                        spectral.energy.withValues(alpha: 0.3),
                                         Colors.transparent,
                                       ],
                                     ),
@@ -718,11 +814,11 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: AfTypography.bodyLarge.copyWith(
-                                        color: AfColors.indigo300,
+                                        color: spectral.energy,
                                       ),
                                     ),
                                     const SizedBox(height: AfSpacing.s16),
-                                    // Play button with glow
+                                    // Play button with warm glow
                                     PressScale(
                                       ensureHitTarget: false,
                                       onTap: () async {
@@ -742,17 +838,18 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
                                           vertical: AfSpacing.s8,
                                         ),
                                         decoration: BoxDecoration(
-                                          gradient: const LinearGradient(
+                                          gradient: LinearGradient(
                                             colors: [
-                                              AfColors.indigo500,
-                                              AfColors.indigo600,
+                                              spectral.energy,
+                                              spectral.shadow,
                                             ],
                                           ),
                                           borderRadius: AfRadii.borderPill,
                                           boxShadow: [
                                             BoxShadow(
-                                              color: AfColors.indigo500
-                                                  .withValues(alpha: 0.35),
+                                              color: spectral.energy.withValues(
+                                                alpha: 0.35,
+                                              ),
                                               blurRadius: 16,
                                               offset: const Offset(0, 4),
                                             ),
@@ -809,11 +906,8 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
                       height: 6,
                       decoration: BoxDecoration(
                         gradient: _currentPage == i
-                            ? const LinearGradient(
-                                colors: [
-                                  AfColors.indigo400,
-                                  AfColors.indigo600,
-                                ],
+                            ? LinearGradient(
+                                colors: [spectral.energy, spectral.shadow],
                               )
                             : null,
                         color: _currentPage == i ? null : AfColors.surfaceMax,
@@ -834,14 +928,16 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
 Color _hex(String hex) {
   try {
     final cleaned = hex.replaceFirst('#', '');
-    if (cleaned.length != 6 && cleaned.length != 8) return AfColors.indigo600;
+    if (cleaned.length != 6 && cleaned.length != 8) {
+      return AfColors.accentPrimary;
+    }
     final value = int.parse(
       cleaned.length == 6 ? 'FF$cleaned' : cleaned,
       radix: 16,
     );
     return Color(value);
   } catch (_) {
-    return AfColors.indigo600;
+    return AfColors.accentPrimary;
   }
 }
 

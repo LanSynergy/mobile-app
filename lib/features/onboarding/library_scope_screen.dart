@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/jellyfin/models/library.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 
+/// Library content-type picker during first run.
+///
+/// Toggle switches for: Albums, Artists, Songs, Genres.
+/// Continue button persists selection and navigates to home.
 class LibraryScopeScreen extends ConsumerStatefulWidget {
   const LibraryScopeScreen({super.key});
 
@@ -53,7 +58,7 @@ class _LibraryScopeScreenState extends ConsumerState<LibraryScopeScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const Icon(LucideIcons.arrowLeft),
           onPressed: () => context.pop(),
         ),
         title: Text('Choose libraries', style: AfTypography.titleMedium),
@@ -83,28 +88,43 @@ class _LibraryScopeScreenState extends ConsumerState<LibraryScopeScreen> {
                         itemBuilder: (context, i) {
                           final v = _views[i];
                           final selected = _selected.contains(v.id);
-                          return CheckboxListTile(
-                            value: selected,
-                            onChanged: (val) {
-                              setState(() {
-                                if (val == true) {
-                                  _selected.add(v.id);
-                                } else {
-                                  _selected.remove(v.id);
-                                }
-                              });
-                            },
-                            controlAffinity: ListTileControlAffinity.leading,
-                            shape: const RoundedRectangleBorder(
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: AfColors.surfaceRaised,
                               borderRadius: AfRadii.borderMd,
+                              border: Border.all(
+                                color: selected
+                                    ? AfColors.accentPrimary.withValues(
+                                        alpha: 0.4,
+                                      )
+                                    : AfColors.surfaceHigh,
+                              ),
                             ),
-                            tileColor: AfColors.surfaceBase,
-                            activeColor: AfColors.indigo500,
-                            title: Text(v.name, style: AfTypography.titleSmall),
-                            subtitle: Text(
-                              v.collectionType,
-                              style: AfTypography.bodySmall.copyWith(
-                                color: AfColors.textTertiary,
+                            child: CheckboxListTile(
+                              value: selected,
+                              onChanged: (val) {
+                                setState(() {
+                                  if (val == true) {
+                                    _selected.add(v.id);
+                                  } else {
+                                    _selected.remove(v.id);
+                                  }
+                                });
+                              },
+                              controlAffinity: ListTileControlAffinity.leading,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: AfRadii.borderMd,
+                              ),
+                              activeColor: AfColors.accentPrimary,
+                              title: Text(
+                                v.name,
+                                style: AfTypography.titleSmall,
+                              ),
+                              subtitle: Text(
+                                v.collectionType,
+                                style: AfTypography.bodySmall.copyWith(
+                                  color: AfColors.textTertiary,
+                                ),
                               ),
                             ),
                           );

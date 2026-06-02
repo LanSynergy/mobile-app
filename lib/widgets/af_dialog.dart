@@ -60,7 +60,7 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
   late final Animation<double> _scaleAnim;
   bool _dismissed = false;
 
-  static const _borderRadius = 20.0;
+  static const _borderRadius = AfRadii.lg;
   static const _blurSigma = 15.0;
 
   @override
@@ -110,7 +110,7 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
                 child: Transform.scale(
                   scale: scale,
                   child: GestureDetector(
-                    onTap: () {}, // absorb taps on dialog content
+                    onTap: () {},
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(_borderRadius),
                       child: BackdropFilter(
@@ -119,7 +119,7 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
                           sigmaY: _blurSigma,
                         ),
                         child: Container(
-                          padding: const EdgeInsets.all(16.0),
+                          padding: const EdgeInsets.all(AfSpacing.s16),
                           decoration: BoxDecoration(
                             color: AfColors.surfaceRaised.withValues(
                               alpha: 0.85,

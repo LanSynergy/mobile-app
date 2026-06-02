@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:aetherfin/design_tokens/tokens.dart';
-import 'package:aetherfin/widgets/skeleton.dart';
+
+import '../../design_tokens/tokens.dart';
+import '../skeleton.dart';
 
 /// A shimmer skeleton matching an album card tile layout.
 ///
