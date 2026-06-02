@@ -36,11 +36,11 @@ void main() {
   group('Color tokens — Dark Moody palette', () {
     test('surface scale uses exact hex values', () {
       expect(AfColors.surfaceCanvas.toARGB32(), 0xFF0A0A0A);
-      expect(AfColors.surfaceLow.toARGB32(), 0xFF111111);
-      expect(AfColors.surfaceBase.toARGB32(), 0xFF181818);
-      expect(AfColors.surfaceRaised.toARGB32(), 0xFF222222);
-      expect(AfColors.surfaceHigh.toARGB32(), 0xFF2A2A2A);
-      expect(AfColors.surfaceMax.toARGB32(), 0xFF333333);
+      expect(AfColors.surfaceLow.toARGB32(), 0xFF161616);
+      expect(AfColors.surfaceBase.toARGB32(), 0xFF222222);
+      expect(AfColors.surfaceRaised.toARGB32(), 0xFF2E2E2E);
+      expect(AfColors.surfaceHigh.toARGB32(), 0xFF3A3A3A);
+      expect(AfColors.surfaceMax.toARGB32(), 0xFF464646);
     });
 
     test('accent colors use warm amber palette', () {
