@@ -52,6 +52,33 @@ abstract final class AfColors {
   static const semanticError = Color(0xFFD4735A);
   static const semanticInfo = Color(0xFF7BA3B8);
   static const semanticOffline = Color(0xFF706A64);
+
+  // ---------------------------------------------------------------------------
+  // Gradient helpers — anti-banding for ultra-dark surfaces
+  // ---------------------------------------------------------------------------
+
+  /// Generates smooth gradient stops between [begin] and [end].
+  ///
+  /// Dark surfaces with minimal color distance (e.g. 0x0A → 0x11) produce
+  /// severe banding with only 2 stops. This inserts [steps] intermediate
+  /// colors so each segment covers a smaller value range.
+  ///
+  /// Returns `(colors, stops)` ready for `LinearGradient` / `RadialGradient`.
+  static (List<Color>, List<double>) smoothStops(
+    Color begin,
+    Color end, {
+    int steps = 6,
+  }) {
+    final colors = <Color>[];
+    final stops = <double>[];
+    final total = steps + 1;
+    for (var i = 0; i <= total; i++) {
+      final t = i / total;
+      colors.add(Color.lerp(begin, end, t)!);
+      stops.add(t);
+    }
+    return (colors, stops);
+  }
 }
 
 /// Spectral accent triple, extracted from current artwork at runtime.
