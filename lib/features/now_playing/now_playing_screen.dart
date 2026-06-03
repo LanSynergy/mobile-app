@@ -89,7 +89,13 @@ class NowPlayingScreen extends ConsumerWidget {
               left: 0,
               right: 0,
               bottom: 0,
-              child: SafeArea(top: false, child: _BottomContent(track: track)),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: AfSpacing.s16),
+                  child: _BottomContent(track: track),
+                ),
+              ),
             ),
           ],
         ),
