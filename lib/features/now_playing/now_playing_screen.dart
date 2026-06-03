@@ -343,21 +343,40 @@ class _BottomContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // ── Metadata overlay (title + artist) ──
-        _MetadataOverlay(track: track),
-        const SizedBox(height: AfSpacing.s16),
+    return ClipRRect(
+      borderRadius: AfRadii.borderLg,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.s16,
+            vertical: AfSpacing.s16,
+          ),
+          decoration: BoxDecoration(
+            color: AfColors.surfaceCanvas.withValues(alpha: 0.45),
+            borderRadius: AfRadii.borderLg,
+            border: Border.all(
+              color: AfColors.surfaceHigh.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Metadata overlay (title + artist) ──
+              _MetadataOverlay(track: track),
+              const SizedBox(height: AfSpacing.s12),
 
-        // ── Visualizer scrubber ──
-        _ReactiveProgress(track: track),
-        const SizedBox(height: AfSpacing.s8),
+              // ── Visualizer scrubber ──
+              _ReactiveProgress(track: track),
+              const SizedBox(height: AfSpacing.s12),
 
-        // ── Transport controls ──
-        _ReactiveTransport(track: track),
-        const SizedBox(height: AfSpacing.s4),
-      ],
+              // ── Transport controls ──
+              _ReactiveTransport(track: track),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -373,44 +392,26 @@ class _MetadataOverlay extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isFav = ref.watch(isFavoriteProvider(track.id));
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
-      child: ClipRRect(
-        borderRadius: AfRadii.borderLg,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.s16,
-              vertical: AfSpacing.s12,
-            ),
-            decoration: BoxDecoration(
-              color: AfColors.surfaceCanvas.withValues(alpha: 0.45),
-              borderRadius: AfRadii.borderLg,
-              border: Border.all(
-                color: AfColors.surfaceHigh.withValues(alpha: 0.2),
+    return Row(
+      children: [
+        // Title + artist
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                track.title,
+                style: AfTypography.titleMedium,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            child: Row(
-              children: [
-                // Title + artist
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        track.title,
-                        style: AfTypography.titleMedium,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: AfSpacing.s4),
-                      InkWell(
-                        borderRadius: AfRadii.borderSm,
-                        onTap: track.artistId == null
-                            ? null
-                            : () => context.push('/artist/${track.artistId}'),
+              const SizedBox(height: AfSpacing.s4),
+              InkWell(
+                borderRadius: AfRadii.borderSm,
+                onTap: track.artistId == null
+                    ? null
+                    : () => context.push('/artist/${track.artistId}'),
                   child: Semantics(
                     label: track.artistId == null
                         ? null
@@ -481,12 +482,8 @@ class _MetadataOverlay extends ConsumerWidget {
             tooltip: 'More options',
             onPressed: () => showMoreSheet(context, ref),
           ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+        ],
+      );
   }
 }
 
