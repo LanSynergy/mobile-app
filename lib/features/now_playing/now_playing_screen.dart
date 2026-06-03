@@ -18,6 +18,7 @@ import '../../utils/time_format.dart';
 import '../../widgets/audio_visual_scrubber.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/marquee_text.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/empty_state.dart';
 import 'reactive_artwork.dart';
@@ -224,12 +225,9 @@ class _FrostedTopBar extends ConsumerWidget {
                               color: AfColors.textTertiary,
                             ),
                           ),
-                          Text(
-                            track.albumName,
+                          MarqueeText(
+                            text: track.albumName,
                             style: AfTypography.titleSmall,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),
@@ -380,11 +378,9 @@ class _MetadataOverlay extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                track.title,
+              MarqueeText(
+                text: track.title,
                 style: AfTypography.titleMedium,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: AfSpacing.s4),
               InkWell(
