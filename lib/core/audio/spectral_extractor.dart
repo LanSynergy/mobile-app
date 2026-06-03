@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' show Color;
 
 import 'package:cached_network_image/cached_network_image.dart'
@@ -14,50 +15,23 @@ import '../../utils/url.dart';
 /// Extracts the spectral accent triple from an artwork URL.
 ///
 /// Sampling strategy:
-///   1. Use `palette_generator` to grab up to 16 dominant colors over the
-///      whole image (it does the down-sampling for us).
-///   2. Pass those colors through the OKLCH classifier in `utils/oklch.dart`
-///      (discards greys, near-black, near-white).
-///   3. Pick the highest-chroma remaining sample.
-///   4. If no sample qualifies, fall back to indigo.500.
-///
-/// We feed [PaletteGenerator] a [CachedNetworkImageProvider] (instead of
-/// a plain `NetworkImage`) so the artwork bytes are reused from the same
-/// on-disk cache that `cached_network_image` writes for the cover-art
-/// widgets. Without this, every track change triggered a second HTTP
-/// fetch of artwork that was already on disk.
+///   1. Use `PaletteGeneratorMaster` to get 16 quantized colors with
+///      population counts, plus pre-computed targets (vibrant, muted, etc.)
+///   2. Pick the best color using a composite score of chroma × population
+///      weight — not just highest chroma (which picks tiny accent pixels).
+///   3. Build the triple from the actual sampled L/C/H, not hardcoded values.
+///   4. If no sample qualifies, fall back to the default spectral.
 class SpectralExtractor {
-  /// In-memory cache of previously-extracted spectral palettes, keyed by
-  /// `imageUrl`. Palette extraction decodes the artwork bitmap and runs
-  /// the k-means-ish algorithm in `palette_generator` — ~30 ms per call
-  /// on a mid-range Android. Track skip → spectral re-run → 30 ms hitch
-  /// per skip without this cache. Headers don't go into the key because
-  /// the same image bytes give the same palette regardless of which
-  /// `Authorization` header fetched them.
-  ///
-  /// Bounded to 64 entries (~64 album covers' worth of palette data is
-  /// a few KB total). Once full we evict the oldest entry — LinkedHashMap
-  /// preserves insertion order, so the head is the least-recently-added.
   static const int _cacheLimit = 64;
   final Map<String, Spectral> _cache = <String, Spectral>{};
-
-  /// In-flight deduplication: when multiple callers request the same key
-  /// before the first extraction completes, they all await the same
-  /// Future instead of each spawning a redundant palette decode.
   final Map<String, Future<Spectral>> _inFlight = {};
 
   Future<Spectral> fromImageUrl(
     String imageUrl, {
     Map<String, String>? headers,
   }) async {
-    // Subsonic cover-art URLs carry a fresh salt + md5 token on every
-    // call, so keying the in-memory palette cache by the raw URL would
-    // miss for every track even when the underlying bytes are identical.
-    // The disk-cache key on `CachedNetworkImageProvider` below has the
-    // same problem — match it so we share the cache slot.
     final key = stableImageCacheKey(imageUrl);
 
-    // Deduplicate concurrent requests for the same key.
     final pending = _inFlight[key];
     if (pending != null) return pending;
 
@@ -76,7 +50,6 @@ class SpectralExtractor {
     String imageUrl,
     Map<String, String>? headers,
   ) async {
-    // Fast-path: already cached.
     final cached = _cache.remove(key);
     if (cached != null) {
       _cache[key] = cached;
@@ -98,35 +71,13 @@ class SpectralExtractor {
         provider,
         maximumColorCount: 16,
       );
-      final samples = palette.colors.toList(growable: false);
-      Spectral result;
-      if (samples.isEmpty) {
-        result = Spectral.fallback;
-      } else {
-        final hue = pickSpectralHue(samples);
-        if (hue == null) {
-          result = Spectral.fallback;
-        } else {
-          final triple = buildSpectralTriple(hue.h);
-          result = Spectral(
-            energy: triple.energy,
-            shadow: triple.shadow,
-            glow: triple.glow,
-          );
-        }
-      }
+      final result = _pickBestSpectral(palette);
       _cache[key] = result;
-      // Evict oldest (head) entry when over limit.
       if (_cache.length > _cacheLimit) {
         _cache.remove(_cache.keys.first);
       }
       return result;
     } catch (e) {
-      // Redact `api_key`/`t`/`s`/`u` etc. — Subsonic cover-art URLs
-      // embed the user's auth token as query params (same as stream
-      // URLs), and Jellyfin image URLs may carry `api_key` too. Without
-      // this, a logcat capture from a server-side image failure would
-      // emit the token verbatim.
       afLog(
         'spectral',
         'palette extraction failed for ${redactSensitiveQueryParams(imageUrl)}',
@@ -136,15 +87,82 @@ class SpectralExtractor {
     }
   }
 
+  /// Picks the best spectral triple from the palette.
+  ///
+  /// Strategy priority:
+  ///   1. Vibrant color from the palette (if it has decent population)
+  ///   2. Highest chroma × population score across all quantized colors
+  ///   3. Fallback to default
+  Spectral _pickBestSpectral(PaletteGeneratorMaster palette) {
+    final pColors = palette.paletteColors;
+    if (pColors.isEmpty) return Spectral.fallback;
+
+    final totalPopulation = pColors.fold<int>(
+      0,
+      (sum, c) => sum + c.population,
+    );
+    if (totalPopulation == 0) return Spectral.fallback;
+
+    // ── Strategy 1: Use the palette's vibrant target if it exists ──
+    final vibrant = palette.vibrantColor;
+    if (vibrant != null) {
+      final oklch = srgbToOklch(vibrant.color);
+      if (oklch.c >= 0.05 && oklch.l >= 0.15 && oklch.l <= 0.85) {
+        return _buildFromSample(oklch);
+      }
+    }
+
+    // ── Strategy 2: Score all quantized colors ──
+    final candidates = <_ScoredColor>[];
+    for (final pc in pColors) {
+      final oklch = srgbToOklch(pc.color);
+      if (oklch.c < 0.04) continue; // grey
+      if (oklch.l < 0.12 || oklch.l > 0.88) continue; // near-black/white
+      // Score: chroma-weighted by population share.
+      // sqrt(population) to avoid a single dominant-but-dull color winning.
+      final popShare = pc.population / totalPopulation;
+      final score = oklch.c * math.sqrt(popShare);
+      candidates.add(_ScoredColor(oklch, score));
+    }
+
+    if (candidates.isEmpty) return Spectral.fallback;
+    candidates.sort((a, b) => b.score.compareTo(a.score));
+    final best = candidates.first;
+
+    return _buildFromSample(best.oklch);
+  }
+
+  /// Builds the spectral triple from an actual OKLCH sample.
+  ///
+  /// Uses the sample's hue, and derives L/C values that are tuned for
+  /// UI use but still retain the artwork's character.
+  Spectral _buildFromSample(OklchColor sample) {
+    final h = sample.h;
+    // Energy: boost chroma slightly from sample, clamp lightness for contrast.
+    final energyL = sample.l.clamp(0.45, 0.72);
+    final energyC = math.max(sample.c, 0.10); // at least 0.10 for visibility
+    final energy = OklchColor(energyL, energyC, h).toColor();
+
+    // Shadow: same hue, very dark, low chroma.
+    final shadow = OklchColor(0.18, sample.c * 0.35, h).toColor();
+
+    // Glow: same hue, light, moderate chroma.
+    final glowL = math.min(sample.l + 0.15, 0.85);
+    final glow = OklchColor(glowL, sample.c * 0.55, h).toColor();
+
+    return Spectral(energy: energy, shadow: shadow, glow: glow);
+  }
+
   /// Synchronous fallback used in widget tests / preview mode.
   Spectral fromColors(Iterable<Color> samples) {
     final hue = pickSpectralHue(samples);
     if (hue == null) return Spectral.fallback;
-    final triple = buildSpectralTriple(hue.h);
-    return Spectral(
-      energy: triple.energy,
-      shadow: triple.shadow,
-      glow: triple.glow,
-    );
+    return _buildFromSample(OklchColor(hue.l, hue.c, hue.h));
   }
+}
+
+class _ScoredColor {
+  const _ScoredColor(this.oklch, this.score);
+  final OklchColor oklch;
+  final double score;
 }
