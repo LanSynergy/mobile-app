@@ -91,10 +91,7 @@ class NowPlayingScreen extends ConsumerWidget {
               bottom: 0,
               child: SafeArea(
                 top: false,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: AfSpacing.s16),
-                  child: _BottomContent(track: track),
-                ),
+                child: _BottomContent(track: track),
               ),
             ),
           ],
@@ -341,7 +338,10 @@ class _BottomContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassCard(
-      margin: const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(AfRadii.lg),
+        topRight: Radius.circular(AfRadii.lg),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
