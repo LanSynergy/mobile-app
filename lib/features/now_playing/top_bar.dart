@@ -346,9 +346,19 @@ class _LyricsList extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: AfSpacing.s4),
               child: AnimatedDefaultTextStyle(
                 duration: AfDurations.quick,
-                style: AfTypography.bodyMedium.copyWith(
-                  color: isActive ? spectralEnergy : AfColors.textTertiary,
+                style: AfTypography.bodyLarge.copyWith(
+                  color: isActive
+                      ? spectralEnergy
+                      : AfColors.textPrimary.withValues(alpha: 0.7),
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                  shadows: isActive
+                      ? [
+                          Shadow(
+                            color: spectralEnergy.withValues(alpha: 0.5),
+                            blurRadius: 8,
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Text(line.text),
               ),
