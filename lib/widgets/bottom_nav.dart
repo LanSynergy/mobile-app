@@ -14,13 +14,8 @@ import 'press_scale.dart';
 ///   - Animated pill slides between tabs with easeStandard.
 ///   - Inactive: icon only; Active: icon + label.
 class AfBottomNavItem {
-  const AfBottomNavItem({
-    required this.icon,
-    required this.filledIcon,
-    required this.label,
-  });
+  const AfBottomNavItem({required this.icon, required this.label});
   final IconData icon;
-  final IconData filledIcon;
   final String label;
 }
 
@@ -90,7 +85,7 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
             AnimatedSwitcher(
               duration: AfDurations.instant,
               child: Icon(
-                active ? item.filledIcon : item.icon,
+                item.icon,
                 key: ValueKey(active),
                 size: 24,
                 color: active ? accent : AfColors.textTertiary,

@@ -17,7 +17,7 @@ Future<T?> showBlurDialog<T>({
   required BuildContext context,
   Widget? child,
   Widget Function(BuildContext context, void Function([T? result]) dismiss)?
-      builder,
+  builder,
   bool barrierDismissible = true,
 }) {
   assert(child != null || builder != null, 'Provide child or builder');
@@ -140,7 +140,9 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
                               color: AfColors.surfaceRaised.withValues(
                                 alpha: 0.85,
                               ),
-                              borderRadius: BorderRadius.circular(_borderRadius),
+                              borderRadius: BorderRadius.circular(
+                                _borderRadius,
+                              ),
                             ),
                             child: ListTileTheme(
                               tileColor: Colors.transparent,

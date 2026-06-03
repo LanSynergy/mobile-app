@@ -26,26 +26,10 @@ class AppShell extends ConsumerWidget {
   final StatefulNavigationShell shell;
 
   static final _items = [
-    const AfBottomNavItem(
-      icon: LucideIcons.home,
-      filledIcon: LucideIcons.home,
-      label: 'Home',
-    ),
-    const AfBottomNavItem(
-      icon: LucideIcons.library,
-      filledIcon: LucideIcons.library,
-      label: 'Library',
-    ),
-    const AfBottomNavItem(
-      icon: LucideIcons.listMusic,
-      filledIcon: LucideIcons.listMusic,
-      label: 'Playlists',
-    ),
-    const AfBottomNavItem(
-      icon: LucideIcons.user,
-      filledIcon: LucideIcons.user,
-      label: 'Profile',
-    ),
+    const AfBottomNavItem(icon: LucideIcons.home, label: 'Home'),
+    const AfBottomNavItem(icon: LucideIcons.library, label: 'Library'),
+    const AfBottomNavItem(icon: LucideIcons.listMusic, label: 'Playlists'),
+    const AfBottomNavItem(icon: LucideIcons.user, label: 'Profile'),
   ];
 
   void _onSelect(BuildContext context, int index) {

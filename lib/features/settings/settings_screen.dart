@@ -24,6 +24,7 @@ import '../../widgets/af_scrollbar.dart';
 import '../../widgets/press_scale.dart';
 import 'settings_dialogs.dart';
 import 'settings_sections.dart';
+import '../../widgets/section_header.dart';
 
 // ── Private iOS-style helper widgets ─────────────────────────────────────────
 
@@ -73,7 +74,7 @@ class _IosGroup extends StatelessWidget {
               const Divider(
                 height: 0,
                 thickness: 0.5,
-                indent: 64,
+                indent: 60,
                 color: AfColors.surfaceHigh,
               ),
           ],
@@ -225,24 +226,6 @@ class _IosSwitch extends StatelessWidget {
   }
 }
 
-// ── Section header ───────────────────────────────────────────────────────────
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.label);
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: AfSpacing.s4, bottom: AfSpacing.s8),
-      child: Text(
-        label.toUpperCase(),
-        style: AfTypography.label.copyWith(color: AfColors.textTertiary),
-      ),
-    );
-  }
-}
-
 // ── Screen ───────────────────────────────────────────────────────────────────
 
 class SettingsScreen extends ConsumerWidget {
@@ -266,20 +249,10 @@ class SettingsScreen extends ConsumerWidget {
               // ── Back button ──────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.only(top: AfSpacing.s8),
-                child: GestureDetector(
-                  onTap: () => context.pop(),
-                  child: const SizedBox(
-                    width: AfSpacing.minHitTarget,
-                    height: AfSpacing.minHitTarget,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Icon(
-                        LucideIcons.arrowLeft,
-                        size: 24,
-                        color: AfColors.textPrimary,
-                      ),
-                    ),
-                  ),
+                child: IconButton(
+                  icon: const Icon(LucideIcons.arrowLeft),
+                  onPressed: () => context.pop(),
+                  tooltip: 'Back',
                 ),
               ),
 
@@ -375,7 +348,7 @@ class SettingsScreen extends ConsumerWidget {
 
               // ── Music Folders (local mode only) ─────────────────────
               if (isLocal) ...[
-                const _SectionHeader('Music folders'),
+                const SectionHeader(title: 'Music folders', uppercase: true),
                 const MusicFoldersCard(),
               ],
 
@@ -441,7 +414,7 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: AfSpacing.s16),
 
               // ── Appearance ───────────────────────────────────────────
-              const _SectionHeader('Appearance'),
+              const SectionHeader(title: 'Appearance', uppercase: true),
               _IosGroup(
                 children: [
                   _IosTile(
@@ -461,7 +434,7 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: AfSpacing.s16),
 
               // ── Audio output ─────────────────────────────────────────
-              const _SectionHeader('Audio output'),
+              const SectionHeader(title: 'Audio output', uppercase: true),
               _IosGroup(
                 children: [
                   StreamBuilder<AudioParams>(
@@ -519,7 +492,7 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: AfSpacing.s16),
 
               // ── Network & cache ──────────────────────────────────────
-              const _SectionHeader('Network & cache'),
+              const SectionHeader(title: 'Network & cache', uppercase: true),
               _IosGroup(
                 children: [
                   _IosTile(
@@ -566,7 +539,7 @@ class SettingsScreen extends ConsumerWidget {
 
               // ── Offline cache (server mode only) ─────────────────────
               if (!isLocal) ...[
-                const _SectionHeader('Offline cache'),
+                const SectionHeader(title: 'Offline cache', uppercase: true),
                 _IosGroup(
                   children: [
                     Consumer(
@@ -607,7 +580,7 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: AfSpacing.s16),
 
               // ── Audio processing ─────────────────────────────────────
-              const _SectionHeader('Audio processing'),
+              const SectionHeader(title: 'Audio processing', uppercase: true),
               _IosGroup(
                 children: [
                   _IosTile(
@@ -653,7 +626,7 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: AfSpacing.s16),
 
               // ── Advanced ─────────────────────────────────────────────
-              const _SectionHeader('Advanced'),
+              const SectionHeader(title: 'Advanced', uppercase: true),
               _IosGroup(
                 children: [
                   _IosTile(
@@ -744,7 +717,7 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: AfSpacing.s16),
 
               // ── About ────────────────────────────────────────────────
-              const _SectionHeader('About'),
+              const SectionHeader(title: 'About', uppercase: true),
               _IosGroup(
                 children: [
                   FutureBuilder<PackageInfo>(
@@ -902,7 +875,7 @@ class _LastFmSettingsSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const _SectionHeader('Last.fm'),
+        const SectionHeader(title: 'Last.fm', uppercase: true),
         _IosGroup(
           children: [
             _IosTile(

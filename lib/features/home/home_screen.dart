@@ -18,6 +18,7 @@ import '../../widgets/stagger_reveal.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/skeletons/home_skeleton.dart';
+import '../../widgets/favorite_heart_button.dart';
 import '../../utils/color_parse.dart';
 import '../library/library_screen.dart' show SongsPill, songsPillProvider;
 
@@ -186,6 +187,7 @@ class _RecentTracksSection extends ConsumerWidget {
         ? ref.watch(localTracksProvider)
         : ref.watch(recentlyPlayedTracksProvider);
     final currentTrack = ref.watch(currentTrackProvider);
+    final isBuffering = ref.watch(isBufferingProvider);
 
     return SliverList(
       delegate: SliverChildListDelegate([
@@ -205,6 +207,7 @@ class _RecentTracksSection extends ConsumerWidget {
                 _CompactTrackRow(
                   track: t,
                   isActive: t.id == currentTrack?.id,
+                  isBuffering: t.id == currentTrack?.id && isBuffering,
                   spectral: spectral,
                   onTap: () => ref.read(playActionsProvider).playSingle(t),
                   onLongPress: () => showTrackContextMenu(context, ref, t),
@@ -234,12 +237,14 @@ class _CompactTrackRow extends StatelessWidget {
     required this.spectral,
     required this.onTap,
     required this.onLongPress,
+    this.isBuffering = false,
   });
   final AfTrack track;
   final bool isActive;
   final Spectral spectral;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+  final bool isBuffering;
 
   @override
   Widget build(BuildContext context) {
@@ -255,22 +260,47 @@ class _CompactTrackRow extends StatelessWidget {
         padding: const EdgeInsets.all(AfSpacing.s12),
         decoration: BoxDecoration(
           borderRadius: AfRadii.borderMd,
-          gradient: LinearGradient(
-            colors: [
-              Colors.white.withValues(alpha: 0.04),
-              Colors.white.withValues(alpha: 0.02),
-            ],
+          gradient: const LinearGradient(
+            colors: [AfColors.glassFillSubtle, AfColors.glassFillSubtle],
           ),
           border: Border.all(
             color: isActive
                 ? spectral.energy.withValues(alpha: 0.3)
-                : Colors.white.withValues(alpha: 0.06),
+                : AfColors.glassBorder,
             width: 1,
           ),
         ),
         child: Row(
           children: [
-            Artwork(url: track.imageUrl, size: 48, radius: AfRadii.borderSm),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Artwork(
+                  url: track.imageUrl,
+                  size: 48,
+                  radius: AfRadii.borderSm,
+                ),
+                if (isActive && isBuffering)
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AfColors.surfaceCanvas.withValues(alpha: 0.5),
+                      borderRadius: AfRadii.borderSm,
+                    ),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AfColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(width: AfSpacing.s12),
             Expanded(
               child: Column(
@@ -297,15 +327,7 @@ class _CompactTrackRow extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(
-              isActive ? LucideIcons.volume2 : LucideIcons.heart,
-              size: 16,
-              color: isActive
-                  ? spectral.energy
-                  : track.isFavorite
-                  ? AfColors.accentPrimary
-                  : AfColors.surfaceMax,
-            ),
+            FavoriteHeartButton(track: track, size: 16),
           ],
         ),
       ),
@@ -542,7 +564,7 @@ class _ArtistsSection extends ConsumerWidget {
                               Artwork(
                                 url: a.imageUrl,
                                 size: 88,
-                                radius: BorderRadius.circular(44),
+                                radius: BorderRadius.circular(88 / 2),
                               ),
                               // Warm ring
                               Positioned(
@@ -775,7 +797,7 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: AfSpacing.s20,
-                                          vertical: AfSpacing.s8,
+                                          vertical: AfSpacing.s12,
                                         ),
                                         decoration: BoxDecoration(
                                           gradient: LinearGradient(
@@ -881,7 +903,7 @@ class _GlassCastButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PressScale(
-      ensureHitTarget: false,
+      ensureHitTarget: true,
       onTap: onTap,
       child: ClipRRect(
         borderRadius: AfRadii.borderPill,
@@ -890,12 +912,9 @@ class _GlassCastButton extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(AfSpacing.s12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.06),
+              color: AfColors.glassFill,
               borderRadius: AfRadii.borderPill,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.08),
-                width: 1,
-              ),
+              border: Border.all(color: AfColors.glassBorderStrong, width: 1),
             ),
             child: const Icon(
               LucideIcons.cast,

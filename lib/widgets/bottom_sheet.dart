@@ -17,7 +17,7 @@ Future<T?> showBlurBottomSheet<T>({
   required BuildContext context,
   Widget? child,
   Widget Function(BuildContext context, void Function([T? result]) dismiss)?
-      builder,
+  builder,
   bool isDismissible = true,
   bool isScrollControlled = true,
   bool enableDrag = true,
@@ -34,9 +34,9 @@ Future<T?> showBlurBottomSheet<T>({
     builder: (context) => _BlurBottomSheetOverlay<T>(
       builder: builder != null
           ? (context) => builder(context, ([T? result]) {
-                entry.remove();
-                if (!completer.isCompleted) completer.complete(result);
-              })
+              entry.remove();
+              if (!completer.isCompleted) completer.complete(result);
+            })
           : (context) => child!,
       isDismissible: isDismissible,
       enableDrag: enableDrag,
@@ -161,7 +161,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                                 top: Radius.circular(widget.topRadius),
                               ),
                             ),
-                          child: Column(
+                            child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 const SizedBox(height: AfSpacing.s12),

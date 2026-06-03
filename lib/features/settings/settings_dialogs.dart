@@ -741,10 +741,7 @@ void showLastFmApiConfigDialog(BuildContext context, WidgetRef ref) {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            TextButton(
-              onPressed: () => dismiss(),
-              child: const Text('Cancel'),
-            ),
+            TextButton(onPressed: () => dismiss(), child: const Text('Cancel')),
             TextButton(
               onPressed: () {
                 final key = apiKeyController.text.trim();

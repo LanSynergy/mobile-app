@@ -16,6 +16,7 @@ import '../../utils/oklch.dart';
 import '../../utils/time_format.dart';
 import '../../widgets/audio_visual_scrubber.dart';
 import '../../widgets/af_dialog.dart';
+import '../../widgets/favorite_heart_button.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/marquee_text.dart';
 import '../../widgets/press_scale.dart';
@@ -208,8 +209,6 @@ class _ReactiveBackground extends ConsumerWidget {
 // Vignette overlay — radial gradient from transparent center to dark edges
 // ─────────────────────────────────────────────────────────────────────────────
 
-
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Frosted top bar — minimal, transparent backdrop
 // ─────────────────────────────────────────────────────────────────────────────
@@ -281,16 +280,15 @@ class _FrostedTopBarState extends ConsumerState<_FrostedTopBar>
     final lrcAsync = ref.watch(lyricsProvider(track.id));
     final lrc = lrcAsync.maybeWhen(data: (p) => p, orElse: () => null);
     final position = ref.watch(positionStreamProvider);
-    final isSynced = lrc != null && lrc.lines.any((l) => l.start > Duration.zero);
+    final isSynced =
+        lrc != null && lrc.lines.any((l) => l.start > Duration.zero);
     final active = isSynced ? lrc.activeIndex(position) : -1;
 
     return AnimatedBuilder(
       animation: _expandAnim,
       builder: (context, _) {
         final isExpanded = _expandAnim.value > 0.5;
-        final radius = isExpanded
-            ? AfRadii.borderLg
-            : AfRadii.borderPill;
+        final radius = isExpanded ? AfRadii.borderLg : AfRadii.borderPill;
 
         return Padding(
           padding: EdgeInsets.symmetric(
@@ -299,15 +297,16 @@ class _FrostedTopBarState extends ConsumerState<_FrostedTopBar>
           ),
           child: GestureDetector(
             onVerticalDragEnd: (details) {
-              if ((details.primaryVelocity ?? 0) > 200 && widget.lyricsExpanded.value) {
+              if ((details.primaryVelocity ?? 0) > 200 &&
+                  widget.lyricsExpanded.value) {
                 widget.onToggleLyrics();
               }
             },
             child: GlassCard(
               borderRadius: radius,
               blurSigma: 20,
-              color: Colors.white.withValues(alpha: 0.08),
-              borderColor: Colors.white.withValues(alpha: 0.1),
+              color: AfColors.glassFillStrong,
+              borderColor: AfColors.glassBorderEmphasis,
               padding: EdgeInsets.zero,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -563,75 +562,75 @@ class _BottomContentState extends ConsumerState<_BottomContent>
                     ),
                   ),
 
-                // ── Expandable queue section ──
-                if (_expanded && upNext.isNotEmpty) ...[
-                  const Divider(height: 1, color: AfColors.surfaceHigh),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AfSpacing.s16,
-                      vertical: AfSpacing.s8,
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Up Next',
-                          style: AfTypography.titleSmall.copyWith(
-                            color: AfColors.textSecondary,
+                  // ── Expandable queue section ──
+                  if (_expanded && upNext.isNotEmpty) ...[
+                    const Divider(height: 1, color: AfColors.surfaceHigh),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.s16,
+                        vertical: AfSpacing.s8,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Up Next',
+                            style: AfTypography.titleSmall.copyWith(
+                              color: AfColors.textSecondary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: AfSpacing.s8),
-                        Text(
-                          '${upNext.length} tracks',
-                          style: AfTypography.caption.copyWith(
-                            color: AfColors.textTertiary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Flexible(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.only(bottom: AfSpacing.s8),
-                      itemCount: upNext.length,
-                      itemBuilder: (context, index) {
-                        final t = upNext[index];
-                        return ListTile(
-                          dense: true,
-                          visualDensity: VisualDensity.compact,
-                          leading: Text(
-                            '${index + 1}',
+                          const SizedBox(width: AfSpacing.s8),
+                          Text(
+                            '${upNext.length} tracks',
                             style: AfTypography.caption.copyWith(
                               color: AfColors.textTertiary,
                             ),
                           ),
-                          title: Text(
-                            t.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AfTypography.bodyMedium,
-                          ),
-                          subtitle: Text(
-                            t.artistName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AfTypography.caption.copyWith(
-                              color: AfColors.textTertiary,
-                            ),
-                          ),
-                          onTap: () {
-                            ref.read(playerServiceProvider).skipToQueueItem(
-                              queue.indexOf(t),
-                            );
-                          },
-                        );
-                      },
+                        ],
+                      ),
                     ),
-                  ),
+                    Flexible(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.only(bottom: AfSpacing.s8),
+                        itemCount: upNext.length,
+                        itemBuilder: (context, index) {
+                          final t = upNext[index];
+                          return ListTile(
+                            dense: true,
+                            visualDensity: VisualDensity.compact,
+                            leading: Text(
+                              '${index + 1}',
+                              style: AfTypography.caption.copyWith(
+                                color: AfColors.textTertiary,
+                              ),
+                            ),
+                            title: Text(
+                              t.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AfTypography.bodyMedium,
+                            ),
+                            subtitle: Text(
+                              t.artistName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AfTypography.caption.copyWith(
+                                color: AfColors.textTertiary,
+                              ),
+                            ),
+                            onTap: () {
+                              ref
+                                  .read(playerServiceProvider)
+                                  .skipToQueueItem(queue.indexOf(t));
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
-        ),
         );
       },
     );
@@ -648,7 +647,6 @@ class _MetadataOverlay extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isFav = ref.watch(isFavoriteProvider(track.id));
     return Row(
       children: [
         // Title + artist
@@ -657,88 +655,64 @@ class _MetadataOverlay extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              MarqueeText(
-                text: track.title,
-                style: AfTypography.titleMedium,
-              ),
+              MarqueeText(text: track.title, style: AfTypography.titleMedium),
               const SizedBox(height: AfSpacing.s4),
               InkWell(
                 borderRadius: AfRadii.borderSm,
                 onTap: track.artistId == null
                     ? null
                     : () => context.push('/artist/${track.artistId}'),
-                  child: Semantics(
-                    label: track.artistId == null
-                        ? null
-                        : 'Go to artist ${track.artistName}',
-                    button: track.artistId != null,
-                    child: Text(
-                      track.artistName,
-                      style: AfTypography.bodySmall.copyWith(
-                        color: AfColors.textSecondary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                child: Semantics(
+                  label: track.artistId == null
+                      ? null
+                      : 'Go to artist ${track.artistName}',
+                  button: track.artistId != null,
+                  child: Text(
+                    track.artistName,
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textSecondary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: AfSpacing.s12),
-          // Heart toggle
-          IconButton(
-            icon: Icon(
-              isFav ? LucideIcons.heart : LucideIcons.heart,
-              color: isFav ? AfColors.semanticError : AfColors.textSecondary,
-              size: 22,
+        ),
+        const SizedBox(width: AfSpacing.s12),
+        // Heart toggle
+        FavoriteHeartButton(track: track, size: 22),
+        // Quality badge
+        if (track.quality != null) ...[
+          const SizedBox(width: AfSpacing.s4),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.s8,
+              vertical: AfSpacing.s4,
             ),
-            tooltip: isFav ? 'Remove from favorites' : 'Add to favorites',
-            onPressed: () async {
-              try {
-                await ref.read(favoriteToggleProvider)(track);
-              } catch (_) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Could not update favorite'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                }
-              }
-            },
-          ),
-          // Quality badge
-          if (track.quality != null)
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AfSpacing.s8,
-                vertical: 3,
-              ),
-              decoration: BoxDecoration(
-                color: AfColors.accentMuted.withValues(alpha: 0.2),
-                borderRadius: AfRadii.borderPill,
-              ),
-              child: Text(
-                track.quality!.chipLabel,
-                style: AfTypography.caption.copyWith(
-                  color: AfColors.textPrimary,
-                ),
-              ),
+            decoration: BoxDecoration(
+              color: AfColors.accentMuted.withValues(alpha: 0.2),
+              borderRadius: AfRadii.borderPill,
             ),
-          // More menu (vertical dots)
-          IconButton(
-            icon: const Icon(
-              LucideIcons.ellipsisVertical,
-              size: 22,
-              color: AfColors.textSecondary,
+            child: Text(
+              track.quality!.chipLabel,
+              style: AfTypography.caption.copyWith(color: AfColors.textPrimary),
             ),
-            tooltip: 'More options',
-            onPressed: () => showMoreSheet(context, ref),
           ),
         ],
-      );
+        // More menu (vertical dots)
+        IconButton(
+          icon: const Icon(
+            LucideIcons.ellipsisVertical,
+            size: 22,
+            color: AfColors.textSecondary,
+          ),
+          tooltip: 'More options',
+          onPressed: () => showMoreSheet(context, ref),
+        ),
+      ],
+    );
   }
 }
 
@@ -807,58 +781,56 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
     return Column(
       children: [
         AudioVisualScrubber(
-            progress: displayProgress,
-            playedColor: spectral.energy,
-            height: 100.0,
-            onScrub: (p) => setState(() {
-              _isDragging = true;
-              _scrubPreview = p;
-            }),
-            onScrubEnd: (p) async {
-              final newPos = Duration(
-                milliseconds: (p * duration.inMilliseconds).round(),
-              );
-              final svc = ref.read(playerServiceProvider);
-              final wasCompletedAtEnd = svc.isCompleted && svc.isUserPaused;
-              try {
-                await svc.seek(newPos).timeout(const Duration(seconds: 2));
-                if (wasCompletedAtEnd && mounted) {
-                  await svc.play().timeout(const Duration(seconds: 2));
-                }
-              } catch (_) {
-                // Timeout or seek error — still release the drag lock.
+          progress: displayProgress,
+          playedColor: spectral.energy,
+          height: 100.0,
+          onScrub: (p) => setState(() {
+            _isDragging = true;
+            _scrubPreview = p;
+          }),
+          onScrubEnd: (p) async {
+            final newPos = Duration(
+              milliseconds: (p * duration.inMilliseconds).round(),
+            );
+            final svc = ref.read(playerServiceProvider);
+            final wasCompletedAtEnd = svc.isCompleted && svc.isUserPaused;
+            try {
+              await svc.seek(newPos).timeout(const Duration(seconds: 2));
+              if (wasCompletedAtEnd && mounted) {
+                await svc.play().timeout(const Duration(seconds: 2));
               }
-              if (mounted) {
-                setState(() {
-                  _isDragging = false;
-                  _scrubPreview = null;
-                });
-              }
-            },
-          ),
-          const SizedBox(height: AfSpacing.s4),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  formatTrackDuration(displayPosition),
-                  style: AfTypography.mono.copyWith(
-                    color: AfColors.textSecondary,
-                  ),
+            } catch (_) {
+              // Timeout or seek error — still release the drag lock.
+            }
+            if (mounted) {
+              setState(() {
+                _isDragging = false;
+                _scrubPreview = null;
+              });
+            }
+          },
+        ),
+        const SizedBox(height: AfSpacing.s4),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                formatTrackDuration(displayPosition),
+                style: AfTypography.mono.copyWith(
+                  color: AfColors.textSecondary,
                 ),
-                Text(
-                  formatRemaining(remaining),
-                  style: AfTypography.mono.copyWith(
-                    color: AfColors.textTertiary,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              Text(
+                formatRemaining(remaining),
+                style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
+              ),
+            ],
           ),
-        ],
-      );
+        ),
+      ],
+    );
   }
 }
 
@@ -1011,80 +983,80 @@ class _TransportRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Shuffle
-          GestureDetector(
-            onLongPress: onShuffleLongPress,
-            child: _TransportButton(
-              icon: Icon(
-                shuffleMode == ShuffleMode.tail
-                    ? LucideIcons.arrowDownWideNarrow
-                    : LucideIcons.shuffle,
+      children: [
+        // Shuffle
+        GestureDetector(
+          onLongPress: onShuffleLongPress,
+          child: _TransportButton(
+            icon: Icon(
+              shuffleMode == ShuffleMode.tail
+                  ? LucideIcons.arrowDownWideNarrow
+                  : LucideIcons.shuffle,
+              size: 20,
+              color: shuffleOn ? accent : AfColors.textTertiary,
+            ),
+            onTap: onShuffle,
+          ),
+        ),
+        const SizedBox(width: AfSpacing.s12),
+        // Previous
+        _TransportButton(
+          icon: const Icon(
+            LucideIcons.skipBack,
+            size: 26,
+            color: AfColors.textPrimary,
+          ),
+          onTap: onPrev,
+        ),
+        const SizedBox(width: AfSpacing.s16),
+        // Play / Pause — spectral glow
+        _PlayButton(isPlaying: isPlaying, accent: accent, onTap: onPlayPause),
+        const SizedBox(width: AfSpacing.s16),
+        // Next
+        _TransportButton(
+          icon: const Icon(
+            LucideIcons.skipForward,
+            size: 26,
+            color: AfColors.textPrimary,
+          ),
+          onTap: onNext,
+        ),
+        const SizedBox(width: AfSpacing.s12),
+        // Repeat
+        _TransportButton(
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                _loopIcon(loopMode),
                 size: 20,
-                color: shuffleOn ? accent : AfColors.textTertiary,
+                color: _loopColor(loopMode, accent),
               ),
-              onTap: onShuffle,
-            ),
-          ),
-          const SizedBox(width: AfSpacing.s12),
-          // Previous
-          _TransportButton(
-            icon: const Icon(
-              LucideIcons.skipBack,
-              size: 26,
-              color: AfColors.textPrimary,
-            ),
-            onTap: onPrev,
-          ),
-          const SizedBox(width: AfSpacing.s16),
-          // Play / Pause — spectral glow
-          _PlayButton(isPlaying: isPlaying, accent: accent, onTap: onPlayPause),
-          const SizedBox(width: AfSpacing.s16),
-          // Next
-          _TransportButton(
-            icon: const Icon(
-              LucideIcons.skipForward,
-              size: 26,
-              color: AfColors.textPrimary,
-            ),
-            onTap: onNext,
-          ),
-          const SizedBox(width: AfSpacing.s12),
-          // Repeat
-          _TransportButton(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(
-                  _loopIcon(loopMode),
-                  size: 20,
-                  color: _loopColor(loopMode, accent),
-                ),
-                if (loopMode == AfLoopMode.forNtimes)
-                  Positioned(
-                    right: -6,
-                    top: -4,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        color: AfColors.indigo400,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '$repeatCount',
-                        style: AfTypography.caption.copyWith(
-                          color: AfColors.textOnPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
+              if (loopMode == AfLoopMode.forNtimes)
+                Positioned(
+                  right: -6,
+                  top: -4,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: AfColors.indigo400,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '$repeatCount',
+                      style: AfTypography.caption.copyWith(
+                        color: AfColors.textOnPrimary,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-              ],
-            ),
-            onTap: onRepeat,
+                ),
+            ],
           ),
-        ],
-      );
+          onTap: onRepeat,
+        ),
+      ],
+    );
   }
 }
 

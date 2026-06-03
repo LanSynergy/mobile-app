@@ -20,7 +20,7 @@ class QualityChip extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? AfSpacing.s8 : AfSpacing.s12,
-        vertical: compact ? AfSpacing.s2 : 4,
+        vertical: compact ? AfSpacing.s2 : AfSpacing.s4,
       ),
       decoration: BoxDecoration(
         color: AfColors.surfaceHigh,

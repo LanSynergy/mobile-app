@@ -140,7 +140,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                       child: Container(
                         height: AfSpacing.miniPlayerHeight,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.08),
+                          color: AfColors.glassFillStrong,
                           borderRadius: AfRadii.borderPill,
                           border: Border.all(
                             color: AfColors.surfaceHigh.withValues(alpha: 0.5),
@@ -225,14 +225,14 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                                           height: 20,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2.0,
-                                            color: Colors.black,
+                                            color: AfColors.surfaceCanvas,
                                           ),
                                         )
                                       : Icon(
                                           isPlaying
                                               ? LucideIcons.pause
                                               : LucideIcons.play,
-                                          color: Colors.black,
+                                          color: AfColors.surfaceCanvas,
                                           size: 24,
                                         ),
                                 ),

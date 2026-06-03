@@ -335,9 +335,9 @@ class _AvatarImagePicker extends StatelessWidget {
       onTap: isUploading
           ? null
           : () {
-  showBlurBottomSheet(
-    context: context,
-    child: Column(
+              showBlurBottomSheet(
+                context: context,
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     ListTile(

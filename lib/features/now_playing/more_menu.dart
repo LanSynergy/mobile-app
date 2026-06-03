@@ -73,7 +73,8 @@ class _MoreMenu extends StatelessWidget {
     final serverIds = ref
         .watch(playlistTrackIdsProvider)
         .maybeWhen(data: (ids) => ids, orElse: () => const <String>{});
-    final isSaved = track != null &&
+    final isSaved =
+        track != null &&
         (savedIds.contains(track.id) || serverIds.contains(track.id));
 
     return Column(
@@ -82,7 +83,11 @@ class _MoreMenu extends StatelessWidget {
       children: [
         // ── Quick actions ──
         MoreItem(
-          icon: const Icon(LucideIcons.radio, size: 22, color: AfColors.textSecondary),
+          icon: const Icon(
+            LucideIcons.radio,
+            size: 22,
+            color: AfColors.textSecondary,
+          ),
           label: 'Start radio',
           onTap: () async {
             dismiss();
@@ -98,7 +103,11 @@ class _MoreMenu extends StatelessWidget {
           },
         ),
         MoreItem(
-          icon: const Icon(LucideIcons.slidersHorizontal, size: 22, color: AfColors.textSecondary),
+          icon: const Icon(
+            LucideIcons.slidersHorizontal,
+            size: 22,
+            color: AfColors.textSecondary,
+          ),
           label: 'EQ',
           onTap: () {
             dismiss();
@@ -118,7 +127,11 @@ class _MoreMenu extends StatelessWidget {
           },
         ),
         MoreItem(
-          icon: const Icon(LucideIcons.listMusic, size: 22, color: AfColors.textSecondary),
+          icon: const Icon(
+            LucideIcons.listMusic,
+            size: 22,
+            color: AfColors.textSecondary,
+          ),
           label: 'Queue',
           onTap: () {
             dismiss();
@@ -127,7 +140,11 @@ class _MoreMenu extends StatelessWidget {
         ),
         if (track?.albumId != null)
           MoreItem(
-            icon: const Icon(LucideIcons.disc3, size: 22, color: AfColors.textSecondary),
+            icon: const Icon(
+              LucideIcons.disc3,
+              size: 22,
+              color: AfColors.textSecondary,
+            ),
             label: 'Go to album',
             onTap: () {
               dismiss();
@@ -136,7 +153,11 @@ class _MoreMenu extends StatelessWidget {
           ),
         if (track?.artistId != null)
           MoreItem(
-            icon: const Icon(LucideIcons.user, size: 22, color: AfColors.textSecondary),
+            icon: const Icon(
+              LucideIcons.user,
+              size: 22,
+              color: AfColors.textSecondary,
+            ),
             label: 'Go to artist',
             onTap: () {
               dismiss();
@@ -160,7 +181,11 @@ class _MoreMenu extends StatelessWidget {
           },
         ),
         MoreItem(
-          icon: const Icon(LucideIcons.moon, size: 22, color: AfColors.textSecondary),
+          icon: const Icon(
+            LucideIcons.moon,
+            size: 22,
+            color: AfColors.textSecondary,
+          ),
           label: 'Sleep timer',
           onTap: () {
             dismiss();
@@ -168,7 +193,11 @@ class _MoreMenu extends StatelessWidget {
           },
         ),
         MoreItem(
-          icon: const Icon(LucideIcons.gauge, size: 22, color: AfColors.textSecondary),
+          icon: const Icon(
+            LucideIcons.gauge,
+            size: 22,
+            color: AfColors.textSecondary,
+          ),
           label: 'Playback speed',
           onTap: () {
             dismiss();
@@ -176,7 +205,11 @@ class _MoreMenu extends StatelessWidget {
           },
         ),
         MoreItem(
-          icon: const Icon(LucideIcons.cast, size: 22, color: AfColors.textSecondary),
+          icon: const Icon(
+            LucideIcons.cast,
+            size: 22,
+            color: AfColors.textSecondary,
+          ),
           label: 'Audio output',
           onTap: () {
             dismiss();
@@ -184,7 +217,11 @@ class _MoreMenu extends StatelessWidget {
           },
         ),
         MoreItem(
-          icon: const Icon(LucideIcons.volume2, size: 22, color: AfColors.textSecondary),
+          icon: const Icon(
+            LucideIcons.volume2,
+            size: 22,
+            color: AfColors.textSecondary,
+          ),
           label: 'Volume',
           onTap: () {
             dismiss();
@@ -192,7 +229,11 @@ class _MoreMenu extends StatelessWidget {
           },
         ),
         MoreItem(
-          icon: const Icon(LucideIcons.bluetooth, size: 22, color: AfColors.textSecondary),
+          icon: const Icon(
+            LucideIcons.bluetooth,
+            size: 22,
+            color: AfColors.textSecondary,
+          ),
           label: 'Audio delay',
           onTap: () {
             dismiss();
@@ -202,7 +243,11 @@ class _MoreMenu extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(bottom: AfSpacing.s24),
           child: MoreItem(
-            icon: const Icon(LucideIcons.info, size: 22, color: AfColors.textSecondary),
+            icon: const Icon(
+              LucideIcons.info,
+              size: 22,
+              color: AfColors.textSecondary,
+            ),
             label: 'Show details',
             onTap: () {
               pageNotifier.value = _MorePage.details;
@@ -410,10 +455,7 @@ void showAudioDelayDialog(BuildContext context, WidgetRef ref) {
                 child: const Text('Reset'),
               ),
               const SizedBox(width: AfSpacing.s8),
-              TextButton(
-                onPressed: () => dismiss(),
-                child: const Text('Done'),
-              ),
+              TextButton(onPressed: () => dismiss(), child: const Text('Done')),
             ],
           ),
         ],

@@ -356,7 +356,7 @@ class _SmartPlaylistEditScreenState
               const Divider(
                 height: 0,
                 thickness: 0.5,
-                indent: 64,
+                indent: 60,
                 color: AfColors.surfaceHigh,
               ),
               // Limit row

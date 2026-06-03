@@ -54,10 +54,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 
   void _openSearch(BuildContext context) {
-    showBlurBottomSheet(
-      context: context,
-      child: const _CommandPaletteSearch(),
-    );
+    showBlurBottomSheet(context: context, child: const _CommandPaletteSearch());
   }
 
   @override
@@ -248,7 +245,7 @@ class _CommandPaletteSearchState extends ConsumerState<_CommandPaletteSearch> {
                   decoration: InputDecoration(
                     hintText: 'Search songs, artists, albums\u2026',
                     hintStyle: AfTypography.bodyLarge.copyWith(
-                      color: AfColors.textDisabled,
+                      color: AfColors.textTertiary,
                     ),
                     prefixIcon: const Padding(
                       padding: EdgeInsets.only(left: AfSpacing.s4),
@@ -565,7 +562,7 @@ class _LiveResults extends ConsumerWidget {
                             Artwork(
                               url: a.imageUrl,
                               size: 44,
-                              radius: BorderRadius.circular(22),
+                              radius: BorderRadius.circular(44 / 2),
                             ),
                             const SizedBox(width: AfSpacing.s12),
                             Expanded(
