@@ -525,11 +525,9 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
         ? duration - displayPosition
         : Duration.zero;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
-      child: Column(
-        children: [
-          AudioVisualScrubber(
+    return Column(
+      children: [
+        AudioVisualScrubber(
             progress: displayProgress,
             playedColor: spectral.energy,
             height: 100.0,
@@ -581,8 +579,7 @@ class _ReactiveProgressState extends ConsumerState<_ReactiveProgress> {
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 }
 
@@ -733,10 +730,8 @@ class _TransportRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Shuffle
           GestureDetector(
@@ -810,8 +805,7 @@ class _TransportRow extends StatelessWidget {
             onTap: onRepeat,
           ),
         ],
-      ),
-    );
+      );
   }
 }
 
