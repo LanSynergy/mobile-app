@@ -15,14 +15,12 @@ class ReactiveArtwork extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final artworkUri = ref.watch(currentArtworkUriProvider);
 
-    return Positioned.fill(
-      child: Hero(
-        tag: 'now-playing-artwork',
-        child: Artwork(
-          url: artworkUri?.toString() ?? track.imageUrl,
-          size: double.infinity,
-          radius: BorderRadius.zero,
-        ),
+    return Hero(
+      tag: 'now-playing-artwork',
+      child: Artwork(
+        url: artworkUri?.toString() ?? track.imageUrl,
+        size: double.infinity,
+        radius: BorderRadius.zero,
       ),
     );
   }
