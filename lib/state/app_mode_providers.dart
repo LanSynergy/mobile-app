@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum AppMode { server, local }
+enum AppMode { server, local, youtubeMusic }
 
 final appModeProvider = StateProvider<AppMode?>((ref) => null);
 

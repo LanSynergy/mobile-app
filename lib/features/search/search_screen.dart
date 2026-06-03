@@ -135,8 +135,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         (s) => (primary: s.primary, secondary: s.secondary),
       ),
     );
-    return SafeArea(
-      child: Column(
+    return Scaffold(
+      backgroundColor: AfColors.surfaceCanvas,
+      body: SafeArea(
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
@@ -213,6 +215,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

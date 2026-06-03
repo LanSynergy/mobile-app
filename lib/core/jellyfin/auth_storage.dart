@@ -72,7 +72,9 @@ class AuthStorage {
       final typeStr = m['serverType'] as String?;
       final serverType = typeStr == 'subsonic'
           ? ServerType.subsonic
-          : ServerType.jellyfin;
+          : typeStr == 'youtubeMusic'
+              ? ServerType.youtubeMusic
+              : ServerType.jellyfin;
       final baseUrl = m['baseUrl'] as String?;
       final userId = m['userId'] as String?;
       final userName = m['userName'] as String?;

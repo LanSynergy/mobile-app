@@ -5,15 +5,32 @@ import '../core/backend/music_backend.dart';
 import '../core/jellyfin/client.dart';
 import '../core/local/local_backend.dart';
 import '../core/subsonic/navidrome_client.dart';
+import '../core/youtube/youtube_music_client.dart';
 import '../utils/log.dart';
 import 'app_mode_providers.dart';
 import 'auth_providers.dart';
 import 'local_library_providers.dart';
+import 'youtube_music_providers.dart';
 
 final musicBackendProvider = Provider.autoDispose<MusicBackend?>((ref) {
   final auth = ref.watch(authProvider);
+  final appMode = ref.watch(appModeProvider);
+
+  // YouTube Music mode — works without JellyfinAuth.
+  if (appMode == AppMode.youtubeMusic) {
+    final youtubeAuth = ref.watch(youtubeAuthProvider);
+    logData(
+      'musicBackend',
+      source: 'live',
+      extra: 'type=youtubeMusic auth=${youtubeAuth != null ? 'yes' : 'no'}',
+    );
+    final client = YouTubeMusicClient(auth: youtubeAuth);
+    ref.onDispose(client.close);
+    return client;
+  }
+
   if (auth == null) {
-    if (ref.watch(appModeProvider) == AppMode.local) {
+    if (appMode == AppMode.local) {
       final lib = ref.watch(localLibraryProvider);
       logData('musicBackend', source: 'live', extra: 'type=local');
       return LocalBackend(library: lib, db: lib.db);
@@ -60,6 +77,13 @@ final musicBackendProvider = Provider.autoDispose<MusicBackend?>((ref) {
     case ServerType.local:
       final lib = ref.watch(localLibraryProvider);
       return LocalBackend(library: lib, db: lib.db);
+    case ServerType.youtubeMusic:
+      {
+        final youtubeAuth = ref.watch(youtubeAuthProvider);
+        final client = YouTubeMusicClient(auth: youtubeAuth);
+        ref.onDispose(client.close);
+        return client;
+      }
   }
 });
 

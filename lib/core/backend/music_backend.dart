@@ -6,7 +6,7 @@ import '../jellyfin/models/library.dart';
 /// `local` is a sentinel for the on-device LocalBackend — it has no
 /// real "server" but it does implement [MusicBackend] so favorites and
 /// playlists work the same as in server mode.
-enum ServerType { jellyfin, subsonic, local }
+enum ServerType { jellyfin, subsonic, local, youtubeMusic }
 
 /// Abstract music-server backend.
 ///

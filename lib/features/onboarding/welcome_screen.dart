@@ -139,6 +139,34 @@ class WelcomeScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: AfSpacing.s16),
                       _ModeCard(
+                        icon: LucideIcons.smartphone,
+                        title: 'Play local files',
+                        subtitle: 'Music on your device',
+                        onTap: () async {
+                          ref.read(appModeProvider.notifier).state =
+                              AppMode.local;
+                          await AppModeStore.save(AppMode.local);
+                          if (context.mounted) {
+                            await context.push('/onboarding/local-setup');
+                          }
+                        },
+                      ),
+                      const SizedBox(height: AfSpacing.s12),
+                      _ModeCard(
+                        icon: LucideIcons.play,
+                        title: 'YouTube Music',
+                        subtitle: 'Stream from YouTube catalog',
+                        onTap: () async {
+                          ref.read(appModeProvider.notifier).state =
+                              AppMode.youtubeMusic;
+                          await AppModeStore.save(AppMode.youtubeMusic);
+                          if (context.mounted) {
+                            context.go('/home');
+                          }
+                        },
+                      ),
+                      const SizedBox(height: AfSpacing.s12),
+                      _ModeCard(
                         icon: LucideIcons.cloud,
                         title: 'Stream from server',
                         subtitle: 'Jellyfin or Navidrome',
@@ -152,21 +180,7 @@ class WelcomeScreen extends ConsumerWidget {
                           }
                         },
                       ),
-                      const SizedBox(height: AfSpacing.s12),
-                      _ModeCard(
-                        icon: LucideIcons.folderOpen,
-                        title: 'Play local files',
-                        subtitle: 'Music on your device',
-                        onTap: () async {
-                          await HapticFeedback.lightImpact();
-                          ref.read(appModeProvider.notifier).state =
-                              AppMode.local;
-                          await AppModeStore.save(AppMode.local);
-                          if (context.mounted) {
-                            await context.push('/onboarding/local-setup');
-                          }
-                        },
-                      ),
+
                     ],
                   ),
                 ),

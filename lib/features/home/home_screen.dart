@@ -84,8 +84,131 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLocal = ref.watch(appModeProvider) == AppMode.local;
+    final mode = ref.watch(appModeProvider);
+    final isLocal = mode == AppMode.local;
+    final isYouTube = mode == AppMode.youtubeMusic;
     final albumsAsync = ref.watch(recentlyAddedAlbumsProvider);
+
+    // YouTube Music: simplified home with search prompt.
+    if (isYouTube) {
+      return SafeArea(
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: ClampingScrollPhysics(),
+          ),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AfSpacing.s16,
+                  AfSpacing.s8,
+                  AfSpacing.s16,
+                  AfSpacing.s32,
+                ),
+                child: Row(
+                  children: [
+                    ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [AfColors.indigo300, AfColors.indigo500],
+                      ).createShader(bounds),
+                      child: Text(
+                        'YouTube Music',
+                        style: AfTypography.display.copyWith(
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Search prompt card.
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+                child: GestureDetector(
+                  onTap: () => context.push('/search'),
+                  child: Container(
+                    padding: const EdgeInsets.all(AfSpacing.s16),
+                    decoration: BoxDecoration(
+                      color: AfColors.surfaceRaised,
+                      borderRadius: AfRadii.borderLg,
+                      border: Border.all(color: AfColors.surfaceHigh),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFF0000), Color(0xFFCC0000)],
+                            ),
+                            borderRadius: AfRadii.borderMd,
+                          ),
+                          child: const Icon(
+                            LucideIcons.search,
+                            color: AfColors.textOnPrimary,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: AfSpacing.s16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Search YouTube Music',
+                                style: AfTypography.titleSmall,
+                              ),
+                              const SizedBox(height: AfSpacing.s2),
+                              Text(
+                                'Find songs, artists, and playlists',
+                                style: AfTypography.bodySmall.copyWith(
+                                  color: AfColors.textTertiary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          LucideIcons.chevronRight,
+                          color: AfColors.textTertiary,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            const SliverToBoxAdapter(
+              child: SizedBox(height: AfSpacing.sectionGap),
+            ),
+
+            // Hint text.
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+                child: Text(
+                  'Tap the search icon below to find music from YouTube\u2019s catalog.',
+                  style: AfTypography.bodyMedium.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+
+            const SliverToBoxAdapter(
+              child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
+            ),
+          ],
+        ),
+      );
+    }
 
     return SafeArea(
       child: RefreshIndicator(

@@ -5,6 +5,7 @@ import '../../state/providers.dart';
 import '../../utils/log.dart';
 import '../backend/music_backend.dart';
 import '../jellyfin/models/items.dart';
+import '../youtube/youtube_music_client.dart';
 
 /// Cross-cutting "Play" entry points used by every screen so that we
 /// don't replicate the wiring (and so the spectral provider always
@@ -24,8 +25,23 @@ class PlayActions {
 
     // In local mode, the track ID is the content:// URI itself.
     // In server mode, check offline cache first, then the backend.
+    // For YouTube Music, resolve the actual stream URL asynchronously.
     FutureOr<String> resolveStreamUrl(AfTrack t) async {
       if (mode == AppMode.local) return t.id;
+
+      // YouTube Music: resolve actual stream URL via youtube_explode.
+      if (backend is YouTubeMusicClient) {
+        afLog('aetherfin:youtube', 'resolveStreamUrl start: id=${t.id} title=${t.title}');
+        try {
+          final url = await backend.resolveStreamUrl(t.id);
+          afLog('aetherfin:youtube', 'resolveStreamUrl OK: url=${url.substring(0, 100)}');
+          return url;
+        } catch (e) {
+          afLog('aetherfin:error', 'resolveStreamUrl failed for id=${t.id}', error: e);
+          return 'about:blank';
+        }
+      }
+
       final cache = ref.read(offlineCacheServiceProvider);
       if (ref.read(offlineCacheEnabledProvider)) {
         final cachedUri = await cache.cachedFileUri(t.id);
@@ -98,6 +114,20 @@ class PlayActions {
 
     FutureOr<String> resolveStreamUrl(AfTrack t) async {
       if (mode == AppMode.local) return t.id;
+
+      // YouTube Music: resolve actual stream URL via youtube_explode.
+      if (backend is YouTubeMusicClient) {
+        afLog('aetherfin:youtube', 'resolveStreamUrl (playSingle): id=${t.id}');
+        try {
+          final url = await backend.resolveStreamUrl(t.id);
+          afLog('aetherfin:youtube', 'resolveStreamUrl (playSingle) OK: ${url.substring(0, 100)}');
+          return url;
+        } catch (e) {
+          afLog('aetherfin:error', 'resolveStreamUrl (playSingle) failed for id=${t.id}', error: e);
+          return 'about:blank';
+        }
+      }
+
       final cache = ref.read(offlineCacheServiceProvider);
       if (ref.read(offlineCacheEnabledProvider)) {
         final cachedUri = await cache.cachedFileUri(t.id);

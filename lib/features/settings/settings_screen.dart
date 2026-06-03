@@ -66,7 +66,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
 
               // ── Server (server mode) ────────────────────────────────
-              if (!isLocal) ...[
+              if (!isLocal && mode != AppMode.youtubeMusic) ...[
                 SettingsGroup(
                   children: [
                     SettingsTile(
@@ -161,7 +161,9 @@ class SettingsScreen extends ConsumerWidget {
                     title: 'Switch mode',
                     subtitle: isLocal
                         ? 'Currently: Local files'
-                        : 'Currently: Server',
+                        : mode == AppMode.youtubeMusic
+                            ? 'Currently: YouTube Music'
+                            : 'Currently: Server',
                     onTap: () async {
                       final confirmed = await showBlurDialog<bool>(
                         context: context,

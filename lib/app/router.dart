@@ -22,6 +22,7 @@ import '../features/playlist/playlist_list_screen.dart';
 import '../features/playlist/playlist_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/queue/queue_screen.dart';
+import '../features/search/search_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
 import '../features/smart_playlist/smart_playlist_detail_screen.dart';
@@ -261,6 +262,11 @@ final _router = GoRouter(
       parentNavigatorKey: _rootKey,
       builder: (_, state) =>
           SmartPlaylistEditScreen(playlistId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/search',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) => const SearchScreen(),
     ),
   ],
 );

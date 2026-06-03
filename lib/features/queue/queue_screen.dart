@@ -7,9 +7,11 @@ import 'package:flutter_shaders_ui/flutter_shaders_ui.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/jellyfin/models/items.dart';
+import '../../core/youtube/youtube_music_client.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/display_error.dart';
+import '../../utils/log.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/empty_state.dart';
@@ -356,6 +358,17 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     final cacheEnabled = ref.read(offlineCacheEnabledProvider);
     FutureOr<String> resolve(AfTrack t) async {
       if (mode == AppMode.local) return t.id;
+
+      // YouTube Music: resolve actual stream URL via youtube_explode.
+      if (backend is YouTubeMusicClient) {
+        try {
+          return await backend.resolveStreamUrl(t.id);
+        } catch (e) {
+          afLog('audio', 'YouTube stream resolve failed', error: e);
+          return 'about:blank';
+        }
+      }
+
       if (cacheEnabled) {
         final cachedUri = await cache.cachedFileUri(t.id);
         if (cachedUri != null) return cachedUri;

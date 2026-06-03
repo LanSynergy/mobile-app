@@ -11,6 +11,7 @@ import '../core/audio/player_service.dart';
 import '../core/audio/shuffle_mode.dart';
 import '../core/backend/music_backend.dart';
 import '../core/jellyfin/models/items.dart';
+import '../core/youtube/youtube_music_client.dart';
 import 'app_mode_providers.dart';
 import 'local_library_providers.dart';
 import 'music_backend_providers.dart';
@@ -252,19 +253,32 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
     ref.read(forNtimesModeProvider.notifier).state = enabled;
   };
 
-  svc.onTrackCompleted = (track) {
+  svc.onTrackCompleted = (track) async {
     final enabled = ref.read(offlineCacheEnabledProvider);
     if (!enabled) return;
     final mode = ref.read(appModeProvider);
     if (mode == AppMode.local) return;
     final backend = ref.read(musicBackendProvider);
     if (backend == null) return;
+
+    // YouTube Music: resolve actual stream URL for caching.
+    String url;
+    if (backend is YouTubeMusicClient) {
+      try {
+        url = await backend.resolveStreamUrl(track.id);
+      } catch (e) {
+        afLog('audio', 'YouTube stream resolve failed for cache', error: e);
+        return;
+      }
+    } else {
+      final maxBitrate = ref.read(maxBitrateProvider);
+      url = backend.trackStreamUrl(
+        track.id,
+        maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate,
+      );
+    }
+
     final cache = ref.read(offlineCacheServiceProvider);
-    final maxBitrate = ref.read(maxBitrateProvider);
-    final url = backend.trackStreamUrl(
-      track.id,
-      maxBitrateKbps: maxBitrate == 0 ? null : maxBitrate,
-    );
     unawaited(cache.cacheTrack(track.id, url, headers: backend.authHeaders));
   };
 
