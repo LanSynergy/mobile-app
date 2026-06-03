@@ -171,35 +171,84 @@ class _EmptyState extends StatelessWidget {
 
 /// Watches spectral for the background gradient only.
 /// Rebuilds when artwork color changes — not on position ticks.
-class _ReactiveBackground extends ConsumerWidget {
+///
+/// Uses an explicit [ColorTween] so the transition from old → new color is
+/// guaranteed to animate, even across rebuilds.
+class _ReactiveBackground extends ConsumerStatefulWidget {
   const _ReactiveBackground({required this.child});
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ReactiveBackground> createState() =>
+      _ReactiveBackgroundState();
+}
+
+class _ReactiveBackgroundState extends ConsumerState<_ReactiveBackground>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late Animation<Color?> _colorAnimation;
+  Color _current = AfColors.surfaceCanvas;
+  Color _target = AfColors.surfaceCanvas;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: AfDurations.expressive,
+    );
+    _colorAnimation = ColorTween(begin: _current, end: _current).animate(
+      CurvedAnimation(parent: _controller, curve: AfCurves.easeStandard),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final spectral = ref.watch(currentSpectralProvider);
     final oklch = srgbToOklch(spectral.energy);
-    final background = OklchColor(0.35, 0.12, oklch.h).toColor();
-    final luminance = background.computeLuminance();
+    final target = OklchColor(0.35, 0.12, oklch.h).toColor();
+
+    if (target != _target) {
+      _target = target;
+      // Start the new tween from wherever the animation currently is,
+      // not the previous target — avoids a jump if color changes mid-transition.
+      _current = _colorAnimation.value ?? _current;
+      _colorAnimation = ColorTween(begin: _current, end: target).animate(
+        CurvedAnimation(parent: _controller, curve: AfCurves.easeStandard),
+      );
+      _controller
+        ..reset()
+        ..forward();
+      _current = target;
+    }
+
+    final luminance = target.computeLuminance();
     final overlayStyle = SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: luminance > 0.5
-          ? Brightness.dark
-          : Brightness.light,
-      statusBarBrightness: luminance > 0.5 ? Brightness.light : Brightness.dark,
+      statusBarIconBrightness:
+          luminance > 0.5 ? Brightness.dark : Brightness.light,
+      statusBarBrightness:
+          luminance > 0.5 ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness: luminance > 0.5
-          ? Brightness.dark
-          : Brightness.light,
+      systemNavigationBarIconBrightness:
+          luminance > 0.5 ? Brightness.dark : Brightness.light,
       systemNavigationBarDividerColor: Colors.transparent,
     );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
-      child: AnimatedContainer(
-        duration: AfDurations.expressive,
-        curve: AfCurves.easeStandard,
-        color: background,
-        child: child,
+      child: AnimatedBuilder(
+        animation: _colorAnimation,
+        builder: (context, child) => Container(
+          color: _colorAnimation.value,
+          child: child,
+        ),
+        child: widget.child,
       ),
     );
   }
