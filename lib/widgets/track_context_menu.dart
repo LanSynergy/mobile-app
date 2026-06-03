@@ -52,7 +52,7 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
                     overflow: TextOverflow.ellipsis,
                     style: AfTypography.titleSmall,
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AfSpacing.s2),
                   Text(
                     track.artistName,
                     maxLines: 1,
@@ -195,7 +195,7 @@ void showAlbumContextMenu(BuildContext context, WidgetRef ref, AfAlbum album) {
                   overflow: TextOverflow.ellipsis,
                   style: AfTypography.titleSmall,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AfSpacing.s2),
                 Text(
                   album.artistName,
                   maxLines: 1,

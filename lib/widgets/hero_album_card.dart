@@ -102,7 +102,7 @@ class HeroAlbumCard extends StatelessWidget {
                           color: AfColors.textOnPrimary,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AfSpacing.s2),
                       Text(
                         album.artistName,
                         maxLines: 1,

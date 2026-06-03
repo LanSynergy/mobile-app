@@ -353,7 +353,9 @@ class _CleartextWarning extends StatelessWidget {
               'This server uses plain HTTP. Your username, password, '
               'and access token will be sent unencrypted to $baseUrl. '
               'Only sign in on a trusted network.',
-              style: AfTypography.bodySmall.copyWith(color: AfColors.textPrimary),
+              style: AfTypography.bodySmall.copyWith(
+                color: AfColors.textPrimary,
+              ),
             ),
           ),
         ],

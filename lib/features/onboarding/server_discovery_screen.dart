@@ -356,7 +356,7 @@ class _ServerCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(server.name, style: AfTypography.titleSmall),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AfSpacing.s2),
                   Text(
                     server.baseUrl,
                     style: AfTypography.bodySmall.copyWith(

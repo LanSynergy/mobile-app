@@ -201,7 +201,7 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
                           onLongPress: () =>
                               showTrackContextMenu(context, ref, t),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AfSpacing.s4),
                       ],
                     );
                   },

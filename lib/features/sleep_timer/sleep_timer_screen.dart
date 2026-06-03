@@ -134,7 +134,7 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
           icon: const Icon(LucideIcons.x),
           onPressed: () => Navigator.maybePop(context),
         ),
-        title: Text('Sleep timer', style: AfTypography.titleMedium),
+        title: Text('Sleep timer', style: AfTypography.display),
       ),
       body: SafeArea(
         child: Padding(

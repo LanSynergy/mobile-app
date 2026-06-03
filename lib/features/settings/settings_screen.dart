@@ -262,7 +262,7 @@ class SettingsScreen extends ConsumerWidget {
                   bottom: AfSpacing.s24,
                   left: AfSpacing.s4,
                 ),
-                child: Text('Settings', style: AfTypography.titleLarge),
+                child: Text('Settings', style: AfTypography.display),
               ),
 
               // ── Server (server mode) ────────────────────────────────

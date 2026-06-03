@@ -105,6 +105,34 @@ abstract final class AfTypography {
     ),
   );
 
+  /// JetBrains Mono — micro stat badges (smaller than mono).
+  static TextStyle get monoSmall => GoogleFonts.jetBrainsMono(
+    textStyle: const TextStyle(
+      fontSize: 10,
+      height: 13 / 10,
+      fontWeight: FontWeight.w500,
+      color: AfColors.textPrimary,
+    ),
+  );
+
+  /// Large initials for profile avatar.
+  static TextStyle get avatarInitials => _playfair(
+    fontSize: 32,
+    height: 38 / 32,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.3,
+  );
+
+  // ---------------------------------------------------------------------------
+  // Shared button styles.
+  // ---------------------------------------------------------------------------
+
+  /// OutlinedButton style for action rows (Play All / Shuffle / Radio).
+  static ButtonStyle get outlinedAction => OutlinedButton.styleFrom(
+    side: const BorderSide(color: AfColors.accentPrimary, width: 1.5),
+    foregroundColor: AfColors.accentPrimary,
+  );
+
   // ---------------------------------------------------------------------------
   // Material 3 textTheme mapping.
   // ---------------------------------------------------------------------------

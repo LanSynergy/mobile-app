@@ -148,7 +148,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                           ),
                         ),
                         padding: const EdgeInsets.only(
-                          left: 4,
+                          left: AfSpacing.s4,
                           right: AfSpacing.s8,
                         ),
                         child: Row(

@@ -173,7 +173,7 @@ class _GenreScreenState extends ConsumerState<GenreScreen> {
                                           ? Artwork(
                                               url: a.imageUrl,
                                               size: 72,
-                                              radius: BorderRadius.circular(36),
+                                              radius: AfRadii.borderPill,
                                               fit: BoxFit.cover,
                                             )
                                           : const Icon(

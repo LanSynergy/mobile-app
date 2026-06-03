@@ -504,13 +504,13 @@ Widget eqTextFieldRow(
                 horizontal: 8,
                 vertical: 8,
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: AfColors.surfaceHigh),
+              border: const OutlineInputBorder(
+                borderRadius: AfRadii.borderSm,
+                borderSide: BorderSide(color: AfColors.surfaceHigh),
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: AfColors.surfaceHigh),
+              enabledBorder: const OutlineInputBorder(
+                borderRadius: AfRadii.borderSm,
+                borderSide: BorderSide(color: AfColors.surfaceHigh),
               ),
             ),
             onFieldSubmitted: onSubmitted,
@@ -647,7 +647,7 @@ class EqBandBar extends StatelessWidget {
               fontSize: 9,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: AfSpacing.s2),
           // Bar container.
           Expanded(
             child: LayoutBuilder(
@@ -681,7 +681,7 @@ class EqBandBar extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: AfSpacing.s2),
           // Frequency label.
           Text(
             label,

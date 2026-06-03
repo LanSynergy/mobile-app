@@ -2,6 +2,7 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Device;
 
 import '../../design_tokens/tokens.dart';
@@ -19,7 +20,7 @@ class CastPickerScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
+          icon: const Icon(LucideIcons.x),
           onPressed: () => Navigator.maybePop(context),
         ),
         title: Text('Output', style: AfTypography.titleMedium),
@@ -44,7 +45,7 @@ class CastPickerScreen extends ConsumerWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(
-                            Icons.speaker_outlined,
+                            LucideIcons.speaker,
                             size: 48,
                             color: AfColors.textTertiary,
                           ),
@@ -100,7 +101,7 @@ class CastPickerScreen extends ConsumerWidget {
                       ),
                       trailing: isActive
                           ? const Icon(
-                              Icons.check_rounded,
+                              LucideIcons.check,
                               color: AfColors.indigo300,
                             )
                           : null,
@@ -128,17 +129,17 @@ class CastPickerScreen extends ConsumerWidget {
   IconData _iconForDevice(String name) {
     final n = name.toLowerCase();
     if (n.contains('bluetooth') || n.contains('bt')) {
-      return Icons.bluetooth_audio_rounded;
+      return LucideIcons.bluetooth;
     }
     if (n.contains('headphone') ||
         n.contains('headset') ||
         n.contains('earphone') ||
         n.contains('airpod')) {
-      return Icons.headphones_rounded;
+      return LucideIcons.headphones;
     }
-    if (n.contains('speaker')) return Icons.speaker_rounded;
-    if (n.contains('hdmi')) return Icons.tv_rounded;
-    if (n.contains('usb')) return Icons.usb_rounded;
-    return Icons.smartphone_rounded;
+    if (n.contains('speaker')) return LucideIcons.speaker;
+    if (n.contains('hdmi')) return LucideIcons.monitor;
+    if (n.contains('usb')) return LucideIcons.usb;
+    return LucideIcons.smartphone;
   }
 }

@@ -231,23 +231,22 @@ class _ReactiveBackgroundState extends ConsumerState<_ReactiveBackground>
     final luminance = target.computeLuminance();
     final overlayStyle = SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness:
-          luminance > 0.5 ? Brightness.dark : Brightness.light,
-      statusBarBrightness:
-          luminance > 0.5 ? Brightness.light : Brightness.dark,
+      statusBarIconBrightness: luminance > 0.5
+          ? Brightness.dark
+          : Brightness.light,
+      statusBarBrightness: luminance > 0.5 ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness:
-          luminance > 0.5 ? Brightness.dark : Brightness.light,
+      systemNavigationBarIconBrightness: luminance > 0.5
+          ? Brightness.dark
+          : Brightness.light,
       systemNavigationBarDividerColor: Colors.transparent,
     );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
       child: AnimatedBuilder(
         animation: _colorAnimation,
-        builder: (context, child) => Container(
-          color: _colorAnimation.value,
-          child: child,
-        ),
+        builder: (context, child) =>
+            Container(color: _colorAnimation.value, child: child),
         child: widget.child,
       ),
     );
@@ -435,7 +434,9 @@ class _FrostedTopBarState extends ConsumerState<_FrostedTopBar>
                           final isActive = i == active;
                           final line = lrc.lines[i];
                           return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AfSpacing.s4,
+                            ),
                             child: AnimatedDefaultTextStyle(
                               duration: AfDurations.quick,
                               style: AfTypography.bodyMedium.copyWith(
@@ -1066,7 +1067,11 @@ class _TransportRow extends StatelessWidget {
         // Play / Pause — spectral glow
         Semantics(
           label: isPlaying ? 'Pause' : 'Play',
-          child: _PlayButton(isPlaying: isPlaying, accent: accent, onTap: onPlayPause),
+          child: _PlayButton(
+            isPlaying: isPlaying,
+            accent: accent,
+            onTap: onPlayPause,
+          ),
         ),
         const SizedBox(width: AfSpacing.s16),
         // Next
@@ -1099,7 +1104,7 @@ class _TransportRow extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(2),
                     decoration: const BoxDecoration(
-                      color: AfColors.indigo400,
+                      color: AfColors.accentMuted,
                       shape: BoxShape.circle,
                     ),
                     child: Text(
@@ -1162,8 +1167,8 @@ class _PlayButton extends ConsumerWidget {
       ensureHitTarget: false,
       onTap: onTap,
       child: Container(
-        width: 64,
-        height: 64,
+        width: AfSpacing.playButtonSize,
+        height: AfSpacing.playButtonSize,
         decoration: BoxDecoration(
           color: accent,
           shape: BoxShape.circle,

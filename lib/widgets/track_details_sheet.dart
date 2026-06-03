@@ -52,7 +52,7 @@ class TrackDetailsBody extends ConsumerWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: AfSpacing.s2),
         Text(
           track.artistName,
           style: AfTypography.bodyMedium.copyWith(

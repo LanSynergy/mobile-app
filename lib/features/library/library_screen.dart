@@ -561,7 +561,7 @@ class _LiveResults extends ConsumerWidget {
                             Artwork(
                               url: a.imageUrl,
                               size: 44,
-                              radius: BorderRadius.circular(44 / 2),
+                              radius: AfRadii.borderPill,
                             ),
                             const SizedBox(width: AfSpacing.s12),
                             Expanded(

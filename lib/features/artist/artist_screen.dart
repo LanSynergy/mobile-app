@@ -431,13 +431,7 @@ class _ActionRow extends StatelessWidget {
           Expanded(
             child: OutlinedButton.icon(
               onPressed: onRadio,
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(
-                  color: AfColors.accentPrimary,
-                  width: 1.5,
-                ),
-                foregroundColor: AfColors.accentPrimary,
-              ),
+              style: AfTypography.outlinedAction,
               icon: const Icon(LucideIcons.radio, size: 20),
               label: const Text('Artist Radio'),
             ),

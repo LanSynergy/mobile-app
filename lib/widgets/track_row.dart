@@ -84,18 +84,14 @@ class TrackRow extends StatelessWidget {
       leading = Stack(
         alignment: Alignment.center,
         children: [
-          Artwork(
-            url: track.imageUrl,
-            size: artSize,
-            radius: BorderRadius.circular(AfRadii.sm),
-          ),
+          Artwork(url: track.imageUrl, size: artSize, radius: AfRadii.borderSm),
           if (isActive && isBuffering)
             Container(
               width: artSize,
               height: artSize,
               decoration: BoxDecoration(
                 color: AfColors.surfaceCanvas.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(AfRadii.sm),
+                borderRadius: AfRadii.borderSm,
               ),
               child: const Center(
                 child: SizedBox(

@@ -368,10 +368,7 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
               final shuffled = List<AfTrack>.from(widget.tracks)..shuffle();
               ref.read(playActionsProvider).playQueue(shuffled);
             },
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AfColors.accentPrimary, width: 1.5),
-              foregroundColor: AfColors.accentPrimary,
-            ),
+            style: AfTypography.outlinedAction,
             icon: const Icon(LucideIcons.shuffle, size: 20),
             label: const Text('Shuffle'),
           ),

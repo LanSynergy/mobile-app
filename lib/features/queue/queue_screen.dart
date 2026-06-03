@@ -278,7 +278,9 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                               );
                           },
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: AfSpacing.s4),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AfSpacing.s4,
+                            ),
                             child: Container(
                               decoration: active
                                   ? const BoxDecoration(

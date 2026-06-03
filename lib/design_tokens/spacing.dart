@@ -59,6 +59,15 @@ abstract final class AfSpacing {
   /// breathing room collapses to a working 136dp inset.
   static const double bottomInsetWithMiniAndNav = s136;
 
+  /// Now Playing play button diameter.
+  static const double playButtonSize = s64;
+
+  /// Profile avatar diameter.
+  static const double avatarSize = s96;
+
+  /// Search filter chip height.
+  static const double filterChipHeight = 44;
+
   /// Padding presets.
   static const EdgeInsets pageHorizontal = EdgeInsets.symmetric(
     horizontal: s16,

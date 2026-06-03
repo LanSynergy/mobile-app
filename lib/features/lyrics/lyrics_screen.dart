@@ -324,7 +324,9 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                           onTap: isSynced
                               ? () {
                                   unawaited(HapticFeedback.selectionClick());
-                                  ref.read(playerServiceProvider).seek(line.start);
+                                  ref
+                                      .read(playerServiceProvider)
+                                      .seek(line.start);
                                 }
                               : null,
                           child: AnimatedContainer(

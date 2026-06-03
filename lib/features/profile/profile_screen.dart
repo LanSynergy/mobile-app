@@ -98,7 +98,9 @@ class ProfileScreen extends ConsumerWidget {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Failed to update profile photo: $e'),
+                              content: Text(
+                                'Failed to update profile photo: $e',
+                              ),
                               backgroundColor: AfColors.semanticError,
                             ),
                           );
@@ -114,7 +116,9 @@ class ProfileScreen extends ConsumerWidget {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Failed to remove profile photo: $e'),
+                              content: Text(
+                                'Failed to remove profile photo: $e',
+                              ),
                               backgroundColor: AfColors.semanticError,
                             ),
                           );
@@ -315,8 +319,8 @@ class _AvatarImagePicker extends StatelessWidget {
     if (localPath != null && File(localPath!).existsSync()) {
       avatarContent = Image.file(
         File(localPath!),
-        width: 96,
-        height: 96,
+        width: AfSpacing.avatarSize,
+        height: AfSpacing.avatarSize,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) => _initialsAvatar(),
       );
@@ -324,8 +328,8 @@ class _AvatarImagePicker extends StatelessWidget {
       avatarContent = CachedNetworkImage(
         imageUrl: networkUrl!,
         httpHeaders: authHeaders,
-        width: 96,
-        height: 96,
+        width: AfSpacing.avatarSize,
+        height: AfSpacing.avatarSize,
         fit: BoxFit.cover,
         placeholder: (context, url) => _initialsAvatar(),
         errorWidget: (context, url, error) => _initialsAvatar(),
@@ -401,8 +405,8 @@ class _AvatarImagePicker extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Container(
-            width: 96,
-            height: 96,
+            width: AfSpacing.avatarSize,
+            height: AfSpacing.avatarSize,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: AfColors.accentSecondary, width: 2),
@@ -453,14 +457,13 @@ class _AvatarImagePicker extends StatelessWidget {
 
   Widget _initialsAvatar() {
     return Container(
-      width: 96,
-      height: 96,
+      width: AfSpacing.avatarSize,
+      height: AfSpacing.avatarSize,
       color: AfColors.accentMuted,
       alignment: Alignment.center,
       child: Text(
         name.isEmpty ? 'A' : name[0].toUpperCase(),
-        style: AfTypography.titleLarge.copyWith(
-          fontSize: 32,
+        style: AfTypography.avatarInitials.copyWith(
           color: AfColors.textOnPrimary,
         ),
       ),
@@ -513,7 +516,10 @@ class _LastFmConnectionCTA extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: AfColors.accentMuted,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AfSpacing.s16,
+                vertical: AfSpacing.s8,
+              ),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),

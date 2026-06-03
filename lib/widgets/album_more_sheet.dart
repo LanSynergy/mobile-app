@@ -38,7 +38,7 @@ void showAlbumMoreSheet(
                 overflow: TextOverflow.ellipsis,
                 style: AfTypography.titleSmall,
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: AfSpacing.s2),
               Text(
                 album.artistName,
                 maxLines: 1,

@@ -247,7 +247,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                           child: Icon(
                                             LucideIcons.gripVertical,
                                             color: AfColors.textDisabled,
-                                            size: 18,
+                                            size: 20,
                                           ),
                                         ),
                                       ),
@@ -788,10 +788,7 @@ class _StatBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AfTypography.mono.copyWith(
-          fontSize: 10,
-          color: AfColors.textTertiary,
-        ),
+        style: AfTypography.monoSmall.copyWith(color: AfColors.textTertiary),
       ),
     );
   }

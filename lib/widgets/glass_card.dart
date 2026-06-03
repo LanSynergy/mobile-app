@@ -14,7 +14,7 @@ class GlassCard extends StatelessWidget {
     required this.child,
     this.borderRadius = AfRadii.borderLg,
     this.blurSigma = 16,
-    this.color = const Color(0x730A0A0A), // surfaceCanvas @ 45%
+    this.color = AfColors.glassFillHeavy,
     this.borderColor,
     this.borderWidth = 0.5,
     this.padding = const EdgeInsets.all(AfSpacing.s16),

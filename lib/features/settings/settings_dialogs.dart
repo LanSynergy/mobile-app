@@ -720,16 +720,16 @@ void showLastFmApiConfigDialog(BuildContext context, WidgetRef ref) {
           ),
         ),
         const SizedBox(height: AfSpacing.s16),
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Last.fm Username (optional)',
-                  hintText: 'Your Last.fm username',
-                  border: OutlineInputBorder(
-                    borderRadius: AfRadii.borderSm,
-                    borderSide: BorderSide(color: AfColors.surfaceHigh),
-                  ),
-                ),
-                style: AfTypography.bodyMedium,
+        TextField(
+          decoration: const InputDecoration(
+            labelText: 'Last.fm Username (optional)',
+            hintText: 'Your Last.fm username',
+            border: OutlineInputBorder(
+              borderRadius: AfRadii.borderSm,
+              borderSide: BorderSide(color: AfColors.surfaceHigh),
+            ),
+          ),
+          style: AfTypography.bodyMedium,
         ),
         const SizedBox(height: AfSpacing.s12),
         TextField(

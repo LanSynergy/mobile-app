@@ -63,6 +63,7 @@ abstract final class AfColors {
   static const glassFillSubtle = Color(0x0AFFFFFF); // white @ 4%
   static const glassFill = Color(0x0FFFFFFF); // white @ 6%
   static const glassFillStrong = Color(0x14FFFFFF); // white @ 8%
+  static const glassFillHeavy = Color(0x730A0A0A); // surfaceCanvas @ 45%
   static const glassBorder = Color(0x0FFFFFFF); // white @ 6%
   static const glassBorderStrong = Color(0x14FFFFFF); // white @ 8%
   static const glassBorderEmphasis = Color(0x1AFFFFFF); // white @ 10%

@@ -29,11 +29,7 @@ class Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final art = Artwork(
-      url: imageUrl,
-      size: size,
-      radius: BorderRadius.circular(AfRadii.lg),
-    );
+    final art = Artwork(url: imageUrl, size: size, radius: AfRadii.borderLg);
 
     return PressScale(
       ensureHitTarget: false,
@@ -62,7 +58,7 @@ class Tile extends StatelessWidget {
             ),
             if (subtitle != null)
               Padding(
-                padding: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.only(top: AfSpacing.s2),
                 child: Text(
                   subtitle!,
                   maxLines: 1,

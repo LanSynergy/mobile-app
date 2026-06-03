@@ -580,7 +580,7 @@ class _ArtistsSection extends ConsumerWidget {
                               Artwork(
                                 url: a.imageUrl,
                                 size: _artworkSize,
-                                radius: BorderRadius.circular(_artworkSize / 2),
+                                radius: AfRadii.borderPill,
                               ),
                               // Warm ring
                               Positioned(
