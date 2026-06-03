@@ -57,6 +57,7 @@ dependencies:
   sqlite3_flutter_libs: 0.5.42
   clock: 1.1.2
   lucide_icons_flutter: ^3.1.14+1
+  flutter_shaders_ui: ^0.1.1
 
 dev_dependencies:
   flutter_test:

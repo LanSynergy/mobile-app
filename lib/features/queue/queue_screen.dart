@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_shaders_ui/flutter_shaders_ui.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/jellyfin/models/items.dart';
@@ -12,7 +13,6 @@ import '../../utils/display_error.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
-import '../../widgets/ultra_gradient.dart';
 
 /// Live queue mirror. Watches `playerQueueProvider` (a broadcast stream
 /// on top of `AfPlayerService.queueStream`) so the list reflects the
@@ -153,9 +153,14 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
       ),
       body: Stack(
         children: [
-          // Full-bleed background
+          // Full-bleed background — GPU shader
           const Positioned.fill(
-            child: UltraGradient(seed: 13),
+            child: AuroraEffect(
+              color1: AfColors.surfaceCanvas,
+              color2: AfColors.surfaceLow,
+              intensity: 0.2,
+              speed: 0.3,
+            ),
           ),
           SafeArea(
             child: _items.isEmpty

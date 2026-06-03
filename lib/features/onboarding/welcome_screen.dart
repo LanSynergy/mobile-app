@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_shaders_ui/flutter_shaders_ui.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -8,7 +9,6 @@ import '../../core/local/app_mode_store.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/log.dart';
-import '../../widgets/ultra_gradient.dart';
 
 /// Landing screen: server vs local mode selection.
 ///
@@ -26,8 +26,13 @@ class WelcomeScreen extends ConsumerWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background — ultra gradient
-          const UltraGradient(seed: 7),
+          // Background — GPU shader
+          const AuroraEffect(
+            color1: AfColors.surfaceCanvas,
+            color2: AfColors.surfaceLow,
+            intensity: 0.2,
+            speed: 0.3,
+          ),
 
           // Radial glow behind logo — warm amber tint
           Positioned(

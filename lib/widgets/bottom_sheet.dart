@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_shaders_ui/flutter_shaders_ui.dart';
 
 import '../design_tokens/tokens.dart';
 
@@ -146,22 +146,20 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                         : null,
                     child: Padding(
                       padding: EdgeInsets.only(bottom: viewInsets.bottom),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(widget.topRadius),
-                        ),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: AfColors.surfaceBase.withValues(
-                                alpha: 0.70,
-                              ),
-                              borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(widget.topRadius),
-                              ),
+                      child: GlassEffect(
+                        frost: 0.4,
+                        opacity: 0.15,
+                        tint: AfColors.surfaceBase,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AfColors.surfaceBase.withValues(
+                              alpha: 0.70,
                             ),
-                            child: Column(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(widget.topRadius),
+                            ),
+                          ),
+                          child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 const SizedBox(height: AfSpacing.s12),
@@ -190,7 +188,6 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                 ),
               ),
             ),
-          ),
         );
       },
     );

@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_shaders_ui/flutter_shaders_ui.dart';
 
 import '../design_tokens/tokens.dart';
 
@@ -73,7 +73,6 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
   bool _ready = false;
 
   static const _borderRadius = AfRadii.lg;
-  static const _blurSigma = 15.0;
 
   @override
   void initState() {
@@ -131,25 +130,21 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
                       padding: const EdgeInsets.symmetric(
                         horizontal: AfSpacing.s24,
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(_borderRadius),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(
-                            sigmaX: _blurSigma,
-                            sigmaY: _blurSigma,
+                      child: GlassEffect(
+                        frost: 0.4,
+                        opacity: 0.15,
+                        tint: AfColors.surfaceRaised,
+                        child: Container(
+                          padding: const EdgeInsets.all(AfSpacing.s16),
+                          decoration: BoxDecoration(
+                            color: AfColors.surfaceRaised.withValues(
+                              alpha: 0.85,
+                            ),
+                            borderRadius: BorderRadius.circular(_borderRadius),
                           ),
-                          child: Container(
-                            padding: const EdgeInsets.all(AfSpacing.s16),
-                            decoration: BoxDecoration(
-                              color: AfColors.surfaceRaised.withValues(
-                                alpha: 0.85,
-                              ),
-                              borderRadius: BorderRadius.circular(_borderRadius),
-                            ),
-                            child: ListTileTheme(
-                              tileColor: Colors.transparent,
-                              child: widget.child,
-                            ),
+                          child: ListTileTheme(
+                            tileColor: Colors.transparent,
+                            child: widget.child,
                           ),
                         ),
                       ),

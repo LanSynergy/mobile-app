@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_shaders_ui/flutter_shaders_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -9,7 +10,6 @@ import '../features/sleep_timer/sleep_timer_screen.dart';
 import '../state/providers.dart';
 import 'bottom_nav.dart';
 import 'global_mini_player_overlay.dart';
-import 'ultra_gradient.dart';
 
 /// App shell — wraps every authed-app tab with the persistent 4-tab
 /// bottom nav and the floating mini-player.
@@ -125,9 +125,14 @@ class AppShell extends ConsumerWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Full-bleed background — ultra gradient (no banding)
+          // Full-bleed background — GPU shader (zero banding)
           const Positioned.fill(
-            child: UltraGradient(),
+            child: AuroraEffect(
+              color1: AfColors.surfaceCanvas,
+              color2: AfColors.surfaceBase,
+              intensity: 0.25,
+              speed: 0.4,
+            ),
           ),
 
           // Tab content — transparent so gradient shows through.
