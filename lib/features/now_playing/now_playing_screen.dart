@@ -73,20 +73,6 @@ class NowPlayingScreen extends ConsumerWidget {
             // ── Full-bleed artwork ──
             ReactiveArtwork(track: track),
 
-            // ── Scrim (bottom 65%) — darken only, no blur ──
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: MediaQuery.of(context).size.height * 0.65,
-              child: ColoredBox(
-                color: AfColors.surfaceCanvas.withValues(alpha: 0.55),
-              ),
-            ),
-
-            // ── Vignette overlay for depth ──
-            const _Vignette(),
-
             // ── Top bar ──
             Positioned(
               top: 0,
@@ -180,20 +166,7 @@ class _ReactiveBackground extends ConsumerWidget {
 // Vignette overlay — radial gradient from transparent center to dark edges
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _Vignette extends StatelessWidget {
-  const _Vignette();
 
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: ColoredBox(
-          color: AfColors.surfaceCanvas.withValues(alpha: 0.25),
-        ),
-      ),
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Frosted top bar — minimal, transparent backdrop
