@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_shaders_ui/flutter_shaders_ui.dart';
 
 import '../design_tokens/tokens.dart';
 
@@ -6,15 +7,9 @@ import '../design_tokens/tokens.dart';
 // ShimmerWrap — animation engine for shimmer skeletons
 // ---------------------------------------------------------------------------
 
-/// Wraps a child widget and paints a shimmer sweep over it via [ShaderMask].
-///
-/// The sweep is a `LinearGradient` with three stops (transparent ->
-/// semi-transparent white -> transparent) that moves from left (-1.0) to
-/// right (2.0) over 1.5s, repeating indefinitely.
-///
-/// Each [ShimmerWrap] has its own [AnimationController] so multiple
-/// skeleton primitives shimmer with a natural cascade effect.
-class ShimmerWrap extends StatefulWidget {
+/// Wraps a child widget and paints a shimmer sweep over it via
+/// [ShimmerEffect].
+class ShimmerWrap extends StatelessWidget {
   const ShimmerWrap({super.key, required this.child});
 
   /// The skeleton content to paint the shimmer over. Should be a
@@ -22,62 +17,12 @@ class ShimmerWrap extends StatefulWidget {
   final Widget child;
 
   @override
-  State<ShimmerWrap> createState() => _ShimmerState();
-}
-
-class _ShimmerState extends State<ShimmerWrap>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final dx = -1.0 + (_controller.value * 3.0);
-
-        final stopA = (dx - 0.2).clamp(0.0, 1.0);
-        final stopB = dx.clamp(0.0, 1.0);
-        final stopC = (dx + 0.2).clamp(0.0, 1.0);
-
-        return ShaderMask(
-          shaderCallback: (bounds) {
-            if (bounds.isEmpty || bounds.isInfinite) {
-              return const LinearGradient(
-                colors: [Colors.transparent, Colors.transparent],
-              ).createShader(bounds);
-            }
-            return LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              stops: [stopA, stopB, stopC],
-              colors: const [
-                Colors.transparent,
-                Colors.white10,
-                Colors.transparent,
-              ],
-            ).createShader(bounds);
-          },
-          blendMode: BlendMode.srcOver,
-          child: child!,
-        );
-      },
-      child: widget.child,
+    return ShimmerEffect(
+      color: Colors.white.withValues(alpha: 0.06),
+      speed: 1.0,
+      width: 0.35,
+      child: child,
     );
   }
 }
