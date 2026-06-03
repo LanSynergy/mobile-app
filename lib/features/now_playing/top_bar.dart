@@ -127,7 +127,7 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
                             color: AfColors.textPrimary,
                             size: 22,
                           ),
-                          onPressed: () => Navigator.maybePop(context),
+                          onPressed: () => context.pop(),
                         ),
                         const SizedBox(width: AfSpacing.s8),
                         Expanded(

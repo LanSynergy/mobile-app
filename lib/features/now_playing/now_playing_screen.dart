@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
@@ -68,7 +69,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         } else if (_lyricsExpandedNotifier.value) {
           _lyricsExpandedNotifier.value = false;
         } else {
-          Navigator.maybePop(context);
+          context.pop();
         }
       },
       child: Scaffold(
@@ -79,13 +80,18 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             fit: StackFit.expand,
             children: [
               // ── Centered artwork card (swipe up to expand queue) ──
-              Positioned.fill(
+              Positioned(
+                top: 76, // top bar compact height
+                bottom: 0, // let bottom content overlay
+                left: 32,
+                right: 32,
                 child: GestureDetector(
                   onVerticalDragEnd: (details) {
                     if ((details.primaryVelocity ?? 0) < -200) {
                       _expandedNotifier.value = true;
                     }
                   },
+                  behavior: HitTestBehavior.translucent,
                   child: ReactiveArtwork(track: track),
                 ),
               ),

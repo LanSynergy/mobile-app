@@ -13,31 +13,13 @@ import '../../widgets/artwork.dart';
 /// shadow/glow beneath it. The card floats over the reactive background
 /// gradient rather than filling the screen edge-to-edge.
 ///
-/// Layout:
-///   ┌─────────────────────────────┐
-///   │         (top padding)       │
-///   │   ┌───────────────────┐     │
-///   │   │                   │     │
-///   │   │    Album Artwork   │     │
-///   │   │   (rounded card)   │     │
-///   │   │                   │     │
-///   │   └───────────────────┘     │
-///   │      ↕ spectral glow        │
-///   │                             │
-///   └─────────────────────────────┘
+/// This widget returns the card content only. The parent [Stack] is
+/// responsible for positioning it (e.g. [Positioned] with top/bottom
+/// offsets) so the artwork stays fixed when the bottom content expands.
 class ReactiveArtwork extends ConsumerWidget {
   const ReactiveArtwork({super.key, required this.track});
 
   final AfTrack track;
-
-  /// Horizontal padding around the artwork card.
-  static const double _cardHorizontalPadding = 32;
-
-  /// Top padding above the artwork card.
-  static const double _cardTopPadding = 16;
-
-  /// Aspect ratio of the artwork card (1.0 = square).
-  static const double _cardAspectRatio = 1.0;
 
   /// Border radius of the artwork card.
   static const double _cardRadius = 24;
@@ -52,99 +34,120 @@ class ReactiveArtwork extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final artworkUri = ref.watch(currentArtworkUriProvider);
     final spectral = ref.watch(currentSpectralProvider);
-    final screenW = MediaQuery.of(context).size.width;
 
-    final cardW = screenW - (_cardHorizontalPadding * 2);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Card fills the available space (square), clamped by parent.
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        final cardSize = (w < h) ? w : h;
 
-    return Padding(
-      padding: const EdgeInsets.only(
-        top: _cardTopPadding,
-        left: _cardHorizontalPadding,
-        right: _cardHorizontalPadding,
-      ),
-      child: Align(
-        // Slight upward offset so artwork sits visually centered between
-        // the top bar and the bottom content zone (which overlays ~36%).
-        alignment: const Alignment(0, -0.18),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: cardW),
-          child: AspectRatio(
-            aspectRatio: _cardAspectRatio,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final cardH = constraints.maxHeight;
-                final cardSize = cardH > 0 ? cardH : cardW;
+        return Center(
+          child: SizedBox(
+            width: cardSize,
+            height: cardSize,
+            child: _ArtworkCard(
+              track: track,
+              artworkUri: artworkUri,
+              spectralEnergy: spectral.energy,
+              spectralGlow: spectral.glow,
+              cardRadius: _cardRadius,
+              glowBlur: _glowBlur,
+              glowSpread: _glowSpread,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
-                return Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.center,
-                  children: [
-                    // ── Spectral glow beneath the card ──
-                    Positioned(
-                      top: cardSize * 0.15,
-                      child: Container(
-                        width: cardSize * 0.85,
-                        height: cardSize * 0.85,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: spectral.energy.withValues(alpha: 0.30),
-                              blurRadius: _glowBlur,
-                              spreadRadius: _glowSpread,
-                            ),
-                            BoxShadow(
-                              color: spectral.glow.withValues(alpha: 0.12),
-                              blurRadius: _glowBlur * 1.5,
-                              spreadRadius: _glowSpread * 1.5,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+/// The actual artwork card with shadow and spectral glow.
+class _ArtworkCard extends StatelessWidget {
+  const _ArtworkCard({
+    required this.track,
+    required this.artworkUri,
+    required this.spectralEnergy,
+    required this.spectralGlow,
+    required this.cardRadius,
+    required this.glowBlur,
+    required this.glowSpread,
+  });
 
-                    // ── Artwork card ──
-                    Hero(
-                      tag: 'now-playing-artwork',
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(_cardRadius),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 0.5, sigmaY: 0.5),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(_cardRadius),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.4),
-                                  blurRadius: 32,
-                                  offset: const Offset(0, 12),
-                                ),
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(_cardRadius),
-                              child: Artwork(
-                                url: artworkUri?.toString() ?? track.imageUrl,
-                                size: double.infinity,
-                                radius: BorderRadius.zero,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
+  final AfTrack track;
+  final Uri? artworkUri;
+  final Color spectralEnergy;
+  final Color spectralGlow;
+  final double cardRadius;
+  final double glowBlur;
+  final double glowSpread;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        // ── Spectral glow beneath the card ──
+        Positioned(
+          top: 12,
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.6,
+            height: MediaQuery.of(context).size.width * 0.6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: spectralEnergy.withValues(alpha: 0.30),
+                  blurRadius: glowBlur,
+                  spreadRadius: glowSpread,
+                ),
+                BoxShadow(
+                  color: spectralGlow.withValues(alpha: 0.12),
+                  blurRadius: glowBlur * 1.5,
+                  spreadRadius: glowSpread * 1.5,
+                ),
+              ],
             ),
           ),
         ),
-      ),
+
+        // ── Artwork card ──
+        Hero(
+          tag: 'now-playing-artwork',
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(cardRadius),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 0.5, sigmaY: 0.5),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(cardRadius),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 32,
+                      offset: const Offset(0, 12),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(cardRadius),
+                  child: Artwork(
+                    url: artworkUri?.toString() ?? track.imageUrl,
+                    size: double.infinity,
+                    radius: BorderRadius.zero,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
