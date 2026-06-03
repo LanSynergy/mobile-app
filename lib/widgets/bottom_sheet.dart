@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:cupertino_liquid_glass/cupertino_liquid_glass.dart';
 import 'package:flutter/material.dart';
 
 import '../design_tokens/tokens.dart';
@@ -137,12 +138,12 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                   Positioned.fill(
                     child: BackdropFilter(
                       filter: ImageFilter.blur(
-                        sigmaX: 20,
-                        sigmaY: 20,
+                        sigmaX: 24,
+                        sigmaY: 24,
                         tileMode: TileMode.decal,
                       ),
                       child: Container(
-                        color: AfColors.surfaceCanvas.withValues(alpha: 0.40),
+                        color: Colors.black.withValues(alpha: 0.25),
                       ),
                     ),
                   ),
@@ -162,46 +163,32 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                             : null,
                         child: Padding(
                           padding: EdgeInsets.only(bottom: viewInsets.bottom),
-                          child: ClipRRect(
+                          child: CupertinoLiquidGlass(
                             borderRadius: BorderRadius.vertical(
                               top: Radius.circular(widget.topRadius),
                             ),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: AfColors.surfaceBase.withValues(
-                                  alpha: 0.85,
-                                ),
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(widget.topRadius),
-                                ),
-                                border: const Border(
-                                  top: BorderSide(
-                                    color: AfColors.glassBorderEmphasis,
-                                    width: 0.5,
-                                  ),
-                                ),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const SizedBox(height: AfSpacing.s12),
-                                  Container(
-                                    width: 40,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: AfColors.textTertiary.withValues(
-                                        alpha: 0.4,
-                                      ),
-                                      borderRadius: BorderRadius.circular(2),
+                            blurSigma: 20,
+                            tintOpacity: 0.10,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(height: AfSpacing.s12),
+                                Container(
+                                  width: 40,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: AfColors.textTertiary.withValues(
+                                      alpha: 0.4,
                                     ),
+                                    borderRadius: BorderRadius.circular(2),
                                   ),
-                                  const SizedBox(height: AfSpacing.s12),
-                                  ListTileTheme(
-                                    tileColor: Colors.transparent,
-                                    child: widget.builder(context),
-                                  ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(height: AfSpacing.s12),
+                                ListTileTheme(
+                                  tileColor: Colors.transparent,
+                                  child: widget.builder(context),
+                                ),
+                              ],
                             ),
                           ),
                         ),
