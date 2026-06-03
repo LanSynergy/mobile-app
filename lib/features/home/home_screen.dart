@@ -17,6 +17,7 @@ import '../../widgets/section_header.dart';
 import '../../widgets/stagger_reveal.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/track_context_menu.dart';
+import '../../widgets/skeleton.dart';
 import '../../widgets/skeletons/home_skeleton.dart';
 import '../../widgets/favorite_heart_button.dart';
 import '../../utils/color_parse.dart';
@@ -381,7 +382,16 @@ class _LostMemoriesSection extends ConsumerWidget {
           ]),
         );
       },
-      loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      loading: () => const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+          child: SkeletonBlock(
+            width: double.infinity,
+            height: 180,
+            borderRadius: AfRadii.borderMd,
+          ),
+        ),
+      ),
       error: (e, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
     );
   }
@@ -664,7 +674,19 @@ class _GenresSection extends ConsumerWidget {
                 );
               },
             ),
-            loading: () => const SizedBox.shrink(),
+            loading: () => Row(
+              children: List.generate(
+                3,
+                (_) => const Padding(
+                  padding: EdgeInsets.only(right: AfSpacing.s12),
+                  child: SkeletonBlock(
+                    width: 140,
+                    height: 100,
+                    borderRadius: AfRadii.borderMd,
+                  ),
+                ),
+              ),
+            ),
             error: (e, _) => AsyncErrorView.compact(
               label: 'Couldn\'t load genres',
               error: e,
@@ -692,7 +714,7 @@ class _HeroAlbumCarousel extends ConsumerStatefulWidget {
 
 class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
   int _currentPage = 0;
-  final PageController _pageController = PageController(viewportFraction: 1.0);
+  final PageController _pageController = PageController(viewportFraction: 0.92);
 
   @override
   void dispose() {

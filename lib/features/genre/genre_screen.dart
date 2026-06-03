@@ -9,6 +9,7 @@ import '../../widgets/async_error_view.dart';
 import '../../widgets/opacity_app_bar.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/section_header.dart';
+import '../../widgets/artwork.dart';
 import '../../widgets/tile.dart';
 import '../../widgets/skeletons/genre_skeleton.dart';
 import '../../widgets/stagger_reveal.dart';
@@ -169,8 +170,10 @@ class _GenreScreenState extends ConsumerState<GenreScreen> {
                                       ),
                                       clipBehavior: Clip.antiAlias,
                                       child: a.imageUrl != null
-                                          ? Image.network(
-                                              a.imageUrl!,
+                                          ? Artwork(
+                                              url: a.imageUrl,
+                                              size: 72,
+                                              radius: BorderRadius.circular(36),
                                               fit: BoxFit.cover,
                                             )
                                           : const Icon(

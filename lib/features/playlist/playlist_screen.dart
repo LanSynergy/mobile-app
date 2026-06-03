@@ -182,7 +182,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                   right: AfSpacing.s16,
                                 ),
                                 color: AfColors.semanticError.withValues(
-                                  alpha: 0.15,
+                                  alpha: 0.25,
                                 ),
                                 child: const Icon(
                                   LucideIcons.trash2,
@@ -845,7 +845,10 @@ class _SegmentedControlState extends State<_SegmentedControl> {
         ensureHitTarget: false,
         onTap: onTap == null
             ? null
-            : () => setState(() => _isRightSelected = isRight),
+            : () {
+                setState(() => _isRightSelected = isRight);
+                onTap();
+              },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

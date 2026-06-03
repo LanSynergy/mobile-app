@@ -329,8 +329,8 @@ class _FrostedTopBarState extends ConsumerState<_FrostedTopBar>
                         ),
                         const SizedBox(width: AfSpacing.s8),
                         Expanded(
-                          child: InkWell(
-                            borderRadius: AfRadii.borderSm,
+                          child: PressScale(
+                            ensureHitTarget: false,
                             onTap: track.albumId == null
                                 ? null
                                 : () => context.push('/album/${track.albumId}'),
@@ -657,8 +657,8 @@ class _MetadataOverlay extends ConsumerWidget {
             children: [
               MarqueeText(text: track.title, style: AfTypography.titleMedium),
               const SizedBox(height: AfSpacing.s4),
-              InkWell(
-                borderRadius: AfRadii.borderSm,
+              PressScale(
+                ensureHitTarget: false,
                 onTap: track.artistId == null
                     ? null
                     : () => context.push('/artist/${track.artistId}'),
@@ -670,7 +670,9 @@ class _MetadataOverlay extends ConsumerWidget {
                   child: Text(
                     track.artistName,
                     style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textSecondary,
+                      color: track.artistId == null
+                          ? AfColors.textSecondary
+                          : AfColors.textLink,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1000,26 +1002,35 @@ class _TransportRow extends StatelessWidget {
         ),
         const SizedBox(width: AfSpacing.s12),
         // Previous
-        _TransportButton(
-          icon: const Icon(
-            LucideIcons.skipBack,
-            size: 26,
-            color: AfColors.textPrimary,
+        Semantics(
+          label: 'Previous track',
+          child: _TransportButton(
+            icon: const Icon(
+              LucideIcons.skipBack,
+              size: 26,
+              color: AfColors.textPrimary,
+            ),
+            onTap: onPrev,
           ),
-          onTap: onPrev,
         ),
         const SizedBox(width: AfSpacing.s16),
         // Play / Pause — spectral glow
-        _PlayButton(isPlaying: isPlaying, accent: accent, onTap: onPlayPause),
+        Semantics(
+          label: isPlaying ? 'Pause' : 'Play',
+          child: _PlayButton(isPlaying: isPlaying, accent: accent, onTap: onPlayPause),
+        ),
         const SizedBox(width: AfSpacing.s16),
         // Next
-        _TransportButton(
-          icon: const Icon(
-            LucideIcons.skipForward,
-            size: 26,
-            color: AfColors.textPrimary,
+        Semantics(
+          label: 'Next track',
+          child: _TransportButton(
+            icon: const Icon(
+              LucideIcons.skipForward,
+              size: 26,
+              color: AfColors.textPrimary,
+            ),
+            onTap: onNext,
           ),
-          onTap: onNext,
         ),
         const SizedBox(width: AfSpacing.s12),
         // Repeat
@@ -1083,7 +1094,7 @@ class _TransportButton extends StatelessWidget {
 }
 
 /// Play/pause button with spectral ambient glow.
-/// 60dp circle with [accent] background and a pulsing outer glow shadow
+/// 64dp circle with [accent] background and a pulsing outer glow shadow
 /// driven by the spectral energy color.
 class _PlayButton extends ConsumerWidget {
   const _PlayButton({
@@ -1102,8 +1113,8 @@ class _PlayButton extends ConsumerWidget {
       ensureHitTarget: false,
       onTap: onTap,
       child: Container(
-        width: 60,
-        height: 60,
+        width: 64,
+        height: 64,
         decoration: BoxDecoration(
           color: accent,
           shape: BoxShape.circle,

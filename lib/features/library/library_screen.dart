@@ -17,6 +17,7 @@ import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/skeletons/library_skeleton.dart';
+import '../../widgets/skeleton.dart';
 import '../../utils/color_parse.dart';
 import '../../widgets/bottom_sheet.dart';
 
@@ -95,17 +96,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     ).createShader(bounds),
                     child: Text(
                       'Library',
-                      style: AfTypography.display.copyWith(
-                        color: AfColors.textPrimary,
-                      ),
+                      style: AfTypography.display.copyWith(color: Colors.white),
                     ),
                   ),
                 ),
                 PressScale(
                   onTap: () => _openSearch(context),
                   child: Container(
-                    width: 40,
-                    height: 40,
+                    width: 48,
+                    height: 48,
                     decoration: const BoxDecoration(
                       color: AfColors.surfaceRaised,
                       shape: BoxShape.circle,
@@ -742,7 +741,33 @@ class _RecentlyAddedSection extends ConsumerWidget {
           ],
         );
       },
-      loading: () => const SizedBox(height: 180),
+      loading: () => const SizedBox(
+        height: 180,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+          child: Row(
+            children: [
+              SkeletonBlock(
+                width: 140,
+                height: 180,
+                borderRadius: AfRadii.borderMd,
+              ),
+              SizedBox(width: AfSpacing.s12),
+              SkeletonBlock(
+                width: 140,
+                height: 180,
+                borderRadius: AfRadii.borderMd,
+              ),
+              SizedBox(width: AfSpacing.s12),
+              SkeletonBlock(
+                width: 140,
+                height: 180,
+                borderRadius: AfRadii.borderMd,
+              ),
+            ],
+          ),
+        ),
+      ),
       error: (_, _) => const SizedBox.shrink(),
     );
   }
@@ -816,7 +841,7 @@ class _PillBarState extends State<_PillBar>
                           : curved;
                       final idx = _fromIndex + (_toIndex - _fromIndex) * damped;
                       return Positioned(
-                        left: 4 + segWidth * idx,
+                        left: AfSpacing.s4 + segWidth * idx,
                         top: 4,
                         bottom: 4,
                         width: segWidth - 8,
@@ -952,7 +977,7 @@ class _SongsList extends ConsumerWidget {
           itemBuilder: (context, i) {
             final t = tracks[i];
             return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.only(bottom: AfSpacing.s4),
               child: TrackRow(
                 track: t,
                 isActive: t.id == activeId,

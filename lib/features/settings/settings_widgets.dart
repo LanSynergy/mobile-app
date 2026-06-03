@@ -35,7 +35,7 @@ class SettingsGroup extends StatelessWidget {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: const BoxDecoration(
-        color: AfColors.surfaceBase,
+        color: AfColors.surfaceRaised,
         borderRadius: AfRadii.borderLg,
       ),
       child: Column(
@@ -86,14 +86,13 @@ class SettingsTile extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                // ignore: deprecated_member_use
-                color: iconColor.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: AfColors.surfaceHigh,
+                borderRadius: AfRadii.borderSm,
               ),
-              child: Icon(icon, size: 20, color: iconColor),
+              child: Icon(icon, size: 16, color: iconColor),
             ),
             const SizedBox(width: AfSpacing.s12),
             Expanded(
@@ -104,7 +103,7 @@ class SettingsTile extends StatelessWidget {
                   Text(title, style: AfTypography.bodyMedium),
                   if (subtitle != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 2),
+                      padding: const EdgeInsets.only(top: AfSpacing.s2),
                       child: Text(
                         subtitle!,
                         style: AfTypography.bodySmall.copyWith(
@@ -172,7 +171,7 @@ class SettingsSwitchTile extends StatelessWidget {
                   Text(title, style: AfTypography.bodyMedium),
                   if (subtitle != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 2),
+                      padding: const EdgeInsets.only(top: AfSpacing.s2),
                       child: Text(
                         subtitle!,
                         style: AfTypography.bodySmall.copyWith(

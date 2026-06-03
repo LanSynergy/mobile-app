@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_shaders_ui/flutter_shaders_ui.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -10,6 +11,7 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/log.dart';
 import '../../widgets/press_scale.dart';
+import '../../widgets/stagger_reveal.dart';
 
 /// Landing screen: server vs local mode selection.
 ///
@@ -62,53 +64,61 @@ class WelcomeScreen extends ConsumerWidget {
                 const Spacer(flex: 2),
 
                 // Logo + branding
-                Hero(
-                  tag: 'aetherfin-mark',
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: AfColors.surfaceBase.withValues(alpha: 0.6),
-                      borderRadius: AfRadii.borderRounded,
-                      border: Border.all(
-                        color: AfColors.accentPrimary.withValues(alpha: 0.3),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AfColors.accentPrimary.withValues(alpha: 0.15),
-                          blurRadius: 40,
-                          spreadRadius: 8,
+                StaggerReveal(
+                  children: [
+                    Hero(
+                      tag: 'aetherfin-mark',
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: AfColors.surfaceBase.withValues(alpha: 0.6),
+                          borderRadius: AfRadii.borderRounded,
+                          border: Border.all(
+                            color: AfColors.accentPrimary.withValues(
+                              alpha: 0.3,
+                            ),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AfColors.accentPrimary.withValues(
+                                alpha: 0.15,
+                              ),
+                              blurRadius: 40,
+                              spreadRadius: 8,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: SvgPicture.asset(
-                        'assets/brand/logo-mark.svg',
-                        width: 40,
-                        height: 40,
-                        colorFilter: const ColorFilter.mode(
-                          AfColors.textOnPrimary,
-                          BlendMode.srcIn,
+                        child: Center(
+                          child: SvgPicture.asset(
+                            'assets/brand/logo-mark.svg',
+                            width: 40,
+                            height: 40,
+                            colorFilter: const ColorFilter.mode(
+                              AfColors.textOnPrimary,
+                              BlendMode.srcIn,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: AfSpacing.s24),
+                    const SizedBox(height: AfSpacing.s24),
 
-                // Serif "Aetherfin" title
-                Text(
-                  'Aetherfin',
-                  style: AfTypography.display.copyWith(
-                    color: AfColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: AfSpacing.s12),
-                Text(
-                  'Music. Your way.',
-                  style: AfTypography.bodyLarge.copyWith(
-                    color: AfColors.textSecondary,
-                  ),
+                    // Serif "Aetherfin" title
+                    Text(
+                      'Aetherfin',
+                      style: AfTypography.display.copyWith(
+                        color: AfColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: AfSpacing.s12),
+                    Text(
+                      'Music. Your way.',
+                      style: AfTypography.bodyLarge.copyWith(
+                        color: AfColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
 
                 const Spacer(flex: 3),
@@ -134,6 +144,7 @@ class WelcomeScreen extends ConsumerWidget {
                         title: 'Stream from server',
                         subtitle: 'Jellyfin or Navidrome',
                         onTap: () async {
+                          await HapticFeedback.lightImpact();
                           ref.read(appModeProvider.notifier).state =
                               AppMode.server;
                           await AppModeStore.save(AppMode.server);
@@ -148,6 +159,7 @@ class WelcomeScreen extends ConsumerWidget {
                         title: 'Play local files',
                         subtitle: 'Music on your device',
                         onTap: () async {
+                          await HapticFeedback.lightImpact();
                           ref.read(appModeProvider.notifier).state =
                               AppMode.local;
                           await AppModeStore.save(AppMode.local);
@@ -169,7 +181,7 @@ class WelcomeScreen extends ConsumerWidget {
   }
 }
 
-class _ModeCard extends StatefulWidget {
+class _ModeCard extends StatelessWidget {
   const _ModeCard({
     required this.icon,
     required this.title,
@@ -182,71 +194,51 @@ class _ModeCard extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_ModeCard> createState() => _ModeCardState();
-}
-
-class _ModeCardState extends State<_ModeCard> {
-  bool _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
     return PressScale(
-      onTap: widget.onTap,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: AnimatedContainer(
-          duration: AfDurations.quick,
-          curve: AfCurves.easeStandard,
-          padding: const EdgeInsets.all(AfSpacing.s16),
-          decoration: BoxDecoration(
-            color: AfColors.surfaceRaised,
-            borderRadius: AfRadii.borderLg,
-            border: Border.all(
-              color: _hovered ? AfColors.accentPrimary : AfColors.surfaceHigh,
-              width: 1,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: AfDurations.quick,
+        curve: AfCurves.easeStandard,
+        padding: const EdgeInsets.all(AfSpacing.s16),
+        decoration: BoxDecoration(
+          color: AfColors.surfaceRaised,
+          borderRadius: AfRadii.borderLg,
+          border: Border.all(color: AfColors.surfaceHigh, width: 1),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AfColors.accentPrimary.withValues(alpha: 0.15),
+                borderRadius: AfRadii.borderMd,
+              ),
+              child: Icon(icon, color: AfColors.accentPrimary, size: 24),
             ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AfColors.accentPrimary.withValues(alpha: 0.15),
-                  borderRadius: AfRadii.borderMd,
-                ),
-                child: Icon(
-                  widget.icon,
-                  color: AfColors.accentPrimary,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: AfSpacing.s16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(widget.title, style: AfTypography.titleSmall),
-                    const SizedBox(height: AfSpacing.s2),
-                    Text(
-                      widget.subtitle,
-                      style: AfTypography.bodySmall.copyWith(
-                        color: AfColors.textTertiary,
-                      ),
+            const SizedBox(width: AfSpacing.s16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AfTypography.titleSmall),
+                  const SizedBox(height: AfSpacing.s2),
+                  Text(
+                    subtitle,
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Icon(
-                LucideIcons.chevronRight,
-                color: _hovered
-                    ? AfColors.accentPrimary
-                    : AfColors.textTertiary,
-                size: 20,
-              ),
-            ],
-          ),
+            ),
+            const Icon(
+              LucideIcons.chevronRight,
+              color: AfColors.textTertiary,
+              size: 20,
+            ),
+          ],
         ),
       ),
     );

@@ -13,6 +13,7 @@ import '../../state/providers.dart';
 import '../../utils/log.dart';
 import '../../utils/url.dart';
 import '../../widgets/server_pill.dart';
+import '../../widgets/stagger_reveal.dart';
 
 /// Server sign-in form.
 ///
@@ -244,69 +245,73 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: AfSpacing.s16),
-              if (_isCleartext)
-                _CleartextWarning(baseUrl: widget.server.baseUrl),
-              if (_isCleartext) const SizedBox(height: AfSpacing.s16),
-              Text(
-                _isSubsonic
-                    ? 'Enter your Navidrome username and password.'
-                    : _useToken
-                    ? 'Paste a Jellyfin API token. Find these under '
-                          'Dashboard → API Keys on your server.'
-                    : 'Enter your Jellyfin username and password.',
-                style: AfTypography.bodyMedium.copyWith(
-                  color: AfColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AfSpacing.s24),
-              TextField(
-                controller: _user,
-                autocorrect: false,
-                textCapitalization: TextCapitalization.none,
-                decoration: const InputDecoration(hintText: 'Username'),
-              ),
-              const SizedBox(height: AfSpacing.s12),
-              TextField(
-                controller: _pass,
-                obscureText: true,
-                autocorrect: false,
-                decoration: InputDecoration(
-                  hintText: _useToken ? 'API token' : 'Password',
-                  errorText: _error,
-                ),
-                onSubmitted: (_) => _busy ? null : _submit(),
-              ),
-              const SizedBox(height: AfSpacing.s12),
-              if (!_isSubsonic)
-                Row(
-                  children: [
-                    Switch.adaptive(
-                      value: _useToken,
-                      onChanged: (v) => setState(() => _useToken = v),
-                      activeThumbColor: AfColors.accentPrimary,
+              StaggerReveal(
+                children: [
+                  const SizedBox(height: AfSpacing.s16),
+                  if (_isCleartext)
+                    _CleartextWarning(baseUrl: widget.server.baseUrl),
+                  if (_isCleartext) const SizedBox(height: AfSpacing.s16),
+                  Text(
+                    _isSubsonic
+                        ? 'Enter your Navidrome username and password.'
+                        : _useToken
+                        ? 'Paste a Jellyfin API token. Find these under '
+                              'Dashboard → API Keys on your server.'
+                        : 'Enter your Jellyfin username and password.',
+                    style: AfTypography.bodyMedium.copyWith(
+                      color: AfColors.textSecondary,
                     ),
-                    const SizedBox(width: AfSpacing.s8),
-                    Expanded(
-                      child: Text(
-                        'Use API token instead',
-                        style: AfTypography.bodyMedium,
-                      ),
+                  ),
+                  const SizedBox(height: AfSpacing.s24),
+                  TextField(
+                    controller: _user,
+                    autocorrect: false,
+                    textCapitalization: TextCapitalization.none,
+                    decoration: const InputDecoration(hintText: 'Username'),
+                  ),
+                  const SizedBox(height: AfSpacing.s12),
+                  TextField(
+                    controller: _pass,
+                    obscureText: true,
+                    autocorrect: false,
+                    decoration: InputDecoration(
+                      hintText: _useToken ? 'API token' : 'Password',
+                      errorText: _error,
                     ),
-                  ],
-                ),
-              const SizedBox(height: AfSpacing.s32),
-              ElevatedButton(
-                onPressed: _busy ? null : _submit,
-                child: _busy
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
-                      )
-                    : const Text('Sign in'),
+                    onSubmitted: (_) => _busy ? null : _submit(),
+                  ),
+                  const SizedBox(height: AfSpacing.s12),
+                  if (!_isSubsonic)
+                    Row(
+                      children: [
+                        Switch.adaptive(
+                          value: _useToken,
+                          onChanged: (v) => setState(() => _useToken = v),
+                          activeThumbColor: AfColors.accentPrimary,
+                        ),
+                        const SizedBox(width: AfSpacing.s8),
+                        Expanded(
+                          child: Text(
+                            'Use API token instead',
+                            style: AfTypography.bodyMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: AfSpacing.s32),
+                  ElevatedButton(
+                    onPressed: _busy ? null : _submit,
+                    child: _busy
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                          )
+                        : const Text('Sign in'),
+                  ),
+                  const SizedBox(height: AfSpacing.s24),
+                ],
               ),
-              const SizedBox(height: AfSpacing.s24),
             ],
           ),
         ),
@@ -348,7 +353,7 @@ class _CleartextWarning extends StatelessWidget {
               'This server uses plain HTTP. Your username, password, '
               'and access token will be sent unencrypted to $baseUrl. '
               'Only sign in on a trusted network.',
-              style: AfTypography.caption.copyWith(color: AfColors.textPrimary),
+              style: AfTypography.bodySmall.copyWith(color: AfColors.textPrimary),
             ),
           ),
         ],

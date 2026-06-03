@@ -62,110 +62,113 @@ class ProfileScreen extends ConsumerWidget {
     final lastFmUser = ref.watch(lastfmUsernameProvider);
     final isLastFmConnected = lastFmSession.isNotEmpty && lastFmUser.isNotEmpty;
 
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-        children: [
-          const SizedBox(height: AfSpacing.s24),
-          Center(
-            child: Column(
-              children: [
-                _AvatarImagePicker(
-                  name: name,
-                  isUploading: profilePhoto.isUploading,
-                  localPath: profilePhoto.localPath,
-                  networkUrl: profilePhoto.networkUrl,
-                  authHeaders: ref.watch(musicBackendProvider)?.authHeaders,
-                  onPickPhoto: (source) async {
-                    final picker = ImagePicker();
-                    try {
-                      final image = await picker.pickImage(
-                        source: source,
-                        maxWidth: 512,
-                        maxHeight: 512,
-                        imageQuality: 85,
-                      );
-                      if (image != null) {
-                        final bytes = await image.readAsBytes();
-                        final mimeType = image.mimeType ?? 'image/jpeg';
+    return Scaffold(
+      backgroundColor: AfColors.surfaceCanvas,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+          children: [
+            const SizedBox(height: AfSpacing.s24),
+            Center(
+              child: Column(
+                children: [
+                  _AvatarImagePicker(
+                    name: name,
+                    isUploading: profilePhoto.isUploading,
+                    localPath: profilePhoto.localPath,
+                    networkUrl: profilePhoto.networkUrl,
+                    authHeaders: ref.watch(musicBackendProvider)?.authHeaders,
+                    onPickPhoto: (source) async {
+                      final picker = ImagePicker();
+                      try {
+                        final image = await picker.pickImage(
+                          source: source,
+                          maxWidth: 512,
+                          maxHeight: 512,
+                          imageQuality: 85,
+                        );
+                        if (image != null) {
+                          final bytes = await image.readAsBytes();
+                          final mimeType = image.mimeType ?? 'image/jpeg';
+                          await ref
+                              .read(profilePhotoProvider.notifier)
+                              .updatePhoto(bytes, mimeType);
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to update profile photo: $e'),
+                              backgroundColor: AfColors.semanticError,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    onRemovePhoto: () async {
+                      try {
                         await ref
                             .read(profilePhotoProvider.notifier)
-                            .updatePhoto(bytes, mimeType);
+                            .removePhoto();
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to remove profile photo: $e'),
+                              backgroundColor: AfColors.semanticError,
+                            ),
+                          );
+                        }
                       }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Failed to update profile photo: $e'),
-                            backgroundColor: AfColors.semanticError,
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  onRemovePhoto: () async {
-                    try {
-                      await ref
-                          .read(profilePhotoProvider.notifier)
-                          .removePhoto();
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Failed to remove profile photo: $e'),
-                            backgroundColor: AfColors.semanticError,
-                          ),
-                        );
-                      }
-                    }
-                  },
-                ),
-                const SizedBox(height: AfSpacing.s12),
-                Text(name, style: AfTypography.titleLarge),
-                const SizedBox(height: AfSpacing.s4),
-                Text(
-                  serverName,
-                  style: AfTypography.bodySmall.copyWith(
-                    color: AfColors.textTertiary,
+                    },
                   ),
-                ),
+                  const SizedBox(height: AfSpacing.s12),
+                  Text(name, style: AfTypography.titleLarge),
+                  const SizedBox(height: AfSpacing.s4),
+                  Text(
+                    serverName,
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AfSpacing.s24),
+            Row(
+              children: [
+                _StatCard(label: 'Tracks', value: fmtCount(tracksAsync)),
+                const SizedBox(width: AfSpacing.s12),
+                _StatCard(label: 'Albums', value: fmtCount(albumsAsync)),
               ],
             ),
-          ),
-          const SizedBox(height: AfSpacing.s24),
-          Row(
-            children: [
-              _StatCard(label: 'Tracks', value: fmtCount(tracksAsync)),
-              const SizedBox(width: AfSpacing.s12),
-              _StatCard(label: 'Albums', value: fmtCount(albumsAsync)),
-            ],
-          ),
-          const SizedBox(height: AfSpacing.s24),
-          const SectionHeader(title: 'Pinned', uppercase: true),
-          const SizedBox(height: AfSpacing.s8),
-          _PinnedRow(albums: pinned),
-          const SizedBox(height: AfSpacing.s24),
+            const SizedBox(height: AfSpacing.s24),
+            const SectionHeader(title: 'Pinned', uppercase: true),
+            const SizedBox(height: AfSpacing.s8),
+            _PinnedRow(albums: pinned),
+            const SizedBox(height: AfSpacing.s24),
 
-          // ── Listening Stats Dashboard ──────────────────────────────────────
-          const SectionHeader(title: 'Listening Stats', uppercase: true),
-          const SizedBox(height: AfSpacing.s12),
-          if (!isLastFmConnected) _LastFmConnectionCTA(),
-          _StatsDashboard(isLastFmConnected: isLastFmConnected),
-          const SizedBox(height: AfSpacing.s24),
+            // ── Listening Stats Dashboard ──────────────────────────────────────
+            const SectionHeader(title: 'Listening Stats', uppercase: true),
+            const SizedBox(height: AfSpacing.s12),
+            if (!isLastFmConnected) _LastFmConnectionCTA(),
+            _StatsDashboard(isLastFmConnected: isLastFmConnected),
+            const SizedBox(height: AfSpacing.s24),
 
-          const SectionHeader(title: 'Account', uppercase: true),
-          const SizedBox(height: AfSpacing.s8),
-          PressScale(
-            onTap: () => context.push('/settings'),
-            child: const ListTile(
-              leading: Icon(LucideIcons.settings),
-              title: Text('Settings'),
-              tileColor: AfColors.surfaceBase,
-              shape: RoundedRectangleBorder(borderRadius: AfRadii.borderMd),
+            const SectionHeader(title: 'Account', uppercase: true),
+            const SizedBox(height: AfSpacing.s8),
+            PressScale(
+              onTap: () => context.push('/settings'),
+              child: const ListTile(
+                leading: Icon(LucideIcons.settings),
+                title: Text('Settings'),
+                tileColor: AfColors.surfaceBase,
+                shape: RoundedRectangleBorder(borderRadius: AfRadii.borderMd),
+              ),
             ),
-          ),
-          const SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
-        ],
+            const SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
+          ],
+        ),
       ),
     );
   }
@@ -671,7 +674,7 @@ class _PeriodButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final active = value == activeValue;
-    return GestureDetector(
+    return PressScale(
       onTap: () => ref.read(statsPeriodProvider.notifier).state = value,
       child: Container(
         padding: const EdgeInsets.symmetric(
@@ -708,7 +711,7 @@ class _TabButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final active = value == activeValue;
     return Expanded(
-      child: GestureDetector(
+      child: PressScale(
         onTap: () => ref.read(statsTabProvider.notifier).state = value,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),

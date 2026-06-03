@@ -192,9 +192,9 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
             hasKnownTotal
                 ? 'Scanning your music folder...'
                 : 'Preparing to scan...',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AfColors.textPrimary),
+            style: AfTypography.bodyMedium.copyWith(
+              color: AfColors.textPrimary,
+            ),
           ),
           const SizedBox(height: AfSpacing.s12),
           LinearProgressIndicator(
@@ -204,9 +204,9 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
             const SizedBox(height: AfSpacing.s8),
             Text(
               '$_scannedCount / $_totalCount files',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AfColors.textSecondary),
+              style: AfTypography.bodySmall.copyWith(
+                color: AfColors.textSecondary,
+              ),
             ),
           ],
         ],

@@ -512,12 +512,11 @@ class _AlbumWikiPanelState extends State<_AlbumWikiPanel> {
         children: [
           Text('About this Album', style: AfTypography.titleSmall),
           if (stats.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AfSpacing.s4),
             Text(
               stats.join(' · '),
               style: AfTypography.bodySmall.copyWith(
                 color: AfColors.textTertiary,
-                fontSize: 11,
               ),
             ),
           ],
@@ -531,7 +530,7 @@ class _AlbumWikiPanelState extends State<_AlbumWikiPanel> {
               height: 1.4,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AfSpacing.s8),
           GestureDetector(
             onTap: () => setState(() => _expanded = !_expanded),
             child: Text(

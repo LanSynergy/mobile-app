@@ -279,7 +279,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                             icon: const Icon(LucideIcons.upload, size: 18),
                             label: const Text('Load LRC File'),
                             style: FilledButton.styleFrom(
-                              backgroundColor: AfColors.accentSecondary,
+                              backgroundColor: AfColors.accentPrimary,
                             ),
                           ),
                         ],
@@ -294,64 +294,82 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
               // navigation. Detect once and use it to disable the
               // gesture entirely for unsynced payloads.
               final isSynced = lrc.lines.any((l) => l.start > Duration.zero);
-              return ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AfSpacing.gutterGenerous,
-                  vertical: AfSpacing.s24,
-                ),
-                itemCount: lrc.lines.length,
-                itemBuilder: (context, i) {
-                  final isActive = i == active;
-                  final line = lrc.lines[i];
-                  return InkWell(
-                    borderRadius: AfRadii.borderSm,
-                    onTap: isSynced
-                        ? () {
-                            unawaited(HapticFeedback.selectionClick());
-                            ref.read(playerServiceProvider).seek(line.start);
-                          }
-                        : null,
-                    child: AnimatedContainer(
-                      duration: AfDurations.quick,
-                      curve: AfCurves.easeOut,
-                      // Fixed vertical padding matches _rowHeight assumption.
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: AnimatedContainer(
-                        duration: AfDurations.quick,
-                        curve: AfCurves.easeOut,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isActive ? AfSpacing.s8 : 0,
-                          vertical: 0,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isActive
-                              ? spectral.energy.withValues(alpha: 0.08)
-                              : Colors.transparent,
-                          borderRadius: AfRadii.borderSm,
-                        ),
-                        child: AnimatedScale(
-                          scale: isActive ? 1.04 : 1.0,
-                          duration: AfDurations.quick,
-                          curve: AfCurves.easeOut,
-                          alignment: Alignment.centerLeft,
-                          child: AnimatedDefaultTextStyle(
-                            duration: AfDurations.quick,
-                            style: AfTypography.titleMedium.copyWith(
-                              color: isActive
-                                  ? spectral.energy
-                                  : AfColors.textSecondary,
-                              fontWeight: isActive
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                            ),
-                            child: Text(line.text),
-                          ),
+              return Column(
+                children: [
+                  if (isSynced)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.gutterGenerous,
+                      ).copyWith(top: AfSpacing.s8),
+                      child: Text(
+                        'Tap a line to seek',
+                        style: AfTypography.caption.copyWith(
+                          color: AfColors.textTertiary,
                         ),
                       ),
                     ),
-                  );
-                },
+                  Expanded(
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.gutterGenerous,
+                        vertical: AfSpacing.s24,
+                      ),
+                      itemCount: lrc.lines.length,
+                      itemBuilder: (context, i) {
+                        final isActive = i == active;
+                        final line = lrc.lines[i];
+                        return InkWell(
+                          borderRadius: AfRadii.borderSm,
+                          onTap: isSynced
+                              ? () {
+                                  unawaited(HapticFeedback.selectionClick());
+                                  ref.read(playerServiceProvider).seek(line.start);
+                                }
+                              : null,
+                          child: AnimatedContainer(
+                            duration: AfDurations.quick,
+                            curve: AfCurves.easeOut,
+                            // Fixed vertical padding matches _rowHeight assumption.
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: AnimatedContainer(
+                              duration: AfDurations.quick,
+                              curve: AfCurves.easeOut,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isActive ? AfSpacing.s8 : 0,
+                                vertical: 0,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? spectral.energy.withValues(alpha: 0.08)
+                                    : Colors.transparent,
+                                borderRadius: AfRadii.borderSm,
+                              ),
+                              child: AnimatedScale(
+                                scale: isActive ? 1.04 : 1.0,
+                                duration: AfDurations.quick,
+                                curve: AfCurves.easeOut,
+                                alignment: Alignment.centerLeft,
+                                child: AnimatedDefaultTextStyle(
+                                  duration: AfDurations.quick,
+                                  style: AfTypography.titleMedium.copyWith(
+                                    color: isActive
+                                        ? spectral.energy
+                                        : AfColors.textSecondary,
+                                    fontWeight: isActive
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                  ),
+                                  child: Text(line.text),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               );
             },
           ),

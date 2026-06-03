@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
@@ -127,9 +128,10 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
     final isActive = activeTimer != null;
 
     return Scaffold(
+      backgroundColor: AfColors.surfaceCanvas,
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
+          icon: const Icon(LucideIcons.x),
           onPressed: () => Navigator.maybePop(context),
         ),
         title: Text('Sleep timer', style: AfTypography.titleMedium),
@@ -159,7 +161,7 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
                   child: Row(
                     children: [
                       const Icon(
-                        Icons.bedtime_rounded,
+                        LucideIcons.moon,
                         color: AfColors.accentPrimary,
                         size: 20,
                       ),
@@ -220,6 +222,17 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
 
               ElevatedButton(
                 onPressed: _selectedMinutes == null ? null : _setTimer,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AfColors.accentPrimary,
+                  foregroundColor: AfColors.textOnPrimary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AfSpacing.s24,
+                    vertical: AfSpacing.s12,
+                  ),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AfRadii.borderPill,
+                  ),
+                ),
                 child: Text(
                   _selectedMinutes == null ? 'Pick a time' : 'Set timer',
                 ),

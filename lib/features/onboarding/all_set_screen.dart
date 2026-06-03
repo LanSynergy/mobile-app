@@ -76,10 +76,13 @@ class _AllSetScreenState extends ConsumerState<AllSetScreen>
                           color: AfColors.accentPrimary.withValues(alpha: 0.3),
                         ),
                       ),
-                      child: const Icon(
-                        LucideIcons.check,
-                        size: 40,
-                        color: AfColors.accentPrimary,
+                      child: Semantics(
+                        label: 'Setup complete',
+                        child: const Icon(
+                          LucideIcons.check,
+                          size: 40,
+                          color: AfColors.accentPrimary,
+                        ),
                       ),
                     ),
                   ),

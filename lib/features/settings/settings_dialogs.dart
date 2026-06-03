@@ -720,20 +720,26 @@ void showLastFmApiConfigDialog(BuildContext context, WidgetRef ref) {
           ),
         ),
         const SizedBox(height: AfSpacing.s16),
-        TextField(
-          controller: apiKeyController,
-          decoration: const InputDecoration(
-            labelText: 'API Key',
-            border: OutlineInputBorder(),
-          ),
-          style: AfTypography.bodyMedium,
+              TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Last.fm Username (optional)',
+                  hintText: 'Your Last.fm username',
+                  border: OutlineInputBorder(
+                    borderRadius: AfRadii.borderSm,
+                    borderSide: BorderSide(color: AfColors.surfaceHigh),
+                  ),
+                ),
+                style: AfTypography.bodyMedium,
         ),
         const SizedBox(height: AfSpacing.s12),
         TextField(
           controller: apiSecretController,
           decoration: const InputDecoration(
             labelText: 'API Secret',
-            border: OutlineInputBorder(),
+            border: OutlineInputBorder(
+              borderRadius: AfRadii.borderSm,
+              borderSide: BorderSide(color: AfColors.surfaceHigh),
+            ),
           ),
           style: AfTypography.bodyMedium,
         ),
@@ -956,7 +962,10 @@ class _LastFmBrowserAuthDialogState
                 decoration: const InputDecoration(
                   labelText: 'Last.fm Username (optional)',
                   hintText: 'Your Last.fm username',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: AfRadii.borderSm,
+                    borderSide: BorderSide(color: AfColors.surfaceHigh),
+                  ),
                 ),
                 style: AfTypography.bodyMedium,
                 autocorrect: false,

@@ -15,6 +15,7 @@ import '../../state/providers.dart';
 import '../../utils/log.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/stagger_reveal.dart';
 
 /// LAN/URL server discovery screen.
 ///
@@ -215,10 +216,15 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
               if (_scanning && servers.isEmpty) const _ScanSkeleton(),
 
               // Discovered server cards
-              for (final s in servers) ...[
-                _ServerCard(server: s, onTap: () => _continueWith(s)),
-                const SizedBox(height: AfSpacing.s12),
-              ],
+              if (servers.isNotEmpty)
+                StaggerReveal(
+                  children: [
+                    for (final s in servers) ...[
+                      _ServerCard(server: s, onTap: () => _continueWith(s)),
+                      const SizedBox(height: AfSpacing.s12),
+                    ],
+                  ],
+                ),
 
               if (!_scanning && servers.isEmpty)
                 Text(
@@ -230,7 +236,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
                   ),
                 ),
               const Spacer(),
-              const Divider(color: AfColors.surfaceLow),
+              const Divider(color: AfColors.surfaceHigh),
               const SizedBox(height: AfSpacing.s16),
               Text(
                 'Or enter manually',
@@ -332,8 +338,8 @@ class _ServerCard extends StatelessWidget {
           children: [
             // Status indicator
             Container(
-              width: 40,
-              height: 40,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: AfColors.accentPrimary.withValues(alpha: 0.15),
                 borderRadius: AfRadii.borderMd,
@@ -341,7 +347,7 @@ class _ServerCard extends StatelessWidget {
               child: const Icon(
                 LucideIcons.server,
                 color: AfColors.accentPrimary,
-                size: 20,
+                size: 24,
               ),
             ),
             const SizedBox(width: AfSpacing.s16),

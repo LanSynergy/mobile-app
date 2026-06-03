@@ -135,7 +135,7 @@ class _IosTile extends StatelessWidget {
                     ),
                     if (subtitle != null)
                       Padding(
-                        padding: const EdgeInsets.only(top: 2),
+                        padding: const EdgeInsets.only(top: AfSpacing.s2),
                         child: Text(
                           subtitle!,
                           style: AfTypography.bodySmall.copyWith(
@@ -200,7 +200,7 @@ class _IosSwitch extends StatelessWidget {
                     Text(title, style: AfTypography.bodyMedium),
                     if (subtitle != null)
                       Padding(
-                        padding: const EdgeInsets.only(top: 2),
+                        padding: const EdgeInsets.only(top: AfSpacing.s2),
                         child: Text(
                           subtitle!,
                           style: AfTypography.bodySmall.copyWith(

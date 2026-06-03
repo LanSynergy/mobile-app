@@ -75,9 +75,8 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         if (activeIdx < 0) return;
         // Each item is ~48dp (compact row 44dp + 4dp vertical padding).
         const itemExtent = 48.0;
-        // No extra top padding on the list — SafeArea handles the
-        // status bar inset and the AppBar floats above body content.
-        const topPadding = 0;
+        // Account for list top padding.
+        const topPadding = AfSpacing.s16;
         final targetOffset =
             topPadding +
             (activeIdx * itemExtent) -
@@ -176,6 +175,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                     child: ReorderableListView.builder(
                       scrollController: _scrollController,
                       padding: const EdgeInsets.only(
+                        top: AfSpacing.s16,
                         bottom: AfSpacing.s8,
                         left: AfSpacing.s16,
                         right: AfSpacing.s16,
@@ -220,7 +220,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                               horizontal: AfSpacing.s24,
                             ),
                             color: AfColors.semanticError.withValues(
-                              alpha: 0.18,
+                              alpha: 0.25,
                             ),
                             child: const Icon(
                               LucideIcons.trash2,
@@ -278,7 +278,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                               );
                           },
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            padding: const EdgeInsets.symmetric(vertical: AfSpacing.s4),
                             child: Container(
                               decoration: active
                                   ? const BoxDecoration(
@@ -414,7 +414,10 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
               textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(
                 hintText: 'Playlist name',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: AfRadii.borderSm,
+                  borderSide: BorderSide(color: AfColors.surfaceHigh),
+                ),
               ),
               onSubmitted: (v) => dismiss(v.trim()),
             ),

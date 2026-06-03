@@ -267,7 +267,7 @@ class _PlaylistCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AfSpacing.s2),
                     Text(
                       subtitle,
                       style: AfTypography.bodySmall.copyWith(

@@ -9,7 +9,6 @@ import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
-import '../../utils/display_error.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/tile.dart';
@@ -17,7 +16,9 @@ import '../../widgets/track_context_menu.dart';
 import '../../widgets/track_row.dart';
 import '../../widgets/af_scrollbar.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/async_error_view.dart';
 import '../../widgets/skeletons/search_skeleton.dart';
+import '../../widgets/skeleton.dart';
 import '../../utils/color_parse.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,7 +146,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               child: Text(
                 'Search',
                 style: AfTypography.display.copyWith(
-                  color: AfColors.textPrimary,
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -154,7 +155,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
             child: TextField(
               controller: _controller,
-              autofocus: false,
+              autofocus: true,
               textInputAction: TextInputAction.search,
               decoration: const InputDecoration(
                 hintText: 'Artists, albums, tracks…',
@@ -222,7 +223,7 @@ class _SearchFilterChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 40,
+      height: 44,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
@@ -274,18 +275,10 @@ class _LiveSearchResults extends ConsumerWidget {
     final async = ref.watch(searchProvider(query));
     return async.when(
       loading: () => const SearchSkeleton(),
-      error: (e, _) => Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AfSpacing.s16,
-          vertical: AfSpacing.s24,
-        ),
-        child: Text(
-          // displayError redacts the api_key / `t` / `s` / `u` query
-          // params Dio includes in `DioException.toString()` — those
-          // would otherwise land on screen verbatim on a search failure.
-          displayError(e, prefix: 'Search failed'),
-          style: AfTypography.bodySmall.copyWith(color: AfColors.semanticError),
-        ),
+      error: (e, _) => AsyncErrorView(
+        label: 'Search failed',
+        error: e,
+        onRetry: () => ref.invalidate(searchProvider(query)),
       ),
       data: (res) {
         // Scope the buckets to the active filter so the list view
@@ -472,7 +465,7 @@ class _IdleFilterPills extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 40,
+      height: 44,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _IdleFilter.values.length,
@@ -520,7 +513,39 @@ class _ArtistIdleGrid extends ConsumerWidget {
     final provider = isLocal ? localArtistsProvider : allArtistsProvider;
     final async = ref.watch(provider);
     return async.when(
-      loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      loading: () => SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+        sliver: SliverGrid.builder(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisExtent: 180,
+            crossAxisSpacing: AfSpacing.s12,
+            mainAxisSpacing: AfSpacing.s12,
+          ),
+          itemCount: 6,
+          itemBuilder: (_, _) => const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: SkeletonBlock(
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+              ),
+              SizedBox(height: AfSpacing.s8),
+              FractionallySizedBox(
+                widthFactor: 0.7,
+                child: SkeletonBar(height: 14),
+              ),
+              SizedBox(height: AfSpacing.s4),
+              FractionallySizedBox(
+                widthFactor: 0.5,
+                child: SkeletonBar(height: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
       error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
       data: (list) => SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
@@ -558,7 +583,23 @@ class _GenreIdleGrid extends ConsumerWidget {
     final provider = isLocal ? localGenresProvider : allGenresProvider;
     final async = ref.watch(provider);
     return async.when(
-      loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      loading: () => SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+        sliver: SliverGrid.builder(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisExtent: 96,
+            crossAxisSpacing: AfSpacing.s12,
+            mainAxisSpacing: AfSpacing.s12,
+          ),
+          itemCount: 4,
+          itemBuilder: (_, _) => const SkeletonBlock(
+            width: double.infinity,
+            height: 96,
+            borderRadius: AfRadii.borderMd,
+          ),
+        ),
+      ),
       error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
       data: (list) => SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
@@ -573,23 +614,14 @@ class _GenreIdleGrid extends ConsumerWidget {
           itemBuilder: (context, i) {
             final g = list[i];
             final tint = _parseTint(g.tint);
-            return GestureDetector(
+            return GenreTile(
+              name: g.name,
+              tint: tint,
+              imageUrl: g.imageUrl,
+              width: double.infinity,
+              height: double.infinity,
               onTap: () =>
                   context.push('/genre/${Uri.encodeComponent(g.name)}'),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: tint,
-                  borderRadius: AfRadii.borderMd,
-                ),
-                padding: const EdgeInsets.all(AfSpacing.s12),
-                alignment: Alignment.bottomLeft,
-                child: Text(
-                  g.name,
-                  style: AfTypography.titleSmall.copyWith(
-                    color: AfColors.textOnPrimary,
-                  ),
-                ),
-              ),
             );
           },
         ),
@@ -607,7 +639,39 @@ class _AlbumIdleGrid extends ConsumerWidget {
     final provider = isLocal ? localAlbumsProvider : allAlbumsProvider;
     final async = ref.watch(provider);
     return async.when(
-      loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      loading: () => SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+        sliver: SliverGrid.builder(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisExtent: 220,
+            crossAxisSpacing: AfSpacing.s16,
+            mainAxisSpacing: AfSpacing.s16,
+          ),
+          itemCount: 4,
+          itemBuilder: (_, _) => const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: SkeletonBlock(
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+              ),
+              SizedBox(height: AfSpacing.s8),
+              FractionallySizedBox(
+                widthFactor: 0.7,
+                child: SkeletonBar(height: 14),
+              ),
+              SizedBox(height: AfSpacing.s4),
+              FractionallySizedBox(
+                widthFactor: 0.5,
+                child: SkeletonBar(height: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
       error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
       data: (list) => SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),

@@ -279,7 +279,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                                       Artwork(
                                         url: a.imageUrl,
                                         size: 152,
-                                        radius: AfRadii.borderMd,
+                                        radius: BorderRadius.zero,
                                       ),
                                       const SizedBox(height: AfSpacing.s8),
                                       Text(
@@ -416,7 +416,6 @@ class _ActionRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          flex: 3,
           child: ElevatedButton.icon(
             onPressed: onPlay,
             icon: const Icon(
@@ -430,7 +429,6 @@ class _ActionRow extends StatelessWidget {
         if (onRadio != null) ...[
           const SizedBox(width: AfSpacing.s12),
           Expanded(
-            flex: 2,
             child: OutlinedButton.icon(
               onPressed: onRadio,
               style: OutlinedButton.styleFrom(
@@ -507,7 +505,7 @@ class _ArtistBiographyPanelState extends State<_ArtistBiographyPanel> {
             const SizedBox(height: AfSpacing.s4),
             Text(
               stats.join(' · '),
-              style: AfTypography.caption.copyWith(
+              style: AfTypography.bodySmall.copyWith(
                 color: AfColors.textTertiary,
               ),
             ),
