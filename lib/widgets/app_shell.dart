@@ -110,10 +110,10 @@ class AppShell extends ConsumerWidget {
         fit: StackFit.expand,
         children: [
           // Full-bleed background — GPU shader (zero banding)
-          const Positioned.fill(
+          Positioned.fill(
             child: WaveBackground(
-              color1: AfColors.surfaceCanvas,
-              color2: AfColors.surfaceLow,
+              color1: spectral.shadow,
+              color2: AfColors.surfaceCanvas,
               amplitude: 0.15,
               speed: 0.3,
             ),
