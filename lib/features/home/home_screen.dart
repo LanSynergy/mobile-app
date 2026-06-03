@@ -39,9 +39,12 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final ScrollController _ytScrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
+    _ytScrollController.addListener(_onYtScroll);
     // Request battery-optimization exemption on first visit.
     // Required for reliable auto-advance when the screen is off —
     // without this, Doze can freeze the Dart isolate between tracks
@@ -49,6 +52,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _requestBatteryExemptionIfNeeded();
     });
+  }
+
+  @override
+  void dispose() {
+    _ytScrollController.dispose();
+    super.dispose();
+  }
+
+  void _onYtScroll() {
+    if (_ytScrollController.position.pixels >=
+        _ytScrollController.position.maxScrollExtent - 200) {
+      ref.read(youtubeHomeProvider.notifier).loadMore();
+    }
   }
 
   Future<void> _requestBatteryExemptionIfNeeded() async {
@@ -104,6 +120,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           color: AfColors.indigo300,
           backgroundColor: AfColors.surfaceBase,
           child: CustomScrollView(
+            controller: _ytScrollController,
             physics: const AlwaysScrollableScrollPhysics(
               parent: ClampingScrollPhysics(),
             ),

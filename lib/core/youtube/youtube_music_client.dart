@@ -61,12 +61,12 @@ class YouTubeMusicClient implements MusicBackend {
   }
 
   /// Fetches home page content via InnerTube browse API.
-  Future<YouTubeHomeContent> browseHome({String? params}) async {
+  Future<YouTubeHomeContent> browseHome({String? params, String? continuation}) async {
     try {
       final region = _countryCode;
-      afLog('aetherfin:youtube', 'browseHome: region=$region, params=$params');
+      afLog('aetherfin:youtube', 'browseHome: region=$region, params=$params, continuation=$continuation');
 
-      final response = await _innertube.browseHome(params: params);
+      final response = await _innertube.browseHome(params: params, continuation: continuation);
       print('[YT-HOME] browseHome response: ${response == null ? "null" : "${response.sections.length} sections"}');
       if (response == null || response.sections.isEmpty) {
         print('[YT-HOME] empty response, falling back to search');
@@ -89,6 +89,7 @@ class YouTubeMusicClient implements MusicBackend {
         sections: sections,
         chips: response.chips,
         region: region,
+        continuation: response.continuation,
       );
     } catch (e) {
       afLog('aetherfin:error', 'browseHome failed', error: e);

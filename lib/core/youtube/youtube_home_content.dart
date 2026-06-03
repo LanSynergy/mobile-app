@@ -7,6 +7,7 @@ class YouTubeHomeContent {
     required this.sections,
     required this.chips,
     required this.region,
+    this.continuation,
   });
 
   factory YouTubeHomeContent.empty() => const YouTubeHomeContent(
@@ -23,6 +24,9 @@ class YouTubeHomeContent {
 
   /// Region code (e.g. "ID", "MY", "US").
   final String region;
+
+  /// Continuation token for loading more sections.
+  final String? continuation;
 
   /// Flat list of all tracks across sections.
   List<AfTrack> get trendingTracks => sections

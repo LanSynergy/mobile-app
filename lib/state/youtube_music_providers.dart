@@ -43,13 +43,39 @@ final youtubeHomeParamsProvider = StateProvider.autoDispose<String?>((ref) => nu
 final youtubeSelectedChipProvider = StateProvider.autoDispose<InnerTubeChip?>((ref) => null);
 
 /// YouTube Music home page content (trending, popular, etc.).
-final youtubeHomeProvider = FutureProvider.autoDispose<YouTubeHomeContent>(
-  (ref) async {
+class YouTubeHomeNotifier extends AutoDisposeAsyncNotifier<YouTubeHomeContent> {
+  @override
+  Future<YouTubeHomeContent> build() async {
     final backend = ref.watch(musicBackendProvider);
     if (backend is! YouTubeMusicClient) {
       return YouTubeHomeContent.empty();
     }
     final params = ref.watch(youtubeHomeParamsProvider);
     return backend.browseHome(params: params);
-  },
+  }
+
+  Future<void> loadMore() async {
+    final current = state.valueOrNull;
+    if (current == null || current.continuation == null) return;
+
+    final backend = ref.read(musicBackendProvider);
+    if (backend is! YouTubeMusicClient) return;
+
+    try {
+      final nextContent = await backend.browseHome(continuation: current.continuation);
+      state = AsyncValue.data(YouTubeHomeContent(
+        sections: [...current.sections, ...nextContent.sections],
+        chips: current.chips,
+        region: current.region,
+        continuation: nextContent.continuation,
+      ));
+    } catch (e) {
+      print('[YT-HOME] loadMore failed: $e');
+    }
+  }
+}
+
+final youtubeHomeProvider =
+    AsyncNotifierProvider.autoDispose<YouTubeHomeNotifier, YouTubeHomeContent>(
+  YouTubeHomeNotifier.new,
 );
