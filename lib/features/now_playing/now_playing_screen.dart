@@ -52,11 +52,24 @@ import 'more_menu.dart';
 //   └── More menu (vertical dots)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class NowPlayingScreen extends ConsumerWidget {
+class NowPlayingScreen extends ConsumerStatefulWidget {
   const NowPlayingScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NowPlayingScreen> createState() => _NowPlayingScreenState();
+}
+
+class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
+  final _expandedNotifier = ValueNotifier<bool>(false);
+
+  @override
+  void dispose() {
+    _expandedNotifier.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final track = ref.watch(currentTrackProvider);
 
     if (track == null) {
@@ -70,8 +83,17 @@ class NowPlayingScreen extends ConsumerWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // ── Full-bleed artwork ──
-            ReactiveArtwork(track: track),
+            // ── Full-bleed artwork (swipe up to expand queue) ──
+            Positioned.fill(
+              child: GestureDetector(
+                onVerticalDragEnd: (details) {
+                  if ((details.primaryVelocity ?? 0) < -200) {
+                    _expandedNotifier.value = true;
+                  }
+                },
+                child: ReactiveArtwork(track: track),
+              ),
+            ),
 
             // ── Top bar ──
             Positioned(
@@ -91,7 +113,10 @@ class NowPlayingScreen extends ConsumerWidget {
               bottom: 0,
               child: SafeArea(
                 top: false,
-                child: _BottomContent(track: track),
+                child: _BottomContent(
+                  track: track,
+                  expandedNotifier: _expandedNotifier,
+                ),
               ),
             ),
           ],
@@ -258,8 +283,9 @@ class _FrostedTopBar extends ConsumerWidget {
 /// Houses all bottom-aligned content: metadata, scrubber, transport controls,
 /// and an expandable queue panel. Swipe up on non-scrubber area to reveal queue.
 class _BottomContent extends ConsumerStatefulWidget {
-  const _BottomContent({required this.track});
+  const _BottomContent({required this.track, required this.expandedNotifier});
   final AfTrack track;
+  final ValueNotifier<bool> expandedNotifier;
 
   @override
   ConsumerState<_BottomContent> createState() => _BottomContentState();
@@ -283,6 +309,19 @@ class _BottomContentState extends ConsumerState<_BottomContent>
       parent: _expandCtrl,
       curve: AfCurves.easeEmphasized,
     );
+    widget.expandedNotifier.addListener(_onExpandChanged);
+  }
+
+  void _onExpandChanged() {
+    final target = widget.expandedNotifier.value;
+    if (target != _expanded) {
+      setState(() => _expanded = target);
+      if (_expanded) {
+        _expandCtrl.forward();
+      } else {
+        _expandCtrl.reverse();
+      }
+    }
   }
 
   @override
@@ -295,17 +334,13 @@ class _BottomContentState extends ConsumerState<_BottomContent>
 
   @override
   void dispose() {
+    widget.expandedNotifier.removeListener(_onExpandChanged);
     _expandCtrl.dispose();
     super.dispose();
   }
 
   void _toggleExpand() {
-    setState(() => _expanded = !_expanded);
-    if (_expanded) {
-      _expandCtrl.forward();
-    } else {
-      _expandCtrl.reverse();
-    }
+    widget.expandedNotifier.value = !widget.expandedNotifier.value;
   }
 
   @override
@@ -323,32 +358,32 @@ class _BottomContentState extends ConsumerState<_BottomContent>
       builder: (context, _) {
         // Interpolate max height: compact ~30% → expanded ~70% (below top bar)
         final screenH = MediaQuery.of(context).size.height;
-        final compactH = screenH * 0.32;
+        final compactH = screenH * 0.36;
         final expandedH = screenH - kToolbarHeight - 80; // below top bar
         final currentH = compactH + (expandedH - compactH) * _expandAnim.value;
 
         return SizedBox(
           height: currentH,
-          child: GlassCard(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(AfRadii.lg),
-              topRight: Radius.circular(AfRadii.lg),
-            ),
-            padding: EdgeInsets.zero,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // ── Swipeable zone: metadata + scrubber + transport ──
-                GestureDetector(
-                  onVerticalDragEnd: (details) {
-                    final vy = details.primaryVelocity ?? 0;
-                    if (vy < -200 || (vy < 0 && !_expanded)) {
-                      if (!_expanded) _toggleExpand();
-                    } else if (vy > 200 || (vy > 0 && _expanded)) {
-                      if (_expanded) _toggleExpand();
-                    }
-                  },
-                  child: Padding(
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onVerticalDragEnd: (details) {
+              final vy = details.primaryVelocity ?? 0;
+              if (vy < -200 || (vy < 0 && !_expanded)) {
+                if (!_expanded) _toggleExpand();
+              } else if (vy > 200 || (vy > 0 && _expanded)) {
+                if (_expanded) _toggleExpand();
+              }
+            },
+            child: GlassCard(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(AfRadii.lg),
+                topRight: Radius.circular(AfRadii.lg),
+              ),
+              padding: EdgeInsets.zero,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
                     padding: const EdgeInsets.fromLTRB(
                       AfSpacing.s16,
                       AfSpacing.s12,
@@ -369,7 +404,6 @@ class _BottomContentState extends ConsumerState<_BottomContent>
                       ],
                     ),
                   ),
-                ),
 
                 // ── Expandable queue section ──
                 if (_expanded && upNext.isNotEmpty) ...[
@@ -439,6 +473,7 @@ class _BottomContentState extends ConsumerState<_BottomContent>
               ],
             ),
           ),
+        ),
         );
       },
     );
