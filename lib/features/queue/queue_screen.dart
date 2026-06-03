@@ -12,6 +12,7 @@ import '../../state/providers.dart';
 import '../../utils/display_error.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/track_context_menu.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/track_row.dart';
 
 /// Live queue mirror. Watches `playerQueueProvider` (a broadcast stream
@@ -164,18 +165,11 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
           ),
           SafeArea(
             child: _items.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AfSpacing.gutterGenerous,
-                      ),
-                      child: Text(
-                        'Queue is empty. Pick an album or track to start playback.',
-                        style: AfTypography.bodyMedium.copyWith(
-                          color: AfColors.textTertiary,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                ? const Center(
+                    child: EmptyState(
+                      icon: LucideIcons.listMusic,
+                      title: 'Queue is empty',
+                      body: 'Pick an album or track to start playback',
                     ),
                   )
                 : RepaintBoundary(
@@ -287,11 +281,9 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 2),
                             child: Container(
                               decoration: active
-                                  ? BoxDecoration(
+                                  ? const BoxDecoration(
                                       color: AfColors.surfaceBase,
-                                      borderRadius: BorderRadius.circular(
-                                        AfRadii.md,
-                                      ),
+                                      borderRadius: AfRadii.borderMd,
                                     )
                                   : null,
                               child: Row(

@@ -9,6 +9,7 @@ import '../../core/local/app_mode_store.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../utils/log.dart';
+import '../../widgets/press_scale.dart';
 
 /// Landing screen: server vs local mode selection.
 ///
@@ -189,11 +190,11 @@ class _ModeCardState extends State<_ModeCard> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
+    return PressScale(
+      onTap: widget.onTap,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
         child: AnimatedContainer(
           duration: AfDurations.quick,
           curve: AfCurves.easeStandard,

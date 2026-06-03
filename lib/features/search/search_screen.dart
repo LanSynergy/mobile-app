@@ -527,7 +527,7 @@ class _ArtistIdleGrid extends ConsumerWidget {
         sliver: SliverGrid.builder(
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
-            mainAxisExtent: 160,
+            mainAxisExtent: 180,
             crossAxisSpacing: AfSpacing.s12,
             mainAxisSpacing: AfSpacing.s12,
           ),
@@ -565,7 +565,7 @@ class _GenreIdleGrid extends ConsumerWidget {
         sliver: SliverGrid.builder(
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            mainAxisExtent: 80,
+            mainAxisExtent: 96,
             crossAxisSpacing: AfSpacing.s12,
             mainAxisSpacing: AfSpacing.s12,
           ),

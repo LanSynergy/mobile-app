@@ -122,7 +122,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: AfSpacing.s12),
                 Text(name, style: AfTypography.titleLarge),
-                const SizedBox(height: AfSpacing.s2),
+                const SizedBox(height: AfSpacing.s4),
                 Text(
                   serverName,
                   style: AfTypography.bodySmall.copyWith(
@@ -674,7 +674,10 @@ class _PeriodButton extends ConsumerWidget {
     return GestureDetector(
       onTap: () => ref.read(statsPeriodProvider.notifier).state = value,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AfSpacing.s12,
+          vertical: AfSpacing.s4,
+        ),
         decoration: BoxDecoration(
           color: active ? AfColors.accentSecondary : AfColors.surfaceBase,
           borderRadius: AfRadii.borderSm,

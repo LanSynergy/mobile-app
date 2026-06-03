@@ -27,9 +27,8 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
 
   /// Estimated height of a single lyric row in logical pixels.
   ///
-  /// `titleMedium` uses a 20 dp font with a 26 / 20 height ratio
-  /// (line height = 26 dp). Each row has symmetric 8 dp vertical
-  /// padding, so the total row is 26 + 8 + 8 = 42 dp.
+  /// Derived from [AfTypography.titleMedium]: 20dp font × (26/20) line height
+  /// = 26dp line + 8dp top padding + 8dp bottom padding = 42dp.
   /// Used to compute the scroll target without needing a GlobalKey on
   /// every row. Lyric lines are uniform height so the estimate is
   /// accurate enough to keep the active line centred.

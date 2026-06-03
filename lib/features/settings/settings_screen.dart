@@ -352,7 +352,7 @@ class SettingsScreen extends ConsumerWidget {
                 const MusicFoldersCard(),
               ],
 
-              const SizedBox(height: AfSpacing.s16),
+              const SizedBox(height: AfSpacing.s24),
 
               // ── Switch mode ─────────────────────────────────────────
               _IosGroup(
@@ -411,7 +411,7 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
 
-              const SizedBox(height: AfSpacing.s16),
+              const SizedBox(height: AfSpacing.s24),
 
               // ── Appearance ───────────────────────────────────────────
               const SectionHeader(title: 'Appearance', uppercase: true),
@@ -431,7 +431,7 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
 
-              const SizedBox(height: AfSpacing.s16),
+              const SizedBox(height: AfSpacing.s24),
 
               // ── Audio output ─────────────────────────────────────────
               const SectionHeader(title: 'Audio output', uppercase: true),
@@ -489,7 +489,7 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
 
-              const SizedBox(height: AfSpacing.s16),
+              const SizedBox(height: AfSpacing.s24),
 
               // ── Network & cache ──────────────────────────────────────
               const SectionHeader(title: 'Network & cache', uppercase: true),
@@ -535,7 +535,7 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
 
-              const SizedBox(height: AfSpacing.s16),
+              const SizedBox(height: AfSpacing.s24),
 
               // ── Offline cache (server mode only) ─────────────────────
               if (!isLocal) ...[
@@ -577,7 +577,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ],
 
-              const SizedBox(height: AfSpacing.s16),
+              const SizedBox(height: AfSpacing.s24),
 
               // ── Audio processing ─────────────────────────────────────
               const SectionHeader(title: 'Audio processing', uppercase: true),
@@ -618,12 +618,12 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
 
-              const SizedBox(height: AfSpacing.s16),
+              const SizedBox(height: AfSpacing.s24),
 
               // ── Last.fm Scrobbling ───────────────────────────────────
               const _LastFmSettingsSection(),
 
-              const SizedBox(height: AfSpacing.s16),
+              const SizedBox(height: AfSpacing.s24),
 
               // ── Advanced ─────────────────────────────────────────────
               const SectionHeader(title: 'Advanced', uppercase: true),
@@ -714,7 +714,7 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
 
-              const SizedBox(height: AfSpacing.s16),
+              const SizedBox(height: AfSpacing.s24),
 
               // ── About ────────────────────────────────────────────────
               const SectionHeader(title: 'About', uppercase: true),

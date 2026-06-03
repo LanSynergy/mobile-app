@@ -398,6 +398,8 @@ class _LostMemoryTile extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
+  static const double _tileSize = 100;
+
   @override
   Widget build(BuildContext context) {
     return PressScale(
@@ -405,7 +407,7 @@ class _LostMemoryTile extends StatelessWidget {
       onTap: onTap,
       onLongPress: onLongPress,
       child: SizedBox(
-        width: 100,
+        width: _tileSize,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -414,8 +416,8 @@ class _LostMemoryTile extends StatelessWidget {
             ClipRRect(
               borderRadius: AfRadii.borderSm,
               child: SizedBox(
-                width: 100,
-                height: 100,
+                width: _tileSize,
+                height: _tileSize,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -485,6 +487,10 @@ class _ArtistsSection extends ConsumerWidget {
     AfColors.accentMuted,
   ];
 
+  static const double _artworkSize = 88;
+  static const double _ringSize = 96;
+  static const double _glowSize = 100;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final artistsAsync = isLocal
@@ -534,21 +540,21 @@ class _ArtistsSection extends ConsumerWidget {
                     context.go('/library');
                   },
                   child: SizedBox(
-                    width: 108,
+                    width: _ringSize,
                     child: Column(
                       children: [
                         // Artwork with warm glow ring behind it
                         SizedBox(
-                          width: 108,
-                          height: 108,
+                          width: _ringSize,
+                          height: _ringSize,
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
                               // Warm glow
                               Positioned(
                                 child: Container(
-                                  width: 100,
-                                  height: 100,
+                                  width: _glowSize,
+                                  height: _glowSize,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     gradient: RadialGradient(
@@ -563,14 +569,14 @@ class _ArtistsSection extends ConsumerWidget {
                               // Artwork
                               Artwork(
                                 url: a.imageUrl,
-                                size: 88,
-                                radius: BorderRadius.circular(88 / 2),
+                                size: _artworkSize,
+                                radius: BorderRadius.circular(_artworkSize / 2),
                               ),
                               // Warm ring
                               Positioned(
                                 child: Container(
-                                  width: 96,
-                                  height: 96,
+                                  width: _ringSize,
+                                  height: _ringSize,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     border: Border.all(

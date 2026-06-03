@@ -39,6 +39,8 @@ class AfBottomNav extends ConsumerStatefulWidget {
 }
 
 class _AfBottomNavState extends ConsumerState<AfBottomNav> {
+  static const double _pillAlpha = 0.22;
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
@@ -76,7 +78,9 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
           horizontal: active ? AfSpacing.s16 : AfSpacing.s12,
         ),
         decoration: BoxDecoration(
-          color: active ? accent.withValues(alpha: 0.22) : Colors.transparent,
+          color: active
+              ? accent.withValues(alpha: _pillAlpha)
+              : Colors.transparent,
           borderRadius: AfRadii.borderPill,
         ),
         child: Row(
