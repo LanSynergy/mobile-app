@@ -7,9 +7,16 @@ import '../../state/providers.dart';
 import '../../utils/time_format.dart';
 import '../../widgets/audio_visual_scrubber.dart';
 
+/// Reactive progress bar with audio visualizer scrubber.
+///
+/// Watches [positionStreamProvider] — the only widget that does.
+/// Rebuilds at position tick rate; everything above is unaffected.
+///
+/// Scrub architecture:
+///   onScrub    → local preview only (no seek, no audio pipeline churn)
+///   onScrubEnd → single committed seek
 class ReactiveProgress extends ConsumerStatefulWidget {
   const ReactiveProgress({super.key, required this.track});
-
   final AfTrack track;
 
   @override
@@ -17,51 +24,79 @@ class ReactiveProgress extends ConsumerStatefulWidget {
 }
 
 class _ReactiveProgressState extends ConsumerState<ReactiveProgress> {
-  double _sliderValue = 0;
+  double? _scrubPreview;
   bool _isDragging = false;
 
   @override
-  void initState() {
-    super.initState();
-    final pos = ref.read(positionStreamProvider);
-    final dur = ref.read(durationStreamProvider);
-    _sliderValue = _computeSliderValue(pos, dur);
+  void didUpdateWidget(covariant ReactiveProgress oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.track.id != widget.track.id) {
+      _isDragging = false;
+      _scrubPreview = null;
+    }
   }
-
-  double _computeSliderValue(Duration pos, Duration dur) {
-    return dur.inMilliseconds > 0
-        ? (pos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0)
-        : 0.0;
-  }
-
-  String _format(Duration d) => formatTrackDuration(d);
 
   @override
   Widget build(BuildContext context) {
-    final pos = ref.watch(positionStreamProvider);
-    final dur = ref.watch(durationStreamProvider);
+    final position = ref.watch(positionStreamProvider);
+    final spectral = ref.watch(currentSpectralProvider);
+    final mpvDuration = ref.watch(durationStreamProvider);
     final isBuffering = ref.watch(isBufferingProvider);
-    final effectivePos = isBuffering ? Duration.zero : pos;
-    if (!_isDragging) {
-      _sliderValue = _computeSliderValue(effectivePos, dur);
-    }
+    final duration = mpvDuration > Duration.zero
+        ? mpvDuration
+        : widget.track.duration;
+
+    final effectivePosition = isBuffering ? Duration.zero : position;
+
+    final engineProgress = duration.inMilliseconds == 0
+        ? 0.0
+        : (effectivePosition.inMilliseconds / duration.inMilliseconds).clamp(
+            0.0,
+            1.0,
+          );
+    final displayProgress = _isDragging
+        ? (_scrubPreview ?? engineProgress)
+        : engineProgress;
+
+    final displayPosition = _isDragging && _scrubPreview != null
+        ? Duration(
+            milliseconds: (_scrubPreview! * duration.inMilliseconds).round(),
+          )
+        : effectivePosition;
+    final remaining = duration > displayPosition
+        ? duration - displayPosition
+        : Duration.zero;
 
     return Column(
       children: [
         AudioVisualScrubber(
-          progress: _sliderValue,
-          onScrub: (double v) {
-            setState(() {
-              _isDragging = true;
-              _sliderValue = v;
-            });
-          },
-          onScrubEnd: (double v) {
-            final seekPos = Duration(
-              milliseconds: (dur.inMilliseconds * v).round(),
+          progress: displayProgress,
+          playedColor: spectral.energy,
+          height: 100.0,
+          onScrub: (p) => setState(() {
+            _isDragging = true;
+            _scrubPreview = p;
+          }),
+          onScrubEnd: (p) async {
+            final newPos = Duration(
+              milliseconds: (p * duration.inMilliseconds).round(),
             );
-            ref.read(playerServiceProvider).seek(seekPos);
-            setState(() => _isDragging = false);
+            final svc = ref.read(playerServiceProvider);
+            final wasCompletedAtEnd = svc.isCompleted && svc.isUserPaused;
+            try {
+              await svc.seek(newPos).timeout(const Duration(seconds: 2));
+              if (wasCompletedAtEnd && mounted) {
+                await svc.play().timeout(const Duration(seconds: 2));
+              }
+            } catch (_) {
+              // Timeout or seek error — still release the drag lock.
+            }
+            if (mounted) {
+              setState(() {
+                _isDragging = false;
+                _scrubPreview = null;
+              });
+            }
           },
         ),
         const SizedBox(height: AfSpacing.s4),
@@ -71,16 +106,14 @@ class _ReactiveProgressState extends ConsumerState<ReactiveProgress> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _format(effectivePos),
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
+                formatTrackDuration(displayPosition),
+                style: AfTypography.mono.copyWith(
+                  color: AfColors.textSecondary,
                 ),
               ),
               Text(
-                _format(dur),
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.textTertiary,
-                ),
+                formatRemaining(remaining),
+                style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
               ),
             ],
           ),

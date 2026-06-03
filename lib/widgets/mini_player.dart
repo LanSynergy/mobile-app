@@ -161,7 +161,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                                 child: Hero(
                                   tag: 'now-playing-artwork',
                                   child: ClipRRect(
-                                    borderRadius: AfRadii.borderPill,
+                                    borderRadius: AfRadii.borderMd,
                                     child: Artwork(
                                       url:
                                           artworkUri?.toString() ??

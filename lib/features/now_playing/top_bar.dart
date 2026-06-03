@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,123 +6,233 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
-import '../../widgets/track_details_sheet.dart';
+import '../../widgets/glass_card.dart';
+import '../../widgets/marquee_text.dart';
+import '../../widgets/press_scale.dart';
 
-class TopBar extends ConsumerWidget {
-  const TopBar({super.key, required this.track});
-
+/// Frosted-glass top bar with expandable lyrics panel.
+///
+/// Collapsed: chevron-down · "PLAYING FROM ALBUM" · album name · lyrics mic icon
+/// Expanded: same bar + synced lyrics list below
+class FrostedTopBar extends ConsumerStatefulWidget {
+  const FrostedTopBar({
+    super.key,
+    required this.track,
+    required this.lyricsExpanded,
+    required this.onToggleLyrics,
+  });
   final AfTrack track;
+  final ValueNotifier<bool> lyricsExpanded;
+  final VoidCallback onToggleLyrics;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AfSpacing.s8,
-            vertical: AfSpacing.s8,
+  ConsumerState<FrostedTopBar> createState() => _FrostedTopBarState();
+}
+
+class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _expandCtrl;
+  late final Animation<double> _expandAnim;
+  final _scrollCtrl = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _expandCtrl = AnimationController(
+      vsync: this,
+      duration: AfDurations.standard,
+      reverseDuration: AfDurations.quick,
+    );
+    _expandAnim = CurvedAnimation(
+      parent: _expandCtrl,
+      curve: AfCurves.easeEmphasized,
+    );
+    widget.lyricsExpanded.addListener(_onChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant FrostedTopBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.track.id != widget.track.id) {
+      _scrollCtrl.jumpTo(0);
+    }
+  }
+
+  void _onChanged() {
+    if (widget.lyricsExpanded.value) {
+      _expandCtrl.forward();
+    } else {
+      _expandCtrl.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.lyricsExpanded.removeListener(_onChanged);
+    _expandCtrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final spectral = ref.watch(currentSpectralProvider);
+    final track = widget.track;
+
+    final lrcAsync = ref.watch(lyricsProvider(track.id));
+    final lrc = lrcAsync.maybeWhen(data: (p) => p, orElse: () => null);
+    final position = ref.watch(positionStreamProvider);
+    final isSynced =
+        lrc != null && lrc.lines.any((l) => l.start > Duration.zero);
+    final active = isSynced ? lrc.activeIndex(position) : -1;
+
+    return AnimatedBuilder(
+      animation: _expandAnim,
+      builder: (context, _) {
+        final isExpanded = _expandAnim.value > 0.5;
+        final radius = isExpanded ? AfRadii.borderLg : AfRadii.borderPill;
+
+        return Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: AfSpacing.s16,
+            vertical: isExpanded ? 0 : AfSpacing.s8,
           ),
-          color: AfColors.surfaceCanvas.withValues(alpha: 0.6),
-          child: SafeArea(
-            bottom: false,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(
-                    LucideIcons.chevronDown,
-                    color: AfColors.textPrimary,
+          child: GestureDetector(
+            onVerticalDragEnd: (details) {
+              if ((details.primaryVelocity ?? 0) > 200 &&
+                  widget.lyricsExpanded.value) {
+                widget.onToggleLyrics();
+              }
+            },
+            child: GlassCard(
+              borderRadius: radius,
+              blurSigma: 20,
+              color: AfColors.glassFillStrong,
+              borderColor: AfColors.glassBorderEmphasis,
+              padding: EdgeInsets.zero,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── Collapsed bar: always visible ──
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AfSpacing.s8,
+                      vertical: AfSpacing.s4,
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            LucideIcons.chevronDown,
+                            color: AfColors.textPrimary,
+                            size: 22,
+                          ),
+                          onPressed: () => Navigator.maybePop(context),
+                        ),
+                        const SizedBox(width: AfSpacing.s8),
+                        Expanded(
+                          child: PressScale(
+                            ensureHitTarget: false,
+                            onTap: track.albumId == null
+                                ? null
+                                : () => context.push('/album/${track.albumId}'),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: AfSpacing.s4,
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    'PLAYING FROM ALBUM',
+                                    style: AfTypography.overline.copyWith(
+                                      color: AfColors.textTertiary,
+                                    ),
+                                  ),
+                                  MarqueeText(
+                                    text: track.albumName,
+                                    style: AfTypography.titleSmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AfSpacing.s8),
+                        IconButton(
+                          icon: Icon(
+                            LucideIcons.mic2,
+                            color: widget.lyricsExpanded.value
+                                ? spectral.energy
+                                : AfColors.textPrimary,
+                            size: 20,
+                          ),
+                          tooltip: 'Lyrics',
+                          onPressed: widget.onToggleLyrics,
+                        ),
+                      ],
+                    ),
                   ),
-                  onPressed: () => Navigator.maybePop(context),
-                ),
-                if (track.albumId != null)
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () =>
-                          GoRouter.of(context).push('/album/${track.albumId}'),
+
+                  // ── Expanded lyrics ──
+                  if (lrc != null && lrc.lines.isNotEmpty && isExpanded)
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.35,
+                      child: ListView.builder(
+                        controller: _scrollCtrl,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AfSpacing.s16,
+                          vertical: AfSpacing.s4,
+                        ),
+                        itemCount: lrc.lines.length,
+                        itemBuilder: (context, i) {
+                          final isActive = i == active;
+                          final line = lrc.lines[i];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AfSpacing.s4,
+                            ),
+                            child: AnimatedDefaultTextStyle(
+                              duration: AfDurations.quick,
+                              style: AfTypography.bodyMedium.copyWith(
+                                color: isActive
+                                    ? spectral.energy
+                                    : AfColors.textTertiary,
+                                fontWeight: isActive
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                              ),
+                              child: Text(line.text),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  else if (lrcAsync.isLoading && isExpanded)
+                    const Padding(
+                      padding: EdgeInsets.all(AfSpacing.s24),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AfColors.textTertiary,
+                        ),
+                      ),
+                    )
+                  else if (isExpanded)
+                    Padding(
+                      padding: const EdgeInsets.all(AfSpacing.s24),
                       child: Text(
-                        track.albumName,
-                        style: AfTypography.bodySmall.copyWith(
-                          color: AfColors.textSecondary,
-                          decoration: TextDecoration.underline,
-                          decorationColor: AfColors.textTertiary,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                PopupMenuButton<String>(
-                  icon: const Icon(
-                    LucideIcons.ellipsis,
-                    color: AfColors.textPrimary,
-                  ),
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'album':
-                        if (track.albumId != null) {
-                          GoRouter.of(context).push('/album/${track.albumId}');
-                        }
-                      case 'artist':
-                        if (track.artistId != null) {
-                          GoRouter.of(
-                            context,
-                          ).push('/artist/${track.artistId}');
-                        }
-                      case 'details':
-                        showTrackDetailsSheet(context, ref, track);
-                      case 'radio':
-                        ref
-                            .read(playerServiceProvider)
-                            .playQueue(
-                              [],
-                              startIndex: 0,
-                              resolveStreamUrl: (_) => '',
-                            );
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    if (track.albumId != null)
-                      const PopupMenuItem(
-                        value: 'album',
-                        child: ListTile(
-                          leading: Icon(LucideIcons.disc3),
-                          title: Text('Go to album'),
-                          contentPadding: EdgeInsets.zero,
+                        'No lyrics available',
+                        style: AfTypography.bodyMedium.copyWith(
+                          color: AfColors.textTertiary,
                         ),
                       ),
-                    if (track.artistId != null)
-                      const PopupMenuItem(
-                        value: 'artist',
-                        child: ListTile(
-                          leading: Icon(LucideIcons.user),
-                          title: Text('Go to artist'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    const PopupMenuItem(
-                      value: 'details',
-                      child: ListTile(
-                        leading: Icon(LucideIcons.info),
-                        title: Text('Details'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
                     ),
-                    const PopupMenuItem(
-                      value: 'radio',
-                      child: ListTile(
-                        leading: Icon(LucideIcons.radio),
-                        title: Text('Start radio'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
