@@ -73,19 +73,14 @@ class NowPlayingScreen extends ConsumerWidget {
             // ── Full-bleed artwork ──
             ReactiveArtwork(track: track),
 
-            // ── Scrim (bottom 65%) — blur, no gradient ──
+            // ── Scrim (bottom 65%) — darken only, no blur ──
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
               height: MediaQuery.of(context).size.height * 0.65,
-              child: ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                  child: ColoredBox(
-                    color: AfColors.surfaceCanvas.withValues(alpha: 0.65),
-                  ),
-                ),
+              child: ColoredBox(
+                color: AfColors.surfaceCanvas.withValues(alpha: 0.55),
               ),
             ),
 
@@ -192,13 +187,8 @@ class _Vignette extends StatelessWidget {
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: IgnorePointer(
-        child: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
-            child: ColoredBox(
-              color: AfColors.surfaceCanvas.withValues(alpha: 0.3),
-            ),
-          ),
+        child: ColoredBox(
+          color: AfColors.surfaceCanvas.withValues(alpha: 0.25),
         ),
       ),
     );
