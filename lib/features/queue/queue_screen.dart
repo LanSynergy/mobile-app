@@ -155,11 +155,11 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         children: [
           // Full-bleed background — GPU shader
           const Positioned.fill(
-            child: AuroraEffect(
+            child: WaveBackground(
               color1: AfColors.surfaceCanvas,
               color2: AfColors.surfaceLow,
-              intensity: 0.2,
-              speed: 0.3,
+              amplitude: 0.1,
+              speed: 0.2,
             ),
           ),
           SafeArea(

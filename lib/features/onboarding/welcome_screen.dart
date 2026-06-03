@@ -27,11 +27,11 @@ class WelcomeScreen extends ConsumerWidget {
         fit: StackFit.expand,
         children: [
           // Background — GPU shader
-          const AuroraEffect(
+          const WaveBackground(
             color1: AfColors.surfaceCanvas,
             color2: AfColors.surfaceLow,
-            intensity: 0.2,
-            speed: 0.3,
+            amplitude: 0.1,
+            speed: 0.2,
           ),
 
           // Radial glow behind logo — warm amber tint

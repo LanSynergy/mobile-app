@@ -127,11 +127,11 @@ class AppShell extends ConsumerWidget {
         children: [
           // Full-bleed background — GPU shader (zero banding)
           const Positioned.fill(
-            child: AuroraEffect(
+            child: WaveBackground(
               color1: AfColors.surfaceCanvas,
-              color2: AfColors.surfaceBase,
-              intensity: 0.25,
-              speed: 0.4,
+              color2: AfColors.surfaceLow,
+              amplitude: 0.15,
+              speed: 0.3,
             ),
           ),
 
