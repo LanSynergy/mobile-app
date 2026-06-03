@@ -77,7 +77,7 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: AfDurations.standard,
+      duration: const Duration(milliseconds: 400),
       reverseDuration: AfDurations.quick,
     );
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: AfCurves.easeOut);
@@ -86,7 +86,7 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
       end: 1.0,
     ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeEmphasized));
     _blurAnim = Tween<double>(
-      begin: 0,
+      begin: 1,
       end: 24,
     ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeOut));
     _ctrl.forward();

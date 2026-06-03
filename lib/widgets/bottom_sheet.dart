@@ -85,7 +85,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: AfDurations.standard,
+      duration: const Duration(milliseconds: 400),
       reverseDuration: AfDurations.quick,
     );
     _slideAnim = Tween<double>(
@@ -94,7 +94,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
     ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeEmphasized));
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: AfCurves.easeOut);
     _blurAnim = Tween<double>(
-      begin: 0,
+      begin: 1,
       end: 24,
     ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeOut));
     _ctrl.forward();
