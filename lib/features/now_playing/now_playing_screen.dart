@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,6 +17,7 @@ import '../../utils/oklch.dart';
 import '../../utils/time_format.dart';
 import '../../widgets/audio_visual_scrubber.dart';
 import '../../widgets/af_dialog.dart';
+import '../../widgets/glass_card.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/empty_state.dart';
 import 'reactive_artwork.dart';
@@ -183,23 +183,16 @@ class _FrostedTopBar extends ConsumerWidget {
         horizontal: AfSpacing.s16,
         vertical: AfSpacing.s8,
       ),
-      child: ClipRRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: AfRadii.borderPill,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
-                width: 0.5,
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AfSpacing.s8,
-              vertical: AfSpacing.s4,
-            ),
-            child: Row(
+      child: GlassCard(
+        borderRadius: AfRadii.borderPill,
+        blurSigma: 20,
+        color: Colors.white.withValues(alpha: 0.08),
+        borderColor: Colors.white.withValues(alpha: 0.1),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AfSpacing.s8,
+          vertical: AfSpacing.s4,
+        ),
+        child: Row(
               children: [
                 IconButton(
                   icon: const Icon(
@@ -322,8 +315,6 @@ class _FrostedTopBar extends ConsumerWidget {
               ],
             ),
           ),
-        ),
-      ),
     );
   }
 }
@@ -343,39 +334,22 @@ class _BottomContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: AfRadii.borderLg,
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AfSpacing.s16,
-            vertical: AfSpacing.s16,
-          ),
-          decoration: BoxDecoration(
-            color: AfColors.surfaceCanvas.withValues(alpha: 0.45),
-            borderRadius: AfRadii.borderLg,
-            border: Border.all(
-              color: AfColors.surfaceHigh.withValues(alpha: 0.2),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ── Metadata overlay (title + artist) ──
-              _MetadataOverlay(track: track),
-              const SizedBox(height: AfSpacing.s12),
+    return GlassCard(
+      margin: const EdgeInsets.symmetric(horizontal: AfSpacing.gutterGenerous),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── Metadata overlay (title + artist) ──
+          _MetadataOverlay(track: track),
+          const SizedBox(height: AfSpacing.s12),
 
-              // ── Visualizer scrubber ──
-              _ReactiveProgress(track: track),
-              const SizedBox(height: AfSpacing.s12),
+          // ── Visualizer scrubber ──
+          _ReactiveProgress(track: track),
+          const SizedBox(height: AfSpacing.s12),
 
-              // ── Transport controls ──
-              _ReactiveTransport(track: track),
-            ],
-          ),
-        ),
+          // ── Transport controls ──
+          _ReactiveTransport(track: track),
+        ],
       ),
     );
   }
