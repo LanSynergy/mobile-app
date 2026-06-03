@@ -1,10 +1,20 @@
+import 'dart:io';
+
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 import '../../utils/log.dart';
 import '../backend/music_backend.dart';
 import '../jellyfin/models/items.dart';
 import '../jellyfin/models/library.dart';
+import 'innertube_client.dart';
 import 'youtube_auth.dart';
+import 'youtube_home_content.dart';
+
+class _SectionDef {
+  const _SectionDef(this.title, this.query);
+  final String title;
+  final String query;
+}
 
 /// YouTube Music backend using youtube_explode_dart.
 ///
@@ -16,6 +26,7 @@ class YouTubeMusicClient implements MusicBackend {
 
   final YouTubeAuth? auth;
   final YoutubeExplode _yt;
+  final InnerTubeClient _innertube = InnerTubeClient();
 
   @override
   ServerType get serverType => ServerType.youtubeMusic;
@@ -38,6 +49,99 @@ class YouTubeMusicClient implements MusicBackend {
   );
 
   // ── Library browsing ─────────────────────────────────────────────────
+
+  /// Returns the device's ISO country code (e.g. "ID", "MY", "US").
+  String get _countryCode {
+    final parts = Platform.localeName.split('_');
+    if (parts.length >= 2) {
+      final code = parts.last.toUpperCase();
+      if (code.length == 2) return code;
+    }
+    return 'US';
+  }
+
+  /// Fetches home page content via InnerTube browse API.
+  Future<YouTubeHomeContent> browseHome({String? params}) async {
+    try {
+      final region = _countryCode;
+      afLog('aetherfin:youtube', 'browseHome: region=$region, params=$params');
+
+      final response = await _innertube.browseHome(params: params);
+      print('[YT-HOME] browseHome response: ${response == null ? "null" : "${response.sections.length} sections"}');
+      if (response == null || response.sections.isEmpty) {
+        print('[YT-HOME] empty response, falling back to search');
+        return _browseHomeFallback(region);
+      }
+
+      final sections = response.sections
+          .map((s) => YouTubeHomeSection(
+                title: s.title,
+                items: s.items,
+              ))
+          .toList();
+
+      afLog(
+        'aetherfin:youtube',
+        'browseHome: ${sections.length} sections, ${response.chips.length} chips',
+      );
+
+      return YouTubeHomeContent(
+        sections: sections,
+        chips: response.chips,
+        region: region,
+      );
+    } catch (e) {
+      afLog('aetherfin:error', 'browseHome failed', error: e);
+      return _browseHomeFallback(_countryCode);
+    }
+  }
+
+  /// Fallback: search-based sections if InnerTube browse fails.
+  Future<YouTubeHomeContent> _browseHomeFallback(String region) async {
+    try {
+      final sectionDefs = [
+        _SectionDef('Top Hits', 'top hits $region 2026'),
+        _SectionDef('Trending', 'trending music $region viral'),
+        _SectionDef('New Releases', 'new music release $region'),
+      ];
+
+      final futures = sectionDefs.map((s) => _yt.search.search(s.query));
+      final results = await Future.wait(futures, eagerError: false);
+
+      final sections = <YouTubeHomeSection>[];
+      final seenIds = <String>{};
+
+      for (var i = 0; i < sectionDefs.length; i++) {
+        final items = <InnerTubeItem>[];
+        for (final video in results[i]) {
+          if (seenIds.add(video.id.value)) {
+            items.add(InnerTubeItem(
+              id: video.id.value,
+              title: video.title,
+              subtitle: video.author,
+              thumbnailUrl: video.thumbnails.highResUrl,
+              type: InnerTubeItemType.song,
+              videoId: video.id.value,
+            ));
+          }
+        }
+        if (items.isNotEmpty) {
+          sections.add(YouTubeHomeSection(
+            title: sectionDefs[i].title,
+            items: items.take(10).toList(),
+          ));
+        }
+      }
+
+      return YouTubeHomeContent(
+        sections: sections,
+        chips: const [],
+        region: region,
+      );
+    } catch (e) {
+      return YouTubeHomeContent.empty();
+    }
+  }
 
   @override
   Future<List<AfAlbum>> recentlyAddedAlbums({int limit = 20}) async => [];

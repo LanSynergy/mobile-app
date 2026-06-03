@@ -1,6 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/youtube/youtube_auth.dart';
+import '../core/youtube/youtube_home_content.dart';
+import '../core/youtube/youtube_music_client.dart';
+import '../core/youtube/innertube_client.dart';
+import 'music_backend_providers.dart';
 
 /// YouTube Music auth storage provider.
 final youtubeAuthStorageProvider = Provider<YouTubeAuthStorage>(
@@ -31,3 +35,21 @@ class YouTubeAuthNotifier extends Notifier<YouTubeAuth?> {
     state = null;
   }
 }
+
+/// Selected YouTube home chip parameters.
+final youtubeHomeParamsProvider = StateProvider.autoDispose<String?>((ref) => null);
+
+/// Selected chip (if any).
+final youtubeSelectedChipProvider = StateProvider.autoDispose<InnerTubeChip?>((ref) => null);
+
+/// YouTube Music home page content (trending, popular, etc.).
+final youtubeHomeProvider = FutureProvider.autoDispose<YouTubeHomeContent>(
+  (ref) async {
+    final backend = ref.watch(musicBackendProvider);
+    if (backend is! YouTubeMusicClient) {
+      return YouTubeHomeContent.empty();
+    }
+    final params = ref.watch(youtubeHomeParamsProvider);
+    return backend.browseHome(params: params);
+  },
+);
