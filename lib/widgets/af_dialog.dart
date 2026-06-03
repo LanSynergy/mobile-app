@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:cupertino_liquid_glass/cupertino_liquid_glass.dart';
 import 'package:flutter/material.dart';
 
 import '../design_tokens/tokens.dart';
@@ -48,8 +47,6 @@ Future<T?> showBlurDialog<T>({
   return completer.future;
 }
 
-/// Overlay-based blur dialog. Lives in the same overlay as the route content
-/// so BackdropFilter can blur what's behind it.
 class _BlurDialogOverlay<T> extends StatefulWidget {
   const _BlurDialogOverlay({
     required this.child,
@@ -88,7 +85,6 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
       begin: 0.92,
       end: 1.0,
     ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeEmphasized));
-    // Delay content until BackdropFilter has rendered one frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _ready = true);
     });
@@ -137,7 +133,7 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
                       ),
                     ),
                   ),
-                  // ── Dialog content ──
+                  // ── Dialog content (solid, no extra blur) ──
                   Center(
                     child: Transform.scale(
                       scale: scale,
@@ -147,11 +143,20 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
                           padding: const EdgeInsets.symmetric(
                             horizontal: AfSpacing.s24,
                           ),
-                          child: CupertinoLiquidGlass(
-                            borderRadius: BorderRadius.circular(_borderRadius),
-                            blurSigma: 20,
-                            tintOpacity: 0.10,
+                          child: Container(
                             padding: const EdgeInsets.all(AfSpacing.s16),
+                            decoration: BoxDecoration(
+                              color: AfColors.surfaceRaised.withValues(
+                                alpha: 0.85,
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                _borderRadius,
+                              ),
+                              border: Border.all(
+                                color: AfColors.glassBorderEmphasis,
+                                width: 0.5,
+                              ),
+                            ),
                             child: ListTileTheme(
                               tileColor: Colors.transparent,
                               child: widget.child,
