@@ -12,82 +12,9 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/bottom_sheet.dart';
-import '../../widgets/press_scale.dart';
 import '../../widgets/save_to_playlist_sheet.dart';
 import '../../widgets/track_details_sheet.dart';
 import 'sleep_timer_dialog.dart';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Utility row
-// ─────────────────────────────────────────────────────────────────────────────
-
-class UtilityRow extends ConsumerWidget {
-  const UtilityRow({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final track = ref.watch(currentTrackProvider);
-    final savedIds = ref.watch(savedTrackIdsProvider);
-    final serverIds = ref
-        .watch(playlistTrackIdsProvider)
-        .maybeWhen(data: (ids) => ids, orElse: () => const <String>{});
-    final isSaved =
-        track != null &&
-        (savedIds.contains(track.id) || serverIds.contains(track.id));
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        UtilityIcon(
-          icon: const Icon(
-            LucideIcons.mic2,
-            size: 22,
-            color: AfColors.textSecondary,
-          ),
-          label: 'Lyrics',
-          onTap: () => context.push('/lyrics'),
-        ),
-        UtilityIcon(
-          icon: const Icon(
-            LucideIcons.slidersHorizontal,
-            size: 22,
-            color: AfColors.textSecondary,
-          ),
-          label: 'EQ',
-          onTap: () => context.push('/eq-dsp'),
-        ),
-        UtilityIcon(
-          icon: Icon(
-            LucideIcons.plus,
-            size: 22,
-            color: isSaved ? AfColors.accentPrimary : AfColors.textSecondary,
-          ),
-          label: isSaved ? 'Saved' : 'Save',
-          onTap: () => showSaveDialog(context, ref),
-          color: isSaved ? AfColors.accentPrimary : null,
-        ),
-        UtilityIcon(
-          icon: const Icon(
-            LucideIcons.listMusic,
-            size: 22,
-            color: AfColors.textSecondary,
-          ),
-          label: 'Queue',
-          onTap: () => context.push('/queue'),
-        ),
-        UtilityIcon(
-          icon: const Icon(
-            LucideIcons.ellipsis,
-            size: 22,
-            color: AfColors.textSecondary,
-          ),
-          label: 'More',
-          onTap: () => showMoreSheet(context, ref),
-        ),
-      ],
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // More sheet
@@ -140,10 +67,57 @@ class _MoreMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final track = ref.watch(currentTrackProvider);
+    final savedIds = ref.watch(savedTrackIdsProvider);
+    final serverIds = ref
+        .watch(playlistTrackIdsProvider)
+        .maybeWhen(data: (ids) => ids, orElse: () => const <String>{});
+    final isSaved = track != null &&
+        (savedIds.contains(track.id) || serverIds.contains(track.id));
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // ── Quick actions (previously in UtilityRow) ──
+        MoreItem(
+          icon: const Icon(LucideIcons.mic2, size: 22, color: AfColors.textSecondary),
+          label: 'Lyrics',
+          onTap: () {
+            dismiss();
+            context.push('/lyrics');
+          },
+        ),
+        MoreItem(
+          icon: const Icon(LucideIcons.slidersHorizontal, size: 22, color: AfColors.textSecondary),
+          label: 'EQ',
+          onTap: () {
+            dismiss();
+            context.push('/eq-dsp');
+          },
+        ),
+        MoreItem(
+          icon: Icon(
+            LucideIcons.plus,
+            size: 22,
+            color: isSaved ? AfColors.accentPrimary : AfColors.textSecondary,
+          ),
+          label: isSaved ? 'Saved' : 'Save',
+          onTap: () {
+            dismiss();
+            showSaveDialog(this.context, ref);
+          },
+        ),
+        MoreItem(
+          icon: const Icon(LucideIcons.listMusic, size: 22, color: AfColors.textSecondary),
+          label: 'Queue',
+          onTap: () {
+            dismiss();
+            context.push('/queue');
+          },
+        ),
+        const Divider(height: 1, color: AfColors.surfaceHigh),
+        // ── Advanced actions ──
         MoreItem(
           icon: Icon(
             LucideIcons.arrowLeftRight,
@@ -159,11 +133,7 @@ class _MoreMenu extends StatelessWidget {
           },
         ),
         MoreItem(
-          icon: const Icon(
-            LucideIcons.moon,
-            size: 22,
-            color: AfColors.textSecondary,
-          ),
+          icon: const Icon(LucideIcons.moon, size: 22, color: AfColors.textSecondary),
           label: 'Sleep timer',
           onTap: () {
             dismiss();
@@ -171,11 +141,7 @@ class _MoreMenu extends StatelessWidget {
           },
         ),
         MoreItem(
-          icon: const Icon(
-            LucideIcons.gauge,
-            size: 22,
-            color: AfColors.textSecondary,
-          ),
+          icon: const Icon(LucideIcons.gauge, size: 22, color: AfColors.textSecondary),
           label: 'Playback speed',
           onTap: () {
             dismiss();
@@ -183,11 +149,7 @@ class _MoreMenu extends StatelessWidget {
           },
         ),
         MoreItem(
-          icon: const Icon(
-            LucideIcons.cast,
-            size: 22,
-            color: AfColors.textSecondary,
-          ),
+          icon: const Icon(LucideIcons.cast, size: 22, color: AfColors.textSecondary),
           label: 'Audio output',
           onTap: () {
             dismiss();
@@ -195,11 +157,7 @@ class _MoreMenu extends StatelessWidget {
           },
         ),
         MoreItem(
-          icon: const Icon(
-            LucideIcons.volume2,
-            size: 22,
-            color: AfColors.textSecondary,
-          ),
+          icon: const Icon(LucideIcons.volume2, size: 22, color: AfColors.textSecondary),
           label: 'Volume',
           onTap: () {
             dismiss();
@@ -207,11 +165,7 @@ class _MoreMenu extends StatelessWidget {
           },
         ),
         MoreItem(
-          icon: const Icon(
-            LucideIcons.bluetooth,
-            size: 22,
-            color: AfColors.textSecondary,
-          ),
+          icon: const Icon(LucideIcons.bluetooth, size: 22, color: AfColors.textSecondary),
           label: 'Audio delay',
           onTap: () {
             dismiss();
@@ -221,11 +175,7 @@ class _MoreMenu extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(bottom: AfSpacing.s24),
           child: MoreItem(
-            icon: const Icon(
-              LucideIcons.info,
-              size: 22,
-              color: AfColors.textSecondary,
-            ),
+            icon: const Icon(LucideIcons.info, size: 22, color: AfColors.textSecondary),
             label: 'Show details',
             onTap: () {
               pageNotifier.value = _MorePage.details;
@@ -718,47 +668,6 @@ class OutputDialogContent extends ConsumerWidget {
       return Icon(LucideIcons.usb, color: color, size: 22);
     }
     return Icon(LucideIcons.smartphone, color: color, size: 22);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Utility icon
-// ─────────────────────────────────────────────────────────────────────────────
-
-class UtilityIcon extends StatelessWidget {
-  const UtilityIcon({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.color,
-  });
-
-  final Widget icon;
-  final String label;
-  final VoidCallback onTap;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    return PressScale(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AfSpacing.s8),
-        child: Column(
-          children: [
-            icon,
-            const SizedBox(height: AfSpacing.s4),
-            Text(
-              label,
-              style: AfTypography.caption.copyWith(
-                color: color ?? AfColors.textTertiary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 

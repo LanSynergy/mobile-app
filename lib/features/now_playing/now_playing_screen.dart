@@ -21,7 +21,7 @@ import '../../widgets/af_dialog.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/empty_state.dart';
 import 'reactive_artwork.dart';
-import 'utility_row.dart';
+import 'more_menu.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NowPlayingScreen — "Dark Moody" immersive rebuild
@@ -49,7 +49,7 @@ import 'utility_row.dart';
 //   ├── _MetadataOverlay (bottom-left, over artwork)
 //   ├── _ReactiveProgress (AudioVisualScrubber)
 //   ├── _ReactiveTransport (play/pause/skip/shuffle/repeat)
-//   └── UtilityRow (like, lyrics, queue, more)
+//   └── More menu (vertical dots)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class NowPlayingScreen extends ConsumerWidget {
@@ -383,10 +383,6 @@ class _BottomContent extends StatelessWidget {
 
         // ── Transport controls ──
         _ReactiveTransport(track: track),
-        const SizedBox(height: AfSpacing.s8),
-
-        // ── Utility row ──
-        const UtilityRow(),
         const SizedBox(height: AfSpacing.s4),
       ],
     );
@@ -486,6 +482,16 @@ class _MetadataOverlay extends ConsumerWidget {
                 ),
               ),
             ),
+          // More menu (vertical dots)
+          IconButton(
+            icon: const Icon(
+              LucideIcons.ellipsisVertical,
+              size: 22,
+              color: AfColors.textSecondary,
+            ),
+            tooltip: 'More options',
+            onPressed: () => showMoreSheet(context, ref),
+          ),
         ],
       ),
     );
