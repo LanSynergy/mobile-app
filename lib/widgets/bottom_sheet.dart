@@ -133,11 +133,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                   // ── Full-screen blur behind everything ──
                   Positioned.fill(
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(
-                        sigmaX: 24,
-                        sigmaY: 24,
-                        tileMode: TileMode.decal,
-                      ),
+                      filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
                       child: Container(
                         color: Colors.black.withValues(alpha: 0.25),
                       ),
