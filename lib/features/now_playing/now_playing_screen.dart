@@ -252,38 +252,195 @@ class _FrostedTopBar extends ConsumerWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Bottom content zone — metadata overlay + controls
+// Bottom content zone — metadata + controls + expandable queue
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Houses all bottom-aligned content: metadata overlay, visualizer scrubber,
-/// transport controls, and utility row. Separated from artwork so the
-/// gradient scrim provides enough contrast.
-class _BottomContent extends StatelessWidget {
+/// Houses all bottom-aligned content: metadata, scrubber, transport controls,
+/// and an expandable queue panel. Swipe up on non-scrubber area to reveal queue.
+class _BottomContent extends ConsumerStatefulWidget {
   const _BottomContent({required this.track});
   final AfTrack track;
 
   @override
+  ConsumerState<_BottomContent> createState() => _BottomContentState();
+}
+
+class _BottomContentState extends ConsumerState<_BottomContent>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _expandCtrl;
+  late final Animation<double> _expandAnim;
+  bool _expanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _expandCtrl = AnimationController(
+      vsync: this,
+      duration: AfDurations.standard,
+      reverseDuration: AfDurations.quick,
+    );
+    _expandAnim = CurvedAnimation(
+      parent: _expandCtrl,
+      curve: AfCurves.easeEmphasized,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _BottomContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.track.id != widget.track.id && _expanded) {
+      _toggleExpand();
+    }
+  }
+
+  @override
+  void dispose() {
+    _expandCtrl.dispose();
+    super.dispose();
+  }
+
+  void _toggleExpand() {
+    setState(() => _expanded = !_expanded);
+    if (_expanded) {
+      _expandCtrl.forward();
+    } else {
+      _expandCtrl.reverse();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      borderRadius: const BorderRadius.only(
-        topLeft: Radius.circular(AfRadii.lg),
-        topRight: Radius.circular(AfRadii.lg),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // ── Metadata overlay (title + artist) ──
-          _MetadataOverlay(track: track),
-          const SizedBox(height: AfSpacing.s12),
+    final queue = ref.watch(playerServiceProvider).currentQueue;
+    final currentIndex = ref.watch(playerServiceProvider).currentIndex;
 
-          // ── Visualizer scrubber ──
-          _ReactiveProgress(track: track),
-          const SizedBox(height: AfSpacing.s12),
+    // Up-next queue: items after the current track
+    final upNext = queue.length > 1
+        ? queue.sublist(currentIndex + 1).take(20).toList()
+        : <AfTrack>[];
 
-          // ── Transport controls ──
-          _ReactiveTransport(track: track),
-        ],
-      ),
+    return AnimatedBuilder(
+      animation: _expandAnim,
+      builder: (context, _) {
+        // Interpolate max height: compact ~30% → expanded ~70% (below top bar)
+        final screenH = MediaQuery.of(context).size.height;
+        final compactH = screenH * 0.32;
+        final expandedH = screenH - kToolbarHeight - 80; // below top bar
+        final currentH = compactH + (expandedH - compactH) * _expandAnim.value;
+
+        return SizedBox(
+          height: currentH,
+          child: GlassCard(
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(AfRadii.lg),
+              topRight: Radius.circular(AfRadii.lg),
+            ),
+            padding: EdgeInsets.zero,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Swipeable zone: metadata + scrubber + transport ──
+                GestureDetector(
+                  onVerticalDragEnd: (details) {
+                    final vy = details.primaryVelocity ?? 0;
+                    if (vy < -200 || (vy < 0 && !_expanded)) {
+                      if (!_expanded) _toggleExpand();
+                    } else if (vy > 200 || (vy > 0 && _expanded)) {
+                      if (_expanded) _toggleExpand();
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AfSpacing.s16,
+                      AfSpacing.s12,
+                      AfSpacing.s16,
+                      AfSpacing.s8,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ── Metadata overlay (title + artist) ──
+                        _MetadataOverlay(track: widget.track),
+                        const SizedBox(height: AfSpacing.s12),
+                        // ── Visualizer scrubber ──
+                        _ReactiveProgress(track: widget.track),
+                        const SizedBox(height: AfSpacing.s12),
+                        // ── Transport controls ──
+                        _ReactiveTransport(track: widget.track),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ── Expandable queue section ──
+                if (_expanded && upNext.isNotEmpty) ...[
+                  const Divider(height: 1, color: AfColors.surfaceHigh),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AfSpacing.s16,
+                      vertical: AfSpacing.s8,
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Up Next',
+                          style: AfTypography.titleSmall.copyWith(
+                            color: AfColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: AfSpacing.s8),
+                        Text(
+                          '${upNext.length} tracks',
+                          style: AfTypography.caption.copyWith(
+                            color: AfColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Flexible(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.only(bottom: AfSpacing.s8),
+                      itemCount: upNext.length,
+                      itemBuilder: (context, index) {
+                        final t = upNext[index];
+                        return ListTile(
+                          dense: true,
+                          visualDensity: VisualDensity.compact,
+                          leading: Text(
+                            '${index + 1}',
+                            style: AfTypography.caption.copyWith(
+                              color: AfColors.textTertiary,
+                            ),
+                          ),
+                          title: Text(
+                            t.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AfTypography.bodyMedium,
+                          ),
+                          subtitle: Text(
+                            t.artistName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AfTypography.caption.copyWith(
+                              color: AfColors.textTertiary,
+                            ),
+                          ),
+                          onTap: () {
+                            ref.read(playerServiceProvider).skipToQueueItem(
+                              queue.indexOf(t),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
