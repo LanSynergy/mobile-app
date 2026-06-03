@@ -205,8 +205,7 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
             child: GlassCard(
               borderRadius: radius,
               blurSigma: 20,
-              color: AfColors.glassFillStrong,
-              borderColor: AfColors.glassBorderEmphasis,
+              tintOpacity: 0.15,
               padding: EdgeInsets.zero,
               child: Column(
                 mainAxisSize: MainAxisSize.min,

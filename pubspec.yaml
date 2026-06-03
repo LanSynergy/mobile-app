@@ -58,6 +58,8 @@ dependencies:
   clock: 1.1.2
   lucide_icons_flutter: ^3.1.14+1
   flutter_shaders_ui: ^0.1.1
+  cupertino_liquid_glass:
+    git: https://github.com/erenmalkoc/cupertino_liquid_glass.git
 
 dev_dependencies:
   flutter_test:
