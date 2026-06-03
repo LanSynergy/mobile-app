@@ -70,8 +70,13 @@ handover.md
 skills-lock.json
 .claude-design/
 
-# Auto-generated build metadata
-lib/build_id.dart
+# Android-only project — ignore other platforms
+/ios/
+/linux/
+/macos/
+/web/
+/windows/
+/test/widget_test.dart
 
 
 # Planning artifacts
