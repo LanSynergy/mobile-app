@@ -82,7 +82,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               // ── Centered artwork card (swipe up to expand queue) ──
               Positioned(
                 top: 76, // top bar compact height
-                bottom: 0, // let bottom content overlay
+                bottom:
+                    MediaQuery.of(context).size.height *
+                    0.36, // bottom content compact
                 left: 32,
                 right: 32,
                 child: GestureDetector(
