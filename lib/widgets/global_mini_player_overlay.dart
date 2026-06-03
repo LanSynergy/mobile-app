@@ -21,7 +21,6 @@ class _GlobalMiniPlayerOverlayState
   static const _hiddenLocations = {
     '/',
     '/now-playing',
-    '/lyrics',
     '/queue',
     '/sleep',
     '/cast',

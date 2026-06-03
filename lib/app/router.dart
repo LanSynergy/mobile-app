@@ -11,7 +11,6 @@ import '../features/cast_picker/cast_picker_screen.dart';
 import '../features/genre/genre_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/library/library_screen.dart';
-import '../features/lyrics/lyrics_screen.dart';
 import '../features/now_playing/now_playing_screen.dart';
 import '../features/now_playing/eq_dsp_screen.dart';
 import '../features/onboarding/all_set_screen.dart';
@@ -195,12 +194,6 @@ final _router = GoRouter(
         final extra = state.extra;
         return _NowPlayingPage(miniRect: extra is Rect ? extra : null);
       },
-    ),
-    GoRoute(
-      path: '/lyrics',
-      parentNavigatorKey: _rootKey,
-      pageBuilder: (context, state) =>
-          const NoTransitionPage(child: LyricsScreen()),
     ),
     GoRoute(
       path: '/queue',
