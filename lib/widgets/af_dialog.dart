@@ -67,6 +67,7 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
   late final AnimationController _ctrl;
   late final Animation<double> _fadeAnim;
   late final Animation<double> _scaleAnim;
+  late final Animation<double> _blurAnim;
   bool _dismissed = false;
   bool _ready = false;
 
@@ -85,6 +86,10 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
       begin: 0.92,
       end: 1.0,
     ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeEmphasized));
+    _blurAnim = Tween<double>(
+      begin: 0,
+      end: 24,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeOut));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _ready = true);
     });
@@ -110,6 +115,7 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
       builder: (context, _) {
         final opacity = _fadeAnim.value;
         final scale = _scaleAnim.value;
+        final blurSigma = _blurAnim.value;
 
         return Material(
           type: MaterialType.transparency,
@@ -123,7 +129,10 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
                   // ── Full-screen blur behind everything ──
                   Positioned.fill(
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                      filter: ImageFilter.blur(
+                        sigmaX: blurSigma,
+                        sigmaY: blurSigma,
+                      ),
                       child: Container(
                         color: Colors.black.withValues(alpha: 0.25),
                       ),

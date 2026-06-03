@@ -77,6 +77,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
   late final AnimationController _ctrl;
   late final Animation<double> _slideAnim;
   late final Animation<double> _fadeAnim;
+  late final Animation<double> _blurAnim;
   bool _dismissed = false;
   bool _ready = false;
 
@@ -93,6 +94,10 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
       end: 0.0,
     ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeEmphasized));
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: AfCurves.easeOut);
+    _blurAnim = Tween<double>(
+      begin: 0,
+      end: 24,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeOut));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _ready = true);
     });
@@ -120,6 +125,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
       builder: (context, _) {
         final slideOffset = _slideAnim.value;
         final opacity = _fadeAnim.value;
+        final blurSigma = _blurAnim.value;
 
         return Material(
           type: MaterialType.transparency,
@@ -133,7 +139,10 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                   // ── Full-screen blur behind everything ──
                   Positioned.fill(
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                      filter: ImageFilter.blur(
+                        sigmaX: blurSigma,
+                        sigmaY: blurSigma,
+                      ),
                       child: Container(
                         color: Colors.black.withValues(alpha: 0.25),
                       ),
