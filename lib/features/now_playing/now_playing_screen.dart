@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop;
 
-import '../../core/audio/play_actions.dart';
 import '../../core/audio/af_loop_mode.dart';
 import '../../core/audio/shuffle_mode.dart';
 import '../../core/jellyfin/models/items.dart';
@@ -235,83 +234,15 @@ class _FrostedTopBar extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: AfSpacing.s8),
-                PopupMenuButton<_NowPlayingAction>(
+                // Lyrics shortcut
+                IconButton(
                   icon: const Icon(
-                    LucideIcons.ellipsis,
+                    LucideIcons.mic2,
                     color: AfColors.textPrimary,
                     size: 20,
                   ),
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: AfRadii.borderLg,
-                  ),
-                  onSelected: (action) async {
-                    switch (action) {
-                      case _NowPlayingAction.startRadio:
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Starting Instant Mix…'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        }
-                        await ref
-                            .read(playActionsProvider)
-                            .playInstantMix(track);
-                        break;
-                      case _NowPlayingAction.goToAlbum:
-                        if (track.albumId != null) {
-                          unawaited(context.push('/album/${track.albumId}'));
-                        }
-                        break;
-                      case _NowPlayingAction.goToArtist:
-                        if (track.artistId != null) {
-                          unawaited(context.push('/artist/${track.artistId}'));
-                        }
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: _NowPlayingAction.startRadio,
-                      child: ListTile(
-                        leading: Icon(
-                          LucideIcons.radio,
-                          color: AfColors.textSecondary,
-                          size: 24,
-                        ),
-                        title: Text('Start radio'),
-                        subtitle: Text('Similar songs from your library'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                    if (track.albumId != null)
-                      const PopupMenuItem(
-                        value: _NowPlayingAction.goToAlbum,
-                        child: ListTile(
-                          leading: Icon(
-                            LucideIcons.disc3,
-                            color: AfColors.textSecondary,
-                            size: 24,
-                          ),
-                          title: Text('Go to album'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    if (track.artistId != null)
-                      const PopupMenuItem(
-                        value: _NowPlayingAction.goToArtist,
-                        child: ListTile(
-                          leading: Icon(
-                            LucideIcons.user,
-                            color: AfColors.textSecondary,
-                            size: 24,
-                          ),
-                          title: Text('Go to artist'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                  ],
+                  tooltip: 'Lyrics',
+                  onPressed: () => context.push('/lyrics'),
                 ),
               ],
             ),
@@ -319,8 +250,6 @@ class _FrostedTopBar extends ConsumerWidget {
     );
   }
 }
-
-enum _NowPlayingAction { startRadio, goToAlbum, goToArtist }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Bottom content zone — metadata overlay + controls

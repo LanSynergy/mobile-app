@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Device;
 
+import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
@@ -79,13 +80,21 @@ class _MoreMenu extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── Quick actions (previously in UtilityRow) ──
+        // ── Quick actions ──
         MoreItem(
-          icon: const Icon(LucideIcons.mic2, size: 22, color: AfColors.textSecondary),
-          label: 'Lyrics',
-          onTap: () {
+          icon: const Icon(LucideIcons.radio, size: 22, color: AfColors.textSecondary),
+          label: 'Start radio',
+          onTap: () async {
             dismiss();
-            context.push('/lyrics');
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Starting Instant Mix…'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+            await ref.read(playActionsProvider).playInstantMix(track!);
           },
         ),
         MoreItem(
@@ -116,6 +125,24 @@ class _MoreMenu extends StatelessWidget {
             context.push('/queue');
           },
         ),
+        if (track?.albumId != null)
+          MoreItem(
+            icon: const Icon(LucideIcons.disc3, size: 22, color: AfColors.textSecondary),
+            label: 'Go to album',
+            onTap: () {
+              dismiss();
+              context.push('/album/${track!.albumId}');
+            },
+          ),
+        if (track?.artistId != null)
+          MoreItem(
+            icon: const Icon(LucideIcons.user, size: 22, color: AfColors.textSecondary),
+            label: 'Go to artist',
+            onTap: () {
+              dismiss();
+              context.push('/artist/${track!.artistId}');
+            },
+          ),
         const Divider(height: 1, color: AfColors.surfaceHigh),
         // ── Advanced actions ──
         MoreItem(
