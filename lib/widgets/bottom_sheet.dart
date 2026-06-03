@@ -79,7 +79,6 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
   late final Animation<double> _fadeAnim;
   late final Animation<double> _blurAnim;
   bool _dismissed = false;
-  bool _ready = false;
 
   @override
   void initState() {
@@ -98,9 +97,6 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
       begin: 0,
       end: 24,
     ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeOut));
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _ready = true);
-    });
     _ctrl.forward();
   }
 
@@ -133,7 +129,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
             onTap: widget.isDismissible ? _dismiss : null,
             behavior: HitTestBehavior.opaque,
             child: Opacity(
-              opacity: _ready ? opacity : 0.0,
+              opacity: opacity,
               child: Stack(
                 children: [
                   // ── Full-screen blur behind everything ──

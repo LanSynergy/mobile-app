@@ -69,7 +69,6 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
   late final Animation<double> _scaleAnim;
   late final Animation<double> _blurAnim;
   bool _dismissed = false;
-  bool _ready = false;
 
   static const _borderRadius = AfRadii.lg;
 
@@ -90,9 +89,6 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
       begin: 0,
       end: 24,
     ).animate(CurvedAnimation(parent: _ctrl, curve: AfCurves.easeOut));
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _ready = true);
-    });
     _ctrl.forward();
   }
 
@@ -123,7 +119,7 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
             onTap: widget.barrierDismissible ? _dismiss : null,
             behavior: HitTestBehavior.opaque,
             child: Opacity(
-              opacity: _ready ? opacity : 0.0,
+              opacity: opacity,
               child: Stack(
                 children: [
                   // ── Full-screen blur behind everything ──
