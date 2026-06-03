@@ -34,7 +34,7 @@ class ReactiveArtwork extends ConsumerWidget {
   static const double _cardHorizontalPadding = 32;
 
   /// Top padding above the artwork card.
-  static const double _cardTopPadding = 16;
+  static const double _cardTopPadding = 8;
 
   /// Aspect ratio of the artwork card (1.0 = square).
   static const double _cardAspectRatio = 1.0;
@@ -62,7 +62,8 @@ class ReactiveArtwork extends ConsumerWidget {
         left: _cardHorizontalPadding,
         right: _cardHorizontalPadding,
       ),
-      child: Center(
+      child: Align(
+        alignment: Alignment.topCenter,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: cardW),
           child: AspectRatio(
