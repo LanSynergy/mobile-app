@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design_tokens/tokens.dart';
+import '../state/providers.dart';
 
 /// Section title with optional "See all" action.
 ///
 /// `Recently Played                    See More ›`
 ///
 /// 24dp top spacing, 12dp bottom spacing (callers handle the spacing wrappers).
-class SectionHeader extends StatelessWidget {
+class SectionHeader extends ConsumerWidget {
   const SectionHeader({
     super.key,
     required this.title,
@@ -25,7 +27,8 @@ class SectionHeader extends StatelessWidget {
   final bool uppercase;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     final titleStyle = uppercase
         ? AfTypography.label.copyWith(color: AfColors.textSecondary)
         : AfTypography.titleMedium.copyWith(color: AfColors.textPrimary);
@@ -50,9 +53,7 @@ class SectionHeader extends StatelessWidget {
               ),
               child: Text(
                 '$actionLabel ›',
-                style: AfTypography.bodySmall.copyWith(
-                  color: AfColors.accentPrimary,
-                ),
+                style: AfTypography.bodySmall.copyWith(color: spectral.primary),
               ),
             ),
           ),

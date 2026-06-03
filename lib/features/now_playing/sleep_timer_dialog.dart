@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design_tokens/tokens.dart';
+import '../../state/providers.dart';
 import '../sleep_timer/sleep_timer_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,6 +97,7 @@ class SleepTimerDialogContentState
   Widget build(BuildContext context) {
     final activeTimer = ref.watch(sleepTimerProvider);
     final isActive = activeTimer != null;
+    final spectral = ref.watch(currentSpectralProvider);
 
     return Padding(
       padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
@@ -112,22 +114,18 @@ class SleepTimerDialogContentState
                 vertical: AfSpacing.s8,
               ),
               decoration: BoxDecoration(
-                color: AfColors.accentPrimary.withValues(alpha: 0.15),
+                color: spectral.primary.withValues(alpha: 0.15),
                 borderRadius: AfRadii.borderMd,
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    LucideIcons.moon,
-                    color: AfColors.accentPrimary,
-                    size: 18,
-                  ),
+                  Icon(LucideIcons.moon, color: spectral.primary, size: 18),
                   const SizedBox(width: AfSpacing.s8),
                   Expanded(
                     child: Text(
                       'Timer active',
                       style: AfTypography.bodySmall.copyWith(
-                        color: AfColors.accentPrimary,
+                        color: spectral.primary,
                       ),
                     ),
                   ),
@@ -157,7 +155,7 @@ class SleepTimerDialogContentState
                     _selectedMinutes = m;
                     _showCustomInput = false;
                   }),
-                  selectedColor: AfColors.accentPrimary,
+                  selectedColor: spectral.primary,
                   backgroundColor: AfColors.surfaceRaised,
                   labelStyle: AfTypography.bodySmall.copyWith(
                     color: _selectedMinutes == m
@@ -172,7 +170,7 @@ class SleepTimerDialogContentState
                   _selectedMinutes = 0;
                   _showCustomInput = false;
                 }),
-                selectedColor: AfColors.accentPrimary,
+                selectedColor: spectral.primary,
                 backgroundColor: AfColors.surfaceRaised,
                 labelStyle: AfTypography.bodySmall.copyWith(
                   color: _selectedMinutes == 0
@@ -195,7 +193,7 @@ class SleepTimerDialogContentState
                         _selectedMinutes != 0 &&
                         !_presets.contains(_selectedMinutes)),
                 onSelected: (_) => setState(() => _showCustomInput = true),
-                selectedColor: AfColors.accentPrimary,
+                selectedColor: spectral.primary,
                 backgroundColor: AfColors.surfaceRaised,
                 labelStyle: AfTypography.bodySmall.copyWith(
                   color:

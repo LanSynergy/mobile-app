@@ -69,25 +69,51 @@ abstract final class AfColors {
   static const glassBorderEmphasis = Color(0x1AFFFFFF); // white @ 10%
 }
 
-/// Spectral accent triple, extracted from current artwork at runtime.
+/// Spectral accent palette, extracted from current artwork at runtime.
 ///
-/// Three tokens for three uses — never collapse into a single color.
+/// Every accent color in the app derives from artwork's dominant hue.
+/// The three legacy tokens (energy/shadow/glow) plus the new full-palette
+/// tokens (primary/secondary/muted/link/warning) all share the same hue —
+/// they vary only in lightness and chroma.
+///
+/// Naming convention:
+///   - `energy/shadow/glow` → now-playing specific (waveform, gradient, glow)
+///   - `primary/secondary/muted/link/warning` → app-wide accent replacements
 @immutable
 class Spectral {
   const Spectral({
     required this.energy,
     required this.shadow,
     required this.glow,
+    required this.primary,
+    required this.secondary,
+    required this.muted,
+    required this.link,
+    required this.warning,
   });
-  final Color energy; // waveform peak fill, lyric highlight, heart glow
+
+  // ── Now-playing specific ──
+  final Color energy; // waveform peak fill, lyric highlight
   final Color shadow; // Now Playing bottom gradient stop
   final Color glow; // play-button outer glow on Now Playing
 
-  /// Default — used until artwork is parsed.
+  // ── App-wide accent palette ──
+  final Color primary; // theme primary: buttons, switches, sliders, focus
+  final Color secondary; // secondary actions, badges, chips
+  final Color muted; // subtle accents: chip bg, icon tint, disabled state
+  final Color link; // text links, interactive text
+  final Color warning; // semantic warning (same hue, not red)
+
+  /// Default — used until artwork is parsed. Matches AfColors.accentPrimary.
   static const fallback = Spectral(
-    energy: Color(0xFFD4A574), // accentPrimary
+    energy: Color(0xFFD4A574),
     shadow: Color(0xFF1A1410),
     glow: Color(0xFFE8C9A0),
+    primary: Color(0xFFD4A574),
+    secondary: Color(0xFFC86E4B),
+    muted: Color(0xFF8B7355),
+    link: Color(0xFFD4A574),
+    warning: Color(0xFFD4A574),
   );
 
   @override
@@ -95,8 +121,22 @@ class Spectral {
       other is Spectral &&
       other.energy == energy &&
       other.shadow == shadow &&
-      other.glow == glow;
+      other.glow == glow &&
+      other.primary == primary &&
+      other.secondary == secondary &&
+      other.muted == muted &&
+      other.link == link &&
+      other.warning == warning;
 
   @override
-  int get hashCode => Object.hash(energy, shadow, glow);
+  int get hashCode => Object.hash(
+    energy,
+    shadow,
+    glow,
+    primary,
+    secondary,
+    muted,
+    link,
+    warning,
+  );
 }

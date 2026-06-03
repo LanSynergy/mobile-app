@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../design_tokens/tokens.dart';
+import '../../state/providers.dart';
 
 class SettingsLabel extends StatelessWidget {
   const SettingsLabel(this.label, {super.key});
@@ -125,7 +127,7 @@ class SettingsTile extends StatelessWidget {
   }
 }
 
-class SettingsSwitchTile extends StatelessWidget {
+class SettingsSwitchTile extends ConsumerWidget {
   const SettingsSwitchTile({
     super.key,
     required this.icon,
@@ -143,7 +145,8 @@ class SettingsSwitchTile extends StatelessWidget {
   final ValueChanged<bool> onChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return InkWell(
       onTap: () => onChanged(!value),
       child: Padding(
@@ -187,7 +190,7 @@ class SettingsSwitchTile extends StatelessWidget {
               value: value,
               onChanged: onChanged,
               activeThumbColor: AfColors.textOnPrimary,
-              activeTrackColor: AfColors.accentPrimary,
+              activeTrackColor: spectral.primary,
             ),
           ],
         ),
@@ -196,7 +199,7 @@ class SettingsSwitchTile extends StatelessWidget {
   }
 }
 
-class OptionTile extends StatelessWidget {
+class OptionTile extends ConsumerWidget {
   const OptionTile({
     super.key,
     required this.label,
@@ -210,7 +213,8 @@ class OptionTile extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -224,7 +228,7 @@ class OptionTile extends StatelessWidget {
               width: 3,
               height: subtitle != null ? 28 : 20,
               decoration: BoxDecoration(
-                color: isActive ? AfColors.accentPrimary : Colors.transparent,
+                color: isActive ? spectral.primary : Colors.transparent,
                 borderRadius: BorderRadius.circular(1.5),
               ),
             ),
@@ -237,9 +241,7 @@ class OptionTile extends StatelessWidget {
                   Text(
                     label,
                     style: AfTypography.bodyMedium.copyWith(
-                      color: isActive
-                          ? AfColors.accentPrimary
-                          : AfColors.textPrimary,
+                      color: isActive ? spectral.primary : AfColors.textPrimary,
                       fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                     ),
                   ),

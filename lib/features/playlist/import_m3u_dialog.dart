@@ -19,6 +19,7 @@ class ImportM3UAction {
   /// and create a new playlist.
   Future<void> import({required BuildContext context}) async {
     final controller = TextEditingController();
+    final spectral = _ref.read(currentSpectralProvider);
     final content = await showBlurDialog<String>(
       context: context,
       builder: (context, dismiss) => Column(
@@ -68,7 +69,7 @@ class ImportM3UAction {
                 icon: const Icon(LucideIcons.download, size: 18),
                 label: const Text('Import'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AfColors.accentPrimary,
+                  backgroundColor: spectral.primary,
                   foregroundColor: AfColors.surfaceCanvas,
                 ),
               ),
@@ -103,12 +104,12 @@ class ImportM3UAction {
       showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const Center(
+        builder: (_) => Center(
           child: SizedBox(
             width: 48,
             height: 48,
             child: CircularProgressIndicator(
-              color: AfColors.accentPrimary,
+              color: spectral.primary,
               strokeWidth: 2.5,
             ),
           ),

@@ -29,9 +29,9 @@ import '../../widgets/section_header.dart';
 // ── Private iOS-style helper widgets ─────────────────────────────────────────
 
 class _IconContainer extends StatelessWidget {
-  const _IconContainer({required this.icon, this.color});
+  const _IconContainer({required this.icon, required this.color});
   final IconData icon;
-  final Color? color;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +42,7 @@ class _IconContainer extends StatelessWidget {
         color: AfColors.surfaceHigh,
         borderRadius: AfRadii.borderSm,
       ),
-      child: Icon(icon, size: 16, color: color ?? AfColors.accentPrimary),
+      child: Icon(icon, size: 16, color: color),
     );
   }
 }
@@ -84,7 +84,7 @@ class _IosGroup extends StatelessWidget {
   }
 }
 
-class _IosTile extends StatelessWidget {
+class _IosTile extends ConsumerWidget {
   const _IosTile({
     required this.icon,
     required this.title,
@@ -102,7 +102,8 @@ class _IosTile extends StatelessWidget {
   final bool danger;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return PressScale(
       onTap: onTap,
       ensureHitTarget: true,
@@ -117,7 +118,7 @@ class _IosTile extends StatelessWidget {
             children: [
               _IconContainer(
                 icon: icon,
-                color: danger ? AfColors.semanticError : AfColors.accentPrimary,
+                color: danger ? AfColors.semanticError : spectral.primary,
               ),
               const SizedBox(width: AfSpacing.s12),
               Expanded(
@@ -161,7 +162,7 @@ class _IosTile extends StatelessWidget {
   }
 }
 
-class _IosSwitch extends StatelessWidget {
+class _IosSwitch extends ConsumerWidget {
   const _IosSwitch({
     required this.icon,
     required this.title,
@@ -177,7 +178,8 @@ class _IosSwitch extends StatelessWidget {
   final ValueChanged<bool> onChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return PressScale(
       onTap: () => onChanged(!value),
       ensureHitTarget: true,
@@ -190,7 +192,7 @@ class _IosSwitch extends StatelessWidget {
           ),
           child: Row(
             children: [
-              _IconContainer(icon: icon),
+              _IconContainer(icon: icon, color: spectral.primary),
               const SizedBox(width: AfSpacing.s12),
               Expanded(
                 child: Column(
@@ -216,7 +218,7 @@ class _IosSwitch extends StatelessWidget {
                 value: value,
                 onChanged: onChanged,
                 activeThumbColor: AfColors.textOnPrimary,
-                activeTrackColor: AfColors.accentPrimary,
+                activeTrackColor: spectral.primary,
               ),
             ],
           ),
@@ -867,6 +869,7 @@ class _LastFmSettingsSection extends ConsumerWidget {
     final username = ref.watch(lastfmUsernameProvider);
     final scrobbleEnabled = ref.watch(lastfmScrobbleEnabledProvider);
     final lastfmStatus = ref.watch(lastfmStatusProvider);
+    final spectral = ref.watch(currentSpectralProvider);
 
     final hasCredentials = apiKey.isNotEmpty && apiSecret.isNotEmpty;
     final isConnected = sessionKey.isNotEmpty;
@@ -912,12 +915,12 @@ class _LastFmSettingsSection extends ConsumerWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const SizedBox(
+                          SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: AfColors.accentPrimary,
+                              color: spectral.primary,
                             ),
                           ),
                           const SizedBox(width: AfSpacing.s16),

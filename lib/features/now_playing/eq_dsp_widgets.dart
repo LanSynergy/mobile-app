@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design_tokens/tokens.dart';
+import '../../state/providers.dart';
 
 // ─── Section Label ──────────────────────────────────────────────────────────
 
@@ -41,7 +43,7 @@ Widget eqCard(List<Widget> children) => Material(
 // ─── Master Banner ──────────────────────────────────────────────────────────
 
 /// Prominent DSP master toggle banner with gradient bg and glow.
-class EqMasterBanner extends StatelessWidget {
+class EqMasterBanner extends ConsumerWidget {
   const EqMasterBanner({
     super.key,
     required this.enabled,
@@ -52,14 +54,15 @@ class EqMasterBanner extends StatelessWidget {
   final ValueChanged<bool> onChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return AnimatedContainer(
       duration: AfDurations.standard,
       curve: AfCurves.easeStandard,
       decoration: BoxDecoration(
         gradient: enabled
-            ? const LinearGradient(
-                colors: [AfColors.accentMuted, AfColors.surfaceLow],
+            ? LinearGradient(
+                colors: [spectral.muted, AfColors.surfaceLow],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
@@ -77,12 +80,12 @@ class EqMasterBanner extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: enabled
-                  ? AfColors.accentSecondary.withValues(alpha: 0.3)
+                  ? spectral.secondary.withValues(alpha: 0.3)
                   : AfColors.surfaceHigh,
               boxShadow: enabled
                   ? [
                       BoxShadow(
-                        color: AfColors.accentPrimary.withValues(alpha: 0.4),
+                        color: spectral.primary.withValues(alpha: 0.4),
                         blurRadius: 8,
                       ),
                     ]
@@ -91,7 +94,7 @@ class EqMasterBanner extends StatelessWidget {
             child: Icon(
               LucideIcons.audioWaveform,
               size: 20,
-              color: enabled ? AfColors.accentPrimary : AfColors.textTertiary,
+              color: enabled ? spectral.primary : AfColors.textTertiary,
             ),
           ),
           const SizedBox(width: AfSpacing.s12),
@@ -114,9 +117,7 @@ class EqMasterBanner extends StatelessWidget {
                       ? 'All effects are processing audio'
                       : 'Audio passes through unprocessed',
                   style: AfTypography.bodySmall.copyWith(
-                    color: enabled
-                        ? AfColors.accentPrimary
-                        : AfColors.textTertiary,
+                    color: enabled ? spectral.primary : AfColors.textTertiary,
                   ),
                 ),
               ],
@@ -130,12 +131,12 @@ class EqMasterBanner extends StatelessWidget {
               width: 52,
               height: 30,
               decoration: BoxDecoration(
-                color: enabled ? AfColors.accentPrimary : AfColors.surfaceHigh,
+                color: enabled ? spectral.primary : AfColors.surfaceHigh,
                 borderRadius: AfRadii.borderPill,
                 boxShadow: enabled
                     ? [
                         BoxShadow(
-                          color: AfColors.accentPrimary.withValues(alpha: 0.4),
+                          color: spectral.primary.withValues(alpha: 0.4),
                           blurRadius: 8,
                         ),
                       ]
@@ -168,7 +169,7 @@ class EqMasterBanner extends StatelessWidget {
 // ─── Accordion Section ──────────────────────────────────────────────────────
 
 /// Single-open accordion container with header, badge, chevron, animated content.
-class EqAccordionSection extends StatelessWidget {
+class EqAccordionSection extends ConsumerWidget {
   const EqAccordionSection({
     super.key,
     required this.label,
@@ -185,7 +186,8 @@ class EqAccordionSection extends StatelessWidget {
   final int? badgeCount;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return AnimatedContainer(
       duration: AfDurations.standard,
       curve: AfCurves.easeStandard,
@@ -194,7 +196,7 @@ class EqAccordionSection extends StatelessWidget {
         borderRadius: AfRadii.borderLg,
         border: Border.all(
           color: isOpen
-              ? AfColors.accentSecondary.withValues(alpha: 0.4)
+              ? spectral.secondary.withValues(alpha: 0.4)
               : AfColors.surfaceHigh,
         ),
       ),
@@ -221,7 +223,7 @@ class EqAccordionSection extends StatelessWidget {
                       label.toUpperCase(),
                       style: AfTypography.label.copyWith(
                         color: isOpen
-                            ? AfColors.accentPrimary
+                            ? spectral.primary
                             : AfColors.textSecondary,
                       ),
                     ),
@@ -233,15 +235,13 @@ class EqAccordionSection extends StatelessWidget {
                           vertical: AfSpacing.s2,
                         ),
                         decoration: BoxDecoration(
-                          color: AfColors.accentSecondary.withValues(
-                            alpha: 0.3,
-                          ),
+                          color: spectral.secondary.withValues(alpha: 0.3),
                           borderRadius: AfRadii.borderPill,
                         ),
                         child: Text(
                           '$badgeCount',
                           style: AfTypography.overline.copyWith(
-                            color: AfColors.accentPrimary,
+                            color: spectral.primary,
                           ),
                         ),
                       ),
@@ -288,7 +288,7 @@ class EqAccordionSection extends StatelessWidget {
 // ─── Compact Effect Toggle ──────────────────────────────────────────────────
 
 /// Compact toggle row: title + subtitle column + custom pill toggle.
-class EqEffectToggle extends StatelessWidget {
+class EqEffectToggle extends ConsumerWidget {
   const EqEffectToggle({
     super.key,
     required this.title,
@@ -303,7 +303,8 @@ class EqEffectToggle extends StatelessWidget {
   final ValueChanged<bool> onChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => onChanged(!value),
@@ -334,7 +335,7 @@ class EqEffectToggle extends StatelessWidget {
               width: 44,
               height: 26,
               decoration: BoxDecoration(
-                color: value ? AfColors.accentSecondary : AfColors.surfaceHigh,
+                color: value ? spectral.secondary : AfColors.surfaceHigh,
                 borderRadius: AfRadii.borderPill,
               ),
               child: AnimatedAlign(
@@ -379,7 +380,7 @@ Widget eqToggleTile(
 // ─── Slider Row ─────────────────────────────────────────────────────────────
 
 /// Custom slider with label, value display and optional suffix.
-class EqSliderRow extends StatelessWidget {
+class EqSliderRow extends ConsumerWidget {
   const EqSliderRow({
     super.key,
     required this.label,
@@ -406,7 +407,8 @@ class EqSliderRow extends StatelessWidget {
   final bool enabled;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     final display = value >= 0 && suffix == 'dB'
         ? '+${value.toStringAsFixed(precision)}'
         : value.toStringAsFixed(precision);
@@ -422,7 +424,7 @@ class EqSliderRow extends StatelessWidget {
             const Spacer(),
             Text(
               suffix != null ? '$display $suffix' : display,
-              style: AfTypography.mono.copyWith(color: AfColors.accentPrimary),
+              style: AfTypography.mono.copyWith(color: spectral.primary),
             ),
           ],
         ),
@@ -437,7 +439,7 @@ class EqSliderRow extends StatelessWidget {
             min: min,
             max: max,
             divisions: divisions,
-            activeColor: AfColors.accentPrimary,
+            activeColor: spectral.primary,
             onChanged: enabled ? onChanged : null,
             onChangeEnd: enabled ? (_) => onChangeEnd() : null,
           ),
@@ -598,7 +600,7 @@ class _EqExpandableContentState extends State<EqExpandableContent>
 // ─── EQ Band Vertical Bar ───────────────────────────────────────────────────
 
 /// A single vertical EQ band bar with animated gain height.
-class EqBandBar extends StatelessWidget {
+class EqBandBar extends ConsumerWidget {
   const EqBandBar({
     super.key,
     required this.label,
@@ -617,7 +619,8 @@ class EqBandBar extends StatelessWidget {
   final VoidCallback onChangeEnd;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     final reduced = MediaQuery.of(context).disableAnimations;
     // Normalize gain to 0..1 for display (0 = min, 1 = max).
     final t = ((gain - min) / (max - min)).clamp(0.0, 1.0);
@@ -643,7 +646,7 @@ class EqBandBar extends StatelessWidget {
                 ? '+${((gain - 1) * 12).toStringAsFixed(0)}'
                 : ((gain - 1) * 12).toStringAsFixed(0),
             style: AfTypography.caption.copyWith(
-              color: isFlat ? AfColors.textTertiary : AfColors.accentPrimary,
+              color: isFlat ? AfColors.textTertiary : spectral.primary,
               fontSize: 9,
             ),
           ),
@@ -662,7 +665,7 @@ class EqBandBar extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isFlat
                         ? AfColors.surfaceHigh
-                        : AfColors.accentSecondary.withValues(alpha: 0.6),
+                        : spectral.secondary.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: Align(
@@ -670,9 +673,7 @@ class EqBandBar extends StatelessWidget {
                     child: Container(
                       height: totalH * 0.08 + totalH * 0.45 * fillFrac,
                       decoration: BoxDecoration(
-                        color: isFlat
-                            ? AfColors.surfaceHigh
-                            : AfColors.accentPrimary,
+                        color: isFlat ? AfColors.surfaceHigh : spectral.primary,
                         borderRadius: BorderRadius.circular(3),
                       ),
                     ),
@@ -701,7 +702,7 @@ class EqBandBar extends StatelessWidget {
 // ─── EQ Band Slider (horizontal, for detailed editing) ──────────────────────
 
 /// A single horizontal EQ band slider with animated value.
-class EqBandSlider extends StatelessWidget {
+class EqBandSlider extends ConsumerWidget {
   const EqBandSlider({
     super.key,
     required this.bandKey,
@@ -718,7 +719,8 @@ class EqBandSlider extends StatelessWidget {
   final VoidCallback onChangeEnd;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AfSpacing.s2),
       child: Row(
@@ -745,7 +747,7 @@ class EqBandSlider extends StatelessWidget {
                 min: 0,
                 max: 4,
                 divisions: 40,
-                activeColor: AfColors.accentPrimary,
+                activeColor: spectral.primary,
                 onChanged: onChanged,
                 onChangeEnd: (_) => onChangeEnd(),
               ),

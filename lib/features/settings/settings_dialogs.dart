@@ -327,6 +327,7 @@ class _ReplayGainDialogContentState
 
   @override
   Widget build(BuildContext context) {
+    final spectral = ref.watch(currentSpectralProvider);
     const options = <(ReplayGain, String, String)>[
       (ReplayGain.no, 'Off', 'No volume normalization'),
       (ReplayGain.track, 'Track', 'Normalize each track independently'),
@@ -396,7 +397,7 @@ class _ReplayGainDialogContentState
               min: -15,
               max: 15,
               divisions: 30,
-              activeColor: AfColors.accentPrimary,
+              activeColor: spectral.primary,
               onChanged: (v) => setState(() => _preamp = v),
               onChangeEnd: (_) => _apply(),
             ),
@@ -430,7 +431,7 @@ class _ReplayGainDialogContentState
                   min: -15,
                   max: 0,
                   divisions: 30,
-                  activeColor: AfColors.accentPrimary,
+                  activeColor: spectral.primary,
                   onChanged: (v) => setState(() => _fallback = v),
                   onChangeEnd: (_) => _apply(),
                 ),
@@ -460,7 +461,7 @@ class _ReplayGainDialogContentState
                   color: AfColors.textTertiary,
                 ),
               ),
-              activeThumbColor: AfColors.accentPrimary,
+              activeThumbColor: spectral.primary,
               contentPadding: EdgeInsets.zero,
             ),
           ),
@@ -692,6 +693,7 @@ void showLastFmApiConfigDialog(BuildContext context, WidgetRef ref) {
   final apiSecretController = TextEditingController(
     text: ref.read(lastfmApiSecretProvider),
   );
+  final spectral = ref.watch(currentSpectralProvider);
 
   showBlurDialog(
     context: context,
@@ -714,7 +716,7 @@ void showLastFmApiConfigDialog(BuildContext context, WidgetRef ref) {
           child: Text(
             'Create a developer account and register your API key at last.fm/api/account/create',
             style: AfTypography.bodySmall.copyWith(
-              color: AfColors.accentPrimary,
+              color: spectral.primary,
               decoration: TextDecoration.underline,
             ),
           ),

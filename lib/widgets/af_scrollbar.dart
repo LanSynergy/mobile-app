@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design_tokens/tokens.dart';
+import '../state/providers.dart';
 
 /// Styled scrollbar that matches the Dark Moody design language.
 ///
 /// Thin (3dp), pill-shaped, uses warm amber accent on scroll and a muted
 /// surface hint when idle. Wrap any scrollable with this instead of
 /// the raw [Scrollbar] widget.
-class AfScrollbar extends StatelessWidget {
+class AfScrollbar extends ConsumerWidget {
   const AfScrollbar({
     super.key,
     required this.child,
@@ -22,13 +24,14 @@ class AfScrollbar extends StatelessWidget {
   final ScrollbarOrientation? scrollbarOrientation;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return ScrollbarTheme(
       data: ScrollbarThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.dragged) ||
               states.contains(WidgetState.hovered)) {
-            return AfColors.accentPrimary.withValues(alpha: 0.6);
+            return spectral.primary.withValues(alpha: 0.6);
           }
           return AfColors.surfaceMax.withValues(alpha: 0.5);
         }),

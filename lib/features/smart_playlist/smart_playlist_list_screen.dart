@@ -17,6 +17,7 @@ class SmartPlaylistListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playlistsAsync = ref.watch(smartPlaylistsProvider);
+    final spectral = ref.watch(currentSpectralProvider);
 
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
@@ -33,7 +34,7 @@ class SmartPlaylistListScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/smart-playlist/new'),
-        backgroundColor: AfColors.accentPrimary,
+        backgroundColor: spectral.primary,
         child: const Icon(LucideIcons.plus, color: AfColors.surfaceCanvas),
       ),
       body: playlistsAsync.when(
@@ -46,13 +47,13 @@ class SmartPlaylistListScreen extends ConsumerWidget {
                       width: 72,
                       height: 72,
                       decoration: BoxDecoration(
-                        color: AfColors.accentPrimary.withValues(alpha: 0.08),
+                        color: spectral.primary.withValues(alpha: 0.08),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         LucideIcons.sparkles,
                         size: 36,
-                        color: AfColors.accentPrimary,
+                        color: spectral.primary,
                       ),
                     ),
                     const SizedBox(height: AfSpacing.s16),
@@ -124,7 +125,7 @@ class SmartPlaylistListScreen extends ConsumerWidget {
   }
 }
 
-class _PlaylistTile extends StatelessWidget {
+class _PlaylistTile extends ConsumerWidget {
   const _PlaylistTile({
     required this.playlist,
     required this.onTap,
@@ -135,7 +136,8 @@ class _PlaylistTile extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return InkWell(
       onTap: onTap,
       onLongPress: () => _showDeleteDialog(context),
@@ -150,13 +152,13 @@ class _PlaylistTile extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AfColors.accentPrimary.withValues(alpha: 0.12),
+                color: spectral.primary.withValues(alpha: 0.12),
                 borderRadius: AfRadii.borderSm,
               ),
-              child: const Icon(
+              child: Icon(
                 LucideIcons.sparkles,
                 size: 20,
-                color: AfColors.accentPrimary,
+                color: spectral.primary,
               ),
             ),
             const SizedBox(width: AfSpacing.s12),

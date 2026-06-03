@@ -217,6 +217,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final spectral = ref.watch(currentSpectralProvider);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -287,7 +288,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                         Switch.adaptive(
                           value: _useToken,
                           onChanged: (v) => setState(() => _useToken = v),
-                          activeThumbColor: AfColors.accentPrimary,
+                          activeThumbColor: spectral.primary,
                         ),
                         const SizedBox(width: AfSpacing.s8),
                         Expanded(
@@ -324,29 +325,26 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 /// is on by default in the network security config (some self-hosters can't
 /// terminate TLS), but the user should know what they're agreeing to before
 /// the access token rides over the wire in plain.
-class _CleartextWarning extends StatelessWidget {
+class _CleartextWarning extends ConsumerWidget {
   const _CleartextWarning({required this.baseUrl});
   final String baseUrl;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AfSpacing.s12,
         vertical: AfSpacing.s8,
       ),
       decoration: BoxDecoration(
-        color: AfColors.semanticWarning.withValues(alpha: 0.12),
+        color: spectral.warning.withValues(alpha: 0.12),
         borderRadius: AfRadii.borderMd,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            LucideIcons.lockOpen,
-            size: 18,
-            color: AfColors.semanticWarning,
-          ),
+          Icon(LucideIcons.lockOpen, size: 18, color: spectral.warning),
           const SizedBox(width: AfSpacing.s8),
           Expanded(
             child: Text(

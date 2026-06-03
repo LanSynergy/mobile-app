@@ -132,25 +132,57 @@ class SpectralExtractor {
     return _buildFromSample(best.oklch);
   }
 
-  /// Builds the spectral triple from an actual OKLCH sample.
+  /// Builds the full spectral palette from an actual OKLCH sample.
   ///
-  /// Uses the sample's hue, and derives L/C values that are tuned for
-  /// UI use but still retain the artwork's character.
+  /// All variants share the same hue — they differ only in lightness
+  /// and chroma, so the palette always feels cohesive.
   Spectral _buildFromSample(OklchColor sample) {
     final h = sample.h;
-    // Energy: boost chroma slightly from sample, clamp lightness for contrast.
+    final c = sample.c;
+
+    // Energy: boost chroma, clamp lightness for contrast.
     final energyL = sample.l.clamp(0.45, 0.72);
-    final energyC = math.max(sample.c, 0.10); // at least 0.10 for visibility
+    final energyC = math.max(c, 0.10);
     final energy = OklchColor(energyL, energyC, h).toColor();
 
     // Shadow: same hue, very dark, low chroma.
-    final shadow = OklchColor(0.18, sample.c * 0.35, h).toColor();
+    final shadow = OklchColor(0.18, c * 0.35, h).toColor();
 
     // Glow: same hue, light, moderate chroma.
     final glowL = math.min(sample.l + 0.15, 0.85);
-    final glow = OklchColor(glowL, sample.c * 0.55, h).toColor();
+    final glow = OklchColor(glowL, c * 0.55, h).toColor();
 
-    return Spectral(energy: energy, shadow: shadow, glow: glow);
+    // Primary: same as energy — main UI accent for theme.
+    final primary = energy;
+
+    // Secondary: hue-shifted +20°, slightly lower chroma.
+    final secondaryHue = (h + 20) % 360;
+    final secondary = OklchColor(
+      energyL.clamp(0.40, 0.65),
+      math.max(energyC * 0.75, 0.08),
+      secondaryHue,
+    ).toColor();
+
+    // Muted: same hue, low chroma, medium lightness.
+    final muted = OklchColor(0.45, c * 0.30, h).toColor();
+
+    // Link: same hue, lighter than primary, moderate chroma.
+    final linkL = math.min(energyL + 0.12, 0.78);
+    final link = OklchColor(linkL, energyC * 0.85, h).toColor();
+
+    // Warning: same hue as energy (replaces static semanticWarning).
+    final warning = energy;
+
+    return Spectral(
+      energy: energy,
+      shadow: shadow,
+      glow: glow,
+      primary: primary,
+      secondary: secondary,
+      muted: muted,
+      link: link,
+      warning: warning,
+    );
   }
 
   /// Synchronous fallback used in widget tests / preview mode.

@@ -134,6 +134,7 @@ class _SmartPlaylistEditScreenState
     }
 
     final isEdit = widget.playlistId != null;
+    final spectral = ref.watch(currentSpectralProvider);
 
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
@@ -156,7 +157,7 @@ class _SmartPlaylistEditScreenState
             child: Text(
               'Save',
               style: AfTypography.bodyMedium.copyWith(
-                color: AfColors.accentPrimary,
+                color: spectral.primary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -211,13 +212,13 @@ class _SmartPlaylistEditScreenState
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: AfColors.accentSecondary.withValues(alpha: 0.15),
+                        color: spectral.secondary.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         LucideIcons.filter,
                         size: 18,
-                        color: AfColors.accentSecondary,
+                        color: spectral.secondary,
                       ),
                     ),
                     const SizedBox(width: AfSpacing.s12),
@@ -233,7 +234,7 @@ class _SmartPlaylistEditScreenState
                           setState(() => _combinator = v.first),
                       style: SegmentedButton.styleFrom(
                         backgroundColor: AfColors.surfaceHigh,
-                        selectedBackgroundColor: AfColors.accentPrimary,
+                        selectedBackgroundColor: spectral.primary,
                         selectedForegroundColor: AfColors.surfaceCanvas,
                       ),
                     ),
@@ -275,7 +276,7 @@ class _SmartPlaylistEditScreenState
               icon: const Icon(LucideIcons.plus, size: 18),
               label: const Text('Add rule'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AfColors.accentPrimary,
+                foregroundColor: spectral.primary,
                 side: const BorderSide(color: AfColors.surfaceHigh),
                 shape: const RoundedRectangleBorder(
                   borderRadius: AfRadii.borderLg,
@@ -320,7 +321,7 @@ class _SmartPlaylistEditScreenState
                       underline: const SizedBox.shrink(),
                       dropdownColor: AfColors.surfaceRaised,
                       style: AfTypography.bodySmall.copyWith(
-                        color: AfColors.accentPrimary,
+                        color: spectral.primary,
                       ),
                       items: kSmartSortOptions.entries
                           .map(
@@ -392,7 +393,7 @@ class _SmartPlaylistEditScreenState
                         ),
                         textAlign: TextAlign.center,
                         style: AfTypography.bodyMedium.copyWith(
-                          color: AfColors.accentPrimary,
+                          color: spectral.primary,
                         ),
                         decoration: InputDecoration(
                           hintText: '\u221e',
@@ -480,7 +481,7 @@ class _SettingsGroup extends StatelessWidget {
 }
 
 /// A single rule row inside the grouped card.
-class _RuleRow extends StatelessWidget {
+class _RuleRow extends ConsumerWidget {
   const _RuleRow({
     required this.rule,
     required this.onChanged,
@@ -491,7 +492,8 @@ class _RuleRow extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     final operators = operatorsForField(rule.field);
     final effectiveOp = operators.contains(rule.operator)
         ? rule.operator
@@ -609,13 +611,13 @@ class _RuleRow extends StatelessWidget {
           ),
           const SizedBox(height: AfSpacing.s8),
           // Value row
-          _buildValueInput(),
+          _buildValueInput(spectral),
         ],
       ),
     );
   }
 
-  Widget _buildValueInput() {
+  Widget _buildValueInput(Spectral spectral) {
     if (rule.field == 'isFavorite') {
       return Row(
         children: [
@@ -626,7 +628,7 @@ class _RuleRow extends StatelessWidget {
             onChanged: (v) => onChanged(
               SmartRule(field: rule.field, operator: rule.operator, value: v),
             ),
-            activeTrackColor: AfColors.accentPrimary,
+            activeTrackColor: spectral.primary,
           ),
         ],
       );

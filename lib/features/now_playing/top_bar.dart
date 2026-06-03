@@ -371,6 +371,7 @@ class _EmptyLyrics extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     final backend = ref.watch(musicBackendProvider);
     final isLocal = backend is LocalBackend;
 
@@ -410,9 +411,7 @@ class _EmptyLyrics extends ConsumerWidget {
               },
               icon: const Icon(LucideIcons.upload, size: 18),
               label: const Text('Load LRC File'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AfColors.accentPrimary,
-              ),
+              style: FilledButton.styleFrom(backgroundColor: spectral.primary),
             ),
           ],
         ],

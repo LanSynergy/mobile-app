@@ -71,6 +71,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
     final mode = ref.watch(appModeProvider);
     final isLocal = mode == AppMode.local;
+    final spectral = ref.watch(currentSpectralProvider);
 
     return SafeArea(
       child: Column(
@@ -88,11 +89,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               children: [
                 Expanded(
                   child: ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [
-                        AfColors.accentPrimary,
-                        AfColors.accentSecondary,
-                      ],
+                    shaderCallback: (bounds) => LinearGradient(
+                      colors: [spectral.primary, spectral.secondary],
                     ).createShader(bounds),
                     child: Text(
                       'Library',
@@ -176,6 +174,7 @@ class _CommandPaletteSearchState extends ConsumerState<_CommandPaletteSearch> {
   Widget build(BuildContext context) {
     final mode = ref.watch(appModeProvider);
     final isLocal = mode == AppMode.local;
+    final spectral = ref.watch(currentSpectralProvider);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
@@ -281,9 +280,9 @@ class _CommandPaletteSearchState extends ConsumerState<_CommandPaletteSearch> {
                       borderRadius: AfRadii.borderPill,
                       borderSide: BorderSide(color: AfColors.surfaceHigh),
                     ),
-                    focusedBorder: const OutlineInputBorder(
+                    focusedBorder: OutlineInputBorder(
                       borderRadius: AfRadii.borderPill,
-                      borderSide: BorderSide(color: AfColors.accentPrimary),
+                      borderSide: BorderSide(color: spectral.primary),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: AfSpacing.s16,
@@ -775,16 +774,16 @@ class _RecentlyAddedSection extends ConsumerWidget {
 
 // ── Pill Bar (animated with easeOutBack) ──
 
-class _PillBar extends StatefulWidget {
+class _PillBar extends ConsumerStatefulWidget {
   const _PillBar({required this.selected, required this.onChanged});
   final SongsPill selected;
   final ValueChanged<SongsPill> onChanged;
 
   @override
-  State<_PillBar> createState() => _PillBarState();
+  ConsumerState<_PillBar> createState() => _PillBarState();
 }
 
-class _PillBarState extends State<_PillBar>
+class _PillBarState extends ConsumerState<_PillBar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   int _fromIndex = 0;
@@ -817,6 +816,7 @@ class _PillBarState extends State<_PillBar>
 
   @override
   Widget build(BuildContext context) {
+    final spectral = ref.watch(currentSpectralProvider);
     final count = SongsPill.values.length;
 
     return LayoutBuilder(
@@ -845,10 +845,10 @@ class _PillBarState extends State<_PillBar>
                         top: 4,
                         bottom: 4,
                         width: segWidth - 8,
-                        child: const IgnorePointer(
+                        child: IgnorePointer(
                           child: DecoratedBox(
                             decoration: BoxDecoration(
-                              color: AfColors.accentPrimary,
+                              color: spectral.primary,
                               borderRadius: AfRadii.borderPill,
                             ),
                           ),

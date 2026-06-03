@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design_tokens/tokens.dart';
+import '../state/providers.dart';
 import 'press_scale.dart';
 
 /// Custom bottom navigation bar — Dark Moody edition.
@@ -44,7 +45,8 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final accent = widget.accentColor ?? AfColors.accentPrimary;
+    final accent =
+        widget.accentColor ?? ref.watch(currentSpectralProvider).primary;
 
     return Container(
       decoration: const BoxDecoration(

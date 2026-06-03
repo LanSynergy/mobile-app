@@ -45,6 +45,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     final activeId = activeTrack?.id;
     final isBuffering = ref.watch(isBufferingProvider);
     final activeAccent = ref.watch(currentSpectralProvider).energy;
+    final spectral = ref.watch(currentSpectralProvider);
 
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
@@ -122,7 +123,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                 slivers: [
                   // Header.
                   SliverToBoxAdapter(
-                    child: _Header(pl: pl, tracks: tracks),
+                    child: _Header(pl: pl, tracks: tracks, spectral: spectral),
                   ),
 
                   // Action row.
@@ -196,9 +197,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: isActive
-                                      ? AfColors.accentPrimary.withValues(
-                                          alpha: 0.08,
-                                        )
+                                      ? spectral.primary.withValues(alpha: 0.08)
                                       : null,
                                 ),
                                 child: Padding(
@@ -214,7 +213,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                           '${i + 1}',
                                           style: AfTypography.overline.copyWith(
                                             color: isActive
-                                                ? AfColors.accentPrimary
+                                                ? spectral.primary
                                                 : AfColors.textDisabled,
                                           ),
                                           textAlign: TextAlign.center,
@@ -283,9 +282,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                             return Container(
                               decoration: BoxDecoration(
                                 color: isActive
-                                    ? AfColors.accentPrimary.withValues(
-                                        alpha: 0.08,
-                                      )
+                                    ? spectral.primary.withValues(alpha: 0.08)
                                     : null,
                               ),
                               child: Padding(
@@ -301,7 +298,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                         '${i + 1}',
                                         style: AfTypography.overline.copyWith(
                                           color: isActive
-                                              ? AfColors.accentPrimary
+                                              ? spectral.primary
                                               : AfColors.textDisabled,
                                         ),
                                         textAlign: TextAlign.center,
@@ -649,9 +646,14 @@ enum _PlaylistAction { rename, exportM3U, delete }
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
-  const _Header({required this.pl, required this.tracks});
+  const _Header({
+    required this.pl,
+    required this.tracks,
+    required this.spectral,
+  });
   final AfPlaylist pl;
   final List<AfTrack> tracks;
+  final Spectral spectral;
 
   String _formatDuration(Duration d) {
     final totalMinutes = d.inMinutes;
@@ -690,21 +692,21 @@ class _Header extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AfColors.accentPrimary.withValues(alpha: 0.3),
+                  spectral.primary.withValues(alpha: 0.3),
                   AfColors.surfaceLow,
                 ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AfColors.accentPrimary.withValues(alpha: 0.15),
+                  color: spectral.primary.withValues(alpha: 0.15),
                   blurRadius: 32,
                   offset: const Offset(0, 8),
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               LucideIcons.listMusic,
-              color: AfColors.accentPrimary,
+              color: spectral.primary,
               size: 56,
             ),
           ),
@@ -795,16 +797,16 @@ class _StatBadge extends StatelessWidget {
 }
 
 /// Play / Shuffle segmented control.
-class _SegmentedControl extends StatefulWidget {
+class _SegmentedControl extends ConsumerStatefulWidget {
   const _SegmentedControl({required this.onLeft, required this.onRight});
   final VoidCallback? onLeft;
   final VoidCallback? onRight;
 
   @override
-  State<_SegmentedControl> createState() => _SegmentedControlState();
+  ConsumerState<_SegmentedControl> createState() => _SegmentedControlState();
 }
 
-class _SegmentedControlState extends State<_SegmentedControl> {
+class _SegmentedControlState extends ConsumerState<_SegmentedControl> {
   bool _isRightSelected = false;
 
   @override
@@ -836,7 +838,9 @@ class _SegmentedControlState extends State<_SegmentedControl> {
       duration: AfDurations.quick,
       curve: AfCurves.easeStandard,
       decoration: BoxDecoration(
-        color: isSelected ? AfColors.accentPrimary : Colors.transparent,
+        color: isSelected
+            ? ref.read(currentSpectralProvider).primary
+            : Colors.transparent,
       ),
       child: PressScale(
         ensureHitTarget: false,

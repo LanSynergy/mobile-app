@@ -94,6 +94,7 @@ class _AbLoopButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     final abA = ref.watch(abLoopAProvider);
     final abB = ref.watch(abLoopBProvider);
     final active = abA != null || abB != null;
@@ -113,7 +114,7 @@ class _AbLoopButton extends ConsumerWidget {
       child: Icon(
         LucideIcons.repeat1,
         size: 20,
-        color: active ? AfColors.accentPrimary : AfColors.textTertiary,
+        color: active ? spectral.primary : AfColors.textTertiary,
       ),
     );
   }

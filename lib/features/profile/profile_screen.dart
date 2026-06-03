@@ -290,7 +290,7 @@ class _PinnedRow extends StatelessWidget {
   }
 }
 
-class _AvatarImagePicker extends StatelessWidget {
+class _AvatarImagePicker extends ConsumerWidget {
   const _AvatarImagePicker({
     required this.name,
     required this.isUploading,
@@ -310,7 +310,8 @@ class _AvatarImagePicker extends StatelessWidget {
   final VoidCallback onRemovePhoto;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     final hasPhoto =
         (localPath != null && File(localPath!).existsSync()) ||
         networkUrl != null;
@@ -322,7 +323,7 @@ class _AvatarImagePicker extends StatelessWidget {
         width: AfSpacing.avatarSize,
         height: AfSpacing.avatarSize,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _initialsAvatar(),
+        errorBuilder: (context, error, stackTrace) => _initialsAvatar(spectral),
       );
     } else if (networkUrl != null) {
       avatarContent = CachedNetworkImage(
@@ -331,11 +332,11 @@ class _AvatarImagePicker extends StatelessWidget {
         width: AfSpacing.avatarSize,
         height: AfSpacing.avatarSize,
         fit: BoxFit.cover,
-        placeholder: (context, url) => _initialsAvatar(),
-        errorWidget: (context, url, error) => _initialsAvatar(),
+        placeholder: (context, url) => _initialsAvatar(spectral),
+        errorWidget: (context, url, error) => _initialsAvatar(spectral),
       );
     } else {
-      avatarContent = _initialsAvatar();
+      avatarContent = _initialsAvatar(spectral);
     }
 
     return GestureDetector(
@@ -409,7 +410,7 @@ class _AvatarImagePicker extends StatelessWidget {
             height: AfSpacing.avatarSize,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: AfColors.accentSecondary, width: 2),
+              border: Border.all(color: spectral.secondary, width: 2),
             ),
             child: ClipOval(child: avatarContent),
           ),
@@ -420,9 +421,9 @@ class _AvatarImagePicker extends StatelessWidget {
               child: Container(
                 width: 28,
                 height: 28,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AfColors.accentSecondary,
+                  color: spectral.secondary,
                 ),
                 child: const Icon(
                   LucideIcons.camera,
@@ -438,13 +439,13 @@ class _AvatarImagePicker extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: AfColors.surfaceScrim,
                 ),
-                child: const Center(
+                child: Center(
                   child: SizedBox(
                     width: 24,
                     height: 24,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
-                      color: AfColors.accentPrimary,
+                      color: spectral.primary,
                     ),
                   ),
                 ),
@@ -455,11 +456,11 @@ class _AvatarImagePicker extends StatelessWidget {
     );
   }
 
-  Widget _initialsAvatar() {
+  Widget _initialsAvatar(Spectral spectral) {
     return Container(
       width: AfSpacing.avatarSize,
       height: AfSpacing.avatarSize,
-      color: AfColors.accentMuted,
+      color: spectral.muted,
       alignment: Alignment.center,
       child: Text(
         name.isEmpty ? 'A' : name[0].toUpperCase(),
@@ -471,16 +472,17 @@ class _AvatarImagePicker extends StatelessWidget {
   }
 }
 
-class _LastFmConnectionCTA extends StatelessWidget {
+class _LastFmConnectionCTA extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return Container(
       margin: const EdgeInsets.only(bottom: AfSpacing.s16),
       padding: const EdgeInsets.all(AfSpacing.s16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         borderRadius: AfRadii.borderMd,
         gradient: LinearGradient(
-          colors: [AfColors.accentMuted, AfColors.semanticError],
+          colors: [spectral.muted, AfColors.semanticError],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -515,7 +517,7 @@ class _LastFmConnectionCTA extends StatelessWidget {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: AfColors.accentMuted,
+              foregroundColor: spectral.muted,
               padding: const EdgeInsets.symmetric(
                 horizontal: AfSpacing.s16,
                 vertical: AfSpacing.s8,
@@ -540,6 +542,7 @@ class _StatsDashboard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activePeriod = ref.watch(statsPeriodProvider);
     final activeTab = ref.watch(statsTabProvider);
+    final spectral = ref.watch(currentSpectralProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -600,7 +603,7 @@ class _StatsDashboard extends ConsumerWidget {
         const SizedBox(height: AfSpacing.s12),
 
         // List render
-        _renderActiveList(context, ref, activeTab),
+        _renderActiveList(context, ref, activeTab, spectral),
       ],
     );
   }
@@ -609,26 +612,27 @@ class _StatsDashboard extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     String activeTab,
+    Spectral spectral,
   ) {
     switch (activeTab) {
       case 'songs':
         final songsAsync = ref.watch(topTracksProvider);
         return songsAsync.when(
-          loading: _loadingIndicator,
+          loading: () => _loadingIndicator(spectral),
           error: (err, _) => _errorText(err),
           data: (tracks) => _SongsList(tracks: tracks),
         );
       case 'artists':
         final artistsAsync = ref.watch(topArtistsProvider);
         return artistsAsync.when(
-          loading: _loadingIndicator,
+          loading: () => _loadingIndicator(spectral),
           error: (err, _) => _errorText(err),
           data: (artists) => _ArtistsList(artists: artists),
         );
       case 'albums':
         final albumsAsync = ref.watch(topAlbumsProvider);
         return albumsAsync.when(
-          loading: _loadingIndicator,
+          loading: () => _loadingIndicator(spectral),
           error: (err, _) => _errorText(err),
           data: (albums) => _AlbumsList(albums: albums),
         );
@@ -637,16 +641,16 @@ class _StatsDashboard extends ConsumerWidget {
     }
   }
 
-  Widget _loadingIndicator() {
-    return const Center(
+  Widget _loadingIndicator(Spectral spectral) {
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(AfSpacing.s32),
+        padding: const EdgeInsets.all(AfSpacing.s32),
         child: SizedBox(
           width: 24,
           height: 24,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            color: AfColors.accentPrimary,
+            color: spectral.primary,
           ),
         ),
       ),
@@ -680,6 +684,7 @@ class _PeriodButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final active = value == activeValue;
+    final spectral = ref.watch(currentSpectralProvider);
     return PressScale(
       onTap: () => ref.read(statsPeriodProvider.notifier).state = value,
       child: Container(
@@ -688,7 +693,7 @@ class _PeriodButton extends ConsumerWidget {
           vertical: AfSpacing.s4,
         ),
         decoration: BoxDecoration(
-          color: active ? AfColors.accentSecondary : AfColors.surfaceBase,
+          color: active ? spectral.secondary : AfColors.surfaceBase,
           borderRadius: AfRadii.borderSm,
         ),
         child: Text(
@@ -746,6 +751,7 @@ class _SongsList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     if (tracks.isEmpty) {
       return _emptyState(
         'No history logged yet. Listen to tracks to collect metrics.',
@@ -810,7 +816,7 @@ class _SongsList extends ConsumerWidget {
           ),
           trailing: Text(
             '${t.playCount} plays',
-            style: AfTypography.caption.copyWith(color: AfColors.accentPrimary),
+            style: AfTypography.caption.copyWith(color: spectral.primary),
           ),
           onTap: () => _playTrackFromStats(context, ref, t.artist, t.title),
         );
@@ -825,6 +831,7 @@ class _ArtistsList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     if (artists.isEmpty) {
       return _emptyState('No history logged yet.');
     }
@@ -867,7 +874,7 @@ class _ArtistsList extends ConsumerWidget {
           ),
           trailing: Text(
             '${a.playCount} plays',
-            style: AfTypography.caption.copyWith(color: AfColors.accentPrimary),
+            style: AfTypography.caption.copyWith(color: spectral.primary),
           ),
           onTap: () => _navigateToArtistFromStats(context, ref, a.artist),
         );
@@ -883,6 +890,7 @@ class _AlbumsList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     if (albums.isEmpty) {
       return _emptyState('No history logged yet.');
     }
@@ -945,7 +953,7 @@ class _AlbumsList extends ConsumerWidget {
           ),
           trailing: Text(
             '${alb.playCount} plays',
-            style: AfTypography.caption.copyWith(color: AfColors.accentPrimary),
+            style: AfTypography.caption.copyWith(color: spectral.primary),
           ),
           onTap: () =>
               _navigateToAlbumFromStats(context, ref, alb.artist, alb.album),
@@ -979,6 +987,7 @@ Future<void> _playTrackFromStats(
   String artist,
   String title,
 ) async {
+  final spectral = ref.read(currentSpectralProvider);
   unawaited(
     showBlurDialog(
       context: context,
@@ -986,12 +995,12 @@ Future<void> _playTrackFromStats(
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 20,
             height: 20,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              color: AfColors.accentPrimary,
+              color: spectral.primary,
             ),
           ),
           const SizedBox(width: AfSpacing.s16),
@@ -1062,6 +1071,7 @@ Future<void> _navigateToArtistFromStats(
   WidgetRef ref,
   String artistName,
 ) async {
+  final spectral = ref.read(currentSpectralProvider);
   unawaited(
     showBlurDialog(
       context: context,
@@ -1069,12 +1079,12 @@ Future<void> _navigateToArtistFromStats(
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 20,
             height: 20,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              color: AfColors.accentPrimary,
+              color: spectral.primary,
             ),
           ),
           const SizedBox(width: AfSpacing.s16),
@@ -1135,6 +1145,7 @@ Future<void> _navigateToAlbumFromStats(
   String artistName,
   String albumName,
 ) async {
+  final spectral = ref.read(currentSpectralProvider);
   unawaited(
     showBlurDialog(
       context: context,
@@ -1142,12 +1153,12 @@ Future<void> _navigateToAlbumFromStats(
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 20,
             height: 20,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              color: AfColors.accentPrimary,
+              color: spectral.primary,
             ),
           ),
           const SizedBox(width: AfSpacing.s16),

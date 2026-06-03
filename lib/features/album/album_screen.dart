@@ -59,6 +59,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
     final detailAsync = ref.watch(albumDetailProvider(widget.albumId));
     final activeTrack = ref.watch(currentTrackProvider);
     final activeId = activeTrack?.id;
+    final spectral = ref.watch(currentSpectralProvider);
 
     final detail = detailAsync.valueOrNull;
     final wikiAsync = detail != null
@@ -165,7 +166,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                               child: Text(
                                 album.artistName,
                                 style: AfTypography.titleMedium.copyWith(
-                                  color: AfColors.accentPrimary,
+                                  color: spectral.primary,
                                 ),
                               ),
                             ),
@@ -459,17 +460,17 @@ class _TrackRowItem extends ConsumerWidget {
   }
 }
 
-class _AlbumWikiPanel extends StatefulWidget {
+class _AlbumWikiPanel extends ConsumerStatefulWidget {
   const _AlbumWikiPanel({required this.wiki, this.listeners, this.playCount});
   final String wiki;
   final String? listeners;
   final String? playCount;
 
   @override
-  State<_AlbumWikiPanel> createState() => _AlbumWikiPanelState();
+  ConsumerState<_AlbumWikiPanel> createState() => _AlbumWikiPanelState();
 }
 
-class _AlbumWikiPanelState extends State<_AlbumWikiPanel> {
+class _AlbumWikiPanelState extends ConsumerState<_AlbumWikiPanel> {
   bool _expanded = false;
 
   String _cleanHtml(String html) {
@@ -490,6 +491,7 @@ class _AlbumWikiPanelState extends State<_AlbumWikiPanel> {
     final cleanText = _cleanHtml(widget.wiki);
     if (cleanText.isEmpty) return const SizedBox();
 
+    final spectral = ref.watch(currentSpectralProvider);
     final stats = <String>[];
     if (widget.listeners != null) {
       stats.add('${_formatNumber(widget.listeners)} listeners');
@@ -533,7 +535,7 @@ class _AlbumWikiPanelState extends State<_AlbumWikiPanel> {
             child: Text(
               _expanded ? 'Show less' : 'Read more',
               style: AfTypography.bodySmall.copyWith(
-                color: AfColors.accentPrimary,
+                color: spectral.primary,
                 fontWeight: FontWeight.bold,
               ),
             ),

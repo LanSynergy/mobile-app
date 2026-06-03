@@ -226,6 +226,7 @@ class MetadataOverlay extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return Row(
       children: [
         // Title + artist
@@ -251,7 +252,7 @@ class MetadataOverlay extends ConsumerWidget {
                     style: AfTypography.bodySmall.copyWith(
                       color: track.artistId == null
                           ? AfColors.textSecondary
-                          : AfColors.textLink,
+                          : spectral.link,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -273,7 +274,7 @@ class MetadataOverlay extends ConsumerWidget {
               vertical: AfSpacing.s4,
             ),
             decoration: BoxDecoration(
-              color: AfColors.accentMuted.withValues(alpha: 0.2),
+              color: spectral.muted.withValues(alpha: 0.2),
               borderRadius: AfRadii.borderPill,
             ),
             child: Text(

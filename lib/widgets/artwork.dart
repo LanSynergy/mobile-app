@@ -24,6 +24,7 @@ class Artwork extends ConsumerWidget {
     this.radius = AfRadii.borderMd,
     this.fit = BoxFit.cover,
     this.semanticLabel,
+    this.mutedColor = AfColors.accentMuted,
   });
 
   final String? url;
@@ -32,6 +33,7 @@ class Artwork extends ConsumerWidget {
   final BorderRadius radius;
   final BoxFit fit;
   final String? semanticLabel;
+  final Color mutedColor;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -57,8 +59,8 @@ class Artwork extends ConsumerWidget {
         borderRadius: radius,
         color: AfColors.surfaceBase,
       ),
-      child: const Center(
-        child: Icon(LucideIcons.music, color: AfColors.accentMuted, size: 28),
+      child: Center(
+        child: Icon(LucideIcons.music, color: mutedColor, size: 28),
       ),
     );
 

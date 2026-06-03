@@ -40,6 +40,7 @@ class ReactiveTransport extends ConsumerWidget {
       loopMode: loopMode,
       repeatCount: ref.watch(repeatCountProvider),
       accent: spectral.energy,
+      muted: spectral.muted,
       onShuffle: () {
         final svc = ref.read(playerServiceProvider);
         unawaited(
@@ -124,6 +125,7 @@ class TransportRow extends StatelessWidget {
     required this.loopMode,
     required this.repeatCount,
     required this.accent,
+    required this.muted,
     required this.onPlayPause,
     required this.onPrev,
     required this.onNext,
@@ -137,6 +139,7 @@ class TransportRow extends StatelessWidget {
   final AfLoopMode loopMode;
   final int repeatCount;
   final Color accent;
+  final Color muted;
   final VoidCallback onPlayPause;
   final VoidCallback onPrev;
   final VoidCallback onNext;
@@ -229,8 +232,8 @@ class TransportRow extends StatelessWidget {
                   top: -4,
                   child: Container(
                     padding: const EdgeInsets.all(2),
-                    decoration: const BoxDecoration(
-                      color: AfColors.accentMuted,
+                    decoration: BoxDecoration(
+                      color: muted,
                       shape: BoxShape.circle,
                     ),
                     child: Text(

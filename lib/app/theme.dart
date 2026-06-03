@@ -70,10 +70,10 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
     scrollbarTheme: ScrollbarThemeData(
       thumbColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.dragged)) {
-          return AfColors.accentPrimary;
+          return primary;
         }
         if (states.contains(WidgetState.hovered)) {
-          return AfColors.accentPrimary.withValues(alpha: 0.7);
+          return primary.withValues(alpha: 0.7);
         }
         return AfColors.surfaceMax.withValues(alpha: 0.6);
       }),

@@ -128,6 +128,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final spectral = ref.watch(currentSpectralProvider);
     return SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -140,8 +141,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               AfSpacing.s16,
             ),
             child: ShaderMask(
-              shaderCallback: (bounds) => const LinearGradient(
-                colors: [AfColors.accentPrimary, AfColors.accentSecondary],
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [spectral.primary, spectral.secondary],
               ).createShader(bounds),
               child: Text(
                 'Search',
@@ -213,13 +214,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
 /// Horizontal filter chip row. Renders once a query is committed and
 /// scopes the results to a single category (lifting the per-type cap).
-class _SearchFilterChips extends StatelessWidget {
+class _SearchFilterChips extends ConsumerWidget {
   const _SearchFilterChips({required this.selected, required this.onChanged});
   final SearchFilter selected;
   final ValueChanged<SearchFilter> onChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return SizedBox(
       height: 44,
       child: ListView.separated(
@@ -235,7 +237,7 @@ class _SearchFilterChips extends StatelessWidget {
             selected: active,
             onSelected: (_) => onChanged(f),
             backgroundColor: AfColors.surfaceBase,
-            selectedColor: AfColors.accentPrimary,
+            selectedColor: spectral.primary,
             labelStyle: AfTypography.bodySmall.copyWith(
               color: active ? AfColors.textOnPrimary : AfColors.textSecondary,
               fontWeight: active ? FontWeight.w600 : FontWeight.w400,
@@ -243,7 +245,7 @@ class _SearchFilterChips extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: AfRadii.borderPill,
               side: BorderSide(
-                color: active ? AfColors.accentPrimary : AfColors.surfaceHigh,
+                color: active ? spectral.primary : AfColors.surfaceHigh,
               ),
             ),
             showCheckmark: false,
@@ -455,13 +457,14 @@ class _SearchIdleStateState extends ConsumerState<_SearchIdleState> {
   }
 }
 
-class _IdleFilterPills extends StatelessWidget {
+class _IdleFilterPills extends ConsumerWidget {
   const _IdleFilterPills({required this.selected, required this.onChanged});
   final _IdleFilter selected;
   final ValueChanged<_IdleFilter> onChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return SizedBox(
       height: 44,
       child: ListView.separated(
@@ -478,7 +481,7 @@ class _IdleFilterPills extends StatelessWidget {
               curve: AfCurves.easeStandard,
               padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
               decoration: BoxDecoration(
-                color: active ? AfColors.accentPrimary : AfColors.surfaceRaised,
+                color: active ? spectral.primary : AfColors.surfaceRaised,
                 borderRadius: AfRadii.borderPill,
               ),
               alignment: Alignment.center,
@@ -498,9 +501,9 @@ class _IdleFilterPills extends StatelessWidget {
   }
 }
 
-/// Parse a hex color string from the server, falling back to indigo on error.
-Color _parseTint(String hex) =>
-    parseHexColor(hex, fallback: AfColors.accentSecondary);
+/// Parse a hex color string from the server, falling back to the provided color on error.
+Color _parseTint(String hex, Color fallback) =>
+    parseHexColor(hex, fallback: fallback);
 
 class _ArtistIdleGrid extends ConsumerWidget {
   const _ArtistIdleGrid({required this.isLocal});
@@ -578,6 +581,7 @@ class _GenreIdleGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     final provider = isLocal ? localGenresProvider : allGenresProvider;
     final async = ref.watch(provider);
     return async.when(
@@ -611,7 +615,7 @@ class _GenreIdleGrid extends ConsumerWidget {
           itemCount: list.length,
           itemBuilder: (context, i) {
             final g = list[i];
-            final tint = _parseTint(g.tint);
+            final tint = _parseTint(g.tint, spectral.secondary);
             return GenreTile(
               name: g.name,
               tint: tint,
@@ -720,6 +724,7 @@ class _SearchResults extends ConsumerWidget {
     final activeId = ref.watch(currentTrackProvider)?.id;
     final isBuffering = ref.watch(isBufferingProvider);
     final activeAccent = ref.watch(currentSpectralProvider).energy;
+    final spectral = ref.watch(currentSpectralProvider);
 
     return AfScrollbar(
       child: ListView(
@@ -806,16 +811,13 @@ class _SearchResults extends ConsumerWidget {
                 leading: Container(
                   width: 44,
                   height: 44,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     borderRadius: AfRadii.borderSm,
                     gradient: LinearGradient(
-                      colors: [AfColors.accentMuted, AfColors.surfaceLow],
+                      colors: [spectral.muted, AfColors.surfaceLow],
                     ),
                   ),
-                  child: const Icon(
-                    LucideIcons.listMusic,
-                    color: AfColors.accentPrimary,
-                  ),
+                  child: Icon(LucideIcons.listMusic, color: spectral.primary),
                 ),
                 title: Text(p.name, style: AfTypography.bodyMedium),
                 subtitle: Text(

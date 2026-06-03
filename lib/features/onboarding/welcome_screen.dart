@@ -24,6 +24,7 @@ class WelcomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     afLog('boot', 'WelcomeScreen.build');
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final spectral = ref.watch(currentSpectralProvider);
 
     return Scaffold(
       body: Stack(
@@ -49,7 +50,7 @@ class WelcomeScreen extends ConsumerWidget {
                   center: Alignment.center,
                   radius: 0.8,
                   colors: [
-                    AfColors.accentPrimary.withValues(alpha: 0.12),
+                    spectral.primary.withValues(alpha: 0.12),
                     Colors.transparent,
                   ],
                 ),
@@ -75,15 +76,11 @@ class WelcomeScreen extends ConsumerWidget {
                           color: AfColors.surfaceBase.withValues(alpha: 0.6),
                           borderRadius: AfRadii.borderRounded,
                           border: Border.all(
-                            color: AfColors.accentPrimary.withValues(
-                              alpha: 0.3,
-                            ),
+                            color: spectral.primary.withValues(alpha: 0.3),
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: AfColors.accentPrimary.withValues(
-                                alpha: 0.15,
-                              ),
+                              color: spectral.primary.withValues(alpha: 0.15),
                               blurRadius: 40,
                               spreadRadius: 8,
                             ),
@@ -181,7 +178,7 @@ class WelcomeScreen extends ConsumerWidget {
   }
 }
 
-class _ModeCard extends StatelessWidget {
+class _ModeCard extends ConsumerWidget {
   const _ModeCard({
     required this.icon,
     required this.title,
@@ -194,7 +191,8 @@ class _ModeCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return PressScale(
       onTap: onTap,
       child: AnimatedContainer(
@@ -212,10 +210,10 @@ class _ModeCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: AfColors.accentPrimary.withValues(alpha: 0.15),
+                color: spectral.primary.withValues(alpha: 0.15),
                 borderRadius: AfRadii.borderMd,
               ),
-              child: Icon(icon, color: AfColors.accentPrimary, size: 24),
+              child: Icon(icon, color: spectral.primary, size: 24),
             ),
             const SizedBox(width: AfSpacing.s16),
             Expanded(

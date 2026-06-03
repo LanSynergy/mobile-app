@@ -13,6 +13,7 @@ class EmptyState extends StatelessWidget {
     this.body,
     this.actionLabel,
     this.onAction,
+    this.mutedColor = AfColors.accentMuted,
   });
 
   final IconData icon;
@@ -20,6 +21,7 @@ class EmptyState extends StatelessWidget {
   final String? body;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final Color mutedColor;
 
   @override
   Widget build(BuildContext context) {
@@ -39,12 +41,12 @@ class EmptyState extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  AfColors.accentMuted.withValues(alpha: 0.15),
-                  AfColors.accentMuted.withValues(alpha: 0.0),
+                  mutedColor.withValues(alpha: 0.15),
+                  mutedColor.withValues(alpha: 0.0),
                 ],
               ),
             ),
-            child: Icon(icon, size: 48, color: AfColors.accentMuted),
+            child: Icon(icon, size: 48, color: mutedColor),
           ),
           const SizedBox(height: AfSpacing.s16),
           Text(

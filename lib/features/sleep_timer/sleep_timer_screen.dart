@@ -126,6 +126,7 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
         activeTimer != null &&
         activeTimer.difference(DateTime.now()).inHours > 12;
     final isActive = activeTimer != null;
+    final spectral = ref.watch(currentSpectralProvider);
 
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
@@ -154,17 +155,13 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
                     vertical: AfSpacing.s12,
                   ),
                   decoration: BoxDecoration(
-                    color: AfColors.accentMuted.withValues(alpha: 0.4),
+                    color: spectral.muted.withValues(alpha: 0.4),
                     borderRadius: AfRadii.borderMd,
-                    border: Border.all(color: AfColors.accentPrimary, width: 1),
+                    border: Border.all(color: spectral.primary, width: 1),
                   ),
                   child: Row(
                     children: [
-                      const Icon(
-                        LucideIcons.moon,
-                        color: AfColors.accentPrimary,
-                        size: 20,
-                      ),
+                      Icon(LucideIcons.moon, color: spectral.primary, size: 20),
                       const SizedBox(width: AfSpacing.s12),
                       Expanded(
                         child: Text(
@@ -172,7 +169,7 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
                               ? 'Pausing after current track'
                               : 'Pausing in ${remaining != null ? _formatRemaining(remaining) : '…'}',
                           style: AfTypography.bodyMedium.copyWith(
-                            color: AfColors.accentPrimary,
+                            color: spectral.primary,
                           ),
                         ),
                       ),
@@ -209,11 +206,13 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
                       label: '$m min',
                       selected: _selectedMinutes == m,
                       onTap: () => setState(() => _selectedMinutes = m),
+                      accentColor: spectral.primary,
                     ),
                   _TimerChip(
                     label: 'End of track',
                     selected: _selectedMinutes == 0,
                     onTap: () => setState(() => _selectedMinutes = 0),
+                    accentColor: spectral.primary,
                   ),
                 ],
               ),
@@ -223,7 +222,7 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
               ElevatedButton(
                 onPressed: _selectedMinutes == null ? null : _setTimer,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AfColors.accentPrimary,
+                  backgroundColor: spectral.primary,
                   foregroundColor: AfColors.textOnPrimary,
                   padding: const EdgeInsets.symmetric(
                     horizontal: AfSpacing.s24,
@@ -252,10 +251,12 @@ class _TimerChip extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    required this.accentColor,
   });
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -269,10 +270,10 @@ class _TimerChip extends StatelessWidget {
           vertical: AfSpacing.s8,
         ),
         decoration: BoxDecoration(
-          color: selected ? AfColors.accentPrimary : AfColors.surfaceBase,
+          color: selected ? accentColor : AfColors.surfaceBase,
           borderRadius: AfRadii.borderPill,
           border: Border.all(
-            color: selected ? AfColors.accentPrimary : AfColors.surfaceHigh,
+            color: selected ? accentColor : AfColors.surfaceHigh,
           ),
         ),
         child: Text(

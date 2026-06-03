@@ -766,6 +766,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                 child: EqBandVisualization(
                   labels: kEqBands.values.toList(),
                   gains: kEqBands.keys.map((k) => _eqBands[k] ?? 1.0).toList(),
+                  accentColor: ref.watch(currentSpectralProvider).primary,
                   onGainChanged: (index, gain) {
                     final key = kEqBands.keys.elementAt(index);
                     setState(() {
@@ -808,9 +809,9 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                       unawaited(_apply());
                     },
                     child: Text(
-                      'Flatten EQ',
+                      'Save preset',
                       style: AfTypography.bodySmall.copyWith(
-                        color: AfColors.textTertiary,
+                        color: ref.watch(currentSpectralProvider).primary,
                       ),
                     ),
                   ),
@@ -821,7 +822,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                     label: Text(
                       'Save preset',
                       style: AfTypography.bodySmall.copyWith(
-                        color: AfColors.accentPrimary,
+                        color: ref.watch(currentSpectralProvider).primary,
                       ),
                     ),
                   ),
@@ -1640,6 +1641,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
 
   Widget _buildPresetChips() {
     final allPresets = <String, EqPreset>{...kBuiltInPresets, ..._userPresets};
+    final spectral = ref.watch(currentSpectralProvider);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -1656,18 +1658,13 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                 label: Text(entry.key),
                 selected: isActive,
                 onSelected: (_) => _applyPreset(entry.key, entry.value),
-                selectedColor: AfColors.accentSecondary.withValues(alpha: 0.3),
+                selectedColor: spectral.secondary.withValues(alpha: 0.3),
                 backgroundColor: AfColors.surfaceBase,
                 labelStyle: AfTypography.bodySmall.copyWith(
-                  color: isActive
-                      ? AfColors.accentPrimary
-                      : AfColors.textSecondary,
+                  color: isActive ? spectral.primary : AfColors.textSecondary,
                 ),
                 side: isActive
-                    ? const BorderSide(
-                        color: AfColors.accentPrimary,
-                        width: 1.5,
-                      )
+                    ? BorderSide(color: spectral.primary, width: 1.5)
                     : const BorderSide(color: AfColors.surfaceHigh),
               ),
             ),

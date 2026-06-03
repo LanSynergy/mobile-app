@@ -352,6 +352,7 @@ Future<void> _startArtistRadio(
   String artistName,
   String artistId,
 ) async {
+  final spectral = ref.read(currentSpectralProvider);
   unawaited(
     showBlurDialog(
       context: context,
@@ -359,12 +360,12 @@ Future<void> _startArtistRadio(
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 20,
             height: 20,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              color: AfColors.accentPrimary,
+              color: spectral.primary,
             ),
           ),
           const SizedBox(width: AfSpacing.s16),
@@ -442,7 +443,7 @@ class _ActionRow extends StatelessWidget {
   }
 }
 
-class _ArtistBiographyPanel extends StatefulWidget {
+class _ArtistBiographyPanel extends ConsumerStatefulWidget {
   const _ArtistBiographyPanel({
     required this.bio,
     this.listeners,
@@ -453,10 +454,11 @@ class _ArtistBiographyPanel extends StatefulWidget {
   final String? playCount;
 
   @override
-  State<_ArtistBiographyPanel> createState() => _ArtistBiographyPanelState();
+  ConsumerState<_ArtistBiographyPanel> createState() =>
+      _ArtistBiographyPanelState();
 }
 
-class _ArtistBiographyPanelState extends State<_ArtistBiographyPanel> {
+class _ArtistBiographyPanelState extends ConsumerState<_ArtistBiographyPanel> {
   bool _expanded = false;
 
   String _cleanHtml(String html) {
@@ -477,6 +479,7 @@ class _ArtistBiographyPanelState extends State<_ArtistBiographyPanel> {
     final cleanText = _cleanHtml(widget.bio);
     if (cleanText.isEmpty) return const SizedBox();
 
+    final spectral = ref.watch(currentSpectralProvider);
     final stats = <String>[];
     if (widget.listeners != null) {
       stats.add('${_formatNumber(widget.listeners)} listeners');
@@ -520,7 +523,7 @@ class _ArtistBiographyPanelState extends State<_ArtistBiographyPanel> {
             child: Text(
               _expanded ? 'Show less' : 'Read more',
               style: AfTypography.bodySmall.copyWith(
-                color: AfColors.accentPrimary,
+                color: spectral.primary,
                 fontWeight: FontWeight.bold,
               ),
             ),

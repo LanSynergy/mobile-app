@@ -9,11 +9,15 @@ import '../../design_tokens/tokens.dart';
 /// represent boost (indigo), bars below represent cut (muted).
 /// A horizontal center line marks unity gain (0 dB).
 class EqBandPainter extends CustomPainter {
-  EqBandPainter({required this.bands, required this.gains, this.enabled = true})
-    : assert(
-        bands.length == gains.length,
-        'bands and gains must have same length',
-      );
+  EqBandPainter({
+    required this.bands,
+    required this.gains,
+    required this.accentColor,
+    this.enabled = true,
+  }) : assert(
+         bands.length == gains.length,
+         'bands and gains must have same length',
+       );
 
   /// Band labels (e.g. ['65 Hz', '92 Hz', ...]).
   final List<String> bands;
@@ -23,6 +27,9 @@ class EqBandPainter extends CustomPainter {
 
   /// Whether the EQ is enabled (affects opacity).
   final bool enabled;
+
+  /// Accent color for boost bars (from spectral palette).
+  final Color accentColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -53,7 +60,7 @@ class EqBandPainter extends CustomPainter {
       final isBoost = normalized >= 0;
       final color = enabled
           ? (isBoost
-                ? AfColors.accentPrimary
+                ? accentColor
                 : AfColors.textTertiary.withValues(alpha: 0.4))
           : AfColors.surfaceHigh;
 
@@ -89,6 +96,7 @@ class EqBandVisualization extends StatefulWidget {
     required this.gains,
     required this.onGainChanged,
     required this.onGainChangeEnd,
+    required this.accentColor,
     this.height = 160,
   });
 
@@ -106,6 +114,9 @@ class EqBandVisualization extends StatefulWidget {
 
   /// Total height of the visualization.
   final double height;
+
+  /// Accent color for boost bars (from spectral palette).
+  final Color accentColor;
 
   @override
   State<EqBandVisualization> createState() => _EqBandVisualizationState();
@@ -140,7 +151,11 @@ class _EqBandVisualizationState extends State<EqBandVisualization> {
               widget.onGainChangeEnd();
             },
             child: CustomPaint(
-              painter: EqBandPainter(bands: widget.labels, gains: widget.gains),
+              painter: EqBandPainter(
+                bands: widget.labels,
+                gains: widget.gains,
+                accentColor: widget.accentColor,
+              ),
               size: Size(constraints.maxWidth, constraints.maxHeight),
             ),
           );

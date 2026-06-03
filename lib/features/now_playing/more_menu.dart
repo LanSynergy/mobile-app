@@ -73,6 +73,7 @@ class _MoreMenu extends StatelessWidget {
     final serverIds = ref
         .watch(playlistTrackIdsProvider)
         .maybeWhen(data: (ids) => ids, orElse: () => const <String>{});
+    final spectral = ref.watch(currentSpectralProvider);
     final isSaved =
         track != null &&
         (savedIds.contains(track.id) || serverIds.contains(track.id));
@@ -118,7 +119,7 @@ class _MoreMenu extends StatelessWidget {
           icon: Icon(
             LucideIcons.plus,
             size: 22,
-            color: isSaved ? AfColors.accentPrimary : AfColors.textSecondary,
+            color: isSaved ? spectral.primary : AfColors.textSecondary,
           ),
           label: isSaved ? 'Saved' : 'Save',
           onTap: () {
@@ -171,7 +172,7 @@ class _MoreMenu extends StatelessWidget {
             LucideIcons.arrowLeftRight,
             size: 22,
             color: ref.watch(abLoopAProvider) != null
-                ? AfColors.accentPrimary
+                ? spectral.primary
                 : AfColors.textSecondary,
           ),
           label: 'A-B Loop',
@@ -337,6 +338,7 @@ class _TrackDetailsWrapperState extends State<_TrackDetailsWrapper> {
 
 void showVolumeDialog(BuildContext context, WidgetRef ref) {
   final svc = ref.read(playerServiceProvider);
+  final spectral = ref.read(currentSpectralProvider);
   double volume = svc.volume;
   bool muted = svc.isMuted;
   showBlurDialog<void>(
@@ -367,10 +369,10 @@ void showVolumeDialog(BuildContext context, WidgetRef ref) {
           const SizedBox(height: AfSpacing.s16),
           SliderTheme(
             data: SliderThemeData(
-              activeTrackColor: AfColors.accentPrimary,
+              activeTrackColor: spectral.primary,
               inactiveTrackColor: AfColors.surfaceHigh,
-              thumbColor: AfColors.accentPrimary,
-              overlayColor: AfColors.accentPrimary.withValues(alpha: 0.1),
+              thumbColor: spectral.primary,
+              overlayColor: spectral.primary.withValues(alpha: 0.1),
             ),
             child: Slider(
               value: volume.clamp(0, 150),
@@ -401,6 +403,7 @@ void showVolumeDialog(BuildContext context, WidgetRef ref) {
 
 void showAudioDelayDialog(BuildContext context, WidgetRef ref) {
   final svc = ref.read(playerServiceProvider);
+  final spectral = ref.read(currentSpectralProvider);
   double delayMs = svc.audioDelay.inMilliseconds.toDouble();
   showBlurDialog<void>(
     context: context,
@@ -420,10 +423,10 @@ void showAudioDelayDialog(BuildContext context, WidgetRef ref) {
           const SizedBox(height: AfSpacing.s16),
           SliderTheme(
             data: SliderThemeData(
-              activeTrackColor: AfColors.accentPrimary,
+              activeTrackColor: spectral.primary,
               inactiveTrackColor: AfColors.surfaceHigh,
-              thumbColor: AfColors.accentPrimary,
-              overlayColor: AfColors.accentPrimary.withValues(alpha: 0.1),
+              thumbColor: spectral.primary,
+              overlayColor: spectral.primary.withValues(alpha: 0.1),
             ),
             child: Slider(
               value: delayMs.clamp(-500, 500),
@@ -470,6 +473,7 @@ void showAudioDelayDialog(BuildContext context, WidgetRef ref) {
 
 void showAbLoopDialog(BuildContext context, WidgetRef ref) {
   final svc = ref.read(playerServiceProvider);
+  final spectral = ref.read(currentSpectralProvider);
   showBlurDialog<void>(
     context: context,
     builder: (context, dismiss) => Column(
@@ -498,7 +502,7 @@ void showAbLoopDialog(BuildContext context, WidgetRef ref) {
           icon: const Icon(LucideIcons.flag, size: 18),
           label: const Text('Set A (start)'),
           style: FilledButton.styleFrom(
-            backgroundColor: AfColors.accentPrimary,
+            backgroundColor: spectral.primary,
             foregroundColor: AfColors.surfaceCanvas,
           ),
         ),
@@ -518,7 +522,7 @@ void showAbLoopDialog(BuildContext context, WidgetRef ref) {
           icon: const Icon(LucideIcons.flag, size: 18),
           label: const Text('Set B (end)'),
           style: FilledButton.styleFrom(
-            backgroundColor: AfColors.accentPrimary,
+            backgroundColor: spectral.primary,
             foregroundColor: AfColors.surfaceCanvas,
           ),
         ),
@@ -640,6 +644,7 @@ class OutputDialogContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final svc = ref.watch(playerServiceProvider);
+    final spectral = ref.watch(currentSpectralProvider);
 
     return StreamBuilder<List<Device>>(
       stream: svc.audioDevicesStream,
@@ -685,7 +690,7 @@ class OutputDialogContent extends ConsumerWidget {
                               ? device.description
                               : device.name,
                           color: isActive
-                              ? AfColors.accentPrimary
+                              ? spectral.primary
                               : AfColors.textSecondary,
                         ),
                         title: Text(
@@ -695,9 +700,9 @@ class OutputDialogContent extends ConsumerWidget {
                           style: AfTypography.bodyMedium,
                         ),
                         trailing: isActive
-                            ? const Icon(
+                            ? Icon(
                                 LucideIcons.check,
-                                color: AfColors.accentPrimary,
+                                color: spectral.primary,
                                 size: 20,
                               )
                             : null,

@@ -91,7 +91,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: _onRefresh,
-        color: AfColors.accentPrimary,
+        color: spectral.primary,
         backgroundColor: AfColors.surfaceBase,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(
@@ -110,11 +110,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Row(
                   children: [
                     ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [
-                          AfColors.accentPrimary,
-                          AfColors.accentSecondary,
-                        ],
+                      shaderCallback: (bounds) => LinearGradient(
+                        colors: [spectral.primary, spectral.secondary],
                       ).createShader(bounds),
                       child: Text(
                         'Listen',
@@ -487,14 +484,14 @@ class _ArtistsSection extends ConsumerWidget {
   const _ArtistsSection({required this.isLocal});
   final bool isLocal;
 
-  // Warm amber accent colors for each artist ring
-  static const _accents = [
-    AfColors.accentPrimary,
-    AfColors.accentSecondary,
-    AfColors.accentMuted,
-    AfColors.accentPrimary,
-    AfColors.accentSecondary,
-    AfColors.accentMuted,
+  // Warm amber accent colors for each artist ring — sourced from spectral palette
+  static List<Color> _accents(Spectral spectral) => [
+    spectral.primary,
+    spectral.secondary,
+    spectral.muted,
+    spectral.primary,
+    spectral.secondary,
+    spectral.muted,
   ];
 
   static const double _artworkSize = 88;
@@ -503,6 +500,7 @@ class _ArtistsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     final artistsAsync = isLocal
         ? ref.watch(localArtistsProvider)
         : ref.watch(allArtistsProvider);
@@ -541,7 +539,8 @@ class _ArtistsSection extends ConsumerWidget {
                   const SizedBox(width: AfSpacing.s12),
               itemBuilder: (context, i) {
                 final a = artists[i];
-                final accent = _accents[i % _accents.length];
+                final accents = _accents(spectral);
+                final accent = accents[i % accents.length];
                 return PressScale(
                   ensureHitTarget: false,
                   onTap: () {

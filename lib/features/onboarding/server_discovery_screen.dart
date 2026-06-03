@@ -317,13 +317,14 @@ class _ScanSkeleton extends StatelessWidget {
   }
 }
 
-class _ServerCard extends StatelessWidget {
+class _ServerCard extends ConsumerWidget {
   const _ServerCard({required this.server, required this.onTap});
   final JellyfinServer server;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
     return PressScale(
       ensureHitTarget: false,
       onTap: onTap,
@@ -341,12 +342,12 @@ class _ServerCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: AfColors.accentPrimary.withValues(alpha: 0.15),
+                color: spectral.primary.withValues(alpha: 0.15),
                 borderRadius: AfRadii.borderMd,
               ),
-              child: const Icon(
+              child: Icon(
                 LucideIcons.server,
-                color: AfColors.accentPrimary,
+                color: spectral.primary,
                 size: 24,
               ),
             ),
