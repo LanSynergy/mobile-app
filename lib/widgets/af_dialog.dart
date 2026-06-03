@@ -121,39 +121,58 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
             behavior: HitTestBehavior.opaque,
             child: Opacity(
               opacity: _ready ? opacity : 0.0,
-              child: Center(
-                child: Transform.scale(
-                  scale: scale,
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AfSpacing.s24,
+              child: Stack(
+                children: [
+                  // ── Full-screen blur behind everything ──
+                  Positioned.fill(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(
+                        sigmaX: 20,
+                        sigmaY: 20,
+                        tileMode: TileMode.decal,
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(_borderRadius),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                          child: Container(
-                            padding: const EdgeInsets.all(AfSpacing.s16),
-                            decoration: BoxDecoration(
-                              color: AfColors.surfaceRaised.withValues(
-                                alpha: 0.85,
+                      child: Container(
+                        color: AfColors.surfaceCanvas.withValues(alpha: 0.40),
+                      ),
+                    ),
+                  ),
+                  // ── Dialog content ──
+                  Center(
+                    child: Transform.scale(
+                      scale: scale,
+                      child: GestureDetector(
+                        onTap: () {},
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AfSpacing.s24,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(_borderRadius),
+                            child: Container(
+                              padding: const EdgeInsets.all(AfSpacing.s16),
+                              decoration: BoxDecoration(
+                                color: AfColors.surfaceRaised.withValues(
+                                  alpha: 0.92,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  _borderRadius,
+                                ),
+                                border: Border.all(
+                                  color: AfColors.glassBorderEmphasis,
+                                  width: 0.5,
+                                ),
                               ),
-                              borderRadius: BorderRadius.circular(
-                                _borderRadius,
+                              child: ListTileTheme(
+                                tileColor: Colors.transparent,
+                                child: widget.child,
                               ),
-                            ),
-                            child: ListTileTheme(
-                              tileColor: Colors.transparent,
-                              child: widget.child,
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),

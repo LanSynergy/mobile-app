@@ -131,63 +131,84 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
             behavior: HitTestBehavior.opaque,
             child: Opacity(
               opacity: _ready ? opacity : 0.0,
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Transform.translate(
-                  offset: Offset(0, slideOffset * 400),
-                  child: GestureDetector(
-                    onVerticalDragEnd: widget.enableDrag
-                        ? (details) {
-                            final vy = details.primaryVelocity ?? 0;
-                            if (vy > 300 || (vy > 0 && slideOffset > 0.3)) {
-                              _dismiss();
-                            }
-                          }
-                        : null,
-                    child: Padding(
-                      padding: EdgeInsets.only(bottom: viewInsets.bottom),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(widget.topRadius),
-                        ),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: AfColors.surfaceBase.withValues(
-                                alpha: 0.70,
-                              ),
-                              borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(widget.topRadius),
-                              ),
+              child: Stack(
+                children: [
+                  // ── Full-screen blur behind everything ──
+                  Positioned.fill(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(
+                        sigmaX: 20,
+                        sigmaY: 20,
+                        tileMode: TileMode.decal,
+                      ),
+                      child: Container(
+                        color: AfColors.surfaceCanvas.withValues(alpha: 0.40),
+                      ),
+                    ),
+                  ),
+                  // ── Sheet content ──
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Transform.translate(
+                      offset: Offset(0, slideOffset * 400),
+                      child: GestureDetector(
+                        onVerticalDragEnd: widget.enableDrag
+                            ? (details) {
+                                final vy = details.primaryVelocity ?? 0;
+                                if (vy > 300 || (vy > 0 && slideOffset > 0.3)) {
+                                  _dismiss();
+                                }
+                              }
+                            : null,
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: viewInsets.bottom),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(widget.topRadius),
                             ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const SizedBox(height: AfSpacing.s12),
-                                Container(
-                                  width: 40,
-                                  height: 4,
-                                  decoration: BoxDecoration(
-                                    color: AfColors.textTertiary.withValues(
-                                      alpha: 0.4,
-                                    ),
-                                    borderRadius: BorderRadius.circular(2),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AfColors.surfaceBase.withValues(
+                                  alpha: 0.85,
+                                ),
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(widget.topRadius),
+                                ),
+                                border: const Border(
+                                  top: BorderSide(
+                                    color: AfColors.glassBorderEmphasis,
+                                    width: 0.5,
                                   ),
                                 ),
-                                const SizedBox(height: AfSpacing.s12),
-                                ListTileTheme(
-                                  tileColor: Colors.transparent,
-                                  child: widget.builder(context),
-                                ),
-                              ],
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(height: AfSpacing.s12),
+                                  Container(
+                                    width: 40,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: AfColors.textTertiary.withValues(
+                                        alpha: 0.4,
+                                      ),
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                  const SizedBox(height: AfSpacing.s12),
+                                  ListTileTheme(
+                                    tileColor: Colors.transparent,
+                                    child: widget.builder(context),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
