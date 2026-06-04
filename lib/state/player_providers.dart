@@ -18,6 +18,7 @@ import 'settings_providers.dart';
 import 'favorite_providers.dart';
 import '../utils/log.dart';
 import 'smart_queue_providers.dart';
+import '../home_widget/home_widget_manager.dart';
 
 /// Holds disposables accumulated during [wirePlayerService] wiring so each
 /// extracted function can register resources that are torn down together.
@@ -28,6 +29,7 @@ class _WireDisposables {
   StreamSubscription<MpvPlayerError>? errorSub;
   StreamSubscription<bool>? bufferingSub;
   StreamSubscription<bool>? pausedForCacheSub;
+  StreamSubscription<bool>? playingSub;
   JellyfinPlaybackReporter? reporter;
   LastFmPlaybackReporter? lastfmReporter;
 
@@ -38,6 +40,7 @@ class _WireDisposables {
     await errorSub?.cancel();
     await bufferingSub?.cancel();
     await pausedForCacheSub?.cancel();
+    await playingSub?.cancel();
     await reporter?.dispose();
     await lastfmReporter?.dispose();
   }
@@ -189,6 +192,15 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
     ref.read(currentArtworkUriProvider.notifier).state = track != null
         ? svc.currentArtworkUri
         : null;
+
+    // Update Android home screen widget on track change.
+    HomeWidgetManager.update(
+      title: track?.title ?? 'Not Playing',
+      artist: track?.artistName ?? '',
+      playing: svc.isPlaying,
+      isFavorite: track?.isFavorite ?? false,
+      artPath: svc.currentArtworkUri?.toFilePath(),
+    );
     ref.read(positionStreamProvider.notifier).state = Duration.zero;
     ref
         .read(durationStreamProvider.notifier)
@@ -201,6 +213,15 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
 
   svc.onArtworkUpdated = (artUri) {
     ref.read(currentArtworkUriProvider.notifier).state = artUri;
+    // Refresh home widget artwork.
+    final track = ref.read(currentTrackProvider);
+    HomeWidgetManager.update(
+      title: track?.title ?? 'Not Playing',
+      artist: track?.artistName ?? '',
+      playing: ref.read(playingStreamProvider).valueOrNull ?? false,
+      isFavorite: track?.isFavorite ?? false,
+      artPath: artUri?.toFilePath(),
+    );
   };
 
   svc.onMpvLoadedTrackChanged = (trackId) {
@@ -213,6 +234,15 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
       try {
         await ref.read(favoriteToggleProvider)(track);
       } catch (_) {}
+      // Refresh home widget after favorite toggle.
+      final updatedTrack = ref.read(currentTrackProvider);
+      unawaited(HomeWidgetManager.update(
+        title: updatedTrack?.title ?? 'Not Playing',
+        artist: updatedTrack?.artistName ?? '',
+        playing: ref.read(playingStreamProvider).valueOrNull ?? false,
+        isFavorite: updatedTrack?.isFavorite ?? false,
+        artPath: ref.read(currentArtworkUriProvider)?.toFilePath(),
+      ));
     }
   };
 
@@ -277,6 +307,18 @@ void _wireInfrastructure(Ref ref, AfPlayerService svc, _WireDisposables d) {
   d.pausedForCacheSub = svc.pausedForCacheStream.listen(
     (_) => updateBuffering(),
   );
+
+  // Update home widget when play/pause state changes.
+  d.playingSub = svc.playingStream.listen((playing) {
+    final track = ref.read(currentTrackProvider);
+    HomeWidgetManager.update(
+      title: track?.title ?? 'Not Playing',
+      artist: track?.artistName ?? '',
+      playing: playing,
+      isFavorite: track?.isFavorite ?? false,
+      artPath: ref.read(currentArtworkUriProvider)?.toFilePath(),
+    );
+  });
 
   d.reporter = JellyfinPlaybackReporter(
     svc,

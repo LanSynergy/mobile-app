@@ -18,92 +18,104 @@ class AetherfinAppWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
         for (appWidgetId in appWidgetIds) {
-            updateAppWidget(context, appWidgetManager, appWidgetId)
+            updateWidgetFromPrefs(context, appWidgetManager, appWidgetId)
         }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        val action = intent.action
-        if (action == AetherfinMediaSessionService.ACTION_UPDATE_STATE || action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
-            val appWidgetManager = AppWidgetManager.getInstance(context)
-            val thisWidget = ComponentName(context, AetherfinAppWidgetProvider::class.java)
-            val appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
+        // Update on any broadcast (from Flutter HomeWidget.updateWidget or manual)
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val thisWidget = ComponentName(context, AetherfinAppWidgetProvider::class.java)
+        val appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
 
-            val title = intent.getStringExtra("title")
-            val artist = intent.getStringExtra("artist")
-            val playing = intent.getBooleanExtra("playing", false)
-            val artPath = intent.getStringExtra("artPath")
-            val isFavorite = intent.getBooleanExtra("isFavorite", false)
+        for (appWidgetId in appWidgetIds) {
+            updateWidgetFromPrefs(context, appWidgetManager, appWidgetId)
+        }
+    }
 
-            for (appWidgetId in appWidgetIds) {
-                val views = RemoteViews(context.packageName, R.layout.aetherfin_widget)
-                if (title != null) {
-                    views.setTextViewText(R.id.widget_title, title)
-                }
-                if (artist != null) {
-                    views.setTextViewText(R.id.widget_artist, artist)
-                }
-                
-                // Play/Pause icon sync
-                if (playing) {
-                    views.setImageViewResource(R.id.widget_play_pause, android.R.drawable.ic_media_pause)
-                } else {
-                    views.setImageViewResource(R.id.widget_play_pause, android.R.drawable.ic_media_play)
-                }
+    private fun updateWidgetFromPrefs(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
+        val prefs = try {
+            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        } catch (e: Exception) {
+            context.getSharedPreferences(context.packageName + "_preferences", Context.MODE_PRIVATE)
+        }
 
-                // Favorite icon sync
-                if (isFavorite) {
-                    views.setImageViewResource(R.id.widget_favorite, android.R.drawable.btn_star_big_on)
-                } else {
-                    views.setImageViewResource(R.id.widget_favorite, android.R.drawable.btn_star_big_off)
-                }
+        val title = prefs.getString("flutter.title", null) ?: "Not Playing"
+        val artist = prefs.getString("flutter.artist", null) ?: ""
+        val playing = prefs.getString("flutter.playing", "false") == "true"
+        val artPath = prefs.getString("flutter.artPath", null)
+        val isFavorite = prefs.getString("flutter.isFavorite", "false") == "true"
 
-                // Artwork sync & Palette coloring
-                var widgetBgColor = 0xFF251F58.toInt() // default purple
-                if (!artPath.isNullOrEmpty()) {
-                    try {
-                        val file = File(artPath)
-                        if (file.exists()) {
-                            val bitmap = BitmapFactory.decodeFile(file.absolutePath)
-                            if (bitmap != null) {
-                                views.setImageViewBitmap(R.id.widget_album_art, bitmap)
-                                
-                                // Extract colors using Palette API
-                                val palette = Palette.from(bitmap).generate()
-                                widgetBgColor = palette.getMutedColor(0xFF251F58.toInt())
-                            } else {
-                                views.setImageViewResource(R.id.widget_album_art, android.R.drawable.ic_menu_gallery)
-                            }
-                        } else {
-                            views.setImageViewResource(R.id.widget_album_art, android.R.drawable.ic_menu_gallery)
-                        }
-                    } catch (e: Exception) {
-                        views.setImageViewResource(R.id.widget_album_art, android.R.drawable.ic_menu_gallery)
+        val views = RemoteViews(context.packageName, R.layout.aetherfin_widget)
+
+        // Text
+        views.setTextViewText(R.id.widget_title, title)
+        views.setTextViewText(R.id.widget_artist, artist)
+
+        // Play/Pause icon
+        views.setImageViewResource(
+            R.id.widget_play_pause,
+            if (playing) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
+        )
+
+        // Favorite icon
+        views.setImageViewResource(
+            R.id.widget_favorite,
+            if (isFavorite) R.drawable.ic_widget_heart_filled else R.drawable.ic_widget_heart
+        )
+
+        // Artwork + dynamic background
+        var widgetBgColor = 0xFF1A1A2E.toInt() // default dark
+        if (!artPath.isNullOrEmpty()) {
+            try {
+                val file = File(artPath)
+                if (file.exists()) {
+                    val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+                    if (bitmap != null) {
+                        views.setImageViewBitmap(R.id.widget_album_art, bitmap)
+                        val palette = Palette.from(bitmap).generate()
+                        widgetBgColor = palette.getMutedColor(0xFF1A1A2E.toInt())
+                    } else {
+                        views.setImageViewResource(R.id.widget_album_art, R.drawable.ic_music_note)
                     }
                 } else {
-                    views.setImageViewResource(R.id.widget_album_art, android.R.drawable.ic_menu_gallery)
+                    views.setImageViewResource(R.id.widget_album_art, R.drawable.ic_music_note)
                 }
-
-                // Apply background color dynamically
-                views.setInt(R.id.widget_root, "setBackgroundColor", widgetBgColor)
-                
-                // Dynamic contrast text styling
-                val isDark = ColorUtils.calculateLuminance(widgetBgColor) < 0.5
-                val titleColor = if (isDark) 0xFFFFFFFF.toInt() else 0xFF000000.toInt()
-                val artistColor = if (isDark) 0xFFAAAAAA.toInt() else 0xFF444444.toInt()
-                views.setTextColor(R.id.widget_title, titleColor)
-                views.setTextColor(R.id.widget_artist, artistColor)
-
-                // Controls wiring
-                views.setOnClickPendingIntent(R.id.widget_play_pause, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_PLAY_PAUSE))
-                views.setOnClickPendingIntent(R.id.widget_prev, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS))
-                views.setOnClickPendingIntent(R.id.widget_next, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_SKIP_TO_NEXT))
-                views.setOnClickPendingIntent(R.id.widget_favorite, getServiceBroadcastIntent(context, AetherfinMediaSessionService.ACTION_TOGGLE_FAVORITE))
-
-                appWidgetManager.updateAppWidget(appWidgetId, views)
+            } catch (e: Exception) {
+                views.setImageViewResource(R.id.widget_album_art, R.drawable.ic_music_note)
             }
+        } else {
+            views.setImageViewResource(R.id.widget_album_art, R.drawable.ic_music_note)
         }
+
+        // Apply dynamic background — darken the palette color for widget bg
+        val darkenedBg = ColorUtils.blendARGB(widgetBgColor, 0xFF0A0A14.toInt(), 0.6f)
+        views.setInt(R.id.widget_root, "setBackgroundColor", darkenedBg)
+
+        // Dynamic contrast text
+        val isDark = ColorUtils.calculateLuminance(darkenedBg) < 0.5
+        val titleColor = if (isDark) 0xFFFFFFFF.toInt() else 0xFF000000.toInt()
+        val artistColor = if (isDark) 0xBBFFFFFF.toInt() else 0xFF444444.toInt()
+        views.setTextColor(R.id.widget_title, titleColor)
+        views.setTextColor(R.id.widget_artist, artistColor)
+
+        // Controls
+        views.setOnClickPendingIntent(R.id.widget_play_pause, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_PLAY_PAUSE))
+        views.setOnClickPendingIntent(R.id.widget_prev, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS))
+        views.setOnClickPendingIntent(R.id.widget_next, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_SKIP_TO_NEXT))
+        views.setOnClickPendingIntent(R.id.widget_favorite, getServiceBroadcastIntent(context, AetherfinMediaSessionService.ACTION_TOGGLE_FAVORITE))
+
+        // Open app on artwork or text tap
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        val launchPi = PendingIntent.getActivity(
+            context, 0, launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        views.setOnClickPendingIntent(R.id.widget_album_art, launchPi)
+        views.setOnClickPendingIntent(R.id.widget_title, launchPi)
+
+        appWidgetManager.updateAppWidget(appWidgetId, views)
     }
 
     private fun getMediaButtonIntent(context: Context, action: Long): PendingIntent {
@@ -137,16 +149,5 @@ class AetherfinAppWidgetProvider : AppWidgetProvider() {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-    }
-
-    private fun updateAppWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
-        val views = RemoteViews(context.packageName, R.layout.aetherfin_widget)
-        // Setup initial default views
-        views.setOnClickPendingIntent(R.id.widget_play_pause, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_PLAY_PAUSE))
-        views.setOnClickPendingIntent(R.id.widget_prev, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS))
-        views.setOnClickPendingIntent(R.id.widget_next, getMediaButtonIntent(context, PlaybackStateCompat.ACTION_SKIP_TO_NEXT))
-        views.setOnClickPendingIntent(R.id.widget_favorite, getServiceBroadcastIntent(context, AetherfinMediaSessionService.ACTION_TOGGLE_FAVORITE))
-
-        appWidgetManager.updateAppWidget(appWidgetId, views)
     }
 }

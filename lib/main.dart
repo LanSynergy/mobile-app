@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show MpvAudioKit;
+import 'package:home_widget/home_widget.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -274,6 +275,13 @@ Future<void> main() async {
         ),
       );
       _boot('runApp returned');
+
+      // Register home widget callbacks for handling widget taps.
+      unawaited(HomeWidget.registerInteractivityCallback((uri) async {
+        // Widget taps are handled by the native PendingIntent system
+        // (media button intents), so this is primarily for background
+        // callback registration.
+      }));
     },
     (error, stack) {
       afLog('error', 'zoned uncaught', error: error, stackTrace: stack);
