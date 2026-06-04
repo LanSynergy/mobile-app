@@ -34,6 +34,9 @@ abstract final class AfSpacing {
   /// Default vertical rhythm between siblings.
   static const double rhythm = s8;
 
+  /// Vertical margin between track rows in lists.
+  static const double trackRowVertical = s4;
+
   /// Default vertical rhythm between sections.
   static const double sectionGap = s24;
 

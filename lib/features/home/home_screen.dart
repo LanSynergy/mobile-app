@@ -103,7 +103,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
                   AfSpacing.s16,
-                  AfSpacing.s8,
+                  AfSpacing.s16,
                   AfSpacing.s16,
                   AfSpacing.s32,
                 ),
@@ -253,7 +253,7 @@ class _CompactTrackRow extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(
           horizontal: AfSpacing.s16,
-          vertical: AfSpacing.s2,
+          vertical: AfSpacing.s4,
         ),
         padding: const EdgeInsets.all(AfSpacing.s12),
         decoration: BoxDecoration(

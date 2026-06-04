@@ -33,6 +33,10 @@ abstract final class AfColors {
   static const textOnPrimary = Color(0xFFFAF7F4);
   static const textLink = Color(0xFFD4A574);
 
+  /// Label contrast — use where textTertiary fails WCAG AA at small sizes
+  /// (section headers, uppercase labels, captions).
+  static const labelContrast = Color(0xFFA89F94); // same as textSecondary
+
   // ---------------------------------------------------------------------------
   // Accent — Warm amber/terracotta
   // ---------------------------------------------------------------------------

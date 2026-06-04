@@ -17,6 +17,7 @@ import '../../widgets/track_row.dart';
 import '../../widgets/af_scrollbar.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/async_error_view.dart';
+import '../../widgets/press_scale.dart';
 import '../../widgets/skeletons/search_skeleton.dart';
 import '../../widgets/skeleton.dart';
 import '../../utils/color_parse.dart';
@@ -759,22 +760,24 @@ class _SearchResults extends ConsumerWidget {
             const SectionHeader(title: 'Albums', uppercase: true),
             const SizedBox(height: AfSpacing.s8),
             for (final a in unbounded ? albums : albums.take(10))
-              ListTile(
-                leading: SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Artwork(url: a.imageUrl, size: 44),
-                ),
-                title: Text(a.name, style: AfTypography.bodyMedium),
-                subtitle: Text(
-                  a.artistName,
-                  style: AfTypography.bodySmall.copyWith(
-                    color: AfColors.textTertiary,
-                  ),
-                ),
-                tileColor: Colors.transparent,
-                contentPadding: EdgeInsets.zero,
+              PressScale(
                 onTap: () => context.push('/album/${a.id}'),
+                child: ListTile(
+                  leading: SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Artwork(url: a.imageUrl, size: 44),
+                  ),
+                  title: Text(a.name, style: AfTypography.bodyMedium),
+                  subtitle: Text(
+                    a.artistName,
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                  tileColor: Colors.transparent,
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
             const SizedBox(height: AfSpacing.s16),
           ],
@@ -782,24 +785,26 @@ class _SearchResults extends ConsumerWidget {
             const SectionHeader(title: 'Artists', uppercase: true),
             const SizedBox(height: AfSpacing.s8),
             for (final a in unbounded ? artists : artists.take(10))
-              ListTile(
-                // Use Artwork widget (cached_network_image) instead of raw
-                // NetworkImage to avoid repeated fetches and memory spikes.
-                leading: Artwork(
-                  url: a.imageUrl,
-                  size: 44,
-                  radius: AfRadii.borderPill,
-                ),
-                title: Text(a.name, style: AfTypography.bodyMedium),
-                subtitle: Text(
-                  a.statLine,
-                  style: AfTypography.bodySmall.copyWith(
-                    color: AfColors.textTertiary,
-                  ),
-                ),
-                tileColor: Colors.transparent,
-                contentPadding: EdgeInsets.zero,
+              PressScale(
                 onTap: () => context.push('/artist/${a.id}'),
+                child: ListTile(
+                  // Use Artwork widget (cached_network_image) instead of raw
+                  // NetworkImage to avoid repeated fetches and memory spikes.
+                  leading: Artwork(
+                    url: a.imageUrl,
+                    size: 44,
+                    radius: AfRadii.borderPill,
+                  ),
+                  title: Text(a.name, style: AfTypography.bodyMedium),
+                  subtitle: Text(
+                    a.statLine,
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                  tileColor: Colors.transparent,
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
             const SizedBox(height: AfSpacing.s16),
           ],
@@ -807,28 +812,30 @@ class _SearchResults extends ConsumerWidget {
             const SectionHeader(title: 'Playlists', uppercase: true),
             const SizedBox(height: AfSpacing.s8),
             for (final p in unbounded ? playlists : playlists.take(10))
-              ListTile(
-                leading: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    borderRadius: AfRadii.borderSm,
-                    gradient: LinearGradient(
-                      colors: [spectral.muted, AfColors.surfaceLow],
+              PressScale(
+                onTap: () => context.push('/playlist/${p.id}'),
+                child: ListTile(
+                  leading: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      borderRadius: AfRadii.borderSm,
+                      gradient: LinearGradient(
+                        colors: [spectral.muted, AfColors.surfaceLow],
+                      ),
+                    ),
+                    child: Icon(LucideIcons.listMusic, color: spectral.primary),
+                  ),
+                  title: Text(p.name, style: AfTypography.bodyMedium),
+                  subtitle: Text(
+                    p.trackCountLabel,
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
                     ),
                   ),
-                  child: Icon(LucideIcons.listMusic, color: spectral.primary),
+                  tileColor: Colors.transparent,
+                  contentPadding: EdgeInsets.zero,
                 ),
-                title: Text(p.name, style: AfTypography.bodyMedium),
-                subtitle: Text(
-                  p.trackCountLabel,
-                  style: AfTypography.bodySmall.copyWith(
-                    color: AfColors.textTertiary,
-                  ),
-                ),
-                tileColor: Colors.transparent,
-                contentPadding: EdgeInsets.zero,
-                onTap: () => context.push('/playlist/${p.id}'),
               ),
           ],
         ],

@@ -80,6 +80,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
         .watch(playingStreamProvider)
         .maybeWhen(data: (v) => v, orElse: () => false);
     final isBuffering = ref.watch(isBufferingProvider);
+    final spectral = ref.watch(currentSpectralProvider);
 
     final clampedDy = _dragDistance.clamp(0, _maxDragDistance * 2).toDouble();
     final dragOpacity = 1.0 - (clampedDy / _maxDragDistance).clamp(0, 1);
@@ -214,8 +215,8 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                               child: Container(
                                 width: 48,
                                 height: 48,
-                                decoration: const BoxDecoration(
-                                  color: AfColors.textOnPrimary,
+                                decoration: BoxDecoration(
+                                  color: spectral.energy,
                                   shape: BoxShape.circle,
                                 ),
                                 child: Center(

@@ -150,8 +150,8 @@ abstract final class AfTypography {
     bodyLarge: bodyLarge.copyWith(color: AfColors.textPrimary),
     bodyMedium: bodyMedium.copyWith(color: AfColors.textPrimary),
     bodySmall: bodySmall.copyWith(color: AfColors.textSecondary),
-    labelLarge: label.copyWith(color: AfColors.textTertiary),
-    labelMedium: label.copyWith(color: AfColors.textTertiary),
+    labelLarge: label.copyWith(color: AfColors.textSecondary),
+    labelMedium: label.copyWith(color: AfColors.textSecondary),
     labelSmall: caption.copyWith(color: AfColors.textTertiary),
   );
 
