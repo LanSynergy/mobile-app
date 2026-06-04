@@ -9,8 +9,7 @@ import 'package:aetherfin/core/audio/media_session_bridge.dart';
 import 'package:aetherfin/core/audio/player_service.dart';
 import 'package:aetherfin/core/jellyfin/models/items.dart';
 import '../../helpers/fake_player.dart';
-
-class MockMethodChannel extends Mock implements MethodChannel {}
+import '../../helpers/mock_method_channel.dart';
 
 /// Wraps a mutable [PlayerState] so tests can change the mock's state.
 typedef _StateUpdater =

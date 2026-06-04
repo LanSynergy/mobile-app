@@ -71,7 +71,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
     final mode = ref.watch(appModeProvider);
     final isLocal = mode == AppMode.local;
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, secondary: s.secondary),
+      ),
+    );
 
     return SafeArea(
       child: Column(
@@ -174,7 +178,9 @@ class _CommandPaletteSearchState extends ConsumerState<_CommandPaletteSearch> {
   Widget build(BuildContext context) {
     final mode = ref.watch(appModeProvider);
     final isLocal = mode == AppMode.local;
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
@@ -282,7 +288,7 @@ class _CommandPaletteSearchState extends ConsumerState<_CommandPaletteSearch> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: AfRadii.borderPill,
-                      borderSide: BorderSide(color: spectral.primary),
+                      borderSide: BorderSide(color: spectral),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: AfSpacing.s16,
@@ -457,7 +463,7 @@ class _LiveResults extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activeId = ref.watch(currentTrackProvider)?.id;
     final isBuffering = ref.watch(isBufferingProvider);
-    final accent = ref.watch(currentSpectralProvider).energy;
+    final accent = ref.watch(currentSpectralProvider.select((s) => s.energy));
 
     final albumsAsync = ref.watch(
       isLocal ? localAlbumsProvider : allAlbumsProvider,
@@ -816,7 +822,9 @@ class _PillBarState extends ConsumerState<_PillBar>
 
   @override
   Widget build(BuildContext context) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     final count = SongsPill.values.length;
 
     return LayoutBuilder(
@@ -848,7 +856,7 @@ class _PillBarState extends ConsumerState<_PillBar>
                         child: IgnorePointer(
                           child: DecoratedBox(
                             decoration: BoxDecoration(
-                              color: spectral.primary,
+                              color: spectral,
                               borderRadius: AfRadii.borderPill,
                             ),
                           ),
@@ -982,7 +990,9 @@ class _SongsList extends ConsumerWidget {
                 track: t,
                 isActive: t.id == activeId,
                 isBuffering: t.id == activeId && ref.watch(isBufferingProvider),
-                activeAccent: ref.watch(currentSpectralProvider).energy,
+                activeAccent: ref.watch(
+                  currentSpectralProvider.select((s) => s.energy),
+                ),
                 onTap: () =>
                     ref.read(playActionsProvider).playSmartQueue(t, tracks),
                 onLongPress: () => showTrackContextMenu(context, ref, t),

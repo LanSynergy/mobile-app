@@ -59,7 +59,9 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
     final detailAsync = ref.watch(albumDetailProvider(widget.albumId));
     final activeTrack = ref.watch(currentTrackProvider);
     final activeId = activeTrack?.id;
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
 
     final detail = detailAsync.valueOrNull;
     final wikiAsync = detail != null
@@ -166,7 +168,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                               child: Text(
                                 album.artistName,
                                 style: AfTypography.titleMedium.copyWith(
-                                  color: spectral.primary,
+                                  color: spectral,
                                 ),
                               ),
                             ),
@@ -441,7 +443,9 @@ class _TrackRowItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isBuffering = ref.watch(isBufferingProvider);
-    final activeAccent = ref.watch(currentSpectralProvider).energy;
+    final activeAccent = ref.watch(
+      currentSpectralProvider.select((s) => s.energy),
+    );
     final isActive = track.id == activeId;
 
     return Padding(
@@ -491,7 +495,9 @@ class _AlbumWikiPanelState extends ConsumerState<_AlbumWikiPanel> {
     final cleanText = _cleanHtml(widget.wiki);
     if (cleanText.isEmpty) return const SizedBox();
 
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     final stats = <String>[];
     if (widget.listeners != null) {
       stats.add('${_formatNumber(widget.listeners)} listeners');
@@ -535,7 +541,7 @@ class _AlbumWikiPanelState extends ConsumerState<_AlbumWikiPanel> {
             child: Text(
               _expanded ? 'Show less' : 'Read more',
               style: AfTypography.bodySmall.copyWith(
-                color: spectral.primary,
+                color: spectral,
                 fontWeight: FontWeight.bold,
               ),
             ),

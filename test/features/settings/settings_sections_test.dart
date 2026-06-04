@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -10,8 +9,7 @@ import 'package:aetherfin/core/audio/player_service.dart';
 import 'package:aetherfin/features/settings/settings_sections.dart';
 import 'package:aetherfin/state/providers.dart';
 import '../../helpers/fake_player.dart';
-
-class MockMethodChannel extends Mock implements MethodChannel {}
+import '../../helpers/mock_method_channel.dart';
 
 /// Creates a fixture with a mock player service for widget tests.
 ({

@@ -39,7 +39,7 @@ class _ReactiveProgressState extends ConsumerState<ReactiveProgress> {
   @override
   Widget build(BuildContext context) {
     final position = ref.watch(positionStreamProvider);
-    final spectral = ref.watch(currentSpectralProvider);
+    final energy = ref.watch(currentSpectralProvider.select((s) => s.energy));
     final mpvDuration = ref.watch(durationStreamProvider);
     final isBuffering = ref.watch(isBufferingProvider);
     final duration = mpvDuration > Duration.zero
@@ -71,7 +71,7 @@ class _ReactiveProgressState extends ConsumerState<ReactiveProgress> {
       children: [
         AudioVisualScrubber(
           progress: displayProgress,
-          playedColor: spectral.energy,
+          playedColor: energy,
           height: 100.0,
           onScrub: (p) => setState(() {
             _isDragging = true;

@@ -223,14 +223,15 @@ class SubsonicClient implements MusicBackend {
         throw SubsonicApiError(code, msg);
       }
       return root;
-    } on DioException catch (e) {
-      throw DioException(
+    } on DioException catch (e, stack) {
+      final enriched = DioException(
         requestOptions: e.requestOptions,
         response: e.response,
         type: e.type,
         error: e.error,
         message: 'Subsonic API error: ${e.message}',
       );
+      Error.throwWithStackTrace(enriched, stack);
     }
   }
 

@@ -43,16 +43,6 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
   late final Animation<double> _expandAnim;
   final _scrollCtrl = ScrollController();
 
-  /// Estimated height of a single lyric row in logical pixels.
-  static const double _rowHeight = 36.0;
-
-  /// Index of the active line on the previous build.
-  int _lastScrolledIndex = -1;
-
-  /// Whether the user has manually scrolled. Pauses auto-scroll.
-  bool _userScrolled = false;
-  Timer? _userScrollTimer;
-
   @override
   void initState() {
     super.initState();
@@ -66,7 +56,6 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
       curve: AfCurves.easeEmphasized,
     );
     widget.lyricsExpanded.addListener(_onChanged);
-    _scrollCtrl.addListener(_onScroll);
   }
 
   @override
@@ -74,9 +63,6 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.track.id != widget.track.id) {
       _scrollCtrl.jumpTo(0);
-      _lastScrolledIndex = -1;
-      _userScrolled = false;
-      _userScrollTimer?.cancel();
     }
   }
 
@@ -88,101 +74,23 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
     }
   }
 
-  void _onScroll() {
-    if (_scrollControllerHasClients &&
-        _scrollControllerUserScrollDirection != ScrollDirection.idle) {
-      if (!_userScrolled) {
-        setState(() {
-          _userScrolled = true;
-        });
-      }
-      _userScrollTimer?.cancel();
-      _userScrollTimer = Timer(const Duration(seconds: 4), () {
-        if (mounted) {
-          setState(() {
-            _userScrolled = false;
-            _lastScrolledIndex = -1;
-          });
-        }
-      });
-    }
-  }
-
-  bool get _scrollControllerHasClients => _scrollCtrl.hasClients;
-
-  ScrollDirection get _scrollControllerUserScrollDirection =>
-      _scrollCtrl.hasClients
-      ? _scrollCtrl.position.userScrollDirection
-      : ScrollDirection.idle;
-
-  /// Scroll the list so the active line sits in the vertical centre.
-  void _scrollToActive(int activeIndex, int lineCount) {
-    if (!_scrollCtrl.hasClients) {
-      _lastScrolledIndex = -1;
-      return;
-    }
-
-    final viewportHeight = _scrollCtrl.position.viewportDimension;
-    final minScroll = _scrollCtrl.position.minScrollExtent;
-    final maxScroll = _scrollCtrl.position.maxScrollExtent;
-
-    final expectedContentHeight = lineCount * _rowHeight;
-    if (maxScroll == 0.0 && expectedContentHeight > viewportHeight) {
-      _lastScrolledIndex = -1;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() {});
-      });
-      return;
-    }
-
-    const paddingTop = AfSpacing.s16;
-    final target =
-        paddingTop +
-        (activeIndex * _rowHeight) -
-        (viewportHeight / 2) +
-        (_rowHeight / 2);
-    final clamped = target.clamp(minScroll, maxScroll);
-
-    _scrollCtrl.animateTo(
-      clamped,
-      duration: AfDurations.standard,
-      curve: AfCurves.easeStandard,
-    );
-  }
-
   @override
   void dispose() {
     widget.lyricsExpanded.removeListener(_onChanged);
-    _scrollCtrl.removeListener(_onScroll);
     _expandCtrl.dispose();
     _scrollCtrl.dispose();
-    _userScrollTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(currentSpectralProvider.select((s) => s.energy));
     final track = widget.track;
 
     final lrcAsync = ref.watch(lyricsProvider(track.id));
     final lrc = lrcAsync.maybeWhen(data: (p) => p, orElse: () => null);
-    final position = ref.watch(positionStreamProvider);
     final isSynced =
         lrc != null && lrc.lines.any((l) => l.start > Duration.zero);
-    final active = isSynced ? lrc.activeIndex(position) : -1;
-
-    // Auto-scroll to active line.
-    if (lrc != null &&
-        lrc.lines.isNotEmpty &&
-        active >= 0 &&
-        active != _lastScrolledIndex &&
-        !_userScrolled) {
-      _lastScrolledIndex = active;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollToActive(active, lrc.lines.length);
-      });
-    }
 
     return AnimatedBuilder(
       animation: _expandAnim,
@@ -260,7 +168,7 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
                           icon: Icon(
                             LucideIcons.mic2,
                             color: widget.lyricsExpanded.value
-                                ? spectral.energy
+                                ? spectral
                                 : AfColors.textPrimary,
                             size: 20,
                           ),
@@ -280,8 +188,7 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
                       child: lrc != null && lrc.lines.isNotEmpty
                           ? _LyricsList(
                               lrc: lrc,
-                              active: active,
-                              spectralEnergy: spectral.energy,
+                              spectralEnergy: spectral,
                               scrollController: _scrollCtrl,
                               isSynced: isSynced,
                             )
@@ -312,38 +219,140 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
 // Lyrics list — auto-scroll, tap-to-seek, user scroll pause
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _LyricsList extends ConsumerWidget {
+class _LyricsList extends ConsumerStatefulWidget {
   const _LyricsList({
     required this.lrc,
-    required this.active,
     required this.spectralEnergy,
     required this.scrollController,
     required this.isSynced,
   });
 
   final Lrc lrc;
-  final int active;
   final Color spectralEnergy;
   final ScrollController scrollController;
   final bool isSynced;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_LyricsList> createState() => _LyricsListState();
+}
+
+class _LyricsListState extends ConsumerState<_LyricsList> {
+  /// Estimated height of a single lyric row in logical pixels.
+  static const double _rowHeight = 36.0;
+
+  int _lastScrolledIndex = -1;
+  bool _userScrolled = false;
+  Timer? _userScrollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void didUpdateWidget(covariant _LyricsList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.scrollController != widget.scrollController) {
+      oldWidget.scrollController.removeListener(_onScroll);
+      widget.scrollController.addListener(_onScroll);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.scrollController.removeListener(_onScroll);
+    _userScrollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (widget.scrollController.hasClients &&
+        widget.scrollController.position.userScrollDirection !=
+            ScrollDirection.idle) {
+      if (!_userScrolled) {
+        setState(() {
+          _userScrolled = true;
+        });
+      }
+      _userScrollTimer?.cancel();
+      _userScrollTimer = Timer(const Duration(seconds: 4), () {
+        if (mounted) {
+          setState(() {
+            _userScrolled = false;
+            _lastScrolledIndex = -1;
+          });
+        }
+      });
+    }
+  }
+
+  /// Scroll the list so the active line sits in the vertical centre.
+  void _scrollToActive(int activeIndex, int lineCount) {
+    if (!widget.scrollController.hasClients) {
+      _lastScrolledIndex = -1;
+      return;
+    }
+
+    final viewportHeight = widget.scrollController.position.viewportDimension;
+    final minScroll = widget.scrollController.position.minScrollExtent;
+    final maxScroll = widget.scrollController.position.maxScrollExtent;
+
+    final expectedContentHeight = lineCount * _rowHeight;
+    if (maxScroll == 0.0 && expectedContentHeight > viewportHeight) {
+      _lastScrolledIndex = -1;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+      return;
+    }
+
+    const paddingTop = AfSpacing.s16;
+    final target =
+        paddingTop +
+        (activeIndex * _rowHeight) -
+        (viewportHeight / 2) +
+        (_rowHeight / 2);
+    final clamped = target.clamp(minScroll, maxScroll);
+
+    widget.scrollController.animateTo(
+      clamped,
+      duration: AfDurations.standard,
+      curve: AfCurves.easeStandard,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final position = ref.watch(positionStreamProvider);
+    final active = widget.isSynced ? widget.lrc.activeIndex(position) : -1;
+
+    // Auto-scroll to active line.
+    if (widget.lrc.lines.isNotEmpty &&
+        active >= 0 &&
+        active != _lastScrolledIndex &&
+        !_userScrolled) {
+      _lastScrolledIndex = active;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToActive(active, widget.lrc.lines.length);
+      });
+    }
+
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.35,
       child: ListView.builder(
-        controller: scrollController,
+        controller: widget.scrollController,
         padding: const EdgeInsets.symmetric(
           horizontal: AfSpacing.s16,
           vertical: AfSpacing.s4,
         ),
-        itemCount: lrc.lines.length,
+        itemCount: widget.lrc.lines.length,
         itemBuilder: (context, i) {
           final isActive = i == active;
-          final line = lrc.lines[i];
+          final line = widget.lrc.lines[i];
           return InkWell(
             borderRadius: AfRadii.borderSm,
-            onTap: isSynced
+            onTap: widget.isSynced
                 ? () {
                     unawaited(HapticFeedback.selectionClick());
                     ref.read(playerServiceProvider).seek(line.start);
@@ -355,13 +364,13 @@ class _LyricsList extends ConsumerWidget {
                 duration: AfDurations.quick,
                 style: AfTypography.bodyLarge.copyWith(
                   color: isActive
-                      ? spectralEnergy
+                      ? widget.spectralEnergy
                       : AfColors.textPrimary.withValues(alpha: 0.7),
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                   shadows: isActive
                       ? [
                           Shadow(
-                            color: spectralEnergy.withValues(alpha: 0.5),
+                            color: widget.spectralEnergy.withValues(alpha: 0.5),
                             blurRadius: 8,
                           ),
                         ]
@@ -387,7 +396,9 @@ class _EmptyLyrics extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     final backend = ref.watch(musicBackendProvider);
     final isLocal = backend is LocalBackend;
 
@@ -427,7 +438,7 @@ class _EmptyLyrics extends ConsumerWidget {
               },
               icon: const Icon(LucideIcons.upload, size: 18),
               label: const Text('Load LRC File'),
-              style: FilledButton.styleFrom(backgroundColor: spectral.primary),
+              style: FilledButton.styleFrom(backgroundColor: spectral),
             ),
           ],
         ],

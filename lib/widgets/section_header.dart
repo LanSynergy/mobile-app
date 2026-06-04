@@ -28,7 +28,9 @@ class SectionHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     final titleStyle = uppercase
         ? AfTypography.label.copyWith(color: AfColors.textSecondary)
         : AfTypography.titleMedium.copyWith(color: AfColors.textPrimary);
@@ -53,7 +55,7 @@ class SectionHeader extends ConsumerWidget {
               ),
               child: Text(
                 '$actionLabel ›',
-                style: AfTypography.bodySmall.copyWith(color: spectral.primary),
+                style: AfTypography.bodySmall.copyWith(color: spectral),
               ),
             ),
           ),

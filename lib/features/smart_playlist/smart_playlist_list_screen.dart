@@ -17,7 +17,9 @@ class SmartPlaylistListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playlistsAsync = ref.watch(smartPlaylistsProvider);
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
 
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
@@ -34,7 +36,7 @@ class SmartPlaylistListScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/smart-playlist/new'),
-        backgroundColor: spectral.primary,
+        backgroundColor: spectral,
         child: const Icon(LucideIcons.plus, color: AfColors.surfaceCanvas),
       ),
       body: playlistsAsync.when(
@@ -47,13 +49,13 @@ class SmartPlaylistListScreen extends ConsumerWidget {
                       width: 72,
                       height: 72,
                       decoration: BoxDecoration(
-                        color: spectral.primary.withValues(alpha: 0.08),
+                        color: spectral.withValues(alpha: 0.08),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         LucideIcons.sparkles,
                         size: 36,
-                        color: spectral.primary,
+                        color: spectral,
                       ),
                     ),
                     const SizedBox(height: AfSpacing.s16),
@@ -137,7 +139,9 @@ class _PlaylistTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     return InkWell(
       onTap: onTap,
       onLongPress: () => _showDeleteDialog(context),
@@ -152,14 +156,10 @@ class _PlaylistTile extends ConsumerWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: spectral.primary.withValues(alpha: 0.12),
+                color: spectral.withValues(alpha: 0.12),
                 borderRadius: AfRadii.borderSm,
               ),
-              child: Icon(
-                LucideIcons.sparkles,
-                size: 20,
-                color: spectral.primary,
-              ),
+              child: Icon(LucideIcons.sparkles, size: 20, color: spectral),
             ),
             const SizedBox(width: AfSpacing.s12),
             Expanded(

@@ -56,7 +56,9 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     final topTracksAsync = ref.watch(artistTopTracksProvider(widget.artistId));
     final activeId = ref.watch(currentTrackProvider)?.id;
     final isBuffering = ref.watch(isBufferingProvider);
-    final activeAccent = ref.watch(currentSpectralProvider).energy;
+    final activeAccent = ref.watch(
+      currentSpectralProvider.select((s) => s.energy),
+    );
     final wikiAsync = ref.watch(artistWikiProvider(widget.artistId));
 
     return Scaffold(
@@ -479,7 +481,9 @@ class _ArtistBiographyPanelState extends ConsumerState<_ArtistBiographyPanel> {
     final cleanText = _cleanHtml(widget.bio);
     if (cleanText.isEmpty) return const SizedBox();
 
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     final stats = <String>[];
     if (widget.listeners != null) {
       stats.add('${_formatNumber(widget.listeners)} listeners');
@@ -523,7 +527,7 @@ class _ArtistBiographyPanelState extends ConsumerState<_ArtistBiographyPanel> {
             child: Text(
               _expanded ? 'Show less' : 'Read more',
               style: AfTypography.bodySmall.copyWith(
-                color: spectral.primary,
+                color: spectral,
                 fontWeight: FontWeight.bold,
               ),
             ),

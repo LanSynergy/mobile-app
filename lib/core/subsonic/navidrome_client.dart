@@ -5,6 +5,7 @@ import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
 import '../jellyfin/models/quality.dart';
 import '../jellyfin/models/server.dart';
+import '../network/shared_dio_client.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'client.dart';
 
@@ -16,7 +17,7 @@ class NavidromeClient extends SubsonicClient {
     required super.username,
     required super.password,
     required super.clientVersion,
-  }) : _ndDio = Dio(
+  }) : _ndDio = SharedDioClient().createWithOptions(
          BaseOptions(
            baseUrl: _buildNdBaseUrl(server.baseUrl),
            connectTimeout: const Duration(seconds: 5),

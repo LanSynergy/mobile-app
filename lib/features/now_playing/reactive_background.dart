@@ -48,8 +48,8 @@ class _ReactiveBackgroundState extends ConsumerState<ReactiveBackground>
 
   @override
   Widget build(BuildContext context) {
-    final spectral = ref.watch(currentSpectralProvider);
-    final oklch = srgbToOklch(spectral.energy);
+    final energy = ref.watch(currentSpectralProvider.select((s) => s.energy));
+    final oklch = srgbToOklch(energy);
     final target = OklchColor(0.35, 0.12, oklch.h).toColor();
 
     if (target != _target) {

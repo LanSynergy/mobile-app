@@ -78,8 +78,9 @@ class Artwork extends ConsumerWidget {
     final cacheW = clampedCachePx(layoutW);
     final cacheH = clampedCachePx(layoutH);
 
-    final backend = ref.watch(musicBackendProvider);
-    final headers = backend?.authHeaders;
+    final headers = ref.watch(
+      musicBackendProvider.select((b) => b?.authHeaders),
+    );
 
     // Local files: load from disk directly.
     if (url!.startsWith('file://')) {

@@ -73,7 +73,9 @@ class _MoreMenu extends StatelessWidget {
     final serverIds = ref
         .watch(playlistTrackIdsProvider)
         .maybeWhen(data: (ids) => ids, orElse: () => const <String>{});
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     final isSaved =
         track != null &&
         (savedIds.contains(track.id) || serverIds.contains(track.id));
@@ -119,7 +121,7 @@ class _MoreMenu extends StatelessWidget {
           icon: Icon(
             LucideIcons.plus,
             size: 22,
-            color: isSaved ? spectral.primary : AfColors.textSecondary,
+            color: isSaved ? spectral : AfColors.textSecondary,
           ),
           label: isSaved ? 'Saved' : 'Save',
           onTap: () {
@@ -172,7 +174,7 @@ class _MoreMenu extends StatelessWidget {
             LucideIcons.arrowLeftRight,
             size: 22,
             color: ref.watch(abLoopAProvider) != null
-                ? spectral.primary
+                ? spectral
                 : AfColors.textSecondary,
           ),
           label: 'A-B Loop',
@@ -644,7 +646,9 @@ class OutputDialogContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final svc = ref.watch(playerServiceProvider);
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
 
     return StreamBuilder<List<Device>>(
       stream: svc.audioDevicesStream,
@@ -689,9 +693,7 @@ class OutputDialogContent extends ConsumerWidget {
                           device.description.isNotEmpty
                               ? device.description
                               : device.name,
-                          color: isActive
-                              ? spectral.primary
-                              : AfColors.textSecondary,
+                          color: isActive ? spectral : AfColors.textSecondary,
                         ),
                         title: Text(
                           device.description.isNotEmpty
@@ -700,11 +702,7 @@ class OutputDialogContent extends ConsumerWidget {
                           style: AfTypography.bodyMedium,
                         ),
                         trailing: isActive
-                            ? Icon(
-                                LucideIcons.check,
-                                color: spectral.primary,
-                                size: 20,
-                              )
+                            ? Icon(LucideIcons.check, color: spectral, size: 20)
                             : null,
                         onTap: () async {
                           await svc.setAudioDevice(device);

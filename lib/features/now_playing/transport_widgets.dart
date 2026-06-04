@@ -29,7 +29,9 @@ class ReactiveTransport extends ConsumerWidget {
     final loopMode = ref
         .watch(loopModeProvider)
         .maybeWhen(data: (v) => v, orElse: () => AfLoopMode.off);
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => (energy: s.energy, muted: s.muted)),
+    );
 
     return TransportRow(
       isPlaying: isPlaying,

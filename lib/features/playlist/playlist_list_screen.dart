@@ -21,7 +21,11 @@ class PlaylistListScreen extends ConsumerWidget {
       data: (list) => list.length,
       orElse: () => 0,
     );
-    final spectral = ref.watch(currentSpectralProvider);
+    final (:primary, :muted) = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, muted: s.muted),
+      ),
+    );
 
     return SafeArea(
       child: RefreshIndicator(
@@ -29,7 +33,7 @@ class PlaylistListScreen extends ConsumerWidget {
           ref.invalidate(allPlaylistsProvider);
           await ref.read(allPlaylistsProvider.future);
         },
-        color: spectral.primary,
+        color: primary,
         backgroundColor: AfColors.surfaceBase,
         child: AfScrollbar(
           child: CustomScrollView(
@@ -53,7 +57,7 @@ class PlaylistListScreen extends ConsumerWidget {
                       IconButton(
                         icon: Icon(
                           LucideIcons.listPlus,
-                          color: spectral.primary,
+                          color: primary,
                           size: 22,
                         ),
                         tooltip: 'Import M3U',
@@ -68,8 +72,14 @@ class PlaylistListScreen extends ConsumerWidget {
 
               // ── Playlist body ───────────────────────────────────────────
               ...playlists.when(
-                data: (list) =>
-                    _buildSlivers(context, ref, list, smartCount, spectral),
+                data: (list) => _buildSlivers(
+                  context,
+                  ref,
+                  list,
+                  smartCount,
+                  primary,
+                  muted,
+                ),
                 loading: () => [
                   const SliverToBoxAdapter(child: PlaylistSkeleton()),
                 ],
@@ -105,7 +115,8 @@ class PlaylistListScreen extends ConsumerWidget {
     WidgetRef ref,
     List<AfPlaylist> list,
     int smartCount,
-    Spectral spectral,
+    Color primary,
+    Color muted,
   ) {
     final slivers = <Widget>[];
 
@@ -130,10 +141,7 @@ class PlaylistListScreen extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
             child: _PlaylistCard(
-              leading: _IconBadge(
-                icon: LucideIcons.sparkles,
-                tint: spectral.primary,
-              ),
+              leading: _IconBadge(icon: LucideIcons.sparkles, tint: primary),
               title: 'Smart Playlists',
               subtitle: '$smartCount playlists',
               onTap: () => context.push('/smart-playlists'),
@@ -172,10 +180,7 @@ class PlaylistListScreen extends ConsumerWidget {
             itemBuilder: (context, i) {
               final p = list[i];
               return _PlaylistCard(
-                leading: _IconBadge(
-                  icon: LucideIcons.listMusic,
-                  tint: spectral.muted,
-                ),
+                leading: _IconBadge(icon: LucideIcons.listMusic, tint: muted),
                 title: p.name,
                 subtitle: p.trackCountLabel,
                 onTap: () => context.push('/playlist/${p.id}'),
@@ -196,14 +201,10 @@ class PlaylistListScreen extends ConsumerWidget {
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    color: spectral.primary.withValues(alpha: 0.08),
+                    color: primary.withValues(alpha: 0.08),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    LucideIcons.listMusic,
-                    color: spectral.muted,
-                    size: 36,
-                  ),
+                  child: Icon(LucideIcons.listMusic, color: muted, size: 36),
                 ),
                 const SizedBox(height: AfSpacing.s16),
                 Text('No playlists yet', style: AfTypography.titleSmall),

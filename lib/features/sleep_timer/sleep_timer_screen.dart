@@ -126,7 +126,11 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
         activeTimer != null &&
         activeTimer.difference(DateTime.now()).inHours > 12;
     final isActive = activeTimer != null;
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, muted: s.muted),
+      ),
+    );
 
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,

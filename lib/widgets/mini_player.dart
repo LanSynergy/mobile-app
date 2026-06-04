@@ -134,128 +134,132 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                 child: PressScale(
                   ensureHitTarget: false,
                   onTap: widget.onTap,
-                  child: ClipRRect(
-                    borderRadius: AfRadii.borderPill,
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                      child: Container(
-                        height: AfSpacing.miniPlayerHeight,
-                        decoration: BoxDecoration(
-                          color: AfColors.glassFillStrong,
-                          borderRadius: AfRadii.borderPill,
-                          border: Border.all(
-                            color: AfColors.surfaceHigh.withValues(alpha: 0.5),
-                            width: 1,
+                  child: RepaintBoundary(
+                    child: ClipRRect(
+                      borderRadius: AfRadii.borderPill,
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                        child: Container(
+                          height: AfSpacing.miniPlayerHeight,
+                          decoration: BoxDecoration(
+                            color: AfColors.glassFillStrong,
+                            borderRadius: AfRadii.borderPill,
+                            border: Border.all(
+                              color: AfColors.surfaceHigh.withValues(
+                                alpha: 0.5,
+                              ),
+                              width: 1,
+                            ),
                           ),
-                        ),
-                        padding: const EdgeInsets.only(
-                          left: AfSpacing.s4,
-                          right: AfSpacing.s8,
-                        ),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 48,
-                              height: 48,
-                              child: _ReactiveProgressRing(
-                                track: track,
-                                child: Hero(
-                                  tag: 'now-playing-artwork',
-                                  child: ClipRRect(
-                                    borderRadius: AfRadii.borderMd,
-                                    child: Artwork(
-                                      url:
-                                          artworkUri?.toString() ??
-                                          track.imageUrl,
-                                      size: 44,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: AfSpacing.s12),
-                            Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  MarqueeText(
-                                    text: track.title,
-                                    style: AfTypography.bodyMedium.copyWith(
-                                      color: AfColors.textPrimary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    speedPxPerSec: 25.0,
-                                    minDurationMs: 6000,
-                                    maxDurationMs: 25000,
-                                  ),
-                                  MarqueeText(
-                                    text: track.artistName,
-                                    style: AfTypography.bodySmall.copyWith(
-                                      color: AfColors.textSecondary,
-                                    ),
-                                    speedPxPerSec: 25.0,
-                                    minDurationMs: 6000,
-                                    maxDurationMs: 25000,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Semantics(
-                              button: true,
-                              label: 'Skip previous',
-                              child: _MiniTransportButton(
-                                icon: const Icon(
-                                  LucideIcons.skipBack,
-                                  size: 24,
-                                  color: AfColors.textPrimary,
-                                ),
-                                onTap: widget.onSkipPrevious,
-                              ),
-                            ),
-                            PressScale(
-                              ensureHitTarget: false,
-                              onTap: widget.onPlayPause,
-                              child: Container(
+                          padding: const EdgeInsets.only(
+                            left: AfSpacing.s4,
+                            right: AfSpacing.s8,
+                          ),
+                          child: Row(
+                            children: [
+                              SizedBox(
                                 width: 48,
                                 height: 48,
-                                decoration: BoxDecoration(
-                                  color: spectral.energy,
-                                  shape: BoxShape.circle,
+                                child: _ReactiveProgressRing(
+                                  track: track,
+                                  child: Hero(
+                                    tag: 'now-playing-artwork',
+                                    child: ClipRRect(
+                                      borderRadius: AfRadii.borderMd,
+                                      child: Artwork(
+                                        url:
+                                            artworkUri?.toString() ??
+                                            track.imageUrl,
+                                        size: 44,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                child: Center(
-                                  child: isBuffering
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.0,
+                              ),
+                              const SizedBox(width: AfSpacing.s12),
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    MarqueeText(
+                                      text: track.title,
+                                      style: AfTypography.bodyMedium.copyWith(
+                                        color: AfColors.textPrimary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      speedPxPerSec: 25.0,
+                                      minDurationMs: 6000,
+                                      maxDurationMs: 25000,
+                                    ),
+                                    MarqueeText(
+                                      text: track.artistName,
+                                      style: AfTypography.bodySmall.copyWith(
+                                        color: AfColors.textSecondary,
+                                      ),
+                                      speedPxPerSec: 25.0,
+                                      minDurationMs: 6000,
+                                      maxDurationMs: 25000,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Semantics(
+                                button: true,
+                                label: 'Skip previous',
+                                child: _MiniTransportButton(
+                                  icon: const Icon(
+                                    LucideIcons.skipBack,
+                                    size: 24,
+                                    color: AfColors.textPrimary,
+                                  ),
+                                  onTap: widget.onSkipPrevious,
+                                ),
+                              ),
+                              PressScale(
+                                ensureHitTarget: false,
+                                onTap: widget.onPlayPause,
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: spectral.energy,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: isBuffering
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2.0,
+                                              color: AfColors.surfaceCanvas,
+                                            ),
+                                          )
+                                        : Icon(
+                                            isPlaying
+                                                ? LucideIcons.pause
+                                                : LucideIcons.play,
                                             color: AfColors.surfaceCanvas,
+                                            size: 24,
                                           ),
-                                        )
-                                      : Icon(
-                                          isPlaying
-                                              ? LucideIcons.pause
-                                              : LucideIcons.play,
-                                          color: AfColors.surfaceCanvas,
-                                          size: 24,
-                                        ),
+                                  ),
                                 ),
                               ),
-                            ),
-                            Semantics(
-                              button: true,
-                              label: 'Skip next',
-                              child: _MiniTransportButton(
-                                icon: const Icon(
-                                  LucideIcons.skipForward,
-                                  size: 24,
-                                  color: AfColors.textPrimary,
+                              Semantics(
+                                button: true,
+                                label: 'Skip next',
+                                child: _MiniTransportButton(
+                                  icon: const Icon(
+                                    LucideIcons.skipForward,
+                                    size: 24,
+                                    color: AfColors.textPrimary,
+                                  ),
+                                  onTap: widget.onSkipNext,
                                 ),
-                                onTap: widget.onSkipNext,
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -305,7 +309,9 @@ class _ReactiveProgressRing extends ConsumerWidget {
             0.0,
             1.0,
           );
-    final energyColor = ref.watch(currentSpectralProvider).energy;
+    final energyColor = ref.watch(
+      currentSpectralProvider.select((s) => s.energy),
+    );
 
     return CircularProgressRing(
       progress: ringProgress,

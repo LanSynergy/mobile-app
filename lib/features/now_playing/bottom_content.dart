@@ -88,9 +88,10 @@ class _BottomContentState extends ConsumerState<BottomContent>
     final queue = ref.watch(playerServiceProvider).currentQueue;
     final currentIndex = ref.watch(playerServiceProvider).currentIndex;
 
-    // Up-next queue: items after the current track
-    final upNext = queue.length > 1
-        ? queue.sublist(currentIndex + 1).take(20).toList()
+    // Up-next queue: items after the current track (computed once per rebuild)
+    final queueLen = queue.length;
+    final upNext = queueLen > 1
+        ? queue.sublist(currentIndex + 1).take(20).toList(growable: false)
         : <AfTrack>[];
 
     return AnimatedBuilder(
@@ -228,7 +229,9 @@ class MetadataOverlay extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => (link: s.link, muted: s.muted)),
+    );
     final sleepRemaining = ref.watch(sleepTimerRemainingProvider);
     return Row(
       children: [

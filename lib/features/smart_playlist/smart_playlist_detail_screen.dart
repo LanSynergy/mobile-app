@@ -23,8 +23,12 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
     final activeTrack = ref.watch(currentTrackProvider);
     final activeId = activeTrack?.id;
     final isBuffering = ref.watch(isBufferingProvider);
-    final activeAccent = ref.watch(currentSpectralProvider).energy;
-    final spectral = ref.watch(currentSpectralProvider);
+    final activeAccent = ref.watch(
+      currentSpectralProvider.select((s) => s.energy),
+    );
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     final playlist = playlistAsync.maybeWhen(
       data: (list) => list.where((p) => p.id == playlistId).firstOrNull,
       orElse: () => null,
@@ -112,13 +116,13 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: spectral.primary.withValues(alpha: 0.12),
+                          color: spectral.withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
                           LucideIcons.sparkles,
                           size: 18,
-                          color: spectral.primary,
+                          color: spectral,
                         ),
                       ),
                       const SizedBox(width: AfSpacing.s12),
@@ -164,7 +168,7 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
                         icon: const Icon(LucideIcons.play, size: 18),
                         label: const Text('Play'),
                         style: FilledButton.styleFrom(
-                          backgroundColor: spectral.primary,
+                          backgroundColor: spectral,
                           foregroundColor: AfColors.surfaceCanvas,
                           padding: const EdgeInsets.symmetric(
                             horizontal: AfSpacing.s16,

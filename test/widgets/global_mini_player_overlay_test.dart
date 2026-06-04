@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -13,8 +12,7 @@ import 'package:aetherfin/widgets/mini_player.dart';
 import 'package:aetherfin/state/providers.dart';
 import 'package:aetherfin/app/router.dart';
 import '../helpers/fake_player.dart';
-
-class MockMethodChannel extends Mock implements MethodChannel {}
+import '../helpers/mock_method_channel.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

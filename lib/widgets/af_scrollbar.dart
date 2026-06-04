@@ -25,13 +25,15 @@ class AfScrollbar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     return ScrollbarTheme(
       data: ScrollbarThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.dragged) ||
               states.contains(WidgetState.hovered)) {
-            return spectral.primary.withValues(alpha: 0.6);
+            return spectral.withValues(alpha: 0.6);
           }
           return AfColors.surfaceMax.withValues(alpha: 0.5);
         }),

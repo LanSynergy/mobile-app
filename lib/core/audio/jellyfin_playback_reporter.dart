@@ -88,7 +88,15 @@ class JellyfinPlaybackReporter {
                   imageUrl: Value(previousTrack.imageUrl),
                   skipped: const Value(false),
                 ),
-              ),
+              )
+              .catchError((Object e) {
+                afLog(
+                  'playback-reporter',
+                  'Failed to insert playback history',
+                  error: e,
+                );
+                return 0;
+              }),
         );
         afLog('data', 'Logged play history track=${previousTrack.id}');
       } else if (isSkip) {
@@ -106,7 +114,15 @@ class JellyfinPlaybackReporter {
                   imageUrl: Value(previousTrack.imageUrl),
                   skipped: const Value(true),
                 ),
-              ),
+              )
+              .catchError((Object e) {
+                afLog(
+                  'playback-reporter',
+                  'Failed to insert skip history',
+                  error: e,
+                );
+                return 0;
+              }),
         );
         afLog('data', 'Logged skip history track=${previousTrack.id}');
       }
@@ -287,7 +303,15 @@ class JellyfinPlaybackReporter {
                 imageUrl: Value(track.imageUrl),
                 skipped: const Value(false),
               ),
-            ),
+            )
+            .catchError((Object e) {
+              afLog(
+                'playback-reporter',
+                'Failed to insert playback history (dispose)',
+                error: e,
+              );
+              return 0;
+            }),
       );
       afLog('data', 'Logged play history (dispose) track=${track.id}');
     }

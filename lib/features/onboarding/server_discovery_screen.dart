@@ -324,7 +324,9 @@ class _ServerCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     return PressScale(
       ensureHitTarget: false,
       onTap: onTap,
@@ -342,14 +344,10 @@ class _ServerCard extends ConsumerWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: spectral.primary.withValues(alpha: 0.15),
+                color: spectral.withValues(alpha: 0.15),
                 borderRadius: AfRadii.borderMd,
               ),
-              child: Icon(
-                LucideIcons.server,
-                color: spectral.primary,
-                size: 24,
-              ),
+              child: Icon(LucideIcons.server, color: spectral, size: 24),
             ),
             const SizedBox(width: AfSpacing.s16),
             Expanded(

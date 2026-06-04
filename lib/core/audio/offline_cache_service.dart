@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/log.dart';
 import '../local/app_database.dart';
+import '../network/shared_dio_client.dart';
 
 /// Persistent offline track cache for server-mode playback.
 ///
@@ -20,7 +21,7 @@ import '../local/app_database.dart';
 class OfflineCacheService {
   OfflineCacheService({required AppDatabase database})
     : _db = database,
-      _dio = Dio(
+      _dio = SharedDioClient().createWithOptions(
         BaseOptions(
           connectTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(minutes: 5),

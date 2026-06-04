@@ -129,7 +129,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, secondary: s.secondary),
+      ),
+    );
     return SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -222,7 +226,9 @@ class _SearchFilterChips extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     return SizedBox(
       height: 44,
       child: ListView.separated(
@@ -238,16 +244,14 @@ class _SearchFilterChips extends ConsumerWidget {
             selected: active,
             onSelected: (_) => onChanged(f),
             backgroundColor: AfColors.surfaceBase,
-            selectedColor: spectral.primary,
+            selectedColor: spectral,
             labelStyle: AfTypography.bodySmall.copyWith(
               color: active ? AfColors.textOnPrimary : AfColors.textSecondary,
               fontWeight: active ? FontWeight.w600 : FontWeight.w400,
             ),
             shape: RoundedRectangleBorder(
               borderRadius: AfRadii.borderPill,
-              side: BorderSide(
-                color: active ? spectral.primary : AfColors.surfaceHigh,
-              ),
+              side: BorderSide(color: active ? spectral : AfColors.surfaceHigh),
             ),
             showCheckmark: false,
             padding: const EdgeInsets.symmetric(
@@ -465,7 +469,9 @@ class _IdleFilterPills extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     return SizedBox(
       height: 44,
       child: ListView.separated(
@@ -482,7 +488,7 @@ class _IdleFilterPills extends ConsumerWidget {
               curve: AfCurves.easeStandard,
               padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
               decoration: BoxDecoration(
-                color: active ? spectral.primary : AfColors.surfaceRaised,
+                color: active ? spectral : AfColors.surfaceRaised,
                 borderRadius: AfRadii.borderPill,
               ),
               alignment: Alignment.center,
@@ -582,7 +588,9 @@ class _GenreIdleGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.secondary),
+    );
     final provider = isLocal ? localGenresProvider : allGenresProvider;
     final async = ref.watch(provider);
     return async.when(
@@ -616,7 +624,7 @@ class _GenreIdleGrid extends ConsumerWidget {
           itemCount: list.length,
           itemBuilder: (context, i) {
             final g = list[i];
-            final tint = _parseTint(g.tint, spectral.secondary);
+            final tint = _parseTint(g.tint, spectral);
             return GenreTile(
               name: g.name,
               tint: tint,
@@ -724,8 +732,14 @@ class _SearchResults extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activeId = ref.watch(currentTrackProvider)?.id;
     final isBuffering = ref.watch(isBufferingProvider);
-    final activeAccent = ref.watch(currentSpectralProvider).energy;
-    final spectral = ref.watch(currentSpectralProvider);
+    final activeAccent = ref.watch(
+      currentSpectralProvider.select((s) => s.energy),
+    );
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, muted: s.muted),
+      ),
+    );
 
     return AfScrollbar(
       child: ListView(

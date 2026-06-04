@@ -108,7 +108,9 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
       appBar: AppBar(
@@ -169,7 +171,7 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
                           borderRadius: AfRadii.borderLg,
                           border: Border.all(
                             color: _folderUri != null
-                                ? spectral.primary.withValues(alpha: 0.4)
+                                ? spectral.withValues(alpha: 0.4)
                                 : AfColors.surfaceHigh,
                           ),
                         ),
@@ -179,12 +181,12 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
                               width: 48,
                               height: 48,
                               decoration: BoxDecoration(
-                                color: spectral.primary.withValues(alpha: 0.15),
+                                color: spectral.withValues(alpha: 0.15),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
                                 LucideIcons.folderOpen,
-                                color: spectral.primary,
+                                color: spectral,
                               ),
                             ),
                             const SizedBox(width: AfSpacing.s12),
@@ -235,7 +237,7 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
                 LinearProgressIndicator(
                   value: _totalCount > 0 ? _scannedCount / _totalCount : null,
                   backgroundColor: AfColors.surfaceHigh,
-                  valueColor: AlwaysStoppedAnimation(spectral.primary),
+                  valueColor: AlwaysStoppedAnimation(spectral),
                   borderRadius: AfRadii.borderXs,
                 ),
                 const SizedBox(height: AfSpacing.s8),

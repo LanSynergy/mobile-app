@@ -766,7 +766,9 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                 child: EqBandVisualization(
                   labels: kEqBands.values.toList(),
                   gains: kEqBands.keys.map((k) => _eqBands[k] ?? 1.0).toList(),
-                  accentColor: ref.watch(currentSpectralProvider).primary,
+                  accentColor: ref.watch(
+                    currentSpectralProvider.select((s) => s.primary),
+                  ),
                   onGainChanged: (index, gain) {
                     final key = kEqBands.keys.elementAt(index);
                     setState(() {
@@ -811,7 +813,9 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                     child: Text(
                       'Save preset',
                       style: AfTypography.bodySmall.copyWith(
-                        color: ref.watch(currentSpectralProvider).primary,
+                        color: ref.watch(
+                          currentSpectralProvider.select((s) => s.primary),
+                        ),
                       ),
                     ),
                   ),
@@ -822,7 +826,9 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                     label: Text(
                       'Save preset',
                       style: AfTypography.bodySmall.copyWith(
-                        color: ref.watch(currentSpectralProvider).primary,
+                        color: ref.watch(
+                          currentSpectralProvider.select((s) => s.primary),
+                        ),
                       ),
                     ),
                   ),
@@ -1641,7 +1647,11 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
 
   Widget _buildPresetChips() {
     final allPresets = <String, EqPreset>{...kBuiltInPresets, ..._userPresets};
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, secondary: s.secondary),
+      ),
+    );
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(

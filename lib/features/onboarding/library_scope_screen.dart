@@ -55,7 +55,9 @@ class _LibraryScopeScreenState extends ConsumerState<LibraryScopeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -95,7 +97,7 @@ class _LibraryScopeScreenState extends ConsumerState<LibraryScopeScreen> {
                               borderRadius: AfRadii.borderMd,
                               border: Border.all(
                                 color: selected
-                                    ? spectral.primary.withValues(alpha: 0.4)
+                                    ? spectral.withValues(alpha: 0.4)
                                     : AfColors.surfaceHigh,
                               ),
                             ),
@@ -114,7 +116,7 @@ class _LibraryScopeScreenState extends ConsumerState<LibraryScopeScreen> {
                               shape: const RoundedRectangleBorder(
                                 borderRadius: AfRadii.borderMd,
                               ),
-                              activeColor: spectral.primary,
+                              activeColor: spectral,
                               title: Text(
                                 v.name,
                                 style: AfTypography.titleSmall,

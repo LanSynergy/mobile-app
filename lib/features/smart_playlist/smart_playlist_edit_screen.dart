@@ -134,7 +134,11 @@ class _SmartPlaylistEditScreenState
     }
 
     final isEdit = widget.playlistId != null;
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, secondary: s.secondary),
+      ),
+    );
 
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
@@ -493,7 +497,9 @@ class _RuleRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     final operators = operatorsForField(rule.field);
     final effectiveOp = operators.contains(rule.operator)
         ? rule.operator
@@ -617,7 +623,7 @@ class _RuleRow extends ConsumerWidget {
     );
   }
 
-  Widget _buildValueInput(Spectral spectral) {
+  Widget _buildValueInput(Color spectral) {
     if (rule.field == 'isFavorite') {
       return Row(
         children: [
@@ -628,7 +634,7 @@ class _RuleRow extends ConsumerWidget {
             onChanged: (v) => onChanged(
               SmartRule(field: rule.field, operator: rule.operator, value: v),
             ),
-            activeTrackColor: spectral.primary,
+            activeTrackColor: spectral,
           ),
         ],
       );

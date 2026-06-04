@@ -32,7 +32,9 @@ class ReactiveArtwork extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final artworkUri = ref.watch(currentArtworkUriProvider);
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => (energy: s.energy, glow: s.glow)),
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {

@@ -22,7 +22,13 @@ class LastFmClient {
        _onStatus = onStatus,
        _dio =
            dio ??
-           Dio(BaseOptions(baseUrl: 'https://ws.audioscrobbler.com/2.0/'));
+           Dio(
+             BaseOptions(
+               baseUrl: 'https://ws.audioscrobbler.com/2.0/',
+               connectTimeout: const Duration(seconds: 5),
+               receiveTimeout: const Duration(seconds: 10),
+             ),
+           );
 
   final String _apiKey;
   final String? _apiSecret;

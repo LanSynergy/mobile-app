@@ -24,7 +24,9 @@ class WelcomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     afLog('boot', 'WelcomeScreen.build');
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
 
     return Scaffold(
       body: Stack(
@@ -50,7 +52,7 @@ class WelcomeScreen extends ConsumerWidget {
                   center: Alignment.center,
                   radius: 0.8,
                   colors: [
-                    spectral.primary.withValues(alpha: 0.12),
+                    spectral.withValues(alpha: 0.12),
                     Colors.transparent,
                   ],
                 ),
@@ -76,11 +78,11 @@ class WelcomeScreen extends ConsumerWidget {
                           color: AfColors.surfaceBase.withValues(alpha: 0.6),
                           borderRadius: AfRadii.borderRounded,
                           border: Border.all(
-                            color: spectral.primary.withValues(alpha: 0.3),
+                            color: spectral.withValues(alpha: 0.3),
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: spectral.primary.withValues(alpha: 0.15),
+                              color: spectral.withValues(alpha: 0.15),
                               blurRadius: 40,
                               spreadRadius: 8,
                             ),
@@ -192,7 +194,9 @@ class _ModeCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     return PressScale(
       onTap: onTap,
       child: AnimatedContainer(
@@ -210,10 +214,10 @@ class _ModeCard extends ConsumerWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: spectral.primary.withValues(alpha: 0.15),
+                color: spectral.withValues(alpha: 0.15),
                 borderRadius: AfRadii.borderMd,
               ),
-              child: Icon(icon, color: spectral.primary, size: 24),
+              child: Icon(icon, color: spectral, size: 24),
             ),
             const SizedBox(width: AfSpacing.s16),
             Expanded(

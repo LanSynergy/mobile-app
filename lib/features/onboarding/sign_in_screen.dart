@@ -217,7 +217,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -288,7 +290,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                         Switch.adaptive(
                           value: _useToken,
                           onChanged: (v) => setState(() => _useToken = v),
-                          activeThumbColor: spectral.primary,
+                          activeThumbColor: spectral,
                         ),
                         const SizedBox(width: AfSpacing.s8),
                         Expanded(
@@ -331,20 +333,22 @@ class _CleartextWarning extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.warning),
+    );
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AfSpacing.s12,
         vertical: AfSpacing.s8,
       ),
       decoration: BoxDecoration(
-        color: spectral.warning.withValues(alpha: 0.12),
+        color: spectral.withValues(alpha: 0.12),
         borderRadius: AfRadii.borderMd,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(LucideIcons.lockOpen, size: 18, color: spectral.warning),
+          Icon(LucideIcons.lockOpen, size: 18, color: spectral),
           const SizedBox(width: AfSpacing.s8),
           Expanded(
             child: Text(

@@ -82,10 +82,12 @@ class SettingsTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     final effectiveIconColor = danger
         ? AfColors.semanticError
-        : (iconColor ?? spectral.primary);
+        : (iconColor ?? spectral);
     return PressScale(
       onTap: onTap,
       ensureHitTarget: true,
@@ -172,8 +174,10 @@ class SettingsSwitchTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
-    final effectiveIconColor = iconColor ?? spectral.primary;
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
+    final effectiveIconColor = iconColor ?? spectral;
     return PressScale(
       onTap: () => onChanged(!value),
       ensureHitTarget: true,
@@ -220,7 +224,7 @@ class SettingsSwitchTile extends ConsumerWidget {
                 value: value,
                 onChanged: onChanged,
                 activeThumbColor: AfColors.textOnPrimary,
-                activeTrackColor: spectral.primary,
+                activeTrackColor: spectral,
               ),
             ],
           ),
@@ -245,7 +249,9 @@ class OptionTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -259,7 +265,7 @@ class OptionTile extends ConsumerWidget {
               width: 3,
               height: subtitle != null ? 28 : 20,
               decoration: BoxDecoration(
-                color: isActive ? spectral.primary : Colors.transparent,
+                color: isActive ? spectral : Colors.transparent,
                 borderRadius: BorderRadius.circular(
                   1.5,
                 ), // 3dp-wide indicator bar
@@ -274,7 +280,7 @@ class OptionTile extends ConsumerWidget {
                   Text(
                     label,
                     style: AfTypography.bodyMedium.copyWith(
-                      color: isActive ? spectral.primary : AfColors.textPrimary,
+                      color: isActive ? spectral : AfColors.textPrimary,
                       fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                     ),
                   ),

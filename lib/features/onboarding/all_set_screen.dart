@@ -45,7 +45,9 @@ class _AllSetScreenState extends ConsumerState<AllSetScreen>
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -71,10 +73,10 @@ class _AllSetScreenState extends ConsumerState<AllSetScreen>
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: spectral.primary.withValues(alpha: 0.15),
+                        color: spectral.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: spectral.primary.withValues(alpha: 0.3),
+                          color: spectral.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Semantics(
@@ -82,7 +84,7 @@ class _AllSetScreenState extends ConsumerState<AllSetScreen>
                         child: Icon(
                           LucideIcons.check,
                           size: 40,
-                          color: spectral.primary,
+                          color: spectral,
                         ),
                       ),
                     ),
@@ -163,7 +165,9 @@ class _StatRow extends ConsumerWidget {
 
     final trackLoaded = tracksAsync is AsyncData;
     final albumLoaded = albumsAsync is AsyncData;
-    final spectral = ref.watch(currentSpectralProvider);
+    final primaryColor = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
 
     return AnimatedBuilder(
       animation: staggerAnimation,
@@ -180,7 +184,7 @@ class _StatRow extends ConsumerWidget {
                   label: 'Tracks',
                   value: trackLoaded ? '$trackCount' : '—',
                   loaded: trackLoaded,
-                  spectral: spectral,
+                  primaryColor: primaryColor,
                 ),
                 const SizedBox(width: AfSpacing.s12),
                 _Stat(
@@ -188,7 +192,7 @@ class _StatRow extends ConsumerWidget {
                   label: 'Albums',
                   value: albumLoaded ? '$albumCount' : '—',
                   loaded: albumLoaded,
-                  spectral: spectral,
+                  primaryColor: primaryColor,
                 ),
               ],
             ),
@@ -205,13 +209,13 @@ class _Stat extends ConsumerWidget {
     required this.label,
     required this.value,
     required this.loaded,
-    required this.spectral,
+    required this.primaryColor,
   });
   final IconData icon;
   final String label;
   final String value;
   final bool loaded;
-  final Spectral spectral;
+  final Color primaryColor;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -231,7 +235,7 @@ class _Stat extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(icon, size: 16, color: spectral.primary),
+                Icon(icon, size: 16, color: primaryColor),
                 const SizedBox(width: AfSpacing.s4),
                 Text(
                   value,
@@ -265,7 +269,9 @@ class _SyncProgressIndicator extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isLocal = ref.watch(appModeProvider) == AppMode.local;
     final scanProgress = isLocal ? ref.watch(localScanProgressProvider) : null;
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
 
     // Show progress only during active scanning
     if (scanProgress == null) return const SizedBox.shrink();
@@ -277,7 +283,7 @@ class _SyncProgressIndicator extends ConsumerWidget {
               ? scanProgress.completed / scanProgress.total
               : null,
           backgroundColor: AfColors.surfaceHigh,
-          valueColor: AlwaysStoppedAnimation(spectral.primary),
+          valueColor: AlwaysStoppedAnimation(spectral),
           borderRadius: AfRadii.borderXs,
         ),
         const SizedBox(height: AfSpacing.s4),

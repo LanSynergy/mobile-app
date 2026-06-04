@@ -180,7 +180,12 @@ class PlayActions {
             .where((t) => t.id != seed.id && seenIds.add(t.id))
             .take(20)
             .toList();
-      } catch (_) {
+      } catch (e) {
+        afLog(
+          'play-actions',
+          'Instant mix failed for seed=${seed.id}',
+          error: e,
+        );
         return const [];
       }
     }
@@ -196,7 +201,26 @@ class PlayActions {
           if (results.length >= 20) break;
           if (seenIds.add(t.id)) results.add(t);
         }
-      } catch (_) {}
+      } catch (e) {
+        afLog(
+          'play-actions',
+          'Genre lookup failed for genre=${seed.genre}',
+          error: e,
+        );
+      }
+
+      try {
+        for (final t in await db.tracksByArtist(seed.artistName)) {
+          if (results.length >= 20) break;
+          if (seenIds.add(t.id)) results.add(t);
+        }
+      } catch (e) {
+        afLog(
+          'play-actions',
+          'Artist lookup failed for artist=${seed.artistName}',
+          error: e,
+        );
+      }
     }
 
     try {
@@ -303,7 +327,13 @@ class PlayActions {
           .getRecentlySkippedTrackIds()
           .catchError((_) => <String>[]);
       seenIds.addAll(skippedIds);
-    } catch (_) {}
+    } catch (e) {
+      afLog(
+        'play-actions',
+        'Failed to load recently skipped track IDs',
+        error: e,
+      );
+    }
 
     // 1. Similarity Propagation (Graph Walk)
     // If we have some tracks but not enough, iteratively query instantMix for the last track.

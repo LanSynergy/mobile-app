@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -8,8 +7,7 @@ import 'package:aetherfin/core/audio/media_session_bridge.dart';
 import 'package:aetherfin/core/audio/player_service.dart';
 import 'package:aetherfin/core/jellyfin/models/items.dart';
 import 'helpers/fake_player.dart';
-
-class MockMethodChannel extends Mock implements MethodChannel {}
+import 'helpers/mock_method_channel.dart';
 
 typedef _StateUpdater =
     void Function(PlayerState Function(PlayerState) updater);

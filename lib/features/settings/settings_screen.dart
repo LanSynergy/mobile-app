@@ -665,7 +665,9 @@ class _LastFmSettingsSection extends ConsumerWidget {
     final username = ref.watch(lastfmUsernameProvider);
     final scrobbleEnabled = ref.watch(lastfmScrobbleEnabledProvider);
     final lastfmStatus = ref.watch(lastfmStatusProvider);
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
 
     final hasCredentials = apiKey.isNotEmpty && apiSecret.isNotEmpty;
     final isConnected = sessionKey.isNotEmpty;
@@ -716,7 +718,7 @@ class _LastFmSettingsSection extends ConsumerWidget {
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: spectral.primary,
+                              color: spectral,
                             ),
                           ),
                           const SizedBox(width: AfSpacing.s16),

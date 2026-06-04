@@ -7,6 +7,26 @@ import '../jellyfin/models/items.dart';
 import '../local/local_db.dart';
 import 'smart_playlist_model.dart';
 
+/// Typed operator for smart playlist rules, replacing raw string comparisons.
+enum SmartPlaylistOperator {
+  is_('is'),
+  isNot('isNot'),
+  contains('contains'),
+  notContains('notContains'),
+  gt('gt'),
+  lt('lt'),
+  inTheRange('inTheRange'),
+  inTheLast('inTheLast');
+
+  const SmartPlaylistOperator(this.value);
+
+  final String value;
+
+  static SmartPlaylistOperator? fromString(String s) => values
+      .cast<SmartPlaylistOperator?>()
+      .firstWhere((o) => o?.value == s, orElse: () => null);
+}
+
 /// Resolves a [SmartPlaylist] into a list of matching tracks.
 ///
 /// Strategy depends on the source:
@@ -101,15 +121,16 @@ class SmartPlaylistEngine {
     final fieldValue = _getField(track, rule.field, playHistoryMap);
     final ruleValue = rule.value;
 
-    return switch (rule.operator) {
-      'is' => _eq(fieldValue, ruleValue),
-      'isNot' => !_eq(fieldValue, ruleValue),
-      'contains' => _contains(fieldValue, ruleValue),
-      'notContains' => !_contains(fieldValue, ruleValue),
-      'gt' => _gt(fieldValue, ruleValue),
-      'lt' => _lt(fieldValue, ruleValue),
-      'inTheRange' => _inRange(fieldValue, ruleValue),
-      'inTheLast' => _inTheLast(fieldValue, ruleValue),
+    final op = SmartPlaylistOperator.fromString(rule.operator);
+    return switch (op) {
+      SmartPlaylistOperator.is_ => _eq(fieldValue, ruleValue),
+      SmartPlaylistOperator.isNot => !_eq(fieldValue, ruleValue),
+      SmartPlaylistOperator.contains => _contains(fieldValue, ruleValue),
+      SmartPlaylistOperator.notContains => !_contains(fieldValue, ruleValue),
+      SmartPlaylistOperator.gt => _gt(fieldValue, ruleValue),
+      SmartPlaylistOperator.lt => _lt(fieldValue, ruleValue),
+      SmartPlaylistOperator.inTheRange => _inRange(fieldValue, ruleValue),
+      SmartPlaylistOperator.inTheLast => _inTheLast(fieldValue, ruleValue),
       _ => true,
     };
   }
@@ -221,8 +242,8 @@ class SmartPlaylistEngine {
       final col = _fieldToColumn(rule.field);
       if (col == null) continue;
 
-      switch (rule.operator) {
-        case 'is':
+      switch (SmartPlaylistOperator.fromString(rule.operator)) {
+        case SmartPlaylistOperator.is_:
           if (rule.value is bool) {
             clauses.add('$col = ?');
             args.add(rule.value == true ? 1 : 0);
@@ -230,31 +251,31 @@ class SmartPlaylistEngine {
             clauses.add('$col = ? COLLATE NOCASE');
             args.add(rule.value);
           }
-        case 'isNot':
+        case SmartPlaylistOperator.isNot:
           clauses.add('$col != ? COLLATE NOCASE');
           args.add(rule.value);
-        case 'contains':
+        case SmartPlaylistOperator.contains:
           // Escape `%`, `_`, `\` so a rule value of `100%` matches that
           // exact substring instead of acting as a wildcard. The
           // `ESCAPE '\'` clause must be declared on the SQL side.
           clauses.add("$col LIKE ? COLLATE NOCASE ESCAPE '\\'");
           args.add('%${escapeSqlLike('${rule.value}')}%');
-        case 'notContains':
+        case SmartPlaylistOperator.notContains:
           clauses.add("$col NOT LIKE ? COLLATE NOCASE ESCAPE '\\'");
           args.add('%${escapeSqlLike('${rule.value}')}%');
-        case 'gt':
+        case SmartPlaylistOperator.gt:
           clauses.add('$col > ?');
           args.add(rule.value);
-        case 'lt':
+        case SmartPlaylistOperator.lt:
           clauses.add('$col < ?');
           args.add(rule.value);
-        case 'inTheRange':
+        case SmartPlaylistOperator.inTheRange:
           if (rule.value is List && (rule.value as List).length == 2) {
             clauses.add('$col BETWEEN ? AND ?');
             args.add((rule.value as List)[0]);
             args.add((rule.value as List)[1]);
           }
-        case 'inTheLast':
+        case SmartPlaylistOperator.inTheLast:
           if (rule.value is num) {
             final cutoff = DateTime.now()
                 .subtract(Duration(days: (rule.value as num).toInt()))
@@ -262,6 +283,8 @@ class SmartPlaylistEngine {
             clauses.add('$col >= ?');
             args.add(cutoff);
           }
+        default:
+          break;
       }
     }
 

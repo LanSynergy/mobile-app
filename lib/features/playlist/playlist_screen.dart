@@ -44,8 +44,12 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     final activeTrack = ref.watch(currentTrackProvider);
     final activeId = activeTrack?.id;
     final isBuffering = ref.watch(isBufferingProvider);
-    final activeAccent = ref.watch(currentSpectralProvider).energy;
-    final spectral = ref.watch(currentSpectralProvider);
+    final activeAccent = ref.watch(
+      currentSpectralProvider.select((s) => s.energy),
+    );
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
 
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
@@ -123,7 +127,11 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                 slivers: [
                   // Header.
                   SliverToBoxAdapter(
-                    child: _Header(pl: pl, tracks: tracks, spectral: spectral),
+                    child: _Header(
+                      pl: pl,
+                      tracks: tracks,
+                      primaryColor: spectral,
+                    ),
                   ),
 
                   // Action row.
@@ -197,7 +205,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: isActive
-                                      ? spectral.primary.withValues(alpha: 0.08)
+                                      ? spectral.withValues(alpha: 0.08)
                                       : null,
                                 ),
                                 child: Padding(
@@ -213,7 +221,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                           '${i + 1}',
                                           style: AfTypography.overline.copyWith(
                                             color: isActive
-                                                ? spectral.primary
+                                                ? spectral
                                                 : AfColors.textDisabled,
                                           ),
                                           textAlign: TextAlign.center,
@@ -282,7 +290,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                             return Container(
                               decoration: BoxDecoration(
                                 color: isActive
-                                    ? spectral.primary.withValues(alpha: 0.08)
+                                    ? spectral.withValues(alpha: 0.08)
                                     : null,
                               ),
                               child: Padding(
@@ -298,7 +306,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                                         '${i + 1}',
                                         style: AfTypography.overline.copyWith(
                                           color: isActive
-                                              ? spectral.primary
+                                              ? spectral
                                               : AfColors.textDisabled,
                                         ),
                                         textAlign: TextAlign.center,
@@ -649,11 +657,11 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.pl,
     required this.tracks,
-    required this.spectral,
+    required this.primaryColor,
   });
   final AfPlaylist pl;
   final List<AfTrack> tracks;
-  final Spectral spectral;
+  final Color primaryColor;
 
   String _formatDuration(Duration d) {
     final totalMinutes = d.inMinutes;
@@ -692,23 +700,19 @@ class _Header extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  spectral.primary.withValues(alpha: 0.3),
+                  primaryColor.withValues(alpha: 0.3),
                   AfColors.surfaceLow,
                 ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: spectral.primary.withValues(alpha: 0.15),
+                  color: primaryColor.withValues(alpha: 0.15),
                   blurRadius: 32,
                   offset: const Offset(0, 8),
                 ),
               ],
             ),
-            child: Icon(
-              LucideIcons.listMusic,
-              color: spectral.primary,
-              size: 56,
-            ),
+            child: Icon(LucideIcons.listMusic, color: primaryColor, size: 56),
           ),
           const SizedBox(height: AfSpacing.s16),
 

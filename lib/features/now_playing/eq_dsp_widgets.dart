@@ -55,7 +55,11 @@ class EqMasterBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, secondary: s.secondary, muted: s.muted),
+      ),
+    );
     return AnimatedContainer(
       duration: AfDurations.standard,
       curve: AfCurves.easeStandard,
@@ -187,7 +191,11 @@ class EqAccordionSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, secondary: s.secondary),
+      ),
+    );
     return AnimatedContainer(
       duration: AfDurations.standard,
       curve: AfCurves.easeStandard,
@@ -304,7 +312,9 @@ class EqEffectToggle extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.secondary),
+    );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => onChanged(!value),
@@ -335,7 +345,7 @@ class EqEffectToggle extends ConsumerWidget {
               width: 44,
               height: 26,
               decoration: BoxDecoration(
-                color: value ? spectral.secondary : AfColors.surfaceHigh,
+                color: value ? spectral : AfColors.surfaceHigh,
                 borderRadius: AfRadii.borderPill,
               ),
               child: AnimatedAlign(
@@ -408,7 +418,9 @@ class EqSliderRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     final display = value >= 0 && suffix == 'dB'
         ? '+${value.toStringAsFixed(precision)}'
         : value.toStringAsFixed(precision);
@@ -424,7 +436,7 @@ class EqSliderRow extends ConsumerWidget {
             const Spacer(),
             Text(
               suffix != null ? '$display $suffix' : display,
-              style: AfTypography.mono.copyWith(color: spectral.primary),
+              style: AfTypography.mono.copyWith(color: spectral),
             ),
           ],
         ),
@@ -439,7 +451,7 @@ class EqSliderRow extends ConsumerWidget {
             min: min,
             max: max,
             divisions: divisions,
-            activeColor: spectral.primary,
+            activeColor: spectral,
             onChanged: enabled ? onChanged : null,
             onChangeEnd: enabled ? (_) => onChangeEnd() : null,
           ),
@@ -620,7 +632,11 @@ class EqBandBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, secondary: s.secondary),
+      ),
+    );
     final reduced = MediaQuery.of(context).disableAnimations;
     // Normalize gain to 0..1 for display (0 = min, 1 = max).
     final t = ((gain - min) / (max - min)).clamp(0.0, 1.0);
@@ -720,7 +736,9 @@ class EqBandSlider extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AfSpacing.s2),
       child: Row(
@@ -747,7 +765,7 @@ class EqBandSlider extends ConsumerWidget {
                 min: 0,
                 max: 4,
                 divisions: 40,
-                activeColor: spectral.primary,
+                activeColor: spectral,
                 onChanged: onChanged,
                 onChangeEnd: (_) => onChangeEnd(),
               ),
