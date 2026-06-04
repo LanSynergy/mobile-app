@@ -98,12 +98,12 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 ),
               ),
 
-              // ── Gradient scrim (bottom portion) ──
+              // ── Gradient scrim (bottom content zone only) ──
               Positioned(
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: MediaQuery.of(context).size.height * 0.65,
+                height: MediaQuery.of(context).size.height * 0.36,
                 child: IgnorePointer(
                   child: Container(
                     decoration: BoxDecoration(
