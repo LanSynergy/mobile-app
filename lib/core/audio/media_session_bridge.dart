@@ -164,8 +164,13 @@ class NativeMediaSessionBridge {
   Future<String?> getShortcutAction() async {
     try {
       return await _channel.invokeMethod<String>('getShortcutAction');
-    } catch (e) {
-      afLog('error', 'Failed to get native shortcut action', error: e);
+    } catch (e, stack) {
+      afLog(
+        'error',
+        'Failed to get native shortcut action',
+        error: e,
+        stackTrace: stack,
+      );
       return null;
     }
   }

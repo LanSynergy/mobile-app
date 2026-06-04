@@ -110,8 +110,13 @@ class MetadataScanner {
           });
 
           inserted++;
-        } catch (e) {
-          afLog('local', 'metadata read failed for ${file.name}', error: e);
+        } catch (e, stack) {
+          afLog(
+            'local',
+            'metadata read failed for ${file.name}',
+            error: e,
+            stackTrace: stack,
+          );
         }
 
         completed++;

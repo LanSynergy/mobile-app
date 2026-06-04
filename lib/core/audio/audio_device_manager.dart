@@ -40,8 +40,13 @@ class AfAudioDeviceManager {
       final current = _player.state.audioEffects;
       await _player.setAudioEffects(current);
       afLog('audio', 're-applied audio effects after device change');
-    } catch (e) {
-      afLog('audio', 'reapplyPersistedEffects failed', error: e);
+    } catch (e, stack) {
+      afLog(
+        'audio',
+        'reapplyPersistedEffects failed',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -80,8 +85,13 @@ class AfAudioDeviceManager {
         afLog('audio', 'nudge succeeded on first attempt, skipping retries');
         return;
       }
-    } catch (e) {
-      afLog('audio', 'nudgeAudioDevice attempt $attempt failed', error: e);
+    } catch (e, stack) {
+      afLog(
+        'audio',
+        'nudgeAudioDevice attempt $attempt failed',
+        error: e,
+        stackTrace: stack,
+      );
     }
 
     unawaited(_nudgeAudioDeviceWithRetry(attempt + 1, gen));

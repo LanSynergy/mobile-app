@@ -52,8 +52,8 @@ class AfPlayerService {
         if (action != null) {
           _handleShortcutAction(action);
         }
-      } catch (e) {
-        afLog('audio', 'getShortcutAction failed', error: e);
+      } catch (e, stack) {
+        afLog('audio', 'getShortcutAction failed', error: e, stackTrace: stack);
       }
     });
 
@@ -87,8 +87,13 @@ class AfPlayerService {
           orElse: () => _player.state.audioDevice,
         );
         _player.setAudioDevice(auto);
-      } catch (e) {
-        afLog('audio', 'setAudioDevice(auto) failed', error: e);
+      } catch (e, stack) {
+        afLog(
+          'audio',
+          'setAudioDevice(auto) failed',
+          error: e,
+          stackTrace: stack,
+        );
       }
     });
   }
@@ -488,8 +493,8 @@ class AfPlayerService {
   Future<void> configureSpectrum() async {
     try {
       await _player.setSpectrum(defaultSpectrumSettings);
-    } catch (e) {
-      afLog('audio', 'configureSpectrum failed', error: e);
+    } catch (e, stack) {
+      afLog('audio', 'configureSpectrum failed', error: e, stackTrace: stack);
     }
   }
 
@@ -1087,8 +1092,13 @@ class AfPlayerService {
       if (_disposed) return;
       await _player.setSpectrum(defaultSpectrumSettings);
       afLog('audio', 'spectrum re-configured after track change');
-    } catch (e) {
-      afLog('audio', 'reconfigureSpectrumOnTrackChange failed', error: e);
+    } catch (e, stack) {
+      afLog(
+        'audio',
+        'reconfigureSpectrumOnTrackChange failed',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 

@@ -77,11 +77,12 @@ class SpectralExtractor {
         _cache.remove(_cache.keys.first);
       }
       return result;
-    } catch (e) {
+    } catch (e, stack) {
       afLog(
         'spectral',
         'palette extraction failed for ${redactSensitiveQueryParams(imageUrl)}',
         error: e,
+        stackTrace: stack,
       );
       return Spectral.fallback;
     }

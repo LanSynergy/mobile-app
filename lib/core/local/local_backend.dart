@@ -348,11 +348,12 @@ class LocalBackend implements MusicBackend {
         // 2. Fallback to embedded lyrics
         return await EmbeddedLyricsParser.extractLyrics(trackId);
       }
-    } catch (e) {
+    } catch (e, stack) {
       afLog(
         'local',
         'failed to read local lyrics for track $trackId',
         error: e,
+        stackTrace: stack,
       );
     }
     return null;
@@ -373,8 +374,13 @@ class LocalBackend implements MusicBackend {
         await lrcFile.writeAsString(content);
         return true;
       }
-    } catch (e) {
-      afLog('local', 'failed to write local sidecar lrc', error: e);
+    } catch (e, stack) {
+      afLog(
+        'local',
+        'failed to write local sidecar lrc',
+        error: e,
+        stackTrace: stack,
+      );
     }
     return false;
   }

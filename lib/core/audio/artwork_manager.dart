@@ -176,8 +176,8 @@ class AfArtworkManager {
       // are preserved for fast back-navigation.
 
       onArtworkChanged?.call();
-    } catch (e) {
-      afLog('audio', 'cover art persist failed', error: e);
+    } catch (e, stack) {
+      afLog('audio', 'cover art persist failed', error: e, stackTrace: stack);
     }
   }
 
@@ -204,8 +204,13 @@ class AfArtworkManager {
       _diskCacheSize = totalSize;
       // Clean up expired files on startup
       _cleanupExpiredCache();
-    } catch (e) {
-      afLog('audio', 'Failed to initialize disk cache', error: e);
+    } catch (e, stack) {
+      afLog(
+        'audio',
+        'Failed to initialize disk cache',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -244,8 +249,13 @@ class AfArtworkManager {
           cacheFile.deleteSync();
           _diskCacheChecked.remove(trackId);
         }
-      } catch (e) {
-        afLog('audio', 'Failed to check disk cache for $trackId', error: e);
+      } catch (e, stack) {
+        afLog(
+          'audio',
+          'Failed to check disk cache for $trackId',
+          error: e,
+          stackTrace: stack,
+        );
       }
     }
     return null;
@@ -269,11 +279,12 @@ class AfArtworkManager {
               _diskCacheSize -= size;
               afLog('audio', 'Cleaned up expired cache file: ${entity.path}');
             }
-          } catch (e) {
+          } catch (e, stack) {
             afLog(
               'audio',
               'Failed to clean up cache file: ${entity.path}',
               error: e,
+              stackTrace: stack,
             );
           }
         }
@@ -281,8 +292,8 @@ class AfArtworkManager {
 
       // Enforce size limit
       _enforceCacheSizeLimit();
-    } catch (e) {
-      afLog('audio', 'Cache cleanup failed', error: e);
+    } catch (e, stack) {
+      afLog('audio', 'Cache cleanup failed', error: e, stackTrace: stack);
     }
   }
 
@@ -312,16 +323,22 @@ class AfArtworkManager {
           oldest.deleteSync();
           _diskCacheSize -= size;
           afLog('audio', 'Evicted oldest cache file to enforce size limit');
-        } catch (e) {
+        } catch (e, stack) {
           afLog(
             'audio',
             'Failed to evict cache file: ${oldest.path}',
             error: e,
+            stackTrace: stack,
           );
         }
       }
-    } catch (e) {
-      afLog('audio', 'Failed to enforce cache size limit', error: e);
+    } catch (e, stack) {
+      afLog(
+        'audio',
+        'Failed to enforce cache size limit',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -429,8 +446,13 @@ class AfArtworkManager {
       }
 
       onArtworkChanged?.call();
-    } catch (e) {
-      afLog('audio', 'artwork download for notification failed', error: e);
+    } catch (e, stack) {
+      afLog(
+        'audio',
+        'artwork download for notification failed',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -445,8 +467,13 @@ class AfArtworkManager {
           await dir.create(recursive: true);
           _diskCacheSize = 0;
         }
-      } catch (e) {
-        afLog('audio', 'Failed to clear disk cache', error: e);
+      } catch (e, stack) {
+        afLog(
+          'audio',
+          'Failed to clear disk cache',
+          error: e,
+          stackTrace: stack,
+        );
       }
     }
     _coverPath = null;

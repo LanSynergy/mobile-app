@@ -100,8 +100,13 @@ class StreamPrefetcher {
           await _removeFromCache(trackId);
         }
       }
-    } catch (e) {
-      afLog('audio', 'Failed to check cache file age for $trackId', error: e);
+    } catch (e, stack) {
+      afLog(
+        'audio',
+        'Failed to check cache file age for $trackId',
+        error: e,
+        stackTrace: stack,
+      );
     }
     return null;
   }
@@ -176,8 +181,13 @@ class StreamPrefetcher {
       try {
         final tempDir = await getTemporaryDirectory();
         _cacheDir = tempDir.path;
-      } catch (e) {
-        afLog('audio', 'Failed to retrieve temp dir in prefetch', error: e);
+      } catch (e, stack) {
+        afLog(
+          'audio',
+          'Failed to retrieve temp dir in prefetch',
+          error: e,
+          stackTrace: stack,
+        );
         return null;
       }
     }
@@ -307,8 +317,13 @@ class StreamPrefetcher {
         'audio',
         'Added to cache: trackId=$trackId, size=${size ~/ 1024}KB, total=$_totalCacheSize',
       );
-    } catch (e) {
-      afLog('audio', 'Failed to add to cache: trackId=$trackId', error: e);
+    } catch (e, stack) {
+      afLog(
+        'audio',
+        'Failed to add to cache: trackId=$trackId',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -326,11 +341,12 @@ class StreamPrefetcher {
           'audio',
           'Removed from cache: trackId=$trackId, remaining=$_totalCacheSize',
         );
-      } catch (e) {
+      } catch (e, stack) {
         afLog(
           'audio',
           'Failed to remove from cache: trackId=$trackId',
           error: e,
+          stackTrace: stack,
         );
       }
     }
@@ -360,13 +376,23 @@ class StreamPrefetcher {
               await f.delete();
               afLog('audio', 'Deleted stale prefetch file: ${f.path}');
             }
-          } catch (e) {
-            afLog('audio', 'Failed to delete stale file: ${f.path}', error: e);
+          } catch (e, stack) {
+            afLog(
+              'audio',
+              'Failed to delete stale file: ${f.path}',
+              error: e,
+              stackTrace: stack,
+            );
           }
         }
       }
-    } catch (e) {
-      afLog('audio', 'Error clearing stale temp files', error: e);
+    } catch (e, stack) {
+      afLog(
+        'audio',
+        'Error clearing stale temp files',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 

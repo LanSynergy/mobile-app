@@ -46,8 +46,13 @@ class CoverCacheManager {
       _accessTimestamps = decoded.map(
         (k, v) => MapEntry(k, (v as num).toInt()),
       );
-    } catch (e) {
-      afLog('local', 'failed to load cover cache meta', error: e);
+    } catch (e, stack) {
+      afLog(
+        'local',
+        'failed to load cover cache meta',
+        error: e,
+        stackTrace: stack,
+      );
       _accessTimestamps = {};
     }
   }
@@ -57,8 +62,13 @@ class CoverCacheManager {
     try {
       await File(_metaPath).writeAsString(jsonEncode(_accessTimestamps));
       _dirty = false;
-    } catch (e) {
-      afLog('local', 'failed to save cover cache meta', error: e);
+    } catch (e, stack) {
+      afLog(
+        'local',
+        'failed to save cover cache meta',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -107,8 +117,13 @@ class CoverCacheManager {
         _accessTimestamps.remove(f.path);
         totalSize -= len;
         deleted++;
-      } catch (e) {
-        afLog('local', 'failed to delete cover cache file', error: e);
+      } catch (e, stack) {
+        afLog(
+          'local',
+          'failed to delete cover cache file',
+          error: e,
+          stackTrace: stack,
+        );
       }
     }
 
