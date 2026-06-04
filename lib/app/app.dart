@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../state/providers.dart';
+import '../design_tokens/colors.dart';
+import '../state/animated_spectral.dart';
 import '../utils/log.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -29,25 +30,38 @@ class AetherfinApp extends ConsumerWidget {
       ),
     );
 
-    final spectral = ref.watch(currentSpectralProvider);
-    final theme = buildNocturneThemeFromSpectral(spectral);
+    return AnimatedSpectralScope(
+      child: _AetherfinRouter(),
+    );
+  }
+}
 
-    return MaterialApp.router(
-      title: 'Aetherfin',
-      debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.dark,
-      darkTheme: theme,
-      theme: theme,
-      routerConfig: appRouter,
-      builder: (context, child) {
-        final mq = MediaQuery.of(context);
-        final clamped = mq.textScaler.clamp(
-          minScaleFactor: 0.85,
-          maxScaleFactor: 1.3,
-        );
-        return MediaQuery(
-          data: mq.copyWith(textScaler: clamped),
-          child: child ?? const SizedBox.shrink(),
+class _AetherfinRouter extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ValueListenableBuilder<Spectral>(
+      valueListenable: animatedSpectral,
+      builder: (context, spectral, _) {
+        final theme = buildNocturneThemeFromSpectral(spectral);
+
+        return MaterialApp.router(
+          title: 'Aetherfin',
+          debugShowCheckedModeBanner: false,
+          themeMode: ThemeMode.dark,
+          darkTheme: theme,
+          theme: theme,
+          routerConfig: appRouter,
+          builder: (context, child) {
+            final mq = MediaQuery.of(context);
+            final clamped = mq.textScaler.clamp(
+              minScaleFactor: 0.85,
+              maxScaleFactor: 1.3,
+            );
+            return MediaQuery(
+              data: mq.copyWith(textScaler: clamped),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
         );
       },
     );
