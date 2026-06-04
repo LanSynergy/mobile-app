@@ -120,7 +120,7 @@ class PlaylistListScreen extends ConsumerWidget {
             ),
             child: Text(
               'Smart Playlists',
-              style: AfTypography.label.copyWith(color: AfColors.textTertiary),
+              style: AfTypography.label.copyWith(color: AfColors.textSecondary),
             ),
           ),
         ),
@@ -157,7 +157,7 @@ class PlaylistListScreen extends ConsumerWidget {
             ),
             child: Text(
               'My Playlists',
-              style: AfTypography.label.copyWith(color: AfColors.textTertiary),
+              style: AfTypography.label.copyWith(color: AfColors.textSecondary),
             ),
           ),
         ),

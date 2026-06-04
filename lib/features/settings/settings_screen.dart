@@ -328,15 +328,6 @@ class SettingsScreen extends ConsumerWidget {
                                         backgroundColor: AfColors.semanticError,
                                         foregroundColor: AfColors.textOnPrimary,
                                       ),
-                                      child: const Text('Clear data'),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AfColors.semanticError,
-                                        foregroundColor: AfColors.textOnPrimary,
-                                      ),
                                       child: const Text('Sign out'),
                                     ),
                                   ],
@@ -669,14 +660,13 @@ class SettingsScreen extends ConsumerWidget {
                                       Navigator.pop(context, false),
                                   child: const Text('Cancel'),
                                 ),
-                                TextButton(
+                                ElevatedButton(
                                   onPressed: () => Navigator.pop(context, true),
-                                  child: Text(
-                                    'Clear data',
-                                    style: AfTypography.bodyMedium.copyWith(
-                                      color: AfColors.semanticError,
-                                    ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AfColors.semanticError,
+                                    foregroundColor: AfColors.textOnPrimary,
                                   ),
+                                  child: const Text('Clear data'),
                                 ),
                               ],
                             ),

@@ -176,34 +176,36 @@ class _BottomContentState extends ConsumerState<BottomContent>
                         itemCount: upNext.length,
                         itemBuilder: (context, index) {
                           final t = upNext[index];
-                          return ListTile(
-                            dense: true,
-                            visualDensity: VisualDensity.compact,
-                            leading: Text(
-                              '${index + 1}',
-                              style: AfTypography.caption.copyWith(
-                                color: AfColors.textTertiary,
-                              ),
-                            ),
-                            title: Text(
-                              t.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AfTypography.bodyMedium,
-                            ),
-                            subtitle: Text(
-                              t.artistName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AfTypography.caption.copyWith(
-                                color: AfColors.textTertiary,
-                              ),
-                            ),
+                          return PressScale(
                             onTap: () {
                               ref
                                   .read(playerServiceProvider)
                                   .skipToQueueItem(queue.indexOf(t));
                             },
+                            child: ListTile(
+                              dense: true,
+                              visualDensity: VisualDensity.compact,
+                              leading: Text(
+                                '${index + 1}',
+                                style: AfTypography.caption.copyWith(
+                                  color: AfColors.textTertiary,
+                                ),
+                              ),
+                              title: Text(
+                                t.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AfTypography.bodyMedium,
+                              ),
+                              subtitle: Text(
+                                t.artistName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AfTypography.caption.copyWith(
+                                  color: AfColors.textTertiary,
+                                ),
+                              ),
+                            ),
                           );
                         },
                       ),

@@ -81,7 +81,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AfSpacing.s16,
-              AfSpacing.s8,
+              AfSpacing.s16,
               AfSpacing.s16,
               AfSpacing.s12,
             ),
@@ -329,7 +329,7 @@ class _RecentAndSuggestions extends ConsumerWidget {
           // Quick suggestions
           Text(
             'QUICK PICKS',
-            style: AfTypography.label.copyWith(color: AfColors.textTertiary),
+            style: AfTypography.label.copyWith(color: AfColors.textSecondary),
           ),
           const SizedBox(height: AfSpacing.s12),
           albumsAsync.when(
@@ -402,7 +402,7 @@ class _RecentAndSuggestions extends ConsumerWidget {
           // Genre chips
           Text(
             'GENRES',
-            style: AfTypography.label.copyWith(color: AfColors.textTertiary),
+            style: AfTypography.label.copyWith(color: AfColors.textSecondary),
           ),
           const SizedBox(height: AfSpacing.s12),
           genresAsync.when(
@@ -683,7 +683,7 @@ class _ResultSection extends StatelessWidget {
         children: [
           Text(
             title.toUpperCase(),
-            style: AfTypography.label.copyWith(color: AfColors.textTertiary),
+            style: AfTypography.label.copyWith(color: AfColors.textSecondary),
           ),
           const SizedBox(height: AfSpacing.s8),
           child,

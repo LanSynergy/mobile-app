@@ -243,7 +243,7 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
                                   Text(
                                     'PLAYING FROM ALBUM',
                                     style: AfTypography.overline.copyWith(
-                                      color: AfColors.textTertiary,
+                                      color: AfColors.textSecondary,
                                     ),
                                   ),
                                   MarqueeText(
