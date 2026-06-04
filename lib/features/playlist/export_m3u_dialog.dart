@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+
+import '../../design_tokens/tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/jellyfin/models/items.dart';
@@ -41,7 +43,7 @@ class ExportM3UAction {
             content: Text(
               'Exported "$playlistName.m3u" (${tracks.length} tracks)',
             ),
-            duration: const Duration(seconds: 3),
+            duration: AfDurations.snackBarInfo,
           ),
         );
       }

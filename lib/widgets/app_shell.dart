@@ -68,7 +68,7 @@ class AppShell extends ConsumerWidget {
         ..showSnackBar(
           const SnackBar(
             content: Text('Press back again to exit'),
-            duration: Duration(seconds: 2),
+            duration: AfDurations.snackBarInfo,
             behavior: SnackBarBehavior.floating,
           ),
         );

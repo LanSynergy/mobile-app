@@ -114,9 +114,8 @@ class _BottomContentState extends ConsumerState<BottomContent>
               }
             },
             child: GlassCard(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(AfRadii.lg),
-                topRight: Radius.circular(AfRadii.lg),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(AfRadii.lg),
               ),
               padding: EdgeInsets.zero,
               child: Column(

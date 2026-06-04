@@ -112,79 +112,83 @@ class TrackRow extends StatelessWidget {
       ensureHitTarget: true,
       onTap: onTap,
       onLongPress: onLongPress,
-      child: Container(
-        height: height + (steelBackground ? 8 : 0),
-        padding: EdgeInsets.symmetric(
-          horizontal: steelBackground ? AfSpacing.s12 : AfSpacing.s4,
-        ),
-        decoration: BoxDecoration(
-          color: steelBackground
-              ? (isActive
-                    ? AfColors.surfaceHigh.withValues(alpha: 0.6)
-                    : AfColors.surfaceHigh.withValues(alpha: 0.3))
-              : (isActive ? AfColors.surfaceBase : Colors.transparent),
-          borderRadius: BorderRadius.circular(
-            steelBackground ? AfRadii.lg : AfRadii.sm,
+      child: Semantics(
+        button: true,
+        label:
+            '${track.title} by ${track.artistName}'
+            '${isActive ? ", now playing" : ""}',
+        child: Container(
+          height: height + (steelBackground ? 8 : 0),
+          padding: EdgeInsets.symmetric(
+            horizontal: steelBackground ? AfSpacing.s12 : AfSpacing.s4,
           ),
-          border: steelBackground
-              ? Border.all(
-                  color: isActive
-                      ? accent.withValues(alpha: 0.6)
-                      : AfColors.surfaceHigh.withValues(alpha: 0.5),
-                  width: 1,
-                )
-              : null,
-        ),
-        child: Row(
-          children: [
-            if (isActive && !steelBackground)
-              Container(
-                width: 2,
-                height: artSize,
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.circular(1),
+          decoration: BoxDecoration(
+            color: steelBackground
+                ? (isActive
+                      ? AfColors.surfaceHigh.withValues(alpha: 0.6)
+                      : AfColors.surfaceHigh.withValues(alpha: 0.3))
+                : (isActive ? AfColors.surfaceBase : Colors.transparent),
+            borderRadius: steelBackground ? AfRadii.borderLg : AfRadii.borderSm,
+            border: steelBackground
+                ? Border.all(
+                    color: isActive
+                        ? accent.withValues(alpha: 0.6)
+                        : AfColors.surfaceHigh.withValues(alpha: 0.5),
+                    width: 1,
+                  )
+                : null,
+          ),
+          child: Row(
+            children: [
+              if (isActive && !steelBackground)
+                Container(
+                  width: 2,
+                  height: artSize,
+                  decoration: BoxDecoration(
+                    color: accent,
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+              const SizedBox(width: AfSpacing.s8),
+              leading,
+              const SizedBox(width: AfSpacing.s12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      track.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: titleStyle,
+                    ),
+                    if (density != TrackRowDensity.compact)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AfSpacing.s2),
+                        child: Text(
+                          track.subtitle(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: subtitleStyle,
+                        ),
+                      ),
+                  ],
                 ),
               ),
-            const SizedBox(width: AfSpacing.s8),
-            leading,
-            const SizedBox(width: AfSpacing.s12),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    track.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: titleStyle,
-                  ),
-                  if (density != TrackRowDensity.compact)
-                    Padding(
-                      padding: const EdgeInsets.only(top: AfSpacing.s2),
-                      child: Text(
-                        track.subtitle(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: subtitleStyle,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            if (showQualityChip && track.quality != null) ...[
-              const SizedBox(width: AfSpacing.s8),
-              QualityChip(
-                quality: track.quality!,
-                compact: density == TrackRowDensity.compact,
-              ),
+              if (showQualityChip && track.quality != null) ...[
+                const SizedBox(width: AfSpacing.s8),
+                QualityChip(
+                  quality: track.quality!,
+                  compact: density == TrackRowDensity.compact,
+                ),
+              ],
+              if (showHeart) ...[
+                const SizedBox(width: AfSpacing.s4),
+                FavoriteHeartButton(track: track),
+              ],
             ],
-            if (showHeart) ...[
-              const SizedBox(width: AfSpacing.s4),
-              FavoriteHeartButton(track: track),
-            ],
-          ],
+          ),
         ),
       ),
     );

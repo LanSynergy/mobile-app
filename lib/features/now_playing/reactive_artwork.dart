@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/jellyfin/models/items.dart';
+import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/artwork.dart';
 
@@ -20,13 +21,13 @@ class ReactiveArtwork extends ConsumerWidget {
   final AfTrack track;
 
   /// Border radius of the artwork card.
-  static const double _cardRadius = 24;
+  static const double _cardRadius = AfRadii.xl;
 
   /// Blur radius of the spectral glow beneath the card.
   static const double _glowBlur = 48;
 
   /// Spread radius of the spectral glow.
-  static const double _glowSpread = 8;
+  static const double _glowSpread = AfSpacing.s8;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -88,7 +89,7 @@ class _ArtworkCard extends StatelessWidget {
       children: [
         // ── Spectral glow beneath the card ──
         Positioned(
-          top: 12,
+          top: AfSpacing.s12,
           child: Container(
             width: MediaQuery.of(context).size.width * 0.6,
             height: MediaQuery.of(context).size.width * 0.6,
@@ -113,30 +114,31 @@ class _ArtworkCard extends StatelessWidget {
         // ── Artwork card ──
         Hero(
           tag: 'now-playing-artwork',
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(cardRadius),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(cardRadius),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    blurRadius: 32,
-                    offset: const Offset(0, 12),
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(cardRadius),
+          child: Semantics(
+            image: true,
+            label: '${track.title} by ${track.artistName}',
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(cardRadius),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(cardRadius),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AfColors.surfaceCanvas.withValues(alpha: 0.4),
+                      blurRadius: 32,
+                      offset: const Offset(0, AfSpacing.s12),
+                    ),
+                    BoxShadow(
+                      color: AfColors.surfaceCanvas.withValues(alpha: 0.2),
+                      blurRadius: AfSpacing.s8,
+                      offset: const Offset(0, AfSpacing.s4),
+                    ),
+                  ],
+                ),
                 child: Artwork(
                   url: artworkUri?.toString() ?? track.imageUrl,
                   size: double.infinity,
-                  radius: BorderRadius.zero,
+                  radius: BorderRadius.circular(cardRadius),
                 ),
               ),
             ),

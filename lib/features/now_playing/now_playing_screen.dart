@@ -36,6 +36,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   final _expandedNotifier = ValueNotifier<bool>(false);
   final _lyricsExpandedNotifier = ValueNotifier<bool>(false);
 
+  // Layout constants — derived from top-bar compact height + artwork ratios.
+  static const double _topBarCompactHeight = 76;
+  static const double _artworkHorizontalMargin = 32;
+  static const double _contentHeightRatio = 0.36;
+
   @override
   void dispose() {
     _expandedNotifier.dispose();
@@ -81,12 +86,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             children: [
               // ── Centered artwork card (swipe up to expand queue) ──
               Positioned(
-                top: 76, // top bar compact height
+                top: _topBarCompactHeight,
                 bottom:
-                    MediaQuery.of(context).size.height *
-                    0.36, // bottom content compact
-                left: 32,
-                right: 32,
+                    MediaQuery.of(context).size.height * _contentHeightRatio,
+                left: _artworkHorizontalMargin,
+                right: _artworkHorizontalMargin,
                 child: GestureDetector(
                   onVerticalDragEnd: (details) {
                     if ((details.primaryVelocity ?? 0) < -200) {
@@ -103,7 +107,8 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: MediaQuery.of(context).size.height * 0.36,
+                height:
+                    MediaQuery.of(context).size.height * _contentHeightRatio,
                 child: IgnorePointer(
                   child: Container(
                     decoration: BoxDecoration(

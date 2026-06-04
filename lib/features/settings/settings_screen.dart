@@ -21,212 +21,10 @@ import '../../state/lastfm_sync_provider.dart';
 import '../../state/providers.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/af_scrollbar.dart';
-import '../../widgets/press_scale.dart';
 import 'settings_dialogs.dart';
 import 'settings_sections.dart';
 import '../../widgets/section_header.dart';
-
-// ── Private iOS-style helper widgets ─────────────────────────────────────────
-
-class _IconContainer extends StatelessWidget {
-  const _IconContainer({required this.icon, required this.color});
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: const BoxDecoration(
-        color: AfColors.surfaceHigh,
-        borderRadius: AfRadii.borderSm,
-      ),
-      child: Icon(icon, size: 16, color: color),
-    );
-  }
-}
-
-const _chevron = Icon(
-  LucideIcons.chevronRight,
-  size: 16,
-  color: AfColors.textDisabled,
-);
-
-class _IosGroup extends StatelessWidget {
-  const _IosGroup({required this.children});
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: const BoxDecoration(
-        color: AfColors.surfaceRaised,
-        borderRadius: AfRadii.borderLg,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (int i = 0; i < children.length; i++) ...[
-            children[i],
-            if (i < children.length - 1)
-              const Divider(
-                height: 0,
-                thickness: 0.5,
-                indent: 60,
-                color: AfColors.surfaceHigh,
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _IosTile extends ConsumerWidget {
-  const _IosTile({
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    this.trailing,
-    this.onTap,
-    this.danger = false,
-  });
-
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-  final bool danger;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
-    return PressScale(
-      onTap: onTap,
-      ensureHitTarget: true,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: AfSpacing.minHitTarget),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AfSpacing.s16,
-            vertical: AfSpacing.s12,
-          ),
-          child: Row(
-            children: [
-              _IconContainer(
-                icon: icon,
-                color: danger ? AfColors.semanticError : spectral.primary,
-              ),
-              const SizedBox(width: AfSpacing.s12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: AfTypography.bodyMedium.copyWith(
-                        color: danger
-                            ? AfColors.semanticError
-                            : AfColors.textPrimary,
-                      ),
-                    ),
-                    if (subtitle != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AfSpacing.s2),
-                        child: Text(
-                          subtitle!,
-                          style: AfTypography.bodySmall.copyWith(
-                            color: AfColors.textTertiary,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (trailing != null) ...[
-                const SizedBox(width: AfSpacing.s8),
-                trailing!,
-              ] else if (onTap != null) ...[
-                const SizedBox(width: AfSpacing.s8),
-                _chevron,
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _IosSwitch extends ConsumerWidget {
-  const _IosSwitch({
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
-    return PressScale(
-      onTap: () => onChanged(!value),
-      ensureHitTarget: true,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: AfSpacing.minHitTarget),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AfSpacing.s16,
-            vertical: AfSpacing.s12,
-          ),
-          child: Row(
-            children: [
-              _IconContainer(icon: icon, color: spectral.primary),
-              const SizedBox(width: AfSpacing.s12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(title, style: AfTypography.bodyMedium),
-                    if (subtitle != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AfSpacing.s2),
-                        child: Text(
-                          subtitle!,
-                          style: AfTypography.bodySmall.copyWith(
-                            color: AfColors.textTertiary,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AfSpacing.s8),
-              Switch.adaptive(
-                value: value,
-                onChanged: onChanged,
-                activeThumbColor: AfColors.textOnPrimary,
-                activeTrackColor: spectral.primary,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+import 'settings_widgets.dart';
 
 // ── Screen ───────────────────────────────────────────────────────────────────
 
@@ -269,29 +67,29 @@ class SettingsScreen extends ConsumerWidget {
 
               // ── Server (server mode) ────────────────────────────────
               if (!isLocal) ...[
-                _IosGroup(
+                SettingsGroup(
                   children: [
-                    _IosTile(
+                    SettingsTile(
                       icon: LucideIcons.server,
                       title: auth?.server.name ?? 'Not connected',
                       subtitle: auth?.server.baseUrl,
                     ),
                     if (auth != null)
-                      _IosTile(
+                      SettingsTile(
                         icon: LucideIcons.user,
                         title: auth.userName,
                         subtitle:
                             auth.serverType.name[0].toUpperCase() +
                             auth.serverType.name.substring(1),
                       ),
-                    _IosTile(
+                    SettingsTile(
                       icon: LucideIcons.arrowLeftRight,
                       title: 'Switch server',
                       subtitle: 'Connect to a different server',
                       onTap: () => context.go('/onboarding/discover'),
                     ),
                     if (auth != null)
-                      _IosTile(
+                      SettingsTile(
                         icon: LucideIcons.logOut,
                         title: 'Sign out',
                         subtitle: 'Disconnect from ${auth.server.name}',
@@ -356,9 +154,9 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: AfSpacing.s24),
 
               // ── Switch mode ─────────────────────────────────────────
-              _IosGroup(
+              SettingsGroup(
                 children: [
-                  _IosTile(
+                  SettingsTile(
                     icon: LucideIcons.arrowLeftRight,
                     title: 'Switch mode',
                     subtitle: isLocal
@@ -416,9 +214,9 @@ class SettingsScreen extends ConsumerWidget {
 
               // ── Appearance ───────────────────────────────────────────
               const SectionHeader(title: 'Appearance', uppercase: true),
-              _IosGroup(
+              SettingsGroup(
                 children: [
-                  _IosTile(
+                  SettingsTile(
                     icon: LucideIcons.smartphone,
                     title: 'App icon',
                     subtitle: switch (ref.watch(appIconProvider)) {
@@ -436,7 +234,7 @@ class SettingsScreen extends ConsumerWidget {
 
               // ── Audio output ─────────────────────────────────────────
               const SectionHeader(title: 'Audio output', uppercase: true),
-              _IosGroup(
+              SettingsGroup(
                 children: [
                   StreamBuilder<AudioParams>(
                     stream: ref
@@ -449,7 +247,7 @@ class SettingsScreen extends ConsumerWidget {
                       final fmt = params?.format;
                       final ch = params?.channelCount;
                       final hasData = rate != null && rate > 0;
-                      return _IosTile(
+                      return SettingsTile(
                         icon: LucideIcons.waves,
                         title: 'Current output',
                         subtitle: hasData
@@ -458,13 +256,13 @@ class SettingsScreen extends ConsumerWidget {
                       );
                     },
                   ),
-                  _IosTile(
+                  SettingsTile(
                     icon: LucideIcons.gauge,
                     title: 'Sample rate',
                     subtitle: 'Force output sample rate for DAC',
                     onTap: () => showSampleRateDialog(context, ref),
                   ),
-                  _IosTile(
+                  SettingsTile(
                     icon: LucideIcons.cpu,
                     title: 'Bit depth',
                     subtitle: 'Force output format',
@@ -475,7 +273,7 @@ class SettingsScreen extends ConsumerWidget {
                     initialData: svc.audioExclusive,
                     builder: (context, snap) {
                       final enabled = snap.data ?? false;
-                      return _IosSwitch(
+                      return SettingsSwitchTile(
                         icon: LucideIcons.lock,
                         title: 'Exclusive mode',
                         subtitle: 'Bypass OS mixer for bit-perfect output',
@@ -494,9 +292,9 @@ class SettingsScreen extends ConsumerWidget {
 
               // ── Network & cache ──────────────────────────────────────
               const SectionHeader(title: 'Network & cache', uppercase: true),
-              _IosGroup(
+              SettingsGroup(
                 children: [
-                  _IosTile(
+                  SettingsTile(
                     icon: LucideIcons.music,
                     title: 'Streaming quality',
                     subtitle: ref.watch(maxBitrateProvider) == 0
@@ -504,13 +302,13 @@ class SettingsScreen extends ConsumerWidget {
                         : '${ref.watch(maxBitrateProvider)} kbps',
                     onTap: () => showStreamingQualityDialog(context, ref),
                   ),
-                  _IosTile(
+                  SettingsTile(
                     icon: LucideIcons.rotateCcw,
                     title: 'Cache duration',
                     subtitle: 'How far ahead to buffer',
                     onTap: () => showCacheDurationDialog(context, ref),
                   ),
-                  _IosTile(
+                  SettingsTile(
                     icon: LucideIcons.hardDrive,
                     title: 'Buffer size',
                     subtitle: 'Audio hardware buffer (latency vs stability)',
@@ -521,7 +319,7 @@ class SettingsScreen extends ConsumerWidget {
                     initialData: svc.audioStreamSilence,
                     builder: (context, snap) {
                       final enabled = snap.data ?? false;
-                      return _IosSwitch(
+                      return SettingsSwitchTile(
                         icon: LucideIcons.volume2,
                         title: 'Keep audio active on pause',
                         subtitle: 'Eliminates click/pop on resume',
@@ -541,12 +339,12 @@ class SettingsScreen extends ConsumerWidget {
               // ── Offline cache (server mode only) ─────────────────────
               if (!isLocal) ...[
                 const SectionHeader(title: 'Offline cache', uppercase: true),
-                _IosGroup(
+                SettingsGroup(
                   children: [
                     Consumer(
                       builder: (context, ref2, _) {
                         final enabled = ref2.watch(offlineCacheEnabledProvider);
-                        return _IosSwitch(
+                        return SettingsSwitchTile(
                           icon: LucideIcons.hardDrive,
                           title: 'Cache tracks offline',
                           subtitle: enabled
@@ -566,7 +364,7 @@ class SettingsScreen extends ConsumerWidget {
                       },
                     ),
                     _CacheUsageTile(),
-                    _IosTile(
+                    SettingsTile(
                       icon: LucideIcons.hardDrive,
                       title: 'Max cache size',
                       subtitle: OfflineCacheService.formatSize(
@@ -582,21 +380,21 @@ class SettingsScreen extends ConsumerWidget {
 
               // ── Audio processing ─────────────────────────────────────
               const SectionHeader(title: 'Audio processing', uppercase: true),
-              _IosGroup(
+              SettingsGroup(
                 children: [
-                  _IosTile(
+                  SettingsTile(
                     icon: LucideIcons.slidersHorizontal,
                     title: 'ReplayGain',
                     subtitle: 'Volume normalization across tracks',
                     onTap: () => showReplayGainDialog(context, ref),
                   ),
-                  _IosTile(
+                  SettingsTile(
                     icon: LucideIcons.skipForward,
                     title: 'Gapless playback',
                     subtitle: 'Seamless transitions between tracks',
                     onTap: () => showGaplessDialog(context, ref),
                   ),
-                  _IosSwitch(
+                  SettingsSwitchTile(
                     icon: LucideIcons.download,
                     title: 'Prefetch next track',
                     subtitle: 'Pre-load next playlist entry in background',
@@ -606,7 +404,7 @@ class SettingsScreen extends ConsumerWidget {
                       unawaited(PlayerSettingsStore.savePrefetchPlaylist(v));
                     },
                   ),
-                  _IosSwitch(
+                  SettingsSwitchTile(
                     icon: LucideIcons.lightbulb,
                     title: 'Smart queue',
                     subtitle:
@@ -628,9 +426,9 @@ class SettingsScreen extends ConsumerWidget {
 
               // ── Advanced ─────────────────────────────────────────────
               const SectionHeader(title: 'Advanced', uppercase: true),
-              _IosGroup(
+              SettingsGroup(
                 children: [
-                  _IosTile(
+                  SettingsTile(
                     icon: LucideIcons.trash2,
                     title: 'Clear app data',
                     subtitle: 'Reset app to initial state',
@@ -718,7 +516,7 @@ class SettingsScreen extends ConsumerWidget {
 
               // ── About ────────────────────────────────────────────────
               const SectionHeader(title: 'About', uppercase: true),
-              _IosGroup(
+              SettingsGroup(
                 children: [
                   FutureBuilder<PackageInfo>(
                     future: PackageInfo.fromPlatform(),
@@ -726,14 +524,14 @@ class SettingsScreen extends ConsumerWidget {
                       final version = snap.data != null
                           ? 'v${snap.data!.version}+${snap.data!.buildNumber} ($kBuildId)'
                           : '...';
-                      return _IosTile(
+                      return SettingsTile(
                         icon: LucideIcons.info,
                         title: 'Aetherfin $version',
                         subtitle: 'Jellyfin-backed music player · FOSS',
                       );
                     },
                   ),
-                  _IosTile(
+                  SettingsTile(
                     icon: LucideIcons.code,
                     title: 'Source code',
                     subtitle: 'github.com/Aetherfin/mobile-app',
@@ -746,7 +544,7 @@ class SettingsScreen extends ConsumerWidget {
                       'https://github.com/Aetherfin/mobile-app',
                     ),
                   ),
-                  _IosTile(
+                  SettingsTile(
                     icon: LucideIcons.fileText,
                     title: 'Licenses',
                     subtitle: 'Open-source licenses',
@@ -838,7 +636,7 @@ class _CacheUsageTileState extends ConsumerState<_CacheUsageTile> {
     final maxSize = ref.watch(offlineCacheMaxSizeProvider);
     final usedLabel = OfflineCacheService.formatSize(_cacheSize);
     final maxLabel = OfflineCacheService.formatSize(maxSize);
-    return _IosTile(
+    return SettingsTile(
       icon: LucideIcons.database,
       title: _loading ? 'Cache usage…' : 'Cache usage',
       subtitle: _loading
@@ -877,9 +675,9 @@ class _LastFmSettingsSection extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         const SectionHeader(title: 'Last.fm', uppercase: true),
-        _IosGroup(
+        SettingsGroup(
           children: [
-            _IosTile(
+            SettingsTile(
               icon: LucideIcons.key,
               title: 'API Credentials',
               subtitle: hasCredentials
@@ -888,20 +686,20 @@ class _LastFmSettingsSection extends ConsumerWidget {
               onTap: () => showLastFmApiConfigDialog(context, ref),
             ),
             if (hasCredentials && !isConnected)
-              _IosTile(
+              SettingsTile(
                 icon: LucideIcons.link,
                 title: 'Link Last.fm Account',
                 subtitle: 'Log in with username and password',
                 onTap: () => showLastFmLoginDialog(context, ref),
               ),
             if (isConnected) ...[
-              _IosTile(
+              SettingsTile(
                 icon: LucideIcons.user,
                 title: 'Connected as $username',
                 subtitle: 'Tap to disconnect / sign out',
                 onTap: () => showLastFmSignOutDialog(context, ref),
               ),
-              _IosTile(
+              SettingsTile(
                 icon: LucideIcons.refreshCw,
                 title: 'Sync Liked Tracks',
                 subtitle: 'Sync favorites between library and Last.fm',
@@ -962,7 +760,7 @@ class _LastFmSettingsSection extends ConsumerWidget {
                   }
                 },
               ),
-              _IosSwitch(
+              SettingsSwitchTile(
                 icon: LucideIcons.checkSquare,
                 title: 'Scrobble tracks',
                 subtitle: 'Submit played tracks to profile',

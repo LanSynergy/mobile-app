@@ -201,13 +201,17 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                                 ],
                               ),
                             ),
-                            _MiniTransportButton(
-                              icon: const Icon(
-                                LucideIcons.skipBack,
-                                size: 24,
-                                color: AfColors.textPrimary,
+                            Semantics(
+                              button: true,
+                              label: 'Skip previous',
+                              child: _MiniTransportButton(
+                                icon: const Icon(
+                                  LucideIcons.skipBack,
+                                  size: 24,
+                                  color: AfColors.textPrimary,
+                                ),
+                                onTap: widget.onSkipPrevious,
                               ),
-                              onTap: widget.onSkipPrevious,
                             ),
                             PressScale(
                               ensureHitTarget: false,
@@ -239,13 +243,17 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                                 ),
                               ),
                             ),
-                            _MiniTransportButton(
-                              icon: const Icon(
-                                LucideIcons.skipForward,
-                                size: 24,
-                                color: AfColors.textPrimary,
+                            Semantics(
+                              button: true,
+                              label: 'Skip next',
+                              child: _MiniTransportButton(
+                                icon: const Icon(
+                                  LucideIcons.skipForward,
+                                  size: 24,
+                                  color: AfColors.textPrimary,
+                                ),
+                                onTap: widget.onSkipNext,
                               ),
-                              onTap: widget.onSkipNext,
                             ),
                           ],
                         ),

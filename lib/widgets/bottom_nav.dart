@@ -69,54 +69,59 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
   }
 
   Widget _buildTab(int index, AfBottomNavItem item, bool active, Color accent) {
-    return PressScale(
-      ensureHitTarget: false,
-      onTap: () => widget.onSelect(index),
-      child: AnimatedContainer(
-        duration: AfDurations.quick,
-        curve: AfCurves.easeStandard,
-        height: 48,
-        padding: EdgeInsets.symmetric(
-          horizontal: active ? AfSpacing.s16 : AfSpacing.s12,
-        ),
-        decoration: BoxDecoration(
-          color: active
-              ? accent.withValues(alpha: _pillAlpha)
-              : Colors.transparent,
-          borderRadius: AfRadii.borderPill,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedSwitcher(
-              duration: AfDurations.instant,
-              child: Icon(
-                item.icon,
-                key: ValueKey(active),
-                size: 24,
-                color: active ? accent : AfColors.textTertiary,
+    return Semantics(
+      selected: active,
+      button: true,
+      label: item.label,
+      child: PressScale(
+        ensureHitTarget: false,
+        onTap: () => widget.onSelect(index),
+        child: AnimatedContainer(
+          duration: AfDurations.quick,
+          curve: AfCurves.easeStandard,
+          height: 48,
+          padding: EdgeInsets.symmetric(
+            horizontal: active ? AfSpacing.s16 : AfSpacing.s12,
+          ),
+          decoration: BoxDecoration(
+            color: active
+                ? accent.withValues(alpha: _pillAlpha)
+                : Colors.transparent,
+            borderRadius: AfRadii.borderPill,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedSwitcher(
+                duration: AfDurations.instant,
+                child: Icon(
+                  item.icon,
+                  key: ValueKey(active),
+                  size: 24,
+                  color: active ? accent : AfColors.textTertiary,
+                ),
               ),
-            ),
-            ClipRect(
-              child: AnimatedAlign(
-                duration: AfDurations.standard,
-                curve: AfCurves.easeStandard,
-                alignment: Alignment.centerLeft,
-                widthFactor: active ? 1.0 : 0.0,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: AfSpacing.s4),
-                  child: Text(
-                    item.label,
-                    maxLines: 1,
-                    style: AfTypography.caption.copyWith(
-                      color: accent,
-                      fontWeight: FontWeight.w600,
+              ClipRect(
+                child: AnimatedAlign(
+                  duration: AfDurations.standard,
+                  curve: AfCurves.easeStandard,
+                  alignment: Alignment.centerLeft,
+                  widthFactor: active ? 1.0 : 0.0,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: AfSpacing.s4),
+                    child: Text(
+                      item.label,
+                      maxLines: 1,
+                      style: AfTypography.caption.copyWith(
+                        color: accent,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

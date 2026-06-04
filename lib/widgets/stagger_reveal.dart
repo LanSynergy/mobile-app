@@ -16,7 +16,7 @@ class StaggerReveal extends StatefulWidget {
     super.key,
     required this.children,
     this.duration,
-    this.slideOffset = 12,
+    this.slideOffset = AfSpacing.s12,
   });
 
   /// Widgets to reveal in order.

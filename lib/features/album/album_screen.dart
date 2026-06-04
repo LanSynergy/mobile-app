@@ -386,7 +386,7 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
           onTap: () => ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Offline downloads coming soon'),
-              duration: Duration(seconds: 2),
+              duration: AfDurations.snackBarInfo,
             ),
           ),
         ),

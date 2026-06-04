@@ -80,3 +80,21 @@ abstract final class AfSpacing {
     horizontal: s24,
   );
 }
+
+/// Icon size grid — Dark Moody edition.
+///
+/// Four tiers. New code MUST use these values. Existing 22dp and 26dp
+/// icons are legacy — migrate to nearest tier on next touch.
+abstract final class AfIconSizes {
+  /// 16dp — compact UI (settings icon containers, inline badges).
+  static const double xs = 16;
+
+  /// 20dp — secondary controls (shuffle, loop, filter icons).
+  static const double sm = 20;
+
+  /// 24dp — default (app bar icons, list tile leading, standard actions).
+  static const double md = 24;
+
+  /// 28dp — primary emphasis (play button icon, hero artwork placeholder).
+  static const double lg = 28;
+}

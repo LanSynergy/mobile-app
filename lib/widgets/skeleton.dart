@@ -18,11 +18,14 @@ class ShimmerWrap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ShimmerEffect(
-      color: Colors.white.withValues(alpha: 0.06),
-      speed: 1.0,
-      width: 0.35,
-      child: child,
+    return Semantics(
+      label: 'Loading',
+      child: ShimmerEffect(
+        color: AfColors.glassFillStrong,
+        speed: 1.0,
+        width: 0.35,
+        child: child,
+      ),
     );
   }
 }

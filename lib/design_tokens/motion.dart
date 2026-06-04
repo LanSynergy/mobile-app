@@ -32,6 +32,10 @@ abstract final class AfCurves {
   /// `cubic-bezier(0.5, 0, 1, 1)` — exits.
   static const Curve easeIn = Curves.easeIn;
 
+  /// `cubic-bezier(0.42, 0, 0.58, 1)` — smooth in-out.
+  /// Play button bounce, icon morph transitions.
+  static const Curve easeInOut = Curves.easeInOut;
+
   /// `linear` — audio-coupled only.
   /// Waveform fill, progress ring sweep, lyric scroll position.
   static const Curve linear = Curves.linear;
@@ -56,6 +60,18 @@ abstract final class AfDurations {
 
   /// 700 ms — onboarding intro animation only.
   static const Duration long = Duration(milliseconds: 700);
+
+  /// 250 ms — play button bounce, icon morph, dialog/sheet reverse dismiss.
+  static const Duration bounce = Duration(milliseconds: 250);
+
+  /// 1200 ms — ambient pulse glow, breathing animations.
+  static const Duration ambient = Duration(milliseconds: 1200);
+
+  /// 2000 ms — info SnackBar (action confirmed, item added/removed).
+  static const Duration snackBarInfo = Duration(seconds: 2);
+
+  /// 4000 ms — error SnackBar (operation failed, network error).
+  static const Duration snackBarError = Duration(seconds: 4);
 }
 
 /// Stagger conventions for grid / list reveals.

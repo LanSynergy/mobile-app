@@ -68,7 +68,7 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
             const Divider(height: 1, color: AfColors.surfaceHigh),
             _MenuItem(
               icon: LucideIcons.heart,
-              iconColor: isFavorite ? AfColors.indigo300 : null,
+              iconColor: isFavorite ? AfColors.accentPrimary : null,
               label: isFavorite ? 'Remove from liked' : 'Add to liked',
               onTap: () async {
                 dismiss();

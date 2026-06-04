@@ -96,7 +96,7 @@ class _MoreMenu extends StatelessWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Starting Instant Mix…'),
-                  duration: Duration(seconds: 2),
+                  duration: AfDurations.snackBarInfo,
                 ),
               );
             }

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/press_scale.dart';
 
 class SettingsLabel extends StatelessWidget {
   const SettingsLabel(this.label, {super.key});
@@ -59,68 +61,92 @@ class SettingsGroup extends StatelessWidget {
   }
 }
 
-class SettingsTile extends StatelessWidget {
+class SettingsTile extends ConsumerWidget {
   const SettingsTile({
     super.key,
     required this.icon,
-    required this.iconColor,
+    this.iconColor,
     required this.title,
     this.subtitle,
     this.trailing,
     this.onTap,
+    this.danger = false,
   });
   final IconData icon;
-  final Color iconColor;
+  final Color? iconColor;
   final String title;
   final String? subtitle;
   final Widget? trailing;
   final VoidCallback? onTap;
+  final bool danger;
 
   @override
-  Widget build(BuildContext context) {
-    return InkWell(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(currentSpectralProvider);
+    final effectiveIconColor = danger
+        ? AfColors.semanticError
+        : (iconColor ?? spectral.primary);
+    return PressScale(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AfSpacing.s16,
-          vertical: AfSpacing.s12,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                color: AfColors.surfaceHigh,
-                borderRadius: AfRadii.borderSm,
+      ensureHitTarget: true,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AfSpacing.minHitTarget),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.s16,
+            vertical: AfSpacing.s12,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                  color: AfColors.surfaceHigh,
+                  borderRadius: AfRadii.borderSm,
+                ),
+                child: Icon(icon, size: 16, color: effectiveIconColor),
               ),
-              child: Icon(icon, size: 16, color: iconColor),
-            ),
-            const SizedBox(width: AfSpacing.s12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(title, style: AfTypography.bodyMedium),
-                  if (subtitle != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: AfSpacing.s2),
-                      child: Text(
-                        subtitle!,
-                        style: AfTypography.bodySmall.copyWith(
-                          color: AfColors.textTertiary,
-                        ),
+              const SizedBox(width: AfSpacing.s12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: AfTypography.bodyMedium.copyWith(
+                        color: danger
+                            ? AfColors.semanticError
+                            : AfColors.textPrimary,
                       ),
                     ),
-                ],
+                    if (subtitle != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AfSpacing.s2),
+                        child: Text(
+                          subtitle!,
+                          style: AfTypography.bodySmall.copyWith(
+                            color: AfColors.textTertiary,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            if (trailing != null) ...[
-              const SizedBox(width: AfSpacing.s8),
-              trailing!,
+              if (trailing != null) ...[
+                const SizedBox(width: AfSpacing.s8),
+                trailing!,
+              ] else if (onTap != null) ...[
+                const SizedBox(width: AfSpacing.s8),
+                const Icon(
+                  LucideIcons.chevronRight,
+                  size: 16,
+                  color: AfColors.textDisabled,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -131,14 +157,14 @@ class SettingsSwitchTile extends ConsumerWidget {
   const SettingsSwitchTile({
     super.key,
     required this.icon,
-    required this.iconColor,
+    this.iconColor,
     required this.title,
     this.subtitle,
     required this.value,
     required this.onChanged,
   });
   final IconData icon;
-  final Color iconColor;
+  final Color? iconColor;
   final String title;
   final String? subtitle;
   final bool value;
@@ -147,52 +173,57 @@ class SettingsSwitchTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final spectral = ref.watch(currentSpectralProvider);
-    return InkWell(
+    final effectiveIconColor = iconColor ?? spectral.primary;
+    return PressScale(
       onTap: () => onChanged(!value),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AfSpacing.s16,
-          vertical: AfSpacing.s12,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                color: AfColors.surfaceHigh,
-                borderRadius: AfRadii.borderSm,
+      ensureHitTarget: true,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AfSpacing.minHitTarget),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.s16,
+            vertical: AfSpacing.s12,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                  color: AfColors.surfaceHigh,
+                  borderRadius: AfRadii.borderSm,
+                ),
+                child: Icon(icon, size: 16, color: effectiveIconColor),
               ),
-              child: Icon(icon, size: 16, color: iconColor),
-            ),
-            const SizedBox(width: AfSpacing.s12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(title, style: AfTypography.bodyMedium),
-                  if (subtitle != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: AfSpacing.s2),
-                      child: Text(
-                        subtitle!,
-                        style: AfTypography.bodySmall.copyWith(
-                          color: AfColors.textTertiary,
+              const SizedBox(width: AfSpacing.s12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title, style: AfTypography.bodyMedium),
+                    if (subtitle != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AfSpacing.s2),
+                        child: Text(
+                          subtitle!,
+                          style: AfTypography.bodySmall.copyWith(
+                            color: AfColors.textTertiary,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: AfSpacing.s8),
-            Switch.adaptive(
-              value: value,
-              onChanged: onChanged,
-              activeThumbColor: AfColors.textOnPrimary,
-              activeTrackColor: spectral.primary,
-            ),
-          ],
+              const SizedBox(width: AfSpacing.s8),
+              Switch.adaptive(
+                value: value,
+                onChanged: onChanged,
+                activeThumbColor: AfColors.textOnPrimary,
+                activeTrackColor: spectral.primary,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -229,7 +260,9 @@ class OptionTile extends ConsumerWidget {
               height: subtitle != null ? 28 : 20,
               decoration: BoxDecoration(
                 color: isActive ? spectral.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(1.5),
+                borderRadius: BorderRadius.circular(
+                  1.5,
+                ), // 3dp-wide indicator bar
               ),
             ),
             const SizedBox(width: AfSpacing.s12),
@@ -247,7 +280,7 @@ class OptionTile extends ConsumerWidget {
                   ),
                   if (subtitle != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 2),
+                      padding: const EdgeInsets.only(top: AfSpacing.s2),
                       child: Text(
                         subtitle!,
                         style: AfTypography.bodySmall.copyWith(

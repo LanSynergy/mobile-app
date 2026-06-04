@@ -294,21 +294,21 @@ class _PlayButtonState extends ConsumerState<PlayButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _scaleController = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 250),
+    duration: AfDurations.bounce,
   );
-  late final Animation<double> _scaleAnimation = Tween<double>(
-    begin: 1.0,
-    end: 0.85,
-  ).animate(CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut));
+  late final Animation<double> _scaleAnimation =
+      Tween<double>(begin: 1.0, end: 0.85).animate(
+        CurvedAnimation(parent: _scaleController, curve: AfCurves.easeInOut),
+      );
 
   late final AnimationController _pulseController = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1200),
+    duration: AfDurations.ambient,
   );
-  late final Animation<double> _pulseAnimation = Tween<double>(
-    begin: 0.0,
-    end: 1.0,
-  ).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+  late final Animation<double> _pulseAnimation =
+      Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _pulseController, curve: AfCurves.easeInOut),
+      );
 
   bool? _previousIsPlaying;
 
@@ -384,7 +384,7 @@ class _PlayButtonState extends ConsumerState<PlayButton>
                         ),
                       )
                     : AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
+                        duration: AfDurations.quick,
                         transitionBuilder: (child, anim) =>
                             ScaleTransition(scale: anim, child: child),
                         child: Icon(

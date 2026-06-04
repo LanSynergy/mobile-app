@@ -71,7 +71,7 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
     _ctrl = AnimationController(
       vsync: this,
       duration: AfDurations.standard,
-      reverseDuration: const Duration(milliseconds: 250),
+      reverseDuration: AfDurations.bounce,
     );
     _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -133,7 +133,9 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
                       sigmaY: blurSigma,
                     ),
                     child: Container(
-                      color: Colors.black.withValues(alpha: opacity * 0.25),
+                      color: AfColors.surfaceScrim.withValues(
+                        alpha: opacity * 0.25,
+                      ),
                     ),
                   ),
                 ),

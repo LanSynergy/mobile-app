@@ -21,11 +21,11 @@ class _AllSetScreenState extends ConsumerState<AllSetScreen>
     with TickerProviderStateMixin {
   late final AnimationController _checkController = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 600),
+    duration: AfDurations.expressive,
   );
   late final AnimationController _stagger = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 800),
+    duration: AfDurations.long,
   );
 
   @override

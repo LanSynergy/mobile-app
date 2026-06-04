@@ -26,99 +26,105 @@ class HeroAlbumCard extends StatelessWidget {
     return PressScale(
       ensureHitTarget: false,
       onTap: onTap,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 192),
-        margin: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-        decoration: BoxDecoration(
-          borderRadius: AfRadii.borderLg,
-          color: hasArt ? null : AfColors.surfaceRaised,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            if (hasArt)
+      child: Semantics(
+        button: true,
+        label: 'Album: ${album.name} by ${album.artistName}',
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 192),
+          margin: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+          decoration: BoxDecoration(
+            borderRadius: AfRadii.borderLg,
+            color: hasArt ? null : AfColors.surfaceRaised,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              if (hasArt)
+                Positioned.fill(
+                  child: Artwork(
+                    url: album.imageUrl,
+                    size: double.infinity,
+                    fit: BoxFit.cover,
+                    radius: BorderRadius.zero,
+                  ),
+                ),
+              // Gradient scrim
               Positioned.fill(
-                child: Artwork(
-                  url: album.imageUrl,
-                  size: double.infinity,
-                  fit: BoxFit.cover,
-                  radius: BorderRadius.zero,
-                ),
-              ),
-            // Gradient scrim
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      AfColors.surfaceCanvas.withValues(alpha: 0.92),
-                      AfColors.surfaceCanvas.withValues(alpha: 0.40),
-                      Colors.transparent,
-                    ],
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        AfColors.surfaceCanvas.withValues(alpha: 0.92),
+                        AfColors.surfaceCanvas.withValues(alpha: 0.40),
+                        Colors.transparent,
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            // Content
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AfSpacing.s16,
-                AfSpacing.s16,
-                AfSpacing.s16,
-                AfSpacing.s16,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AfSpacing.s8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AfColors.surfaceCanvas.withValues(alpha: 0.55),
-                      borderRadius: AfRadii.borderPill,
-                    ),
-                    child: Text(
-                      pillLabel,
-                      style: AfTypography.caption.copyWith(
-                        color: AfColors.textOnPrimary,
+              // Content
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AfSpacing.s16,
+                  AfSpacing.s16,
+                  AfSpacing.s16,
+                  AfSpacing.s16,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.max,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.s8,
+                        vertical: AfSpacing.s4,
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: AfSpacing.s12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        album.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AfTypography.titleLarge.copyWith(
+                      decoration: BoxDecoration(
+                        color: AfColors.surfaceCanvas.withValues(alpha: 0.55),
+                        borderRadius: AfRadii.borderPill,
+                      ),
+                      child: Text(
+                        pillLabel,
+                        style: AfTypography.caption.copyWith(
                           color: AfColors.textOnPrimary,
                         ),
                       ),
-                      const SizedBox(height: AfSpacing.s2),
-                      Text(
-                        album.artistName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AfTypography.bodyMedium.copyWith(
-                          color: AfColors.textOnPrimary.withValues(alpha: 0.8),
+                    ),
+                    const SizedBox(height: AfSpacing.s12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          album.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AfTypography.titleLarge.copyWith(
+                            color: AfColors.textOnPrimary,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  _PlayPill(onTap: onPlay),
-                ],
+                        const SizedBox(height: AfSpacing.s2),
+                        Text(
+                          album.artistName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AfTypography.bodyMedium.copyWith(
+                            color: AfColors.textOnPrimary.withValues(
+                              alpha: 0.8,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    _PlayPill(albumName: album.name, onTap: onPlay),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -126,40 +132,45 @@ class HeroAlbumCard extends StatelessWidget {
 }
 
 class _PlayPill extends StatelessWidget {
-  const _PlayPill({this.onTap});
+  const _PlayPill({required this.albumName, this.onTap});
+  final String albumName;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return PressScale(
-      ensureHitTarget: false,
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AfSpacing.s16,
-          vertical: AfSpacing.s8,
-        ),
-        decoration: const BoxDecoration(
-          color: AfColors.textOnPrimary,
-          borderRadius: AfRadii.borderPill,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              LucideIcons.play,
-              color: AfColors.surfaceCanvas,
-              size: 18,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              'Play',
-              style: AfTypography.bodyMedium.copyWith(
+    return Semantics(
+      button: true,
+      label: 'Play $albumName',
+      child: PressScale(
+        ensureHitTarget: false,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.s16,
+            vertical: AfSpacing.s8,
+          ),
+          decoration: const BoxDecoration(
+            color: AfColors.textOnPrimary,
+            borderRadius: AfRadii.borderPill,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                LucideIcons.play,
                 color: AfColors.surfaceCanvas,
-                fontWeight: FontWeight.w600,
+                size: 18,
               ),
-            ),
-          ],
+              const SizedBox(width: AfSpacing.s4),
+              Text(
+                'Play',
+                style: AfTypography.bodyMedium.copyWith(
+                  color: AfColors.surfaceCanvas,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -79,7 +79,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
     _ctrl = AnimationController(
       vsync: this,
       duration: AfDurations.expressive,
-      reverseDuration: const Duration(milliseconds: 280),
+      reverseDuration: AfDurations.bounce,
     );
     _slideAnim = Tween<double>(
       begin: 1.0,
@@ -140,7 +140,9 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                       sigmaY: blurSigma,
                     ),
                     child: Container(
-                      color: Colors.black.withValues(alpha: opacity * 0.25),
+                      color: AfColors.surfaceScrim.withValues(
+                        alpha: opacity * 0.25,
+                      ),
                     ),
                   ),
                 ),
@@ -185,14 +187,19 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   const SizedBox(height: AfSpacing.s12),
-                                  Container(
-                                    width: 40,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: AfColors.textTertiary.withValues(
-                                        alpha: 0.4,
+                                  Semantics(
+                                    label: 'Drag to dismiss',
+                                    child: Container(
+                                      width: 40,
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: AfColors.textTertiary.withValues(
+                                          alpha: 0.4,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          AfRadii.xs,
+                                        ),
                                       ),
-                                      borderRadius: BorderRadius.circular(2),
                                     ),
                                   ),
                                   const SizedBox(height: AfSpacing.s12),

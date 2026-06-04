@@ -234,7 +234,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                                   content: Text(
                                     'Skip to remove the currently playing track.',
                                   ),
-                                  duration: Duration(seconds: 2),
+                                  duration: AfDurations.snackBarInfo,
                                 ),
                               );
                               return false;
@@ -268,7 +268,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                               ..showSnackBar(
                                 SnackBar(
                                   content: Text('Removed "${removed.title}"'),
-                                  duration: const Duration(seconds: 4),
+                                  duration: AfDurations.snackBarError,
                                   action: SnackBarAction(
                                     label: 'Undo',
                                     onPressed: () =>
