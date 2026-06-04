@@ -6,13 +6,6 @@ import 'package:flutter/material.dart';
 import '../design_tokens/tokens.dart';
 
 /// Shows a blurred bottom sheet that renders in the current route's overlay.
-///
-/// Unlike [showModalBottomSheet], this inserts an [OverlayEntry] into the
-/// existing route's Navigator overlay, so [BackdropFilter] can actually
-/// see and blur the content behind the sheet.
-///
-/// Pass [child] for simple content, or [builder] when the child needs to
-/// dismiss the sheet programmatically (e.g. a close button).
 Future<T?> showBlurBottomSheet<T>({
   required BuildContext context,
   Widget? child,
@@ -128,27 +121,27 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
           child: GestureDetector(
             onTap: widget.isDismissible ? _dismiss : null,
             behavior: HitTestBehavior.opaque,
-            child: Opacity(
-              opacity: opacity,
-              child: Stack(
-                children: [
-                  // ── Full-screen blur behind everything ──
-                  Positioned.fill(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(
-                        sigmaX: blurSigma,
-                        sigmaY: blurSigma,
-                      ),
-                      child: Container(
-                        color: Colors.black.withValues(alpha: 0.25),
-                      ),
+            child: Stack(
+              children: [
+                // ── Blur layer — always renders, no Opacity wrapper ──
+                Positioned.fill(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(
+                      sigmaX: blurSigma,
+                      sigmaY: blurSigma,
+                    ),
+                    child: Container(
+                      color: Colors.black.withValues(alpha: opacity * 0.25),
                     ),
                   ),
-                  // ── Sheet content (solid, no extra blur) ──
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Transform.translate(
-                      offset: Offset(0, slideOffset * 400),
+                ),
+                // ── Sheet content — slides up + fades ──
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Transform.translate(
+                    offset: Offset(0, slideOffset * 400),
+                    child: Opacity(
+                      opacity: opacity,
                       child: GestureDetector(
                         onVerticalDragEnd: widget.enableDrag
                             ? (details) {
@@ -206,8 +199,8 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );

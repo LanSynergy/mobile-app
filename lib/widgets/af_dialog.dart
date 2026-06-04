@@ -6,13 +6,6 @@ import 'package:flutter/material.dart';
 import '../design_tokens/tokens.dart';
 
 /// Shows a blurred dialog that renders in the current route's overlay.
-///
-/// Unlike [showDialog], this inserts an [OverlayEntry] into the existing
-/// route's Navigator overlay, so [BackdropFilter] can actually see and
-/// blur the content behind the dialog — no new route, no opaque barrier.
-///
-/// Pass [child] for simple content, or [builder] when the child needs to
-/// dismiss the dialog programmatically (e.g. a Close button).
 Future<T?> showBlurDialog<T>({
   required BuildContext context,
   Widget? child,
@@ -109,35 +102,35 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (context, _) {
+        final blurSigma = _blurAnim.value;
         final opacity = _fadeAnim.value;
         final scale = _scaleAnim.value;
-        final blurSigma = _blurAnim.value;
 
         return Material(
           type: MaterialType.transparency,
           child: GestureDetector(
             onTap: widget.barrierDismissible ? _dismiss : null,
             behavior: HitTestBehavior.opaque,
-            child: Opacity(
-              opacity: opacity,
-              child: Stack(
-                children: [
-                  // ── Full-screen blur behind everything ──
-                  Positioned.fill(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(
-                        sigmaX: blurSigma,
-                        sigmaY: blurSigma,
-                      ),
-                      child: Container(
-                        color: Colors.black.withValues(alpha: 0.25),
-                      ),
+            child: Stack(
+              children: [
+                // ── Blur layer — always renders, no Opacity wrapper ──
+                Positioned.fill(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(
+                      sigmaX: blurSigma,
+                      sigmaY: blurSigma,
+                    ),
+                    child: Container(
+                      color: Colors.black.withValues(alpha: opacity * 0.25),
                     ),
                   ),
-                  // ── Dialog content (solid, no extra blur) ──
-                  Center(
-                    child: Transform.scale(
-                      scale: scale,
+                ),
+                // ── Dialog content — fades + scales ──
+                Center(
+                  child: Transform.scale(
+                    scale: scale,
+                    child: Opacity(
+                      opacity: opacity,
                       child: GestureDetector(
                         onTap: () {},
                         child: Padding(
@@ -167,8 +160,8 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
