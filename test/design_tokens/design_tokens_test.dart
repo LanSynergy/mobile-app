@@ -14,22 +14,24 @@ void main() {
       expect(tiers, hasLength(5));
     });
 
-    test('durations match the Dark Moody spec', () {
-      expect(AfDurations.instant.inMilliseconds, 60);
-      expect(AfDurations.quick.inMilliseconds, 120);
-      expect(AfDurations.standard.inMilliseconds, 200);
-      expect(AfDurations.expressive.inMilliseconds, 350);
-      expect(AfDurations.long.inMilliseconds, 500);
+    test('durations match the iOS-like spec', () {
+      expect(AfDurations.instant.inMilliseconds, 80);
+      expect(AfDurations.quick.inMilliseconds, 180);
+      expect(AfDurations.standard.inMilliseconds, 350);
+      expect(AfDurations.expressive.inMilliseconds, 500);
+      expect(AfDurations.long.inMilliseconds, 700);
     });
 
-    test('exactly five easing curves are exposed', () {
+    test('exactly seven easing curves are exposed', () {
       expect(const [
         AfCurves.easeStandard,
         AfCurves.easeEmphasized,
+        AfCurves.springPresent,
+        AfCurves.springDismiss,
         AfCurves.easeOut,
         AfCurves.easeIn,
         AfCurves.linear,
-      ], hasLength(5));
+      ], hasLength(7));
     });
   });
 
