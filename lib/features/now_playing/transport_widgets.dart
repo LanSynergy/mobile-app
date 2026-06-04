@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_shaders_ui/flutter_shaders_ui.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Loop;
 
@@ -15,8 +14,6 @@ import '../../widgets/af_dialog.dart';
 import '../../widgets/press_scale.dart';
 
 /// Transport controls — play/pause/skip/shuffle/repeat.
-///
-/// Watches playing/shuffle/loop — rebuilds on transport state changes only.
 class ReactiveTransport extends ConsumerWidget {
   const ReactiveTransport({super.key, required this.track});
   final AfTrack track;
@@ -166,7 +163,6 @@ class TransportRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Shuffle
         GestureDetector(
           onLongPress: onShuffleLongPress,
           child: TransportButton(
@@ -181,7 +177,6 @@ class TransportRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AfSpacing.s12),
-        // Previous
         Semantics(
           label: 'Previous track',
           child: TransportButton(
@@ -194,7 +189,6 @@ class TransportRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AfSpacing.s16),
-        // Play / Pause — spectral glow
         Semantics(
           label: isPlaying ? 'Pause' : 'Play',
           child: PlayButton(
@@ -204,7 +198,6 @@ class TransportRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AfSpacing.s16),
-        // Next
         Semantics(
           label: 'Next track',
           child: TransportButton(
@@ -217,7 +210,6 @@ class TransportRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AfSpacing.s12),
-        // Repeat
         TransportButton(
           icon: Stack(
             clipBehavior: Clip.none,
@@ -277,9 +269,7 @@ class TransportButton extends StatelessWidget {
   }
 }
 
-/// Play/pause button with spectral ambient glow.
-/// 64dp circle with [accent] background and a pulsing outer glow shadow
-/// driven by the spectral energy color.
+/// Play/pause button with spectral ambient glow and animations.
 ///
 /// Animations:
 /// - Scale bounce on play/pause toggle
@@ -302,7 +292,6 @@ class PlayButton extends ConsumerStatefulWidget {
 
 class _PlayButtonState extends ConsumerState<PlayButton>
     with SingleTickerProviderStateMixin {
-  // One-shot scale bounce controller (forward → reverse)
   late final AnimationController _scaleController = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 250),
@@ -312,7 +301,6 @@ class _PlayButtonState extends ConsumerState<PlayButton>
     end: 0.85,
   ).animate(CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut));
 
-  // Continuous shadow pulse controller
   late final AnimationController _pulseController = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1200),
@@ -334,11 +322,7 @@ class _PlayButtonState extends ConsumerState<PlayButton>
   void _onPlayStateChanged(bool isPlaying) {
     if (_previousIsPlaying != isPlaying) {
       _previousIsPlaying = isPlaying;
-
-      // Scale bounce: forward then reverse
       _scaleController.forward(from: 0.0);
-
-      // Shadow pulse: start/stop
       if (isPlaying) {
         _pulseController.repeat(reverse: true);
       } else {
@@ -348,8 +332,6 @@ class _PlayButtonState extends ConsumerState<PlayButton>
     }
   }
 
-  /// Returns black or white depending on the accent color luminance
-  /// for maximum contrast on the spectral background.
   static Color _contrastColor(Color accent) {
     return accent.computeLuminance() > 0.45
         ? AfColors.surfaceCanvas
@@ -359,74 +341,65 @@ class _PlayButtonState extends ConsumerState<PlayButton>
   @override
   Widget build(BuildContext context) {
     final isBuffering = ref.watch(isBufferingProvider);
-
-    // Sync play-state changes and drive animations
     _onPlayStateChanged(widget.isPlaying);
 
     return PressScale(
       ensureHitTarget: false,
       onTap: widget.onTap,
-      child: PulseEffect(
-        color: widget.accent,
-        intensity: 0.35,
-        speed: 0.8,
-        enabled: widget.isPlaying,
-        child: AnimatedBuilder(
-          animation: Listenable.merge([_scaleController, _pulseController]),
-          builder: (context, child) {
-            // Shadow pulse: blurRadius oscillates 24 → 32 → 24
-            final pulseBlur = 24.0 + 8.0 * _pulseAnimation.value;
-            final pulseOuterBlur = 48.0 + 8.0 * _pulseAnimation.value;
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_scaleController, _pulseController]),
+        builder: (context, child) {
+          final pulseBlur = 24.0 + 8.0 * _pulseAnimation.value;
+          final pulseOuterBlur = 48.0 + 8.0 * _pulseAnimation.value;
 
-            return Transform.scale(
-              scale: _scaleAnimation.value,
-              child: Container(
-                width: AfSpacing.playButtonSize,
-                height: AfSpacing.playButtonSize,
-                decoration: BoxDecoration(
-                  color: widget.accent,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: widget.accent.withValues(alpha: 0.40),
-                      blurRadius: pulseBlur,
-                      spreadRadius: 2,
-                    ),
-                    BoxShadow(
-                      color: widget.accent.withValues(alpha: 0.15),
-                      blurRadius: pulseOuterBlur,
-                      spreadRadius: 4,
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: isBuffering
-                      ? SizedBox(
-                          width: AfSpacing.s24,
-                          height: AfSpacing.s24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: _contrastColor(widget.accent),
-                          ),
-                        )
-                      : AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          transitionBuilder: (child, anim) =>
-                              ScaleTransition(scale: anim, child: child),
-                          child: Icon(
-                            widget.isPlaying
-                                ? LucideIcons.pause
-                                : LucideIcons.play,
-                            key: ValueKey(widget.isPlaying),
-                            color: _contrastColor(widget.accent),
-                            size: 28,
-                          ),
-                        ),
-                ),
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Container(
+              width: AfSpacing.playButtonSize,
+              height: AfSpacing.playButtonSize,
+              decoration: BoxDecoration(
+                color: widget.accent,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.accent.withValues(alpha: 0.40),
+                    blurRadius: pulseBlur,
+                    spreadRadius: 2,
+                  ),
+                  BoxShadow(
+                    color: widget.accent.withValues(alpha: 0.15),
+                    blurRadius: pulseOuterBlur,
+                    spreadRadius: 4,
+                  ),
+                ],
               ),
-            );
-          },
-        ),
+              child: Center(
+                child: isBuffering
+                    ? SizedBox(
+                        width: AfSpacing.s24,
+                        height: AfSpacing.s24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: _contrastColor(widget.accent),
+                        ),
+                      )
+                    : AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        transitionBuilder: (child, anim) =>
+                            ScaleTransition(scale: anim, child: child),
+                        child: Icon(
+                          widget.isPlaying
+                              ? LucideIcons.pause
+                              : LucideIcons.play,
+                          key: ValueKey(widget.isPlaying),
+                          color: _contrastColor(widget.accent),
+                          size: 28,
+                        ),
+                      ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
