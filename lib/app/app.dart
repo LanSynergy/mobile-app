@@ -36,30 +36,31 @@ class AetherfinApp extends ConsumerWidget {
   }
 }
 
-class _AetherfinRouter extends ConsumerWidget {
+class _AetherfinRouter extends StatelessWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ValueListenableBuilder<Spectral>(
-      valueListenable: animatedSpectral,
-      builder: (context, spectral, _) {
-        final theme = buildNocturneThemeFromSpectral(spectral);
-
-        return MaterialApp.router(
-          title: 'Aetherfin',
-          debugShowCheckedModeBanner: false,
-          themeMode: ThemeMode.dark,
-          darkTheme: theme,
-          theme: theme,
-          routerConfig: appRouter,
-          builder: (context, child) {
-            final mq = MediaQuery.of(context);
-            final clamped = mq.textScaler.clamp(
-              minScaleFactor: 0.85,
-              maxScaleFactor: 1.3,
-            );
-            return MediaQuery(
-              data: mq.copyWith(textScaler: clamped),
-              child: child ?? const SizedBox.shrink(),
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      title: 'Aetherfin',
+      debugShowCheckedModeBanner: false,
+      themeMode: ThemeMode.dark,
+      darkTheme: buildNocturneThemeFromSpectral(Spectral.fallback),
+      theme: buildNocturneThemeFromSpectral(Spectral.fallback),
+      routerConfig: appRouter,
+      builder: (context, child) {
+        final mq = MediaQuery.of(context);
+        final clamped = mq.textScaler.clamp(
+          minScaleFactor: 0.85,
+          maxScaleFactor: 1.3,
+        );
+        return ValueListenableBuilder<Spectral>(
+          valueListenable: animatedSpectral,
+          builder: (context, spectral, _) {
+            return Theme(
+              data: buildNocturneThemeFromSpectral(spectral),
+              child: MediaQuery(
+                data: mq.copyWith(textScaler: clamped),
+                child: child ?? const SizedBox.shrink(),
+              ),
             );
           },
         );
