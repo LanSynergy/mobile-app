@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -117,31 +115,28 @@ class _ArtworkCard extends StatelessWidget {
           tag: 'now-playing-artwork',
           child: ClipRRect(
             borderRadius: BorderRadius.circular(cardRadius),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 0.5, sigmaY: 0.5),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(cardRadius),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 32,
-                      offset: const Offset(0, 12),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(cardRadius),
-                  child: Artwork(
-                    url: artworkUri?.toString() ?? track.imageUrl,
-                    size: double.infinity,
-                    radius: BorderRadius.zero,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(cardRadius),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 32,
+                    offset: const Offset(0, 12),
                   ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(cardRadius),
+                child: Artwork(
+                  url: artworkUri?.toString() ?? track.imageUrl,
+                  size: double.infinity,
+                  radius: BorderRadius.zero,
                 ),
               ),
             ),

@@ -272,31 +272,22 @@ class _BlockNotifier extends ChangeNotifier {
     if (!_lutReady) _initLut();
 
     // Copy raw frame into transition buffer (circular).
-    if (bands.length >= bins) {
-      _transitionBuffer[_transitionBufferIndex % _transitionCapacity].setAll(
-        0,
-        bands.sublist(0, bins),
-      );
-    } else {
-      _transitionBuffer[_transitionBufferIndex % _transitionCapacity].fillRange(
-        0,
-        bins,
-        0.0,
-      );
-      _transitionBuffer[_transitionBufferIndex % _transitionCapacity].setAll(
-        0,
-        bands,
-      );
+    // Use setAll instead of sublist to avoid allocation on every frame.
+    final buf = _transitionBuffer[_transitionBufferIndex % _transitionCapacity];
+    final int srcLen = bands.length;
+    final int copyLen = srcLen < bins ? srcLen : bins;
+    buf.setRange(0, copyLen, bands);
+    if (copyLen < bins) {
+      buf.fillRange(copyLen, bins, 0.0);
     }
     _transitionBufferIndex++;
 
     double energy = 0.0;
-    final int n = bands.length < bins ? bands.length : bins;
+    final int n = srcLen < bins ? srcLen : bins;
     for (var i = 0; i < n; i++) {
       final idx = (bands[i].clamp(0.0, 1.0) * (_lutSize - 1)).round();
-      final v = _pow10Lut[idx];
-      smoothed[i] = v;
-      energy += v;
+      smoothed[i] = _pow10Lut[idx];
+      energy += smoothed[i];
     }
     for (var i = n; i < bins; i++) {
       smoothed[i] = 0.0;
