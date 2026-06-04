@@ -187,7 +187,14 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
             await AppModeStore.clear();
             if (context.mounted) {
               ref.read(appModeProvider.notifier).state = null;
-              context.pop();
+              // null triggers resetRouterMode() in main.dart's modeSub,
+              // clearing the router's _appMode and _localOnboardingCompleted.
+              //
+              // Use go('/') instead of pop() to avoid redirect race:
+              // notifyAuthChanged() from modeSub fires synchronously and
+              // causes GoRouter to re-evaluate the redirect mid-pop,
+              // resulting in a "reload" of the same screen.
+              context.go('/');
             }
           },
         ),
