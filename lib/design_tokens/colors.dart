@@ -2,40 +2,40 @@ import 'package:flutter/material.dart';
 
 /// Aetherfin color tokens — Dark Moody palette.
 ///
-/// Deep blacks, warm amber/terracotta accents, album-art-driven atmosphere.
+/// Deep blacks, ocean blue accents, album-art-driven atmosphere.
 /// The runtime-extracted spectral accent lives in [Spectral] and is
 /// exposed via the `spectralProvider` Riverpod family — never embed
 /// spectral values here.
 abstract final class AfColors {
   // ---------------------------------------------------------------------------
-  // Surface scale — True blacks, no tint
+  // Surface scale — Cool blue-grey, no warm tint
   // Depth via tone, NOT blur, NOT shadow-as-decoration.
   //
   // Spaced ≥12 per channel so any 2-stop gradient between adjacent tokens
   // produces smooth transitions on 8-bit displays without extra stops.
   // ---------------------------------------------------------------------------
-  static const surfaceCanvas = Color(0xFF0A0A0A);
-  static const surfaceLow = Color(0xFF161616);
-  static const surfaceBase = Color(0xFF222222);
-  static const surfaceRaised = Color(0xFF2E2E2E);
-  static const surfaceHigh = Color(0xFF3A3A3A);
-  static const surfaceMax = Color(0xFF464646);
+  static const surfaceCanvas = Color(0xFF0A0B0E);
+  static const surfaceLow = Color(0xFF14161A);
+  static const surfaceBase = Color(0xFF1E2028);
+  static const surfaceRaised = Color(0xFF282A34);
+  static const surfaceHigh = Color(0xFF343640);
+  static const surfaceMax = Color(0xFF40424E);
   static const surfaceScrim = Color(0xCC000000);
 
   // ---------------------------------------------------------------------------
   // Foreground (text on dark canvas)
   // APCA targets: body Lc ≥ 60, secondary ≥ 45, tertiary ≥ 30.
   // ---------------------------------------------------------------------------
-  static const textPrimary = Color(0xFFF5F0EB);
-  static const textSecondary = Color(0xFFA89F94);
-  static const textTertiary = Color(0xFF6B6560);
-  static const textDisabled = Color(0xFF4A4540);
-  static const textOnPrimary = Color(0xFFFAF7F4);
+  static const textPrimary = Color(0xFFE8ECF2);
+  static const textSecondary = Color(0xFF9AA0AD);
+  static const textTertiary = Color(0xFF6B7280);
+  static const textDisabled = Color(0xFF4A4E58);
+  static const textOnPrimary = Color(0xFFF0F4F8);
   static const textLink = Color(0xFF5B9BD5);
 
   /// Label contrast — use where textTertiary fails WCAG AA at small sizes
   /// (section headers, uppercase labels, captions).
-  static const labelContrast = Color(0xFFA89F94); // same as textSecondary
+  static const labelContrast = Color(0xFF9AA0AD); // same as textSecondary
 
   // ---------------------------------------------------------------------------
   // Accent — Ocean blue
