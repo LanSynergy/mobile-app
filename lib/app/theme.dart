@@ -253,8 +253,8 @@ class _AfSlideUpTransition extends PageTransitionsBuilder {
 
     final curved = CurvedAnimation(
       parent: animation,
-      curve: AfCurves.easeStandard,
-      reverseCurve: AfCurves.easeStandard,
+      curve: AfCurves.springPresent,
+      reverseCurve: AfCurves.easeIn,
     );
 
     // Subtle fade: opacity goes from 0.0 → 1.0 (adds depth to slide).
