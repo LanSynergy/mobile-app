@@ -376,12 +376,10 @@ class _RootErrorWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
+                Text(
                   'Aetherfin hit a snag',
-                  style: TextStyle(
+                  style: AfTypography.titleMediumLarge.copyWith(
                     color: AfColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -393,20 +391,20 @@ class _RootErrorWidget extends StatelessWidget {
                       kReleaseMode
                           ? 'An unexpected error occurred. Please restart the app.'
                           : details.exceptionAsString(),
-                      style: const TextStyle(
+                      style: AfTypography.mono.copyWith(
                         color: AfColors.textSecondary,
-                        fontSize: 13,
-                        fontFamily: 'monospace',
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   kReleaseMode
                       ? 'Tap Restart on Android to retry.'
                       : 'Hot reload to retry.',
-                  style: TextStyle(color: AfColors.textTertiary, fontSize: 12),
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
                 ),
               ],
             ),
