@@ -31,18 +31,18 @@ abstract final class AfColors {
   static const textTertiary = Color(0xFF6B6560);
   static const textDisabled = Color(0xFF4A4540);
   static const textOnPrimary = Color(0xFFFAF7F4);
-  static const textLink = Color(0xFFD4A574);
+  static const textLink = Color(0xFF5B9BD5);
 
   /// Label contrast — use where textTertiary fails WCAG AA at small sizes
   /// (section headers, uppercase labels, captions).
   static const labelContrast = Color(0xFFA89F94); // same as textSecondary
 
   // ---------------------------------------------------------------------------
-  // Accent — Warm amber/terracotta
+  // Accent — Ocean blue
   // ---------------------------------------------------------------------------
-  static const accentPrimary = Color(0xFFD4A574); // Warm amber
-  static const accentSecondary = Color(0xFFC86E4B); // Terracotta
-  static const accentMuted = Color(0xFF8B7355); // Muted gold
+  static const accentPrimary = Color(0xFF5B9BD5); // Ocean blue
+  static const accentSecondary = Color(0xFF3A7CA5); // Deep blue
+  static const accentMuted = Color(0xFF6B8FA3); // Muted blue
 
   // Indigo scale kept for spectral fallback only
   static const indigo300 = Color(0xFFA89DEC);
@@ -52,10 +52,10 @@ abstract final class AfColors {
   static const indigo900 = Color(0xFF251F58);
 
   // ---------------------------------------------------------------------------
-  // Semantic — Warm-tinted
+  // Semantic
   // ---------------------------------------------------------------------------
   static const semanticSuccess = Color(0xFF7DB88F);
-  static const semanticWarning = Color(0xFFD4A574);
+  static const semanticWarning = Color(0xFF5B9BD5);
   static const semanticError = Color(0xFFD4735A);
   static const semanticInfo = Color(0xFF7BA3B8);
   static const semanticOffline = Color(0xFF706A64);
@@ -110,14 +110,14 @@ class Spectral {
 
   /// Default — used until artwork is parsed. Matches AfColors.accentPrimary.
   static const fallback = Spectral(
-    energy: Color(0xFFD4A574),
-    shadow: Color(0xFF1A1410),
-    glow: Color(0xFFE8C9A0),
-    primary: Color(0xFFD4A574),
-    secondary: Color(0xFFC86E4B),
-    muted: Color(0xFF8B7355),
-    link: Color(0xFFD4A574),
-    warning: Color(0xFFD4A574),
+    energy: Color(0xFF5B9BD5),
+    shadow: Color(0xFF0D1B2A),
+    glow: Color(0xFF7EC8E3),
+    primary: Color(0xFF5B9BD5),
+    secondary: Color(0xFF3A7CA5),
+    muted: Color(0xFF6B8FA3),
+    link: Color(0xFF5B9BD5),
+    warning: Color(0xFF5B9BD5),
   );
 
   @override
