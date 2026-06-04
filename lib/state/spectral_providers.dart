@@ -13,11 +13,22 @@ final spectralExtractorProvider = Provider<SpectralExtractor>((ref) {
   return SpectralExtractor();
 });
 
+/// Holds the last successfully extracted spectral — used to preserve
+/// colors during artwork transitions instead of flashing to fallback.
+Spectral _lastSpectral = Spectral.fallback;
+
 final currentSpectralProvider = Provider<Spectral>((ref) {
   final track = ref.watch(currentTrackProvider);
   final imageUrl = track?.imageUrl;
   final async = ref.watch(spectralFromUrlProvider(imageUrl));
-  return async.maybeWhen(data: (s) => s, orElse: () => Spectral.fallback);
+  return async.maybeWhen(
+    data: (s) {
+      _lastSpectral = s;
+      return s;
+    },
+    // Loading or error — keep previous spectral (no flash to fallback).
+    orElse: () => _lastSpectral,
+  );
 });
 
 final spectralFromUrlProvider = FutureProvider.autoDispose
