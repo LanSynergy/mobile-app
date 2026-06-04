@@ -3,6 +3,8 @@ import 'package:drift/drift.dart';
 import '../../utils/sql.dart';
 import '../jellyfin/models/items.dart';
 import 'app_database.dart';
+import 'artist_repository.dart';
+import 'genre_repository.dart';
 import 'local_db_albums.dart';
 import 'local_db_co_occurrences.dart';
 import 'local_db_playlists.dart';
@@ -20,6 +22,8 @@ class LocalDb {
     trackStats = TrackStatsRepository(db);
     coOccurrences = CoOccurrenceRepository(db);
     lastfm = LastFmCacheRepository(db);
+    _artistRepo = ArtistRepository(db);
+    _genreRepo = GenreRepository(db);
   }
   final AppDatabase db;
 
@@ -29,6 +33,8 @@ class LocalDb {
   late final TrackStatsRepository trackStats;
   late final CoOccurrenceRepository coOccurrences;
   late final LastFmCacheRepository lastfm;
+  late final ArtistRepository _artistRepo;
+  late final GenreRepository _genreRepo;
 
   // ── Folders ─────────────────────────────────────────────────────────────
 
@@ -152,129 +158,20 @@ class LocalDb {
 
   // ── Artists ─────────────────────────────────────────────────────────────
 
-  Future<List<AfArtist>> allArtists() async {
-    final rows = await db.customSelect('''
-      SELECT artist, COUNT(DISTINCT album) as album_count,
-             COUNT(*) as track_count, MIN(cover_path) as cover_path
-      FROM tracks
-      WHERE artist != ''
-      GROUP BY artist
-      ORDER BY artist COLLATE NOCASE ASC
-    ''').get();
-    return rows.map((r) {
-      final name = r.read<String?>('artist') ?? 'Unknown';
-      return AfArtist(
-        id: 'local:artist:$name',
-        name: name,
-        albumCount: r.read<int?>('album_count') ?? 0,
-        trackCount: r.read<int?>('track_count') ?? 0,
-        imageUrl: r.read<String?>('cover_path') != null
-            ? 'file://${r.read<String>('cover_path')}'
-            : null,
-      );
-    }).toList();
-  }
+  /// Backward-compatible delegate to [ArtistRepository].
+  Future<List<AfArtist>> allArtists() => _artistRepo.allArtists();
 
-  Future<AfArtist?> artistByName(String name) async {
-    final rows = await db
-        .customSelect(
-          r'''
-      SELECT artist, COUNT(DISTINCT album) as album_count,
-             COUNT(*) as track_count, MIN(cover_path) as cover_path
-      FROM tracks
-      WHERE artist != ''
-        AND artist = ?1
-      GROUP BY artist
-      LIMIT 1
-      ''',
-          variables: [Variable<String>(name)],
-          readsFrom: {db.tracks},
-        )
-        .get();
-    if (rows.isEmpty) return null;
-    final r = rows.first;
-    final resolved = r.read<String?>('artist') ?? 'Unknown';
-    return AfArtist(
-      id: 'local:artist:$resolved',
-      name: resolved,
-      albumCount: r.read<int?>('album_count') ?? 0,
-      trackCount: r.read<int?>('track_count') ?? 0,
-      imageUrl: r.read<String?>('cover_path') != null
-          ? 'file://${r.read<String>('cover_path')}'
-          : null,
-    );
-  }
+  /// Backward-compatible delegate to [ArtistRepository].
+  Future<AfArtist?> artistByName(String name) => _artistRepo.artistByName(name);
 
-  Future<List<AfArtist>> searchArtists(String query, {int limit = 50}) async {
-    final like = '%${escapeSqlLike(query)}%';
-    final rows = await db
-        .customSelect(
-          r'''
-      SELECT artist, COUNT(DISTINCT album) as album_count,
-             COUNT(*) as track_count, MIN(cover_path) as cover_path
-      FROM tracks
-      WHERE artist != ''
-        AND artist LIKE ?1 ESCAPE '\'
-      GROUP BY artist
-      ORDER BY artist COLLATE NOCASE ASC
-      LIMIT ?2
-      ''',
-          variables: [Variable<String>(like), Variable<int>(limit)],
-          readsFrom: {db.tracks},
-        )
-        .get();
-    return rows.map((r) {
-      final name = r.read<String?>('artist') ?? 'Unknown';
-      return AfArtist(
-        id: 'local:artist:$name',
-        name: name,
-        albumCount: r.read<int?>('album_count') ?? 0,
-        trackCount: r.read<int?>('track_count') ?? 0,
-        imageUrl: r.read<String?>('cover_path') != null
-            ? 'file://${r.read<String>('cover_path')}'
-            : null,
-      );
-    }).toList();
-  }
+  /// Backward-compatible delegate to [ArtistRepository].
+  Future<List<AfArtist>> searchArtists(String query, {int limit = 50}) =>
+      _artistRepo.searchArtists(query, limit: limit);
 
   // ── Genres ──────────────────────────────────────────────────────────────
 
-  Future<List<AfGenre>> allGenres() async {
-    final rows = await db.customSelect('''
-      SELECT genre, COUNT(*) as count, MIN(cover_path) as cover_path
-      FROM tracks
-      WHERE genre != ''
-      GROUP BY genre
-      ORDER BY genre COLLATE NOCASE ASC
-    ''').get();
-    const palette = <String>[
-      '#5644C9',
-      '#A89DEC',
-      '#3FD18C',
-      '#FF7A59',
-      '#F8C42D',
-      '#FF6FB5',
-      '#3DB6FF',
-      '#FF4D6D',
-    ];
-    int index = 0;
-    final results = <AfGenre>[];
-    for (final r in rows) {
-      final name = r.read<String?>('genre') ?? '';
-      if (name.isEmpty) continue;
-      results.add(
-        AfGenre(
-          name,
-          palette[index % palette.length],
-          imageUrl: r.read<String?>('cover_path') != null
-              ? 'file://${r.read<String>('cover_path')}'
-              : null,
-        ),
-      );
-      index++;
-    }
-    return results;
-  }
+  /// Backward-compatible delegate to [GenreRepository].
+  Future<List<AfGenre>> allGenres() => _genreRepo.allGenres();
 
   // ── Favorites ─────────────────────────────────────────────────────────
 

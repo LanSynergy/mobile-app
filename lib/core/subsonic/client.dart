@@ -285,10 +285,12 @@ class SubsonicClient implements MusicBackend {
         }
       }
       afLog('subsonic', 'OpenSubsonic capabilities detected: $_capabilities');
-    } catch (e) {
+    } catch (e, stack) {
       afLog(
         'subsonic',
         'Failed to fetch OpenSubsonic extensions, assuming standard Subsonic: $e',
+        error: e,
+        stackTrace: stack,
       );
     }
 
@@ -320,11 +322,12 @@ class SubsonicClient implements MusicBackend {
       try {
         final detail = await album(a.id);
         if (detail != null) tracks.addAll(detail.tracks);
-      } catch (e) {
+      } catch (e, stack) {
         afLog(
           'subsonic',
           'recentlyPlayed album fetch failed id=${a.id}',
           error: e,
+          stackTrace: stack,
         );
       }
     }
@@ -506,8 +509,8 @@ class SubsonicClient implements MusicBackend {
         albumArtist: data['albumArtist'] as String?,
         composer: data['composer'] as String?,
       );
-    } catch (e) {
-      afLog('subsonic', 'getSong failed for $id', error: e);
+    } catch (e, stack) {
+      afLog('subsonic', 'getSong failed for $id', error: e, stackTrace: stack);
       return null;
     }
   }
@@ -540,8 +543,13 @@ class SubsonicClient implements MusicBackend {
           (topSongs?['song'] as List?)?.cast<Map<String, dynamic>>() ??
           const [];
       return songs.map(parseTrack).toList(growable: false);
-    } catch (e) {
-      afLog('subsonic', 'getTopSongs failed, falling back to search', error: e);
+    } catch (e, stack) {
+      afLog(
+        'subsonic',
+        'getTopSongs failed, falling back to search',
+        error: e,
+        stackTrace: stack,
+      );
       // getTopSongs may not be supported; fall back to search
       try {
         final root = await _get('search3', {
@@ -555,8 +563,13 @@ class SubsonicClient implements MusicBackend {
             (results?['song'] as List?)?.cast<Map<String, dynamic>>() ??
             const [];
         return songs.map(parseTrack).toList(growable: false);
-      } catch (e2) {
-        afLog('subsonic', 'search3 fallback also failed', error: e2);
+      } catch (e2, stack2) {
+        afLog(
+          'subsonic',
+          'search3 fallback also failed',
+          error: e2,
+          stackTrace: stack2,
+        );
         return const [];
       }
     }
@@ -743,8 +756,8 @@ class SubsonicClient implements MusicBackend {
       final songs =
           (data?['song'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
       return songs.map(parseTrack).toList(growable: false);
-    } catch (e) {
-      afLog('subsonic', 'getSimilarSongs2 failed', error: e);
+    } catch (e, stack) {
+      afLog('subsonic', 'getSimilarSongs2 failed', error: e, stackTrace: stack);
       // getSimilarSongs2 may not be supported; return empty
       return const [];
     }
@@ -785,8 +798,13 @@ class SubsonicClient implements MusicBackend {
         }
       }
       return buf.toString();
-    } catch (e) {
-      afLog('subsonic', 'getLyricsBySongId failed', error: e);
+    } catch (e, stack) {
+      afLog(
+        'subsonic',
+        'getLyricsBySongId failed',
+        error: e,
+        stackTrace: stack,
+      );
       // Fall back to legacy getLyrics (requires artist + title)
       return null;
     }
@@ -841,8 +859,13 @@ class SubsonicClient implements MusicBackend {
   Future<void> reportPlaybackStart(String trackId) async {
     try {
       await _get('scrobble', {'id': trackId, 'submission': false});
-    } catch (e) {
-      afLog('subsonic', 'reportPlaybackStart scrobble failed', error: e);
+    } catch (e, stack) {
+      afLog(
+        'subsonic',
+        'reportPlaybackStart scrobble failed',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -859,8 +882,13 @@ class SubsonicClient implements MusicBackend {
         'submission': false,
         'time': '${position.inMilliseconds}',
       });
-    } catch (e) {
-      afLog('subsonic', 'reportProgress scrobble failed', error: e);
+    } catch (e, stack) {
+      afLog(
+        'subsonic',
+        'reportProgress scrobble failed',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -876,8 +904,13 @@ class SubsonicClient implements MusicBackend {
         'submission': submission,
         'time': '${position.inMilliseconds}',
       });
-    } catch (e) {
-      afLog('subsonic', 'reportPlaybackStop scrobble failed', error: e);
+    } catch (e, stack) {
+      afLog(
+        'subsonic',
+        'reportPlaybackStop scrobble failed',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 

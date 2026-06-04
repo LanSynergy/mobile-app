@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:collection';
 
 import 'package:flutter/foundation.dart' show VoidCallback, visibleForTesting;
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -13,6 +12,7 @@ import 'position_tracker.dart';
 import 'player_settings_store.dart';
 import 'queue_manager.dart';
 import 'stream_prefetcher.dart';
+import 'stream_url_cache.dart';
 
 import 'spectrum_settings.dart';
 
@@ -184,22 +184,12 @@ class AfPlayerService {
 
   /// Gets a cached stream URL for the given track, or null if not cached
   String? _getCachedStreamUrl(String trackId) {
-    return _streamUrlCache[trackId];
+    return _streamUrlCache.get(trackId);
   }
 
   /// Caches a stream URL for the given track, with LRU eviction
   void _cacheStreamUrl(String trackId, String url) {
-    // If already cached, update and move to end (most recently used)
-    if (_streamUrlCache.containsKey(trackId)) {
-      _streamUrlCache.remove(trackId);
-    }
-
-    _streamUrlCache[trackId] = url;
-
-    // Evict oldest if at capacity
-    if (_streamUrlCache.length > _streamUrlCacheSize) {
-      _streamUrlCache.remove(_streamUrlCache.keys.first);
-    }
+    _streamUrlCache.put(trackId, url);
   }
 
   /// Clears the stream URL cache
@@ -235,14 +225,7 @@ class AfPlayerService {
   /// can lazily resolve stream URLs when rebuilding the 2-track window.
   FutureOr<String> Function(AfTrack)? _resolveStreamUrl;
 
-  /// LRU cache for stream URLs to avoid repeated resolution
-  /// Maps trackId -> resolved URL
-  static const int _streamUrlCacheSize = 100;
-  final LinkedHashMap<String, String> _streamUrlCache =
-      LinkedHashMap<String, String>(
-        equals: (a, b) => a == b,
-        hashCode: (a) => a.hashCode,
-      );
+  final StreamUrlCache _streamUrlCache = StreamUrlCache();
 
   bool _userPaused = false;
   final AfAsyncLock _queueLock = AfAsyncLock();

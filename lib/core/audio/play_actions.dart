@@ -78,8 +78,8 @@ class PlayActions {
           sourceType: sourceType,
           sourceId: sourceId,
         );
-      } catch (e) {
-        afLog('data', 'queueHistory save failed', error: e);
+      } catch (e, stack) {
+        afLog('data', 'queueHistory save failed', error: e, stackTrace: stack);
       }
     } catch (e, stack) {
       afLog('audio', 'playQueue failed', error: e, stackTrace: stack);
@@ -180,11 +180,12 @@ class PlayActions {
             .where((t) => t.id != seed.id && seenIds.add(t.id))
             .take(20)
             .toList();
-      } catch (e) {
+      } catch (e, stack) {
         afLog(
           'play-actions',
           'Instant mix failed for seed=${seed.id}',
           error: e,
+          stackTrace: stack,
         );
         return const [];
       }
@@ -201,11 +202,12 @@ class PlayActions {
           if (results.length >= 20) break;
           if (seenIds.add(t.id)) results.add(t);
         }
-      } catch (e) {
+      } catch (e, stack) {
         afLog(
           'play-actions',
           'Genre lookup failed for genre=${seed.genre}',
           error: e,
+          stackTrace: stack,
         );
       }
 
@@ -214,11 +216,12 @@ class PlayActions {
           if (results.length >= 20) break;
           if (seenIds.add(t.id)) results.add(t);
         }
-      } catch (e) {
+      } catch (e, stack) {
         afLog(
           'play-actions',
           'Artist lookup failed for artist=${seed.artistName}',
           error: e,
+          stackTrace: stack,
         );
       }
     }
@@ -327,11 +330,12 @@ class PlayActions {
           .getRecentlySkippedTrackIds()
           .catchError((_) => <String>[]);
       seenIds.addAll(skippedIds);
-    } catch (e) {
+    } catch (e, stack) {
       afLog(
         'play-actions',
         'Failed to load recently skipped track IDs',
         error: e,
+        stackTrace: stack,
       );
     }
 
@@ -359,11 +363,12 @@ class PlayActions {
             queue.add(t);
           }
         }
-      } catch (e) {
+      } catch (e, stack) {
         afLog(
           'audio',
           'Propagation step failed for track=${nextSeed.id}',
           error: e,
+          stackTrace: stack,
         );
         break; // Stop propagation on error
       }
@@ -394,11 +399,12 @@ class PlayActions {
               queue.add(t);
             }
           }
-        } catch (e) {
+        } catch (e, stack) {
           afLog(
             'audio',
             'Artist top tracks backfill failed for artistId=$artistId',
             error: e,
+            stackTrace: stack,
           );
         }
       }
@@ -422,11 +428,12 @@ class PlayActions {
               }
             }
           }
-        } catch (e) {
+        } catch (e, stack) {
           afLog(
             'audio',
             'Search backfill failed for artistName=$artistName',
             error: e,
+            stackTrace: stack,
           );
         }
       }
@@ -451,11 +458,12 @@ class PlayActions {
               }
             }
           }
-        } catch (e) {
+        } catch (e, stack) {
           afLog(
             'audio',
             'Album backfill failed for albumId=$albumId',
             error: e,
+            stackTrace: stack,
           );
         }
       }

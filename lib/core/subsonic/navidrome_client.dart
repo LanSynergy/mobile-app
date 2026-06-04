@@ -90,11 +90,12 @@ class NavidromeClient extends SubsonicClient {
       _ndToken = token;
       _ndDio.options.headers['x-nd-authorization'] = 'Bearer $_ndToken';
       afLog('subsonic', 'Navidrome native REST API authenticated successfully');
-    } on DioException catch (e) {
+    } on DioException catch (e, stack) {
       afLog(
         'subsonic',
         'Navidrome native REST API login failed: ${e.message}',
         error: e,
+        stackTrace: stack,
       );
       rethrow;
     }
@@ -106,10 +107,12 @@ class NavidromeClient extends SubsonicClient {
     if (serverTypeString?.toLowerCase() == 'navidrome' && _ndToken == null) {
       try {
         await _loginNavidrome();
-      } catch (e) {
+      } catch (e, stack) {
         afLog(
           'subsonic',
           'Failed to authenticate Navidrome REST during ping: $e',
+          error: e,
+          stackTrace: stack,
         );
         // Don't rethrow — the Subsonic API ping succeeded, so the
         // connection is usable for Subsonic operations even if the
@@ -141,8 +144,13 @@ class NavidromeClient extends SubsonicClient {
         'subsonic',
         'Saved play queue to Navidrome: count=${trackIds.length}',
       );
-    } catch (e) {
-      afLog('subsonic', 'Failed to save play queue to Navidrome', error: e);
+    } catch (e, stack) {
+      afLog(
+        'subsonic',
+        'Failed to save play queue to Navidrome',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -177,8 +185,13 @@ class NavidromeClient extends SubsonicClient {
         currentIndex: current,
         position: Duration(milliseconds: posMs),
       );
-    } catch (e) {
-      afLog('subsonic', 'Failed to fetch play queue from Navidrome', error: e);
+    } catch (e, stack) {
+      afLog(
+        'subsonic',
+        'Failed to fetch play queue from Navidrome',
+        error: e,
+        stackTrace: stack,
+      );
       return null;
     }
   }
