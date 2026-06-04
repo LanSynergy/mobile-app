@@ -8,6 +8,7 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/skeletons/playlist_skeleton.dart';
 import '../../widgets/af_scrollbar.dart';
+import '../../widgets/tile.dart';
 import 'import_m3u_dialog.dart';
 
 class PlaylistListScreen extends ConsumerWidget {
@@ -173,19 +174,27 @@ class PlaylistListScreen extends ConsumerWidget {
       slivers.add(
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-          sliver: SliverList.separated(
-            itemCount: list.length,
-            separatorBuilder: (context, index) =>
-                const SizedBox(height: AfSpacing.s8),
-            itemBuilder: (context, i) {
-              final p = list[i];
-              return _PlaylistCard(
-                leading: _IconBadge(icon: LucideIcons.listMusic, tint: muted),
-                title: p.name,
-                subtitle: p.trackCountLabel,
-                onTap: () => context.push('/playlist/${p.id}'),
-              );
-            },
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisExtent: 220,
+              crossAxisSpacing: AfSpacing.s16,
+              mainAxisSpacing: AfSpacing.s16,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, i) {
+                final p = list[i];
+                return Tile(
+                  title: p.name,
+                  subtitle: p.trackCountLabel,
+                  variant: TileVariant.playlist,
+                  imageUrl: p.imageUrl,
+                  size: double.infinity,
+                  onTap: () => context.push('/playlist/${p.id}'),
+                );
+              },
+              childCount: list.length,
+            ),
           ),
         ),
       );
