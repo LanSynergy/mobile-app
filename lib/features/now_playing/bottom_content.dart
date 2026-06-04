@@ -10,6 +10,7 @@ import '../../widgets/favorite_heart_button.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/marquee_text.dart';
 import '../../widgets/press_scale.dart';
+import '../sleep_timer/sleep_timer_screen.dart';
 import 'more_menu.dart';
 import 'reactive_progress.dart';
 import 'transport_widgets.dart';
@@ -228,6 +229,7 @@ class MetadataOverlay extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final spectral = ref.watch(currentSpectralProvider);
+    final sleepRemaining = ref.watch(sleepTimerRemainingProvider);
     return Row(
       children: [
         // Title + artist
@@ -266,8 +268,37 @@ class MetadataOverlay extends ConsumerWidget {
         const SizedBox(width: AfSpacing.s12),
         // Heart toggle
         FavoriteHeartButton(track: track, size: 22),
-        // Quality badge
-        if (track.quality != null) ...[
+        // Dynamic badge: sleep timer countdown or quality
+        if (sleepRemaining != null) ...[
+          const SizedBox(width: AfSpacing.s4),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.s8,
+              vertical: AfSpacing.s4,
+            ),
+            decoration: BoxDecoration(
+              color: spectral.muted.withValues(alpha: 0.2),
+              borderRadius: AfRadii.borderPill,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  LucideIcons.timer,
+                  size: 12,
+                  color: AfColors.textSecondary,
+                ),
+                const SizedBox(width: AfSpacing.s2),
+                Text(
+                  _formatRemaining(sleepRemaining),
+                  style: AfTypography.caption.copyWith(
+                    color: AfColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else if (track.quality != null) ...[
           const SizedBox(width: AfSpacing.s4),
           Container(
             padding: const EdgeInsets.symmetric(
@@ -297,4 +328,17 @@ class MetadataOverlay extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Format sleep timer remaining as "12:34" or "1h 23m" depending on magnitude.
+String _formatRemaining(Duration d) {
+  final totalMinutes = d.inMinutes;
+  if (totalMinutes >= 60) {
+    final h = totalMinutes ~/ 60;
+    final m = totalMinutes % 60;
+    return m > 0 ? '${h}h ${m}m' : '${h}h';
+  }
+  final mm = totalMinutes.toString().padLeft(2, '0');
+  final ss = (d.inSeconds % 60).toString().padLeft(2, '0');
+  return '$mm:$ss';
 }
