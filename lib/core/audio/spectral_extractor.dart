@@ -70,6 +70,7 @@ class SpectralExtractor {
       final palette = await PaletteGeneratorMaster.fromImageProvider(
         provider,
         maximumColorCount: 16,
+        colorSpace: ColorSpace.lab,
       );
       final result = _pickBestSpectral(palette);
       _cache[key] = result;
@@ -88,12 +89,13 @@ class SpectralExtractor {
     }
   }
 
-  /// Picks the best spectral triple from the palette.
+  /// Picks the best spectral color from the palette.
   ///
   /// Strategy priority:
-  ///   1. Vibrant color from the palette (if it has decent population)
-  ///   2. Highest chroma × population score across all quantized colors
-  ///   3. Fallback to default
+  ///   1. Dominant color — largest population, most representative of artwork
+  ///   2. Vibrant color — only if it has significant population (>15%)
+  ///   3. Best scored color — population-weighted chroma score
+  ///   4. Fallback to default
   Spectral _pickBestSpectral(PaletteGeneratorMaster palette) {
     final pColors = palette.paletteColors;
     if (pColors.isEmpty) return Spectral.fallback;
@@ -104,25 +106,36 @@ class SpectralExtractor {
     );
     if (totalPopulation == 0) return Spectral.fallback;
 
-    // ── Strategy 1: Use the palette's vibrant target if it exists ──
-    final vibrant = palette.vibrantColor;
-    if (vibrant != null) {
-      final oklch = srgbToOklch(vibrant.color);
-      if (oklch.c >= 0.05 && oklch.l >= 0.15 && oklch.l <= 0.85) {
+    // ── Strategy 1: Dominant color (largest population) ──
+    final dominant = palette.dominantColor;
+    if (dominant != null) {
+      final oklch = srgbToOklch(dominant.color);
+      if (oklch.c >= 0.04 && oklch.l >= 0.15 && oklch.l <= 0.85) {
         return _buildFromSample(oklch);
       }
     }
 
-    // ── Strategy 2: Score all quantized colors ──
+    // ── Strategy 2: Vibrant — only if significant population (>15%) ──
+    final vibrant = palette.vibrantColor;
+    if (vibrant != null) {
+      final popShare = vibrant.population / totalPopulation;
+      if (popShare > 0.15) {
+        final oklch = srgbToOklch(vibrant.color);
+        if (oklch.c >= 0.05 && oklch.l >= 0.15 && oklch.l <= 0.85) {
+          return _buildFromSample(oklch);
+        }
+      }
+    }
+
+    // ── Strategy 3: Best population-weighted chroma score ──
+    // Score = chroma² × population — heavily penalizes tiny accents.
     final candidates = <_ScoredColor>[];
     for (final pc in pColors) {
       final oklch = srgbToOklch(pc.color);
       if (oklch.c < 0.04) continue; // grey
       if (oklch.l < 0.12 || oklch.l > 0.88) continue; // near-black/white
-      // Score: chroma-weighted by population share.
-      // sqrt(population) to avoid a single dominant-but-dull color winning.
       final popShare = pc.population / totalPopulation;
-      final score = oklch.c * math.sqrt(popShare);
+      final score = oklch.c * oklch.c * popShare;
       candidates.add(_ScoredColor(oklch, score));
     }
 
