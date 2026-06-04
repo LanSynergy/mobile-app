@@ -271,27 +271,33 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
                     ),
                   ),
 
-                  // ── Expanded lyrics ──
-                  if (lrc != null && lrc.lines.isNotEmpty && isExpanded)
-                    _LyricsList(
-                      lrc: lrc,
-                      active: active,
-                      spectralEnergy: spectral.energy,
-                      scrollController: _scrollCtrl,
-                      isSynced: isSynced,
-                    )
-                  else if (lrcAsync.isLoading && isExpanded)
-                    const Padding(
-                      padding: EdgeInsets.all(AfSpacing.s24),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AfColors.textTertiary,
-                        ),
-                      ),
-                    )
-                  else if (isExpanded)
-                    _EmptyLyrics(track: track),
+                  // ── Expanded lyrics (animated via SizeTransition + FadeTransition) ──
+                  SizeTransition(
+                    sizeFactor: _expandAnim,
+                    alignment: AlignmentDirectional.topStart,
+                    child: FadeTransition(
+                      opacity: _expandAnim,
+                      child: lrc != null && lrc.lines.isNotEmpty
+                          ? _LyricsList(
+                              lrc: lrc,
+                              active: active,
+                              spectralEnergy: spectral.energy,
+                              scrollController: _scrollCtrl,
+                              isSynced: isSynced,
+                            )
+                          : lrcAsync.isLoading
+                          ? const Padding(
+                              padding: EdgeInsets.all(AfSpacing.s24),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AfColors.textTertiary,
+                                ),
+                              ),
+                            )
+                          : _EmptyLyrics(track: track),
+                    ),
+                  ),
                 ],
               ),
             ),
