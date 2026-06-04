@@ -41,12 +41,6 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            <!-- Flutter tools requires LAUNCHER inside <activity> —
-                 the active activity-alias takes precedence on the launcher. -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
             <!-- Theme used while the Flutter engine is warming up. -->
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
