@@ -177,21 +177,15 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
         val uri = data.data!!
         if (requestCode == PICK_FOLDER_REQUEST) {
             try {
-                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                // Only READ/WRITE flags are valid here. PERSISTABLE is
+                // set on the launching intent (line 144-147), not on the
+                // takePersistableUriPermission call itself.
+                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                 activity?.contentResolver?.takePersistableUriPermission(uri, flags)
-            } catch (e: SecurityException) {
+            } catch (_: Exception) {
                 // Some custom ROM document providers reject persistable
-                // permissions. Fall back to read-only grant so the URI is
-                // at least usable within this session.
-                try {
-                    val fallbackFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    activity?.contentResolver?.takePersistableUriPermission(uri, fallbackFlags)
-                } catch (_: SecurityException) {
-                    // Provider doesn't support persistable at all —
-                    // return the URI anyway; the scan may still work
-                    // within this session via the temporary grant.
-                }
+                // permissions entirely. The URI still works within this
+                // session via the temporary grant from the SAF picker.
             }
             result.success(uri.toString())
         } else {
