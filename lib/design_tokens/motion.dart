@@ -16,13 +16,15 @@ abstract final class AfCurves {
   /// Mini-player → Now Playing expand, hero artwork handoff.
   static const Curve easeEmphasized = Cubic(0.22, 1, 0.36, 1);
 
-  /// `cubic-bezier(0.2, 0.8, 0.2, 1)` — iOS-like spring deceleration.
+  /// `cubic-bezier(0.175, 0.885, 0.32, 1.045)` — iOS-like spring present.
+  /// Gentle start → slight overshoot → smooth settle.
   /// Bottom sheet open, dialog open, modal present.
-  static const Curve springPresent = Cubic(0.2, 0.8, 0.2, 1);
+  static const Curve springPresent = Cubic(0.175, 0.885, 0.32, 1.045);
 
-  /// `cubic-bezier(0.5, 0, 0.75, 0)` — iOS-like spring dismiss.
+  /// `cubic-bezier(0.55, 0.055, 0.675, 0.19)` — iOS-like spring dismiss.
+  /// Slow start → accelerate out → no overshoot.
   /// Bottom sheet close, dialog close, modal dismiss.
-  static const Curve springDismiss = Cubic(0.5, 0, 0.75, 0);
+  static const Curve springDismiss = Cubic(0.55, 0.055, 0.675, 0.19);
 
   /// `cubic-bezier(0, 0, 0.2, 1)` — entries.
   static const Curve easeOut = Curves.easeOut;
