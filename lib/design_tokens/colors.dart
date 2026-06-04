@@ -94,6 +94,17 @@ class Spectral {
     required this.muted,
     required this.link,
     required this.warning,
+    this.surfaceCanvas = const Color(0xFF0A0B0E),
+    this.surfaceLow = const Color(0xFF14161A),
+    this.surfaceBase = const Color(0xFF1E2028),
+    this.surfaceRaised = const Color(0xFF282A34),
+    this.surfaceHigh = const Color(0xFF343640),
+    this.surfaceMax = const Color(0xFF40424E),
+    this.textPrimary = const Color(0xFFE8ECF2),
+    this.textSecondary = const Color(0xFF9AA0AD),
+    this.textTertiary = const Color(0xFF6B7280),
+    this.textDisabled = const Color(0xFF4A4E58),
+    this.textOnPrimary = const Color(0xFFF0F4F8),
   });
 
   // ── Now-playing specific ──
@@ -108,7 +119,22 @@ class Spectral {
   final Color link; // text links, interactive text
   final Color warning; // semantic warning (same hue, not red)
 
-  /// Default — used until artwork is parsed. Matches AfColors.accentPrimary.
+  // ── Dynamic surface palette (hue-shifted from artwork) ──
+  final Color surfaceCanvas;
+  final Color surfaceLow;
+  final Color surfaceBase;
+  final Color surfaceRaised;
+  final Color surfaceHigh;
+  final Color surfaceMax;
+
+  // ── Dynamic text palette (contrasts against shifted surfaces) ──
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color textTertiary;
+  final Color textDisabled;
+  final Color textOnPrimary;
+
+  /// Default — used until artwork is parsed. Matches AfColors defaults.
   static const fallback = Spectral(
     energy: Color(0xFF5B9BD5),
     shadow: Color(0xFF0D1B2A),
@@ -130,7 +156,18 @@ class Spectral {
       other.secondary == secondary &&
       other.muted == muted &&
       other.link == link &&
-      other.warning == warning;
+      other.warning == warning &&
+      other.surfaceCanvas == surfaceCanvas &&
+      other.surfaceLow == surfaceLow &&
+      other.surfaceBase == surfaceBase &&
+      other.surfaceRaised == surfaceRaised &&
+      other.surfaceHigh == surfaceHigh &&
+      other.surfaceMax == surfaceMax &&
+      other.textPrimary == textPrimary &&
+      other.textSecondary == textSecondary &&
+      other.textTertiary == textTertiary &&
+      other.textDisabled == textDisabled &&
+      other.textOnPrimary == textOnPrimary;
 
   @override
   int get hashCode => Object.hash(
@@ -142,5 +179,16 @@ class Spectral {
     muted,
     link,
     warning,
+    surfaceCanvas,
+    surfaceLow,
+    surfaceBase,
+    surfaceRaised,
+    surfaceHigh,
+    surfaceMax,
+    textPrimary,
+    textSecondary,
+    textTertiary,
+    textDisabled,
+    textOnPrimary,
   );
 }

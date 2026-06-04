@@ -144,23 +144,32 @@ abstract final class AfTypography {
   // Material 3 textTheme mapping.
   // ---------------------------------------------------------------------------
 
-  static TextTheme get textTheme => TextTheme(
-    displayLarge: display.copyWith(color: AfColors.textPrimary),
-    displayMedium: display.copyWith(color: AfColors.textPrimary),
-    displaySmall: titleLarge.copyWith(color: AfColors.textPrimary),
-    headlineLarge: titleLarge.copyWith(color: AfColors.textPrimary),
-    headlineMedium: titleLarge.copyWith(color: AfColors.textPrimary),
-    headlineSmall: titleMedium.copyWith(color: AfColors.textPrimary),
-    titleLarge: titleLarge.copyWith(color: AfColors.textPrimary),
-    titleMedium: titleMedium.copyWith(color: AfColors.textPrimary),
-    titleSmall: titleSmall.copyWith(color: AfColors.textPrimary),
-    bodyLarge: bodyLarge.copyWith(color: AfColors.textPrimary),
-    bodyMedium: bodyMedium.copyWith(color: AfColors.textPrimary),
-    bodySmall: bodySmall.copyWith(color: AfColors.textSecondary),
-    labelLarge: label.copyWith(color: AfColors.textSecondary),
-    labelMedium: label.copyWith(color: AfColors.textSecondary),
-    labelSmall: caption.copyWith(color: AfColors.textTertiary),
-  );
+  static TextTheme get textTheme => textThemeFor(null);
+
+  /// Builds a [TextTheme] using dynamic text colors from [Spectral].
+  /// Falls back to static [AfColors] tokens when [s] is null.
+  static TextTheme textThemeFor(Spectral? s) {
+    final tp = s?.textPrimary ?? AfColors.textPrimary;
+    final ts = s?.textSecondary ?? AfColors.textSecondary;
+    final tt = s?.textTertiary ?? AfColors.textTertiary;
+    return TextTheme(
+      displayLarge: display.copyWith(color: tp),
+      displayMedium: display.copyWith(color: tp),
+      displaySmall: titleLarge.copyWith(color: tp),
+      headlineLarge: titleLarge.copyWith(color: tp),
+      headlineMedium: titleLarge.copyWith(color: tp),
+      headlineSmall: titleMedium.copyWith(color: tp),
+      titleLarge: titleLarge.copyWith(color: tp),
+      titleMedium: titleMedium.copyWith(color: tp),
+      titleSmall: titleSmall.copyWith(color: tp),
+      bodyLarge: bodyLarge.copyWith(color: tp),
+      bodyMedium: bodyMedium.copyWith(color: tp),
+      bodySmall: bodySmall.copyWith(color: ts),
+      labelLarge: label.copyWith(color: ts),
+      labelMedium: label.copyWith(color: ts),
+      labelSmall: caption.copyWith(color: tt),
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // Internal helpers — Outfit (geometric display) + DM Sans (body/UI).

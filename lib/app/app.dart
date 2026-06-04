@@ -29,8 +29,8 @@ class AetherfinApp extends ConsumerWidget {
       ),
     );
 
-    final accent = ref.watch(pastelAccentColorProvider);
-    final theme = buildNocturneThemeFromAccent(accent);
+    final spectral = ref.watch(currentSpectralProvider);
+    final theme = buildNocturneThemeFromSpectral(spectral);
 
     return MaterialApp.router(
       title: 'Aetherfin',

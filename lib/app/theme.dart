@@ -2,64 +2,61 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../design_tokens/tokens.dart';
-import '../utils/oklch.dart';
 
 /// Builds the Aetherfin "Nocturne" (dark) theme — Dark Moody edition.
 ///
-/// Deep blacks, warm amber accents, no Material ripple.
+/// Deep blacks, ocean blue accents, no Material ripple.
 /// Per design spec:
 ///   - Material ripple is OFF globally (use scale/tint press states).
 ///   - Bouncy physics is OFF globally (use [ClampingScrollPhysics]).
 ///   - All text is theme-driven; no hard-coded colors in widgets.
 ThemeData buildNocturneTheme() {
-  return _buildTheme(AfColors.accentPrimary);
+  return _buildTheme(Spectral.fallback);
 }
 
-/// Same as [buildNocturneTheme] but substitutes the given [accent] colour
-/// as the primary accent instead of the static amber palette. Used when
-/// a pastel colour from the current artwork is available.
-ThemeData buildNocturneThemeFromAccent(Color accent) {
-  final oklch = srgbToOklch(accent);
-  final triple = buildPastelTriple(oklch.h);
-  return _buildTheme(accent, secondaryAccent: triple.muted);
+/// Builds theme from a full [Spectral] palette extracted from artwork.
+/// Surface and text colors shift with the artwork's dominant hue.
+ThemeData buildNocturneThemeFromSpectral(Spectral spectral) {
+  return _buildTheme(spectral);
 }
 
-ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
-  final secondary = secondaryAccent ?? primary;
+ThemeData _buildTheme(Spectral s) {
+  final primary = s.primary;
+  final secondary = s.secondary;
 
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    scaffoldBackgroundColor: AfColors.surfaceCanvas,
-    canvasColor: AfColors.surfaceCanvas,
+    scaffoldBackgroundColor: s.surfaceCanvas,
+    canvasColor: s.surfaceCanvas,
 
     colorScheme: ColorScheme.dark(
       primary: primary,
-      onPrimary: AfColors.textOnPrimary,
+      onPrimary: s.textOnPrimary,
       primaryContainer: primary.withValues(alpha: 0.25),
-      onPrimaryContainer: AfColors.textOnPrimary,
+      onPrimaryContainer: s.textOnPrimary,
       secondary: secondary,
-      onSecondary: AfColors.surfaceCanvas,
+      onSecondary: s.surfaceCanvas,
       secondaryContainer: secondary.withValues(alpha: 0.20),
-      onSecondaryContainer: AfColors.textPrimary,
+      onSecondaryContainer: s.textPrimary,
       tertiary: secondary,
-      onTertiary: AfColors.textOnPrimary,
-      surface: AfColors.surfaceBase,
-      onSurface: AfColors.textPrimary,
-      onSurfaceVariant: AfColors.textSecondary,
-      surfaceContainerLowest: AfColors.surfaceCanvas,
-      surfaceContainerLow: AfColors.surfaceLow,
-      surfaceContainer: AfColors.surfaceBase,
-      surfaceContainerHigh: AfColors.surfaceRaised,
-      surfaceContainerHighest: AfColors.surfaceHigh,
+      onTertiary: s.textOnPrimary,
+      surface: s.surfaceBase,
+      onSurface: s.textPrimary,
+      onSurfaceVariant: s.textSecondary,
+      surfaceContainerLowest: s.surfaceCanvas,
+      surfaceContainerLow: s.surfaceLow,
+      surfaceContainer: s.surfaceBase,
+      surfaceContainerHigh: s.surfaceRaised,
+      surfaceContainerHighest: s.surfaceHigh,
       error: AfColors.semanticError,
-      onError: AfColors.textOnPrimary,
-      outline: AfColors.surfaceMax,
-      outlineVariant: AfColors.surfaceHigh,
+      onError: s.textOnPrimary,
+      outline: s.surfaceMax,
+      outlineVariant: s.surfaceHigh,
     ),
 
-    textTheme: AfTypography.textTheme,
-    primaryTextTheme: AfTypography.textTheme,
+    textTheme: AfTypography.textThemeFor(s),
+    primaryTextTheme: AfTypography.textThemeFor(s),
 
     // No Material ripple. Anywhere.
     splashFactory: NoSplash.splashFactory,
@@ -75,10 +72,10 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
         if (states.contains(WidgetState.hovered)) {
           return primary.withValues(alpha: 0.7);
         }
-        return AfColors.surfaceMax.withValues(alpha: 0.6);
+        return s.surfaceMax.withValues(alpha: 0.6);
       }),
       trackColor: WidgetStatePropertyAll(
-        AfColors.surfaceCanvas.withValues(alpha: 0.25),
+        s.surfaceCanvas.withValues(alpha: 0.25),
       ),
       trackVisibility: const WidgetStatePropertyAll(false),
       thickness: const WidgetStatePropertyAll(10),
@@ -87,12 +84,12 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
       mainAxisMargin: 2,
     ),
 
-    iconTheme: const IconThemeData(color: AfColors.textPrimary, size: 24),
+    iconTheme: IconThemeData(color: s.textPrimary, size: 24),
 
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
-      foregroundColor: AfColors.textPrimary,
+      foregroundColor: s.textPrimary,
       elevation: 0,
       scrolledUnderElevation: 0,
       systemOverlayStyle: SystemUiOverlayStyle.light,
@@ -121,39 +118,39 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
     ),
 
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: AfColors.surfaceHigh,
+      backgroundColor: s.surfaceHigh,
       contentTextStyle: AfTypography.bodyMedium,
       behavior: SnackBarBehavior.floating,
       shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
     ),
 
-    dividerTheme: const DividerThemeData(
-      color: AfColors.surfaceLow,
+    dividerTheme: DividerThemeData(
+      color: s.surfaceLow,
       thickness: 1,
       space: 0,
     ),
 
     progressIndicatorTheme: ProgressIndicatorThemeData(
       color: primary,
-      linearTrackColor: AfColors.surfaceHigh,
-      circularTrackColor: AfColors.surfaceHigh,
+      linearTrackColor: s.surfaceHigh,
+      circularTrackColor: s.surfaceHigh,
     ),
 
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AfColors.surfaceBase,
-      hintStyle: AfTypography.bodyLarge.copyWith(color: AfColors.textTertiary),
+      fillColor: s.surfaceBase,
+      hintStyle: AfTypography.bodyLarge.copyWith(color: s.textTertiary),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AfSpacing.s16,
         vertical: AfSpacing.s16,
       ),
-      border: const OutlineInputBorder(
+      border: OutlineInputBorder(
         borderRadius: AfRadii.borderLg,
-        borderSide: BorderSide(color: AfColors.surfaceHigh, width: 1),
+        borderSide: BorderSide(color: s.surfaceHigh, width: 1),
       ),
-      enabledBorder: const OutlineInputBorder(
+      enabledBorder: OutlineInputBorder(
         borderRadius: AfRadii.borderLg,
-        borderSide: BorderSide(color: AfColors.surfaceHigh, width: 1),
+        borderSide: BorderSide(color: s.surfaceHigh, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: AfRadii.borderLg,
@@ -164,14 +161,14 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
         borderSide: BorderSide(color: AfColors.semanticError, width: 1),
       ),
       labelStyle: AfTypography.bodyMedium.copyWith(
-        color: AfColors.textSecondary,
+        color: s.textSecondary,
       ),
     ),
 
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: primary,
-        foregroundColor: AfColors.textOnPrimary,
+        foregroundColor: s.textOnPrimary,
         textStyle: AfTypography.titleSmall,
         elevation: 0,
         shadowColor: Colors.transparent,
@@ -186,7 +183,7 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
 
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: AfColors.textPrimary,
+        foregroundColor: s.textPrimary,
         textStyle: AfTypography.titleSmall,
         shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderPill),
         padding: const EdgeInsets.symmetric(
@@ -199,18 +196,18 @@ ThemeData _buildTheme(Color primary, {Color? secondaryAccent}) {
 
     iconButtonTheme: IconButtonThemeData(
       style: IconButton.styleFrom(
-        foregroundColor: AfColors.textPrimary,
+        foregroundColor: s.textPrimary,
         minimumSize: const Size(AfSpacing.minHitTarget, AfSpacing.minHitTarget),
         padding: const EdgeInsets.all(AfSpacing.s12),
       ),
     ),
 
-    listTileTheme: const ListTileThemeData(
-      iconColor: AfColors.textSecondary,
-      textColor: AfColors.textPrimary,
-      tileColor: AfColors.surfaceBase,
-      selectedTileColor: AfColors.surfaceRaised,
-      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderMd),
+    listTileTheme: ListTileThemeData(
+      iconColor: s.textSecondary,
+      textColor: s.textPrimary,
+      tileColor: s.surfaceBase,
+      selectedTileColor: s.surfaceRaised,
+      shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderMd),
     ),
 
     pageTransitionsTheme: const PageTransitionsTheme(

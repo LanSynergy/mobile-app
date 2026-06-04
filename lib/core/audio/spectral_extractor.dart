@@ -174,6 +174,22 @@ class SpectralExtractor {
     // Warning: same hue as energy (replaces static semanticWarning).
     final warning = energy;
 
+    // ── Surface palette — very dark hue-tinted surfaces ──
+    // Chroma is kept very low (0.01–0.025) so the tint is felt, not seen.
+    final surfaceCanvas = OklchColor(0.04, 0.010, h).toColor();
+    final surfaceLow = OklchColor(0.09, 0.012, h).toColor();
+    final surfaceBase = OklchColor(0.14, 0.015, h).toColor();
+    final surfaceRaised = OklchColor(0.18, 0.018, h).toColor();
+    final surfaceHigh = OklchColor(0.23, 0.020, h).toColor();
+    final surfaceMax = OklchColor(0.28, 0.022, h).toColor();
+
+    // ── Text palette — neutral with slight hue tint for cohesion ──
+    final textPrimary = OklchColor(0.91, 0.008, h).toColor();
+    final textSecondary = OklchColor(0.62, 0.012, h).toColor();
+    final textTertiary = OklchColor(0.45, 0.015, h).toColor();
+    final textDisabled = OklchColor(0.30, 0.010, h).toColor();
+    final textOnPrimary = OklchColor(0.95, 0.005, h).toColor();
+
     return Spectral(
       energy: energy,
       shadow: shadow,
@@ -183,6 +199,17 @@ class SpectralExtractor {
       muted: muted,
       link: link,
       warning: warning,
+      surfaceCanvas: surfaceCanvas,
+      surfaceLow: surfaceLow,
+      surfaceBase: surfaceBase,
+      surfaceRaised: surfaceRaised,
+      surfaceHigh: surfaceHigh,
+      surfaceMax: surfaceMax,
+      textPrimary: textPrimary,
+      textSecondary: textSecondary,
+      textTertiary: textTertiary,
+      textDisabled: textDisabled,
+      textOnPrimary: textOnPrimary,
     );
   }
 
