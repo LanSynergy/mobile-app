@@ -106,7 +106,6 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
             onVerticalDragUpdate: (details) {
               _dragDistance += details.primaryDelta ?? 0;
               _dragDistanceNotifier.value = _dragDistance;
-              setState(() {});
             },
             onVerticalDragEnd: (details) {
               final vy = details.primaryVelocity ?? 0;
@@ -122,7 +121,6 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                 if (isUpward) {
                   _dragDistance = 0;
                   _dragDistanceNotifier.value = 0;
-                  setState(() {});
                   widget.onTap?.call();
                 } else {
                   _animateDismiss();
@@ -199,7 +197,7 @@ class _MiniPlayerContent extends StatelessWidget {
         child: ClipRRect(
           borderRadius: AfRadii.borderPill,
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Container(
               height: AfSpacing.miniPlayerHeight,
               decoration: BoxDecoration(
