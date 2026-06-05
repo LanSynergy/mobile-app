@@ -53,13 +53,9 @@ jobs:
         run: bash tool/build --skip-build --skip-test
 
   test:
-    name: Test (shard ${{ matrix.shard }})
+    name: Test
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    strategy:
-      fail-fast: true
-      matrix:
-        shard: [0, 1, 2, 3]
 
     steps:
       - name: Checkout
@@ -81,5 +77,5 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      - name: Test (shard ${{ matrix.shard }}/4, via tool/build)
-        run: bash tool/build --shard-index=${{ matrix.shard }} --total-shards=4
+      - name: Test (via tool/build, skip analyze + build)
+        run: bash tool/build --skip-build --skip-analyze
