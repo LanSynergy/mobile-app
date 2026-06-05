@@ -453,14 +453,22 @@ esac
 mkdir -p "$(dirname "$TG_MSG_FILE")" "$OUTDIR"
 cd "$ROOT"
 
-print_banner
-echo "  Mode:          $MODE"
-echo "  Split ABI:     $SPLIT_PER_ABI"
-echo "  Sign:          $SIGN"
-echo "  Telegram:      $TELEGRAM"
-echo "  Skip build:    $SKIP_BUILD"
-echo "  CI mode:       $CI_MODE"
-echo ""
+# In CI, skip banner + toolchain + Telegram — saves ~5-10s per run.
+if [ "$CI_MODE" = "true" ] && { [ "$SKIP_BUILD" = "true" ] || [ "$SKIP_ANALYZE" = "true" ] || [ "$SKIP_TEST" = "true" ]; }; then
+  echo ""
+  echo "  CI mode — skipping banner, toolchain, Telegram"
+  echo "  Mode: $MODE | Analyze: $SKIP_ANALYZE | Test: $SKIP_TEST | Build: $SKIP_BUILD"
+  echo ""
+else
+  print_banner
+  echo "  Mode:          $MODE"
+  echo "  Split ABI:     $SPLIT_PER_ABI"
+  echo "  Sign:          $SIGN"
+  echo "  Telegram:      $TELEGRAM"
+  echo "  Skip build:    $SKIP_BUILD"
+  echo "  CI mode:       $CI_MODE"
+  echo ""
+fi
 
 # Initialize Telegram — sends "Setting up build environment..." message
 tg_init
@@ -471,17 +479,21 @@ _tg_transition "🔧 Initializing build environment..." "🔧"
 # ---------------------------------------------------------------------------
 # 1. Toolchain versions
 # ---------------------------------------------------------------------------
-_tg_transition "🔧 Toolchain: Flutter, Dart, Java" "🔧"
-step "Toolchain versions" bash -c "
-  echo '  Flutter:'
-  $FLUTTER --version 2>&1 | head -2
-  echo ''
-  echo '  Dart:'
-  $DART --version 2>&1 | head -1
-  echo ''
-  echo '  Java:'
-  java -version 2>&1 | head -1
-"
+if [ "$CI_MODE" = "true" ]; then
+  echo "  (toolchain skipped — set up by CI action)"
+else
+  _tg_transition "🔧 Toolchain: Flutter, Dart, Java" "🔧"
+  step "Toolchain versions" bash -c "
+    echo '  Flutter:'
+    $FLUTTER --version 2>&1 | head -2
+    echo ''
+    echo '  Dart:'
+    $DART --version 2>&1 | head -1
+    echo ''
+    echo '  Java:'
+    java -version 2>&1 | head -1
+  "
+fi
 
 # ---------------------------------------------------------------------------
 # 2. Dependencies
@@ -492,7 +504,7 @@ step "Install dependencies" $FLUTTER pub get
 # ---------------------------------------------------------------------------
 # 3. Build ID
 # ---------------------------------------------------------------------------
-if [ "$SKIP_BUILD_ID" = "false" ]; then
+if [ "$SKIP_BUILD_ID" = "false" ] && [ "$SKIP_BUILD" = "false" ]; then
   _tg_transition "🔢 Generating build ID..." "🔢"
   step "Generate build ID" $DART run tool/generate_build_id.dart
 fi
