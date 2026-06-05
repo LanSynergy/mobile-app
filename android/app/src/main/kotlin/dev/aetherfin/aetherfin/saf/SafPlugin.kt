@@ -307,16 +307,359 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
 
     private fun readCoverArt(fileUriStr: String): ByteArray? {
         val uri = Uri.parse(fileUriStr)
-        val retriever = MediaMetadataRetriever()
-        return try {
-            retriever.setDataSource(appContext, uri)
-            retriever.embeddedPicture
+
+        // 1. Fast path: MediaMetadataRetriever
+        val mmrResult = try {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(appContext, uri)
+                retriever.embeddedPicture
+            } finally {
+                try { retriever.release() } catch (_: Exception) {}
+            }
         } catch (e: Exception) {
-            Log.w("SafPlugin", "readCoverArt failed for $uri: ${e.message}")
+            Log.w("SafPlugin", "MMR readCoverArt failed for $uri: ${e.message}")
             null
-        } finally {
-            try { retriever.release() } catch (_: Exception) {}
         }
+        if (mmrResult != null) return mmrResult
+
+        // 2. Fallback: binary parsing via ContentResolver
+        return try {
+            appContext.contentResolver.openInputStream(uri)?.use { rawStream ->
+                // Read up to 3MB — metadata is at the start of audio files
+                val maxScanBytes = 3 * 1024 * 1024
+                val baos = java.io.ByteArrayOutputStream(maxScanBytes)
+                val buf = ByteArray(8192)
+                var totalRead = 0
+                while (totalRead < maxScanBytes) {
+                    val r = rawStream.read(buf, 0, min(buf.size, maxScanBytes - totalRead))
+                    if (r == -1) break
+                    baos.write(buf, 0, r)
+                    totalRead += r
+                }
+                val bytes = baos.toByteArray()
+                if (bytes.size < 4) return@use null
+
+                when {
+                    // ID3v2 (MP3)
+                    bytes[0] == 'I'.code.toByte() && bytes[1] == 'D'.code.toByte() && bytes[2] == '3'.code.toByte() ->
+                        extractMp3CoverArt(bytes)
+                    // FLAC
+                    bytes[0] == 'f'.code.toByte() && bytes[1] == 'L'.code.toByte() && bytes[2] == 'a'.code.toByte() && bytes[3] == 'C'.code.toByte() ->
+                        extractFlacCoverArt(bytes)
+                    // OGG
+                    bytes[0] == 'O'.code.toByte() && bytes[1] == 'g'.code.toByte() && bytes[2] == 'g'.code.toByte() && bytes[3] == 'S'.code.toByte() ->
+                        extractOggCoverArt(bytes)
+                    // M4A/MP4 (starts with 'ftyp')
+                    bytes[4] == 'f'.code.toByte() && bytes[5] == 't'.code.toByte() && bytes[6] == 'y'.code.toByte() && bytes[7] == 'p'.code.toByte() ->
+                        extractM4aCoverArt(bytes)
+                    // Unknown format — scan for image magic bytes
+                    else ->
+                        scanForEmbeddedImage(bytes)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("SafPlugin", "Binary cover art extraction failed for $uri: ${e.message}")
+            null
+        }
+    }
+
+    // ── ID3v2 (MP3) cover art extraction ──────────────────────────────────
+
+    private fun extractMp3CoverArt(data: ByteArray): ByteArray? {
+        if (data.size < 10) return null
+
+        val version = data[3].toInt() and 0xFF
+        // ID3v2 size (synchsafe)
+        val tagSize = ((data[6].toInt() and 0x7F) shl 21) or
+                      ((data[7].toInt() and 0x7F) shl 14) or
+                      ((data[8].toInt() and 0x7F) shl 7) or
+                      (data[9].toInt() and 0x7F)
+
+        val limit = minOf(10 + tagSize, data.size, 10 + 3 * 1024 * 1024)
+        var i = 10
+
+        while (i < limit - 10) {
+            val frameId = String(data, i, 4, Charsets.US_ASCII)
+
+            val frameSize = if (version >= 4) {
+                ((data[i+4].toInt() and 0x7F) shl 21) or
+                ((data[i+5].toInt() and 0x7F) shl 14) or
+                ((data[i+6].toInt() and 0x7F) shl 7) or
+                (data[i+7].toInt() and 0x7F)
+            } else {
+                ((data[i+4].toInt() and 0xFF) shl 24) or
+                ((data[i+5].toInt() and 0xFF) shl 16) or
+                ((data[i+6].toInt() and 0xFF) shl 8) or
+                (data[i+7].toInt() and 0xFF)
+            }
+
+            if (frameSize <= 0 || i + 10 + frameSize > limit) break
+
+            if (frameId == "APIC") {
+                val result = parseApicFrame(data, i + 10, frameSize)
+                if (result != null) return result
+            }
+
+            i += 10 + frameSize
+        }
+        return null
+    }
+
+    private fun parseApicFrame(data: ByteArray, offset: Int, size: Int): ByteArray? {
+        if (offset + size > data.size || size < 2) return null
+
+        var pos = offset + 1 // skip encoding byte
+
+        // MIME type (null-terminated ASCII)
+        val mimeEnd = data.indexOf(0, pos)
+        if (mimeEnd == -1 || mimeEnd >= offset + size) return null
+        pos = mimeEnd + 1
+
+        // Picture type (1 byte) — skip
+        pos += 1
+
+        // Description (null-terminated, encoding-dependent)
+        val encoding = data[offset].toInt() and 0xFF
+        if (encoding == 0 || encoding == 3) {
+            while (pos < offset + size && data[pos] != 0.toByte()) pos++
+            pos++
+        } else {
+            while (pos + 1 < offset + size && !(data[pos] == 0.toByte() && data[pos+1] == 0.toByte())) pos += 2
+            pos += 2
+        }
+
+        val dataLen = (offset + size) - pos
+        if (dataLen <= 0 || pos + dataLen > data.size) return null
+        return data.copyOfRange(pos, pos + dataLen)
+    }
+
+    // ── FLAC cover art extraction ─────────────────────────────────────────
+
+    private fun extractFlacCoverArt(data: ByteArray): ByteArray? {
+        if (data.size < 4 + 4) return null
+        var pos = 4 // skip "fLaC"
+
+        var isLast = false
+        while (!isLast && pos + 4 <= data.size) {
+            val headerByte = data[pos].toInt() and 0xFF
+            isLast = (headerByte and 0x80) != 0
+            val blockType = headerByte and 0x7F
+
+            val blockLen = ((data[pos+1].toInt() and 0xFF) shl 16) or
+                           ((data[pos+2].toInt() and 0xFF) shl 8) or
+                           (data[pos+3].toInt() and 0xFF)
+            pos += 4
+
+            if (blockType == 6 && pos + blockLen <= data.size) { // PICTURE
+                return parseFlacPictureData(data, pos, blockLen)
+            }
+
+            pos += blockLen
+        }
+        return null
+    }
+
+    private fun parseFlacPictureData(data: ByteArray, offset: Int, size: Int): ByteArray? {
+        if (offset + size > data.size || size < 32) return null
+        var pos = offset
+
+        // Picture type (4 bytes) — skip
+        pos += 4
+
+        // MIME type length (4 bytes) + MIME
+        val mimeLen = readInt32BE(data, pos)
+        pos += 4 + mimeLen
+
+        // Description length (4 bytes) + description
+        if (pos + 4 > offset + size) return null
+        val descLen = readInt32BE(data, pos)
+        pos += 4 + descLen
+
+        // Width (4) + Height (4) + ColorDepth (4) + NumberOfColors (4)
+        pos += 16
+
+        // Picture data length (4 bytes)
+        if (pos + 4 > offset + size) return null
+        val dataLen = readInt32BE(data, pos)
+        pos += 4
+
+        if (dataLen <= 0 || pos + dataLen > offset + size) return null
+        return data.copyOfRange(pos, pos + dataLen)
+    }
+
+    // ── OGG cover art extraction ──────────────────────────────────────────
+
+    private fun extractOggCoverArt(data: ByteArray): ByteArray? {
+        // Find Vorbis comment header by scanning for "vorbis" string after "OggS" pages
+        // The Vorbis comment header packet starts with:
+        //   [1 byte packet type: 0x03 for comment] + "vorbis" (6 bytes) + vendor string + metadata
+
+        val vorbisHeaderSig = byteArrayOf(0x03) + "vorbis".toByteArray(Charsets.US_ASCII)
+        val commentStart = findPattern(data, vorbisHeaderSig)
+        if (commentStart == -1) return null
+
+        var pos = commentStart + 7 // skip packet type (1) + "vorbis" (6)
+        if (pos + 8 > data.size) return null
+
+        // Vendor string (little-endian length-prefixed)
+        val vendorLen = readInt32LE(data, pos)
+        pos += 4 + vendorLen
+        if (pos + 4 > data.size) return null
+
+        // Comment count
+        val commentCount = readInt32LE(data, pos)
+        pos += 4
+
+        // Scan comments for METADATA_BLOCK_PICTURE
+        for (i in 0 until commentCount) {
+            if (pos + 4 > data.size) return null
+            val commentLen = readInt32LE(data, pos)
+            pos += 4
+            if (pos + commentLen > data.size) break
+
+            val comment = String(data, pos, commentLen, Charsets.UTF_8)
+            val eqIdx = comment.indexOf('=')
+            if (eqIdx != -1) {
+                val key = comment.substring(0, eqIdx).uppercase()
+                if (key == "METADATA_BLOCK_PICTURE") {
+                    val value = comment.substring(eqIdx + 1)
+                    return decodeMetadataBlockPicture(value)
+                }
+            }
+            pos += commentLen
+        }
+        return null
+    }
+
+    private fun decodeMetadataBlockPicture(base64Value: String): ByteArray? {
+        return try {
+            val decoded = android.util.Base64.decode(base64Value, android.util.Base64.DEFAULT)
+            parseFlacPictureData(decoded, 0, decoded.size)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // ── M4A/MP4 cover art extraction ──────────────────────────────────────
+
+    private fun extractM4aCoverArt(data: ByteArray): ByteArray? {
+        return scanM4aAtomsForCover(data, 0, data.size)
+    }
+
+    private fun scanM4aAtomsForCover(data: ByteArray, start: Int, length: Int): ByteArray? {
+        var pos = start
+        val end = start + length
+
+        while (pos + 8 <= end) {
+            val atomSize = readInt32BE(data, pos)
+            val atomType = String(data, pos + 4, 4, Charsets.US_ASCII)
+
+            if (atomSize < 8) break
+            val payloadSize = atomSize - 8
+            val payloadStart = pos + 8
+
+            when (atomType) {
+                "moov", "udta", "meta", "ilst" -> {
+                    val actualPayloadStart = if (atomType == "meta") payloadStart + 4 else payloadStart
+                    val actualPayloadSize = if (atomType == "meta") payloadSize - 4 else payloadSize
+                    val result = scanM4aAtomsForCover(data, actualPayloadStart, actualPayloadSize)
+                    if (result != null) return result
+                }
+                "covr" -> {
+                    // Skip atom header in data (8 bytes size + 4 bytes 'data' + 8 bytes flags/version)
+                    if (payloadStart + 16 <= end) {
+                        val imgDataStart = payloadStart + 16
+                        val imgDataLen = payloadSize - 16
+                        if (imgDataLen > 0 && imgDataStart + imgDataLen <= data.size) {
+                            return data.copyOfRange(imgDataStart, imgDataStart + imgDataLen)
+                        }
+                    }
+                }
+            }
+            pos += atomSize
+        }
+        return null
+    }
+
+    // ── Generic image scan fallback ───────────────────────────────────────
+
+    private fun scanForEmbeddedImage(data: ByteArray): ByteArray? {
+        // Try to find JPEG
+        val jpeg = findJpeg(data)
+        if (jpeg != null) return jpeg
+
+        // Try to find PNG
+        return findPng(data)
+    }
+
+    private fun findJpeg(data: ByteArray): ByteArray? {
+        var i = 0
+        while (i < data.size - 2) {
+            if (data[i].toInt() and 0xFF == 0xFF &&
+                data[i+1].toInt() and 0xFF == 0xD8 &&
+                data[i+2].toInt() and 0xFF == 0xFF) {
+                // Found JPEG start marker — scan for end marker (FF D9)
+                var j = i + 3
+                while (j < data.size - 1) {
+                    if (data[j].toInt() and 0xFF == 0xFF && data[j+1].toInt() and 0xFF == 0xD9) {
+                        return data.copyOfRange(i, j + 2)
+                    }
+                    j++
+                }
+                // If no end marker found but we're past 10KB, return what we have
+                // (the data might be truncated but still valid enough)
+                if (j - i > 10240) {
+                    return data.copyOfRange(i, min(j + 2, data.size))
+                }
+            }
+            i++
+        }
+        return null
+    }
+
+    private fun findPng(data: ByteArray): ByteArray? {
+        val pngSignature = byteArrayOf(
+            0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+        )
+        val iendChunk = byteArrayOf(
+            0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE.toByte(), 0x42, 0x60, 0x82.toByte()
+        )
+
+        var start = findPattern(data, pngSignature)
+        if (start == -1) return null
+
+        val end = findPattern(data, iendChunk, start)
+        if (end != -1) {
+            return data.copyOfRange(start, end + iendChunk.size)
+        }
+        // Return what we have if no IEND found
+        return null
+    }
+
+    // ── Binary parsing utilities ──────────────────────────────────────────
+
+    private fun findPattern(data: ByteArray, pattern: ByteArray, startOffset: Int = 0): Int {
+        if (pattern.isEmpty() || startOffset >= data.size) return -1
+        val max = data.size - pattern.size
+        for (i in startOffset..max) {
+            var match = true
+            for (j in pattern.indices) {
+                if (data[i + j] != pattern[j]) {
+                    match = false
+                    break
+                }
+            }
+            if (match) return i
+        }
+        return -1
+    }
+
+    private fun readInt32BE(data: ByteArray, offset: Int): Int {
+        return ((data[offset].toInt() and 0xFF) shl 24) or
+               ((data[offset+1].toInt() and 0xFF) shl 16) or
+               ((data[offset+2].toInt() and 0xFF) shl 8) or
+               (data[offset+3].toInt() and 0xFF)
     }
 
     private fun readLyrics(fileUriStr: String): String? {
