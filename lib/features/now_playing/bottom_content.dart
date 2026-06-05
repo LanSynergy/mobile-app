@@ -119,6 +119,8 @@ class _BottomContentState extends ConsumerState<BottomContent>
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(AfRadii.lg),
               ),
+              blurSigma: 30,
+              color: AfColors.glassFillMedium,
               padding: EdgeInsets.zero,
               child: Column(
                 mainAxisSize: MainAxisSize.min,

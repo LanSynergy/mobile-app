@@ -59,7 +59,8 @@ class _GlobalMiniPlayerOverlayState
     final showMini = !isHidden && MediaQuery.of(context).viewInsets.bottom == 0;
 
     final bottomNav = MediaQuery.of(context).padding.bottom;
-    final double targetBottom = bottomNav + AfSpacing.miniPlayerNavGap;
+    final double targetBottom =
+        bottomNav + AfSpacing.bottomNavHeight + AfSpacing.miniPlayerNavGap;
 
     return AnimatedPositioned(
       left: 0,
@@ -82,6 +83,7 @@ class _GlobalMiniPlayerOverlayState
                 final miniY =
                     size.height -
                     (bottomNav +
+                        AfSpacing.bottomNavHeight +
                         AfSpacing.miniPlayerNavGap +
                         AfSpacing.miniPlayerHeight);
                 final rect = Rect.fromLTWH(

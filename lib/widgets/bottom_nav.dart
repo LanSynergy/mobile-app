@@ -51,8 +51,10 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
 
     return Container(
       decoration: const BoxDecoration(
-        color: AfColors.surfaceCanvas,
-        border: Border(top: BorderSide(color: AfColors.surfaceLow, width: 1)),
+        color: AfColors.glassFillMedium,
+        border: Border(
+          top: BorderSide(color: AfColors.glassBorderEmphasis, width: 1),
+        ),
       ),
       padding: EdgeInsets.only(bottom: bottomInset),
       child: SizedBox(
