@@ -53,7 +53,7 @@ abstract final class AfSpacing {
   static const double miniPlayerSideMargin = s12;
 
   /// Gap between the mini-player's bottom edge and the top of the bottom nav.
-  static const double miniPlayerNavGap = s12;
+  static const double miniPlayerNavGap = s4;
 
   /// Total bottom inset to apply to scrollables when both mini-player
   /// and bottom-nav are present.
