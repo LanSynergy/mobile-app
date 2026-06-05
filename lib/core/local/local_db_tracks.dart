@@ -67,30 +67,6 @@ class TrackRepository {
     await db.delete(db.tracks).go();
   }
 
-  /// Null out cover_path for tracks whose cover file was evicted from disk.
-  /// This allows the metadata scanner to re-extract cover art on next scan.
-  Future<void> clearEvictedCoverPaths(Set<String> evictedPaths) async {
-    if (evictedPaths.isEmpty) return;
-    // Find all tracks with a cover_path that points to an evicted file.
-    final rows = await db
-        .customSelect(
-          'SELECT id, cover_path FROM tracks WHERE cover_path IS NOT NULL',
-          readsFrom: {db.tracks},
-        )
-        .get();
-    final idsToClear = <String>[];
-    for (final r in rows) {
-      final cp = r.read<String?>('cover_path');
-      if (cp != null && evictedPaths.contains(cp)) {
-        idsToClear.add(r.read<String>('id'));
-      }
-    }
-    if (idsToClear.isEmpty) return;
-    await (db.update(db.tracks)..where((t) => t.id.isIn(idsToClear))).write(
-      const TracksCompanion(coverPath: Value(null)),
-    );
-  }
-
   /// Update only the cover_path column for a single track without touching
   /// other columns. Used by the scanner to write a recovered cover path
   /// without corrupting the rest of the row.

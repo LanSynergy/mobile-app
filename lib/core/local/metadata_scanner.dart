@@ -211,16 +211,12 @@ class MetadataScanner {
         await db.upsertTracks(batch);
       }
 
-      // Evict old covers if cache exceeds size limit, then null out
-      // DB cover_path for evicted files so re-scan can re-extract.
-      final evicted = await _coverCacheManager?.evictIfNeeded() ?? [];
-      if (evicted.isNotEmpty) {
-        afLog('local', 'evicted ${evicted.length} stale cover art files');
-        // Build a set of evicted paths for O(1) lookup.
-        final evictedSet = evicted.toSet();
-        // Null out cover_path for tracks whose cover was evicted.
-        // Query all tracks with cover_path and check each.
-        await db.clearEvictedCoverPaths(evictedSet);
+      // Evict old covers if cache exceeds size limit.
+      // Don't null cover_path here — the scanner's own file-existence check
+      // (hasCover + coverFile.exists()) handles re-extraction on next scan.
+      final evicted = await _coverCacheManager?.evictIfNeeded() ?? 0;
+      if (evicted > 0) {
+        afLog('local', 'evicted $evicted stale cover art files');
       }
 
       afLog('local', 'scanFolder done: $inserted tracks inserted/updated');
