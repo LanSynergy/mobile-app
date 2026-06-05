@@ -28,23 +28,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: gradle
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.44.0"
-          channel: stable
-          cache: true
-          pub-cache: true
+      - name: Setup Flutter + JDK
+        uses: ./.github/actions/setup-flutter
 
       - name: Analyze
-        run: bash tool/build --skip-build --skip-test --skip-codegen
+        run: |
+          flutter pub get --offline
+          flutter analyze --no-fatal-infos
 
       - name: Test
-        run: bash tool/build --skip-build --skip-analyze --skip-codegen
+        run: |
+          flutter pub get --offline
+          flutter test

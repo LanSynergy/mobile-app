@@ -1,0 +1,42 @@
+name: "Setup Flutter + JDK"
+description: "Common setup for Flutter CI jobs — Flutter SDK, JDK 17, Gradle cache, pub cache"
+
+inputs:
+  flutter-version:
+    description: "Flutter SDK version"
+    required: false
+    default: "3.44.0"
+  setup-java:
+    description: "Whether to set up JDK 17 (set false for pure Dart test jobs)"
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up JDK 17
+      if: inputs.setup-java == 'true'
+      uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: "17"
+        cache: gradle
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ inputs.flutter-version }}
+        channel: stable
+        cache: true
+        pub-cache: true
+
+    - name: Cache Gradle + build artifacts
+      if: inputs.setup-java == 'true'
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.gradle/caches
+          .dart_tool
+        key: ${{ runner.os }}-gradle-${{ hashFiles('pubspec.lock', 'android/**/*.gradle*') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
