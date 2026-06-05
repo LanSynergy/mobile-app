@@ -432,6 +432,8 @@ while [[ $# -gt 0 ]]; do
     --skip-test)      SKIP_TEST=true; shift ;;
     --shard-index)    SHARD_INDEX="$2"; shift 2 ;;
     --total-shards)   TOTAL_SHARDS="$2"; shift 2 ;;
+    --shard-index=*)  SHARD_INDEX="${1#*=}"; shift ;;
+    --total-shards=*) TOTAL_SHARDS="${1#*=}"; shift ;;
     --skip-codegen)   SKIP_CODEGEN=true; shift ;;
     --skip-build)     SKIP_BUILD=true; shift ;;
     --skip-build-id)  SKIP_BUILD_ID=true; shift ;;
