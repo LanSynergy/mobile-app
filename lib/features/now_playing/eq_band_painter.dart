@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../design_tokens/tokens.dart';
@@ -78,8 +79,8 @@ class EqBandPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(EqBandPainter oldDelegate) {
-    return oldDelegate.bands != bands ||
-        oldDelegate.gains != gains ||
+    return !listEquals(oldDelegate.bands, bands) ||
+        !listEquals(oldDelegate.gains, gains) ||
         oldDelegate.enabled != enabled;
   }
 }

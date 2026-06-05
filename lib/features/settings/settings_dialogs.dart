@@ -327,7 +327,9 @@ class _ReplayGainDialogContentState
 
   @override
   Widget build(BuildContext context) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     const options = <(ReplayGain, String, String)>[
       (ReplayGain.no, 'Off', 'No volume normalization'),
       (ReplayGain.track, 'Track', 'Normalize each track independently'),
@@ -397,7 +399,7 @@ class _ReplayGainDialogContentState
               min: -15,
               max: 15,
               divisions: 30,
-              activeColor: spectral.primary,
+              activeColor: spectral,
               onChanged: (v) => setState(() => _preamp = v),
               onChangeEnd: (_) => _apply(),
             ),
@@ -431,7 +433,7 @@ class _ReplayGainDialogContentState
                   min: -15,
                   max: 0,
                   divisions: 30,
-                  activeColor: spectral.primary,
+                  activeColor: spectral,
                   onChanged: (v) => setState(() => _fallback = v),
                   onChangeEnd: (_) => _apply(),
                 ),
@@ -461,7 +463,7 @@ class _ReplayGainDialogContentState
                   color: AfColors.textTertiary,
                 ),
               ),
-              activeThumbColor: spectral.primary,
+              activeThumbColor: spectral,
               contentPadding: EdgeInsets.zero,
             ),
           ),
@@ -693,7 +695,7 @@ void showLastFmApiConfigDialog(BuildContext context, WidgetRef ref) {
   final apiSecretController = TextEditingController(
     text: ref.read(lastfmApiSecretProvider),
   );
-  final spectral = ref.watch(currentSpectralProvider);
+  final spectral = ref.watch(currentSpectralProvider.select((s) => s.primary));
 
   showBlurDialog(
     context: context,
@@ -716,7 +718,7 @@ void showLastFmApiConfigDialog(BuildContext context, WidgetRef ref) {
           child: Text(
             'Create a developer account and register your API key at last.fm/api/account/create',
             style: AfTypography.bodySmall.copyWith(
-              color: spectral.primary,
+              color: spectral,
               decoration: TextDecoration.underline,
             ),
           ),

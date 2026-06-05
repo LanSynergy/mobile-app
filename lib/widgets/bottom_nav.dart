@@ -45,8 +45,9 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final accent =
-        widget.accentColor ?? ref.watch(currentSpectralProvider).primary;
+    final Color accent =
+        widget.accentColor ??
+        ref.watch(currentSpectralProvider.select((s) => s.primary));
 
     return Container(
       decoration: const BoxDecoration(

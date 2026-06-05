@@ -80,7 +80,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
         .watch(playingStreamProvider)
         .maybeWhen(data: (v) => v, orElse: () => false);
     final isBuffering = ref.watch(isBufferingProvider);
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(currentSpectralProvider.select((s) => s.energy));
 
     final clampedDy = _dragDistance.clamp(0, _maxDragDistance * 2).toDouble();
     final dragOpacity = 1.0 - (clampedDy / _maxDragDistance).clamp(0, 1);
@@ -223,7 +223,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                                   width: 48,
                                   height: 48,
                                   decoration: BoxDecoration(
-                                    color: spectral.energy,
+                                    color: spectral,
                                     shape: BoxShape.circle,
                                   ),
                                   child: Center(
@@ -296,19 +296,18 @@ class _ReactiveProgressRing extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final position = ref.watch(positionStreamProvider);
+    final positionMs = ref.watch(
+      positionStreamProvider.select((d) => d.inMilliseconds),
+    );
     final mpvDuration = ref.watch(durationStreamProvider);
     final isBuffering = ref.watch(isBufferingProvider);
     // Show metadata duration immediately, but freeze progress bar at 0
     // while buffering — mpv's position isn't meaningful until playback starts.
     final duration = mpvDuration > Duration.zero ? mpvDuration : track.duration;
-    final effectivePosition = isBuffering ? Duration.zero : position;
+    final effectivePositionMs = isBuffering ? 0 : positionMs;
     final ringProgress = duration.inMilliseconds == 0
         ? 0.0
-        : (effectivePosition.inMilliseconds / duration.inMilliseconds).clamp(
-            0.0,
-            1.0,
-          );
+        : (effectivePositionMs / duration.inMilliseconds).clamp(0.0, 1.0);
     final energyColor = ref.watch(
       currentSpectralProvider.select((s) => s.energy),
     );

@@ -202,7 +202,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -225,6 +225,12 @@ class AppDatabase extends _$AppDatabase {
             'ON tracks (last_modified)',
         'CREATE INDEX IF NOT EXISTS idx_playback_history_played_at '
             'ON playback_history (played_at)',
+        'CREATE INDEX IF NOT EXISTS idx_track_co_occurrences_track_a '
+            'ON track_co_occurrences (track_a_id)',
+        'CREATE INDEX IF NOT EXISTS idx_tracks_artist_title '
+            'ON tracks (artist, title)',
+        'CREATE INDEX IF NOT EXISTS idx_tracks_album_artist '
+            'ON tracks (album, album_artist)',
       ]) {
         try {
           await db.customStatement(stmt);
@@ -302,6 +308,25 @@ class AppDatabase extends _$AppDatabase {
           );
         } on Exception {
           // Table may not exist — skip index, no data loss.
+        }
+      }
+      if (from < 12) {
+        // Performance indexes for co-occurrence lookups and composite
+        // track queries (artist+title search, album browsing).
+        final db = m.database;
+        for (final stmt in const [
+          'CREATE INDEX IF NOT EXISTS idx_track_co_occurrences_track_a '
+              'ON track_co_occurrences (track_a_id)',
+          'CREATE INDEX IF NOT EXISTS idx_tracks_artist_title '
+              'ON tracks (artist, title)',
+          'CREATE INDEX IF NOT EXISTS idx_tracks_album_artist '
+              'ON tracks (album, album_artist)',
+        ]) {
+          try {
+            await db.customStatement(stmt);
+          } on Exception {
+            // Table may not exist — skip index, no data loss.
+          }
         }
       }
     },

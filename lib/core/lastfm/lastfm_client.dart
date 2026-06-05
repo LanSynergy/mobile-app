@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 
 import '../../utils/log.dart';
+import '../network/shared_dio_client.dart';
 
 /// Lightweight Last.fm API client for fetching similar tracks and scrobbling.
 ///
@@ -22,11 +23,12 @@ class LastFmClient {
        _onStatus = onStatus,
        _dio =
            dio ??
-           Dio(
+           SharedDioClient().createWithOptions(
              BaseOptions(
                baseUrl: 'https://ws.audioscrobbler.com/2.0/',
                connectTimeout: const Duration(seconds: 5),
-               receiveTimeout: const Duration(seconds: 10),
+               sendTimeout: const Duration(seconds: 10),
+               receiveTimeout: const Duration(seconds: 15),
              ),
            );
 

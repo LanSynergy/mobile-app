@@ -86,7 +86,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final isLocal = ref.watch(appModeProvider) == AppMode.local;
     final albumsAsync = ref.watch(recentlyAddedAlbumsProvider);
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (
+          primary: s.primary,
+          secondary: s.secondary,
+          energy: s.energy,
+          shadow: s.shadow,
+        ),
+      ),
+    );
 
     return SafeArea(
       child: RefreshIndicator(
@@ -177,7 +186,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 class _RecentTracksSection extends ConsumerWidget {
   const _RecentTracksSection({required this.isLocal, required this.spectral});
   final bool isLocal;
-  final Spectral spectral;
+  final ({Color primary, Color secondary, Color energy, Color shadow}) spectral;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -239,7 +248,7 @@ class _CompactTrackRow extends StatelessWidget {
   });
   final AfTrack track;
   final bool isActive;
-  final Spectral spectral;
+  final ({Color primary, Color secondary, Color energy, Color shadow}) spectral;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   final bool isBuffering;
@@ -485,14 +494,9 @@ class _ArtistsSection extends ConsumerWidget {
   final bool isLocal;
 
   // Warm amber accent colors for each artist ring — sourced from spectral palette
-  static List<Color> _accents(Spectral spectral) => [
-    spectral.primary,
-    spectral.secondary,
-    spectral.muted,
-    spectral.primary,
-    spectral.secondary,
-    spectral.muted,
-  ];
+  static List<Color> _accents(
+    ({Color primary, Color secondary, Color muted}) s,
+  ) => [s.primary, s.secondary, s.muted, s.primary, s.secondary, s.muted];
 
   static const double _artworkSize = 88;
   static const double _ringSize = 96;
@@ -500,7 +504,11 @@ class _ArtistsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, secondary: s.secondary, muted: s.muted),
+      ),
+    );
     final artistsAsync = isLocal
         ? ref.watch(localArtistsProvider)
         : ref.watch(allArtistsProvider);
@@ -705,7 +713,7 @@ class _GenresSection extends ConsumerWidget {
 class _HeroAlbumCarousel extends ConsumerStatefulWidget {
   const _HeroAlbumCarousel({required this.albums, required this.spectral});
   final List<AfAlbum> albums;
-  final Spectral spectral;
+  final ({Color primary, Color secondary, Color energy, Color shadow}) spectral;
 
   @override
   ConsumerState<_HeroAlbumCarousel> createState() => _HeroAlbumCarouselState();

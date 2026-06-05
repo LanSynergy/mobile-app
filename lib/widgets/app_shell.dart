@@ -79,7 +79,11 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Watch spectral for a dynamic accent on the bottom nav pill.
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (shadow: s.shadow, energy: s.energy),
+      ),
+    );
 
     return PopScope(
       canPop: false,
@@ -94,15 +98,21 @@ class AppShell extends ConsumerWidget {
           await SystemNavigator.pop();
         }
       },
-      child: _buildScaffold(context, ref, spectral),
+      child: _buildScaffold(
+        context,
+        ref,
+        shadow: spectral.shadow,
+        energy: spectral.energy,
+      ),
     );
   }
 
   Widget _buildScaffold(
     BuildContext context,
-    WidgetRef ref,
-    Spectral spectral,
-  ) {
+    WidgetRef ref, {
+    required Color shadow,
+    required Color energy,
+  }) {
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
@@ -112,7 +122,7 @@ class AppShell extends ConsumerWidget {
           // Full-bleed background — GPU shader (zero banding)
           Positioned.fill(
             child: WaveBackground(
-              color1: spectral.shadow,
+              color1: shadow,
               color2: AfColors.surfaceCanvas,
               amplitude: 0.15,
               speed: 0.3,
@@ -148,7 +158,7 @@ class AppShell extends ConsumerWidget {
         currentIndex: shell.currentIndex,
         onSelect: (i) => _onSelect(context, i),
         items: _items,
-        accentColor: spectral.energy,
+        accentColor: energy,
       ),
     );
   }

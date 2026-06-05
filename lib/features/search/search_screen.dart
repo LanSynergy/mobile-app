@@ -730,7 +730,7 @@ class _SearchResults extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activeId = ref.watch(currentTrackProvider)?.id;
+    final activeId = ref.watch(currentTrackProvider.select((t) => t?.id));
     final isBuffering = ref.watch(isBufferingProvider);
     final activeAccent = ref.watch(
       currentSpectralProvider.select((s) => s.energy),

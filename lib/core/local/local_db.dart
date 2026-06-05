@@ -227,28 +227,34 @@ class LocalDb {
   /// Fetches tracks played exactly N years ago on the same calendar day.
   Future<List<AfTrack>> getLostMemories({int limit = 50}) async {
     final now = DateTime.now();
-    final targetDates = <String>[];
+    // Build integer timestamp bounds (epoch ms) for each memory date.
+    // Using WHERE played_at >= start AND played_at < end lets SQLite use
+    // the idx_playback_history_played_at index, unlike the old date() wrapper.
+    final ranges = <({int start, int end})>[];
     for (var i = 1; i <= 5; i++) {
-      final pastDate = DateTime(now.year - i, now.month, now.day);
-      final dateStr = pastDate.toIso8601String().substring(0, 10);
-      targetDates.add(dateStr);
+      final dayStart = DateTime(now.year - i, now.month, now.day);
+      final dayEnd = dayStart.add(const Duration(days: 1));
+      ranges.add((
+        start: dayStart.millisecondsSinceEpoch,
+        end: dayEnd.millisecondsSinceEpoch,
+      ));
     }
 
-    final placeHolders = targetDates.map((_) => '?').join(',');
+    // Build: WHERE (played_at >= ?1 AND played_at < ?2) OR ...
+    final conditions = ranges
+        .map((r) => '(played_at >= ${r.start} AND played_at < ${r.end})')
+        .join(' OR ');
     final query =
         '''
       SELECT track_id, title, artist, album, duration_ms, image_url, MAX(played_at) as last_played
       FROM playback_history
-      WHERE date(played_at / 1000, 'unixepoch', 'localtime') IN ($placeHolders)
+      WHERE $conditions
       GROUP BY track_id
       ORDER BY last_played DESC
       LIMIT ?
     ''';
 
-    final variables = [
-      ...targetDates.map(Variable<String>.new),
-      Variable<int>(limit),
-    ];
+    final variables = [Variable<int>(limit)];
 
     final rows = await db
         .customSelect(

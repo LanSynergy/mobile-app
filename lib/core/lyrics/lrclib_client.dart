@@ -1,15 +1,16 @@
 import 'package:dio/dio.dart';
 import '../../utils/log.dart';
+import '../network/shared_dio_client.dart';
 
 class LrcLibClient {
   LrcLibClient({Dio? dio})
     : _dio =
           dio ??
-          Dio(
+          SharedDioClient().createWithOptions(
             BaseOptions(
               connectTimeout: const Duration(seconds: 5),
-              sendTimeout: const Duration(seconds: 5),
-              receiveTimeout: const Duration(seconds: 10),
+              sendTimeout: const Duration(seconds: 10),
+              receiveTimeout: const Duration(seconds: 15),
               headers: {
                 'User-Agent':
                     'Aetherfin Music Player (https://github.com/Aetherfin/mobile-app)',

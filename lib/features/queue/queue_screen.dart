@@ -47,7 +47,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
   @override
   Widget build(BuildContext context) {
     final queueAsync = ref.watch(playerQueueProvider);
-    final current = ref.watch(currentTrackProvider);
+    final current = ref.watch(currentTrackProvider.select((t) => t?.id));
     final isBuffering = ref.watch(isBufferingProvider);
 
     final liveQueue = queueAsync.maybeWhen(
@@ -71,7 +71,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
       _hasScrolledToActive = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_scrollController.hasClients) return;
-        final activeIdx = _items.indexWhere((t) => t.id == current.id);
+        final activeIdx = _items.indexWhere((t) => t.id == current);
         if (activeIdx < 0) return;
         // Each item is ~48dp (compact row 44dp + 4dp vertical padding).
         const itemExtent = 48.0;
@@ -204,7 +204,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                       },
                       itemBuilder: (context, i) {
                         final t = _items[i];
-                        final active = current?.id == t.id;
+                        final active = current == t.id;
                         // Dismissible handles horizontal swipe; the
                         // ReorderableDragStartListener handles vertical drag —
                         // they never compete because the gestures are on

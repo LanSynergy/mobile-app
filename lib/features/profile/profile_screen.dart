@@ -311,7 +311,11 @@ class _AvatarImagePicker extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, secondary: s.secondary, muted: s.muted),
+      ),
+    );
     final hasPhoto =
         (localPath != null && File(localPath!).existsSync()) ||
         networkUrl != null;
@@ -323,7 +327,8 @@ class _AvatarImagePicker extends ConsumerWidget {
         width: AfSpacing.avatarSize,
         height: AfSpacing.avatarSize,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _initialsAvatar(spectral),
+        errorBuilder: (context, error, stackTrace) =>
+            _initialsAvatar(spectral.muted),
       );
     } else if (networkUrl != null) {
       avatarContent = CachedNetworkImage(
@@ -332,11 +337,11 @@ class _AvatarImagePicker extends ConsumerWidget {
         width: AfSpacing.avatarSize,
         height: AfSpacing.avatarSize,
         fit: BoxFit.cover,
-        placeholder: (context, url) => _initialsAvatar(spectral),
-        errorWidget: (context, url, error) => _initialsAvatar(spectral),
+        placeholder: (context, url) => _initialsAvatar(spectral.muted),
+        errorWidget: (context, url, error) => _initialsAvatar(spectral.muted),
       );
     } else {
-      avatarContent = _initialsAvatar(spectral);
+      avatarContent = _initialsAvatar(spectral.muted);
     }
 
     return GestureDetector(
@@ -456,11 +461,11 @@ class _AvatarImagePicker extends ConsumerWidget {
     );
   }
 
-  Widget _initialsAvatar(Spectral spectral) {
+  Widget _initialsAvatar(Color bgColor) {
     return Container(
       width: AfSpacing.avatarSize,
       height: AfSpacing.avatarSize,
-      color: spectral.muted,
+      color: bgColor,
       alignment: Alignment.center,
       child: Text(
         name.isEmpty ? 'A' : name[0].toUpperCase(),
@@ -475,14 +480,14 @@ class _AvatarImagePicker extends ConsumerWidget {
 class _LastFmConnectionCTA extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(currentSpectralProvider.select((s) => s.muted));
     return Container(
       margin: const EdgeInsets.only(bottom: AfSpacing.s16),
       padding: const EdgeInsets.all(AfSpacing.s16),
       decoration: BoxDecoration(
         borderRadius: AfRadii.borderMd,
         gradient: LinearGradient(
-          colors: [spectral.muted, AfColors.semanticError],
+          colors: [spectral, AfColors.semanticError],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -517,7 +522,7 @@ class _LastFmConnectionCTA extends ConsumerWidget {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: spectral.muted,
+              foregroundColor: spectral,
               padding: const EdgeInsets.symmetric(
                 horizontal: AfSpacing.s16,
                 vertical: AfSpacing.s8,
@@ -542,7 +547,9 @@ class _StatsDashboard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activePeriod = ref.watch(statsPeriodProvider);
     final activeTab = ref.watch(statsTabProvider);
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -612,7 +619,7 @@ class _StatsDashboard extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     String activeTab,
-    Spectral spectral,
+    Color spectral,
   ) {
     switch (activeTab) {
       case 'songs':
@@ -641,17 +648,14 @@ class _StatsDashboard extends ConsumerWidget {
     }
   }
 
-  Widget _loadingIndicator(Spectral spectral) {
+  Widget _loadingIndicator(Color spectral) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AfSpacing.s32),
         child: SizedBox(
           width: 24,
           height: 24,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: spectral.primary,
-          ),
+          child: CircularProgressIndicator(strokeWidth: 2, color: spectral),
         ),
       ),
     );
@@ -684,7 +688,9 @@ class _PeriodButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final active = value == activeValue;
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.secondary),
+    );
     return PressScale(
       onTap: () => ref.read(statsPeriodProvider.notifier).state = value,
       child: Container(
@@ -693,7 +699,7 @@ class _PeriodButton extends ConsumerWidget {
           vertical: AfSpacing.s4,
         ),
         decoration: BoxDecoration(
-          color: active ? spectral.secondary : AfColors.surfaceBase,
+          color: active ? spectral : AfColors.surfaceBase,
           borderRadius: AfRadii.borderSm,
         ),
         child: Text(
@@ -751,7 +757,9 @@ class _SongsList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     if (tracks.isEmpty) {
       return _emptyState(
         'No history logged yet. Listen to tracks to collect metrics.',
@@ -816,7 +824,7 @@ class _SongsList extends ConsumerWidget {
           ),
           trailing: Text(
             '${t.playCount} plays',
-            style: AfTypography.caption.copyWith(color: spectral.primary),
+            style: AfTypography.caption.copyWith(color: spectral),
           ),
           onTap: () => _playTrackFromStats(context, ref, t.artist, t.title),
         );
@@ -831,7 +839,9 @@ class _ArtistsList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     if (artists.isEmpty) {
       return _emptyState('No history logged yet.');
     }
@@ -874,7 +884,7 @@ class _ArtistsList extends ConsumerWidget {
           ),
           trailing: Text(
             '${a.playCount} plays',
-            style: AfTypography.caption.copyWith(color: spectral.primary),
+            style: AfTypography.caption.copyWith(color: spectral),
           ),
           onTap: () => _navigateToArtistFromStats(context, ref, a.artist),
         );
@@ -890,7 +900,9 @@ class _AlbumsList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(currentSpectralProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     if (albums.isEmpty) {
       return _emptyState('No history logged yet.');
     }
@@ -953,7 +965,7 @@ class _AlbumsList extends ConsumerWidget {
           ),
           trailing: Text(
             '${alb.playCount} plays',
-            style: AfTypography.caption.copyWith(color: spectral.primary),
+            style: AfTypography.caption.copyWith(color: spectral),
           ),
           onTap: () =>
               _navigateToAlbumFromStats(context, ref, alb.artist, alb.album),

@@ -34,8 +34,9 @@ final currentSpectralProvider = Provider<Spectral>((ref) {
 final spectralFromUrlProvider = FutureProvider.autoDispose
     .family<Spectral, String?>((ref, imageUrl) async {
       if (imageUrl == null) return Spectral.fallback;
-      final backend = ref.watch(musicBackendProvider);
-      final headers = backend?.authHeaders;
+      final headers = ref.watch(
+        musicBackendProvider.select((b) => b?.authHeaders),
+      );
       try {
         return await ref
             .watch(spectralExtractorProvider)

@@ -233,44 +233,26 @@ class TrackRepository {
     String seedId, {
     int limit = 50,
   }) async {
-    // Single query with subqueries to fetch seed metadata inline.
-    // Eliminates the redundant trackById + seed SELECT.
-    // Column projection: only selects columns needed for scoring + AfTrack
-    // construction, skipping file_path, file_size, last_modified.
+    // Use pre-computed track_co_occurrences instead of the O(N²) self-join
+    // on playback_history. The co-occurrence table tracks how often two
+    // tracks are played close together (within 1 hour), giving us the same
+    // "listening proximity" signal at O(1) lookup cost.
     final rows = await db
         .customSelect(
           r'''
-      SELECT * FROM (
-        SELECT t.id, t.title, t.artist, t.album, t.album_artist,
-               t.track_number, t.duration_ms, t.year, t.genre,
-               t.cover_path, t.codec, t.bitrate, t.sample_rate, (
-          (CASE WHEN t.artist = (SELECT s.artist FROM tracks s WHERE s.id = ?1)
-                 OR t.album_artist = (SELECT s.artist FROM tracks s WHERE s.id = ?1)
-                THEN 5 ELSE 0 END) +
-          (CASE WHEN t.genre = (SELECT s.genre FROM tracks s WHERE s.id = ?1)
-                 AND t.genre != '' THEN 4 ELSE 0 END) +
-          (CASE WHEN t.year IS NOT NULL
-                  AND (SELECT s.year FROM tracks s WHERE s.id = ?1) IS NOT NULL
-                  AND ABS(t.year - (SELECT s.year FROM tracks s WHERE s.id = ?1)) <= 3
-                THEN 3 ELSE 0 END) +
-          MIN(12, 3 * COALESCE(
-            (SELECT COUNT(*) 
-             FROM playback_history h1
-             JOIN playback_history h2 ON h1.track_id = ?1 
-                                     AND h2.track_id = t.id 
-                                     AND ABS(h1.played_at - h2.played_at) <= 3600000), 
-            0
-          ))
-        ) AS similarity_score
-        FROM tracks t
-        WHERE t.id != ?1
-      )
-      WHERE similarity_score > 0
-      ORDER BY similarity_score DESC, random()
+      SELECT t.id, t.title, t.artist, t.album, t.album_artist,
+             t.track_number, t.duration_ms, t.year, t.genre,
+             t.cover_path, t.codec, t.bitrate, t.sample_rate,
+             co.count AS co_count
+      FROM track_co_occurrences co
+      JOIN tracks t ON t.id = co.track_b_id
+      WHERE co.track_a_id = ?1
+        AND t.id != ?1
+      ORDER BY co.count DESC
       LIMIT ?2
       ''',
           variables: [Variable<String>(seedId), Variable<int>(limit)],
-          readsFrom: {db.tracks, db.playbackHistory},
+          readsFrom: {db.trackCoOccurrences, db.tracks},
         )
         .get();
 

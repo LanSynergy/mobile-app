@@ -76,22 +76,24 @@ Future<void> main() async {
       final storage = AuthStorage();
       String deviceId;
       JellyfinAuth? initialAuth;
+      var aetherfinVersion = 'unknown';
       try {
-        // Run the two storage reads concurrently. `Future.wait` collapses
-        // to `List<Object>` for heterogeneous result types — we sequence
-        // the device-id load first so the index→type mapping below is
-        // unambiguous (no records here; the previous "Dart 3 destructuring"
-        // comment was stale, the call site was list-based all along).
+        // Run storage, auth, and version reads concurrently. `Future.wait`
+        // collapses to `List<Object>` for heterogeneous result types — we
+        // sequence the device-id load first so the index→type mapping below
+        // is unambiguous.
         final results =
             await Future.wait<Object?>([
               storage.loadOrCreateDeviceId(),
               storage.load(),
+              _loadAetherfinVersion(),
             ]).timeout(
               const Duration(seconds: 5),
               onTimeout: () => throw TimeoutException('storage timeout'),
             );
         deviceId = results[0]! as String;
         initialAuth = results[1] as JellyfinAuth?;
+        aetherfinVersion = results[2] as String;
         // Redact username in release builds — logs may be shared in bug reports.
         _boot(
           'device id loaded (len=${deviceId.length}); '
@@ -140,15 +142,6 @@ Future<void> main() async {
         'session=${lastfmSessionKey.isNotEmpty} user=$lastfmUsername scrobble=$lastfmScrobbleEnabled',
       );
 
-      // Resolve the app version once at boot so every HTTP client can stamp
-      // its `User-Agent` and Jellyfin `Version="…"` header from a single
-      // source of truth (pubspec.yaml → platform manifest → PackageInfo).
-      // `package_info_plus` is async (platform-channel lookup), but we're
-      // already awaiting four async reads above in this phase, so adding
-      // one more keeps boot ordering unchanged. The fallback string keeps
-      // boot moving on the rare platforms where the channel times out
-      // — it's preferable to ship a generic version than to crash startup.
-      final aetherfinVersion = await _loadAetherfinVersion();
       _boot('aetherfinVersion=$aetherfinVersion');
 
       // ── Phase 2: Native media engine ─────────────────────────────────────
