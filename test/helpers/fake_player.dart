@@ -57,6 +57,7 @@ class MockPlayerStream extends Mock implements PlayerStream {}
   final coverArtCtrl = StreamController<CoverArt?>.broadcast();
   final audioDeviceCtrl = StreamController<Device>.broadcast();
   final audioDevicesCtrl = StreamController<List<Device>>.broadcast();
+  final audioOutputStateCtrl = StreamController<AudioOutputState>.broadcast();
   final durationCtrl = StreamController<Duration>.broadcast();
 
   // Stub player.stream to return our MockPlayerStream
@@ -78,6 +79,9 @@ class MockPlayerStream extends Mock implements PlayerStream {}
   when(() => stream.coverArt).thenAnswer((_) => coverArtCtrl.stream);
   when(() => stream.audioDevice).thenAnswer((_) => audioDeviceCtrl.stream);
   when(() => stream.audioDevices).thenAnswer((_) => audioDevicesCtrl.stream);
+  when(
+    () => stream.audioOutputState,
+  ).thenAnswer((_) => audioOutputStateCtrl.stream);
 
   // Stub default state (override in each test as needed)
   when(() => player.state).thenReturn(const PlayerState());
@@ -130,6 +134,7 @@ class MockPlayerStream extends Mock implements PlayerStream {}
     coverArt: coverArtCtrl,
     audioDevice: audioDeviceCtrl,
     audioDevices: audioDevicesCtrl,
+    audioOutputState: audioOutputStateCtrl,
   );
 
   return (player: player, ctrls: ctrls);
@@ -151,6 +156,7 @@ class StreamControllers {
     required this.coverArt,
     required this.audioDevice,
     required this.audioDevices,
+    required this.audioOutputState,
   });
   final StreamController<bool> playing;
   final StreamController<bool> completed;
@@ -165,6 +171,7 @@ class StreamControllers {
   final StreamController<CoverArt?> coverArt;
   final StreamController<Device> audioDevice;
   final StreamController<List<Device>> audioDevices;
+  final StreamController<AudioOutputState> audioOutputState;
 
   /// Close all controllers. Call in `tearDown`.
   void dispose() {
@@ -181,5 +188,6 @@ class StreamControllers {
     coverArt.close();
     audioDevice.close();
     audioDevices.close();
+    audioOutputState.close();
   }
 }

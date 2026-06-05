@@ -904,11 +904,17 @@ void main() {
         await Future<void>.delayed(Duration.zero);
 
         // While playing, shouldAdvancePosition is true.
-        updateState((s) => s.copyWith(playing: true, completed: false));
+        updateState(
+          (s) =>
+              s.copyWith(playing: true, completed: false, playWhenReady: true),
+        );
         expect(service.shouldAdvancePosition, isTrue);
 
         // When completed fires, shouldAdvancePosition becomes false.
-        updateState((s) => s.copyWith(playing: false, completed: true));
+        updateState(
+          (s) =>
+              s.copyWith(playing: false, completed: true, playWhenReady: false),
+        );
         expect(service.shouldAdvancePosition, isFalse);
       },
     );

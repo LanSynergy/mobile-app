@@ -227,6 +227,9 @@ class AfPlayerService {
   /// Fired when the artwork path for the active track is updated or resolved.
   void Function(Uri?)? onArtworkUpdated;
 
+  /// Fired when the audio output fails to initialize.
+  void Function(AudioOutputState state)? onAudioOutputFailed;
+
   final List<StreamSubscription<dynamic>> _subs =
       <StreamSubscription<dynamic>>[];
 
@@ -240,7 +243,6 @@ class AfPlayerService {
 
   final StreamUrlCache _streamUrlCache = StreamUrlCache();
 
-  bool _userPaused = false;
   final AfAsyncLock _queueLock = AfAsyncLock();
 
   // ---------------------------------------------------------------------------
@@ -376,6 +378,13 @@ class AfPlayerService {
   Stream<double> get bufferingPercentageStream =>
       _player.stream.bufferingPercentage;
   double get bufferingPercentage => _player.state.bufferingPercentage;
+
+  Stream<AudioOutputState> get audioOutputStateStream =>
+      _player.stream.audioOutputState;
+  AudioOutputState get audioOutputState => _player.state.audioOutputState;
+
+  Stream<Duration> get prefetchCacheDurationStream =>
+      _player.stream.prefetchCacheDuration;
 
   Stream<double> get volumeStream => _player.stream.volume;
   double get volume => _player.state.volume;
@@ -528,7 +537,7 @@ class AfPlayerService {
 
   bool get isPlaying => _player.state.playing;
   bool get isCompleted => _player.state.completed;
-  bool get isUserPaused => _userPaused;
+  bool get isUserPaused => !_player.state.playWhenReady;
 
   @visibleForTesting
   set disposedForTesting(bool value) => _disposed = value;
@@ -540,7 +549,7 @@ class AfPlayerService {
   /// reported `playing` flag is temporarily stale/false on an OEM pipeline.
   bool get shouldAdvancePosition {
     if (currentTrack == null) return false;
-    if (_userPaused) return false;
+    if (!_player.state.playWhenReady) return false;
 
     // Stop extrapolating as soon as mpv reports any track completed.
     // The completed handler will either advance to the next track
@@ -584,7 +593,6 @@ class AfPlayerService {
   }) async {
     if (tracks.isEmpty) return;
 
-    _userPaused = false;
     _resolveStreamUrl = resolveStreamUrl;
     _prefetcher.cancelCurrentPrefetch();
     _prefetchStartedForTrackId = null;
@@ -638,15 +646,13 @@ class AfPlayerService {
       try {
         _onTrackChangedOrRestarted();
 
-        final shouldPlay = !_userPaused;
-        await _player.openAll(medias, index: 0, play: shouldPlay);
+        await _player.openAll(medias, index: 0, play: true);
         _mpvLoadedTrackId = startTrack.id;
         onMpvLoadedTrackChanged?.call(_mpvLoadedTrackId);
 
         _audioDeviceManager.nudge();
       } catch (e, stack) {
         afLog('audio', 'playQueue failed', error: e, stackTrace: stack);
-        _userPaused = true;
         _queueManager.clear();
         _mpvLoadedTrackId = null;
         onMpvLoadedTrackChanged?.call(null);
@@ -667,7 +673,6 @@ class AfPlayerService {
 
   Future<void> play() async {
     if (_disposed) return;
-    _userPaused = false;
     _positionTracker.onPlay();
     try {
       await _player.play();
@@ -679,7 +684,6 @@ class AfPlayerService {
 
   Future<void> pause() async {
     if (_disposed) return;
-    _userPaused = true;
     _positionTracker.onPause();
     try {
       await _player.pause();
@@ -690,7 +694,6 @@ class AfPlayerService {
 
   Future<void> stop() async {
     if (_disposed) return;
-    _userPaused = true;
     _positionTracker.onStop();
     _listenedDuration = Duration.zero;
     _lastPosition = null;
@@ -714,7 +717,6 @@ class AfPlayerService {
   /// don't remain in the queue or now-playing screen.
   Future<void> stopAndClear() async {
     if (_disposed) return;
-    _userPaused = true;
     _positionTracker.onStop();
     _listenedDuration = Duration.zero;
     _lastPosition = null;
@@ -763,7 +765,6 @@ class AfPlayerService {
     }
 
     final wasPlaying = _queueManager.currentTrack;
-    _userPaused = false;
     _completedHandledForTrackId = null;
     _eofFallbackHandledTrackId = null;
     _mpvLoadedTrackId = null;
@@ -794,7 +795,6 @@ class AfPlayerService {
     if (_disposed) return;
 
     final wasPlaying = _queueManager.currentTrack;
-    _userPaused = false;
     _completedHandledForTrackId = null;
     _eofFallbackHandledTrackId = null;
     _mpvLoadedTrackId = null;
@@ -825,7 +825,6 @@ class AfPlayerService {
     if (_disposed) return;
 
     final wasPlaying = _queueManager.currentTrack;
-    _userPaused = false;
     _completedHandledForTrackId = null;
     _eofFallbackHandledTrackId = null;
     _mpvLoadedTrackId = null;
@@ -1149,7 +1148,7 @@ class AfPlayerService {
     }
 
     try {
-      await _player.openAll([Media(url)], index: 0, play: !_userPaused);
+      await _player.openAll([Media(url)], index: 0, play: true);
       _mpvLoadedTrackId = target.id;
       onMpvLoadedTrackChanged?.call(_mpvLoadedTrackId);
     } catch (e) {
@@ -1193,9 +1192,6 @@ class AfPlayerService {
       _player.stream.playing.listen((playing) async {
         try {
           _updateMediaSession();
-          if (playing && _queueManager.currentTrack != null) {
-            _userPaused = false;
-          }
         } catch (e, stack) {
           afLog('audio', 'playing handler failed', error: e, stackTrace: stack);
         }
@@ -1203,6 +1199,47 @@ class AfPlayerService {
     );
 
     _subs.add(_player.stream.buffering.listen((_) => _updateMediaSession()));
+
+    _subs.add(
+      _player.stream.audioOutputState.listen((state) async {
+        try {
+          if (state == AudioOutputState.failed) {
+            afLog('error', 'Audio output failed, attempting fallback');
+            onAudioOutputFailed?.call(state);
+            // Attempt fallback: try audiotrack if aaudio failed, then auto
+            try {
+              await _player.setAudioDriver('audiotrack');
+              afLog('audio', 'Fallback to audiotrack succeeded');
+            } catch (e, stack) {
+              afLog(
+                'audio',
+                'audiotrack fallback failed, trying auto',
+                error: e,
+                stackTrace: stack,
+              );
+              try {
+                await _player.setAudioDriver('auto');
+                afLog('audio', 'Fallback to auto succeeded');
+              } catch (e2, stack2) {
+                afLog(
+                  'audio',
+                  'auto fallback also failed',
+                  error: e2,
+                  stackTrace: stack2,
+                );
+              }
+            }
+          }
+        } catch (e, stack) {
+          afLog(
+            'audio',
+            'audioOutputState handler failed',
+            error: e,
+            stackTrace: stack,
+          );
+        }
+      }),
+    );
 
     _subs.add(
       _player.stream.completed.listen((completed) async {
@@ -1341,7 +1378,6 @@ class AfPlayerService {
               if (!autoplayTriggered) {
                 switch (loopAtEvent) {
                   case Loop.off:
-                    _userPaused = true;
                     _positionTracker.onStop();
                     _mpvLoadedTrackId = null;
                     try {
@@ -1538,7 +1574,7 @@ class AfPlayerService {
       // reliably trigger playback on all mpv builds when called
       // immediately after a completed event, because the end-of-file
       // state transition can pause the new media.
-      if (!_player.state.playing && !_userPaused) {
+      if (!_player.state.playing && _player.state.playWhenReady) {
         try {
           await _player.play();
         } catch (e, stack) {
@@ -1639,7 +1675,7 @@ class AfPlayerService {
     // observation doesn't fire.  Overrides s.playing which may be
     // transiently true even though the track has finished.
     final trackEnded =
-        !_userPaused &&
+        _player.state.playWhenReady &&
         _queueManager.isAtQueueEnd &&
         s.duration > Duration.zero &&
         _positionTracker.lastKnownPosition >= s.duration;
