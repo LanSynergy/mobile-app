@@ -35,31 +35,34 @@ class SectionHeader extends ConsumerWidget {
         ? AfTypography.label.copyWith(color: AfColors.textSecondary)
         : AfTypography.titleMedium.copyWith(color: AfColors.textPrimary);
 
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            uppercase ? title.toUpperCase() : title,
-            style: titleStyle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        if (actionLabel != null)
-          GestureDetector(
-            onTap: onActionTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AfSpacing.s8,
-                vertical: AfSpacing.s4,
-              ),
-              child: Text(
-                '$actionLabel ›',
-                style: AfTypography.bodySmall.copyWith(color: spectral),
-              ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AfSpacing.s12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              uppercase ? title.toUpperCase() : title,
+              style: titleStyle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-      ],
+          if (actionLabel != null)
+            GestureDetector(
+              onTap: onActionTap,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AfSpacing.s8,
+                  vertical: AfSpacing.s4,
+                ),
+                child: Text(
+                  '$actionLabel ›',
+                  style: AfTypography.bodySmall.copyWith(color: spectral),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
