@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/audio/offline_cache_service.dart';
 import '../../core/audio/player_settings_store.dart';
 import '../../core/local/app_mode_store.dart';
+import '../../app/router.dart';
 import '../../build_id.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/lastfm_sync_provider.dart';
@@ -471,39 +472,58 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       );
                       if (confirmed == true && context.mounted) {
-                        final prefs = await SharedPreferences.getInstance();
-                        await prefs.clear();
+                        // ── Step 1: Reset router state BEFORE destructive ops ──
+                        // This ensures the redirect sends the user to onboarding
+                        // even if the settings screen is disposed mid-operation.
+                        resetRouterMode();
+                        setRouterAuthState(auth: null);
+                        notifyAuthChanged();
 
-                        const secureStorage = FlutterSecureStorage();
-                        await secureStorage.deleteAll();
+                        // ── Step 2: Clear all persistent storage ──
+                        try {
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.clear();
+                        } catch (_) {}
 
-                        // Close the database connection before
-                        // deleting the file!
-                        final db = ref.read(appDatabaseProvider);
-                        await db.close();
+                        try {
+                          const secureStorage = FlutterSecureStorage();
+                          await secureStorage.deleteAll();
+                        } catch (_) {}
 
-                        final dbFolder =
-                            await getApplicationDocumentsDirectory();
-                        final dbFile = File(
-                          p.join(dbFolder.path, 'aetherfin_drift.db'),
-                        );
-                        if (dbFile.existsSync()) {
-                          await dbFile.delete();
-                        }
+                        // ── Step 3: Close and delete database ──
+                        try {
+                          final db = ref.read(appDatabaseProvider);
+                          await db.close();
+                          final dbFolder =
+                              await getApplicationDocumentsDirectory();
+                          final dbFile = File(
+                            p.join(dbFolder.path, 'aetherfin_drift.db'),
+                          );
+                          if (dbFile.existsSync()) {
+                            await dbFile.delete();
+                          }
+                          ref.invalidate(appDatabaseProvider);
+                        } catch (_) {}
 
-                        // Invalidate the provider so a fresh
-                        // database is opened on next request.
-                        ref.invalidate(appDatabaseProvider);
+                        // ── Step 4: Clear Riverpod providers ──
+                        try {
+                          ref.read(appModeProvider.notifier).state = null;
+                          ref
+                                  .read(
+                                    localOnboardingCompletedProvider.notifier,
+                                  )
+                                  .state =
+                              false;
+                          await ref.read(authProvider.notifier).clear();
+                        } catch (_) {}
 
-                        await AppModeStore.clear();
-                        ref.read(appModeProvider.notifier).state = null;
-                        ref
-                                .read(localOnboardingCompletedProvider.notifier)
-                                .state =
-                            false;
-                        await ref.read(authProvider.notifier).clear();
+                        // ── Step 5: Navigate to onboarding ──
+                        // Use root navigator directly in case the settings
+                        // screen was disposed during the clearing steps.
                         if (context.mounted) {
                           context.go('/');
+                        } else {
+                          appRouter.go('/');
                         }
                       }
                     },
