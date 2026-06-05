@@ -9,6 +9,8 @@ const defaultSpectrumSettings = SpectrumSettings(
   bandHighHz: 20000.0,
   attackSmoothing: 0.8,
   releaseSmoothing: 0.1,
+  // 75% overlap for smoother bar transitions between frames.
+  overlapFactor: 4,
   minDb: -105.0,
   maxDb: 35.0,
   // 60 fps matches the visualizer ticker's vsync-aligned flush rate.
