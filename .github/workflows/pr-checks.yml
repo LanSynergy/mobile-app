@@ -59,8 +59,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        shard: [1, 2, 3, 4]
-        total: [4]
+        shard: [0, 1, 2, 3]
 
     steps:
       - name: Checkout
@@ -82,5 +81,5 @@ jobs:
             .dart_tool
           key: ${{ runner.os }}-ci-${{ hashFiles('pubspec.lock') }}
 
-      - name: Test (shard ${{ matrix.shard }}/${{ matrix.total }})
-        run: flutter test --shard-index=${{ matrix.shard }} --total-shards=${{ matrix.total }}
+      - name: Test (shard ${{ matrix.shard }}/4)
+        run: flutter test --shard-index=${{ matrix.shard }} --total-shards=4
