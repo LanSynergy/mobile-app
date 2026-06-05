@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +16,6 @@ import '../../design_tokens/tokens.dart';
 import '../../state/lastfm_stats_providers.dart';
 import '../../state/providers.dart';
 import '../../utils/display_error.dart';
-import '../../widgets/af_scrollbar.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/bottom_sheet.dart';
@@ -63,108 +63,257 @@ class ProfileScreen extends ConsumerWidget {
     final lastFmUser = ref.watch(lastfmUsernameProvider);
     final isLastFmConnected = lastFmSession.isNotEmpty && lastFmUser.isNotEmpty;
 
-    return Scaffold(
-      backgroundColor: AfColors.surfaceCanvas,
-      body: SafeArea(
-        child: AfScrollbar(
-          child: ListView(
-            physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-            children: [
-              const SizedBox(height: AfSpacing.s24),
-              Center(
-                child: Column(
-                  children: [
-                    _AvatarImagePicker(
-                      name: name,
-                      isUploading: profilePhoto.isUploading,
-                      localPath: profilePhoto.localPath,
-                      networkUrl: profilePhoto.networkUrl,
-                      authHeaders: ref.watch(musicBackendProvider)?.authHeaders,
-                      onPickPhoto: (source) async {
-                        final picker = ImagePicker();
-                        try {
-                          final image = await picker.pickImage(
-                            source: source,
-                            maxWidth: 512,
-                            maxHeight: 512,
-                            imageQuality: 85,
-                          );
-                          if (image != null) {
-                            final bytes = await image.readAsBytes();
-                            final mimeType = image.mimeType ?? 'image/jpeg';
-                            await ref
-                                .read(profilePhotoProvider.notifier)
-                                .updatePhoto(bytes, mimeType);
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Failed to update profile photo: $e',
-                                ),
-                                backgroundColor: AfColors.semanticError,
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      onRemovePhoto: () async {
-                        try {
-                          await ref
-                              .read(profilePhotoProvider.notifier)
-                              .removePhoto();
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Failed to remove profile photo: $e',
-                                ),
-                                backgroundColor: AfColors.semanticError,
-                              ),
-                            );
-                          }
-                        }
-                      },
-                    ),
-                    const SizedBox(height: AfSpacing.s12),
-                    Text(name, style: AfTypography.titleLarge),
-                    const SizedBox(height: AfSpacing.s4),
-                    Text(
-                      serverName,
-                      style: AfTypography.bodySmall.copyWith(
-                        color: AfColors.textTertiary,
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, secondary: s.secondary),
+      ),
+    );
+
+    return SafeArea(
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: ClampingScrollPhysics(),
+        ),
+        slivers: [
+          // ── Header — gradient "Profile" + settings icon ─────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                AfSpacing.s16,
+                AfSpacing.s16,
+                AfSpacing.s32,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ShaderMask(
+                      shaderCallback: (bounds) => LinearGradient(
+                        colors: [spectral.primary, spectral.secondary],
+                      ).createShader(bounds),
+                      child: Text(
+                        'Profile',
+                        style: AfTypography.display.copyWith(
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AfSpacing.s24),
-              Row(
-                children: [
-                  _StatCard(label: 'Tracks', value: fmtCount(tracksAsync)),
-                  const SizedBox(width: AfSpacing.s12),
-                  _StatCard(label: 'Albums', value: fmtCount(albumsAsync)),
+                  ),
+                  PressScale(
+                    onTap: () => context.push('/settings'),
+                    child: ClipRRect(
+                      borderRadius: AfRadii.borderPill,
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                        child: Container(
+                          padding: const EdgeInsets.all(AfSpacing.s12),
+                          decoration: BoxDecoration(
+                            color: AfColors.glassFill,
+                            borderRadius: AfRadii.borderPill,
+                            border: Border.all(
+                              color: AfColors.glassBorderStrong,
+                              width: 1,
+                            ),
+                          ),
+                          child: const Icon(
+                            LucideIcons.settings,
+                            color: AfColors.textSecondary,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: AfSpacing.s24),
-              const SectionHeader(title: 'Pinned', uppercase: true),
-              const SizedBox(height: AfSpacing.s8),
-              _PinnedRow(albums: pinned),
-              const SizedBox(height: AfSpacing.s24),
+            ),
+          ),
 
-              // ── Listening Stats Dashboard ──────────────────────────────────────
-              const SectionHeader(title: 'Listening Stats', uppercase: true),
-              const SizedBox(height: AfSpacing.s12),
-              if (!isLastFmConnected) _LastFmConnectionCTA(),
-              _StatsDashboard(isLastFmConnected: isLastFmConnected),
-              const SizedBox(height: AfSpacing.s24),
+          // ── Avatar + info ───────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Center(
+              child: Column(
+                children: [
+                  // Spectral glow behind avatar
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              spectral.primary.withValues(alpha: 0.25),
+                              spectral.primary.withValues(alpha: 0.0),
+                            ],
+                          ),
+                        ),
+                      ),
+                      _AvatarImagePicker(
+                        name: name,
+                        isUploading: profilePhoto.isUploading,
+                        localPath: profilePhoto.localPath,
+                        networkUrl: profilePhoto.networkUrl,
+                        authHeaders: ref
+                            .watch(musicBackendProvider)
+                            ?.authHeaders,
+                        onPickPhoto: (source) async {
+                          final picker = ImagePicker();
+                          try {
+                            final image = await picker.pickImage(
+                              source: source,
+                              maxWidth: 512,
+                              maxHeight: 512,
+                              imageQuality: 85,
+                            );
+                            if (image != null) {
+                              final bytes = await image.readAsBytes();
+                              final mimeType = image.mimeType ?? 'image/jpeg';
+                              await ref
+                                  .read(profilePhotoProvider.notifier)
+                                  .updatePhoto(bytes, mimeType);
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Failed to update profile photo: $e',
+                                  ),
+                                  backgroundColor: AfColors.semanticError,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        onRemovePhoto: () async {
+                          try {
+                            await ref
+                                .read(profilePhotoProvider.notifier)
+                                .removePhoto();
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Failed to remove profile photo: $e',
+                                  ),
+                                  backgroundColor: AfColors.semanticError,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AfSpacing.s12),
+                  Text(name, style: AfTypography.titleLarge),
+                  const SizedBox(height: AfSpacing.s4),
+                  Text(
+                    serverName,
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
-              const SectionHeader(title: 'Account', uppercase: true),
-              const SizedBox(height: AfSpacing.s8),
-              PressScale(
+          // ── Stat cards ──────────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+              child: Column(
+                children: [
+                  const SizedBox(height: AfSpacing.s24),
+                  Row(
+                    children: [
+                      _StatCard(label: 'Tracks', value: fmtCount(tracksAsync)),
+                      const SizedBox(width: AfSpacing.s12),
+                      _StatCard(label: 'Albums', value: fmtCount(albumsAsync)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Pinned ──────────────────────────────────────────────────────
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                AfSpacing.s24,
+                AfSpacing.s16,
+                0,
+              ),
+              child: SectionHeader(title: 'Pinned', uppercase: true),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: AfSpacing.s16,
+                right: AfSpacing.s16,
+                top: AfSpacing.s8,
+              ),
+              child: _PinnedRow(albums: pinned),
+            ),
+          ),
+
+          // ── Listening Stats ─────────────────────────────────────────────
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                AfSpacing.s24,
+                AfSpacing.s16,
+                0,
+              ),
+              child: SectionHeader(
+                title: 'Listening Stats',
+                uppercase: true,
+              ),
+            ),
+          ),
+          if (!isLastFmConnected)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+                child: _LastFmConnectionCTA(),
+              ),
+            ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+              child: _StatsDashboard(isLastFmConnected: isLastFmConnected),
+            ),
+          ),
+
+          // ── Account ─────────────────────────────────────────────────────
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                AfSpacing.s24,
+                AfSpacing.s16,
+                0,
+              ),
+              child: SectionHeader(title: 'Account', uppercase: true),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: AfSpacing.s16,
+                right: AfSpacing.s16,
+                top: AfSpacing.s8,
+              ),
+              child: PressScale(
                 onTap: () => context.push('/settings'),
                 child: const ListTile(
                   leading: Icon(LucideIcons.settings),
@@ -173,10 +322,13 @@ class ProfileScreen extends ConsumerWidget {
                   shape: RoundedRectangleBorder(borderRadius: AfRadii.borderMd),
                 ),
               ),
-              const SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
-            ],
+            ),
           ),
-        ),
+
+          const SliverToBoxAdapter(
+            child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
+          ),
+        ],
       ),
     );
   }
