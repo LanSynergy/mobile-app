@@ -677,9 +677,11 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
 
     return sections
         .map(
-          (child) => Opacity(
-            opacity: _masterEnabled ? 1.0 : 0.4,
-            child: AbsorbPointer(absorbing: !_masterEnabled, child: child),
+          (child) => RepaintBoundary(
+            child: Opacity(
+              opacity: _masterEnabled ? 1.0 : 0.4,
+              child: AbsorbPointer(absorbing: !_masterEnabled, child: child),
+            ),
           ),
         )
         .toList();
