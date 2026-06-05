@@ -453,6 +453,22 @@ esac
 mkdir -p "$(dirname "$TG_MSG_FILE")" "$OUTDIR"
 cd "$ROOT"
 
+if [ -n "$SHARD_INDEX" ] && [ -n "$TOTAL_SHARDS" ]; then
+  # Shard mode: lean pass — pub get + test only.  Everything else
+  # (codegen, toolchain, build ID, banner) is redundant overhead that
+  # gets multiplied by N shards and makes CI slower than unsharded.
+  echo ""
+  echo "  ╔══════════════════════════════════════════╗"
+  echo "  ║     Shard $SHARD_INDEX/$TOTAL_SHARDS — Test only            ║"
+  echo "  ╚══════════════════════════════════════════╝"
+  echo ""
+  step "Install dependencies" $FLUTTER pub get
+  _tg_transition "🧪 Running tests (shard $SHARD_INDEX/$TOTAL_SHARDS)..." "🧪"
+  step "Unit tests (shard $SHARD_INDEX/$TOTAL_SHARDS)" \
+    $FLUTTER test --shard-index=$SHARD_INDEX --total-shards=$TOTAL_SHARDS --no-pub
+  exit 0
+fi
+
 print_banner
 echo "  Mode:          $MODE"
 echo "  Split ABI:     $SPLIT_PER_ABI"

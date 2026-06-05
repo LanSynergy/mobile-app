@@ -82,4 +82,4 @@ jobs:
             ${{ runner.os }}-pub-
 
       - name: Test (shard ${{ matrix.shard }}/4, via tool/build)
-        run: bash tool/build --skip-build --skip-analyze --shard-index=${{ matrix.shard }} --total-shards=4
+        run: bash tool/build --shard-index=${{ matrix.shard }} --total-shards=4
