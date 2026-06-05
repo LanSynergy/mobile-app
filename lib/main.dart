@@ -111,10 +111,19 @@ Future<void> main() async {
       }
 
       // Load persisted app mode (server | local | null).
-      final persistedMode = await AppModeStore.load();
+      final persistedMode = await AppModeStore.load().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          _boot('appMode load timed out — using null');
+          return null;
+        },
+      );
       _boot('appMode=${persistedMode?.name ?? "null"}');
 
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('SharedPreferences timeout'),
+      );
 
       final localOnboardingCompleted =
           prefs.getBool('af.local_onboarding_completed') ?? false;
@@ -146,8 +155,18 @@ Future<void> main() async {
 
       // ── Phase 2: Native media engine ─────────────────────────────────────
       // MPV must be initialized before any Player() is constructed.
-      MpvAudioKit.ensureInitialized();
-      _boot('MpvAudioKit.ensureInitialized OK');
+      try {
+        MpvAudioKit.ensureInitialized();
+        _boot('MpvAudioKit.ensureInitialized OK');
+      } catch (e, stack) {
+        afLog(
+          'error',
+          'MpvAudioKit.ensureInitialized failed — audio playback will be unavailable',
+          error: e,
+          stackTrace: stack,
+        );
+        _boot('MpvAudioKit.ensureInitialized FAILED (non-fatal)');
+      }
 
       // ── Phase 3: OS audio service ─────────────────────────────────────────
       final handler = AfPlayerService();
