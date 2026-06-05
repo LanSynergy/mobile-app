@@ -49,11 +49,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Analyze
-        run: flutter analyze
+      - name: Analyze (via tool/build, skip test + build)
+        run: bash tool/build --skip-build --skip-test
 
   test:
     name: Test (shard ${{ matrix.shard }})
@@ -84,8 +81,5 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Test (shard ${{ matrix.shard }}/4)
-        run: flutter test --shard-index=${{ matrix.shard }} --total-shards=4 --no-pub
+      - name: Test (shard ${{ matrix.shard }}/4, via tool/build)
+        run: bash tool/build --skip-build --skip-analyze --shard-index=${{ matrix.shard }} --total-shards=4
