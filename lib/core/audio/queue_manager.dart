@@ -118,9 +118,7 @@ class AfQueueManager {
   }
 
   void appendAll(List<AfTrack> tracks) {
-    for (final track in tracks) {
-      _engine.append(track);
-    }
+    _engine.appendAll(tracks);
     _queueController.add(_engine.tracks);
   }
 

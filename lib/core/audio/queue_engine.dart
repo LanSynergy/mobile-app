@@ -431,6 +431,23 @@ class AfQueueEngine {
     }
   }
 
+  /// Append multiple tracks in one batch — O(n) instead of O(n²).
+  ///
+  /// In shuffle mode, appends all physical indices first, then rebuilds
+  /// the physical→logical map once instead of per-append.
+  void appendAll(List<AfTrack> tracks) {
+    if (tracks.isEmpty) return;
+    final startPhysical = _tracks.length;
+    _tracks.addAll(tracks);
+    if (_shuffleOrder != null) {
+      for (var i = 0; i < tracks.length; i++) {
+        _shuffleOrder!.add(startPhysical + i);
+      }
+      _rebuildPhysicalToLogical();
+      _shuffledTracks = null;
+    }
+  }
+
   // ── Internal helpers ───────────────────────────────────────────────
 
   void updateTrackFavorite(String trackId, bool isFavorite) {
