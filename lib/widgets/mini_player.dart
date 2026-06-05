@@ -41,19 +41,23 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
 
   double _dragDistance = 0;
   late final AnimationController _snapCtrl;
+  late final ValueNotifier<double> _dragDistanceNotifier;
 
   @override
   void initState() {
     super.initState();
+    _dragDistanceNotifier = ValueNotifier(0);
     _snapCtrl = AnimationController(vsync: this, duration: AfDurations.quick)
       ..addListener(() {
-        setState(() => _dragDistance = _snapCtrl.value * _maxDragDistance * 2);
+        _dragDistance = _snapCtrl.value * _maxDragDistance * 2;
+        _dragDistanceNotifier.value = _dragDistance;
       });
   }
 
   @override
   void dispose() {
     _snapCtrl.dispose();
+    _dragDistanceNotifier.dispose();
     super.dispose();
   }
 
@@ -82,9 +86,6 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
     final isBuffering = ref.watch(isBufferingProvider);
     final spectral = ref.watch(currentSpectralProvider.select((s) => s.energy));
 
-    final clampedDy = _dragDistance.clamp(0, _maxDragDistance * 2).toDouble();
-    final dragOpacity = 1.0 - (clampedDy / _maxDragDistance).clamp(0, 1);
-
     return Material(
       type: MaterialType.transparency,
       child: Padding(
@@ -100,11 +101,12 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
             onVerticalDragStart: (_) {
               if (_snapCtrl.isAnimating) _snapCtrl.stop();
               _dragDistance = 0;
+              _dragDistanceNotifier.value = 0;
             },
             onVerticalDragUpdate: (details) {
-              setState(() {
-                _dragDistance += details.primaryDelta ?? 0;
-              });
+              _dragDistance += details.primaryDelta ?? 0;
+              _dragDistanceNotifier.value = _dragDistance;
+              setState(() {});
             },
             onVerticalDragEnd: (details) {
               final vy = details.primaryVelocity ?? 0;
@@ -118,7 +120,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                 final bool isUpward = isFlick ? (vy < 0) : (_dragDistance < 0);
                 unawaited(HapticFeedback.selectionClick());
                 if (isUpward) {
-                  setState(() => _dragDistance = 0);
+                  _dragDistance = 0;
+                  _dragDistanceNotifier.value = 0;
+                  setState(() {});
                   widget.onTap?.call();
                 } else {
                   _animateDismiss();
@@ -127,144 +131,191 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                 _snapBack();
               }
             },
-            child: Opacity(
-              opacity: dragOpacity,
-              child: Transform.translate(
-                offset: Offset(0, clampedDy),
-                child: PressScale(
-                  ensureHitTarget: false,
-                  onTap: widget.onTap,
-                  child: RepaintBoundary(
-                    child: ClipRRect(
-                      borderRadius: AfRadii.borderPill,
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                        child: Container(
-                          height: AfSpacing.miniPlayerHeight,
-                          decoration: BoxDecoration(
-                            color: AfColors.glassFillStrong,
-                            borderRadius: AfRadii.borderPill,
-                            border: Border.all(
-                              color: AfColors.surfaceHigh.withValues(
-                                alpha: 0.5,
-                              ),
-                              width: 1,
-                            ),
-                          ),
-                          padding: const EdgeInsets.only(
-                            left: AfSpacing.s4,
-                            right: AfSpacing.s8,
-                          ),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 48,
-                                height: 48,
-                                child: _ReactiveProgressRing(
-                                  track: track,
-                                  child: Hero(
-                                    tag: 'now-playing-artwork',
-                                    child: ClipRRect(
-                                      borderRadius: AfRadii.borderMd,
-                                      child: Artwork(
-                                        url:
-                                            artworkUri?.toString() ??
-                                            track.imageUrl,
-                                        size: 44,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: AfSpacing.s12),
-                              Expanded(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    MarqueeText(
-                                      text: track.title,
-                                      style: AfTypography.bodyMedium.copyWith(
-                                        color: AfColors.textPrimary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      speedPxPerSec: 25.0,
-                                      minDurationMs: 6000,
-                                      maxDurationMs: 25000,
-                                    ),
-                                    MarqueeText(
-                                      text: track.artistName,
-                                      style: AfTypography.bodySmall.copyWith(
-                                        color: AfColors.textSecondary,
-                                      ),
-                                      speedPxPerSec: 25.0,
-                                      minDurationMs: 6000,
-                                      maxDurationMs: 25000,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Semantics(
-                                button: true,
-                                label: 'Skip previous',
-                                child: _MiniTransportButton(
-                                  icon: const Icon(
-                                    LucideIcons.skipBack,
-                                    size: 24,
-                                    color: AfColors.textPrimary,
-                                  ),
-                                  onTap: widget.onSkipPrevious,
-                                ),
-                              ),
-                              PressScale(
-                                ensureHitTarget: false,
-                                onTap: widget.onPlayPause,
-                                child: Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: spectral,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: isBuffering
-                                        ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.0,
-                                              color: AfColors.surfaceCanvas,
-                                            ),
-                                          )
-                                        : Icon(
-                                            isPlaying
-                                                ? LucideIcons.pause
-                                                : LucideIcons.play,
-                                            color: AfColors.surfaceCanvas,
-                                            size: 24,
-                                          ),
-                                  ),
-                                ),
-                              ),
-                              Semantics(
-                                button: true,
-                                label: 'Skip next',
-                                child: _MiniTransportButton(
-                                  icon: const Icon(
-                                    LucideIcons.skipForward,
-                                    size: 24,
-                                    color: AfColors.textPrimary,
-                                  ),
-                                  onTap: widget.onSkipNext,
-                                ),
-                              ),
-                            ],
+            child: ValueListenableBuilder<double>(
+              valueListenable: _dragDistanceNotifier,
+              builder: (context, dragDist, _) {
+                final clampedDy = dragDist
+                    .clamp(0, _maxDragDistance * 2)
+                    .toDouble();
+                final dragOpacity =
+                    1.0 - (clampedDy / _maxDragDistance).clamp(0, 1);
+                return Opacity(
+                  opacity: dragOpacity,
+                  child: Transform.translate(
+                    offset: Offset(0, clampedDy),
+                    child: _MiniPlayerContent(
+                      track: track,
+                      artworkUri: artworkUri,
+                      isPlaying: isPlaying,
+                      isBuffering: isBuffering,
+                      spectral: spectral,
+                      onTap: widget.onTap,
+                      onPlayPause: widget.onPlayPause,
+                      onSkipPrevious: widget.onSkipPrevious,
+                      onSkipNext: widget.onSkipNext,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Extracted content widget — stays frozen during drag/snap animations.
+/// Only the parent [ValueListenableBuilder] rebuilds for opacity/translate.
+class _MiniPlayerContent extends StatelessWidget {
+  const _MiniPlayerContent({
+    required this.track,
+    required this.artworkUri,
+    required this.isPlaying,
+    required this.isBuffering,
+    required this.spectral,
+    this.onTap,
+    this.onPlayPause,
+    this.onSkipPrevious,
+    this.onSkipNext,
+  });
+
+  final AfTrack track;
+  final Uri? artworkUri;
+  final bool isPlaying;
+  final bool isBuffering;
+  final Color spectral;
+  final VoidCallback? onTap;
+  final VoidCallback? onPlayPause;
+  final VoidCallback? onSkipPrevious;
+  final VoidCallback? onSkipNext;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      ensureHitTarget: false,
+      onTap: onTap,
+      child: RepaintBoundary(
+        child: ClipRRect(
+          borderRadius: AfRadii.borderPill,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: Container(
+              height: AfSpacing.miniPlayerHeight,
+              decoration: BoxDecoration(
+                color: AfColors.glassFillStrong,
+                borderRadius: AfRadii.borderPill,
+                border: Border.all(
+                  color: AfColors.surfaceHigh.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+              ),
+              padding: const EdgeInsets.only(
+                left: AfSpacing.s4,
+                right: AfSpacing.s8,
+              ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: _ReactiveProgressRing(
+                      track: track,
+                      child: Hero(
+                        tag: 'now-playing-artwork',
+                        child: ClipRRect(
+                          borderRadius: AfRadii.borderMd,
+                          child: Artwork(
+                            url: artworkUri?.toString() ?? track.imageUrl,
+                            size: 44,
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: AfSpacing.s12),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        MarqueeText(
+                          text: track.title,
+                          style: AfTypography.bodyMedium.copyWith(
+                            color: AfColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          speedPxPerSec: 25.0,
+                          minDurationMs: 6000,
+                          maxDurationMs: 25000,
+                        ),
+                        MarqueeText(
+                          text: track.artistName,
+                          style: AfTypography.bodySmall.copyWith(
+                            color: AfColors.textSecondary,
+                          ),
+                          speedPxPerSec: 25.0,
+                          minDurationMs: 6000,
+                          maxDurationMs: 25000,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Semantics(
+                    button: true,
+                    label: 'Skip previous',
+                    child: _MiniTransportButton(
+                      icon: const Icon(
+                        LucideIcons.skipBack,
+                        size: 24,
+                        color: AfColors.textPrimary,
+                      ),
+                      onTap: onSkipPrevious,
+                    ),
+                  ),
+                  PressScale(
+                    ensureHitTarget: false,
+                    onTap: onPlayPause,
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: spectral,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: isBuffering
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.0,
+                                  color: AfColors.surfaceCanvas,
+                                ),
+                              )
+                            : Icon(
+                                isPlaying
+                                    ? LucideIcons.pause
+                                    : LucideIcons.play,
+                                color: AfColors.surfaceCanvas,
+                                size: 24,
+                              ),
+                      ),
+                    ),
+                  ),
+                  Semantics(
+                    button: true,
+                    label: 'Skip next',
+                    child: _MiniTransportButton(
+                      icon: const Icon(
+                        LucideIcons.skipForward,
+                        size: 24,
+                        color: AfColors.textPrimary,
+                      ),
+                      onTap: onSkipNext,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

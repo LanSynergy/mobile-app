@@ -212,4 +212,9 @@ class OfflineCacheService {
   }
 
   static String _formatBytes(int bytes) => formatSize(bytes);
+
+  /// Releases the Dio HTTP client held by this service.
+  void dispose() {
+    _dio.close(force: true);
+  }
 }

@@ -390,6 +390,9 @@ class _CombinedBarPainter extends CustomPainter {
   final Color playedColor;
   final Color unplayedColor;
 
+  /// Hoisted paint — mutated per frame, never re-allocated.
+  final Paint _paint = Paint()..style = PaintingStyle.fill;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (size.width <= 0 || size.height <= 0) return;
@@ -407,7 +410,7 @@ class _CombinedBarPainter extends CustomPainter {
     final double maxBarH = midY * 0.8;
     final barRadius = Radius.circular(barW / 2);
 
-    final paint = Paint()..style = PaintingStyle.fill;
+    final paint = _paint;
 
     // Path batching: 4 distinct paint states to prevent breaking the
     // Skia pipeline batch. Grouping by color avoids ~128 individual
@@ -478,6 +481,23 @@ class _ScrubOverlayPainter extends CustomPainter {
   Color? _cachedPlayedColor;
   Shader? _cachedShader;
 
+  // ── Hoisted paint objects — mutated per frame, never re-allocated. ──
+  final Paint _trackBgPaint = Paint();
+  final Paint _tailPaint = Paint();
+  final Paint _glowPaint = Paint();
+  final Paint _hStreakPaint = Paint();
+  final Paint _vStreakPaint = Paint();
+  final Paint _corePaint = Paint()..color = Colors.white;
+
+  // ── Hoisted MaskFilters — only 2 distinct blur radii used. ──
+  static const _blur2 = MaskFilter.blur(BlurStyle.normal, 2.0);
+  MaskFilter _blurOuter = const MaskFilter.blur(BlurStyle.normal, 10.0);
+  bool _lastDrag = false;
+
+  // ── Cached track background geometry (only changes with size). ──
+  Size? _cachedTrackSize;
+  late RRect _cachedTrackRRect;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (size.width <= 0 || size.height <= 0) return;
@@ -489,13 +509,15 @@ class _ScrubOverlayPainter extends CustomPainter {
     );
 
     // 1. Track background.
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
+    if (_cachedTrackSize != size) {
+      _cachedTrackSize = size;
+      _cachedTrackRRect = RRect.fromRectAndRadius(
         Rect.fromLTWH(0, midY - 1.5, size.width, 3),
         const Radius.circular(1.5),
-      ),
-      Paint()..color = unplayedColor.withValues(alpha: 0.20),
-    );
+      );
+    }
+    _trackBgPaint.color = unplayedColor.withValues(alpha: 0.20);
+    canvas.drawRRect(_cachedTrackRRect, _trackBgPaint);
 
     // 2. Tail — fading gradient from transparent to playedColor.
     // Only draw if there's actually a filled portion (fillW > 1 px).
@@ -510,12 +532,13 @@ class _ScrubOverlayPainter extends CustomPainter {
         ).createShader(Rect.fromLTWH(0, midY - 1.5, fillW, 3));
       }
 
+      _tailPaint.shader = _cachedShader;
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(0, midY - 1.5, fillW, 3),
           const Radius.circular(1.5),
         ),
-        Paint()..shader = _cachedShader,
+        _tailPaint,
       );
     }
 
@@ -528,48 +551,49 @@ class _ScrubOverlayPainter extends CustomPainter {
       final cx = math.max(fillW, 2.5);
       final isDrag = notifier.dragging;
 
+      // Recompute the outer blur only when drag state changes.
+      if (isDrag != _lastDrag) {
+        _lastDrag = isDrag;
+        _blurOuter = MaskFilter.blur(BlurStyle.normal, isDrag ? 14.0 : 10.0);
+      }
+
       // Outer ambient glow (soft, wide).
-      canvas.drawCircle(
-        Offset(cx, midY),
-        isDrag ? 28.0 : 16.0,
-        Paint()
-          ..color = playedColor.withValues(alpha: isDrag ? 0.35 : 0.20)
-          ..maskFilter = MaskFilter.blur(
-            BlurStyle.normal,
-            isDrag ? 14.0 : 10.0,
-          ),
-      );
+      _glowPaint
+        ..color = playedColor.withValues(alpha: isDrag ? 0.35 : 0.20)
+        ..maskFilter = _blurOuter
+        ..shader = null;
+      canvas.drawCircle(Offset(cx, midY), isDrag ? 28.0 : 16.0, _glowPaint);
 
       // Horizontal light streak — the main "shine" ray.
+      _hStreakPaint
+        ..color = Colors.white.withValues(alpha: 0.85)
+        ..maskFilter = _blur2
+        ..shader = null;
       canvas.drawOval(
         Rect.fromCenter(
           center: Offset(cx, midY),
           width: isDrag ? 56.0 : 28.0,
           height: 2.5,
         ),
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.85)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0),
+        _hStreakPaint,
       );
 
       // Vertical cross-streak — gives the star/diamond shape.
+      _vStreakPaint
+        ..color = Colors.white.withValues(alpha: 0.6)
+        ..maskFilter = _blur2
+        ..shader = null;
       canvas.drawOval(
         Rect.fromCenter(
           center: Offset(cx, midY),
           width: 2.5,
           height: isDrag ? 24.0 : 14.0,
         ),
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.6)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0),
+        _vStreakPaint,
       );
 
       // White-hot core — always visible, brighter during drag.
-      canvas.drawCircle(
-        Offset(cx, midY),
-        isDrag ? 4.0 : 2.5,
-        Paint()..color = Colors.white,
-      );
+      canvas.drawCircle(Offset(cx, midY), isDrag ? 4.0 : 2.5, _corePaint);
     }
   }
 

@@ -938,11 +938,13 @@ class _SongsList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeId = ref.watch(currentTrackProvider)?.id;
+    final isBuffering = ref.watch(isBufferingProvider);
+    final accent = ref.watch(currentSpectralProvider.select((s) => s.energy));
 
     if (isLocal) {
       final tracks = ref.watch(localTracksProvider);
       return tracks.when(
-        data: (list) => _buildList(list, activeId, ref),
+        data: (list) => _buildList(list, activeId, isBuffering, accent, ref),
         loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.songs),
         error: (e, _) => AsyncErrorView(
           label: 'Couldn\u2019t load songs',
@@ -965,10 +967,16 @@ class _SongsList extends ConsumerWidget {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return _buildList(tracksState.items, activeId, ref);
+    return _buildList(tracksState.items, activeId, isBuffering, accent, ref);
   }
 
-  Widget _buildList(List<AfTrack> tracks, String? activeId, WidgetRef ref) {
+  Widget _buildList(
+    List<AfTrack> tracks,
+    String? activeId,
+    bool isBuffering,
+    Color accent,
+    WidgetRef ref,
+  ) {
     const padding = EdgeInsets.symmetric(horizontal: AfSpacing.s8);
 
     if (tracks.isEmpty) {
@@ -993,10 +1001,8 @@ class _SongsList extends ConsumerWidget {
               child: TrackRow(
                 track: t,
                 isActive: t.id == activeId,
-                isBuffering: t.id == activeId && ref.watch(isBufferingProvider),
-                activeAccent: ref.watch(
-                  currentSpectralProvider.select((s) => s.energy),
-                ),
+                isBuffering: t.id == activeId && isBuffering,
+                activeAccent: accent,
                 onTap: () =>
                     ref.read(playActionsProvider).playSmartQueue(t, tracks),
                 onLongPress: () => showTrackContextMenu(context, ref, t),

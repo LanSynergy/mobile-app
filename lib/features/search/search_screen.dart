@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -741,117 +742,211 @@ class _SearchResults extends ConsumerWidget {
       ),
     );
 
+    // Compute lazy item counts — cap at 20 tracks / 10 others when bounded.
+    final trackCount = unbounded ? tracks.length : math.min(tracks.length, 20);
+    final albumCount = unbounded ? albums.length : math.min(albums.length, 10);
+    final artistCount = unbounded
+        ? artists.length
+        : math.min(artists.length, 10);
+    final playlistCount = unbounded
+        ? playlists.length
+        : math.min(playlists.length, 10);
+
     return AfScrollbar(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AfSpacing.s16,
-          0,
-          AfSpacing.s16,
-          AfSpacing.bottomInsetWithMiniAndNav,
-        ),
-        children: [
-          if (tracks.isNotEmpty) ...[
-            const SectionHeader(title: 'Tracks', uppercase: true),
-            const SizedBox(height: AfSpacing.s8),
-            for (var i = 0; i < tracks.length && (unbounded || i < 20); i++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: AfSpacing.s4),
-                child: TrackRow(
-                  track: tracks[i],
-                  isActive: tracks[i].id == activeId,
-                  isBuffering: tracks[i].id == activeId && isBuffering,
-                  activeAccent: activeAccent,
-                  onTap: () => ref
-                      .read(playActionsProvider)
-                      .playQueue(tracks, startIndex: i),
-                  onLongPress: () =>
-                      showTrackContextMenu(context, ref, tracks[i]),
+      child: CustomScrollView(
+        slivers: [
+          // ── Tracks ──
+          if (trackCount > 0) ...[
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                0,
+                AfSpacing.s16,
+                AfSpacing.s8,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: SectionHeader(title: 'Tracks', uppercase: true),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+              sliver: SliverList.builder(
+                itemCount: trackCount,
+                itemBuilder: (context, i) => Padding(
+                  padding: const EdgeInsets.only(bottom: AfSpacing.s4),
+                  child: TrackRow(
+                    track: tracks[i],
+                    isActive: tracks[i].id == activeId,
+                    isBuffering: tracks[i].id == activeId && isBuffering,
+                    activeAccent: activeAccent,
+                    onTap: () => ref
+                        .read(playActionsProvider)
+                        .playQueue(tracks, startIndex: i),
+                    onLongPress: () =>
+                        showTrackContextMenu(context, ref, tracks[i]),
+                  ),
                 ),
               ),
-            const SizedBox(height: AfSpacing.s16),
+            ),
+            const SliverPadding(
+              padding: EdgeInsets.only(bottom: AfSpacing.s16),
+              sliver: SliverToBoxAdapter(child: SizedBox.shrink()),
+            ),
           ],
-          if (albums.isNotEmpty) ...[
-            const SectionHeader(title: 'Albums', uppercase: true),
-            const SizedBox(height: AfSpacing.s8),
-            for (final a in unbounded ? albums : albums.take(10))
-              PressScale(
-                onTap: () => context.push('/album/${a.id}'),
-                child: ListTile(
-                  leading: SizedBox(
-                    width: 44,
-                    height: 44,
-                    child: Artwork(url: a.imageUrl, size: 44),
-                  ),
-                  title: Text(a.name, style: AfTypography.bodyMedium),
-                  subtitle: Text(
-                    a.artistName,
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textTertiary,
-                    ),
-                  ),
-                  tileColor: Colors.transparent,
-                  contentPadding: EdgeInsets.zero,
-                ),
+
+          // ── Albums ──
+          if (albumCount > 0) ...[
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                0,
+                AfSpacing.s16,
+                AfSpacing.s8,
               ),
-            const SizedBox(height: AfSpacing.s16),
-          ],
-          if (artists.isNotEmpty) ...[
-            const SectionHeader(title: 'Artists', uppercase: true),
-            const SizedBox(height: AfSpacing.s8),
-            for (final a in unbounded ? artists : artists.take(10))
-              PressScale(
-                onTap: () => context.push('/artist/${a.id}'),
-                child: ListTile(
-                  // Use Artwork widget (cached_network_image) instead of raw
-                  // NetworkImage to avoid repeated fetches and memory spikes.
-                  leading: Artwork(
-                    url: a.imageUrl,
-                    size: 44,
-                    radius: AfRadii.borderPill,
-                  ),
-                  title: Text(a.name, style: AfTypography.bodyMedium),
-                  subtitle: Text(
-                    a.statLine,
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textTertiary,
-                    ),
-                  ),
-                  tileColor: Colors.transparent,
-                  contentPadding: EdgeInsets.zero,
-                ),
+              sliver: SliverToBoxAdapter(
+                child: SectionHeader(title: 'Albums', uppercase: true),
               ),
-            const SizedBox(height: AfSpacing.s16),
-          ],
-          if (playlists.isNotEmpty) ...[
-            const SectionHeader(title: 'Playlists', uppercase: true),
-            const SizedBox(height: AfSpacing.s8),
-            for (final p in unbounded ? playlists : playlists.take(10))
-              PressScale(
-                onTap: () => context.push('/playlist/${p.id}'),
-                child: ListTile(
-                  leading: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      borderRadius: AfRadii.borderSm,
-                      gradient: LinearGradient(
-                        colors: [spectral.muted, AfColors.surfaceLow],
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+              sliver: SliverList.builder(
+                itemCount: albumCount,
+                itemBuilder: (context, i) {
+                  final a = albums[i];
+                  return PressScale(
+                    onTap: () => context.push('/album/${a.id}'),
+                    child: ListTile(
+                      leading: SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Artwork(url: a.imageUrl, size: 44),
                       ),
+                      title: Text(a.name, style: AfTypography.bodyMedium),
+                      subtitle: Text(
+                        a.artistName,
+                        style: AfTypography.bodySmall.copyWith(
+                          color: AfColors.textTertiary,
+                        ),
+                      ),
+                      tileColor: Colors.transparent,
+                      contentPadding: EdgeInsets.zero,
                     ),
-                    child: Icon(LucideIcons.listMusic, color: spectral.primary),
-                  ),
-                  title: Text(p.name, style: AfTypography.bodyMedium),
-                  subtitle: Text(
-                    p.trackCountLabel,
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textTertiary,
-                    ),
-                  ),
-                  tileColor: Colors.transparent,
-                  contentPadding: EdgeInsets.zero,
-                ),
+                  );
+                },
               ),
+            ),
+            const SliverPadding(
+              padding: EdgeInsets.only(bottom: AfSpacing.s16),
+              sliver: SliverToBoxAdapter(child: SizedBox.shrink()),
+            ),
           ],
+
+          // ── Artists ──
+          if (artistCount > 0) ...[
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                0,
+                AfSpacing.s16,
+                AfSpacing.s8,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: SectionHeader(title: 'Artists', uppercase: true),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+              sliver: SliverList.builder(
+                itemCount: artistCount,
+                itemBuilder: (context, i) {
+                  final a = artists[i];
+                  return PressScale(
+                    onTap: () => context.push('/artist/${a.id}'),
+                    child: ListTile(
+                      leading: Artwork(
+                        url: a.imageUrl,
+                        size: 44,
+                        radius: AfRadii.borderPill,
+                      ),
+                      title: Text(a.name, style: AfTypography.bodyMedium),
+                      subtitle: Text(
+                        a.statLine,
+                        style: AfTypography.bodySmall.copyWith(
+                          color: AfColors.textTertiary,
+                        ),
+                      ),
+                      tileColor: Colors.transparent,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SliverPadding(
+              padding: EdgeInsets.only(bottom: AfSpacing.s16),
+              sliver: SliverToBoxAdapter(child: SizedBox.shrink()),
+            ),
+          ],
+
+          // ── Playlists ──
+          if (playlistCount > 0) ...[
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                0,
+                AfSpacing.s16,
+                AfSpacing.s8,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: SectionHeader(title: 'Playlists', uppercase: true),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+              sliver: SliverList.builder(
+                itemCount: playlistCount,
+                itemBuilder: (context, i) {
+                  final p = playlists[i];
+                  return PressScale(
+                    onTap: () => context.push('/playlist/${p.id}'),
+                    child: ListTile(
+                      leading: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          borderRadius: AfRadii.borderSm,
+                          gradient: LinearGradient(
+                            colors: [spectral.muted, AfColors.surfaceLow],
+                          ),
+                        ),
+                        child: Icon(
+                          LucideIcons.listMusic,
+                          color: spectral.primary,
+                        ),
+                      ),
+                      title: Text(p.name, style: AfTypography.bodyMedium),
+                      subtitle: Text(
+                        p.trackCountLabel,
+                        style: AfTypography.bodySmall.copyWith(
+                          color: AfColors.textTertiary,
+                        ),
+                      ),
+                      tileColor: Colors.transparent,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+
+          // Bottom inset.
+          const SliverPadding(
+            padding: EdgeInsets.only(
+              bottom: AfSpacing.bottomInsetWithMiniAndNav,
+            ),
+            sliver: SliverToBoxAdapter(child: SizedBox.shrink()),
+          ),
         ],
       ),
     );

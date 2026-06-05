@@ -6,9 +6,10 @@ import 'app_database.dart';
 import 'local_db_tracks.dart';
 
 class PlaylistRepository {
-  PlaylistRepository(this.db, this.tracks);
+  PlaylistRepository(this.db, this.tracks, this._getFavoriteIds);
   final AppDatabase db;
   final TrackRepository tracks;
+  final Future<Set<String>> Function() _getFavoriteIds;
 
   Future<List<PlaylistEntity>> allPlaylists() {
     return (db.select(db.playlists)..orderBy([
@@ -94,7 +95,7 @@ class PlaylistRepository {
           readsFrom: {db.playlistEntries, db.tracks},
         )
         .get();
-    final favIds = await _favoriteIds();
+    final favIds = await _getFavoriteIds();
     return rows.map((r) {
       final entity = db.tracks.map(r.data);
       return (
@@ -271,11 +272,6 @@ class PlaylistRepository {
 
   Future<void> close() async {
     await db.close();
-  }
-
-  Future<Set<String>> _favoriteIds() async {
-    final rows = await db.select(db.favorites).get();
-    return rows.map((r) => r.itemId).toSet();
   }
 
   Future<void> _repackPositions(String playlistId) async {

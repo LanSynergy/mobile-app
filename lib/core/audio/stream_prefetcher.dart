@@ -405,4 +405,10 @@ class StreamPrefetcher {
     _totalCacheSize = 0;
     afLog('audio', 'Cleared all cached files');
   }
+
+  /// Releases resources held by this prefetcher.
+  void dispose() {
+    cancelCurrentPrefetch();
+    _dio.close(force: true);
+  }
 }

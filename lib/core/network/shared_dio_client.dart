@@ -76,9 +76,26 @@ class SharedDioClient {
 
   /// Creates a Dio instance with its own adapter so that [Dio.close]
   /// on one backend client does not kill the adapter used by another.
+  /// Includes a short-lived cache for read-only GET requests and retry
+  /// for transient failures on idempotent methods only.
   Dio createWithOptions(BaseOptions options) {
     final customDio = Dio(options);
     customDio.httpClientAdapter = _createAdapter();
+
+    // Short-lived cache (30s) for GET requests — reduces redundant navigation
+    // refetches without stale data risk.
+    customDio.interceptors.add(
+      DioCacheInterceptor(
+        options: CacheOptions(
+          store: _cacheStore,
+          policy: CachePolicy.forceCache,
+          maxStale: const Duration(seconds: 30),
+          priority: CachePriority.normal,
+          hitCacheOnErrorExcept: [401, 403],
+        ),
+      ),
+    );
+
     customDio.interceptors.add(_RetryInterceptor(customDio));
     return customDio;
   }
@@ -115,6 +132,13 @@ class _RetryInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     if (_shouldRetry(err)) {
+      final method = err.requestOptions.method.toUpperCase();
+      // Only retry idempotent methods — POST/PUT/DELETE can cause duplicate
+      // side effects (double-favorite, double-scrobble, etc.).
+      if (method != 'GET' && method != 'HEAD') {
+        handler.next(err);
+        return;
+      }
       final retryCount = (err.requestOptions.extra['_retryCount'] as int?) ?? 0;
       if (retryCount < _maxRetries) {
         unawaited(_retry(err, handler, retryCount));

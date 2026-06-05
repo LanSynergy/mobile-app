@@ -86,21 +86,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final isLocal = ref.watch(appModeProvider) == AppMode.local;
     final albumsAsync = ref.watch(recentlyAddedAlbumsProvider);
-    final spectral = ref.watch(
-      currentSpectralProvider.select(
-        (s) => (
-          primary: s.primary,
-          secondary: s.secondary,
-          energy: s.energy,
-          shadow: s.shadow,
-        ),
-      ),
-    );
 
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: _onRefresh,
-        color: spectral.primary,
+        color: ref.watch(currentSpectralProvider.select((s) => s.primary)),
         backgroundColor: AfColors.surfaceBase,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(
@@ -118,17 +108,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 child: Row(
                   children: [
-                    ShaderMask(
-                      shaderCallback: (bounds) => LinearGradient(
-                        colors: [spectral.primary, spectral.secondary],
-                      ).createShader(bounds),
-                      child: Text(
-                        'Listen',
-                        style: AfTypography.display.copyWith(
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
+                    const _HomeHeaderGradient(),
                     const Spacer(),
                     _GlassCastButton(onTap: () => context.push('/cast')),
                   ],
@@ -141,7 +121,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: albumsAsync.when(
                 data: (albums) => albums.isEmpty
                     ? const SizedBox.shrink()
-                    : _HeroAlbumCarousel(albums: albums, spectral: spectral),
+                    : _HeroAlbumCarousel(albums: albums),
                 loading: () => const HomeCarouselSkeleton(),
                 error: (e, _) => AsyncErrorView.compact(
                   label: 'Couldn\u2019t load recent albums',
@@ -152,7 +132,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
 
-            _RecentTracksSection(isLocal: isLocal, spectral: spectral),
+            _RecentTracksSection(isLocal: isLocal),
 
             const _LostMemoriesSection(),
 
@@ -182,14 +162,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 // Extracted section widgets
 // ---------------------------------------------------------------------------
 
-/// Recently played tracks — compact rows with spectral accent on active track.
-class _RecentTracksSection extends ConsumerWidget {
-  const _RecentTracksSection({required this.isLocal, required this.spectral});
-  final bool isLocal;
-  final ({Color primary, Color secondary, Color energy, Color shadow}) spectral;
+/// "Listen" header with spectral gradient text.
+class _HomeHeaderGradient extends ConsumerWidget {
+  const _HomeHeaderGradient();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, secondary: s.secondary),
+      ),
+    );
+
+    return ShaderMask(
+      shaderCallback: (bounds) => LinearGradient(
+        colors: [spectral.primary, spectral.secondary],
+      ).createShader(bounds),
+      child: Text(
+        'Listen',
+        style: AfTypography.display.copyWith(color: Colors.white),
+      ),
+    );
+  }
+}
+
+/// Recently played tracks — compact rows with spectral accent on active track.
+class _RecentTracksSection extends ConsumerWidget {
+  const _RecentTracksSection({required this.isLocal});
+  final bool isLocal;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final accent = ref.watch(currentSpectralProvider.select((s) => s.energy));
     final tracksAsync = isLocal
         ? ref.watch(localTracksProvider)
         : ref.watch(recentlyPlayedTracksProvider);
@@ -215,7 +219,7 @@ class _RecentTracksSection extends ConsumerWidget {
                   track: t,
                   isActive: t.id == currentTrack?.id,
                   isBuffering: t.id == currentTrack?.id && isBuffering,
-                  spectral: spectral,
+                  accent: accent,
                   onTap: () => ref.read(playActionsProvider).playSingle(t),
                   onLongPress: () => showTrackContextMenu(context, ref, t),
                 ),
@@ -241,14 +245,14 @@ class _CompactTrackRow extends StatelessWidget {
   const _CompactTrackRow({
     required this.track,
     required this.isActive,
-    required this.spectral,
+    required this.accent,
     required this.onTap,
     required this.onLongPress,
     this.isBuffering = false,
   });
   final AfTrack track;
   final bool isActive;
-  final ({Color primary, Color secondary, Color energy, Color shadow}) spectral;
+  final Color accent;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   final bool isBuffering;
@@ -272,7 +276,7 @@ class _CompactTrackRow extends StatelessWidget {
           ),
           border: Border.all(
             color: isActive
-                ? spectral.energy.withValues(alpha: 0.3)
+                ? accent.withValues(alpha: 0.3)
                 : AfColors.glassBorder,
             width: 1,
           ),
@@ -318,7 +322,7 @@ class _CompactTrackRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AfTypography.bodyMedium.copyWith(
-                      color: isActive ? spectral.energy : AfColors.textPrimary,
+                      color: isActive ? accent : AfColors.textPrimary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -369,12 +373,13 @@ class _LostMemoriesSection extends ConsumerWidget {
             const SizedBox(height: AfSpacing.s12),
             SizedBox(
               height: 172,
-              child: ListView.separated(
+              child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
                 itemCount: tracks.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(width: AfSpacing.s12),
+                // itemExtent enables layout caching for large lists.
+                // Includes the trailing separator gap (12px) per item.
+                itemExtent: _LostMemoryTile._tileSize + AfSpacing.s12,
                 itemBuilder: (context, i) {
                   final t = tracks[i];
                   return _LostMemoryTile(
@@ -539,12 +544,13 @@ class _ArtistsSection extends ConsumerWidget {
           ),
           data: (artists) => SizedBox(
             height: 180,
-            child: ListView.separated(
+            child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
               itemCount: artists.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(width: AfSpacing.s12),
+              // itemExtent enables layout caching for large lists.
+              // Includes the trailing separator gap (12px) per item.
+              itemExtent: _ArtistsSection._ringSize + AfSpacing.s12,
               itemBuilder: (context, i) {
                 final a = artists[i];
                 final accents = _accents(spectral);
@@ -658,12 +664,13 @@ class _GenresSection extends ConsumerWidget {
         SizedBox(
           height: 100,
           child: genresAsync.when(
-            data: (genres) => ListView.separated(
+            data: (genres) => ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
               itemCount: genres.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(width: AfSpacing.s12),
+              // itemExtent enables layout caching for large lists.
+              // 140px card width + 12px trailing separator gap per item.
+              itemExtent: 140 + AfSpacing.s12,
               itemBuilder: (context, i) {
                 final g = genres[i];
                 final tint = _hex(g.tint);
@@ -711,9 +718,8 @@ class _GenresSection extends ConsumerWidget {
 
 /// Swipeable carousel of hero album cards with a dot indicator.
 class _HeroAlbumCarousel extends ConsumerStatefulWidget {
-  const _HeroAlbumCarousel({required this.albums, required this.spectral});
+  const _HeroAlbumCarousel({required this.albums});
   final List<AfAlbum> albums;
-  final ({Color primary, Color secondary, Color energy, Color shadow}) spectral;
 
   @override
   ConsumerState<_HeroAlbumCarousel> createState() => _HeroAlbumCarouselState();
@@ -733,7 +739,11 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
   Widget build(BuildContext context) {
     final albums = widget.albums.take(5).toList();
     if (albums.isEmpty) return const SizedBox.shrink();
-    final spectral = widget.spectral;
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (energy: s.energy, shadow: s.shadow),
+      ),
+    );
 
     return StaggerReveal(
       children: [

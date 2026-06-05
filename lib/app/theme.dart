@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -14,11 +16,71 @@ ThemeData buildNocturneTheme() {
   return _buildTheme(Spectral.fallback);
 }
 
+/// Cache key: spectral primary + secondary colors.
+int _spectralKey(Spectral s) => Object.hash(s.primary, s.secondary);
+
+/// LRU cache for ThemeData keyed by spectral palette (max 8 entries).
+final LinkedHashMap<int, ThemeData> _themeCache = LinkedHashMap();
+
 /// Builds theme from a full [Spectral] palette extracted from artwork.
 /// Surface and text colors shift with the artwork's dominant hue.
+/// Caches ThemeData per spectral palette to avoid 48 rebuilds/transition.
 ThemeData buildNocturneThemeFromSpectral(Spectral spectral) {
-  return _buildTheme(spectral);
+  final key = _spectralKey(spectral);
+  final cached = _themeCache[key];
+  if (cached != null) return cached;
+
+  final theme = _buildTheme(spectral);
+  _themeCache[key] = theme;
+  if (_themeCache.length > 8) {
+    _themeCache.remove(_themeCache.keys.first);
+  }
+  return theme;
 }
+
+/// Sub-themes that don't depend on Spectral — built once.
+const _bottomSheetTheme = BottomSheetThemeData(
+  backgroundColor: Colors.transparent,
+  surfaceTintColor: Colors.transparent,
+  modalBackgroundColor: Colors.transparent,
+  modalBarrierColor: AfColors.surfaceScrim,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.only(
+      topLeft: AfRadii.rXl,
+      topRight: AfRadii.rXl,
+    ),
+  ),
+  showDragHandle: false,
+);
+
+const _dialogTheme = DialogThemeData(
+  backgroundColor: Colors.transparent,
+  surfaceTintColor: Colors.transparent,
+  elevation: 0,
+  shape: RoundedRectangleBorder(borderRadius: AfRadii.borderXl),
+);
+
+const _pageTransitionsTheme = PageTransitionsTheme(
+  builders: {
+    TargetPlatform.android: _AfSlideUpTransition(),
+    TargetPlatform.iOS: _AfSlideUpTransition(),
+    TargetPlatform.fuchsia: _AfSlideUpTransition(),
+  },
+);
+
+const _switchTheme = SwitchThemeData(
+  overlayColor: WidgetStatePropertyAll(Colors.transparent),
+  splashRadius: 0,
+);
+
+const _sliderTheme = SliderThemeData(
+  overlayShape: RoundSliderOverlayShape(overlayRadius: 0),
+);
+
+const _errorBorder = OutlineInputBorder(
+  borderRadius: AfRadii.borderLg,
+  borderSide: BorderSide(color: AfColors.semanticError, width: 1),
+);
 
 ThemeData _buildTheme(Spectral s) {
   final primary = s.primary;
@@ -96,26 +158,9 @@ ThemeData _buildTheme(Spectral s) {
       centerTitle: false,
     ),
 
-    bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: Colors.transparent,
-      surfaceTintColor: Colors.transparent,
-      modalBackgroundColor: Colors.transparent,
-      modalBarrierColor: AfColors.surfaceScrim,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topLeft: AfRadii.rXl,
-          topRight: AfRadii.rXl,
-        ),
-      ),
-      showDragHandle: false,
-    ),
+    bottomSheetTheme: _bottomSheetTheme,
 
-    dialogTheme: const DialogThemeData(
-      backgroundColor: Colors.transparent,
-      surfaceTintColor: Colors.transparent,
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: AfRadii.borderXl),
-    ),
+    dialogTheme: _dialogTheme,
 
     snackBarTheme: SnackBarThemeData(
       backgroundColor: s.surfaceHigh,
@@ -152,10 +197,7 @@ ThemeData _buildTheme(Spectral s) {
         borderRadius: AfRadii.borderLg,
         borderSide: BorderSide(color: primary, width: 1),
       ),
-      errorBorder: const OutlineInputBorder(
-        borderRadius: AfRadii.borderLg,
-        borderSide: BorderSide(color: AfColors.semanticError, width: 1),
-      ),
+      errorBorder: _errorBorder,
       labelStyle: AfTypography.bodyMedium.copyWith(color: s.textSecondary),
     ),
 
@@ -204,23 +246,12 @@ ThemeData _buildTheme(Spectral s) {
       shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderMd),
     ),
 
-    pageTransitionsTheme: const PageTransitionsTheme(
-      builders: {
-        TargetPlatform.android: _AfSlideUpTransition(),
-        TargetPlatform.iOS: _AfSlideUpTransition(),
-        TargetPlatform.fuchsia: _AfSlideUpTransition(),
-      },
-    ),
+    pageTransitionsTheme: _pageTransitionsTheme,
 
     // M3 Switch/Slider ignore global splashColor — force overlay off.
-    switchTheme: const SwitchThemeData(
-      overlayColor: WidgetStatePropertyAll(Colors.transparent),
-      splashRadius: 0,
-    ),
+    switchTheme: _switchTheme,
 
-    sliderTheme: const SliderThemeData(
-      overlayShape: RoundSliderOverlayShape(overlayRadius: 0),
-    ),
+    sliderTheme: _sliderTheme,
   );
 }
 

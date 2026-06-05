@@ -37,32 +37,27 @@ class TrackStatsRepository {
     required double completionRate,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final existing = await getStats(trackId);
-    if (existing == null) {
-      await db
-          .into(db.trackStats)
-          .insert(
-            TrackStatsCompanion.insert(
-              trackId: trackId,
-              playCount: const Value(1),
-              avgCompletion: Value(completionRate),
-              lastPlayed: Value(now),
-            ),
-          );
-    } else {
-      final newAvg =
-          ((existing.avgCompletion * existing.playCount) + completionRate) /
-          (existing.playCount + 1);
-      await (db.update(
-        db.trackStats,
-      )..where((t) => t.trackId.equals(trackId))).write(
-        TrackStatsCompanion(
-          playCount: Value(existing.playCount + 1),
-          avgCompletion: Value(newAvg),
-          lastPlayed: Value(now),
-        ),
-      );
-    }
+    await db
+        .into(db.trackStats)
+        .insert(
+          TrackStatsCompanion.insert(
+            trackId: trackId,
+            playCount: const Value(1),
+            avgCompletion: Value(completionRate),
+            lastPlayed: Value(now),
+          ),
+          onConflict: DoUpdate.withExcluded((old, excluded) {
+            final newCount = old.playCount + const Constant(1);
+            return TrackStatsCompanion.custom(
+              playCount: newCount,
+              avgCompletion:
+                  ((old.avgCompletion * old.playCount.dartCast<double>()) +
+                      excluded.avgCompletion) /
+                  newCount.dartCast<double>(),
+              lastPlayed: Variable(now),
+            );
+          }),
+        );
   }
 
   Future<void> recordSkip(
@@ -70,32 +65,27 @@ class TrackStatsRepository {
     required double completionRate,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final existing = await getStats(trackId);
-    if (existing == null) {
-      await db
-          .into(db.trackStats)
-          .insert(
-            TrackStatsCompanion.insert(
-              trackId: trackId,
-              skipCount: const Value(1),
-              avgCompletion: Value(completionRate),
-              lastPlayed: Value(now),
-            ),
-          );
-    } else {
-      final newAvg =
-          ((existing.avgCompletion * existing.playCount) + completionRate) /
-          (existing.playCount + 1);
-      await (db.update(
-        db.trackStats,
-      )..where((t) => t.trackId.equals(trackId))).write(
-        TrackStatsCompanion(
-          skipCount: Value(existing.skipCount + 1),
-          avgCompletion: Value(newAvg),
-          lastPlayed: Value(now),
-        ),
-      );
-    }
+    await db
+        .into(db.trackStats)
+        .insert(
+          TrackStatsCompanion.insert(
+            trackId: trackId,
+            skipCount: const Value(1),
+            avgCompletion: Value(completionRate),
+            lastPlayed: Value(now),
+          ),
+          onConflict: DoUpdate.withExcluded((old, excluded) {
+            final newCount = old.playCount + const Constant(1);
+            return TrackStatsCompanion.custom(
+              skipCount: old.skipCount + const Constant(1),
+              avgCompletion:
+                  ((old.avgCompletion * old.playCount.dartCast<double>()) +
+                      excluded.avgCompletion) /
+                  newCount.dartCast<double>(),
+              lastPlayed: Variable(now),
+            );
+          }),
+        );
   }
 
   Future<void> deleteStats(String trackId) async {

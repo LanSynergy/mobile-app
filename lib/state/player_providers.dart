@@ -376,15 +376,35 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
   });
 
   Duration? lastWrittenPosition;
+  Duration? pendingPosition;
+  Timer? positionThrottleTimer;
+
+  // Throttled flush: writes the latest pending position and arms a 200 ms
+  // cooldown timer. Subsequent events during the window store their value
+  // but don't write, so only the latest position is ever emitted.
+  void flushPendingPosition() {
+    if (disposed) return;
+    final pos = pendingPosition;
+    if (pos == null || pos == lastWrittenPosition) {
+      pendingPosition = null;
+      return;
+    }
+    lastWrittenPosition = pos;
+    ref.read(positionStreamProvider.notifier).state = pos;
+    pendingPosition = null;
+    positionThrottleTimer = Timer(
+      const Duration(milliseconds: 200),
+      flushPendingPosition,
+    );
+  }
 
   final posSub = svc.positionStream.listen((pos) {
     if (disposed) return;
-    // Dedup: skip writes when position hasn't changed. mpv emits at
-    // ~30 Hz but consecutive ticks often differ by <16ms, which is
-    // below visual significance (<1% of a 250dp progress bar pixel).
-    if (pos == lastWrittenPosition) return;
-    lastWrittenPosition = pos;
-    ref.read(positionStreamProvider.notifier).state = pos;
+    pendingPosition = pos;
+    // If no timer is active, flush immediately (first event or after cooldown).
+    if (!(positionThrottleTimer?.isActive ?? false)) {
+      flushPendingPosition();
+    }
   });
 
   final durSub = svc.durationStream.listen((dur) {
@@ -459,6 +479,7 @@ void _startPositionPolling(Ref ref, AfPlayerService svc) {
 
   ref.onDispose(() {
     cancelTimer();
+    positionThrottleTimer?.cancel();
     unawaited(posSub.cancel());
     unawaited(durSub.cancel());
   });

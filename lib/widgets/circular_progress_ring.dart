@@ -80,26 +80,30 @@ class _RingPainter extends CustomPainter {
   final Color progressColor;
   final double strokeWidth;
 
+  // Hoisted paint objects — mutated per frame, never re-allocated.
+  final Paint _trackPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round;
+  final Paint _fgPaint = Paint();
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (math.min(size.width, size.height) - strokeWidth) / 2;
 
-    final track = Paint()
+    _trackPaint
       ..color = trackColor
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    canvas.drawCircle(center, radius, track);
+      ..strokeWidth = strokeWidth;
+    canvas.drawCircle(center, radius, _trackPaint);
 
-    final fg = Paint()
+    _fgPaint
       ..color = progressColor
       ..strokeWidth = strokeWidth;
 
     canvas.drawCircle(
       Offset(center.dx, center.dy - radius),
       strokeWidth / 2,
-      fg..style = PaintingStyle.fill,
+      _fgPaint..style = PaintingStyle.fill,
     );
 
     final sweepProgress = math.max(progress, 0.005);
@@ -108,7 +112,7 @@ class _RingPainter extends CustomPainter {
       -math.pi / 2,
       2 * math.pi * sweepProgress,
       false,
-      fg
+      _fgPaint
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round,
     );
@@ -184,28 +188,31 @@ class _IndeterminatePainter extends CustomPainter {
   final Color progressColor;
   final double strokeWidth;
 
+  // Hoisted paint objects — mutated per frame, never re-allocated.
+  final Paint _trackPaint = Paint()..style = PaintingStyle.stroke;
+  final Paint _fgPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round;
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (math.min(size.width, size.height) - strokeWidth) / 2;
 
-    final track = Paint()
+    _trackPaint
       ..color = trackColor
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-    canvas.drawCircle(center, radius, track);
+      ..strokeWidth = strokeWidth;
+    canvas.drawCircle(center, radius, _trackPaint);
 
-    final fg = Paint()
+    _fgPaint
       ..color = progressColor
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+      ..strokeWidth = strokeWidth;
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       2 * math.pi * value - math.pi / 2,
       math.pi / 2,
       false,
-      fg,
+      _fgPaint,
     );
   }
 

@@ -533,60 +533,83 @@ class PlayerSettingsStore {
       }
     }
 
+    // Read all values from prefs first (synchronous in-memory), then apply
+    // setters in parallel via Future.wait.  Each setter is an independent
+    // platform-channel round-trip — no ordering dependency between them.
     final sampleRate = p.getInt(kSampleRate.key);
+    final formatName = p.getString(kFormat.key);
+    final exclusive = p.getBool(kExclusive.key);
+    final bufferMs = p.getInt(kBufferMs.key);
+    final streamSilence = p.getBool(kStreamSilence.key);
+    final cacheSecs = p.getInt(kCacheSecs.key);
+    final replayGainName = p.getString(kReplayGain.key);
+    final gaplessName = p.getString(kGapless.key);
+    final prefetch = p.getBool(kPrefetchPlaylist.key);
+    final fx = loadAudioEffects(p);
+    final masterEnabled = p.getBool(kDspMasterEnabled.key) ?? false;
+    final shuffleEnabled = p.getBool(kShuffleEnabled.key);
+
+    final futures = <Future<void>>[];
+
     if (sampleRate != null) {
-      await tryApply(
-        'sampleRate=$sampleRate',
-        () => svc.setAudioSampleRate(sampleRate),
+      futures.add(
+        tryApply(
+          'sampleRate=$sampleRate',
+          () => svc.setAudioSampleRate(sampleRate),
+        ),
       );
     }
 
-    final formatName = p.getString(kFormat.key);
     if (formatName != null) {
       final format = Format.values.firstWhere(
         (f) => f.name == formatName,
         orElse: () => Format.auto,
       );
-      await tryApply('format=$formatName', () => svc.setAudioFormat(format));
+      futures.add(
+        tryApply('format=$formatName', () => svc.setAudioFormat(format)),
+      );
     }
 
-    final exclusive = p.getBool(kExclusive.key);
     if (exclusive != null) {
-      await tryApply(
-        'exclusive=$exclusive',
-        () => svc.setAudioExclusive(exclusive),
+      futures.add(
+        tryApply(
+          'exclusive=$exclusive',
+          () => svc.setAudioExclusive(exclusive),
+        ),
       );
     }
 
-    final bufferMs = p.getInt(kBufferMs.key);
     if (bufferMs != null) {
-      await tryApply(
-        'bufferMs=$bufferMs',
-        () => svc.setAudioBuffer(Duration(milliseconds: bufferMs)),
+      futures.add(
+        tryApply(
+          'bufferMs=$bufferMs',
+          () => svc.setAudioBuffer(Duration(milliseconds: bufferMs)),
+        ),
       );
     }
 
-    final streamSilence = p.getBool(kStreamSilence.key);
     if (streamSilence != null) {
-      await tryApply(
-        'streamSilence=$streamSilence',
-        () => svc.setAudioStreamSilence(streamSilence),
+      futures.add(
+        tryApply(
+          'streamSilence=$streamSilence',
+          () => svc.setAudioStreamSilence(streamSilence),
+        ),
       );
     }
 
-    final cacheSecs = p.getInt(kCacheSecs.key);
     if (cacheSecs != null) {
-      await tryApply('cacheSecs=$cacheSecs', () async {
-        await svc.setCache(
-          svc.cacheSettings.copyWith(
-            mode: Cache.yes,
-            secs: Duration(seconds: cacheSecs),
-          ),
-        );
-      });
+      futures.add(
+        tryApply('cacheSecs=$cacheSecs', () async {
+          await svc.setCache(
+            svc.cacheSettings.copyWith(
+              mode: Cache.yes,
+              secs: Duration(seconds: cacheSecs),
+            ),
+          );
+        }),
+      );
     }
 
-    final replayGainName = p.getString(kReplayGain.key);
     if (replayGainName != null) {
       final mode = ReplayGain.values.firstWhere(
         (m) => m.name == replayGainName,
@@ -595,52 +618,51 @@ class PlayerSettingsStore {
       final preamp = p.getDouble(kReplayGainPreamp.key) ?? 0.0;
       final fallback = p.getDouble(kReplayGainFallback.key) ?? 0.0;
       final clip = p.getBool(kReplayGainClip.key) ?? false;
-      await tryApply('replayGain=$replayGainName', () async {
-        await svc.setReplayGain(
-          ReplayGainSettings(
-            mode: mode,
-            preamp: preamp,
-            fallback: fallback,
-            clip: clip,
-          ),
-        );
-      });
+      futures.add(
+        tryApply('replayGain=$replayGainName', () async {
+          await svc.setReplayGain(
+            ReplayGainSettings(
+              mode: mode,
+              preamp: preamp,
+              fallback: fallback,
+              clip: clip,
+            ),
+          );
+        }),
+      );
     }
 
-    final gaplessName = p.getString(kGapless.key);
     if (gaplessName != null) {
       final mode = Gapless.values.firstWhere(
         (g) => g.name == gaplessName,
         orElse: () => Gapless.weak,
       );
-      await tryApply('gapless=$gaplessName', () => svc.setGapless(mode));
+      futures.add(tryApply('gapless=$gaplessName', () => svc.setGapless(mode)));
     }
 
-    final prefetch = p.getBool(kPrefetchPlaylist.key);
     if (prefetch != null) {
-      await tryApply(
-        'prefetchPlaylist=$prefetch',
-        () => svc.setPrefetchPlaylist(prefetch),
+      futures.add(
+        tryApply(
+          'prefetchPlaylist=$prefetch',
+          () => svc.setPrefetchPlaylist(prefetch),
+        ),
       );
     }
 
-    final fx = loadAudioEffects(p);
-    if (fx != null) {
-      // Only apply effects if the master switch was ON when last saved.
-      final masterEnabled = p.getBool(kDspMasterEnabled.key) ?? false;
-      if (masterEnabled) {
-        await tryApply('audioEffects', () => svc.setAudioEffects(fx));
-      }
+    if (fx != null && masterEnabled) {
+      futures.add(tryApply('audioEffects', () => svc.setAudioEffects(fx)));
     }
 
-    final shuffleEnabled = p.getBool(kShuffleEnabled.key);
     if (shuffleEnabled != null) {
-      await tryApply(
-        'shuffleEnabled=$shuffleEnabled',
-        () => svc.setAfShuffleMode(shuffleEnabled),
+      futures.add(
+        tryApply(
+          'shuffleEnabled=$shuffleEnabled',
+          () => svc.setAfShuffleMode(shuffleEnabled),
+        ),
       );
     }
 
+    await Future.wait(futures);
     afLog('boot', 'PlayerSettingsStore applied persisted settings');
   }
 }

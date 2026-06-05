@@ -498,7 +498,7 @@ class AfPlayerService {
     if (_disposed) return;
     _prefetchPlaylistEnabled = enabled;
     if (!enabled) {
-      _prefetcher.cancelCurrentPrefetch();
+      _prefetcher.dispose();
     }
     afLog('audio', 'prefetchPlaylist=$enabled');
   }
@@ -1110,6 +1110,34 @@ class AfPlayerService {
   }
 
   // ---------------------------------------------------------------------------
+  // Autoplay queue cap
+  // ---------------------------------------------------------------------------
+
+  /// Maximum number of tracks allowed in the queue during autoplay sessions.
+  /// Prevents unbounded memory growth over hours of continuous playback.
+  static const int _maxAutoplayQueueSize = 500;
+
+  /// Trim already-played tracks from the front of the queue when it exceeds
+  /// [_maxAutoplayQueueSize]. Only removes tracks *before* the current index
+  /// so playback is never disrupted.
+  void _trimAutoplayedTracks() {
+    final queue = _queueManager.currentQueue;
+    final idx = _queueManager.currentIndex;
+    if (queue.length <= _maxAutoplayQueueSize || idx <= 0) return;
+    final excess = queue.length - _maxAutoplayQueueSize;
+    final trimCount = excess < idx ? excess : idx - 1;
+    if (trimCount <= 0) return;
+    for (var i = 0; i < trimCount; i++) {
+      _queueManager.remove(0);
+    }
+    afLog(
+      'audio',
+      'trimAutoplayedTracks: removed $trimCount old tracks, '
+          'queueSize=${_queueManager.currentQueue.length}',
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // 2-track window management
   // ---------------------------------------------------------------------------
 
@@ -1352,6 +1380,11 @@ class AfPlayerService {
               if (loopAtEvent == Loop.off && onGetSimilarTracks != null) {
                 final lastTrack = _queueManager.currentTrack;
                 if (lastTrack != null) {
+                  // Cap queue: trim old played tracks before appending more.
+                  // Sliding window keeps at most ~500 tracks to prevent
+                  // unbounded memory growth during long autoplay sessions.
+                  _trimAutoplayedTracks();
+
                   try {
                     final similar = await onGetSimilarTracks!(lastTrack);
                     if (similar.isNotEmpty) {

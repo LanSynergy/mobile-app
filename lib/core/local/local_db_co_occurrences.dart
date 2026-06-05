@@ -6,25 +6,20 @@ class CoOccurrenceRepository {
   final AppDatabase db;
 
   Future<void> increment(String trackAId, String trackBId) async {
-    final query = db.select(db.trackCoOccurrences)
-      ..where((t) => t.trackAId.equals(trackAId) & t.trackBId.equals(trackBId));
-    final existing = await query.getSingleOrNull();
-    if (existing == null) {
-      await db
-          .into(db.trackCoOccurrences)
-          .insert(
-            TrackCoOccurrencesCompanion.insert(
-              trackAId: trackAId,
-              trackBId: trackBId,
-              count: const Value(1),
-            ),
-          );
-    } else {
-      await (db.update(db.trackCoOccurrences)..where(
-            (t) => t.trackAId.equals(trackAId) & t.trackBId.equals(trackBId),
-          ))
-          .write(TrackCoOccurrencesCompanion(count: Value(existing.count + 1)));
-    }
+    await db
+        .into(db.trackCoOccurrences)
+        .insert(
+          TrackCoOccurrencesCompanion.insert(
+            trackAId: trackAId,
+            trackBId: trackBId,
+            count: const Value(1),
+          ),
+          onConflict: DoUpdate((old) {
+            return TrackCoOccurrencesCompanion.custom(
+              count: old.count + const Constant(1),
+            );
+          }),
+        );
   }
 
   Future<int> getCount(String trackAId, String trackBId) async {

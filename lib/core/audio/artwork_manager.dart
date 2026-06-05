@@ -86,6 +86,8 @@ class AfArtworkManager {
 
   /// Set of trackIds whose disk cache file has been confirmed to exist.
   /// Avoids repeated `existsSync()` + `statSync()` calls in the hot path.
+  /// Bounded to prevent unbounded growth during long sessions.
+  static const int _maxDiskCacheCheckedSize = 10000;
   final Set<String> _diskCacheChecked = {};
 
   /// Disk cache directory
@@ -242,6 +244,9 @@ class AfArtworkManager {
         final stat = cacheFile.statSync();
         final ageDays = DateTime.now().difference(stat.modified).inDays;
         if (ageDays <= _cacheTTL.inDays) {
+          if (_diskCacheChecked.length >= _maxDiskCacheCheckedSize) {
+            _diskCacheChecked.clear();
+          }
           _diskCacheChecked.add(trackId);
           return cacheFile.path;
         } else {
@@ -459,6 +464,7 @@ class AfArtworkManager {
   /// Clears all artwork caches
   Future<void> clearCache() async {
     _memoryCache.clear();
+    _diskCacheChecked.clear();
     if (_diskCacheDir != null) {
       try {
         final dir = Directory(_diskCacheDir!);
@@ -483,6 +489,8 @@ class AfArtworkManager {
 
   void dispose() {
     _disposed = true;
+    _memoryCache.clear();
+    _diskCacheChecked.clear();
     // Note: We don't close the shared HttpClient as it's static
     // and shared across all instances
   }

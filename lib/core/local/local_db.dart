@@ -18,7 +18,7 @@ class LocalDb {
   LocalDb({AppDatabase? database}) : db = database ?? AppDatabase() {
     tracks = TrackRepository(db);
     albums = AlbumRepository(db);
-    playlists = PlaylistRepository(db, tracks);
+    playlists = PlaylistRepository(db, tracks, favoriteIdsCached);
     trackStats = TrackStatsRepository(db);
     coOccurrences = CoOccurrenceRepository(db);
     lastfm = LastFmCacheRepository(db);
@@ -26,6 +26,8 @@ class LocalDb {
     _genreRepo = GenreRepository(db);
   }
   final AppDatabase db;
+
+  Set<String>? _favoriteIdsCache;
 
   late final TrackRepository tracks;
   late final AlbumRepository albums;
@@ -191,6 +193,17 @@ class LocalDb {
     return rows.map((r) => r.itemId).toSet();
   }
 
+  /// Cached variant of [favoriteIds] — avoids repeated full-table scans.
+  Future<Set<String>> favoriteIdsCached() async {
+    return _favoriteIdsCache ??= await favoriteIds();
+  }
+
+  /// Must be called whenever the favorites table is mutated so the cache
+  /// stays consistent.
+  void invalidateFavoriteIdsCache() {
+    _favoriteIdsCache = null;
+  }
+
   Future<void> setFavorite(String itemId, bool isFavorite) async {
     if (isFavorite) {
       await db
@@ -207,10 +220,11 @@ class LocalDb {
         db.favorites,
       )..where((f) => f.itemId.equals(itemId))).go();
     }
+    invalidateFavoriteIdsCache();
   }
 
   Future<List<AfTrack>> favoriteTracks({int limit = 500}) async {
-    final favIds = await favoriteIds();
+    final favIds = await favoriteIdsCached();
     if (favIds.isEmpty) return const [];
     final rows =
         await (db.select(db.tracks)
@@ -269,7 +283,7 @@ class LocalDb {
         .get();
 
     final result = <AfTrack>[];
-    final favIds = await favoriteIds();
+    final favIds = await favoriteIdsCached();
 
     for (final r in rows) {
       final trackId = r.read<String>('track_id');

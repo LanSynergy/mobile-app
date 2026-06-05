@@ -194,15 +194,29 @@ Future<void> main() async {
       container.read(lastfmScrobbleEnabledProvider.notifier).state =
           lastfmScrobbleEnabled;
 
-      // Initialize offline cache service.
+      // Initialize offline cache service in the background — do not block
+      // the first frame.  Failures are logged but do not crash the app.
       try {
         final cacheSvc = container.read(offlineCacheServiceProvider);
-        await cacheSvc.init();
-        _boot('OfflineCacheService init OK');
+        unawaited(
+          cacheSvc
+              .init()
+              .then((_) {
+                _boot('OfflineCacheService init OK');
+              })
+              .catchError((Object e, StackTrace stack) {
+                afLog(
+                  'error',
+                  'OfflineCacheService init failed',
+                  error: e,
+                  stackTrace: stack,
+                );
+              }),
+        );
       } catch (e, stack) {
         afLog(
           'error',
-          'OfflineCacheService init failed',
+          'OfflineCacheService read failed',
           error: e,
           stackTrace: stack,
         );
