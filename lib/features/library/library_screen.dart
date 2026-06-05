@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -106,26 +104,21 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 ),
                 PressScale(
                   onTap: () => _openSearch(context),
-                  child: ClipRRect(
-                    borderRadius: AfRadii.borderPill,
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                      child: Container(
-                        padding: const EdgeInsets.all(AfSpacing.s12),
-                        decoration: BoxDecoration(
-                          color: AfColors.glassFill,
-                          borderRadius: AfRadii.borderPill,
-                          border: Border.all(
-                            color: AfColors.glassBorderStrong,
-                            width: 1,
-                          ),
-                        ),
-                        child: const Icon(
-                          LucideIcons.search,
-                          color: AfColors.textSecondary,
-                          size: 18,
-                        ),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AfColors.glassFill,
+                      borderRadius: AfRadii.borderPill,
+                      border: Border.all(
+                        color: AfColors.glassBorderStrong,
+                        width: 1,
                       ),
+                    ),
+                    child: const Icon(
+                      LucideIcons.search,
+                      color: AfColors.textSecondary,
+                      size: 18,
                     ),
                   ),
                 ),
