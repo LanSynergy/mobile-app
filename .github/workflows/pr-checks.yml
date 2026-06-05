@@ -41,16 +41,19 @@ jobs:
           cache: true
           pub-cache: false
 
-      - name: Cache pub packages + build_runner outputs
+      - name: Cache pub packages
         uses: actions/cache@v5
         with:
-          path: |
-            ~/.pub-cache
-            .dart_tool
-          key: ${{ runner.os }}-ci-${{ hashFiles('pubspec.lock') }}
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
 
-      - name: Analyze (via tool/build, skip test + build)
-        run: bash tool/build --skip-build --skip-test
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
 
   test:
     name: Test (shard ${{ matrix.shard }})
@@ -73,13 +76,16 @@ jobs:
           cache: true
           pub-cache: false
 
-      - name: Cache pub packages + build_runner outputs
+      - name: Cache pub packages
         uses: actions/cache@v5
         with:
-          path: |
-            ~/.pub-cache
-            .dart_tool
-          key: ${{ runner.os }}-ci-${{ hashFiles('pubspec.lock') }}
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      - name: Install dependencies
+        run: flutter pub get
 
       - name: Test (shard ${{ matrix.shard }}/4)
-        run: flutter test --shard-index=${{ matrix.shard }} --total-shards=4
+        run: flutter test --shard-index=${{ matrix.shard }} --total-shards=4 --no-pub
