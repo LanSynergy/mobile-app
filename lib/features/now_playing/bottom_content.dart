@@ -120,7 +120,7 @@ class _BottomContentState extends ConsumerState<BottomContent>
                 top: Radius.circular(AfRadii.lg),
               ),
               blurSigma: 30,
-              color: AfColors.glassFillMedium,
+              color: AfColors.glassFillHeavy,
               padding: EdgeInsets.zero,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
