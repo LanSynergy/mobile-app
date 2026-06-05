@@ -4,21 +4,21 @@ import 'dart:math';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
 import '../../utils/log.dart';
+import '../network/shared_dio_client.dart';
 
 /// Prefetches audio stream bytes for upcoming tracks into local temporary files
 /// to facilitate smooth, gapless-like transition on completion.
 ///
 /// Optimizations implemented:
-/// - Connection pooling via shared Dio client
+/// - Connection pooling via shared Dio client (SharedDioClient)
 /// - Exponential backoff with jitter for retries
 /// - Configurable timeouts for network operations
 /// - Batching support for multiple concurrent prefetches
 /// - LRU cache eviction for cached files
 class StreamPrefetcher {
   StreamPrefetcher({Dio? dio, int? maxConcurrent})
-    : _dio = dio ?? Dio(),
+    : _dio = dio ?? SharedDioClient().dio,
       _maxConcurrent = maxConcurrent ?? _maxConcurrentPrefetches {
     _init();
   }
@@ -55,23 +55,7 @@ class StreamPrefetcher {
 
   Future<void> _init() async {
     try {
-      // Configure Dio with timeouts and connection pooling
-      _dio.options = _dio.options.copyWith(
-        connectTimeout: const Duration(seconds: 5),
-        sendTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 15),
-      );
-
-      // Configure connection pooling
-      _dio.httpClientAdapter = IOHttpClientAdapter()
-        ..createHttpClient = () {
-          final client = HttpClient();
-          client.findProxy = (uri) => "DIRECT";
-          client.idleTimeout = const Duration(seconds: 15);
-          client.connectionTimeout = const Duration(seconds: 5);
-          return client;
-        };
-
+      // Timeouts and connection pooling are inherited from SharedDioClient.
       final tempDir = await getTemporaryDirectory();
       _cacheDir = tempDir.path;
       await clearStaleTempFiles();
