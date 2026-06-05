@@ -238,7 +238,7 @@ class _BlockNotifier extends ChangeNotifier {
   static void _initLut() {
     if (_lutReady) return;
     for (var i = 0; i < _lutSize; i++) {
-      _pow10Lut[i] = math.pow(i / (_lutSize - 1), 3.0).toDouble();
+      _pow10Lut[i] = math.pow(i / (_lutSize - 1), 2.0).toDouble();
     }
     _lutReady = true;
   }
@@ -407,7 +407,7 @@ class _CombinedBarPainter extends CustomPainter {
     final double fillX = fftNotifier.hasEnergy
         ? math.max(rawFillX, slotW * 0.75)
         : (fftNotifier.totalEnergy > 0 ? rawFillX : 0.0);
-    final double maxBarH = midY * 0.8;
+    final double maxBarH = midY;
     final barRadius = Radius.circular(barW / 2);
 
     final paint = _paint;
