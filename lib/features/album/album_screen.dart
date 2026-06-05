@@ -351,49 +351,60 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: widget.onPlay,
-            icon: const Icon(
-              LucideIcons.play,
-              color: AfColors.textOnPrimary,
-              size: 22,
+        // ── Action icons row ──────────────────────────────────────────
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            _IconCircle(
+              icon: LucideIcons.heart,
+              color: _isFavorite ? AfColors.semanticError : null,
+              onTap: _toggleFavorite,
             ),
-            label: const Text('Play All'),
-          ),
-        ),
-        const SizedBox(width: AfSpacing.s12),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () {
-              final shuffled = List<AfTrack>.from(widget.tracks)..shuffle();
-              ref.read(playActionsProvider).playQueue(shuffled);
-            },
-            style: AfTypography.outlinedAction,
-            icon: const Icon(LucideIcons.shuffle, size: 20),
-            label: const Text('Shuffle'),
-          ),
-        ),
-        const SizedBox(width: AfSpacing.s12),
-        _IconCircle(
-          icon: LucideIcons.heart,
-          color: _isFavorite ? AfColors.semanticError : null,
-          onTap: _toggleFavorite,
-        ),
-        const SizedBox(width: AfSpacing.s8),
-        _IconCircle(
-          icon: LucideIcons.download,
-          onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Offline downloads coming soon'),
-              duration: AfDurations.snackBarInfo,
+            const SizedBox(width: AfSpacing.s8),
+            _IconCircle(
+              icon: LucideIcons.download,
+              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Offline downloads coming soon'),
+                  duration: AfDurations.snackBarInfo,
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: AfSpacing.s8),
+            _IconCircle(icon: LucideIcons.ellipsis, onTap: widget.onMore),
+          ],
         ),
-        const SizedBox(width: AfSpacing.s8),
-        _IconCircle(icon: LucideIcons.ellipsis, onTap: widget.onMore),
+        const SizedBox(height: AfSpacing.s12),
+        // ── Play All + Shuffle ────────────────────────────────────────
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: widget.onPlay,
+                icon: const Icon(
+                  LucideIcons.play,
+                  color: AfColors.textOnPrimary,
+                  size: 22,
+                ),
+                label: const Text('Play All'),
+              ),
+            ),
+            const SizedBox(width: AfSpacing.s12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  final shuffled = List<AfTrack>.from(widget.tracks)..shuffle();
+                  ref.read(playActionsProvider).playQueue(shuffled);
+                },
+                style: AfTypography.outlinedAction,
+                icon: const Icon(LucideIcons.shuffle, size: 20),
+                label: const Text('Shuffle'),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
