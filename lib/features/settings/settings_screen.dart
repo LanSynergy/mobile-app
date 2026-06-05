@@ -165,7 +165,7 @@ class SettingsScreen extends ConsumerWidget {
                     onTap: () async {
                       final confirmed = await showBlurDialog<bool>(
                         context: context,
-                        child: Column(
+                        builder: (ctx, dismiss) => Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -183,12 +183,11 @@ class SettingsScreen extends ConsumerWidget {
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(context, false),
+                                  onPressed: () => dismiss(false),
                                   child: const Text('Cancel'),
                                 ),
                                 TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
+                                  onPressed: () => dismiss(true),
                                   child: const Text('Switch'),
                                 ),
                               ],
@@ -196,14 +195,26 @@ class SettingsScreen extends ConsumerWidget {
                           ],
                         ),
                       );
-                      if (confirmed == true && context.mounted) {
-                        // Clear auth FIRST so authSub fires before modeSub.
-                        // This way the router redirect sees auth=null before
-                        // the migration fallback kicks in when mode→null.
-                        await ref.read(authProvider.notifier).clear();
-                        await AppModeStore.clear();
-                        ref.read(appModeProvider.notifier).state = null;
-                        if (context.mounted) context.go('/');
+                      if (confirmed == true) {
+                        // Reset router state first so redirect sends
+                        // user to onboarding if settings screen is disposed.
+                        resetRouterMode();
+                        setRouterAuthState(auth: null);
+                        notifyAuthChanged();
+                        try {
+                          await ref.read(authProvider.notifier).clear();
+                        } catch (_) {}
+                        try {
+                          await AppModeStore.clear();
+                        } catch (_) {}
+                        try {
+                          ref.read(appModeProvider.notifier).state = null;
+                        } catch (_) {}
+                        if (context.mounted) {
+                          context.go('/');
+                        } else {
+                          appRouter.go('/');
+                        }
                       }
                     },
                   ),

@@ -1,14 +1,10 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_shaders_ui/flutter_shaders_ui.dart';
 
 import '../design_tokens/colors.dart';
 import '../state/animated_spectral.dart';
 import '../utils/log.dart';
-import '../widgets/global_mini_player_overlay.dart';
 import 'router.dart';
 import 'theme.dart';
 
@@ -60,77 +56,11 @@ class _AetherfinRouter extends StatelessWidget {
             );
             return MediaQuery(
               data: mq.copyWith(textScaler: clamped),
-              child: Stack(
-                children: [
-                  child ?? const SizedBox.shrink(),
-                  const GlobalMiniPlayerOverlay(),
-
-                  // Offscreen shader warmup — triggers Skia GPU shader
-                  // compilation for BackdropFilter blur and WaveBackground
-                  // on the first frame, preventing jank when these are
-                  // first used during navigation.
-                  const _ShaderWarmUp(),
-                ],
-              ),
+              child: child ?? const SizedBox.shrink(),
             );
           },
         );
       },
-    );
-  }
-}
-
-/// Renders the heaviest GPU shaders offscreen on the first frame so Skia
-/// compiles them while the user is looking at the splash/welcome screen.
-/// Removed automatically after the first paint via [State].
-class _ShaderWarmUp extends StatefulWidget {
-  const _ShaderWarmUp();
-  @override
-  State<_ShaderWarmUp> createState() => _ShaderWarmUpState();
-}
-
-class _ShaderWarmUpState extends State<_ShaderWarmUp> {
-  bool _done = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Defer removal to the next frame so the first paint triggers shader
-    // compilation before the widget tree removes it.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _done = true);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_done) return const SizedBox.shrink();
-
-    return Offstage(
-      offstage: true,
-      child: Stack(
-        children: [
-          // Warm up the WaveBackground GLSL shader (used in AppShell + queue).
-          const SizedBox(
-            width: 1,
-            height: 1,
-            child: WaveBackground(
-              color1: AfColors.surfaceCanvas,
-              color2: AfColors.surfaceCanvas,
-              amplitude: 0.0,
-              speed: 0.0,
-            ),
-          ),
-          // Warm up BackdropFilter blur at the sigma values used by the app
-          // (miniplayer: 24, top bar: 30, glass cards: 16).
-          ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-              child: const SizedBox(width: 1, height: 1),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
