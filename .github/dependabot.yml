@@ -1,0 +1,31 @@
+version: 2
+updates:
+  # Keep GitHub Actions up to date — security patches + latest features.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "ci"
+
+  # Keep Flutter/Dart dependencies current.
+  - package-ecosystem: pub
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - flutter
+    commit-message:
+      prefix: "deps"
+    # Group minor + patch updates into a single PR to reduce noise.
+    groups:
+      flutter-minor-patch:
+        update-types:
+          - minor
+          - patch
