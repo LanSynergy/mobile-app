@@ -74,7 +74,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          args="--mode ${{ inputs.build_mode }} --telegram --progress-watch --skip-codegen"
+          args="--mode ${{ inputs.build_mode }} --telegram --progress-watch"
           if [ "${{ inputs.build_mode }}" = "release" ]; then
             args="$args --sign"
           fi

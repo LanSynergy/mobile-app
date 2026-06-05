@@ -138,7 +138,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          bash tool/build --mode release --sign --split-per-abi --progress-watch --skip-codegen
+          bash tool/build --mode release --sign --split-per-abi --progress-watch
 
       - name: Prepare release artifacts
         run: |
