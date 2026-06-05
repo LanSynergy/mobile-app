@@ -162,11 +162,22 @@ class MetadataScanner {
               p.join(coverCacheDir, _coverFilename(file.uri)),
             );
             if (!await coverFile.exists()) {
-              final artBytes = await SafPicker.readCoverArt(file.uri);
-              if (artBytes != null && artBytes.isNotEmpty) {
-                await coverFile.writeAsBytes(artBytes);
-                coverPath = coverFile.path;
-                _coverCacheManager?.trackAccess(coverFile.path);
+              try {
+                final artBytes = await SafPicker.readCoverArt(file.uri);
+                if (artBytes != null && artBytes.isNotEmpty) {
+                  await coverFile.writeAsBytes(artBytes);
+                  coverPath = coverFile.path;
+                  _coverCacheManager?.trackAccess(coverFile.path);
+                } else {
+                  afLog('local', 'no embedded artwork for ${file.name}');
+                }
+              } catch (e, stack) {
+                afLog(
+                  'local',
+                  'readCoverArt failed for ${file.name}',
+                  error: e,
+                  stackTrace: stack,
+                );
               }
             } else {
               coverPath = coverFile.path;

@@ -1,10 +1,12 @@
 package dev.aetherfin.aetherfin.saf
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.DocumentsContract
+import android.util.Log
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -28,6 +30,7 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
 
     private lateinit var channel: MethodChannel
     private var activity: Activity? = null
+    private lateinit var appContext: Context
     private var pendingResult: MethodChannel.Result? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -42,6 +45,7 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
     }
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        appContext = binding.applicationContext
         channel = MethodChannel(binding.binaryMessenger, CHANNEL)
         channel.setMethodCallHandler(this)
     }
@@ -90,6 +94,7 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
                         val art = readCoverArt(uri)
                         withContext(Dispatchers.Main) { result.success(art) }
                     } catch (e: Exception) {
+                        Log.e("SafPlugin", "readCoverArt handler error: ${e.message}", e)
                         withContext(Dispatchers.Main) { result.success(null) }
                     }
                 }
@@ -276,11 +281,10 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
     // ── Read metadata ─────────────────────────────────────────────────────
 
     private fun readMetadata(fileUriStr: String): Map<String, Any?> {
-        val ctx = activity ?: return emptyMap()
         val uri = Uri.parse(fileUriStr)
         val retriever = MediaMetadataRetriever()
         return try {
-            retriever.setDataSource(ctx, uri)
+            retriever.setDataSource(appContext, uri)
             mapOf(
                 "title" to retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE),
                 "artist" to retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST),
@@ -302,19 +306,20 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
     // ── Read cover art ────────────────────────────────────────────────────
 
     private fun readCoverArt(fileUriStr: String): ByteArray? {
-        val ctx = activity ?: return null
         val uri = Uri.parse(fileUriStr)
         val retriever = MediaMetadataRetriever()
         return try {
-            retriever.setDataSource(ctx, uri)
+            retriever.setDataSource(appContext, uri)
             retriever.embeddedPicture
+        } catch (e: Exception) {
+            Log.w("SafPlugin", "readCoverArt failed for $uri: ${e.message}")
+            null
         } finally {
-            retriever.release()
+            try { retriever.release() } catch (_: Exception) {}
         }
     }
 
     private fun readLyrics(fileUriStr: String): String? {
-        val ctx = activity ?: return null
         val uri = Uri.parse(fileUriStr)
         
         // 1. Try sidecar .lrc first
@@ -330,12 +335,12 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
                     
                     // Try lowercase .lrc
                     var lrcUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, "$baseDocId.lrc")
-                    var content = tryReadUri(ctx, lrcUri)
+                    var content = tryReadUri(appContext, lrcUri)
                     
                     // Try uppercase .LRC
                     if (content == null) {
                         lrcUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, "$baseDocId.LRC")
-                        content = tryReadUri(ctx, lrcUri)
+                        content = tryReadUri(appContext, lrcUri)
                     }
                     
                     if (content != null) {
@@ -349,10 +354,10 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
         
         // 2. Fallback to embedded lyrics
         try {
-            val displayName = getDocumentDisplayName(ctx, uri) ?: uri.path ?: ""
+            val displayName = getDocumentDisplayName(appContext, uri) ?: uri.path ?: ""
             val ext = displayName.substringAfterLast('.', "").lowercase()
             
-            ctx.contentResolver.openInputStream(uri)?.use { inputStream ->
+            appContext.contentResolver.openInputStream(uri)?.use { inputStream ->
                 return when (ext) {
                     "mp3" -> extractLyricsFromMp3(inputStream)
                     "flac" -> extractLyricsFromFlac(inputStream)
