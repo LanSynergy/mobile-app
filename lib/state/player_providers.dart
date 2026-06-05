@@ -236,13 +236,15 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
       } catch (_) {}
       // Refresh home widget after favorite toggle.
       final updatedTrack = ref.read(currentTrackProvider);
-      unawaited(HomeWidgetManager.update(
-        title: updatedTrack?.title ?? 'Not Playing',
-        artist: updatedTrack?.artistName ?? '',
-        playing: ref.read(playingStreamProvider).valueOrNull ?? false,
-        isFavorite: updatedTrack?.isFavorite ?? false,
-        artPath: ref.read(currentArtworkUriProvider)?.toFilePath(),
-      ));
+      unawaited(
+        HomeWidgetManager.update(
+          title: updatedTrack?.title ?? 'Not Playing',
+          artist: updatedTrack?.artistName ?? '',
+          playing: ref.read(playingStreamProvider).valueOrNull ?? false,
+          isFavorite: updatedTrack?.isFavorite ?? false,
+          artPath: ref.read(currentArtworkUriProvider)?.toFilePath(),
+        ),
+      );
     }
   };
 

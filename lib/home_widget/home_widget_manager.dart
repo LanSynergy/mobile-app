@@ -20,14 +20,14 @@ class HomeWidgetManager {
     await HomeWidget.saveWidgetData<String>('title', title);
     await HomeWidget.saveWidgetData<String>('artist', artist);
     await HomeWidget.saveWidgetData<String>('playing', playing.toString());
-    await HomeWidget.saveWidgetData<String>('isFavorite', isFavorite.toString());
+    await HomeWidget.saveWidgetData<String>(
+      'isFavorite',
+      isFavorite.toString(),
+    );
     if (artPath != null) {
       await HomeWidget.saveWidgetData<String>('artPath', artPath);
     }
-    await HomeWidget.updateWidget(
-      name: _name,
-      androidName: _name,
-    );
+    await HomeWidget.updateWidget(name: _name, androidName: _name);
   }
 
   /// Clear widget to default "Not Playing" state.
@@ -36,9 +36,6 @@ class HomeWidgetManager {
     await HomeWidget.saveWidgetData<String>('artist', '');
     await HomeWidget.saveWidgetData<String>('playing', 'false');
     await HomeWidget.saveWidgetData<String>('isFavorite', 'false');
-    await HomeWidget.updateWidget(
-      name: _name,
-      androidName: _name,
-    );
+    await HomeWidget.updateWidget(name: _name, androidName: _name);
   }
 }

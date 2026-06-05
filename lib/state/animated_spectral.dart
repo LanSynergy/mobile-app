@@ -7,8 +7,9 @@ import 'spectral_providers.dart';
 
 /// Animated spectral value — updates every frame during transitions.
 /// Read via [ValueListenableBuilder] in the widget tree.
-final ValueNotifier<Spectral> animatedSpectral =
-    ValueNotifier<Spectral>(Spectral.fallback);
+final ValueNotifier<Spectral> animatedSpectral = ValueNotifier<Spectral>(
+  Spectral.fallback,
+);
 
 /// Watches [currentSpectralProvider] and animates color transitions.
 /// Wrap [MaterialApp] with this widget.

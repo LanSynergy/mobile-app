@@ -277,11 +277,13 @@ Future<void> main() async {
       _boot('runApp returned');
 
       // Register home widget callbacks for handling widget taps.
-      unawaited(HomeWidget.registerInteractivityCallback((uri) async {
-        // Widget taps are handled by the native PendingIntent system
-        // (media button intents), so this is primarily for background
-        // callback registration.
-      }));
+      unawaited(
+        HomeWidget.registerInteractivityCallback((uri) async {
+          // Widget taps are handled by the native PendingIntent system
+          // (media button intents), so this is primarily for background
+          // callback registration.
+        }),
+      );
     },
     (error, stack) {
       afLog('error', 'zoned uncaught', error: error, stackTrace: stack);

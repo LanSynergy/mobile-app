@@ -53,9 +53,14 @@ jobs:
         run: bash tool/build --skip-build --skip-test
 
   test:
-    name: Test
+    name: Test (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [1, 2, 3, 4]
+        total: [4]
 
     steps:
       - name: Checkout
@@ -77,5 +82,5 @@ jobs:
             .dart_tool
           key: ${{ runner.os }}-ci-${{ hashFiles('pubspec.lock') }}
 
-      - name: Test (via tool/build, skip analyze + build)
-        run: bash tool/build --skip-build --skip-analyze
+      - name: Test (shard ${{ matrix.shard }}/${{ matrix.total }})
+        run: flutter test --shard-index=${{ matrix.shard }} --total-shards=${{ matrix.total }}

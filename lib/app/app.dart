@@ -30,9 +30,7 @@ class AetherfinApp extends ConsumerWidget {
       ),
     );
 
-    return AnimatedSpectralScope(
-      child: _AetherfinRouter(),
-    );
+    return AnimatedSpectralScope(child: _AetherfinRouter());
   }
 }
 

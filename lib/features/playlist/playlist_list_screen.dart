@@ -181,20 +181,17 @@ class PlaylistListScreen extends ConsumerWidget {
               crossAxisSpacing: AfSpacing.s16,
               mainAxisSpacing: AfSpacing.s16,
             ),
-            delegate: SliverChildBuilderDelegate(
-              (context, i) {
-                final p = list[i];
-                return Tile(
-                  title: p.name,
-                  subtitle: p.trackCountLabel,
-                  variant: TileVariant.playlist,
-                  imageUrl: p.imageUrl,
-                  size: double.infinity,
-                  onTap: () => context.push('/playlist/${p.id}'),
-                );
-              },
-              childCount: list.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, i) {
+              final p = list[i];
+              return Tile(
+                title: p.name,
+                subtitle: p.trackCountLabel,
+                variant: TileVariant.playlist,
+                imageUrl: p.imageUrl,
+                size: double.infinity,
+                onTap: () => context.push('/playlist/${p.id}'),
+              );
+            }, childCount: list.length),
           ),
         ),
       );

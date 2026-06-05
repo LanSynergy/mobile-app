@@ -124,11 +124,7 @@ ThemeData _buildTheme(Spectral s) {
       shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderLg),
     ),
 
-    dividerTheme: DividerThemeData(
-      color: s.surfaceLow,
-      thickness: 1,
-      space: 0,
-    ),
+    dividerTheme: DividerThemeData(color: s.surfaceLow, thickness: 1, space: 0),
 
     progressIndicatorTheme: ProgressIndicatorThemeData(
       color: primary,
@@ -160,9 +156,7 @@ ThemeData _buildTheme(Spectral s) {
         borderRadius: AfRadii.borderLg,
         borderSide: BorderSide(color: AfColors.semanticError, width: 1),
       ),
-      labelStyle: AfTypography.bodyMedium.copyWith(
-        color: s.textSecondary,
-      ),
+      labelStyle: AfTypography.bodyMedium.copyWith(color: s.textSecondary),
     ),
 
     elevatedButtonTheme: ElevatedButtonThemeData(
