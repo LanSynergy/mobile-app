@@ -2,33 +2,12 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import '../utils/url.dart';
-
-/// Custom cache manager that limits total disk cache to ~200 MB.
-///
-/// Uses [maxNrOfCacheObjects] (2000) as a proxy — typical artwork images
-/// are 50–150 KB each, so 2000 files ≈ 100–300 MB.
-class ArtworkCacheManager extends CacheManager with ImageCacheManager {
-  ArtworkCacheManager._()
-    : super(
-        Config(
-          'aetherfinArtworkCache',
-          stalePeriod: const Duration(days: 30),
-          maxNrOfCacheObjects: 2000,
-        ),
-      );
-
-  /// Singleton accessor.
-  factory ArtworkCacheManager() => _instance;
-
-  static final ArtworkCacheManager _instance = ArtworkCacheManager._();
-}
 
 /// Network artwork that gracefully degrades to a dark placeholder
 /// when the URL is null or fails to load. Used everywhere we
@@ -134,7 +113,6 @@ class Artwork extends ConsumerWidget {
           imageUrl: url!,
           httpHeaders: headers,
           fit: fit,
-          cacheManager: ArtworkCacheManager(),
           placeholder: (context, url) => placeholder,
           errorWidget: (context, url, error) => placeholder,
           fadeInDuration: AfDurations.quick,
