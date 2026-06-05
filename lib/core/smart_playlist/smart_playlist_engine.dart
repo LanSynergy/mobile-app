@@ -57,9 +57,17 @@ class SmartPlaylistEngine {
           '''
         SELECT * FROM (
           SELECT $trackCols,
-            (SELECT COUNT(*) FROM playback_history h WHERE h.track_id = tracks.id AND h.skipped = 0) AS play_count,
-            (SELECT MAX(played_at) FROM playback_history h WHERE h.track_id = tracks.id) AS last_played
+            COALESCE(h.play_count, 0) AS play_count,
+            h.last_played
           FROM tracks
+          LEFT JOIN (
+            SELECT track_id,
+              COUNT(*) AS play_count,
+              MAX(played_at) AS last_played
+            FROM playback_history
+            WHERE skipped = 0
+            GROUP BY track_id
+          ) h ON h.track_id = tracks.id
         )
       ''';
     }
