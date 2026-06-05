@@ -1,5 +1,6 @@
 import 'dart:convert' show utf8;
 import 'dart:io';
+import 'dart:math' show min;
 
 import 'package:crypto/crypto.dart' show sha1;
 import 'package:path/path.dart' as p;
@@ -54,78 +55,105 @@ class MetadataScanner {
       final prefix = treeUri.endsWith('/') ? treeUri : '$treeUri/';
       final existingModified = await db.getTrackLastModifiedByPrefix(prefix);
 
-      // 3. Process in batches of 50 for DB efficiency
+      // 3. Process in chunks: metadata reads fire concurrently per chunk
+      //    (MethodChannel calls are independent), cover art + disk writes
+      //    remain sequential. DB batch writes stay sequential (SQLite single-writer).
+      const chunkSize = 10;
       final batch = <Map<String, dynamic>>[];
 
-      for (final file in files) {
-        // Check if file is already in DB and unchanged (O(1) map lookup)
-        final mod = existingModified[file.uri];
-        if (mod != null && mod == file.lastModified) {
-          completed++;
-          onProgress?.call(completed, files.length);
-          continue;
+      for (var i = 0; i < files.length; i += chunkSize) {
+        final end = min(i + chunkSize, files.length);
+        final chunk = files.sublist(i, end);
+
+        // Separate already-cached files from those needing metadata reads.
+        final toProcess = <SafFile>[];
+        for (final file in chunk) {
+          final mod = existingModified[file.uri];
+          if (mod != null && mod == file.lastModified) {
+            completed++;
+            onProgress?.call(completed, files.length);
+            continue;
+          }
+          toProcess.add(file);
         }
 
-        // 3. Read metadata
-        try {
-          final meta = await SafPicker.readMetadata(file.uri);
-          final title = meta.title?.isNotEmpty == true
-              ? meta.title!
-              : _titleFromFilename(file.name);
+        if (toProcess.isEmpty) continue;
 
-          // 4. Extract cover art (if not already cached)
-          String? coverPath;
-          final coverFile = File(
-            p.join(coverCacheDir, _coverFilename(file.uri)),
-          );
-          if (!await coverFile.exists()) {
-            final artBytes = await SafPicker.readCoverArt(file.uri);
-            if (artBytes != null && artBytes.isNotEmpty) {
-              await coverFile.writeAsBytes(artBytes);
+        // Fire all metadata reads concurrently within this chunk.
+        final results = await Future.wait(
+          toProcess.map(
+            (f) => SafPicker.readMetadata(f.uri).then(
+              (m) => _ChunkResult(f, m),
+              onError: (Object e, StackTrace stack) {
+                afLog(
+                  'local',
+                  'metadata read failed for ${f.name}',
+                  error: e,
+                  stackTrace: stack,
+                );
+                return _ChunkResult(f, null);
+              },
+            ),
+          ),
+        );
+
+        // Process results sequentially: cover art reads/writes + batch build.
+        for (final result in results) {
+          final file = result.file;
+          final meta = result.meta;
+
+          if (meta != null) {
+            final title = meta.title?.isNotEmpty == true
+                ? meta.title!
+                : _titleFromFilename(file.name);
+
+            // Extract cover art (if not already cached)
+            String? coverPath;
+            final coverFile = File(
+              p.join(coverCacheDir, _coverFilename(file.uri)),
+            );
+            if (!await coverFile.exists()) {
+              final artBytes = await SafPicker.readCoverArt(file.uri);
+              if (artBytes != null && artBytes.isNotEmpty) {
+                await coverFile.writeAsBytes(artBytes);
+                coverPath = coverFile.path;
+                _coverCacheManager?.trackAccess(coverFile.path);
+              }
+            } else {
               coverPath = coverFile.path;
               _coverCacheManager?.trackAccess(coverFile.path);
             }
-          } else {
-            coverPath = coverFile.path;
-            _coverCacheManager?.trackAccess(coverFile.path);
+
+            batch.add({
+              'id': file.uri,
+              'title': title,
+              'artist': meta.artist ?? '',
+              'album': meta.album ?? '',
+              'album_artist': meta.albumArtist ?? '',
+              'track_number': meta.trackNum,
+              'duration_ms': meta.durationMs,
+              'year': meta.yearInt,
+              'genre': meta.genre ?? '',
+              'file_path': file.name,
+              'file_size': file.size,
+              'last_modified': file.lastModified,
+              'cover_path': coverPath,
+              'codec': meta.codec,
+              'bitrate': meta.bitrateKbps,
+              'sample_rate': meta.sampleRateHz,
+            });
+
+            inserted++;
           }
 
-          batch.add({
-            'id': file.uri,
-            'title': title,
-            'artist': meta.artist ?? '',
-            'album': meta.album ?? '',
-            'album_artist': meta.albumArtist ?? '',
-            'track_number': meta.trackNum,
-            'duration_ms': meta.durationMs,
-            'year': meta.yearInt,
-            'genre': meta.genre ?? '',
-            'file_path': file.name,
-            'file_size': file.size,
-            'last_modified': file.lastModified,
-            'cover_path': coverPath,
-            'codec': meta.codec,
-            'bitrate': meta.bitrateKbps,
-            'sample_rate': meta.sampleRateHz,
-          });
+          completed++;
+          onProgress?.call(completed, files.length);
 
-          inserted++;
-        } catch (e, stack) {
-          afLog(
-            'local',
-            'metadata read failed for ${file.name}',
-            error: e,
-            stackTrace: stack,
-          );
-        }
-
-        completed++;
-        onProgress?.call(completed, files.length);
-
-        // Flush batch every 50 tracks
-        if (batch.length >= 50) {
-          await db.upsertTracks(batch);
-          batch.clear();
+          // Flush batch every 50 tracks
+          if (batch.length >= 50) {
+            await db.upsertTracks(batch);
+            batch.clear();
+          }
         }
       }
 
@@ -209,4 +237,11 @@ class MetadataScanner {
     final stripped = withoutExt.replaceFirst(RegExp(r'^\d{1,3}[\s._-]+'), '');
     return stripped.replaceAll('_', ' ').trim();
   }
+}
+
+/// Holds a file together with its metadata result from a concurrent read.
+class _ChunkResult {
+  _ChunkResult(this.file, this.meta);
+  final SafFile file;
+  final SafMetadata? meta;
 }

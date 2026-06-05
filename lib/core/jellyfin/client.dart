@@ -1,3 +1,5 @@
+import 'dart:isolate';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 
@@ -491,10 +493,10 @@ class JellyfinClient implements MusicBackend {
         'EnableImageTypes': 'Primary',
       },
     );
-    return _parser
-        .parseItemList(res.data)
-        .map(_parser.parseArtist)
-        .toList(growable: false);
+    final items = _parser.parseItemList(res.data);
+    return Isolate.run(
+      () => items.map(_parser.parseArtist).toList(growable: false),
+    );
   }
 
   @override
@@ -512,10 +514,10 @@ class JellyfinClient implements MusicBackend {
         'EnableImages': true,
       },
     );
-    return _parser
-        .parseItemList(res.data)
-        .map(_parser.parsePlaylist)
-        .toList(growable: false);
+    final items = _parser.parseItemList(res.data);
+    return Isolate.run(
+      () => items.map(_parser.parsePlaylist).toList(growable: false),
+    );
   }
 
   @override
@@ -622,10 +624,10 @@ class JellyfinClient implements MusicBackend {
         'EnableImages': true,
       },
     );
-    return _parser
-        .parseItemList(res.data)
-        .map(_parser.parseTrack)
-        .toList(growable: false);
+    final items = _parser.parseItemList(res.data);
+    return Isolate.run(
+      () => items.map(_parser.parseTrack).toList(growable: false),
+    );
   }
 
   @override
@@ -644,10 +646,10 @@ class JellyfinClient implements MusicBackend {
         'EnableImages': true,
       },
     );
-    return _parser
-        .parseItemList(res.data)
-        .map(_parser.parseAlbum)
-        .toList(growable: false);
+    final items = _parser.parseItemList(res.data);
+    return Isolate.run(
+      () => items.map(_parser.parseAlbum).toList(growable: false),
+    );
   }
 
   @override
@@ -669,10 +671,10 @@ class JellyfinClient implements MusicBackend {
         'EnableImages': true,
       },
     );
-    return _parser
-        .parseItemList(res.data)
-        .map(_parser.parseTrack)
-        .toList(growable: false);
+    final items = _parser.parseItemList(res.data);
+    return Isolate.run(
+      () => items.map(_parser.parseTrack).toList(growable: false),
+    );
   }
 
   @override

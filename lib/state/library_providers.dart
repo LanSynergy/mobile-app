@@ -219,18 +219,25 @@ final playlistTrackIdsProvider = FutureProvider.autoDispose<Set<String>>((
   final playlists = await ref.watch(allPlaylistsProvider.future);
   final ids = <String>{};
 
-  final results = await Future.wait(
-    playlists.map((pl) => backend.playlist(pl.id)),
-    eagerError: false,
-  );
-  for (var i = 0; i < results.length; i++) {
-    final detail = results[i];
-    if (detail != null) {
-      for (final t in detail.tracks) {
-        ids.add(t.id);
+  const batchSize = 5;
+  for (var i = 0; i < playlists.length; i += batchSize) {
+    final end = (i + batchSize < playlists.length)
+        ? i + batchSize
+        : playlists.length;
+    final batch = playlists.sublist(i, end);
+    final results = await Future.wait(
+      batch.map((pl) => backend.playlist(pl.id)),
+      eagerError: false,
+    );
+    for (var j = 0; j < results.length; j++) {
+      final detail = results[j];
+      if (detail != null) {
+        for (final t in detail.tracks) {
+          ids.add(t.id);
+        }
+      } else {
+        afLog('data', 'playlist track fetch returned null id=${batch[j].id}');
       }
-    } else {
-      afLog('data', 'playlist track fetch returned null id=${playlists[i].id}');
     }
   }
 
@@ -252,18 +259,30 @@ final allGenresProvider = FutureProvider.autoDispose<List<AfGenre>>((
   if (res.every((g) => g.imageUrl != null)) return res;
 
   final enriched = <AfGenre>[];
+  final needsEnrichment = <AfGenre>[];
   for (final g in res) {
     if (g.imageUrl != null) {
       enriched.add(g);
-      continue;
-    }
-    try {
-      final albums = await backend.albumsByGenre(g.name, limit: 1);
-      final imageUrl = albums.isNotEmpty ? albums.first.imageUrl : null;
-      enriched.add(AfGenre(g.name, g.tint, imageUrl: imageUrl));
-    } catch (_) {
-      enriched.add(g);
+    } else {
+      needsEnrichment.add(g);
     }
   }
+
+  if (needsEnrichment.isNotEmpty) {
+    final enrichments = await Future.wait(
+      needsEnrichment.map((g) async {
+        try {
+          final albums = await backend.albumsByGenre(g.name, limit: 1);
+          final imageUrl = albums.isNotEmpty ? albums.first.imageUrl : null;
+          return AfGenre(g.name, g.tint, imageUrl: imageUrl);
+        } catch (_) {
+          return g;
+        }
+      }),
+      eagerError: false,
+    );
+    enriched.addAll(enrichments);
+  }
+
   return enriched;
 });
