@@ -1122,11 +1122,14 @@ Future<void> _playTrackFromStats(
   String title,
 ) async {
   final spectral = ref.read(currentSpectralProvider);
-  unawaited(
-    showBlurDialog(
-      context: context,
-      barrierDismissible: false,
-      child: Row(
+  void Function()? dismiss;
+  // ignore: unawaited_futures – overlay inserted synchronously, dismiss via callback
+  showBlurDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx, dismissFn) {
+      dismiss = dismissFn;
+      return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
@@ -1145,9 +1148,11 @@ Future<void> _playTrackFromStats(
             ),
           ),
         ],
-      ),
-    ),
+      );
+    },
   );
+  // Ensure the overlay is laid out before async work begins.
+  await Future<void>.delayed(Duration.zero);
 
   try {
     final backend = ref.read(musicBackendProvider);
@@ -1177,7 +1182,7 @@ Future<void> _playTrackFromStats(
       }
     }
 
-    if (context.mounted) Navigator.pop(context); // Close loading HUD
+    dismiss?.call();
 
     if (resolved != null) {
       await ref.read(playActionsProvider).playQueue([resolved], startIndex: 0);
@@ -1191,7 +1196,7 @@ Future<void> _playTrackFromStats(
       }
     }
   } catch (e) {
-    if (context.mounted) Navigator.pop(context); // Close loading HUD
+    dismiss?.call();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to resolve track: ${displayError(e)}')),
@@ -1206,11 +1211,14 @@ Future<void> _navigateToArtistFromStats(
   String artistName,
 ) async {
   final spectral = ref.read(currentSpectralProvider);
-  unawaited(
-    showBlurDialog(
-      context: context,
-      barrierDismissible: false,
-      child: Row(
+  void Function()? dismiss;
+  // ignore: unawaited_futures – overlay inserted synchronously, dismiss via callback
+  showBlurDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx, dismissFn) {
+      dismiss = dismissFn;
+      return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
@@ -1229,9 +1237,10 @@ Future<void> _navigateToArtistFromStats(
             ),
           ),
         ],
-      ),
-    ),
+      );
+    },
   );
+  await Future<void>.delayed(Duration.zero);
 
   try {
     final backend = ref.read(musicBackendProvider);
@@ -1252,7 +1261,7 @@ Future<void> _navigateToArtistFromStats(
       }
     }
 
-    if (context.mounted) Navigator.pop(context); // Close loading HUD
+    dismiss?.call();
 
     if (artistId != null) {
       if (context.mounted) unawaited(context.push('/artist/$artistId'));
@@ -1264,7 +1273,7 @@ Future<void> _navigateToArtistFromStats(
       }
     }
   } catch (e) {
-    if (context.mounted) Navigator.pop(context); // Close loading HUD
+    dismiss?.call();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to resolve artist: ${displayError(e)}')),
@@ -1280,11 +1289,14 @@ Future<void> _navigateToAlbumFromStats(
   String albumName,
 ) async {
   final spectral = ref.read(currentSpectralProvider);
-  unawaited(
-    showBlurDialog(
-      context: context,
-      barrierDismissible: false,
-      child: Row(
+  void Function()? dismiss;
+  // ignore: unawaited_futures – overlay inserted synchronously, dismiss via callback
+  showBlurDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx, dismissFn) {
+      dismiss = dismissFn;
+      return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
@@ -1303,9 +1315,10 @@ Future<void> _navigateToAlbumFromStats(
             ),
           ),
         ],
-      ),
-    ),
+      );
+    },
   );
+  await Future<void>.delayed(Duration.zero);
 
   try {
     final backend = ref.read(musicBackendProvider);
@@ -1327,7 +1340,7 @@ Future<void> _navigateToAlbumFromStats(
       }
     }
 
-    if (context.mounted) Navigator.pop(context); // Close loading HUD
+    dismiss?.call();
 
     if (albumId != null) {
       if (context.mounted) unawaited(context.push('/album/$albumId'));
@@ -1343,7 +1356,7 @@ Future<void> _navigateToAlbumFromStats(
       }
     }
   } catch (e) {
-    if (context.mounted) Navigator.pop(context); // Close loading HUD
+    dismiss?.call();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to resolve album: ${displayError(e)}')),
