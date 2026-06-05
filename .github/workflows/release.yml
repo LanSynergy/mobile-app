@@ -70,6 +70,13 @@ jobs:
       - name: Setup Flutter + JDK
         uses: ./.github/actions/setup-flutter
 
+      - name: Cache codegen
+        id: codegen-cache
+        uses: actions/cache@v5
+        with:
+          path: lib/core/local/app_database.g.dart
+          key: codegen-${{ runner.os }}-${{ hashFiles('pubspec.lock', 'lib/core/local/app_database.dart') }}
+
       - name: Export Telegram metadata
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -138,7 +145,11 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          bash tool/build --mode release --sign --split-per-abi --progress-watch
+          args="--mode release --sign --split-per-abi --progress-watch"
+          if [ "${{ steps.codegen-cache.outputs.cache-hit }}" = "true" ]; then
+            args="$args --skip-codegen"
+          fi
+          bash tool/build $args
 
       - name: Prepare release artifacts
         run: |

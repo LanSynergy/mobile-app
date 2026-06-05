@@ -31,12 +31,22 @@ jobs:
       - name: Setup Flutter + JDK
         uses: ./.github/actions/setup-flutter
 
+      - name: Install deps
+        run: flutter pub get --offline || flutter pub get
+
+      - name: Cache codegen
+        id: codegen-cache
+        uses: actions/cache@v5
+        with:
+          path: lib/core/local/app_database.g.dart
+          key: codegen-${{ runner.os }}-${{ hashFiles('pubspec.lock', 'lib/core/local/app_database.dart') }}
+
+      - name: Generate code
+        if: steps.codegen-cache.outputs.cache-hit != 'true'
+        run: dart run build_runner build
+
       - name: Analyze
-        run: |
-          flutter pub get --offline || flutter pub get
-          flutter analyze --no-fatal-infos
+        run: flutter analyze --no-fatal-infos
 
       - name: Test
-        run: |
-          flutter pub get --offline || flutter pub get
-          flutter test
+        run: flutter test
