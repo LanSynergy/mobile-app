@@ -33,6 +33,7 @@ import '../../utils/display_error.dart';
 import '../../state/providers.dart';
 import '../../widgets/af_dialog.dart';
 import 'eq_band_painter.dart';
+import 'eq_dsp_sections.dart';
 import 'eq_dsp_widgets.dart';
 import 'eq_preset.dart';
 
@@ -560,6 +561,140 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     }
   }
 
+  // ── Section field change handler ─────────────────────────────────────────
+
+  void _onFieldChanged(String field, dynamic value) {
+    setState(() {
+      switch (field) {
+        case 'loudnorm':
+          _loudnorm = value as bool;
+        case 'compressor':
+          _compressor = value as bool;
+        case 'compThreshold':
+          _compThreshold = value as double;
+        case 'compRatio':
+          _compRatio = value as double;
+        case 'compAttack':
+          _compAttack = value as double;
+        case 'compRelease':
+          _compRelease = value as double;
+        case 'gate':
+          _gate = value as bool;
+        case 'gateThreshold':
+          _gateThreshold = value as double;
+        case 'gateRatio':
+          _gateRatio = value as double;
+        case 'gateAttack':
+          _gateAttack = value as double;
+        case 'gateRelease':
+          _gateRelease = value as double;
+        case 'deesser':
+          _deesser = value as bool;
+        case 'deesserIntensity':
+          _deesserIntensity = value as double;
+        case 'deesserMix':
+          _deesserMix = value as double;
+        case 'deesserFreq':
+          _deesserFreq = value as double;
+        case 'echoEnabled':
+          _echoEnabled = value as bool;
+        case 'echoInGain':
+          _echoInGain = value as double;
+        case 'echoOutGain':
+          _echoOutGain = value as double;
+        case 'echoDelays':
+          _echoDelays = value as String;
+        case 'echoDecays':
+          _echoDecays = value as String;
+        case 'rubberbandEnabled':
+          _rubberbandEnabled = value as bool;
+        case 'pitch':
+          _pitch = value as double;
+        case 'tempo':
+          _tempo = value as double;
+        case 'crossfeed':
+          _crossfeed = value as bool;
+        case 'crossfeedStrength':
+          _crossfeedStrength = value as double;
+        case 'stereoWiden':
+          _stereoWiden = value as bool;
+        case 'stereoWidenDelay':
+          _stereoWidenDelay = value as double;
+        case 'phaser':
+          _phaser = value as bool;
+        case 'phaserInGain':
+          _phaserInGain = value as double;
+        case 'phaserOutGain':
+          _phaserOutGain = value as double;
+        case 'phaserDelay':
+          _phaserDelay = value as double;
+        case 'phaserDecay':
+          _phaserDecay = value as double;
+        case 'phaserSpeed':
+          _phaserSpeed = value as double;
+        case 'flanger':
+          _flanger = value as bool;
+        case 'flangerDelay':
+          _flangerDelay = value as double;
+        case 'flangerDepth':
+          _flangerDepth = value as double;
+        case 'flangerRegen':
+          _flangerRegen = value as double;
+        case 'flangerWidth':
+          _flangerWidth = value as double;
+        case 'flangerSpeed':
+          _flangerSpeed = value as double;
+        case 'chorus':
+          _chorus = value as bool;
+        case 'chorusInGain':
+          _chorusInGain = value as double;
+        case 'chorusOutGain':
+          _chorusOutGain = value as double;
+        case 'chorusDelays':
+          _chorusDelays = value as String;
+        case 'chorusDecays':
+          _chorusDecays = value as String;
+        case 'chorusSpeeds':
+          _chorusSpeeds = value as String;
+        case 'chorusDepths':
+          _chorusDepths = value as String;
+        case 'tremolo':
+          _tremolo = value as bool;
+        case 'tremoloFreq':
+          _tremoloFreq = value as double;
+        case 'tremoloDepth':
+          _tremoloDepth = value as double;
+        case 'vibrato':
+          _vibrato = value as bool;
+        case 'vibratoFreq':
+          _vibratoFreq = value as double;
+        case 'vibratoDepth':
+          _vibratoDepth = value as double;
+        case 'exciter':
+          _exciter = value as bool;
+        case 'exciterAmount':
+          _exciterAmount = value as double;
+        case 'crystalizer':
+          _crystalizer = value as bool;
+        case 'crystalizerIntensity':
+          _crystalizerIntensity = value as double;
+        case 'virtualBass':
+          _virtualBass = value as bool;
+        case 'virtualBassCutoff':
+          _virtualBassCutoff = value as double;
+        case 'crusher':
+          _crusher = value as bool;
+        case 'crusherBits':
+          _crusherBits = value as double;
+        case 'crusherMix':
+          _crusherMix = value as double;
+        case 'crusherSamples':
+          _crusherSamples = value as double;
+      }
+      _activePreset = null;
+    });
+  }
+
   // ── Build ────────────────────────────────────────────────────────────────
 
   @override
@@ -630,7 +765,13 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
 
   List<Widget> _buildAccordionSections() {
     final sections = [
-      _buildAccordion(0, 'Tone', null, _buildToneContent()),
+      _buildAccordion(0, 'Tone', null, EqToneSection(
+        bass: _bass,
+        treble: _treble,
+        onBassChanged: (v) => setState(() { _bass = v; _activePreset = null; }),
+        onTrebleChanged: (v) => setState(() { _treble = v; _activePreset = null; }),
+        onApply: _apply,
+      )),
       _buildAccordion(
         1,
         '18-Band Equalizer',
@@ -641,37 +782,117 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         2,
         'Dynamics',
         _dynamicsCount > 0 ? _dynamicsCount : null,
-        _buildDynamicsContent(),
+        EqDynamicsSection(
+          loudnorm: _loudnorm,
+          compressor: _compressor,
+          compThreshold: _compThreshold,
+          compRatio: _compRatio,
+          compAttack: _compAttack,
+          compRelease: _compRelease,
+          gate: _gate,
+          gateThreshold: _gateThreshold,
+          gateRatio: _gateRatio,
+          gateAttack: _gateAttack,
+          gateRelease: _gateRelease,
+          deesser: _deesser,
+          deesserIntensity: _deesserIntensity,
+          deesserMix: _deesserMix,
+          deesserFreq: _deesserFreq,
+          onChanged: _onFieldChanged,
+          onApply: _apply,
+        ),
       ),
       _buildAccordion(
         3,
         'Echo / Delay',
         _echoEnabled ? 1 : null,
-        _buildEchoContent(),
+        EqEchoSection(
+          echoEnabled: _echoEnabled,
+          echoInGain: _echoInGain,
+          echoOutGain: _echoOutGain,
+          echoDelays: _echoDelays,
+          echoDecays: _echoDecays,
+          onChanged: _onFieldChanged,
+          onApply: _apply,
+        ),
       ),
       _buildAccordion(
         4,
         'Pitch & Tempo',
         _rubberbandEnabled ? 1 : null,
-        _buildPitchTempoContent(),
+        EqPitchSection(
+          rubberbandEnabled: _rubberbandEnabled,
+          pitch: _pitch,
+          tempo: _tempo,
+          onChanged: _onFieldChanged,
+          onApply: _apply,
+        ),
       ),
       _buildAccordion(
         5,
         'Spatial',
         (_crossfeed || _stereoWiden) ? 1 : null,
-        _buildSpatialContent(),
+        EqSpatialSection(
+          crossfeed: _crossfeed,
+          crossfeedStrength: _crossfeedStrength,
+          stereoWiden: _stereoWiden,
+          stereoWidenDelay: _stereoWidenDelay,
+          onChanged: _onFieldChanged,
+          onApply: _apply,
+        ),
       ),
       _buildAccordion(
         6,
         'Modulation',
         _modulationCount > 0 ? _modulationCount : null,
-        _buildModulationContent(),
+        EqModulationSection(
+          phaser: _phaser,
+          phaserInGain: _phaserInGain,
+          phaserOutGain: _phaserOutGain,
+          phaserDelay: _phaserDelay,
+          phaserDecay: _phaserDecay,
+          phaserSpeed: _phaserSpeed,
+          flanger: _flanger,
+          flangerDelay: _flangerDelay,
+          flangerDepth: _flangerDepth,
+          flangerRegen: _flangerRegen,
+          flangerWidth: _flangerWidth,
+          flangerSpeed: _flangerSpeed,
+          chorus: _chorus,
+          chorusInGain: _chorusInGain,
+          chorusOutGain: _chorusOutGain,
+          chorusDelays: _chorusDelays,
+          chorusDecays: _chorusDecays,
+          chorusSpeeds: _chorusSpeeds,
+          chorusDepths: _chorusDepths,
+          tremolo: _tremolo,
+          tremoloFreq: _tremoloFreq,
+          tremoloDepth: _tremoloDepth,
+          vibrato: _vibrato,
+          vibratoFreq: _vibratoFreq,
+          vibratoDepth: _vibratoDepth,
+          onChanged: _onFieldChanged,
+          onApply: _apply,
+        ),
       ),
       _buildAccordion(
         7,
         'Creative',
         _creativeCount > 0 ? _creativeCount : null,
-        _buildCreativeContent(),
+        EqCreativeSection(
+          exciter: _exciter,
+          exciterAmount: _exciterAmount,
+          crystalizer: _crystalizer,
+          crystalizerIntensity: _crystalizerIntensity,
+          virtualBass: _virtualBass,
+          virtualBassCutoff: _virtualBassCutoff,
+          crusher: _crusher,
+          crusherBits: _crusherBits,
+          crusherMix: _crusherMix,
+          crusherSamples: _crusherSamples,
+          onChanged: _onFieldChanged,
+          onApply: _apply,
+        ),
       ),
     ];
 
@@ -702,45 +923,6 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     );
   }
 
-  // ── Tone ────────────────────────────────────────────────────────────────
-
-  Widget _buildToneContent() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        eqSliderRow(
-          'Bass',
-          _bass,
-          -12,
-          12,
-          24,
-          (v) {
-            setState(() {
-              _bass = v;
-              _activePreset = null;
-            });
-          },
-          _apply,
-          suffix: 'dB',
-        ),
-        eqSliderRow(
-          'Treble',
-          _treble,
-          -12,
-          12,
-          24,
-          (v) {
-            setState(() {
-              _treble = v;
-              _activePreset = null;
-            });
-          },
-          _apply,
-          suffix: 'dB',
-        ),
-      ],
-    );
-  }
 
   // ── 18-Band EQ ──────────────────────────────────────────────────────────
 
@@ -843,807 +1025,6 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     );
   }
 
-  // ── Dynamics ────────────────────────────────────────────────────────────
-
-  Widget _buildDynamicsContent() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        eqToggleTile(
-          'Loudness normalization',
-          'EBU R128 (-16 LUFS)',
-          _loudnorm,
-          (v) {
-            setState(() => _loudnorm = v);
-            unawaited(_apply());
-          },
-        ),
-        EqEffectToggle(
-          title: 'Dynamic compressor',
-          subtitle: 'Reduces volume spikes',
-          value: _compressor,
-          onChanged: (v) {
-            setState(() => _compressor = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _compressor,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              eqSliderRow(
-                'Threshold',
-                _compThreshold,
-                0.001,
-                1.0,
-                100,
-                (v) => setState(() => _compThreshold = v),
-                _apply,
-                precision: 3,
-              ),
-              eqSliderRow(
-                'Ratio',
-                _compRatio,
-                1.0,
-                20.0,
-                38,
-                (v) => setState(() => _compRatio = v),
-                _apply,
-                precision: 1,
-                suffix: ':1',
-              ),
-              eqSliderRow(
-                'Attack',
-                _compAttack,
-                0.01,
-                200.0,
-                100,
-                (v) => setState(() => _compAttack = v),
-                _apply,
-                precision: 1,
-                suffix: 'ms',
-              ),
-              eqSliderRow(
-                'Release',
-                _compRelease,
-                5.0,
-                2000.0,
-                100,
-                (v) => setState(() => _compRelease = v),
-                _apply,
-                precision: 0,
-                suffix: 'ms',
-              ),
-            ],
-          ),
-        ),
-        EqEffectToggle(
-          title: 'Noise gate',
-          subtitle: 'Silences signal below threshold',
-          value: _gate,
-          onChanged: (v) {
-            setState(() => _gate = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _gate,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              eqSliderRow(
-                'Threshold',
-                _gateThreshold,
-                0.001,
-                1.0,
-                100,
-                (v) => setState(() => _gateThreshold = v),
-                _apply,
-                precision: 3,
-              ),
-              eqSliderRow(
-                'Ratio',
-                _gateRatio,
-                1.0,
-                20.0,
-                38,
-                (v) => setState(() => _gateRatio = v),
-                _apply,
-                precision: 1,
-                suffix: ':1',
-              ),
-              eqSliderRow(
-                'Attack',
-                _gateAttack,
-                0.01,
-                200.0,
-                100,
-                (v) => setState(() => _gateAttack = v),
-                _apply,
-                precision: 1,
-                suffix: 'ms',
-              ),
-              eqSliderRow(
-                'Release',
-                _gateRelease,
-                5.0,
-                2000.0,
-                100,
-                (v) => setState(() => _gateRelease = v),
-                _apply,
-                precision: 0,
-                suffix: 'ms',
-              ),
-            ],
-          ),
-        ),
-        EqEffectToggle(
-          title: 'De-esser',
-          subtitle: 'Reduces sibilance',
-          value: _deesser,
-          onChanged: (v) {
-            setState(() => _deesser = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _deesser,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              eqSliderRow(
-                'Intensity',
-                _deesserIntensity,
-                0.0,
-                1.0,
-                20,
-                (v) => setState(() => _deesserIntensity = v),
-                _apply,
-                precision: 2,
-              ),
-              eqSliderRow(
-                'Mix',
-                _deesserMix,
-                0.0,
-                1.0,
-                20,
-                (v) => setState(() => _deesserMix = v),
-                _apply,
-                precision: 2,
-              ),
-              eqSliderRow(
-                'Frequency keep',
-                _deesserFreq,
-                0.0,
-                1.0,
-                20,
-                (v) => setState(() => _deesserFreq = v),
-                _apply,
-                precision: 2,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Echo / Delay ────────────────────────────────────────────────────────
-
-  Widget _buildEchoContent() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        EqEffectToggle(
-          title: 'Echo',
-          subtitle: 'Multi-tap delay effect',
-          value: _echoEnabled,
-          onChanged: (v) {
-            setState(() => _echoEnabled = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _echoEnabled,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              eqSliderRow(
-                'In gain',
-                _echoInGain,
-                0.0,
-                1.0,
-                20,
-                (v) => setState(() => _echoInGain = v),
-                _apply,
-                precision: 2,
-              ),
-              eqSliderRow(
-                'Out gain',
-                _echoOutGain,
-                0.0,
-                1.0,
-                20,
-                (v) => setState(() => _echoOutGain = v),
-                _apply,
-                precision: 2,
-              ),
-              eqTextFieldRow(
-                context,
-                'Delays (ms)',
-                _echoDelays,
-                'e.g. 500|250',
-                (v) {
-                  setState(() => _echoDelays = v);
-                  unawaited(_apply());
-                },
-              ),
-              eqTextFieldRow(
-                context,
-                'Decays (0-1)',
-                _echoDecays,
-                'e.g. 0.5|0.3',
-                (v) {
-                  setState(() => _echoDecays = v);
-                  unawaited(_apply());
-                },
-              ),
-              Padding(
-                padding: const EdgeInsets.only(
-                  top: AfSpacing.s4,
-                  bottom: AfSpacing.s8,
-                ),
-                child: Text(
-                  'Separate multiple taps with | (pipe)',
-                  style: AfTypography.caption.copyWith(
-                    color: AfColors.textTertiary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Pitch & Tempo ───────────────────────────────────────────────────────
-
-  Widget _buildPitchTempoContent() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        EqEffectToggle(
-          title: 'Enable pitch/tempo shift',
-          subtitle: 'High-quality rubberband engine',
-          value: _rubberbandEnabled,
-          onChanged: (v) {
-            setState(() => _rubberbandEnabled = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _rubberbandEnabled,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              eqSliderRow(
-                'Pitch',
-                _pitch,
-                0.5,
-                2.0,
-                30,
-                (v) => setState(() => _pitch = v),
-                _apply,
-                suffix: '\u00d7',
-                precision: 2,
-              ),
-              eqSliderRow(
-                'Tempo',
-                _tempo,
-                0.5,
-                2.0,
-                30,
-                (v) => setState(() => _tempo = v),
-                _apply,
-                suffix: '\u00d7',
-                precision: 2,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Spatial ─────────────────────────────────────────────────────────────
-
-  Widget _buildSpatialContent() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        EqEffectToggle(
-          title: 'Crossfeed',
-          subtitle: 'Headphone crossfeed for natural imaging',
-          value: _crossfeed,
-          onChanged: (v) {
-            setState(() => _crossfeed = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _crossfeed,
-          child: eqSliderRow(
-            'Strength',
-            _crossfeedStrength,
-            0.0,
-            1.0,
-            20,
-            (v) => setState(() => _crossfeedStrength = v),
-            _apply,
-            precision: 2,
-          ),
-        ),
-        EqEffectToggle(
-          title: 'Stereo widening',
-          subtitle: 'Expands stereo image',
-          value: _stereoWiden,
-          onChanged: (v) {
-            setState(() => _stereoWiden = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _stereoWiden,
-          child: eqSliderRow(
-            'Delay',
-            _stereoWidenDelay,
-            1.0,
-            100.0,
-            99,
-            (v) => setState(() => _stereoWidenDelay = v),
-            _apply,
-            suffix: 'ms',
-            precision: 0,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Modulation ──────────────────────────────────────────────────────────
-
-  Widget _buildModulationContent() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        EqEffectToggle(
-          title: 'Phaser',
-          subtitle: 'Phase-shifting sweep effect',
-          value: _phaser,
-          onChanged: (v) {
-            setState(() => _phaser = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _phaser,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              eqSliderRow(
-                'In gain',
-                _phaserInGain,
-                0.0,
-                1.0,
-                20,
-                (v) => setState(() => _phaserInGain = v),
-                _apply,
-                precision: 2,
-              ),
-              eqSliderRow(
-                'Out gain',
-                _phaserOutGain,
-                0.0,
-                1.0,
-                20,
-                (v) => setState(() => _phaserOutGain = v),
-                _apply,
-                precision: 2,
-              ),
-              eqSliderRow(
-                'Delay',
-                _phaserDelay,
-                0.0,
-                5.0,
-                50,
-                (v) => setState(() => _phaserDelay = v),
-                _apply,
-                precision: 1,
-                suffix: 'ms',
-              ),
-              eqSliderRow(
-                'Decay',
-                _phaserDecay,
-                0.0,
-                0.99,
-                99,
-                (v) => setState(() => _phaserDecay = v),
-                _apply,
-                precision: 2,
-              ),
-              eqSliderRow(
-                'Speed',
-                _phaserSpeed,
-                0.1,
-                2.0,
-                19,
-                (v) => setState(() => _phaserSpeed = v),
-                _apply,
-                precision: 2,
-                suffix: 'Hz',
-              ),
-            ],
-          ),
-        ),
-        EqEffectToggle(
-          title: 'Flanger',
-          subtitle: 'Flanging with feedback',
-          value: _flanger,
-          onChanged: (v) {
-            setState(() => _flanger = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _flanger,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              eqSliderRow(
-                'Delay',
-                _flangerDelay,
-                0.0,
-                30.0,
-                60,
-                (v) => setState(() => _flangerDelay = v),
-                _apply,
-                precision: 1,
-                suffix: 'ms',
-              ),
-              eqSliderRow(
-                'Depth',
-                _flangerDepth,
-                0.0,
-                10.0,
-                20,
-                (v) => setState(() => _flangerDepth = v),
-                _apply,
-                precision: 1,
-              ),
-              eqSliderRow(
-                'Regen',
-                _flangerRegen,
-                -95.0,
-                95.0,
-                38,
-                (v) => setState(() => _flangerRegen = v),
-                _apply,
-                precision: 0,
-                suffix: '%',
-              ),
-              eqSliderRow(
-                'Width',
-                _flangerWidth,
-                0.0,
-                100.0,
-                20,
-                (v) => setState(() => _flangerWidth = v),
-                _apply,
-                precision: 0,
-                suffix: '%',
-              ),
-              eqSliderRow(
-                'Speed',
-                _flangerSpeed,
-                0.1,
-                10.0,
-                99,
-                (v) => setState(() => _flangerSpeed = v),
-                _apply,
-                precision: 1,
-                suffix: 'Hz',
-              ),
-            ],
-          ),
-        ),
-        EqEffectToggle(
-          title: 'Chorus',
-          subtitle: 'Multi-voice chorus effect',
-          value: _chorus,
-          onChanged: (v) {
-            setState(() => _chorus = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _chorus,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              eqSliderRow(
-                'In gain',
-                _chorusInGain,
-                0.0,
-                1.0,
-                20,
-                (v) => setState(() => _chorusInGain = v),
-                _apply,
-                precision: 2,
-              ),
-              eqSliderRow(
-                'Out gain',
-                _chorusOutGain,
-                0.0,
-                1.0,
-                20,
-                (v) => setState(() => _chorusOutGain = v),
-                _apply,
-                precision: 2,
-              ),
-              eqTextFieldRow(
-                context,
-                'Delays (ms)',
-                _chorusDelays,
-                'e.g. 40|60',
-                (v) {
-                  setState(() => _chorusDelays = v);
-                  unawaited(_apply());
-                },
-              ),
-              eqTextFieldRow(
-                context,
-                'Decays',
-                _chorusDecays,
-                'e.g. 0.4|0.32',
-                (v) {
-                  setState(() => _chorusDecays = v);
-                  unawaited(_apply());
-                },
-              ),
-              eqTextFieldRow(
-                context,
-                'Speeds (Hz)',
-                _chorusSpeeds,
-                'e.g. 0.25|0.4',
-                (v) {
-                  setState(() => _chorusSpeeds = v);
-                  unawaited(_apply());
-                },
-              ),
-              eqTextFieldRow(context, 'Depths', _chorusDepths, 'e.g. 2|3', (v) {
-                setState(() => _chorusDepths = v);
-                unawaited(_apply());
-              }),
-              Padding(
-                padding: const EdgeInsets.only(
-                  top: AfSpacing.s4,
-                  bottom: AfSpacing.s8,
-                ),
-                child: Text(
-                  'Separate multiple voices with | (pipe)',
-                  style: AfTypography.caption.copyWith(
-                    color: AfColors.textTertiary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        EqEffectToggle(
-          title: 'Tremolo',
-          subtitle: 'Amplitude modulation',
-          value: _tremolo,
-          onChanged: (v) {
-            setState(() => _tremolo = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _tremolo,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              eqSliderRow(
-                'Frequency',
-                _tremoloFreq,
-                0.1,
-                20.0,
-                40,
-                (v) => setState(() => _tremoloFreq = v),
-                _apply,
-                precision: 1,
-                suffix: 'Hz',
-              ),
-              eqSliderRow(
-                'Depth',
-                _tremoloDepth,
-                0.0,
-                1.0,
-                20,
-                (v) => setState(() => _tremoloDepth = v),
-                _apply,
-                precision: 2,
-              ),
-            ],
-          ),
-        ),
-        EqEffectToggle(
-          title: 'Vibrato',
-          subtitle: 'Pitch modulation',
-          value: _vibrato,
-          onChanged: (v) {
-            setState(() => _vibrato = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _vibrato,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              eqSliderRow(
-                'Frequency',
-                _vibratoFreq,
-                0.1,
-                20.0,
-                40,
-                (v) => setState(() => _vibratoFreq = v),
-                _apply,
-                precision: 1,
-                suffix: 'Hz',
-              ),
-              eqSliderRow(
-                'Depth',
-                _vibratoDepth,
-                0.0,
-                1.0,
-                20,
-                (v) => setState(() => _vibratoDepth = v),
-                _apply,
-                precision: 2,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Creative ────────────────────────────────────────────────────────────
-
-  Widget _buildCreativeContent() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        EqEffectToggle(
-          title: 'Harmonic exciter',
-          subtitle: 'Adds harmonic overtones',
-          value: _exciter,
-          onChanged: (v) {
-            setState(() => _exciter = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _exciter,
-          child: eqSliderRow(
-            'Amount',
-            _exciterAmount,
-            0.0,
-            10.0,
-            20,
-            (v) => setState(() => _exciterAmount = v),
-            _apply,
-            precision: 1,
-          ),
-        ),
-        EqEffectToggle(
-          title: 'Crystalizer',
-          subtitle: 'Audio sharpener / brightener',
-          value: _crystalizer,
-          onChanged: (v) {
-            setState(() => _crystalizer = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _crystalizer,
-          child: eqSliderRow(
-            'Intensity',
-            _crystalizerIntensity,
-            -10.0,
-            10.0,
-            40,
-            (v) => setState(() => _crystalizerIntensity = v),
-            _apply,
-            precision: 1,
-          ),
-        ),
-        EqEffectToggle(
-          title: 'Virtual bass',
-          subtitle: 'Psychoacoustic bass enhancement',
-          value: _virtualBass,
-          onChanged: (v) {
-            setState(() => _virtualBass = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _virtualBass,
-          child: eqSliderRow(
-            'Cutoff',
-            _virtualBassCutoff,
-            100.0,
-            500.0,
-            40,
-            (v) => setState(() => _virtualBassCutoff = v),
-            _apply,
-            suffix: 'Hz',
-            precision: 0,
-          ),
-        ),
-        EqEffectToggle(
-          title: 'Bit-crusher',
-          subtitle: 'Lo-fi resolution and rate reduction',
-          value: _crusher,
-          onChanged: (v) {
-            setState(() => _crusher = v);
-            unawaited(_apply());
-          },
-        ),
-        EqExpandableContent(
-          visible: _crusher,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              eqSliderRow(
-                'Bits',
-                _crusherBits,
-                1.0,
-                16.0,
-                15,
-                (v) => setState(() => _crusherBits = v),
-                _apply,
-                precision: 0,
-              ),
-              eqSliderRow(
-                'Mix',
-                _crusherMix,
-                0.0,
-                1.0,
-                20,
-                (v) => setState(() => _crusherMix = v),
-                _apply,
-                precision: 2,
-              ),
-              eqSliderRow(
-                'Samples',
-                _crusherSamples,
-                1.0,
-                250.0,
-                50,
-                (v) => setState(() => _crusherSamples = v),
-                _apply,
-                precision: 0,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 
   // ── Presets ─────────────────────────────────────────────────────────────
 
