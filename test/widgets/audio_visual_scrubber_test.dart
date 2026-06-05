@@ -32,7 +32,7 @@ _createSpectrumPlayer() {
   final spectrumCtrl = StreamController<FftFrame>.broadcast();
   final stream = base.player.stream as MockPlayerStream;
 
-  when(() => stream.spectrum).thenAnswer((_) => spectrumCtrl.stream);
+  when(() => stream.fft).thenAnswer((_) => spectrumCtrl.stream);
 
   return (player: base.player, ctrls: base.ctrls, spectrumCtrl: spectrumCtrl);
 }

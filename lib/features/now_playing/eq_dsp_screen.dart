@@ -216,10 +216,10 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     _chorus = fx.chorus.enabled;
     _chorusInGain = fx.chorus.in_gain;
     _chorusOutGain = fx.chorus.out_gain;
-    _chorusDelays = fx.chorus.delays ?? '40|60';
-    _chorusDecays = fx.chorus.decays ?? '0.4|0.32';
-    _chorusSpeeds = fx.chorus.speeds ?? '0.25|0.4';
-    _chorusDepths = fx.chorus.depths ?? '2|3';
+    _chorusDelays = fx.chorus.delays;
+    _chorusDecays = fx.chorus.decays;
+    _chorusSpeeds = fx.chorus.speeds;
+    _chorusDepths = fx.chorus.depths;
     _tremolo = fx.tremolo.enabled;
     _tremoloFreq = fx.tremolo.f;
     _tremoloDepth = fx.tremolo.d;
@@ -765,13 +765,24 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
 
   List<Widget> _buildAccordionSections() {
     final sections = [
-      _buildAccordion(0, 'Tone', null, EqToneSection(
-        bass: _bass,
-        treble: _treble,
-        onBassChanged: (v) => setState(() { _bass = v; _activePreset = null; }),
-        onTrebleChanged: (v) => setState(() { _treble = v; _activePreset = null; }),
-        onApply: _apply,
-      )),
+      _buildAccordion(
+        0,
+        'Tone',
+        null,
+        EqToneSection(
+          bass: _bass,
+          treble: _treble,
+          onBassChanged: (v) => setState(() {
+            _bass = v;
+            _activePreset = null;
+          }),
+          onTrebleChanged: (v) => setState(() {
+            _treble = v;
+            _activePreset = null;
+          }),
+          onApply: _apply,
+        ),
+      ),
       _buildAccordion(
         1,
         '18-Band Equalizer',
@@ -923,7 +934,6 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     );
   }
 
-
   // ── 18-Band EQ ──────────────────────────────────────────────────────────
 
   Widget _buildEqContent() {
@@ -1024,7 +1034,6 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
       ],
     );
   }
-
 
   // ── Presets ─────────────────────────────────────────────────────────────
 

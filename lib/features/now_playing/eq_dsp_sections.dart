@@ -1164,17 +1164,11 @@ class _EqModulationSectionState extends State<EqModulationSection> {
                   unawaited(widget.onApply());
                 },
               ),
-              eqTextFieldRow(
-                context,
-                'Depths',
-                _chorusDepths,
-                'e.g. 2|3',
-                (v) {
-                  setState(() => _chorusDepths = v);
-                  _set('chorusDepths', v);
-                  unawaited(widget.onApply());
-                },
-              ),
+              eqTextFieldRow(context, 'Depths', _chorusDepths, 'e.g. 2|3', (v) {
+                setState(() => _chorusDepths = v);
+                _set('chorusDepths', v);
+                unawaited(widget.onApply());
+              }),
             ],
           ),
         ),

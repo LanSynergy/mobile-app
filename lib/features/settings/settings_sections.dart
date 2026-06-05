@@ -77,7 +77,9 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
 
       // If we never got a progress callback, the total stayed at 0.
       // This means no files were scanned — show a clearer message.
-      final msg = _totalCount == 0 ? 'No audio files found' : 'Scan complete — $count tracks updated';
+      final msg = _totalCount == 0
+          ? 'No audio files found'
+          : 'Scan complete — $count tracks updated';
 
       ref.invalidate(localAlbumsProvider);
       ref.invalidate(localArtistsProvider);
@@ -86,12 +88,16 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
 
       setState(() => _scanning = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _scanning = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Scan failed: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Scan failed: $e')));
     }
   }
 
@@ -129,7 +135,9 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
 
   @override
   Widget build(BuildContext context) {
-    final spectralPrimary = ref.watch(currentSpectralProvider.select((s) => s.primary));
+    final spectralPrimary = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
 
     return SettingsGroup(
       children: [
@@ -147,7 +155,11 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
               iconColor: spectralPrimary,
               title: folder.displayPath,
               trailing: IconButton(
-                icon: const Icon(LucideIcons.circleMinus, color: AfColors.semanticError, size: 20),
+                icon: const Icon(
+                  LucideIcons.circleMinus,
+                  color: AfColors.semanticError,
+                  size: 20,
+                ),
                 onPressed: () => _removeFolder(folder.uri),
               ),
             ),
@@ -181,16 +193,24 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            hasKnownTotal ? 'Scanning your music folder...' : 'Preparing to scan...',
-            style: AfTypography.bodyMedium.copyWith(color: AfColors.textPrimary),
+            hasKnownTotal
+                ? 'Scanning your music folder...'
+                : 'Preparing to scan...',
+            style: AfTypography.bodyMedium.copyWith(
+              color: AfColors.textPrimary,
+            ),
           ),
           const SizedBox(height: AfSpacing.s12),
-          LinearProgressIndicator(value: hasKnownTotal ? _scannedCount / _totalCount : null),
+          LinearProgressIndicator(
+            value: hasKnownTotal ? _scannedCount / _totalCount : null,
+          ),
           if (hasKnownTotal) ...[
             const SizedBox(height: AfSpacing.s8),
             Text(
               '$_scannedCount / $_totalCount files',
-              style: AfTypography.bodySmall.copyWith(color: AfColors.textSecondary),
+              style: AfTypography.bodySmall.copyWith(
+                color: AfColors.textSecondary,
+              ),
             ),
           ],
         ],

@@ -488,7 +488,7 @@ class AfPlayerService {
 
   bool get prefetchPlaylist => _prefetchPlaylistEnabled;
 
-  Stream<FftFrame> get spectrumStream => _player.stream.spectrum;
+  Stream<FftFrame> get spectrumStream => _player.stream.fft;
 
   Future<void> configureSpectrum() async {
     try {
