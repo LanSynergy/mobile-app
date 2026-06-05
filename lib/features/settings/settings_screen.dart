@@ -46,23 +46,22 @@ class SettingsScreen extends ConsumerWidget {
             physics: const ClampingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
             children: [
-              // ── Back button ──────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.only(top: AfSpacing.s8),
-                child: IconButton(
-                  icon: const Icon(LucideIcons.arrowLeft),
-                  onPressed: () => context.pop(),
-                  tooltip: 'Back',
-                ),
-              ),
-
               // ── Page header ─────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.only(
                   bottom: AfSpacing.s24,
                   left: AfSpacing.s4,
                 ),
-                child: Text('Settings', style: AfTypography.display),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(LucideIcons.arrowLeft),
+                      onPressed: () => context.pop(),
+                      tooltip: 'Back',
+                    ),
+                    Text('Settings', style: AfTypography.display),
+                  ],
+                ),
               ),
 
               // ── Server (server mode) ────────────────────────────────
