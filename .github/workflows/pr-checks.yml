@@ -49,6 +49,9 @@ jobs:
       - name: Install deps
         run: flutter pub get --offline || flutter pub get
 
+      - name: Generate code
+        run: dart run build_runner build
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
@@ -68,6 +71,9 @@ jobs:
 
       - name: Install deps (offline)
         run: flutter pub get --offline || flutter pub get
+
+      - name: Generate code
+        run: dart run build_runner build
 
       - name: Test
         run: flutter test
