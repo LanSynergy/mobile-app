@@ -274,10 +274,7 @@ class ProfileScreen extends ConsumerWidget {
                 AfSpacing.s16,
                 0,
               ),
-              child: SectionHeader(
-                title: 'Listening Stats',
-                uppercase: true,
-              ),
+              child: SectionHeader(title: 'Listening Stats', uppercase: true),
             ),
           ),
           if (!isLastFmConnected)
@@ -291,37 +288,6 @@ class ProfileScreen extends ConsumerWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
               child: _StatsDashboard(isLastFmConnected: isLastFmConnected),
-            ),
-          ),
-
-          // ── Account ─────────────────────────────────────────────────────
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                AfSpacing.s16,
-                AfSpacing.s24,
-                AfSpacing.s16,
-                0,
-              ),
-              child: SectionHeader(title: 'Account', uppercase: true),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(
-                left: AfSpacing.s16,
-                right: AfSpacing.s16,
-                top: AfSpacing.s8,
-              ),
-              child: PressScale(
-                onTap: () => context.push('/settings'),
-                child: const ListTile(
-                  leading: Icon(LucideIcons.settings),
-                  title: Text('Settings'),
-                  tileColor: AfColors.surfaceBase,
-                  shape: RoundedRectangleBorder(borderRadius: AfRadii.borderMd),
-                ),
-              ),
             ),
           ),
 
