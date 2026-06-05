@@ -36,7 +36,7 @@ void main() {
         manager.trackAccess(f.path);
       }
       final deleted = await manager.evictIfNeeded();
-      expect(deleted, greaterThan(0));
+      expect(deleted.length, greaterThan(0));
       int remaining = 0;
       for (final f in tmpDir.listSync().whereType<File>()) {
         if (f.path.endsWith('_access_meta.json')) continue;
@@ -50,7 +50,7 @@ void main() {
       final f = File('${tmpDir.path}/cover.jpg');
       f.writeAsBytesSync(List.filled(100, 1));
       manager.trackAccess(f.path);
-      expect(await manager.evictIfNeeded(), equals(0));
+      expect(await manager.evictIfNeeded(), isEmpty);
     });
 
     test('evicts oldest files first (LRU order)', () async {
@@ -116,7 +116,7 @@ void main() {
         cacheDir: tmpDir.path,
         maxBytes: 1000,
       );
-      expect(await m2.evictIfNeeded(), equals(0));
+      expect(await m2.evictIfNeeded(), isEmpty);
     });
 
     test('preserves unknown files (no access log) on eviction', () async {

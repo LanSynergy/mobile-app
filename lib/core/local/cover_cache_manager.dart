@@ -85,10 +85,10 @@ class CoverCacheManager {
 
   /// Evict least-recently-accessed files until total size <= maxBytes.
   ///
-  /// Returns the number of files deleted, or 0 if no eviction was needed.
-  Future<int> evictIfNeeded() async {
+  /// Returns the list of deleted file paths so callers can update the DB.
+  Future<List<String>> evictIfNeeded() async {
     final cacheDir = Directory(_cacheDir);
-    if (!await cacheDir.exists()) return 0;
+    if (!await cacheDir.exists()) return const [];
 
     final files = (await cacheDir.list().toList()).whereType<File>().toList();
     int totalSize = 0;
@@ -97,7 +97,7 @@ class CoverCacheManager {
       totalSize += await f.length();
     }
 
-    if (totalSize <= _maxBytes) return 0;
+    if (totalSize <= _maxBytes) return const [];
 
     files.sort((a, b) {
       if (a.path == _metaPath) return 1;
@@ -107,7 +107,7 @@ class CoverCacheManager {
       return aTime.compareTo(bTime);
     });
 
-    int deleted = 0;
+    final deleted = <String>[];
     for (final f in files) {
       if (totalSize <= _maxBytes) break;
       if (f.path == _metaPath) continue;
@@ -116,7 +116,7 @@ class CoverCacheManager {
         await f.delete();
         _accessTimestamps.remove(f.path);
         totalSize -= len;
-        deleted++;
+        deleted.add(f.path);
       } catch (e, stack) {
         afLog(
           'local',

@@ -67,7 +67,7 @@ class MetadataScanner {
 
         // Separate files that need processing from those already cached.
         // Retry cover art extraction for files whose lastModified matches
-        // but cover_path was null (cover extraction failed on first scan).
+        // but cover_path was null OR the cover file was evicted from disk.
         final toProcess = <SafFile>[];
         final coverOnly = <SafFile>[];
         for (final file in chunk) {
@@ -76,6 +76,15 @@ class MetadataScanner {
             if (!info.hasCover) {
               // Metadata OK but cover art missing — retry cover extraction only.
               coverOnly.add(file);
+            } else if (info.hasCover) {
+              // DB says cover exists — verify file is actually on disk.
+              final coverFile = File(
+                p.join(coverCacheDir, _coverFilename(file.uri)),
+              );
+              if (!await coverFile.exists()) {
+                // Cover evicted from disk but DB is stale — retry extraction.
+                coverOnly.add(file);
+              }
             }
             completed++;
             onProgress?.call(completed, files.length);
@@ -92,22 +101,18 @@ class MetadataScanner {
           final coverFile = File(
             p.join(coverCacheDir, _coverFilename(file.uri)),
           );
-          if (await coverFile.exists()) continue;
+          if (await coverFile.exists()) {
+            // File exists on disk — just make sure DB points to it.
+            await db.updateCoverPath(file.uri, coverFile.path);
+            _coverCacheManager?.trackAccess(coverFile.path);
+            continue;
+          }
           try {
             final artBytes = await SafPicker.readCoverArt(file.uri);
             if (artBytes != null && artBytes.isNotEmpty) {
               await coverFile.writeAsBytes(artBytes);
-              // Update cover_path in DB for this track.
-              await db.upsertTracks([
-                {
-                  'id': file.uri,
-                  'title': '',
-                  'artist': '',
-                  'album': '',
-                  'file_path': file.name,
-                  'cover_path': coverFile.path,
-                },
-              ]);
+              // Update ONLY cover_path — don't corrupt the rest of the row.
+              await db.updateCoverPath(file.uri, coverFile.path);
               _coverCacheManager?.trackAccess(coverFile.path);
               afLog('local', 'cover art recovered for ${file.name}');
             }
@@ -206,10 +211,16 @@ class MetadataScanner {
         await db.upsertTracks(batch);
       }
 
-      // Evict old covers if cache exceeds size limit
-      final evicted = await _coverCacheManager?.evictIfNeeded() ?? 0;
-      if (evicted > 0) {
-        afLog('local', 'evicted $evicted stale cover art files');
+      // Evict old covers if cache exceeds size limit, then null out
+      // DB cover_path for evicted files so re-scan can re-extract.
+      final evicted = await _coverCacheManager?.evictIfNeeded() ?? [];
+      if (evicted.isNotEmpty) {
+        afLog('local', 'evicted ${evicted.length} stale cover art files');
+        // Build a set of evicted paths for O(1) lookup.
+        final evictedSet = evicted.toSet();
+        // Null out cover_path for tracks whose cover was evicted.
+        // Query all tracks with cover_path and check each.
+        await db.clearEvictedCoverPaths(evictedSet);
       }
 
       afLog('local', 'scanFolder done: $inserted tracks inserted/updated');
