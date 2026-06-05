@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../design_tokens/colors.dart';
 import '../state/animated_spectral.dart';
 import '../utils/log.dart';
+import '../widgets/global_mini_player_overlay.dart';
 import 'router.dart';
 import 'theme.dart';
 
@@ -56,7 +57,12 @@ class _AetherfinRouter extends StatelessWidget {
             );
             return MediaQuery(
               data: mq.copyWith(textScaler: clamped),
-              child: child ?? const SizedBox.shrink(),
+              child: Stack(
+                children: [
+                  child ?? const SizedBox.shrink(),
+                  const GlobalMiniPlayerOverlay(),
+                ],
+              ),
             );
           },
         );

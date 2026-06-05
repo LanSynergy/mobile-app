@@ -223,6 +223,7 @@ class AetherfinMediaSessionService : Service() {
                 }
             } else {
                 unregisterNoisyReceiver()
+                abandonAudioFocus()
                 // When paused: demote from foreground so the user can swipe the
                 // notification away, but keep the notification visible so they
                 // can resume from QS/lock-screen.

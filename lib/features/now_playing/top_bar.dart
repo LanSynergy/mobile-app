@@ -112,8 +112,8 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
             },
             child: GlassCard(
               borderRadius: radius,
-              blurSigma: 20,
-              color: AfColors.glassFillStrong,
+              blurSigma: 30,
+              color: AfColors.glassFillHeavy,
               borderColor: AfColors.glassBorderEmphasis,
               padding: EdgeInsets.zero,
               child: Column(
@@ -365,7 +365,7 @@ class _LyricsListState extends ConsumerState<_LyricsList> {
                 style: AfTypography.bodyLarge.copyWith(
                   color: isActive
                       ? widget.spectralEnergy
-                      : AfColors.textPrimary.withValues(alpha: 0.7),
+                      : AfColors.textPrimary.withValues(alpha: 0.5),
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                   shadows: isActive
                       ? [

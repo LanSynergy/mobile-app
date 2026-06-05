@@ -38,6 +38,14 @@ final searchProvider = FutureProvider.autoDispose.family<SearchResults, String>(
     }
 
     final mode = ref.watch(appModeProvider);
+    if (mode == null) {
+      return (
+        tracks: const <AfTrack>[],
+        albums: const <AfAlbum>[],
+        artists: const <AfArtist>[],
+        playlists: const <AfPlaylist>[],
+      );
+    }
     if (mode == AppMode.local) {
       final lib = ref.read(localLibraryProvider);
       final tracks = await lib.search(query);

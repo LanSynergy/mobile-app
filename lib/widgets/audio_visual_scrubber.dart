@@ -238,7 +238,7 @@ class _BlockNotifier extends ChangeNotifier {
   static void _initLut() {
     if (_lutReady) return;
     for (var i = 0; i < _lutSize; i++) {
-      _pow10Lut[i] = math.pow(i / (_lutSize - 1), 10.0).toDouble();
+      _pow10Lut[i] = math.pow(i / (_lutSize - 1), 3.0).toDouble();
     }
     _lutReady = true;
   }
