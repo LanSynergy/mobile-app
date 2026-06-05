@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import 'eq_dsp_widgets.dart';
 
@@ -217,8 +218,8 @@ class _EqDynamicsSectionState extends State<EqDynamicsSection> {
               eqSliderRow(
                 'Threshold',
                 _compThreshold,
-                0.001,
-                1.0,
+                AcompressorSettings.thresholdMin,
+                AcompressorSettings.thresholdMax,
                 100,
                 (v) {
                   setState(() => _compThreshold = v);
@@ -230,8 +231,8 @@ class _EqDynamicsSectionState extends State<EqDynamicsSection> {
               eqSliderRow(
                 'Ratio',
                 _compRatio,
-                1.0,
-                20.0,
+                AcompressorSettings.ratioMin,
+                AcompressorSettings.ratioMax,
                 38,
                 (v) {
                   setState(() => _compRatio = v);
@@ -244,8 +245,8 @@ class _EqDynamicsSectionState extends State<EqDynamicsSection> {
               eqSliderRow(
                 'Attack',
                 _compAttack,
-                0.01,
-                200.0,
+                AcompressorSettings.attackMin,
+                AcompressorSettings.attackMax,
                 100,
                 (v) {
                   setState(() => _compAttack = v);
@@ -258,8 +259,8 @@ class _EqDynamicsSectionState extends State<EqDynamicsSection> {
               eqSliderRow(
                 'Release',
                 _compRelease,
-                5.0,
-                2000.0,
+                AcompressorSettings.releaseMin,
+                AcompressorSettings.releaseMax,
                 100,
                 (v) {
                   setState(() => _compRelease = v);
@@ -290,8 +291,8 @@ class _EqDynamicsSectionState extends State<EqDynamicsSection> {
               eqSliderRow(
                 'Threshold',
                 _gateThreshold,
-                0.001,
-                1.0,
+                AgateSettings.thresholdMin,
+                AgateSettings.thresholdMax,
                 100,
                 (v) {
                   setState(() => _gateThreshold = v);
@@ -303,8 +304,8 @@ class _EqDynamicsSectionState extends State<EqDynamicsSection> {
               eqSliderRow(
                 'Ratio',
                 _gateRatio,
-                1.0,
-                20.0,
+                AgateSettings.ratioMin,
+                AgateSettings.ratioMax,
                 38,
                 (v) {
                   setState(() => _gateRatio = v);
@@ -317,8 +318,8 @@ class _EqDynamicsSectionState extends State<EqDynamicsSection> {
               eqSliderRow(
                 'Attack',
                 _gateAttack,
-                0.01,
-                200.0,
+                AgateSettings.attackMin,
+                AgateSettings.attackMax,
                 100,
                 (v) {
                   setState(() => _gateAttack = v);
@@ -331,8 +332,8 @@ class _EqDynamicsSectionState extends State<EqDynamicsSection> {
               eqSliderRow(
                 'Release',
                 _gateRelease,
-                5.0,
-                2000.0,
+                AgateSettings.releaseMin,
+                AgateSettings.releaseMax,
                 100,
                 (v) {
                   setState(() => _gateRelease = v);
@@ -363,8 +364,8 @@ class _EqDynamicsSectionState extends State<EqDynamicsSection> {
               eqSliderRow(
                 'Intensity',
                 _deesserIntensity,
-                0.0,
-                1.0,
+                DeesserSettings.iMin,
+                DeesserSettings.iMax,
                 20,
                 (v) {
                   setState(() => _deesserIntensity = v);
@@ -376,8 +377,8 @@ class _EqDynamicsSectionState extends State<EqDynamicsSection> {
               eqSliderRow(
                 'Mix',
                 _deesserMix,
-                0.0,
-                1.0,
+                DeesserSettings.mMin,
+                DeesserSettings.mMax,
                 20,
                 (v) {
                   setState(() => _deesserMix = v);
@@ -389,8 +390,8 @@ class _EqDynamicsSectionState extends State<EqDynamicsSection> {
               eqSliderRow(
                 'Frequency keep',
                 _deesserFreq,
-                0.0,
-                1.0,
+                DeesserSettings.fMin,
+                DeesserSettings.fMax,
                 20,
                 (v) {
                   setState(() => _deesserFreq = v);
@@ -1398,8 +1399,8 @@ class _EqCreativeSectionState extends State<EqCreativeSection> {
           child: eqSliderRow(
             'Intensity',
             _crystalizerIntensity,
-            -10.0,
-            10.0,
+            CrystalizerSettings.iMin,
+            CrystalizerSettings.iMax,
             40,
             (v) {
               setState(() => _crystalizerIntensity = v);
@@ -1456,8 +1457,8 @@ class _EqCreativeSectionState extends State<EqCreativeSection> {
               eqSliderRow(
                 'Bits',
                 _crusherBits,
-                1.0,
-                16.0,
+                AcrusherSettings.bitsMin,
+                AcrusherSettings.bitsMax,
                 15,
                 (v) {
                   setState(() => _crusherBits = v);
@@ -1469,8 +1470,8 @@ class _EqCreativeSectionState extends State<EqCreativeSection> {
               eqSliderRow(
                 'Mix',
                 _crusherMix,
-                0.0,
-                1.0,
+                AcrusherSettings.mixMin,
+                AcrusherSettings.mixMax,
                 20,
                 (v) {
                   setState(() => _crusherMix = v);
@@ -1482,8 +1483,8 @@ class _EqCreativeSectionState extends State<EqCreativeSection> {
               eqSliderRow(
                 'Samples',
                 _crusherSamples,
-                1.0,
-                250.0,
+                AcrusherSettings.samplesMin,
+                AcrusherSettings.samplesMax,
                 50,
                 (v) {
                   setState(() => _crusherSamples = v);

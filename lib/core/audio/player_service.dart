@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show VoidCallback, visibleForTesting;
+import 'package:flutter/foundation.dart'
+    show VoidCallback, kDebugMode, visibleForTesting;
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../utils/log.dart';
@@ -63,6 +64,13 @@ class AfPlayerService {
     _player.setAudioDriver('aaudio').catchError((Object e, StackTrace? stack) {
       afLog('error', 'setAudioDriver failed', error: e, stackTrace: stack);
     });
+
+    // Surface mpv's internal diagnostics in debug builds.
+    if (kDebugMode) {
+      _player.setLogLevel(LogLevel.debug).catchError((Object e, StackTrace s) {
+        afLog('audio', 'setLogLevel failed', error: e, stackTrace: s);
+      });
+    }
 
     // 200 ms keeps background playback stable under Android Doze.
     _player.setAudioBuffer(const Duration(milliseconds: 200)).catchError((
