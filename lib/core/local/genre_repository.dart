@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart';
+
 import '../jellyfin/models/items.dart';
 import 'app_database.dart';
 
@@ -7,14 +9,20 @@ class GenreRepository {
 
   // ── Queries ──────────────────────────────────────────────────────────────
 
-  Future<List<AfGenre>> allGenres() async {
-    final rows = await db.customSelect('''
+  Future<List<AfGenre>> allGenres({int limit = 500}) async {
+    final rows = await db
+        .customSelect(
+          '''
       SELECT genre, COUNT(*) as count, MIN(cover_path) as cover_path
       FROM tracks
       WHERE genre != ''
       GROUP BY genre
       ORDER BY genre COLLATE NOCASE ASC
-    ''').get();
+      LIMIT ?1
+      ''',
+          variables: [Variable<int>(limit)],
+        )
+        .get();
     const palette = <String>[
       '#5644C9',
       '#A89DEC',

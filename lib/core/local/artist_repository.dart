@@ -10,15 +10,21 @@ class ArtistRepository {
 
   // ── Queries ──────────────────────────────────────────────────────────────
 
-  Future<List<AfArtist>> allArtists() async {
-    final rows = await db.customSelect('''
+  Future<List<AfArtist>> allArtists({int limit = 5000}) async {
+    final rows = await db
+        .customSelect(
+          '''
       SELECT artist, COUNT(DISTINCT album) as album_count,
              COUNT(*) as track_count, MIN(cover_path) as cover_path
       FROM tracks
       WHERE artist != ''
       GROUP BY artist
       ORDER BY artist COLLATE NOCASE ASC
-    ''').get();
+      LIMIT ?1
+      ''',
+          variables: [Variable<int>(limit)],
+        )
+        .get();
     return rows.map((r) {
       final name = r.read<String?>('artist') ?? 'Unknown';
       return AfArtist(
