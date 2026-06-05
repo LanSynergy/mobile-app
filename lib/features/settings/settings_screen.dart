@@ -165,7 +165,7 @@ class SettingsScreen extends ConsumerWidget {
                     onTap: () async {
                       final confirmed = await showBlurDialog<bool>(
                         context: context,
-                        builder: (ctx, dismiss) => Column(
+                        child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -183,11 +183,12 @@ class SettingsScreen extends ConsumerWidget {
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 TextButton(
-                                  onPressed: () => dismiss(false),
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
                                   child: const Text('Cancel'),
                                 ),
                                 TextButton(
-                                  onPressed: () => dismiss(true),
+                                  onPressed: () => Navigator.pop(context, true),
                                   child: const Text('Switch'),
                                 ),
                               ],

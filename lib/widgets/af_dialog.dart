@@ -1,11 +1,14 @@
-import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
 import '../design_tokens/tokens.dart';
 
-/// Shows a blurred dialog that renders in the current route's overlay.
+/// Shows a blurred dialog pushed as a real route on the root navigator.
+///
+/// Both `child` and `builder` patterns are supported. In both cases,
+/// `Navigator.pop(context, result)` inside the child tree correctly
+/// dismisses the dialog and completes the future.
 Future<T?> showBlurDialog<T>({
   required BuildContext context,
   Widget? child,
@@ -14,118 +17,67 @@ Future<T?> showBlurDialog<T>({
   bool barrierDismissible = true,
 }) {
   assert(child != null || builder != null, 'Provide child or builder');
-  final overlay = Navigator.of(context, rootNavigator: true).overlay;
-  if (overlay == null) return Future.value(null);
 
-  final completer = Completer<T?>();
-  late OverlayEntry entry;
-
-  entry = OverlayEntry(
-    builder: (context) => _BlurDialogOverlay<T>(
+  return Navigator.of(context, rootNavigator: true).push<T>(
+    PageRouteBuilder<T>(
+      opaque: false,
       barrierDismissible: barrierDismissible,
-      onDismiss: (result) {
-        entry.remove();
-        if (!completer.isCompleted) completer.complete(result);
+      barrierColor: Colors.transparent,
+      transitionDuration: AfDurations.standard,
+      reverseTransitionDuration: AfDurations.bounce,
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return _BlurDialogOverlay<T>(
+          animation: animation,
+          barrierDismissible: barrierDismissible,
+          child: builder != null
+              ? builder(context, ([T? result]) {
+                  Navigator.of(context).pop(result);
+                })
+              : child!,
+        );
       },
-      child: builder != null
-          ? builder(context, ([T? result]) {
-              entry.remove();
-              if (!completer.isCompleted) completer.complete(result);
-            })
-          : child!,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return child;
+      },
     ),
   );
-
-  overlay.insert(entry);
-  return completer.future;
 }
 
-class _BlurDialogOverlay<T> extends StatefulWidget {
+// ── Overlay widget ─────────────────────────────────────────────────────────
+
+class _BlurDialogOverlay<T> extends StatelessWidget {
   const _BlurDialogOverlay({
     required this.child,
     required this.barrierDismissible,
-    required this.onDismiss,
+    required this.animation,
   });
 
   final Widget child;
   final bool barrierDismissible;
-  final void Function(T?) onDismiss;
-
-  @override
-  State<_BlurDialogOverlay<T>> createState() => _BlurDialogOverlayState<T>();
-}
-
-class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _fadeAnim;
-  late final Animation<double> _scaleAnim;
-  late final Animation<double> _blurAnim;
-  bool _dismissed = false;
+  final Animation<double> animation;
 
   static const _borderRadius = AfRadii.lg;
 
   @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: AfDurations.standard,
-      reverseDuration: AfDurations.bounce,
-    );
-    _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _ctrl,
-        curve: AfCurves.easeOut,
-        reverseCurve: AfCurves.springDismiss,
-      ),
-    );
-    _scaleAnim = Tween<double>(begin: 0.92, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _ctrl,
-        curve: AfCurves.springPresent,
-        reverseCurve: AfCurves.springDismiss,
-      ),
-    );
-    _blurAnim = Tween<double>(begin: 1, end: 24).animate(
-      CurvedAnimation(
-        parent: _ctrl,
-        curve: AfCurves.easeOut,
-        reverseCurve: AfCurves.springDismiss,
-      ),
-    );
-    _ctrl.forward();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _dismiss([T? result]) {
-    if (_dismissed) return;
-    _dismissed = true;
-    _ctrl.reverse().then((_) => widget.onDismiss(result));
-  }
-
-  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _ctrl,
+      animation: animation,
       builder: (context, _) {
-        final blurSigma = _blurAnim.value;
-        final opacity = _fadeAnim.value;
-        final scale = _scaleAnim.value;
+        final t = animation.value;
+        final blurSigma = lerpDouble(1, 24, t)!;
+        final opacity = Curves.easeOut.transform(t);
+        final scale = lerpDouble(0.92, 1.0, Curves.easeOut.transform(t))!;
 
         return Material(
           type: MaterialType.transparency,
           child: GestureDetector(
-            onTap: widget.barrierDismissible ? _dismiss : null,
+            onTap: barrierDismissible
+                ? () => Navigator.of(context).pop()
+                : null,
             behavior: HitTestBehavior.opaque,
             child: Stack(
               children: [
-                // ── Blur layer — always renders, no Opacity wrapper ──
+                // ── Blur layer ──
                 Positioned.fill(
                   child: BackdropFilter(
                     filter: ImageFilter.blur(
@@ -139,7 +91,7 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
                     ),
                   ),
                 ),
-                // ── Dialog content — fades + scales ──
+                // ── Dialog content ──
                 Center(
                   child: Transform.scale(
                     scale: scale,
@@ -167,7 +119,7 @@ class _BlurDialogOverlayState<T> extends State<_BlurDialogOverlay<T>>
                             ),
                             child: ListTileTheme(
                               tileColor: Colors.transparent,
-                              child: widget.child,
+                              child: child,
                             ),
                           ),
                         ),

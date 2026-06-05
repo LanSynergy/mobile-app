@@ -372,11 +372,13 @@ void main() {
         isTrue,
         reason: 'af_dialog.dart must define showBlurDialog function',
       );
-      // showBlurDialog uses OverlayEntry (not showDialog / showModalBottomSheet).
+      // showBlurDialog uses a real route (PageRouteBuilder) on the root
+      // navigator so Navigator.pop works correctly from child widgets.
       expect(
-        afDialog.contains('OverlayEntry'),
+        afDialog.contains('PageRouteBuilder'),
         isTrue,
-        reason: 'showBlurDialog must use OverlayEntry for cross-route blur',
+        reason:
+            'showBlurDialog must use PageRouteBuilder for correct Navigator.pop',
       );
       // showDialog must NOT appear as a function call (doc comments are OK).
       expect(
