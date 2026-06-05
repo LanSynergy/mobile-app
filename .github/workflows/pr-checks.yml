@@ -47,7 +47,7 @@ jobs:
         uses: ./.github/actions/setup-flutter
 
       - name: Install deps
-        run: flutter pub get --offline
+        run: flutter pub get --offline || flutter pub get
 
       - name: Analyze
         run: flutter analyze --no-fatal-infos
@@ -67,7 +67,7 @@ jobs:
           setup-java: "false"
 
       - name: Install deps (offline)
-        run: flutter pub get --offline
+        run: flutter pub get --offline || flutter pub get
 
       - name: Test
         run: flutter test

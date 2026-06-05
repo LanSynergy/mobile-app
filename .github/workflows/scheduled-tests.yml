@@ -33,10 +33,10 @@ jobs:
 
       - name: Analyze
         run: |
-          flutter pub get --offline
+          flutter pub get --offline || flutter pub get
           flutter analyze --no-fatal-infos
 
       - name: Test
         run: |
-          flutter pub get --offline
+          flutter pub get --offline || flutter pub get
           flutter test
