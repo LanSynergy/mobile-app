@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/press_scale.dart';
 import '../../widgets/skeletons/playlist_skeleton.dart';
 import '../../widgets/af_scrollbar.dart';
 import '../../widgets/tile.dart';
@@ -47,24 +48,42 @@ class PlaylistListScreen extends ConsumerWidget {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(
                     AfSpacing.s16,
-                    AfSpacing.s8,
                     AfSpacing.s16,
                     AfSpacing.s16,
+                    AfSpacing.s12,
                   ),
                   child: Row(
                     children: [
-                      Text('Playlists', style: AfTypography.display),
-                      const Spacer(),
-                      IconButton(
-                        icon: Icon(
-                          LucideIcons.listPlus,
-                          color: primary,
-                          size: 22,
+                      Expanded(
+                        child: ShaderMask(
+                          shaderCallback: (bounds) => LinearGradient(
+                            colors: [primary, muted],
+                          ).createShader(bounds),
+                          child: Text(
+                            'Playlists',
+                            style: AfTypography.display.copyWith(
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
-                        tooltip: 'Import M3U',
-                        onPressed: () => ref
+                      ),
+                      PressScale(
+                        onTap: () => ref
                             .read(importM3UActionProvider)
                             .import(context: context),
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: const BoxDecoration(
+                            color: AfColors.surfaceRaised,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            LucideIcons.listPlus,
+                            color: AfColors.textSecondary,
+                            size: 20,
+                          ),
+                        ),
                       ),
                     ],
                   ),
