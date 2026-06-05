@@ -312,24 +312,29 @@ class SubsonicClient implements MusicBackend {
   Future<List<AfTrack>> recentlyPlayed({int limit = 20}) async {
     // Subsonic has no direct "recently played tracks" endpoint.
     // Use getAlbumList2 type=recent (recently played albums) and fetch
-    // their tracks, or return empty for now.
+    // their tracks in parallel, then return up to [limit] tracks.
     final root = await _get('getAlbumList2', {'type': 'recent', 'size': limit});
     final albums = _parseAlbumList(root['albumList2'] as Map<String, dynamic>?);
     if (albums.isEmpty) return const [];
-    // Fetch tracks from the first few albums to approximate recently played
+    // Fetch tracks from the first few albums in parallel
+    final results = await Future.wait(
+      albums
+          .take(5)
+          .map(
+            (a) => album(a.id).catchError((Object e, StackTrace stack) {
+              afLog(
+                'subsonic',
+                'recentlyPlayed album fetch failed id=${a.id}',
+                error: e,
+                stackTrace: stack,
+              );
+              return null;
+            }),
+          ),
+    );
     final tracks = <AfTrack>[];
-    for (final a in albums.take(5)) {
-      try {
-        final detail = await album(a.id);
-        if (detail != null) tracks.addAll(detail.tracks);
-      } catch (e, stack) {
-        afLog(
-          'subsonic',
-          'recentlyPlayed album fetch failed id=${a.id}',
-          error: e,
-          stackTrace: stack,
-        );
-      }
+    for (final detail in results) {
+      if (detail != null) tracks.addAll(detail.tracks);
     }
     return tracks.take(limit).toList(growable: false);
   }
