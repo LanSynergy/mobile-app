@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design_tokens/colors.dart';
+import 'player_providers.dart';
 import 'spectral_providers.dart';
 
 /// Animated spectral value — updates every frame during transitions.
@@ -27,16 +28,37 @@ class _AnimatedSpectralScopeState extends ConsumerState<AnimatedSpectralScope>
   Spectral _to = Spectral.fallback;
   Spectral _current = Spectral.fallback;
 
+  /// Tracks whether a new spectral extraction is in progress.
+  /// When the image URL changes, spectralFromUrlProvider returns
+  /// AsyncLoading and currentSpectralProvider falls back to _lastSpectral.
+  /// If _lastSpectral == _to (e.g. previous extraction failed), the animation
+  /// would not trigger without this flag.
+  bool _isExtracting = false;
+  String? _lastImageUrl;
+
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 800),
     );
     _ctrl.addListener(() {
       _current = _lerpSpectral(_from, _to, _ctrl.value);
       animatedSpectral.value = _current;
+    });
+
+    // Listen for image URL changes on the track provider.
+    // When URL changes, mark extraction as in-progress so the animation
+    // triggers even if the spectral value temporarily matches _to.
+    ref.listen<String?>(currentTrackProvider.select((t) => t?.imageUrl), (
+      prev,
+      next,
+    ) {
+      if (next != _lastImageUrl) {
+        _lastImageUrl = next;
+        _isExtracting = true;
+      }
     });
   }
 
@@ -49,10 +71,11 @@ class _AnimatedSpectralScopeState extends ConsumerState<AnimatedSpectralScope>
   @override
   Widget build(BuildContext context) {
     final next = ref.watch(currentSpectralProvider);
-    if (next != _to) {
+    if (next != _to || _isExtracting) {
       _from = _current;
       _to = next;
       _ctrl.forward(from: 0);
+      _isExtracting = false;
     }
     return widget.child;
   }

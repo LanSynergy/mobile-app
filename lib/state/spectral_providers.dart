@@ -42,6 +42,8 @@ final spectralFromUrlProvider = FutureProvider.autoDispose
             .fromImageUrl(imageUrl, headers: headers);
       } catch (e) {
         afLog('spectral', 'spectral extraction failed', error: e);
+        // Return fallback but do NOT overwrite _lastSpectral — preserves the
+        // last successful palette so animated transitions keep working.
         return Spectral.fallback;
       }
     });

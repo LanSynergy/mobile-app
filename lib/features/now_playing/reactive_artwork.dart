@@ -43,18 +43,20 @@ class ReactiveArtwork extends ConsumerWidget {
         final h = constraints.maxHeight;
         final cardSize = (w < h) ? w : h;
 
-        return Center(
-          child: SizedBox(
-            width: cardSize,
-            height: cardSize,
-            child: _ArtworkCard(
-              track: track,
-              artworkUri: artworkUri,
-              spectralEnergy: spectral.energy,
-              spectralGlow: spectral.glow,
-              cardRadius: _cardRadius,
-              glowBlur: _glowBlur,
-              glowSpread: _glowSpread,
+        return RepaintBoundary(
+          child: Center(
+            child: SizedBox(
+              width: cardSize,
+              height: cardSize,
+              child: _ArtworkCard(
+                track: track,
+                artworkUri: artworkUri,
+                spectralEnergy: spectral.energy,
+                spectralGlow: spectral.glow,
+                cardRadius: _cardRadius,
+                glowBlur: _glowBlur,
+                glowSpread: _glowSpread,
+              ),
             ),
           ),
         );

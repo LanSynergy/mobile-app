@@ -80,82 +80,88 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
-        body: ReactiveBackground(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // ── Centered artwork card (swipe up to expand queue) ──
-              Positioned(
-                top: _topBarCompactHeight,
-                bottom:
-                    MediaQuery.of(context).size.height * _contentHeightRatio,
-                left: _artworkHorizontalMargin,
-                right: _artworkHorizontalMargin,
-                child: GestureDetector(
-                  onVerticalDragEnd: (details) {
-                    if ((details.primaryVelocity ?? 0) < -200) {
-                      _expandedNotifier.value = true;
-                    }
-                  },
-                  behavior: HitTestBehavior.translucent,
-                  child: ReactiveArtwork(track: track),
+        body: RepaintBoundary(
+          child: ReactiveBackground(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // ── Centered artwork card (swipe up to expand queue) ──
+                Positioned(
+                  top: _topBarCompactHeight,
+                  bottom:
+                      MediaQuery.of(context).size.height * _contentHeightRatio,
+                  left: _artworkHorizontalMargin,
+                  right: _artworkHorizontalMargin,
+                  child: GestureDetector(
+                    onVerticalDragEnd: (details) {
+                      if ((details.primaryVelocity ?? 0) < -200) {
+                        _expandedNotifier.value = true;
+                      }
+                    },
+                    behavior: HitTestBehavior.translucent,
+                    child: RepaintBoundary(
+                      child: ReactiveArtwork(track: track),
+                    ),
+                  ),
                 ),
-              ),
 
-              // ── Gradient scrim (bottom content zone only) ──
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height:
-                    MediaQuery.of(context).size.height * _contentHeightRatio,
-                child: IgnorePointer(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          AfColors.surfaceCanvas.withValues(alpha: 0.6),
-                          AfColors.surfaceCanvas,
-                        ],
-                        stops: const [0.0, 0.5, 1.0],
+                // ── Gradient scrim (bottom content zone only) ──
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height:
+                      MediaQuery.of(context).size.height * _contentHeightRatio,
+                  child: RepaintBoundary(
+                    child: IgnorePointer(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              AfColors.surfaceCanvas.withValues(alpha: 0.6),
+                              AfColors.surfaceCanvas,
+                            ],
+                            stops: const [0.0, 0.5, 1.0],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
 
-              // ── Top bar ──
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  bottom: false,
-                  child: FrostedTopBar(
-                    track: track,
-                    lyricsExpanded: _lyricsExpandedNotifier,
-                    onToggleLyrics: _toggleLyrics,
+                // ── Top bar ──
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: SafeArea(
+                    bottom: false,
+                    child: FrostedTopBar(
+                      track: track,
+                      lyricsExpanded: _lyricsExpandedNotifier,
+                      onToggleLyrics: _toggleLyrics,
+                    ),
                   ),
                 ),
-              ),
 
-              // ── Bottom content zone ──
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: SafeArea(
-                  top: false,
-                  child: BottomContent(
-                    track: track,
-                    expandedNotifier: _expandedNotifier,
+                // ── Bottom content zone ──
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: SafeArea(
+                    top: false,
+                    child: BottomContent(
+                      track: track,
+                      expandedNotifier: _expandedNotifier,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

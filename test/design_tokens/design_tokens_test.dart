@@ -37,24 +37,24 @@ void main() {
 
   group('Color tokens — Dark Moody palette', () {
     test('surface scale uses exact hex values', () {
-      expect(AfColors.surfaceCanvas.toARGB32(), 0xFF0A0A0A);
-      expect(AfColors.surfaceLow.toARGB32(), 0xFF161616);
-      expect(AfColors.surfaceBase.toARGB32(), 0xFF222222);
-      expect(AfColors.surfaceRaised.toARGB32(), 0xFF2E2E2E);
-      expect(AfColors.surfaceHigh.toARGB32(), 0xFF3A3A3A);
-      expect(AfColors.surfaceMax.toARGB32(), 0xFF464646);
+      expect(AfColors.surfaceCanvas.toARGB32(), 0xFF0A0B0E);
+      expect(AfColors.surfaceLow.toARGB32(), 0xFF14161A);
+      expect(AfColors.surfaceBase.toARGB32(), 0xFF1E2028);
+      expect(AfColors.surfaceRaised.toARGB32(), 0xFF282A34);
+      expect(AfColors.surfaceHigh.toARGB32(), 0xFF343640);
+      expect(AfColors.surfaceMax.toARGB32(), 0xFF40424E);
     });
 
-    test('accent colors use warm amber palette', () {
-      expect(AfColors.accentPrimary.toARGB32(), 0xFFD4A574);
-      expect(AfColors.accentSecondary.toARGB32(), 0xFFC86E4B);
-      expect(AfColors.accentMuted.toARGB32(), 0xFF8B7355);
+    test('accent colors use ocean blue palette', () {
+      expect(AfColors.accentPrimary.toARGB32(), 0xFF5B9BD5);
+      expect(AfColors.accentSecondary.toARGB32(), 0xFF3A7CA5);
+      expect(AfColors.accentMuted.toARGB32(), 0xFF6B8FA3);
     });
 
-    test('text colors use warm whites', () {
-      expect(AfColors.textPrimary.toARGB32(), 0xFFF5F0EB);
-      expect(AfColors.textSecondary.toARGB32(), 0xFFA89F94);
-      expect(AfColors.textTertiary.toARGB32(), 0xFF6B6560);
+    test('text colors use cool whites', () {
+      expect(AfColors.textPrimary.toARGB32(), 0xFFE8ECF2);
+      expect(AfColors.textSecondary.toARGB32(), 0xFF9AA0AD);
+      expect(AfColors.textTertiary.toARGB32(), 0xFF6B7280);
     });
   });
 
