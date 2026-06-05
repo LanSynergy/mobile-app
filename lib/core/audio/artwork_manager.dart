@@ -205,7 +205,7 @@ class AfArtworkManager {
       }
       _diskCacheSize = totalSize;
       // Clean up expired files on startup
-      _cleanupExpiredCache();
+      await _cleanupExpiredCache();
     } catch (e, stack) {
       afLog(
         'audio',
@@ -266,21 +266,21 @@ class AfArtworkManager {
     return null;
   }
 
-  /// Clean up expired disk cache files
-  void _cleanupExpiredCache() {
+  /// Clean up expired disk cache files — async to avoid blocking main thread.
+  Future<void> _cleanupExpiredCache() async {
     if (_diskCacheDir == null) return;
     try {
       final dir = Directory(_diskCacheDir!);
       final now = DateTime.now();
       final threshold = now.subtract(_cacheTTL);
 
-      for (final entity in dir.listSync()) {
+      await for (final entity in dir.list()) {
         if (entity is File) {
           try {
-            final stat = entity.statSync();
+            final stat = await entity.stat();
             if (stat.modified.isBefore(threshold)) {
               final size = stat.size;
-              entity.deleteSync();
+              await entity.delete();
               _diskCacheSize -= size;
               afLog('audio', 'Cleaned up expired cache file: ${entity.path}');
             }
@@ -296,28 +296,35 @@ class AfArtworkManager {
       }
 
       // Enforce size limit
-      _enforceCacheSizeLimit();
+      await _enforceCacheSizeLimit();
     } catch (e, stack) {
       afLog('audio', 'Cache cleanup failed', error: e, stackTrace: stack);
     }
   }
 
   /// Enforce disk cache size limit by removing oldest files
-  void _enforceCacheSizeLimit() {
+  Future<void> _enforceCacheSizeLimit() async {
     if (_diskCacheDir == null) return;
 
     try {
       final dir = Directory(_diskCacheDir!);
-      final files = dir
-          .listSync()
-          .whereType<File>()
-          .where((f) => !f.path.endsWith('.tmp'))
-          .toList();
+      final files = <File>[];
+      await for (final entity in dir.list()) {
+        if (entity is File && !entity.path.endsWith('.tmp')) {
+          files.add(entity);
+        }
+      }
 
-      // Pre-compute modification times to avoid repeated statSync in sort.
-      final entries = [
-        for (final f in files) (file: f, modified: f.statSync().modified),
-      ];
+      // Pre-compute modification times to avoid repeated stat in sort.
+      final entries = <({File file, DateTime modified})>[];
+      for (final f in files) {
+        try {
+          final stat = await f.stat();
+          entries.add((file: f, modified: stat.modified));
+        } catch (_) {
+          // Skip files we can't stat
+        }
+      }
       entries.sort((a, b) => a.modified.compareTo(b.modified));
 
       while (_diskCacheSize > _diskCacheSizeBytes ||
@@ -325,8 +332,8 @@ class AfArtworkManager {
         if (entries.isEmpty) break;
         final oldest = entries.removeAt(0).file;
         try {
-          final size = oldest.lengthSync();
-          oldest.deleteSync();
+          final size = await oldest.length();
+          await oldest.delete();
           _diskCacheSize -= size;
           afLog('audio', 'Evicted oldest cache file to enforce size limit');
         } catch (e, stack) {
@@ -440,7 +447,7 @@ class AfArtworkManager {
       _diskCacheSize += fileSize;
 
       // Enforce cache limits
-      _enforceCacheSizeLimit();
+      await _enforceCacheSizeLimit();
 
       _networkCoverPath = path;
       _networkCoverTrackId = track.id;
