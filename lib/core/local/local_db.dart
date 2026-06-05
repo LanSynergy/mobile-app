@@ -323,6 +323,25 @@ class LocalDb {
     return rows.map((r) => r.read<String>('track_id')).toList();
   }
 
+  /// Delete playback history older than [keepDuration] (default 90 days).
+  ///
+  /// Called on startup to prevent unbounded table growth. Uses a single
+  /// DELETE with a WHERE clause — efficient even on large tables thanks to
+  /// the `idx_playback_history_played_at` index.
+  Future<int> pruneOldPlaybackHistory({
+    Duration keepDuration = const Duration(days: 90),
+  }) async {
+    final cutoff = DateTime.now().subtract(keepDuration).millisecondsSinceEpoch;
+    final deleted = await db
+        .customStatement('DELETE FROM playback_history WHERE played_at < ?', [
+          Variable<int>(cutoff),
+        ])
+        .then((_) => 0); // customStatement returns void
+    // Count deleted rows via changes() is not exposed by Drift — return 0
+    // to indicate completion. Callers don't need the count.
+    return deleted;
+  }
+
   // ── Playlist queries (delegated) ────────────────────────────────────────
 
   Future<List<PlaylistEntity>> allPlaylists() => playlists.allPlaylists();
