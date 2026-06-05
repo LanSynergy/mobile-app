@@ -73,19 +73,24 @@ class TrackRepository {
     return result?.lastModified;
   }
 
-  /// Batch-load last_modified values for all tracks whose id starts with
-  /// [prefix]. Returns a map of id → lastModified (null if never scanned).
+  /// Batch-load last_modified and cover_path for all tracks whose id starts
+  /// with [prefix]. Returns a map of id → (lastModified, hasCoverArt).
   /// Replaces N per-file queries with a single SELECT when scanning a folder.
-  Future<Map<String, int?>> getTrackLastModifiedByPrefix(String prefix) async {
+  Future<Map<String, ({int? lastModified, bool hasCover})>>
+  getTrackScanInfoByPrefix(String prefix) async {
     final rows = await db
         .customSelect(
-          'SELECT id, last_modified FROM tracks WHERE id LIKE ?1 ESCAPE \'\\\'',
+          'SELECT id, last_modified, cover_path FROM tracks WHERE id LIKE ?1 ESCAPE \'\\\'',
           variables: [Variable<String>('${escapeSqlLike(prefix)}%')],
           readsFrom: {db.tracks},
         )
         .get();
     return {
-      for (final r in rows) r.read<String>('id'): r.read<int?>('last_modified'),
+      for (final r in rows)
+        r.read<String>('id'): (
+          lastModified: r.read<int?>('last_modified'),
+          hasCover: r.read<String?>('cover_path') != null,
+        ),
     };
   }
 

@@ -50,10 +50,10 @@ class MetadataScanner {
         cacheDir: coverCacheDir,
       );
 
-      // 2. Batch-load last_modified for all files in this folder,
+      // 2. Batch-load scan info for all files in this folder,
       //    replacing N per-file DB queries with a single SELECT.
       final prefix = treeUri.endsWith('/') ? treeUri : '$treeUri/';
-      final existingModified = await db.getTrackLastModifiedByPrefix(prefix);
+      final scanInfo = await db.getTrackScanInfoByPrefix(prefix);
 
       // 3. Process in chunks: metadata reads fire concurrently per chunk
       //    (MethodChannel calls are independent), cover art + disk writes
@@ -65,16 +65,60 @@ class MetadataScanner {
         final end = min(i + chunkSize, files.length);
         final chunk = files.sublist(i, end);
 
-        // Separate already-cached files from those needing metadata reads.
+        // Separate files that need processing from those already cached.
+        // Retry cover art extraction for files whose lastModified matches
+        // but cover_path was null (cover extraction failed on first scan).
         final toProcess = <SafFile>[];
+        final coverOnly = <SafFile>[];
         for (final file in chunk) {
-          final mod = existingModified[file.uri];
-          if (mod != null && mod == file.lastModified) {
+          final info = scanInfo[file.uri];
+          if (info != null && info.lastModified == file.lastModified) {
+            if (!info.hasCover) {
+              // Metadata OK but cover art missing — retry cover extraction only.
+              coverOnly.add(file);
+            }
             completed++;
             onProgress?.call(completed, files.length);
             continue;
           }
           toProcess.add(file);
+        }
+
+        if (toProcess.isEmpty && coverOnly.isEmpty) continue;
+
+        // Retry cover art extraction for files that have metadata but
+        // are missing cover art (extraction failed on a previous scan).
+        for (final file in coverOnly) {
+          final coverFile = File(
+            p.join(coverCacheDir, _coverFilename(file.uri)),
+          );
+          if (await coverFile.exists()) continue;
+          try {
+            final artBytes = await SafPicker.readCoverArt(file.uri);
+            if (artBytes != null && artBytes.isNotEmpty) {
+              await coverFile.writeAsBytes(artBytes);
+              // Update cover_path in DB for this track.
+              await db.upsertTracks([
+                {
+                  'id': file.uri,
+                  'title': '',
+                  'artist': '',
+                  'album': '',
+                  'file_path': file.name,
+                  'cover_path': coverFile.path,
+                },
+              ]);
+              _coverCacheManager?.trackAccess(coverFile.path);
+              afLog('local', 'cover art recovered for ${file.name}');
+            }
+          } catch (e, stack) {
+            afLog(
+              'local',
+              'cover art retry failed for ${file.name}',
+              error: e,
+              stackTrace: stack,
+            );
+          }
         }
 
         if (toProcess.isEmpty) continue;

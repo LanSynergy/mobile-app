@@ -94,8 +94,9 @@ class LocalDb {
   Future<int?> getTrackLastModified(String id) =>
       tracks.getTrackLastModified(id);
 
-  Future<Map<String, int?>> getTrackLastModifiedByPrefix(String prefix) =>
-      tracks.getTrackLastModifiedByPrefix(prefix);
+  Future<Map<String, ({int? lastModified, bool hasCover})>>
+  getTrackScanInfoByPrefix(String prefix) =>
+      tracks.getTrackScanInfoByPrefix(prefix);
 
   Future<void> deleteTracksByIds(List<String> ids) =>
       tracks.deleteTracksByIds(ids);
