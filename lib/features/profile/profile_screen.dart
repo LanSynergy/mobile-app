@@ -448,6 +448,8 @@ class _AvatarImagePicker extends ConsumerWidget {
         File(localPath!),
         width: AfSpacing.avatarSize,
         height: AfSpacing.avatarSize,
+        cacheWidth: AfSpacing.avatarSize.toInt(),
+        cacheHeight: AfSpacing.avatarSize.toInt(),
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) =>
             _initialsAvatar(spectral.muted),
@@ -458,6 +460,8 @@ class _AvatarImagePicker extends ConsumerWidget {
         httpHeaders: authHeaders,
         width: AfSpacing.avatarSize,
         height: AfSpacing.avatarSize,
+        memCacheWidth: AfSpacing.avatarSize.toInt(),
+        memCacheHeight: AfSpacing.avatarSize.toInt(),
         fit: BoxFit.cover,
         placeholder: (context, url) => _initialsAvatar(spectral.muted),
         errorWidget: (context, url, error) => _initialsAvatar(spectral.muted),
