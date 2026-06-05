@@ -235,6 +235,9 @@ class AfPlayerService {
 
   bool _disposed = false;
 
+  /// Tracks last-applied spectrum settings to avoid redundant native calls.
+  SpectrumSettings? _lastSpectrumSettings;
+
   NativeMediaSessionBridge _bridge = NativeMediaSessionBridge();
 
   /// Stored from [playQueue] so [skipToQueueItem] and the completed handler
@@ -1097,7 +1100,10 @@ class AfPlayerService {
     try {
       await Future.delayed(const Duration(milliseconds: 250));
       if (_disposed) return;
+      // Skip if settings already match defaults (avoids unnecessary native call).
+      if (_lastSpectrumSettings == defaultSpectrumSettings) return;
       await _player.setSpectrum(defaultSpectrumSettings);
+      _lastSpectrumSettings = defaultSpectrumSettings;
       afLog('audio', 'spectrum re-configured after track change');
     } catch (e, stack) {
       afLog(

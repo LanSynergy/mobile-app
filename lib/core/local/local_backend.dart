@@ -444,7 +444,7 @@ class LocalBackend implements MusicBackend {
 
   Future<List<AfTrack>> _hydrateFavorites(List<AfTrack> tracks) async {
     if (tracks.isEmpty) return tracks;
-    final favIds = await db.favoriteIds();
+    final favIds = await db.favoriteIdsCached();
     if (favIds.isEmpty) return tracks;
     return tracks
         .map((t) => favIds.contains(t.id) ? t.copyWith(isFavorite: true) : t)

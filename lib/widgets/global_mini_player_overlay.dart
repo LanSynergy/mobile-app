@@ -6,17 +6,32 @@ import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import 'mini_player.dart';
 
-class GlobalMiniPlayerOverlay extends ConsumerStatefulWidget {
-  const GlobalMiniPlayerOverlay({super.key});
+/// Exposes only the current route location string — avoids full rebuilds
+/// on every router delegate change.
+final _currentRouteProvider = NotifierProvider<_CurrentRouteNotifier, String>(
+  _CurrentRouteNotifier.new,
+);
+
+class _CurrentRouteNotifier extends Notifier<String> {
+  late final VoidCallback _routerListener;
 
   @override
-  ConsumerState<GlobalMiniPlayerOverlay> createState() =>
-      _GlobalMiniPlayerOverlayState();
+  String build() {
+    _routerListener = () {
+      final config = appRouter.routerDelegate.currentConfiguration;
+      state = config.isEmpty ? '/' : config.last.matchedLocation;
+    };
+    _routerListener(); // seed initial value
+    appRouter.routerDelegate.addListener(_routerListener);
+    ref.onDispose(() {
+      appRouter.routerDelegate.removeListener(_routerListener);
+    });
+    return '/';
+  }
 }
 
-class _GlobalMiniPlayerOverlayState
-    extends ConsumerState<GlobalMiniPlayerOverlay> {
-  late final VoidCallback _routerListener;
+class GlobalMiniPlayerOverlay extends ConsumerWidget {
+  const GlobalMiniPlayerOverlay({super.key});
 
   static const _hiddenLocations = {
     '/',
@@ -29,29 +44,11 @@ class _GlobalMiniPlayerOverlayState
   };
 
   @override
-  void initState() {
-    super.initState();
-    _routerListener = () {
-      if (mounted) setState(() {});
-    };
-    appRouter.routerDelegate.addListener(_routerListener);
-  }
-
-  @override
-  void dispose() {
-    appRouter.routerDelegate.removeListener(_routerListener);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final hasMini = ref.watch(hasActivePlaybackProvider);
     if (!hasMini) return const SizedBox.shrink();
 
-    final routeMatchList = appRouter.routerDelegate.currentConfiguration;
-    final location = routeMatchList.isEmpty
-        ? '/'
-        : routeMatchList.last.matchedLocation;
+    final location = ref.watch(_currentRouteProvider);
 
     final isHidden =
         _hiddenLocations.contains(location) ||

@@ -314,15 +314,16 @@ class AfArtworkManager {
           .where((f) => !f.path.endsWith('.tmp'))
           .toList();
 
-      // Sort by modification time (oldest first)
-      files.sort(
-        (a, b) => a.statSync().modified.compareTo(b.statSync().modified),
-      );
+      // Pre-compute modification times to avoid repeated statSync in sort.
+      final entries = [
+        for (final f in files) (file: f, modified: f.statSync().modified),
+      ];
+      entries.sort((a, b) => a.modified.compareTo(b.modified));
 
       while (_diskCacheSize > _diskCacheSizeBytes ||
-          files.length > _maxDiskCacheFiles) {
-        if (files.isEmpty) break;
-        final oldest = files.removeAt(0);
+          entries.length > _maxDiskCacheFiles) {
+        if (entries.isEmpty) break;
+        final oldest = entries.removeAt(0).file;
         try {
           final size = oldest.lengthSync();
           oldest.deleteSync();

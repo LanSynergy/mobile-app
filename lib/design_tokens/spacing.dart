@@ -58,7 +58,7 @@ abstract final class AfSpacing {
   /// Total bottom inset to apply to scrollables when both mini-player
   /// and bottom-nav are present.
   ///
-  /// `mini-player(64) + gap(12) + nav(64) = 140` minus 4dp visual
+  /// `mini-player(64) + gap(4) + nav(64) = 132` minus 4dp visual
   /// breathing room collapses to a working 136dp inset.
   static const double bottomInsetWithMiniAndNav = s136;
 

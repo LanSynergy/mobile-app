@@ -18,6 +18,7 @@ class AfQueueEngine {
   int _currentIndex = -1;
   int _logicalIndex = -1;
   List<int>? _shuffleOrder;
+  Map<int, int>? _physicalToLogical;
   List<AfTrack>? _shuffledTracks;
   bool _playbackEnded = false;
 
@@ -28,6 +29,18 @@ class AfQueueEngine {
   bool _isTailShuffle = false;
 
   final Random _random;
+
+  /// Rebuild the physical→logical reverse index from [_shuffleOrder].
+  void _rebuildPhysicalToLogical() {
+    if (_shuffleOrder == null) {
+      _physicalToLogical = null;
+      return;
+    }
+    _physicalToLogical = <int, int>{};
+    for (var logical = 0; logical < _shuffleOrder!.length; logical++) {
+      _physicalToLogical![_shuffleOrder![logical]] = logical;
+    }
+  }
 
   // ── Query helpers ──────────────────────────────────────────────────
 
@@ -86,6 +99,7 @@ class AfQueueEngine {
     _playbackEnded = false;
     _isTailShuffle = false;
     _shuffleOrder = null;
+    _physicalToLogical = null;
     _shuffledTracks = null;
     resetRepeats();
   }
@@ -105,6 +119,7 @@ class AfQueueEngine {
     _currentIndex = -1;
     _logicalIndex = -1;
     _shuffleOrder = null;
+    _physicalToLogical = null;
     _shuffledTracks = null;
     _playbackEnded = false;
     _isForNtimes = false;
@@ -123,9 +138,11 @@ class AfQueueEngine {
     if (enabled) {
       _shuffleOrder = List<int>.generate(_tracks.length, (i) => i);
       _fisherYatesShuffle();
+      _rebuildPhysicalToLogical();
       _logicalIndex = _currentIndex >= 0 ? 0 : -1;
     } else {
       _shuffleOrder = null;
+      _physicalToLogical = null;
       _logicalIndex = _currentIndex;
       _isTailShuffle = false;
     }
@@ -224,6 +241,7 @@ class AfQueueEngine {
       _shuffleOrder = [...head, ...tail];
     }
     _shuffledTracks = null;
+    _rebuildPhysicalToLogical();
     // _currentIndex stays at physicalIndex(_logicalIndex) which is unchanged
   }
 
@@ -252,7 +270,8 @@ class AfQueueEngine {
   /// Convert a physical (_tracks) index to logical (queue) index.
   int logicalIndex(int physicalIndex) {
     if (_shuffleOrder == null) return physicalIndex;
-    return _shuffleOrder!.indexOf(physicalIndex);
+    return _physicalToLogical?[physicalIndex] ??
+        _shuffleOrder!.indexOf(physicalIndex);
   }
 
   // ── Track transitions ──────────────────────────────────────────────
@@ -376,6 +395,7 @@ class AfQueueEngine {
         _logicalIndex--;
       }
       _shuffledTracks = null;
+      _rebuildPhysicalToLogical();
     }
   }
 
@@ -397,6 +417,7 @@ class AfQueueEngine {
         _logicalIndex++;
       }
       _shuffledTracks = null;
+      _rebuildPhysicalToLogical();
     }
   }
 
@@ -405,6 +426,7 @@ class AfQueueEngine {
     _tracks.add(track);
     if (_shuffleOrder != null) {
       _shuffleOrder!.add(_tracks.length - 1);
+      _rebuildPhysicalToLogical();
       _shuffledTracks = null;
     }
   }

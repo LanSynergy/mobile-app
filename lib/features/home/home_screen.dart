@@ -271,9 +271,7 @@ class _CompactTrackRow extends StatelessWidget {
         padding: const EdgeInsets.all(AfSpacing.s12),
         decoration: BoxDecoration(
           borderRadius: AfRadii.borderMd,
-          gradient: const LinearGradient(
-            colors: [AfColors.glassFillSubtle, AfColors.glassFillSubtle],
-          ),
+          color: AfColors.glassFillSubtle,
           border: Border.all(
             color: isActive
                 ? accent.withValues(alpha: 0.3)
@@ -757,143 +755,138 @@ class _HeroAlbumCarouselState extends ConsumerState<_HeroAlbumCarousel> {
                 onPageChanged: (i) => setState(() => _currentPage = i),
                 itemBuilder: (context, i) {
                   final album = albums[i];
-                  return Consumer(
-                    builder: (context, ref, _) {
-                      return PressScale(
-                        ensureHitTarget: false,
-                        onTap: () => context.push('/album/${album.id}'),
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: AfSpacing.s16,
+                  return PressScale(
+                    ensureHitTarget: false,
+                    onTap: () => context.push('/album/${album.id}'),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: AfSpacing.s16,
+                      ),
+                      decoration: const BoxDecoration(
+                        borderRadius: AfRadii.borderXl,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // Artwork
+                          Artwork(
+                            url: album.imageUrl,
+                            size: double.infinity,
+                            radius: BorderRadius.zero,
+                            fit: BoxFit.cover,
                           ),
-                          decoration: const BoxDecoration(
-                            borderRadius: AfRadii.borderXl,
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              // Artwork
-                              Artwork(
-                                url: album.imageUrl,
-                                size: double.infinity,
-                                radius: BorderRadius.zero,
-                                fit: BoxFit.cover,
+                          // Spectral glow accent
+                          Positioned(
+                            left: -40,
+                            bottom: -40,
+                            width: 160,
+                            height: 160,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: RadialGradient(
+                                  colors: [
+                                    spectral.energy.withValues(alpha: 0.3),
+                                    Colors.transparent,
+                                  ],
+                                ),
                               ),
-                              // Spectral glow accent
-                              Positioned(
-                                left: -40,
-                                bottom: -40,
-                                width: 160,
-                                height: 160,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: RadialGradient(
-                                      colors: [
-                                        spectral.energy.withValues(alpha: 0.3),
-                                        Colors.transparent,
+                            ),
+                          ),
+                          // Content
+                          Padding(
+                            padding: const EdgeInsets.all(AfSpacing.s20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Spacer(),
+                                // Album title — dramatic sizing
+                                Text(
+                                  album.name,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AfTypography.titleLarge.copyWith(
+                                    color: AfColors.textOnPrimary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: AfSpacing.s4),
+                                Text(
+                                  album.artistName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AfTypography.bodyLarge.copyWith(
+                                    color: spectral.energy,
+                                  ),
+                                ),
+                                const SizedBox(height: AfSpacing.s16),
+                                // Play button with warm glow
+                                PressScale(
+                                  ensureHitTarget: false,
+                                  onTap: () async {
+                                    final tracks = ref.read(
+                                      playActionsProvider,
+                                    );
+                                    final detail = await ref.read(
+                                      albumDetailProvider(album.id).future,
+                                    );
+                                    if (detail != null) {
+                                      await tracks.playAlbum(detail.tracks);
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AfSpacing.s20,
+                                      vertical: AfSpacing.s12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          spectral.energy,
+                                          spectral.energy.withValues(
+                                            alpha: 0.7,
+                                          ),
+                                        ],
+                                      ),
+                                      borderRadius: AfRadii.borderPill,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: spectral.energy.withValues(
+                                            alpha: 0.35,
+                                          ),
+                                          blurRadius: 16,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          LucideIcons.play,
+                                          color: AfColors.textOnPrimary,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: AfSpacing.s8),
+                                        Text(
+                                          'Play',
+                                          style: AfTypography.bodyMedium
+                                              .copyWith(
+                                                color: AfColors.textOnPrimary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
                                       ],
                                     ),
                                   ),
                                 ),
-                              ),
-                              // Content
-                              Padding(
-                                padding: const EdgeInsets.all(AfSpacing.s20),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Spacer(),
-                                    // Album title — dramatic sizing
-                                    Text(
-                                      album.name,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AfTypography.titleLarge.copyWith(
-                                        color: AfColors.textOnPrimary,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: AfSpacing.s4),
-                                    Text(
-                                      album.artistName,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AfTypography.bodyLarge.copyWith(
-                                        color: spectral.energy,
-                                      ),
-                                    ),
-                                    const SizedBox(height: AfSpacing.s16),
-                                    // Play button with warm glow
-                                    PressScale(
-                                      ensureHitTarget: false,
-                                      onTap: () async {
-                                        final tracks = ref.read(
-                                          playActionsProvider,
-                                        );
-                                        final detail = await ref.read(
-                                          albumDetailProvider(album.id).future,
-                                        );
-                                        if (detail != null) {
-                                          await tracks.playAlbum(detail.tracks);
-                                        }
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: AfSpacing.s20,
-                                          vertical: AfSpacing.s12,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              spectral.energy,
-                                              spectral.energy.withValues(
-                                                alpha: 0.7,
-                                              ),
-                                            ],
-                                          ),
-                                          borderRadius: AfRadii.borderPill,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: spectral.energy.withValues(
-                                                alpha: 0.35,
-                                              ),
-                                              blurRadius: 16,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              LucideIcons.play,
-                                              color: AfColors.textOnPrimary,
-                                              size: 20,
-                                            ),
-                                            const SizedBox(width: AfSpacing.s8),
-                                            Text(
-                                              'Play',
-                                              style: AfTypography.bodyMedium
-                                                  .copyWith(
-                                                    color:
-                                                        AfColors.textOnPrimary,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
+                        ],
+                      ),
+                    ),
                   );
                 },
               ),

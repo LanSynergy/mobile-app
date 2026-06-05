@@ -103,15 +103,12 @@ class QueueHistoryRepository {
 
   /// Delete all entries except the latest [keep] ones.
   Future<void> deleteOldest({int keep = 50}) async {
-    final all = await (_db.select(
-      _db.queueHistory,
-    )..orderBy([(t) => OrderingTerm.desc(t.createdAt)])).get();
-    if (all.length <= keep) return;
-    final toDelete = all.skip(keep).map((e) => e.id).toList();
-    if (toDelete.isEmpty) return;
-    await (_db.delete(
-      _db.queueHistory,
-    )..where((t) => t.id.isIn(toDelete))).go();
+    // Use raw SQL to avoid loading all rows into memory.
+    await _db.customStatement(
+      'DELETE FROM queue_history WHERE id NOT IN '
+      '(SELECT id FROM queue_history ORDER BY created_at DESC LIMIT ?)',
+      [keep],
+    );
   }
 
   QueueHistoryItem _rowToItem(QueueHistoryEntity row) {
