@@ -62,13 +62,10 @@ class MiniNowPlaying extends ConsumerWidget {
             child: Container(
               height: height,
               decoration: BoxDecoration(
-                color: Color.lerp(
-                  AfColors.surfaceCanvas,
-                  spectral.shadow,
-                  0.65,
-                ),
+                color: spectral.shadow.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(height / 2),
                 border: Border.all(
-                  color: spectral.primary.withValues(alpha: 0.15),
+                  color: spectral.primary.withValues(alpha: 0.2),
                   width: 0.5,
                 ),
               ),
