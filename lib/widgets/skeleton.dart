@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_shaders_ui/flutter_shaders_ui.dart';
 
 import '../design_tokens/tokens.dart';
 
@@ -7,24 +6,92 @@ import '../design_tokens/tokens.dart';
 // ShimmerWrap — animation engine for shimmer skeletons
 // ---------------------------------------------------------------------------
 
-/// Wraps a child widget and paints a shimmer sweep over it via
-/// [ShimmerEffect].
-class ShimmerWrap extends StatelessWidget {
-  const ShimmerWrap({super.key, required this.child});
+/// Wraps content with a lightweight shimmer sweep. Provide [child] for custom
+/// content, or provide [width]+[height] to render a standard shimmer box.
+class ShimmerWrap extends StatefulWidget {
+  const ShimmerWrap({
+    super.key,
+    this.child,
+    this.width,
+    this.height,
+    this.borderRadius,
+    this.color,
+    this.shape = BoxShape.rectangle,
+  }) : assert(child != null || height != null, 'Provide child or height');
 
-  /// The skeleton content to paint the shimmer over. Should be a
-  /// [Container] with [AfColors.surfaceRaised] fill and the desired shape.
-  final Widget child;
+  final Widget? child;
+  final double? width;
+  final double? height;
+  final BorderRadiusGeometry? borderRadius;
+  final Color? color;
+  final BoxShape shape;
+
+  @override
+  State<ShimmerWrap> createState() => _ShimmerWrapState();
+}
+
+class _ShimmerWrapState extends State<ShimmerWrap>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final effectiveChild =
+        widget.child ??
+        Container(
+          width: widget.width ?? double.infinity,
+          height: widget.height,
+          decoration: BoxDecoration(
+            color: widget.color ?? AfColors.surfaceRaised,
+            borderRadius: widget.shape == BoxShape.circle
+                ? null
+                : widget.borderRadius,
+            shape: widget.shape,
+          ),
+        );
+
     return Semantics(
       label: 'Loading',
-      child: ShimmerEffect(
-        color: AfColors.glassFillStrong,
-        speed: 1.0,
-        width: 0.35,
-        child: child,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return ShaderMask(
+            shaderCallback: (bounds) {
+              return LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: const [
+                  Colors.transparent,
+                  AfColors.glassFillStrong,
+                  Colors.transparent,
+                ],
+                stops: [
+                  (_controller.value - 0.3).clamp(0.0, 1.0),
+                  _controller.value,
+                  (_controller.value + 0.3).clamp(0.0, 1.0),
+                ],
+              ).createShader(bounds);
+            },
+            blendMode: BlendMode.srcATop,
+            child: child,
+          );
+        },
+        child: effectiveChild,
       ),
     );
   }
@@ -61,14 +128,10 @@ class SkeletonBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ShimmerWrap(
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: color ?? AfColors.surfaceRaised,
-          borderRadius: borderRadius ?? AfRadii.borderSm,
-        ),
-      ),
+      width: width,
+      height: height,
+      borderRadius: borderRadius ?? AfRadii.borderSm,
+      color: color,
     );
   }
 }
@@ -105,14 +168,10 @@ class SkeletonBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ShimmerWrap(
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: color ?? AfColors.surfaceRaised,
-          borderRadius: borderRadius ?? AfRadii.borderMd,
-        ),
-      ),
+      width: width,
+      height: height,
+      borderRadius: borderRadius ?? AfRadii.borderMd,
+      color: color,
     );
   }
 }
@@ -136,14 +195,10 @@ class SkeletonCircle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ShimmerWrap(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: color ?? AfColors.surfaceRaised,
-          shape: BoxShape.circle,
-        ),
-      ),
+      width: size,
+      height: size,
+      shape: BoxShape.circle,
+      color: color,
     );
   }
 }
