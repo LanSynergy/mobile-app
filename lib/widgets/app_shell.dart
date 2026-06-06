@@ -154,11 +154,16 @@ class AppShell extends ConsumerWidget {
           ),
 
           // Mini now-playing — floating pill above bottom nav.
+          // AnimatedSlide + AnimatedOpacity for expand/collapse.
           Positioned(
             left: 0,
             right: 0,
             bottom: miniBottom,
-            child: const MiniNowPlaying(),
+            child: MiniNowPlaying(
+              isVisible: ref.watch(
+                currentTrackProvider.select((t) => t != null),
+              ),
+            ),
           ),
         ],
       ),

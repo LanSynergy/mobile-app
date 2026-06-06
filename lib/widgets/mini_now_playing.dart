@@ -13,18 +13,42 @@ import 'press_scale.dart';
 
 /// Compact mini player bar — floats above bottom nav.
 ///
-/// Solid spectral-tinted pill. No [BackdropFilter] (GPU readback killer).
+/// Solid spectral-tinted pill. Slides up to expand, slides down to collapse.
 /// Artwork is static; only the progress ring ticks on position updates.
 class MiniNowPlaying extends ConsumerWidget {
-  const MiniNowPlaying({super.key});
+  const MiniNowPlaying({super.key, required this.isVisible});
+
+  /// Controls expand (true) / collapse (false) animation.
+  final bool isVisible;
 
   static const double height = AfSpacing.bottomNavHeight;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final track = ref.watch(currentTrackProvider);
-    if (track == null) return const SizedBox.shrink();
 
+    return AnimatedSlide(
+      offset: isVisible ? Offset.zero : const Offset(0, 1.2),
+      duration: AfDurations.standard,
+      curve: AfCurves.easeEmphasized,
+      child: AnimatedOpacity(
+        opacity: isVisible ? 1.0 : 0.0,
+        duration: AfDurations.quick,
+        child: track == null
+            ? const SizedBox(height: height)
+            : _MiniPlayerContent(track: track),
+      ),
+    );
+  }
+}
+
+/// The actual mini player content — only builds when track is non-null.
+class _MiniPlayerContent extends ConsumerWidget {
+  const _MiniPlayerContent({required this.track});
+  final AfTrack track;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final isPlaying = ref
         .watch(playingStreamProvider)
         .maybeWhen(data: (v) => v, orElse: () => false);
@@ -48,10 +72,10 @@ class MiniNowPlaying extends ConsumerWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s8),
         child: Container(
-          height: height,
+          height: MiniNowPlaying.height,
           decoration: BoxDecoration(
             color: spectral.shadow,
-            borderRadius: BorderRadius.circular(height / 2),
+            borderRadius: BorderRadius.circular(MiniNowPlaying.height / 2),
             border: Border.all(
               color: spectral.primary.withValues(alpha: 0.2),
               width: 0.5,
