@@ -494,8 +494,9 @@ class JellyfinClient implements MusicBackend {
       },
     );
     final items = _parser.parseItemList(res.data);
+    final parser = _parser;
     return Isolate.run(
-      () => items.map(_parser.parseArtist).toList(growable: false),
+      () => items.map(parser.parseArtist).toList(growable: false),
     );
   }
 
@@ -515,8 +516,9 @@ class JellyfinClient implements MusicBackend {
       },
     );
     final items = _parser.parseItemList(res.data);
+    final parser = _parser;
     return Isolate.run(
-      () => items.map(_parser.parsePlaylist).toList(growable: false),
+      () => items.map(parser.parsePlaylist).toList(growable: false),
     );
   }
 
@@ -625,8 +627,9 @@ class JellyfinClient implements MusicBackend {
       },
     );
     final items = _parser.parseItemList(res.data);
+    final parser = _parser;
     return Isolate.run(
-      () => items.map(_parser.parseTrack).toList(growable: false),
+      () => items.map(parser.parseTrack).toList(growable: false),
     );
   }
 
@@ -647,8 +650,9 @@ class JellyfinClient implements MusicBackend {
       },
     );
     final items = _parser.parseItemList(res.data);
+    final parser = _parser;
     return Isolate.run(
-      () => items.map(_parser.parseAlbum).toList(growable: false),
+      () => items.map(parser.parseAlbum).toList(growable: false),
     );
   }
 
@@ -672,8 +676,9 @@ class JellyfinClient implements MusicBackend {
       },
     );
     final items = _parser.parseItemList(res.data);
+    final parser = _parser;
     return Isolate.run(
-      () => items.map(_parser.parseTrack).toList(growable: false),
+      () => items.map(parser.parseTrack).toList(growable: false),
     );
   }
 
