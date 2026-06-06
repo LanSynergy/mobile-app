@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -49,22 +51,31 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
         widget.accentColor ??
         ref.watch(currentSpectralProvider.select((s) => s.primary));
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: AfColors.glassFillMedium,
-        border: Border(
-          top: BorderSide(color: AfColors.glassBorderEmphasis, width: 1),
-        ),
-      ),
-      padding: EdgeInsets.only(bottom: bottomInset),
-      child: SizedBox(
-        height: AfSpacing.bottomNavHeight,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: List.generate(
-            widget.items.length,
-            (i) =>
-                _buildTab(i, widget.items[i], i == widget.currentIndex, accent),
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AfColors.glassFillMedium,
+            border: Border(
+              top: BorderSide(color: AfColors.glassBorderEmphasis, width: 1),
+            ),
+          ),
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: SizedBox(
+            height: AfSpacing.bottomNavHeight,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: List.generate(
+                widget.items.length,
+                (i) => _buildTab(
+                  i,
+                  widget.items[i],
+                  i == widget.currentIndex,
+                  accent,
+                ),
+              ),
+            ),
           ),
         ),
       ),
