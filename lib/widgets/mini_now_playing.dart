@@ -38,6 +38,16 @@ class MiniNowPlaying extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () => context.push('/now-playing'),
+      onVerticalDragEnd: (details) {
+        final v = details.primaryVelocity ?? 0;
+        if (v < -200) {
+          // Swipe up → maximize now playing.
+          context.push('/now-playing');
+        } else if (v > 200) {
+          // Swipe down → stop playback + dismiss mini player.
+          ref.read(playerServiceProvider).stopAndClear();
+        }
+      },
       child: ClipRect(
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
