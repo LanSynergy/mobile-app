@@ -50,9 +50,9 @@ class MiniNowPlaying extends ConsumerWidget {
       },
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
-          AfSpacing.s16,
+          AfSpacing.s8,
           0,
-          AfSpacing.s16,
+          AfSpacing.s8,
           AfSpacing.s4,
         ),
         child: ClipRRect(
