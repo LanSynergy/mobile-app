@@ -33,7 +33,9 @@ class MiniNowPlaying extends ConsumerWidget {
         .maybeWhen(data: (v) => v, orElse: () => false);
     final isBuffering = ref.watch(isBufferingProvider);
     final spectral = ref.watch(
-      currentSpectralProvider.select((s) => (primary: s.primary)),
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, shadow: s.shadow),
+      ),
     );
 
     return GestureDetector(
@@ -54,26 +56,20 @@ class MiniNowPlaying extends ConsumerWidget {
           AfSpacing.s4,
         ),
         child: ClipRRect(
-          borderRadius: AfRadii.borderLg,
+          borderRadius: BorderRadius.circular(height / 2),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
             child: Container(
               height: height,
-              decoration: const BoxDecoration(
-                color: AfColors.glassFillHeavy,
-                border: Border(
-                  top: BorderSide(
-                    color: AfColors.glassBorderEmphasis,
-                    width: 0.5,
-                  ),
-                  left: BorderSide(
-                    color: AfColors.glassBorderEmphasis,
-                    width: 0.5,
-                  ),
-                  right: BorderSide(
-                    color: AfColors.glassBorderEmphasis,
-                    width: 0.5,
-                  ),
+              decoration: BoxDecoration(
+                color: Color.lerp(
+                  AfColors.surfaceCanvas,
+                  spectral.shadow,
+                  0.65,
+                ),
+                border: Border.all(
+                  color: spectral.primary.withValues(alpha: 0.15),
+                  width: 0.5,
                 ),
               ),
               child: Row(
