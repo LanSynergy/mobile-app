@@ -56,7 +56,7 @@ class _AfBottomNavState extends ConsumerState<AfBottomNav> {
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
           decoration: const BoxDecoration(
-            color: AfColors.glassFillMedium,
+            color: AfColors.glassFillHeavy,
             border: Border(
               top: BorderSide(color: AfColors.glassBorderEmphasis, width: 1),
             ),

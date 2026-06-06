@@ -41,7 +41,7 @@ class MiniNowPlaying extends ConsumerWidget {
           filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
           child: Container(
             height: height,
-            color: AfColors.glassFillMedium,
+            color: AfColors.glassFillHeavy,
             child: Column(
               children: [
                 // ── Progress indicator ──
