@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -14,8 +15,9 @@ import 'press_scale.dart';
 /// Compact mini player bar — sits between tab content and bottom nav.
 ///
 /// Frosted glass effect: [ClipRect] + [BackdropFilter] + semi-transparent fill.
-/// Shows current track artwork, title, artist, and play/pause.
-/// Tapping the bar pushes the full Now Playing screen.
+/// Artwork is wrapped in a circular progress ring showing playback position.
+/// Prev / play-pause / next transport buttons.
+/// Tapping the bar (outside buttons) pushes the full Now Playing screen.
 class MiniNowPlaying extends ConsumerWidget {
   const MiniNowPlaying({super.key});
 
@@ -44,24 +46,19 @@ class MiniNowPlaying extends ConsumerWidget {
             color: AfColors.glassFillHeavy,
             child: Column(
               children: [
-                // ── Progress indicator ──
-                _MiniProgressTrack(track: track, accent: spectral.primary),
                 // ── Content row ──
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: AfSpacing.s12,
+                      horizontal: AfSpacing.s8,
                       vertical: AfSpacing.s4,
                     ),
                     child: Row(
                       children: [
-                        // ── Artwork ──
-                        Artwork(
-                          url: track.imageUrl,
-                          size: 48,
-                          radius: AfRadii.borderSm,
-                        ),
-                        const SizedBox(width: AfSpacing.s12),
+                        const SizedBox(width: AfSpacing.s4),
+                        // ── Artwork with progress ring ──
+                        _ArtworkRing(track: track, accent: spectral.primary),
+                        const SizedBox(width: AfSpacing.s8),
                         // ── Title + artist ──
                         Expanded(
                           child: Column(
@@ -88,35 +85,11 @@ class MiniNowPlaying extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        // ── Play / pause ──
-                        PressScale(
-                          ensureHitTarget: false,
-                          onTap: () {
-                            final svc = ref.read(playerServiceProvider);
-                            isPlaying ? svc.pause() : svc.play();
-                          },
-                          child: SizedBox(
-                            width: AfSpacing.minHitTarget,
-                            height: AfSpacing.minHitTarget,
-                            child: Center(
-                              child: isBuffering
-                                  ? const SizedBox(
-                                      width: AfSpacing.s20,
-                                      height: AfSpacing.s20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: AfColors.textSecondary,
-                                      ),
-                                    )
-                                  : Icon(
-                                      isPlaying
-                                          ? LucideIcons.pause
-                                          : LucideIcons.play,
-                                      size: 22,
-                                      color: AfColors.textPrimary,
-                                    ),
-                            ),
-                          ),
+                        // ── Transport: prev / play-pause / next ──
+                        _MiniTransport(
+                          isPlaying: isPlaying,
+                          isBuffering: isBuffering,
+                          accent: spectral.primary,
                         ),
                       ],
                     ),
@@ -131,11 +104,16 @@ class MiniNowPlaying extends ConsumerWidget {
   }
 }
 
-/// Thin progress line at the top of the mini player.
-class _MiniProgressTrack extends ConsumerWidget {
-  const _MiniProgressTrack({required this.track, required this.accent});
+/// Artwork wrapped in a circular progress ring.
+class _ArtworkRing extends ConsumerWidget {
+  const _ArtworkRing({required this.track, required this.accent});
   final AfTrack track;
   final Color accent;
+
+  static const double _artworkSize = 48;
+  static const double _ringStroke = 2.5;
+  static const double _totalSize =
+      _artworkSize + _ringStroke * 2 + 2; // +2 padding
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -145,11 +123,160 @@ class _MiniProgressTrack extends ConsumerWidget {
         ? (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)
         : 0.0;
 
-    return LinearProgressIndicator(
-      value: progress.toDouble(),
-      minHeight: 2,
-      backgroundColor: AfColors.surfaceHigh,
-      valueColor: AlwaysStoppedAnimation<Color>(accent),
+    return SizedBox(
+      width: _totalSize,
+      height: _totalSize,
+      child: CustomPaint(
+        painter: _RingPainter(
+          progress: progress.toDouble(),
+          backgroundColor: AfColors.surfaceHigh,
+          activeColor: accent,
+          strokeWidth: _ringStroke,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(_ringStroke + 1),
+          child: Artwork(
+            url: track.imageUrl,
+            size: _artworkSize,
+            radius: AfRadii.borderSm,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Custom painter for the circular progress ring around artwork.
+class _RingPainter extends CustomPainter {
+  _RingPainter({
+    required this.progress,
+    required this.backgroundColor,
+    required this.activeColor,
+    required this.strokeWidth,
+  });
+
+  final double progress;
+  final Color backgroundColor;
+  final Color activeColor;
+  final double strokeWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+
+    // Background ring
+    final bgPaint = Paint()
+      ..color = backgroundColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // Active progress arc
+    if (progress > 0) {
+      final activePaint = Paint()
+        ..color = activeColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round;
+
+      // Start from top (−π/2), sweep clockwise.
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2,
+        2 * math.pi * progress,
+        false,
+        activePaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) =>
+      old.progress != progress ||
+      old.backgroundColor != backgroundColor ||
+      old.activeColor != activeColor ||
+      old.strokeWidth != strokeWidth;
+}
+
+/// Mini transport controls — prev / play-pause / next.
+class _MiniTransport extends ConsumerWidget {
+  const _MiniTransport({
+    required this.isPlaying,
+    required this.isBuffering,
+    required this.accent,
+  });
+  final bool isPlaying;
+  final bool isBuffering;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Previous ──
+        PressScale(
+          ensureHitTarget: false,
+          onTap: () => ref.read(playerServiceProvider).skipToPrevious(),
+          child: const SizedBox(
+            width: AfSpacing.minHitTarget,
+            height: AfSpacing.minHitTarget,
+            child: Center(
+              child: Icon(
+                LucideIcons.skipBack,
+                size: 20,
+                color: AfColors.textPrimary,
+              ),
+            ),
+          ),
+        ),
+        // ── Play / pause ──
+        PressScale(
+          ensureHitTarget: false,
+          onTap: () {
+            final svc = ref.read(playerServiceProvider);
+            isPlaying ? svc.pause() : svc.play();
+          },
+          child: SizedBox(
+            width: AfSpacing.minHitTarget,
+            height: AfSpacing.minHitTarget,
+            child: Center(
+              child: isBuffering
+                  ? const SizedBox(
+                      width: AfSpacing.s20,
+                      height: AfSpacing.s20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AfColors.textSecondary,
+                      ),
+                    )
+                  : Icon(
+                      isPlaying ? LucideIcons.pause : LucideIcons.play,
+                      size: 22,
+                      color: AfColors.textPrimary,
+                    ),
+            ),
+          ),
+        ),
+        // ── Next ──
+        PressScale(
+          ensureHitTarget: false,
+          onTap: () => ref.read(playerServiceProvider).skipToNext(),
+          child: const SizedBox(
+            width: AfSpacing.minHitTarget,
+            height: AfSpacing.minHitTarget,
+            child: Center(
+              child: Icon(
+                LucideIcons.skipForward,
+                size: 20,
+                color: AfColors.textPrimary,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
