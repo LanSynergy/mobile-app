@@ -148,7 +148,7 @@ class _ArtworkRing extends ConsumerWidget {
           child: Artwork(
             url: track.imageUrl,
             size: _artworkSize,
-            radius: AfRadii.borderSm,
+            radius: BorderRadius.circular(_artworkSize / 2),
           ),
         ),
       ),
