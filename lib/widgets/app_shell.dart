@@ -112,6 +112,9 @@ class AppShell extends ConsumerWidget {
     required Color shadow,
     required Color energy,
   }) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final miniBottom = AfSpacing.bottomNavHeight + bottomInset + AfSpacing.s4;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
@@ -149,21 +152,21 @@ class AppShell extends ConsumerWidget {
             height: 0,
             child: SleepTimerWatcher(),
           ),
-        ],
-      ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Mini now-playing bar — visible when a track is loaded.
-          const MiniNowPlaying(),
-          // Bottom navigation bar.
-          AfBottomNav(
-            currentIndex: shell.currentIndex,
-            onSelect: (i) => _onSelect(context, i),
-            items: _items,
-            accentColor: energy,
+
+          // Mini now-playing — floating pill above bottom nav.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: miniBottom,
+            child: const MiniNowPlaying(),
           ),
         ],
+      ),
+      bottomNavigationBar: AfBottomNav(
+        currentIndex: shell.currentIndex,
+        onSelect: (i) => _onSelect(context, i),
+        items: _items,
+        accentColor: energy,
       ),
     );
   }

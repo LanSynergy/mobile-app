@@ -49,12 +49,7 @@ class MiniNowPlaying extends ConsumerWidget {
         }
       },
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AfSpacing.s8,
-          0,
-          AfSpacing.s8,
-          AfSpacing.s4,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s8),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(height / 2),
           child: BackdropFilter(
