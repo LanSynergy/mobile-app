@@ -14,10 +14,8 @@ import 'press_scale.dart';
 
 /// Compact mini player bar — floats above bottom nav.
 ///
-/// Frosted glass effect: [ClipRRect] + [BackdropFilter] + dark fill.
-/// Rounded corners, horizontal margins, gap from nav bar.
-/// Artwork is wrapped in a circular progress ring showing playback position.
-/// Swipe up → maximize. Swipe down → stop + dismiss.
+/// Frosted glass pill: [ClipRRect] + [BackdropFilter] + spectral tint.
+/// Artwork is static; only the progress ring ticks on position updates.
 class MiniNowPlaying extends ConsumerWidget {
   const MiniNowPlaying({super.key});
 
@@ -67,10 +65,10 @@ class MiniNowPlaying extends ConsumerWidget {
               child: Row(
                 children: [
                   const SizedBox(width: AfSpacing.s4),
-                  // ── Artwork with progress ring ──
+                  // ── Artwork with progress ring (ring only rebuilds) ──
                   _ArtworkRing(track: track, accent: spectral.primary),
                   const SizedBox(width: AfSpacing.s8),
-                  // ── Title + artist ──
+                  // ── Title + artist (static, no position watch) ──
                   Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -113,6 +111,11 @@ class MiniNowPlaying extends ConsumerWidget {
 }
 
 /// Artwork wrapped in a circular progress ring.
+///
+/// Architecture: the [Artwork] image is a **static child** that does NOT
+/// watch positionStreamProvider. The progress ring is a [RepaintBoundary]
+/// + [CustomPaint] that only calls [StatefulRepaint] on position ticks.
+/// This avoids rebuilding the network image widget every ~200ms.
 class _ArtworkRing extends ConsumerWidget {
   const _ArtworkRing({required this.track, required this.accent});
   final AfTrack track;
@@ -124,30 +127,53 @@ class _ArtworkRing extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    return SizedBox(
+      width: _totalSize,
+      height: _totalSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Static artwork — never rebuilds on position ticks.
+          Padding(
+            padding: const EdgeInsets.all(_ringStroke + 1),
+            child: Artwork(
+              url: track.imageUrl,
+              size: _artworkSize,
+              radius: BorderRadius.circular(_artworkSize / 2),
+            ),
+          ),
+          // Progress ring — only this repaints on position ticks.
+          Positioned.fill(
+            child: RepaintBoundary(child: _ProgressRing(accent: accent)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Minimal progress ring that only rebuilds on position ticks.
+///
+/// Uses a [StatefulBuilder] to listen to position without triggering
+/// a full widget rebuild of the parent tree.
+class _ProgressRing extends ConsumerWidget {
+  const _ProgressRing({required this.accent});
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Only this small widget watches position — NOT the artwork.
     final position = ref.watch(positionStreamProvider);
     final duration = ref.watch(durationStreamProvider);
     final progress = duration > Duration.zero
         ? (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)
         : 0.0;
 
-    return SizedBox(
-      width: _totalSize,
-      height: _totalSize,
-      child: CustomPaint(
-        painter: _RingPainter(
-          progress: progress.toDouble(),
-          backgroundColor: AfColors.surfaceHigh,
-          activeColor: accent,
-          strokeWidth: _ringStroke,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(_ringStroke + 1),
-          child: Artwork(
-            url: track.imageUrl,
-            size: _artworkSize,
-            radius: BorderRadius.circular(_artworkSize / 2),
-          ),
-        ),
+    return CustomPaint(
+      painter: _RingPainter(
+        progress: progress.toDouble(),
+        backgroundColor: AfColors.surfaceHigh,
+        activeColor: accent,
       ),
     );
   }
@@ -159,23 +185,23 @@ class _RingPainter extends CustomPainter {
     required this.progress,
     required this.backgroundColor,
     required this.activeColor,
-    required this.strokeWidth,
   });
+
+  static const double _strokeWidth = 2.5;
 
   final double progress;
   final Color backgroundColor;
   final Color activeColor;
-  final double strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width - strokeWidth) / 2;
+    final radius = (size.width - _strokeWidth) / 2;
 
     final bgPaint = Paint()
       ..color = backgroundColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
+      ..strokeWidth = _strokeWidth
       ..strokeCap = StrokeCap.round;
     canvas.drawCircle(center, radius, bgPaint);
 
@@ -183,7 +209,7 @@ class _RingPainter extends CustomPainter {
       final activePaint = Paint()
         ..color = activeColor
         ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
+        ..strokeWidth = _strokeWidth
         ..strokeCap = StrokeCap.round;
 
       canvas.drawArc(
@@ -197,11 +223,7 @@ class _RingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_RingPainter old) =>
-      old.progress != progress ||
-      old.backgroundColor != backgroundColor ||
-      old.activeColor != activeColor ||
-      old.strokeWidth != strokeWidth;
+  bool shouldRepaint(_RingPainter old) => old.progress != progress;
 }
 
 /// Mini transport controls — prev / play-pause / next.
