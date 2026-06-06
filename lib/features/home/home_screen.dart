@@ -149,7 +149,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             _GenresSection(isLocal: isLocal),
 
             const SliverToBoxAdapter(
-              child: SizedBox(height: AfSpacing.bottomNavHeight),
+              child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
             ),
           ],
         ),

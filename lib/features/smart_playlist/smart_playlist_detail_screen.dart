@@ -186,7 +186,7 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16)
                       .add(
                         const EdgeInsets.only(
-                          bottom: AfSpacing.bottomNavHeight,
+                          bottom: AfSpacing.bottomInsetWithMiniAndNav,
                         ),
                       ),
                   itemCount: tracks.length,

@@ -275,7 +275,9 @@ class _GenreScreenState extends ConsumerState<GenreScreen> {
                     ),
 
                   const SliverToBoxAdapter(
-                    child: SizedBox(height: AfSpacing.bottomNavHeight),
+                    child: SizedBox(
+                      height: AfSpacing.bottomInsetWithMiniAndNav,
+                    ),
                   ),
                 ],
               ),

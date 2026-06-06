@@ -991,7 +991,7 @@ class _SongsList extends ConsumerWidget {
       child: AfScrollbar(
         child: ListView.builder(
           padding: padding.add(
-            const EdgeInsets.only(bottom: AfSpacing.bottomNavHeight),
+            const EdgeInsets.only(bottom: AfSpacing.bottomInsetWithMiniAndNav),
           ),
           itemCount: tracks.length,
           itemBuilder: (context, i) {
@@ -1041,7 +1041,9 @@ class _ArtistsGrid extends ConsumerWidget {
         return RepaintBoundary(
           child: GridView.builder(
             padding: padding.add(
-              const EdgeInsets.only(bottom: AfSpacing.bottomNavHeight),
+              const EdgeInsets.only(
+                bottom: AfSpacing.bottomInsetWithMiniAndNav,
+              ),
             ),
             itemCount: list.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -1100,7 +1102,9 @@ class _AlbumsGrid extends ConsumerWidget {
         return RepaintBoundary(
           child: GridView.builder(
             padding: padding.add(
-              const EdgeInsets.only(bottom: AfSpacing.bottomNavHeight),
+              const EdgeInsets.only(
+                bottom: AfSpacing.bottomInsetWithMiniAndNav,
+              ),
             ),
             itemCount: list.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -1160,7 +1164,9 @@ class _GenresGrid extends ConsumerWidget {
         return RepaintBoundary(
           child: GridView.builder(
             padding: padding.add(
-              const EdgeInsets.only(bottom: AfSpacing.bottomNavHeight),
+              const EdgeInsets.only(
+                bottom: AfSpacing.bottomInsetWithMiniAndNav,
+              ),
             ),
             itemCount: list.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

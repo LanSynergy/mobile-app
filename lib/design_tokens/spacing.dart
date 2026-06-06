@@ -46,8 +46,9 @@ abstract final class AfSpacing {
   /// Bottom-nav height (excluding gesture inset).
   static const double bottomNavHeight = 64;
 
-  /// Total bottom inset for scrollables when bottom-nav is present.
-  static const double bottomInsetWithMiniAndNav = s96;
+  /// Total bottom inset for scrollables when mini-player + bottom-nav present.
+  /// Mini player (64dp) + bottom nav (64dp) = 128dp.
+  static const double bottomInsetWithMiniAndNav = 128;
 
   /// Now Playing play button diameter.
   static const double playButtonSize = s64;

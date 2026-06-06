@@ -9,6 +9,7 @@ import '../design_tokens/tokens.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
 import '../state/providers.dart';
 import 'bottom_nav.dart';
+import 'mini_now_playing.dart';
 
 /// App shell — wraps every authed-app tab with the persistent 4-tab
 /// bottom nav.
@@ -150,11 +151,19 @@ class AppShell extends ConsumerWidget {
           ),
         ],
       ),
-      bottomNavigationBar: AfBottomNav(
-        currentIndex: shell.currentIndex,
-        onSelect: (i) => _onSelect(context, i),
-        items: _items,
-        accentColor: energy,
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Mini now-playing bar — visible when a track is loaded.
+          const MiniNowPlaying(),
+          // Bottom navigation bar.
+          AfBottomNav(
+            currentIndex: shell.currentIndex,
+            onSelect: (i) => _onSelect(context, i),
+            items: _items,
+            accentColor: energy,
+          ),
+        ],
       ),
     );
   }
