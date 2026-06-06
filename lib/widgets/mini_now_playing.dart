@@ -12,12 +12,12 @@ import '../state/providers.dart';
 import 'artwork.dart';
 import 'press_scale.dart';
 
-/// Compact mini player bar — sits between tab content and bottom nav.
+/// Compact mini player bar — floats above bottom nav.
 ///
-/// Frosted glass effect: [ClipRect] + [BackdropFilter] + semi-transparent fill.
+/// Frosted glass effect: [ClipRRect] + [BackdropFilter] + dark fill.
+/// Rounded corners, horizontal margins, gap from nav bar.
 /// Artwork is wrapped in a circular progress ring showing playback position.
-/// Prev / play-pause / next transport buttons.
-/// Tapping the bar (outside buttons) pushes the full Now Playing screen.
+/// Swipe up → maximize. Swipe down → stop + dismiss.
 class MiniNowPlaying extends ConsumerWidget {
   const MiniNowPlaying({super.key});
 
@@ -41,71 +41,81 @@ class MiniNowPlaying extends ConsumerWidget {
       onVerticalDragEnd: (details) {
         final v = details.primaryVelocity ?? 0;
         if (v < -200) {
-          // Swipe up → maximize now playing.
           context.push('/now-playing');
         } else if (v > 200) {
-          // Swipe down → stop playback + dismiss mini player.
           ref.read(playerServiceProvider).stopAndClear();
         }
       },
-      child: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            height: height,
-            color: AfColors.glassFillHeavy,
-            child: Column(
-              children: [
-                // ── Content row ──
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AfSpacing.s8,
-                      vertical: AfSpacing.s4,
-                    ),
-                    child: Row(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AfSpacing.s16,
+          0,
+          AfSpacing.s16,
+          AfSpacing.s4,
+        ),
+        child: ClipRRect(
+          borderRadius: AfRadii.borderLg,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: Container(
+              height: height,
+              decoration: const BoxDecoration(
+                color: AfColors.glassFillHeavy,
+                border: Border(
+                  top: BorderSide(
+                    color: AfColors.glassBorderEmphasis,
+                    width: 0.5,
+                  ),
+                  left: BorderSide(
+                    color: AfColors.glassBorderEmphasis,
+                    width: 0.5,
+                  ),
+                  right: BorderSide(
+                    color: AfColors.glassBorderEmphasis,
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(width: AfSpacing.s4),
+                  // ── Artwork with progress ring ──
+                  _ArtworkRing(track: track, accent: spectral.primary),
+                  const SizedBox(width: AfSpacing.s8),
+                  // ── Title + artist ──
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(width: AfSpacing.s4),
-                        // ── Artwork with progress ring ──
-                        _ArtworkRing(track: track, accent: spectral.primary),
-                        const SizedBox(width: AfSpacing.s8),
-                        // ── Title + artist ──
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                track.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AfTypography.bodyMedium.copyWith(
-                                  color: AfColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: AfSpacing.s2),
-                              Text(
-                                track.artistName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AfTypography.bodySmall.copyWith(
-                                  color: AfColors.textSecondary,
-                                ),
-                              ),
-                            ],
+                        Text(
+                          track.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AfTypography.bodyMedium.copyWith(
+                            color: AfColors.textPrimary,
                           ),
                         ),
-                        // ── Transport: prev / play-pause / next ──
-                        _MiniTransport(
-                          isPlaying: isPlaying,
-                          isBuffering: isBuffering,
-                          accent: spectral.primary,
+                        const SizedBox(height: AfSpacing.s2),
+                        Text(
+                          track.artistName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AfTypography.bodySmall.copyWith(
+                            color: AfColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
+                  // ── Transport: prev / play-pause / next ──
+                  _MiniTransport(
+                    isPlaying: isPlaying,
+                    isBuffering: isBuffering,
+                    accent: spectral.primary,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -122,8 +132,7 @@ class _ArtworkRing extends ConsumerWidget {
 
   static const double _artworkSize = 48;
   static const double _ringStroke = 2.5;
-  static const double _totalSize =
-      _artworkSize + _ringStroke * 2 + 2; // +2 padding
+  static const double _totalSize = _artworkSize + _ringStroke * 2 + 2;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -175,7 +184,6 @@ class _RingPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - strokeWidth) / 2;
 
-    // Background ring
     final bgPaint = Paint()
       ..color = backgroundColor
       ..style = PaintingStyle.stroke
@@ -183,7 +191,6 @@ class _RingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawCircle(center, radius, bgPaint);
 
-    // Active progress arc
     if (progress > 0) {
       final activePaint = Paint()
         ..color = activeColor
@@ -191,7 +198,6 @@ class _RingPainter extends CustomPainter {
         ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.round;
 
-      // Start from top (−π/2), sweep clockwise.
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         -math.pi / 2,
@@ -226,7 +232,6 @@ class _MiniTransport extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ── Previous ──
         PressScale(
           ensureHitTarget: false,
           onTap: () => ref.read(playerServiceProvider).skipToPrevious(),
@@ -242,7 +247,6 @@ class _MiniTransport extends ConsumerWidget {
             ),
           ),
         ),
-        // ── Play / pause ──
         PressScale(
           ensureHitTarget: false,
           onTap: () {
@@ -270,7 +274,6 @@ class _MiniTransport extends ConsumerWidget {
             ),
           ),
         ),
-        // ── Next ──
         PressScale(
           ensureHitTarget: false,
           onTap: () => ref.read(playerServiceProvider).skipToNext(),
