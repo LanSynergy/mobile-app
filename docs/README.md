@@ -86,7 +86,7 @@ https://github.com/user-attachments/assets/ea7d1f7d-a5a7-4c9f-a39f-2236d4e2281f
 - Synced lyrics (LRC, auto-scrolling)
 - Favorite toggle, quality chip, save to playlist
 - Translucent queue screen with frosted-glass effect
-- **Interactive Drag-Down Sheet** — swipe or drag down the Now Playing screen to smoothly collapse it back into the mini-player with rect-matching animations
+- **Full-Screen Now Playing** — swipe up from the queue or tap a track to open the Now Playing screen
 
 ### Last.fm Integration (Optional)
 - **Two-Way Favorite Syncing** — toggling favorites in-app immediately fires signed `love`/`unlove` scrobble actions to Last.fm. Includes a manual sync tile in Settings to reconcile favorites in both directions.

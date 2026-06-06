@@ -340,7 +340,6 @@ lib/
 │  ├─ settings_providers.dart
 │  └─ spectral_providers.dart
 ├─ widgets/                 ← Shared visual atoms
-│  ├─ mini_player.dart      ← 56 dp floating mini-player
 │  ├─ bottom_nav.dart       ← Google-style bottom nav with sliding pill background
 │  │                          Animated sliding indigo900 pill behind active tab (240ms easeStandard).
 │  │                          Inactive tabs show icon only; label appears when showNavLabelsProvider is true.
@@ -933,7 +932,7 @@ This keeps the active directory focused on current work. Historical artifacts re
 61. 📝 GUIDANCE **"QS media session progress bar after queue end is correct."** No. After the queue ends, the QS media session can keep running because `playing=false` events are throttled (arriving <100ms apart) while a transient `playing=true` event at ~54ms pushes `playing=true` to native. Android QS then extrapolates position from the last known speed=1.0 forever. Fix: `trackEnded` fallback in `_updateMediaSession` overrides transient `playing=true` when position >= duration at queue end.
 62. 📝 GUIDANCE **"Forgetting to pass `isFavorite` in MethodChannel `updateState` args."** This causes the home screen widget's favorite/heart star to fail to update when favorited inside the app's Flutter UI.
 63. 📝 GUIDANCE **"Declaring LAUNCHER intent filter on MainActivity while aliases are active."** If you declare category LAUNCHER in both `MainActivity` and `<activity-alias>` elements, Android lists both icons in the app drawer. Remove the launcher filter from `MainActivity` and declare it only inside `<activity-alias>` configurations.
-64. 📝 GUIDANCE **"Use hardcoded durations (200ms, 300ms, 500ms) for animations."** No. Use `AfDurations` tokens (80/160/240/400/600ms) and `AfCurves` tokens. All animation durations in widgets must reference the design tokens, not literal values. The `global_mini_player_overlay.dart` previously had hardcoded `300ms`/`200ms` — this was a bug.
+64. 📝 GUIDANCE **"Use hardcoded durations (200ms, 300ms, 500ms) for animations."** No. Use `AfDurations` tokens (80/160/240/400/600ms) and `AfCurves` tokens. All animation durations in widgets must reference the design tokens, not literal values.
 65. 📝 GUIDANCE **"Use `ListView.separated` for staggered list animations."** No. Use `StaggerReveal` widget (`lib/widgets/stagger_reveal.dart`) which wraps children with staggered fade+slide-up reveal using `Interval` timing per `AfStagger` tokens. `ListView.separated` doesn't support staggered entrance animations.
 66. 📝 GUIDANCE **"Use `NoTransitionPage` for all shell tab switches."** No. Shell tabs use `AnimatedSwitcher` cross-fade with `AfDurations.quick`. `NoTransitionPage` is only for overlay routes like `/lyrics` and `/queue` that sit above the now-playing overlay.
 

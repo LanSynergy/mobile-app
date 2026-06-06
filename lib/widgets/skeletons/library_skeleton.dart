@@ -32,9 +32,7 @@ class _AlbumGridSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(
-        bottom: AfSpacing.bottomInsetWithMiniAndNav,
-      ),
+      padding: const EdgeInsets.only(bottom: AfSpacing.bottomNavHeight),
       child: GridView.count(
         crossAxisCount: 3,
         shrinkWrap: true,
@@ -54,9 +52,7 @@ class _ArtistListSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(
-        bottom: AfSpacing.bottomInsetWithMiniAndNav,
-      ),
+      padding: const EdgeInsets.only(bottom: AfSpacing.bottomNavHeight),
       child: ListView(
         padding: AfSpacing.pageHorizontal,
         children: List.generate(10, (_) {
@@ -96,9 +92,7 @@ class _TrackListSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(
-        bottom: AfSpacing.bottomInsetWithMiniAndNav,
-      ),
+      padding: const EdgeInsets.only(bottom: AfSpacing.bottomNavHeight),
       child: ListView(
         padding: AfSpacing.pageHorizontal,
         children: List.generate(10, (_) => const TrackRowSkeleton()),
@@ -112,9 +106,7 @@ class _PlaylistListSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(
-        bottom: AfSpacing.bottomInsetWithMiniAndNav,
-      ),
+      padding: const EdgeInsets.only(bottom: AfSpacing.bottomNavHeight),
       child: ListView(
         padding: AfSpacing.pageHorizontal,
         children: List.generate(10, (_) {
@@ -158,7 +150,7 @@ class _GenreGridSkeleton extends StatelessWidget {
       padding: const EdgeInsets.only(
         left: AfSpacing.s16,
         right: AfSpacing.s16,
-        bottom: AfSpacing.bottomInsetWithMiniAndNav,
+        bottom: AfSpacing.bottomNavHeight,
       ),
       child: GridView.count(
         crossAxisCount: 2,

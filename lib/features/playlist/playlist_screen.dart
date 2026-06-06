@@ -351,9 +351,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                     ),
 
                   const SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: AfSpacing.bottomInsetWithMiniAndNav,
-                    ),
+                    child: SizedBox(height: AfSpacing.bottomNavHeight),
                   ),
                 ],
               ),

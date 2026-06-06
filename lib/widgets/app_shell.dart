@@ -9,16 +9,14 @@ import '../design_tokens/tokens.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
 import '../state/providers.dart';
 import 'bottom_nav.dart';
-import 'global_mini_player_overlay.dart';
 
 /// App shell — wraps every authed-app tab with the persistent 4-tab
-/// bottom nav and the floating mini-player.
+/// bottom nav.
 ///
 /// Design:
 ///   - Full-bleed gradient background: deep dark (#0A0A0A → #111111)
 ///   - Tab content with AnimatedSwitcher cross-fade
 ///   - Sleep timer watcher (zero-sized, invisible)
-///   - Global mini-player overlay (positioned above bottom nav)
 ///   - Bottom nav bar
 ///   - PopScope for Android back handling (non-Home → Home; Home → exit)
 class AppShell extends ConsumerWidget {
@@ -150,8 +148,6 @@ class AppShell extends ConsumerWidget {
             height: 0,
             child: SleepTimerWatcher(),
           ),
-
-          const GlobalMiniPlayerOverlay(),
         ],
       ),
       bottomNavigationBar: AfBottomNav(

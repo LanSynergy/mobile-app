@@ -83,8 +83,7 @@ lib/
 │  └─ ...
 │
 ├─ widgets/                # Shared widgets (22 files)
-│  ├─ app_shell.dart       # 4-tab shell + mini-player
-│  ├─ mini_player.dart     # 56dp floating mini-player
+│  ├─ app_shell.dart       # 4-tab shell
 │  └─ ...
 │
 └─ utils/                  # Helpers

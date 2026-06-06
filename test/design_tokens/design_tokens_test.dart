@@ -62,10 +62,5 @@ void main() {
     test('48dp minimum hit target everywhere', () {
       expect(AfSpacing.minHitTarget, 48);
     });
-    test('floating mini-player is 64dp tall, 12dp side margin, 4dp gap', () {
-      expect(AfSpacing.miniPlayerHeight, 64);
-      expect(AfSpacing.miniPlayerSideMargin, 12);
-      expect(AfSpacing.miniPlayerNavGap, 4);
-    });
   });
 }

@@ -444,7 +444,7 @@ class _SearchIdleStateState extends ConsumerState<_SearchIdleState> {
           const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
           ..._buildGrid(isLocal),
           const SliverToBoxAdapter(
-            child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
+            child: SizedBox(height: AfSpacing.bottomNavHeight),
           ),
         ],
       ),
@@ -942,9 +942,7 @@ class _SearchResults extends ConsumerWidget {
 
           // Bottom inset.
           const SliverPadding(
-            padding: EdgeInsets.only(
-              bottom: AfSpacing.bottomInsetWithMiniAndNav,
-            ),
+            padding: EdgeInsets.only(bottom: AfSpacing.bottomNavHeight),
             sliver: SliverToBoxAdapter(child: SizedBox.shrink()),
           ),
         ],

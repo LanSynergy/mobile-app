@@ -148,8 +148,7 @@ lib/
 │  ├─ lastfm_sync_provider.dart      # Two-way favorite sync provider
 │  └─ radio_providers.dart            # Similar track/artist radio provider
 ├─ widgets/                           # Shared reusable widgets (22 files)
-│  ├─ app_shell.dart                  # 4-tab shell with mini-player
-│  ├─ mini_player.dart                # 56dp floating mini-player
+│  ├─ app_shell.dart                  # 4-tab shell
 │  ├─ bottom_nav.dart                 # Pill-sliding bottom nav
 │  ├─ artwork.dart                    # Cached artwork widget
 │  ├─ track_row.dart                  # Track list row (3 density modes)

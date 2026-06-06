@@ -317,9 +317,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                     // available — the real list would be wired through a
                     // dedicated provider when the backend exposes it.
                     const SliverToBoxAdapter(
-                      child: SizedBox(
-                        height: AfSpacing.bottomInsetWithMiniAndNav,
-                      ),
+                      child: SizedBox(height: AfSpacing.bottomNavHeight),
                     ),
                   ],
                 ),

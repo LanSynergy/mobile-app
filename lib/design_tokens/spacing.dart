@@ -43,24 +43,11 @@ abstract final class AfSpacing {
   /// Minimum hit target. Anything tappable must have a 48×48 hit region.
   static const double minHitTarget = s48;
 
-  /// Mini-player height.
-  static const double miniPlayerHeight = 64;
-
   /// Bottom-nav height (excluding gesture inset).
   static const double bottomNavHeight = 64;
 
-  /// Side margin on the floating mini-player.
-  static const double miniPlayerSideMargin = s12;
-
-  /// Gap between the mini-player's bottom edge and the top of the bottom nav.
-  static const double miniPlayerNavGap = s4;
-
-  /// Total bottom inset to apply to scrollables when both mini-player
-  /// and bottom-nav are present.
-  ///
-  /// `mini-player(64) + gap(4) + nav(64) = 132` minus 4dp visual
-  /// breathing room collapses to a working 136dp inset.
-  static const double bottomInsetWithMiniAndNav = s136;
+  /// Total bottom inset for scrollables when bottom-nav is present.
+  static const double bottomInsetWithMiniAndNav = s96;
 
   /// Now Playing play button diameter.
   static const double playButtonSize = s64;

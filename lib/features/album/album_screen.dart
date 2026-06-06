@@ -239,9 +239,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                       orElse: () => const SliverToBoxAdapter(child: SizedBox()),
                     ),
                     const SliverToBoxAdapter(
-                      child: SizedBox(
-                        height: AfSpacing.bottomInsetWithMiniAndNav,
-                      ),
+                      child: SizedBox(height: AfSpacing.bottomNavHeight),
                     ),
                   ],
                 ),
