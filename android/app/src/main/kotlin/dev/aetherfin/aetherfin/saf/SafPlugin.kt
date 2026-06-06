@@ -332,7 +332,7 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
                 val buf = ByteArray(8192)
                 var totalRead = 0
                 while (totalRead < maxScanBytes) {
-                    val r = rawStream.read(buf, 0, min(buf.size, maxScanBytes - totalRead))
+                    val r = rawStream.read(buf, 0, buf.size.coerceAtMost(maxScanBytes - totalRead))
                     if (r == -1) break
                     baos.write(buf, 0, r)
                     totalRead += r
@@ -412,7 +412,10 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
         var pos = offset + 1 // skip encoding byte
 
         // MIME type (null-terminated ASCII)
-        val mimeEnd = data.indexOf(0, pos)
+        var mimeEnd = -1
+        for (k in pos until offset + size) {
+            if (data[k] == 0.toByte()) { mimeEnd = k; break }
+        }
         if (mimeEnd == -1 || mimeEnd >= offset + size) return null
         pos = mimeEnd + 1
 
@@ -610,7 +613,7 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
                 // If no end marker found but we're past 10KB, return what we have
                 // (the data might be truncated but still valid enough)
                 if (j - i > 10240) {
-                    return data.copyOfRange(i, min(j + 2, data.size))
+                    return data.copyOfRange(i, (j + 2).coerceAtMost(data.size))
                 }
             }
             i++
