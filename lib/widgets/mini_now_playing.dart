@@ -50,7 +50,7 @@ class MiniNowPlaying extends ConsumerWidget {
         child: Container(
           height: height,
           decoration: BoxDecoration(
-            color: spectral.shadow.withValues(alpha: 0.9),
+            color: spectral.shadow,
             borderRadius: BorderRadius.circular(height / 2),
             border: Border.all(
               color: spectral.primary.withValues(alpha: 0.2),
