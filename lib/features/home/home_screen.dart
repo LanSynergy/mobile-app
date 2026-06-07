@@ -178,7 +178,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   );
                 },
                 loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-                error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+                error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
               ),
 
               // Dynamic Home Sections
@@ -1183,7 +1183,7 @@ class _YouTubeChipsRow extends ConsumerWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         itemCount: chips.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final chip = chips[index];
           final isSelected = selectedChip?.title == chip.title;
@@ -1324,7 +1324,7 @@ class _YouTubeHomeTileList extends ConsumerWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(width: AfSpacing.s12),
+        separatorBuilder: (_, _) => const SizedBox(width: AfSpacing.s12),
         itemBuilder: (context, index) {
           final item = items[index];
           return _YouTubeHomeTile(

@@ -47,7 +47,7 @@ void main() {
       expect(find.byType(Hero), findsOneWidget);
       // Mode cards with Lucide icons
       expect(find.byIcon(LucideIcons.cloud), findsOneWidget);
-      expect(find.byIcon(LucideIcons.folderOpen), findsOneWidget);
+      expect(find.byIcon(LucideIcons.smartphone), findsOneWidget);
     });
 
     testWidgets('displays mode selection text', (tester) async {
