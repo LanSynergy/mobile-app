@@ -293,7 +293,7 @@ class PlayButton extends ConsumerStatefulWidget {
 }
 
 class _PlayButtonState extends ConsumerState<PlayButton>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _scaleController = AnimationController(
     vsync: this,
     duration: AfDurations.bounce,
