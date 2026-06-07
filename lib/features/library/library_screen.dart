@@ -726,56 +726,83 @@ class _RecentlyAddedSection extends ConsumerWidget {
               child: SectionHeader(title: 'Recently Added', uppercase: true),
             ),
             const SizedBox(height: AfSpacing.s12),
-            SizedBox(
-              height: 180,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-                itemCount: recent.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(width: AfSpacing.s12),
-                itemBuilder: (context, i) {
-                  final a = recent[i];
-                  return Tile(
-                    title: a.name,
-                    subtitle: a.artistName,
-                    imageUrl: a.imageUrl,
-                    variant: TileVariant.album,
-                    size: 140,
-                    onTap: () => context.push('/album/${a.id}'),
-                  );
-                },
-              ),
-            ),
+          Builder(
+            builder: (context) {
+              // Tile = artwork + s8 + title (line-height 22) + s2 + subtitle (16).
+              // Scale the text area with the user's text scaler (clamped to
+              // 0.85-1.3 by the root MediaQuery) so this never overflows
+              // across devices or accessibility settings.
+              final mq = MediaQuery.of(context);
+              final screenH = mq.size.height;
+              final textScale = mq.textScaler.scale(1.0);
+              final artworkSize = screenH * 0.175;
+              final textArea =
+                  (22 + AfSpacing.s2 + 16) * textScale + 4;
+              final rowHeight = artworkSize + AfSpacing.s8 + textArea;
+              return SizedBox(
+                height: rowHeight,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AfSpacing.s16,
+                  ),
+                  itemCount: recent.length,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(width: AfSpacing.s12),
+                  itemBuilder: (context, i) {
+                    final a = recent[i];
+                    return Tile(
+                      title: a.name,
+                      subtitle: a.artistName,
+                      imageUrl: a.imageUrl,
+                      variant: TileVariant.album,
+                      size: artworkSize,
+                      onTap: () => context.push('/album/${a.id}'),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
           ],
         );
       },
-      loading: () => const SizedBox(
-        height: 180,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-          child: Row(
-            children: [
-              SkeletonBlock(
-                width: 140,
-                height: 180,
-                borderRadius: AfRadii.borderMd,
+      loading: () => Builder(
+        builder: (context) {
+          final mq = MediaQuery.of(context);
+          final screenH = mq.size.height;
+          final textScale = mq.textScaler.scale(1.0);
+          final artworkSize = screenH * 0.175;
+          final textArea = (22 + AfSpacing.s2 + 16) * textScale + 4;
+          final rowHeight = artworkSize + AfSpacing.s8 + textArea;
+          return SizedBox(
+            height: rowHeight,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+              child: Row(
+                children: [
+                  SkeletonBlock(
+                    width: artworkSize,
+                    height: artworkSize,
+                    borderRadius: AfRadii.borderMd,
+                  ),
+                  const SizedBox(width: AfSpacing.s12),
+                  SkeletonBlock(
+                    width: artworkSize,
+                    height: artworkSize,
+                    borderRadius: AfRadii.borderMd,
+                  ),
+                  const SizedBox(width: AfSpacing.s12),
+                  SkeletonBlock(
+                    width: artworkSize,
+                    height: artworkSize,
+                    borderRadius: AfRadii.borderMd,
+                  ),
+                ],
               ),
-              SizedBox(width: AfSpacing.s12),
-              SkeletonBlock(
-                width: 140,
-                height: 180,
-                borderRadius: AfRadii.borderMd,
-              ),
-              SizedBox(width: AfSpacing.s12),
-              SkeletonBlock(
-                width: 140,
-                height: 180,
-                borderRadius: AfRadii.borderMd,
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
       error: (_, _) => const SizedBox.shrink(),
     );
