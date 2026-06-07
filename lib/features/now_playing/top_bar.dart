@@ -101,9 +101,9 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
         final radius = isExpanded ? AfRadii.borderLg : AfRadii.borderPill;
 
         return Padding(
-          padding: EdgeInsets.symmetric(
+          padding: const EdgeInsets.symmetric(
             horizontal: AfSpacing.s16,
-            vertical: isExpanded ? 0 : AfSpacing.s8,
+            vertical: AfSpacing.s8,
           ),
           child: GestureDetector(
             onVerticalDragEnd: (details) {
