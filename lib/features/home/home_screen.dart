@@ -45,12 +45,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _ytScrollController.addListener(_onYtScroll);
-    // Request battery-optimization exemption on first visit.
-    // Required for reliable auto-advance when the screen is off —
-    // without this, Doze can freeze the Dart isolate between tracks
-    // on Samsung, Xiaomi, and other aggressive OEMs.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _requestBatteryExemptionIfNeeded();
+      _autoLoadContinuationIfNeeded();
     });
   }
 
@@ -65,6 +62,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         _ytScrollController.position.maxScrollExtent - 200) {
       ref.read(youtubeHomeProvider.notifier).loadMore();
     }
+  }
+
+  /// Auto-fetch continuation if initial content is too short for scroll.
+  void _autoLoadContinuationIfNeeded() {
+    final homeAsync = ref.read(youtubeHomeProvider);
+    homeAsync.whenData((home) {
+      if (home.continuation != null && home.sections.length < 5) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            ref.read(youtubeHomeProvider.notifier).loadMore();
+          }
+        });
+      }
+    });
   }
 
   Future<void> _requestBatteryExemptionIfNeeded() async {

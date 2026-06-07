@@ -644,23 +644,19 @@ class AfPlayerService {
       }
     }
     final medias = <Media>[Media(url, httpHeaders: _authHeaders.isNotEmpty ? _authHeaders : null)];
-    afLog('aetherfin:youtube', 'playQueue: url=${url.substring(0, 80)}... shouldPlay=${!_userPaused}');
+    afLog('aetherfin:youtube', 'playQueue: url=${url.substring(0, 80)}...');
 
     return _queueLock.run(() async {
       try {
         _onTrackChangedOrRestarted();
 
-        final shouldPlay = !_userPaused;
-        afLog('aetherfin:youtube', 'playQueue: calling openAll...');
-        await _player.openAll(medias, index: 0, play: shouldPlay);
-        afLog('aetherfin:youtube', 'playQueue: openAll DONE');
+        await _player.openAll(medias, index: 0, play: true);
         _mpvLoadedTrackId = startTrack.id;
         onMpvLoadedTrackChanged?.call(_mpvLoadedTrackId);
 
         _audioDeviceManager.nudge();
       } catch (e, stack) {
         afLog('aetherfin:error', 'playQueue failed', error: e, stackTrace: stack);
-        _userPaused = true;
         _queueManager.clear();
         _mpvLoadedTrackId = null;
         onMpvLoadedTrackChanged?.call(null);
@@ -1187,7 +1183,7 @@ class AfPlayerService {
     }
 
     try {
-      await _player.openAll([Media(url, httpHeaders: _authHeaders.isNotEmpty ? _authHeaders : null)], index: 0, play: !_userPaused);
+      await _player.openAll([Media(url, httpHeaders: _authHeaders.isNotEmpty ? _authHeaders : null)], index: 0, play: true);
       _mpvLoadedTrackId = target.id;
       onMpvLoadedTrackChanged?.call(_mpvLoadedTrackId);
     } catch (e) {

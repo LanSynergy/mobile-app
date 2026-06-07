@@ -52,7 +52,7 @@ class _AnimatedSpectralScopeState extends ConsumerState<AnimatedSpectralScope>
     // Listen for image URL changes on the track provider.
     // When URL changes, mark extraction as in-progress so the animation
     // triggers even if the spectral value temporarily matches _to.
-    ref.listen<String?>(currentTrackProvider.select((t) => t?.imageUrl), (
+    ref.listenManual<String?>(currentTrackProvider.select((t) => t?.imageUrl), (
       prev,
       next,
     ) {

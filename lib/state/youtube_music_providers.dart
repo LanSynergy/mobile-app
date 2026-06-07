@@ -44,6 +44,8 @@ final youtubeSelectedChipProvider = StateProvider.autoDispose<InnerTubeChip?>((r
 
 /// YouTube Music home page content (trending, popular, etc.).
 class YouTubeHomeNotifier extends AutoDisposeAsyncNotifier<YouTubeHomeContent> {
+  bool _isLoadingMore = false;
+
   @override
   Future<YouTubeHomeContent> build() async {
     final backend = ref.watch(musicBackendProvider);
@@ -55,22 +57,29 @@ class YouTubeHomeNotifier extends AutoDisposeAsyncNotifier<YouTubeHomeContent> {
   }
 
   Future<void> loadMore() async {
+    if (_isLoadingMore) return;
     final current = state.valueOrNull;
-    if (current == null || current.continuation == null) return;
+    if (current == null || current.continuation == null) {
+      return;
+    }
 
     final backend = ref.read(musicBackendProvider);
     if (backend is! YouTubeMusicClient) return;
 
+    _isLoadingMore = true;
     try {
       final nextContent = await backend.browseHome(continuation: current.continuation);
+      if (nextContent.sections.isEmpty && nextContent.continuation == null) {
+        return;
+      }
       state = AsyncValue.data(YouTubeHomeContent(
         sections: [...current.sections, ...nextContent.sections],
         chips: current.chips,
         region: current.region,
         continuation: nextContent.continuation,
       ));
-    } catch (e) {
-      print('[YT-HOME] loadMore failed: $e');
+    } finally {
+      _isLoadingMore = false;
     }
   }
 }
