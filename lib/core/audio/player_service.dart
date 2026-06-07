@@ -34,7 +34,8 @@ class AfPlayerService {
   AfPlayerService() : _player = Player() {
     _positionTracker = AfPositionTracker(
       player: _player,
-      shouldAdvancePosition: () => shouldAdvancePosition && !isBuffering && !isPausedForCache,
+      shouldAdvancePosition: () =>
+          shouldAdvancePosition && !isBuffering && !isPausedForCache,
     );
     _artworkManager = AfArtworkManager()..onArtworkChanged = _pushStateToNative;
     _audioDeviceManager = AfAudioDeviceManager(player: _player);
@@ -113,7 +114,8 @@ class AfPlayerService {
   }) : _player = player {
     _positionTracker = AfPositionTracker(
       player: player,
-      shouldAdvancePosition: () => shouldAdvancePosition && !isBuffering && !isPausedForCache,
+      shouldAdvancePosition: () =>
+          shouldAdvancePosition && !isBuffering && !isPausedForCache,
     );
     _artworkManager = AfArtworkManager()..onArtworkChanged = _pushStateToNative;
     _audioDeviceManager = AfAudioDeviceManager(player: player);
@@ -193,6 +195,7 @@ class AfPlayerService {
     _positionTracker.onTrackChanged();
     _listenedDuration = Duration.zero;
     _lastPosition = null;
+    _artworkManager.persistCover(null);
   }
 
   /// Gets a cached stream URL for the given track, or null if not cached
@@ -644,7 +647,10 @@ class AfPlayerService {
       }
     }
     final medias = <Media>[Media(url, httpHeaders: _authHeaders.isNotEmpty ? _authHeaders : null)];
-    afLog('aetherfin:youtube', 'playQueue: url=${url.length > 80 ? url.substring(0, 80) : url}...');
+    afLog(
+      'aetherfin:youtube',
+      'playQueue: url=${url.length > 80 ? url.substring(0, 80) : url}...',
+    );
 
     return _queueLock.run(() async {
       try {
@@ -656,7 +662,12 @@ class AfPlayerService {
 
         _audioDeviceManager.nudge();
       } catch (e, stack) {
-        afLog('aetherfin:error', 'playQueue failed', error: e, stackTrace: stack);
+        afLog(
+          'aetherfin:error',
+          'playQueue failed',
+          error: e,
+          stackTrace: stack,
+        );
         _queueManager.clear();
         _mpvLoadedTrackId = null;
         onMpvLoadedTrackChanged?.call(null);
@@ -763,116 +774,138 @@ class AfPlayerService {
   }
 
   Future<void> skipToNext() async {
-    if (_disposed) return;
-    if (_queueManager.engine.isAtQueueEnd && _loopMode != Loop.playlist) {
-      return;
-    }
-
-    _positionTracker.onStop();
     try {
-      await _player.stop();
-    } catch (e) {
-      afLog('audio', 'Failed to stop player during skipToNext', error: e);
-    }
+      if (_disposed) return;
+      if (_queueManager.engine.isAtQueueEnd && _loopMode != Loop.playlist) {
+        return;
+      }
 
-    final wasPlaying = _queueManager.currentTrack;
-    _completedHandledForTrackId = null;
-    _eofFallbackHandledTrackId = null;
-    _mpvLoadedTrackId = null;
-    onMpvLoadedTrackChanged?.call(null);
-    if (wasPlaying != null) {
-      onTrackSkipped?.call(wasPlaying);
-    }
-    _queueManager.engine.advanceIndex();
-    _queueManager.engine.resetRepeats();
-    final nextTrack = _queueManager.currentTrack;
-    if (nextTrack == null) return;
+      _positionTracker.onStop();
+      try {
+        await _player.stop();
+      } catch (e) {
+        afLog('audio', 'Failed to stop player during skipToNext', error: e);
+      }
 
-    _onTrackChangedOrRestarted();
-    _queueManager.emitCurrentTrack(nextTrack);
-    onTrackChanged?.call(nextTrack);
-    _updateMediaSession();
-    unawaited(_reconfigureSpectrumOnTrackChange());
+      final wasPlaying = _queueManager.currentTrack;
+      _completedHandledForTrackId = null;
+      _eofFallbackHandledTrackId = null;
+      _mpvLoadedTrackId = null;
+      onMpvLoadedTrackChanged?.call(null);
+      if (wasPlaying != null) {
+        onTrackSkipped?.call(wasPlaying);
+      }
+      _queueManager.engine.advanceIndex();
+      _queueManager.engine.resetRepeats();
+      final nextTrack = _queueManager.currentTrack;
+      if (nextTrack == null) {
+        return;
+      }
 
-    try {
-      await _rebuildWindow(nextTrack);
+      _onTrackChangedOrRestarted();
+      _queueManager.emitCurrentTrack(nextTrack);
+      onTrackChanged?.call(nextTrack);
       _updateMediaSession();
-    } catch (e, stack) {
-      afLog('audio', 'skipToNext failed', error: e, stackTrace: stack);
+      unawaited(_reconfigureSpectrumOnTrackChange());
+
+      try {
+        await _rebuildWindow(nextTrack);
+        _updateMediaSession();
+      } catch (e, stack) {
+        afLog('audio', 'skipToNext failed', error: e, stackTrace: stack);
+      }
+    } catch (e) {
+      rethrow;
     }
   }
 
   Future<void> skipToPrevious() async {
-    if (_disposed) return;
-
-    _positionTracker.onStop();
     try {
-      await _player.stop();
-    } catch (e) {
-      afLog('audio', 'Failed to stop player during skipToPrevious', error: e);
-    }
+      if (_disposed) return;
 
-    final wasPlaying = _queueManager.currentTrack;
-    _completedHandledForTrackId = null;
-    _eofFallbackHandledTrackId = null;
-    _mpvLoadedTrackId = null;
-    onMpvLoadedTrackChanged?.call(null);
-    if (wasPlaying != null) {
-      onTrackSkipped?.call(wasPlaying);
-    }
-    _queueManager.engine.retreatIndex();
-    _queueManager.engine.resetRepeats();
-    final prevTrack = _queueManager.currentTrack;
-    if (prevTrack == null) return;
+      _positionTracker.onStop();
+      try {
+        await _player.stop();
+      } catch (e) {
+        afLog('audio', 'Failed to stop player during skipToPrevious', error: e);
+      }
 
-    _onTrackChangedOrRestarted();
-    _queueManager.emitCurrentTrack(prevTrack);
-    onTrackChanged?.call(prevTrack);
-    _updateMediaSession();
-    unawaited(_reconfigureSpectrumOnTrackChange());
+      final wasPlaying = _queueManager.currentTrack;
+      _completedHandledForTrackId = null;
+      _eofFallbackHandledTrackId = null;
+      _mpvLoadedTrackId = null;
+      onMpvLoadedTrackChanged?.call(null);
+      if (wasPlaying != null) {
+        onTrackSkipped?.call(wasPlaying);
+      }
+      _queueManager.engine.retreatIndex();
+      _queueManager.engine.resetRepeats();
+      final prevTrack = _queueManager.currentTrack;
+      if (prevTrack == null) {
+        return;
+      }
 
-    try {
-      await _rebuildWindow(prevTrack);
+      _onTrackChangedOrRestarted();
+      _queueManager.emitCurrentTrack(prevTrack);
+      onTrackChanged?.call(prevTrack);
       _updateMediaSession();
-    } catch (e, stack) {
-      afLog('audio', 'skipToPrevious failed', error: e, stackTrace: stack);
+      unawaited(_reconfigureSpectrumOnTrackChange());
+
+      try {
+        await _rebuildWindow(prevTrack);
+        _updateMediaSession();
+      } catch (e, stack) {
+        afLog('audio', 'skipToPrevious failed', error: e, stackTrace: stack);
+      }
+    } catch (e) {
+      rethrow;
     }
   }
 
   Future<void> skipToQueueItem(int index) async {
-    if (_disposed) return;
-
-    _positionTracker.onStop();
     try {
-      await _player.stop();
-    } catch (e) {
-      afLog('audio', 'Failed to stop player during skipToQueueItem', error: e);
-    }
+      if (_disposed) return;
 
-    final wasPlaying = _queueManager.currentTrack;
-    _completedHandledForTrackId = null;
-    _eofFallbackHandledTrackId = null;
-    _mpvLoadedTrackId = null;
-    onMpvLoadedTrackChanged?.call(null);
-    if (wasPlaying != null) {
-      onTrackSkipped?.call(wasPlaying);
-    }
-    _queueManager.engine.jumpTo(index);
-    _queueManager.engine.resetRepeats();
-    final targetTrack = _queueManager.currentTrack;
-    if (targetTrack == null) return;
+      _positionTracker.onStop();
+      try {
+        await _player.stop();
+      } catch (e) {
+        afLog(
+          'audio',
+          'Failed to stop player during skipToQueueItem',
+          error: e,
+        );
+      }
 
-    _onTrackChangedOrRestarted();
-    _queueManager.emitCurrentTrack(targetTrack);
-    onTrackChanged?.call(targetTrack);
-    _updateMediaSession();
-    unawaited(_reconfigureSpectrumOnTrackChange());
+      final wasPlaying = _queueManager.currentTrack;
+      _completedHandledForTrackId = null;
+      _eofFallbackHandledTrackId = null;
+      _mpvLoadedTrackId = null;
+      onMpvLoadedTrackChanged?.call(null);
+      if (wasPlaying != null) {
+        onTrackSkipped?.call(wasPlaying);
+      }
+      _queueManager.engine.jumpTo(index);
+      _queueManager.engine.resetRepeats();
+      final targetTrack = _queueManager.currentTrack;
+      if (targetTrack == null) {
+        return;
+      }
 
-    try {
-      await _rebuildWindow(targetTrack);
+      _onTrackChangedOrRestarted();
+      _queueManager.emitCurrentTrack(targetTrack);
+      onTrackChanged?.call(targetTrack);
       _updateMediaSession();
-    } catch (e, stack) {
-      afLog('audio', 'skipToQueueItem failed', error: e, stackTrace: stack);
+      unawaited(_reconfigureSpectrumOnTrackChange());
+
+      try {
+        await _rebuildWindow(targetTrack);
+        _updateMediaSession();
+      } catch (e, stack) {
+        afLog('audio', 'skipToQueueItem failed', error: e, stackTrace: stack);
+      }
+    } catch (e) {
+      rethrow;
     }
   }
 
@@ -1175,7 +1208,9 @@ class AfPlayerService {
   /// mpv slots don't match the new queue position. Resolves stream URLs
   /// lazily via [_resolveStreamUrl].
   Future<void> _rebuildWindow(AfTrack target) async {
-    if (_resolveStreamUrl == null) return;
+    if (_resolveStreamUrl == null) {
+      return;
+    }
 
     _prefetcher.cancelCurrentPrefetch();
     _prefetchStartedForTrackId = null;
