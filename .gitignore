@@ -69,6 +69,7 @@ handover.md
 .agents/
 skills-lock.json
 .claude-design/
+.serena/
 
 # Android-only project — ignore other platforms
 /ios/
