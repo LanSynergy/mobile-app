@@ -304,11 +304,7 @@ Future<void> main() async {
 
       // Register home widget callbacks for handling widget taps.
       unawaited(
-        HomeWidget.registerInteractivityCallback((uri) async {
-          // Widget taps are handled by the native PendingIntent system
-          // (media button intents), so this is primarily for background
-          // callback registration.
-        }),
+        HomeWidget.registerInteractivityCallback(homeWidgetBackgroundCallback),
       );
     },
     (error, stack) {
@@ -449,4 +445,10 @@ class _RootErrorWidget extends StatelessWidget {
       ),
     );
   }
+}
+
+@pragma('vm:entry-point')
+Future<void> homeWidgetBackgroundCallback(Uri? uri) async {
+  // Required background callback for home_widget.
+  // Widget taps are handled by the native PendingIntent system.
 }
