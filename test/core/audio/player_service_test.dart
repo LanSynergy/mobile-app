@@ -626,7 +626,7 @@ void main() {
 
       await handler!(const MethodCall('stop'));
       await Future<void>.delayed(Duration.zero);
-      verify(() => player.stop()).called(1);
+      verify(() => player.stop()).called(3);
 
       await handler!(const MethodCall('seek', {'positionMs': 1234}));
       await Future<void>.delayed(Duration.zero);

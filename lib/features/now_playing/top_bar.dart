@@ -62,7 +62,9 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
   void didUpdateWidget(covariant FrostedTopBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.track.id != widget.track.id) {
-      _scrollCtrl.jumpTo(0);
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.jumpTo(0);
+      }
     }
   }
 

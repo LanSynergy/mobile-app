@@ -34,7 +34,7 @@ class AfPlayerService {
   AfPlayerService() : _player = Player() {
     _positionTracker = AfPositionTracker(
       player: _player,
-      shouldAdvancePosition: () => shouldAdvancePosition,
+      shouldAdvancePosition: () => shouldAdvancePosition && !isBuffering && !isPausedForCache,
     );
     _artworkManager = AfArtworkManager()..onArtworkChanged = _pushStateToNative;
     _audioDeviceManager = AfAudioDeviceManager(player: _player);
@@ -113,7 +113,7 @@ class AfPlayerService {
   }) : _player = player {
     _positionTracker = AfPositionTracker(
       player: player,
-      shouldAdvancePosition: () => shouldAdvancePosition,
+      shouldAdvancePosition: () => shouldAdvancePosition && !isBuffering && !isPausedForCache,
     );
     _artworkManager = AfArtworkManager()..onArtworkChanged = _pushStateToNative;
     _audioDeviceManager = AfAudioDeviceManager(player: player);
@@ -644,7 +644,7 @@ class AfPlayerService {
       }
     }
     final medias = <Media>[Media(url, httpHeaders: _authHeaders.isNotEmpty ? _authHeaders : null)];
-    afLog('aetherfin:youtube', 'playQueue: url=${url.substring(0, 80)}...');
+    afLog('aetherfin:youtube', 'playQueue: url=${url.length > 80 ? url.substring(0, 80) : url}...');
 
     return _queueLock.run(() async {
       try {
@@ -768,6 +768,13 @@ class AfPlayerService {
       return;
     }
 
+    _positionTracker.onStop();
+    try {
+      await _player.stop();
+    } catch (e) {
+      afLog('audio', 'Failed to stop player during skipToNext', error: e);
+    }
+
     final wasPlaying = _queueManager.currentTrack;
     _completedHandledForTrackId = null;
     _eofFallbackHandledTrackId = null;
@@ -798,6 +805,13 @@ class AfPlayerService {
   Future<void> skipToPrevious() async {
     if (_disposed) return;
 
+    _positionTracker.onStop();
+    try {
+      await _player.stop();
+    } catch (e) {
+      afLog('audio', 'Failed to stop player during skipToPrevious', error: e);
+    }
+
     final wasPlaying = _queueManager.currentTrack;
     _completedHandledForTrackId = null;
     _eofFallbackHandledTrackId = null;
@@ -827,6 +841,13 @@ class AfPlayerService {
 
   Future<void> skipToQueueItem(int index) async {
     if (_disposed) return;
+
+    _positionTracker.onStop();
+    try {
+      await _player.stop();
+    } catch (e) {
+      afLog('audio', 'Failed to stop player during skipToQueueItem', error: e);
+    }
 
     final wasPlaying = _queueManager.currentTrack;
     _completedHandledForTrackId = null;

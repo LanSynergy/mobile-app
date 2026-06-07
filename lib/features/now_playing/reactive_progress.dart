@@ -41,12 +41,13 @@ class _ReactiveProgressState extends ConsumerState<ReactiveProgress> {
     final position = ref.watch(positionStreamProvider);
     final energy = ref.watch(currentSpectralProvider.select((s) => s.energy));
     final mpvDuration = ref.watch(durationStreamProvider);
-    final isBuffering = ref.watch(isBufferingProvider);
+    final loadedTrackId = ref.watch(mpvLoadedTrackIdProvider);
+    final isTransitioning = widget.track.id != loadedTrackId;
     final duration = mpvDuration > Duration.zero
         ? mpvDuration
         : widget.track.duration;
 
-    final effectivePosition = isBuffering ? Duration.zero : position;
+    final effectivePosition = isTransitioning ? Duration.zero : position;
 
     final engineProgress = duration.inMilliseconds == 0
         ? 0.0
