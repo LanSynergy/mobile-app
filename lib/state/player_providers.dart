@@ -200,7 +200,7 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
       artist: track?.artistName ?? '',
       playing: svc.isPlaying,
       isFavorite: track?.isFavorite ?? false,
-      artPath: svc.currentArtworkUri?.toFilePath(),
+      artPath: _getArtPath(svc.currentArtworkUri),
     );
     ref.read(positionStreamProvider.notifier).state = Duration.zero;
     ref
@@ -219,9 +219,9 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
     HomeWidgetManager.update(
       title: track?.title ?? 'Not Playing',
       artist: track?.artistName ?? '',
-      playing: ref.read(playingStreamProvider).valueOrNull ?? false,
+      playing: svc.isPlaying,
       isFavorite: track?.isFavorite ?? false,
-      artPath: artUri?.toFilePath(),
+      artPath: _getArtPath(artUri),
     );
   };
 
@@ -241,9 +241,9 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
         HomeWidgetManager.update(
           title: updatedTrack?.title ?? 'Not Playing',
           artist: updatedTrack?.artistName ?? '',
-          playing: ref.read(playingStreamProvider).valueOrNull ?? false,
+          playing: svc.isPlaying,
           isFavorite: updatedTrack?.isFavorite ?? false,
-          artPath: ref.read(currentArtworkUriProvider)?.toFilePath(),
+          artPath: _getArtPath(ref.read(currentArtworkUriProvider)),
         ),
       );
     }
@@ -332,7 +332,7 @@ void _wireInfrastructure(Ref ref, AfPlayerService svc, _WireDisposables d) {
       artist: track?.artistName ?? '',
       playing: playing,
       isFavorite: track?.isFavorite ?? false,
-      artPath: ref.read(currentArtworkUriProvider)?.toFilePath(),
+      artPath: _getArtPath(ref.read(currentArtworkUriProvider)),
     );
   });
 
@@ -611,3 +611,7 @@ final bassEnergyProvider = Provider.autoDispose<double>((ref) {
   }
   return max;
 });
+
+String? _getArtPath(Uri? uri) {
+  return uri != null && uri.isScheme('file') ? uri.toFilePath() : null;
+}
