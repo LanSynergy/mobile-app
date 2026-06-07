@@ -121,7 +121,7 @@ class _StaggeredItem extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, child) => Opacity(
-        opacity: fade.value,
+        opacity: fade.value.clamp(0.001, 0.999),
         child: Transform.translate(
           offset: Offset(0, slide.value),
           child: child,

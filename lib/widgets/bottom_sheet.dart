@@ -122,7 +122,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
       animation: _ctrl,
       builder: (context, _) {
         final slideOffset = _slideAnim.value;
-        final opacity = _fadeAnim.value;
+        final opacity = _fadeAnim.value.clamp(0.001, 0.999);
         final blurSigma = _blurAnim.value;
 
         return Material(

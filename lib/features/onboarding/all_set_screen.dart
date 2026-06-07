@@ -174,7 +174,7 @@ class _StatRow extends ConsumerWidget {
       builder: (context, _) {
         final t = (staggerAnimation.value * 2).clamp(0.0, 1.0);
         return Opacity(
-          opacity: t,
+          opacity: t.clamp(0.001, 0.999),
           child: Transform.translate(
             offset: Offset(0, (1 - t) * 12),
             child: Row(
