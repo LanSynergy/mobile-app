@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
@@ -97,8 +98,11 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
     return AnimatedBuilder(
       animation: _expandAnim,
       builder: (context, _) {
-        final isExpanded = _expandAnim.value > 0.5;
-        final radius = isExpanded ? AfRadii.borderLg : AfRadii.borderPill;
+        // Open: 36dp → 16dp (AfRadii.lg). Close: 16dp → 36dp.
+        // Lerped smoothly.
+        final radius = BorderRadius.circular(
+          ui.lerpDouble(36, AfRadii.lg, _expandAnim.value)!,
+        );
 
         return Padding(
           padding: const EdgeInsets.symmetric(
