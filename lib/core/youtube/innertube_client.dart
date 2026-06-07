@@ -9,14 +9,14 @@ import '../../utils/log.dart';
 /// Uses WEB_REMIX client identity (YouTube Music web app).
 /// Visitor data fetched from /sw.js_data, cookies persisted across requests.
 class InnerTubeClient {
+  InnerTubeClient();
+
   static const _baseUrl = 'https://music.youtube.com/youtubei/v1';
   static const _clientName = 'WEB_REMIX';
   static const _clientVersion = '1.20260213.01.00';
   static const _clientId = '67';
   static const _origin = 'https://music.youtube.com';
   static const _referer = '$_origin/';
-
-  InnerTubeClient();
 
   /// Persistent HTTP client for cookie persistence across requests.
   HttpClient? _httpClient;
@@ -72,13 +72,13 @@ class InnerTubeClient {
     required String hl,
     String? visitorData,
   }) {
-    return {
+    return <String, dynamic>{
       'client': {
         'clientName': _clientName,
         'clientVersion': _clientVersion,
         'hl': hl,
         'gl': gl,
-        if (visitorData != null) 'visitorData': visitorData,
+        'visitorData': ?visitorData,
       },
     };
   }
@@ -100,11 +100,10 @@ class InnerTubeClient {
         'context': _buildContext(gl: gl, hl: hl, visitorData: visitorData),
         if (continuation == null) 'browseId': 'FEmusic_home',
         if (continuation == null && params != null) 'params': params,
-        if (continuation != null) 'continuation': continuation,
+        'continuation': ?continuation,
       };
 
       final uri = Uri.parse('$_baseUrl/browse?prettyPrint=false');
-      final isCont = continuation != null;
       final client = _httpClient ?? HttpClient();
 
       try {
@@ -264,7 +263,7 @@ class InnerTubeClient {
           }
         }
       }
-    } catch (e) {
+    } catch (_) {
     }
     return items;
   }
@@ -337,6 +336,7 @@ class InnerTubeBrowseResponse {
   final String? continuation;
   final List<InnerTubeChip> chips;
 
+  // ignore: sort_constructors_first
   factory InnerTubeBrowseResponse.fromJson(Map<String, dynamic> json) {
     final sections = <InnerTubeSection>[];
     final chips = <InnerTubeChip>[];
