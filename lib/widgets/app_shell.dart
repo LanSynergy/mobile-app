@@ -9,6 +9,7 @@ import '../design_tokens/tokens.dart';
 import '../features/sleep_timer/sleep_timer_screen.dart';
 import '../state/providers.dart';
 import 'bottom_nav.dart';
+import 'bottom_sheet.dart';
 import 'mini_now_playing.dart';
 
 /// App shell — wraps every authed-app tab with the persistent 4-tab
@@ -88,6 +89,10 @@ class AppShell extends ConsumerWidget {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
+        if (blurSheetCount.value > 0) {
+          blurSheetDismiss.value?.call();
+          return;
+        }
         final shouldExit = await _onBackPressed(context);
         if (shouldExit) {
           // We deliberately *do not* call `Navigator.of(context).pop()`

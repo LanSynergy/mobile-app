@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/bottom_sheet.dart';
 import 'bottom_content.dart';
 import 'empty_state.dart';
 import 'reactive_artwork.dart';
@@ -68,6 +69,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
+        // Top-most overlay sheet (e.g. "more" menu) must close first.
+        if (blurSheetCount.value > 0) {
+          blurSheetDismiss.value?.call();
+          return;
+        }
         // If the bottom bar is expanded, collapse it instead of popping.
         if (_expandedNotifier.value) {
           _expandedNotifier.value = false;

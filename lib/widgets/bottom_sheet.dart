@@ -5,6 +5,18 @@ import 'package:flutter/material.dart';
 
 import '../design_tokens/tokens.dart';
 
+/// Global back-button coordinator for blur bottom sheets.
+///
+/// Bottom sheets are inserted via [OverlayEntry] (not a Navigator route), so
+/// the system back gesture bypasses the sheet and pops the route below it
+/// (e.g. Now Playing). To fix this without converting to a Navigator route,
+/// sheets register a dismiss callback here, and the root [PopScope] in
+/// `app.dart` consults [blurSheetCount] to decide whether to pop the route
+/// or trigger the topmost sheet's dismiss.
+final ValueNotifier<int> blurSheetCount = ValueNotifier<int>(0);
+final ValueNotifier<VoidCallback?> blurSheetDismiss =
+    ValueNotifier<VoidCallback?>(null);
+
 /// Shows a blurred bottom sheet that renders in the current route's overlay.
 Future<T?> showBlurBottomSheet<T>({
   required BuildContext context,
@@ -23,26 +35,35 @@ Future<T?> showBlurBottomSheet<T>({
   final completer = Completer<T?>();
   late OverlayEntry entry;
 
+  blurSheetCount.value++;
+  void onDismiss([T? result]) {
+    if (completer.isCompleted) return;
+    blurSheetCount.value--;
+    if (blurSheetDismiss.value == _dismissTop) blurSheetDismiss.value = null;
+    entry.remove();
+    completer.complete(result);
+  }
+
+  blurSheetDismiss.value = onDismiss;
+
   entry = OverlayEntry(
     builder: (context) => _BlurBottomSheetOverlay<T>(
       builder: builder != null
-          ? (context) => builder(context, ([T? result]) {
-              entry.remove();
-              if (!completer.isCompleted) completer.complete(result);
-            })
+          ? (context) => builder(context, onDismiss)
           : (context) => child!,
       isDismissible: isDismissible,
       enableDrag: enableDrag,
       topRadius: topRadius,
-      onDismiss: (result) {
-        entry.remove();
-        if (!completer.isCompleted) completer.complete(result);
-      },
+      onDismiss: onDismiss,
     ),
   );
 
   overlay.insert(entry);
   return completer.future;
+}
+
+void _dismissTop() {
+  blurSheetDismiss.value?.call();
 }
 
 class _BlurBottomSheetOverlay<T> extends StatefulWidget {
@@ -132,7 +153,6 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
             behavior: HitTestBehavior.opaque,
             child: Stack(
               children: [
-                // ── Blur layer — always renders, no Opacity wrapper ──
                 Positioned.fill(
                   child: BackdropFilter(
                     filter: ImageFilter.blur(
@@ -146,7 +166,6 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                     ),
                   ),
                 ),
-                // ── Sheet content — slides up + fades ──
                 Align(
                   alignment: Alignment.bottomCenter,
                   child: Transform.translate(
@@ -157,7 +176,8 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                         onVerticalDragEnd: widget.enableDrag
                             ? (details) {
                                 final vy = details.primaryVelocity ?? 0;
-                                if (vy > 300 || (vy > 0 && slideOffset > 0.3)) {
+                                if (vy > 300 ||
+                                    (vy > 0 && slideOffset > 0.3)) {
                                   _dismiss();
                                 }
                               }
@@ -193,7 +213,8 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                                       width: 40,
                                       height: 4,
                                       decoration: BoxDecoration(
-                                        color: AfColors.textTertiary.withValues(
+                                        color:
+                                            AfColors.textTertiary.withValues(
                                           alpha: 0.4,
                                         ),
                                         borderRadius: BorderRadius.circular(
