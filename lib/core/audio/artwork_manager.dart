@@ -1,6 +1,10 @@
+import 'dart:convert' show utf8;
 import 'dart:io';
 
+import 'package:crypto/crypto.dart' show sha1;
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show CoverArt;
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../../utils/log.dart';
 import '../jellyfin/models/items.dart';
@@ -56,6 +60,14 @@ class AfArtworkManager {
   /// update the native notification artwork.
   void Function()? onArtworkChanged;
 
+  /// Called when cover art extracted by mpv is saved permanently to the
+  /// cover cache. The callback receives (trackId, coverPath) so the
+  /// caller can update the DB `cover_path` column.
+  void Function(String trackId, String coverPath)? onPermanentCoverSaved;
+
+  /// Directory for permanent cover art cache. Lazily initialized.
+  String? _permanentCoverCacheDir;
+
   int _coverCounter = 0;
   String? _coverPath;
   String? _networkCoverPath;
@@ -87,7 +99,13 @@ class AfArtworkManager {
     final diskCached = _diskCache.getPath(track.id);
     if (diskCached != null) return Uri.file(diskCached);
     if (track.imageUrl != null && track.imageUrl!.startsWith('file://')) {
-      return Uri.parse(track.imageUrl!);
+      // Verify the file exists before returning — cover_cache_manager
+      // evicts files without nulling cover_path in the DB, so the path
+      // can be stale between scans.
+      final filePath = track.imageUrl!.substring('file://'.length);
+      if (File(filePath).existsSync()) {
+        return Uri.parse(track.imageUrl!);
+      }
     }
     return null;
   }
@@ -132,6 +150,53 @@ class AfArtworkManager {
     } on Exception catch (e, stack) {
       afLog('audio', 'cover art persist failed', error: e, stackTrace: stack);
     }
+  }
+
+  /// Save mpv-extracted cover art permanently to the cover cache directory.
+  ///
+  /// Uses the same filename scheme as [MetadataScanner] (SHA-1 of track ID)
+  /// so subsequent scans find the cached file and skip re-extraction.
+  /// Calls [onPermanentCoverSaved] with the saved path so the caller can
+  /// update the DB `cover_path` column.
+  Future<void> persistCoverToPermanentCache(
+    String trackId,
+    CoverArt raw,
+  ) async {
+    if (_disposed) return;
+    try {
+      _permanentCoverCacheDir ??= await _resolveCoverCacheDir();
+      final cacheDir = _permanentCoverCacheDir!;
+      await Directory(cacheDir).create(recursive: true);
+
+      final digest = sha1.convert(utf8.encode(trackId)).toString();
+      final filename = '${digest.substring(0, 16)}.jpg';
+      final coverPath = p.join(cacheDir, filename);
+
+      // Skip if already cached (idempotent).
+      if (await File(coverPath).exists()) return;
+
+      final tmpPath = '$coverPath.tmp';
+      await File(tmpPath).writeAsBytes(raw.bytes);
+      await File(tmpPath).rename(coverPath);
+
+      afLog('audio', 'cover art saved permanently for $trackId');
+      onPermanentCoverSaved?.call(trackId, coverPath);
+    } on Exception catch (e, stack) {
+      afLog(
+        'audio',
+        'permanent cover save failed',
+        error: e,
+        stackTrace: stack,
+      );
+    }
+  }
+
+  /// Resolve the permanent cover cache directory path.
+  ///
+  /// Uses the same location as [MetadataScanner]: `<appCacheDir>/local_covers`.
+  Future<String> _resolveCoverCacheDir() async {
+    final appDir = await getApplicationCacheDirectory();
+    return p.join(appDir.path, 'local_covers');
   }
 
   /// Download artwork from a remote URL for use in the notification/

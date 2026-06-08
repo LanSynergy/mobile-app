@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart';
 
+import '../../utils/log.dart';
 import '../../utils/sql.dart';
 import '../jellyfin/models/items.dart';
 import '../jellyfin/models/quality.dart';
@@ -74,6 +77,32 @@ class TrackRepository {
     await (db.update(db.tracks)..where((t) => t.id.equals(trackId))).write(
       TracksCompanion(coverPath: Value(coverPath)),
     );
+  }
+
+  /// Null out `cover_path` for tracks whose cover file no longer exists on
+  /// disk. Called after cache eviction to prevent library views from trying
+  /// to load deleted files. The next scan will re-extract cover art for
+  /// these tracks.
+  Future<int> nullStaleCoverPaths() async {
+    final rows = await (db.select(db.tracks)
+          ..where((t) => t.coverPath.isNotNull()))
+        .get();
+
+    int nulled = 0;
+    for (final row in rows) {
+      final coverPath = row.coverPath;
+      if (coverPath != null && !await File(coverPath).exists()) {
+        await (db.update(db.tracks)..where((t) => t.id.equals(row.id))).write(
+          const TracksCompanion(coverPath: Value(null)),
+        );
+        nulled++;
+      }
+    }
+
+    if (nulled > 0) {
+      afLog('local', 'nulled $nulled stale cover_path entries');
+    }
+    return nulled;
   }
 
   Future<int?> getTrackLastModified(String id) async {

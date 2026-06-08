@@ -11,6 +11,7 @@ import '../core/audio/player_service.dart';
 import '../core/audio/shuffle_mode.dart';
 import '../core/backend/music_backend.dart';
 import '../core/jellyfin/models/items.dart';
+import '../core/local/local_db_tracks.dart';
 import '../core/youtube/youtube_music_client.dart';
 import 'app_mode_providers.dart';
 import 'local_library_providers.dart';
@@ -304,6 +305,20 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
       return bufferTracks.take(20).toList();
     }
     return const <AfTrack>[];
+  };
+
+  // Wire permanent cover art saving: when mpv extracts embedded cover art,
+  // save it to the permanent cache and update the DB so artwork appears
+  // in library views (not just Now Playing).
+  svc.artworkManager.onPermanentCoverSaved = (trackId, coverPath) async {
+    try {
+      final db = ref.read(appDatabaseProvider);
+      final repo = TrackRepository(db);
+      await repo.updateCoverPath(trackId, coverPath);
+      afLog('audio', 'DB cover_path updated for $trackId');
+    } on Exception catch (e) {
+      afLog('audio', 'Failed to update DB cover_path', error: e);
+    }
   };
 }
 

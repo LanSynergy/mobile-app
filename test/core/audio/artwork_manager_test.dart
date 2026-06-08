@@ -235,12 +235,17 @@ void main() {
     test(
       'downloadArtworkForNotification with file:// URL does not trigger download',
       () async {
-        const track = AfTrack(
+        // Create a temporary file so artUri() can verify it exists.
+        final tmpDir = await Directory.systemTemp.createTemp('artwork_test');
+        final artFile = File('${tmpDir.path}/art.jpg');
+        await artFile.writeAsBytes([1, 2, 3]);
+
+        final track = AfTrack(
           id: 'track1',
           title: 'T',
           artistName: 'A',
           albumName: 'Al',
-          imageUrl: 'file:///local/path/to/art.jpg',
+          imageUrl: 'file://${artFile.path}',
         );
 
         await manager.downloadArtworkForNotification(track);
@@ -249,8 +254,14 @@ void main() {
         expect(MockHttpClient.recordedHeaders, isEmpty);
         expect(
           manager.artUri(track),
-          equals(Uri.parse('file:///local/path/to/art.jpg')),
+          equals(Uri.parse('file://${artFile.path}')),
         );
+
+        // Cleanup
+        try {
+          await artFile.delete();
+          await tmpDir.delete();
+        } catch (_) {}
       },
     );
 
@@ -330,18 +341,23 @@ void main() {
     test(
       'artUri correctly prioritizes coverPath > networkCoverPath > file URL',
       () async {
-        const track = AfTrack(
+        // Create a temporary file so artUri() can verify it exists.
+        final tmpDir = await Directory.systemTemp.createTemp('artwork_test');
+        final artFile = File('${tmpDir.path}/local.jpg');
+        await artFile.writeAsBytes([1, 2, 3]);
+
+        final track = AfTrack(
           id: 'track1',
           title: 'T',
           artistName: 'A',
           albumName: 'Al',
-          imageUrl: 'file:///local/path.jpg',
+          imageUrl: 'file://${artFile.path}',
         );
 
         // Case 3: Only track imageUrl is file://
         expect(
           manager.artUri(track),
-          equals(Uri.parse('file:///local/path.jpg')),
+          equals(Uri.parse('file://${artFile.path}')),
         );
 
         // Case 2: Network artwork is downloaded
@@ -374,6 +390,10 @@ void main() {
         } catch (_) {}
         try {
           await File(embeddedUri.toFilePath()).delete();
+        } catch (_) {}
+        try {
+          await artFile.delete();
+          await tmpDir.delete();
         } catch (_) {}
       },
     );

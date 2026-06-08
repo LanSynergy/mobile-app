@@ -195,6 +195,9 @@ class AfPlayerService {
   @visibleForTesting
   AfPositionTracker get positionTracker => _positionTracker;
 
+  /// Exposes the artwork manager for wiring callbacks from providers.
+  AfArtworkManager get artworkManager => _artworkManager;
+
   final PlayerApi _player;
   late final AfPositionTracker _positionTracker;
   late final AfArtworkManager _artworkManager;
@@ -770,6 +773,14 @@ class AfPlayerService {
         try {
           try {
             await _artworkManager.persistCover(raw);
+            // Also save permanently to the cover cache so artwork
+            // appears in library views (not just Now Playing).
+            final track = _queueManager.currentTrack;
+            if (raw != null && track != null) {
+              unawaited(
+                _artworkManager.persistCoverToPermanentCache(track.id, raw),
+              );
+            }
           } on Exception catch (e, stack) {
             afLog('audio', 'persistCover failed', error: e, stackTrace: stack);
           }

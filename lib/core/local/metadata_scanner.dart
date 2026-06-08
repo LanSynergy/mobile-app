@@ -223,11 +223,18 @@ class MetadataScanner {
       }
 
       // Evict old covers if cache exceeds size limit.
-      // Don't null cover_path here — the scanner's own file-existence check
-      // (hasCover + coverFile.exists()) handles re-extraction on next scan.
       final evicted = await _coverCacheManager?.evictIfNeeded() ?? 0;
       if (evicted > 0) {
         afLog('local', 'evicted $evicted stale cover art files');
+        // Null out cover_path for tracks whose cover files were just
+        // evicted. This prevents library views from trying to load
+        // deleted files (they'll show a placeholder immediately).
+        // The scanner will re-extract cover art for these tracks on
+        // the next scan.
+        final nulled = await db.nullStaleCoverPaths();
+        if (nulled > 0) {
+          afLog('local', 'nulled $nulled stale cover_path entries after eviction');
+        }
       }
 
       afLog('local', 'scanFolder done: $inserted tracks inserted/updated');

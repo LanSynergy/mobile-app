@@ -96,6 +96,8 @@ class LocalDb {
   Future<void> updateCoverPath(String trackId, String? coverPath) =>
       tracks.updateCoverPath(trackId, coverPath);
 
+  Future<int> nullStaleCoverPaths() => tracks.nullStaleCoverPaths();
+
   Future<int?> getTrackLastModified(String id) =>
       tracks.getTrackLastModified(id);
 
