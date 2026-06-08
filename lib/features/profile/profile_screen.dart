@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import 'sections/about_section.dart';
 import 'sections/listening_stats_section.dart';
 import 'sections/profile_header.dart';
 import 'sections/settings_section.dart';
@@ -52,22 +53,28 @@ class ProfileScreen extends ConsumerWidget {
           parent: ClampingScrollPhysics(),
         ),
         slivers: [
-          // ── Header — gradient "Profile" + settings icon ─────────────────
-          const SliverToBoxAdapter(
+          // ── Header — title + settings button ─────────────────────────
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(
+              padding: const EdgeInsets.fromLTRB(
                 AfSpacing.s16,
                 AfSpacing.s16,
                 AfSpacing.s16,
-                AfSpacing.s32,
+                0,
               ),
-              child: ProfileHeaderTitle(),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Profile', style: AfTypography.titleLarge),
+                  const SettingsButton(),
+                ],
+              ),
             ),
           ),
 
-          // ── Avatar + info ───────────────────────────────────────────────
+          // ── Split info — avatar + info + inline stats ────────────────
           SliverToBoxAdapter(
-            child: ProfileAvatarSection(
+            child: SplitInfoSection(
               name: name,
               serverName: serverName,
               profilePhoto: (
@@ -75,37 +82,35 @@ class ProfileScreen extends ConsumerWidget {
                 localPath: profilePhoto.localPath,
                 networkUrl: profilePhoto.networkUrl,
               ),
+              trackCount: _fmtCount(tracksAsync),
+              albumCount: _fmtCount(albumsAsync),
             ),
           ),
 
-          // ── Stat cards ──────────────────────────────────────────────────
-          SliverToBoxAdapter(
+          // ── Quick stats — artists + playlists ────────────────────────
+          const SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-              child: ProfileStatCards(
-                trackCount: _fmtCount(tracksAsync),
-                albumCount: _fmtCount(albumsAsync),
-              ),
+              padding: EdgeInsets.only(top: AfSpacing.s16),
+              child: QuickStatsRow(artistCount: '—', playlistCount: '—'),
             ),
           ),
 
-          // ── Pinned ──────────────────────────────────────────────────────
+          // ── Pinned ───────────────────────────────────────────────────
           const SliverToBoxAdapter(child: PinnedSectionHeader()),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.only(
-                left: AfSpacing.s16,
-                right: AfSpacing.s16,
-                top: AfSpacing.s8,
-              ),
+              padding: const EdgeInsets.only(top: AfSpacing.s8),
               child: PinnedAlbumsRow(albums: pinned),
             ),
           ),
 
-          // ── Listening Stats ─────────────────────────────────────────────
+          // ── Listening Stats ──────────────────────────────────────────
           SliverToBoxAdapter(
             child: ListeningStatsSection(isLastFmConnected: isLastFmConnected),
           ),
+
+          // ── About ───────────────────────────────────────────────────
+          const SliverToBoxAdapter(child: AboutSection()),
 
           const SliverToBoxAdapter(
             child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),

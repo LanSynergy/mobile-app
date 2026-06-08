@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -13,160 +12,122 @@ import '../../../state/providers.dart';
 import '../../../widgets/bottom_sheet.dart';
 import '../../../widgets/press_scale.dart';
 
-/// Gradient "Profile" title row with a settings gear button.
-class ProfileHeaderTitle extends ConsumerWidget {
-  const ProfileHeaderTitle({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(
-      currentSpectralProvider.select(
-        (s) => (primary: s.primary, secondary: s.secondary),
-      ),
-    );
-
-    return Row(
-      children: [
-        Expanded(
-          child: ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(
-              colors: [spectral.primary, spectral.secondary],
-            ).createShader(bounds),
-            child: Text(
-              'Profile',
-              style: AfTypography.display.copyWith(color: Colors.white),
-            ),
-          ),
-        ),
-        PressScale(
-          onTap: () => context.push('/settings'),
-          child: ClipRRect(
-            borderRadius: AfRadii.borderPill,
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: Container(
-                padding: const EdgeInsets.all(AfSpacing.s12),
-                decoration: BoxDecoration(
-                  color: AfColors.glassFill,
-                  borderRadius: AfRadii.borderPill,
-                  border: Border.all(
-                    color: AfColors.glassBorderStrong,
-                    width: 1,
-                  ),
-                ),
-                child: const Icon(
-                  LucideIcons.settings,
-                  color: AfColors.textSecondary,
-                  size: 18,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Avatar image picker with spectral glow, user name, and server name.
-class ProfileAvatarSection extends ConsumerWidget {
-  const ProfileAvatarSection({
+/// Split info section — avatar on left, user info + stats on right.
+class SplitInfoSection extends ConsumerWidget {
+  const SplitInfoSection({
     super.key,
     required this.name,
     required this.serverName,
     required this.profilePhoto,
+    required this.trackCount,
+    required this.albumCount,
   });
 
   final String name;
   final String serverName;
   final ({bool isUploading, String? localPath, String? networkUrl})
   profilePhoto;
+  final String trackCount;
+  final String albumCount;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(
-      currentSpectralProvider.select(
-        (s) => (primary: s.primary, secondary: s.secondary),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AfSpacing.s16,
+        AfSpacing.s16,
+        AfSpacing.s16,
+        0,
       ),
-    );
-
-    return Center(
-      child: Column(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Spectral glow behind avatar
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 140,
-                height: 140,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      spectral.primary.withValues(alpha: 0.25),
-                      spectral.primary.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-              _AvatarImagePicker(
-                name: name,
-                isUploading: profilePhoto.isUploading,
-                localPath: profilePhoto.localPath,
-                networkUrl: profilePhoto.networkUrl,
-                authHeaders: ref.watch(musicBackendProvider)?.authHeaders,
-                onPickPhoto: (source) async {
-                  final picker = ImagePicker();
-                  try {
-                    final image = await picker.pickImage(
-                      source: source,
-                      maxWidth: 512,
-                      maxHeight: 512,
-                      imageQuality: 85,
-                    );
-                    if (image != null) {
-                      final bytes = await image.readAsBytes();
-                      final mimeType = image.mimeType ?? 'image/jpeg';
-                      await ref
-                          .read(profilePhotoProvider.notifier)
-                          .updatePhoto(bytes, mimeType);
-                    }
-                  } on Exception catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to update profile photo: $e'),
-                          backgroundColor: AfColors.semanticError,
-                        ),
-                      );
-                    }
-                  }
-                },
-                onRemovePhoto: () async {
-                  try {
-                    await ref.read(profilePhotoProvider.notifier).removePhoto();
-                  } on Exception catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to remove profile photo: $e'),
-                          backgroundColor: AfColors.semanticError,
-                        ),
-                      );
-                    }
-                  }
-                },
-              ),
-            ],
+          // Left: Avatar
+          CompactAvatar(
+            name: name,
+            isUploading: profilePhoto.isUploading,
+            localPath: profilePhoto.localPath,
+            networkUrl: profilePhoto.networkUrl,
+            authHeaders: ref.watch(musicBackendProvider)?.authHeaders,
+            onPickPhoto: (source) async {
+              final picker = ImagePicker();
+              try {
+                final image = await picker.pickImage(
+                  source: source,
+                  maxWidth: 512,
+                  maxHeight: 512,
+                  imageQuality: 85,
+                );
+                if (image != null) {
+                  final bytes = await image.readAsBytes();
+                  final mimeType = image.mimeType ?? 'image/jpeg';
+                  await ref
+                      .read(profilePhotoProvider.notifier)
+                      .updatePhoto(bytes, mimeType);
+                }
+              } on Exception catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to update profile photo: $e'),
+                      backgroundColor: AfColors.semanticError,
+                    ),
+                  );
+                }
+              }
+            },
+            onRemovePhoto: () async {
+              try {
+                await ref.read(profilePhotoProvider.notifier).removePhoto();
+              } on Exception catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to remove profile photo: $e'),
+                      backgroundColor: AfColors.semanticError,
+                    ),
+                  );
+                }
+              }
+            },
           ),
-          const SizedBox(height: AfSpacing.s12),
-          Text(name, style: AfTypography.titleLarge),
-          const SizedBox(height: AfSpacing.s4),
-          Text(
-            serverName,
-            style: AfTypography.bodySmall.copyWith(
-              color: AfColors.textTertiary,
+          const SizedBox(width: AfSpacing.s16),
+
+          // Right: Info + Stats
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: AfTypography.titleMedium),
+                const SizedBox(height: AfSpacing.s4),
+                Row(
+                  children: [
+                    const Icon(
+                      LucideIcons.server,
+                      size: 12,
+                      color: AfColors.textTertiary,
+                    ),
+                    const SizedBox(width: AfSpacing.s4),
+                    Flexible(
+                      child: Text(
+                        serverName,
+                        style: AfTypography.bodySmall.copyWith(
+                          color: AfColors.textTertiary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AfSpacing.s16),
+                Row(
+                  children: [
+                    MiniStat(value: trackCount, label: 'Tracks'),
+                    const SizedBox(width: AfSpacing.s16),
+                    MiniStat(value: albumCount, label: 'Albums'),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -175,8 +136,10 @@ class ProfileAvatarSection extends ConsumerWidget {
   }
 }
 
-class _AvatarImagePicker extends ConsumerWidget {
-  const _AvatarImagePicker({
+/// 80dp compact avatar with image picker.
+class CompactAvatar extends ConsumerWidget {
+  const CompactAvatar({
+    super.key,
     required this.name,
     required this.isUploading,
     this.localPath,
@@ -204,34 +167,6 @@ class _AvatarImagePicker extends ConsumerWidget {
     final hasPhoto =
         (localPath != null && File(localPath!).existsSync()) ||
         networkUrl != null;
-
-    Widget avatarContent;
-    if (localPath != null && File(localPath!).existsSync()) {
-      avatarContent = Image.file(
-        File(localPath!),
-        width: AfSpacing.avatarSize,
-        height: AfSpacing.avatarSize,
-        cacheWidth: AfSpacing.avatarSize.toInt(),
-        cacheHeight: AfSpacing.avatarSize.toInt(),
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) =>
-            _initialsAvatar(spectral.muted),
-      );
-    } else if (networkUrl != null) {
-      avatarContent = CachedNetworkImage(
-        imageUrl: networkUrl!,
-        httpHeaders: authHeaders,
-        width: AfSpacing.avatarSize,
-        height: AfSpacing.avatarSize,
-        memCacheWidth: AfSpacing.avatarSize.toInt(),
-        memCacheHeight: AfSpacing.avatarSize.toInt(),
-        fit: BoxFit.cover,
-        placeholder: (context, url) => _initialsAvatar(spectral.muted),
-        errorWidget: (context, url, error) => _initialsAvatar(spectral.muted),
-      );
-    } else {
-      avatarContent = _initialsAvatar(spectral.muted);
-    }
 
     return GestureDetector(
       onTap: isUploading
@@ -299,33 +234,38 @@ class _AvatarImagePicker extends ConsumerWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
+          // Avatar circle
           Container(
-            width: AfSpacing.avatarSize,
-            height: AfSpacing.avatarSize,
-            decoration: BoxDecoration(
+            width: 80,
+            height: 80,
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: spectral.secondary, width: 2),
+              color: AfColors.surfaceRaised,
             ),
-            child: ClipOval(child: avatarContent),
+            child: ClipOval(child: _buildAvatarContent(spectral.muted)),
           ),
+
+          // Camera badge
           if (!isUploading)
             Positioned(
               bottom: 0,
               right: 0,
               child: Container(
-                width: 28,
-                height: 28,
+                width: 24,
+                height: 24,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: spectral.secondary,
                 ),
                 child: const Icon(
                   LucideIcons.camera,
-                  size: 14,
+                  size: 12,
                   color: AfColors.textOnPrimary,
                 ),
               ),
             ),
+
+          // Upload overlay
           if (isUploading)
             Positioned.fill(
               child: Container(
@@ -335,10 +275,10 @@ class _AvatarImagePicker extends ConsumerWidget {
                 ),
                 child: Center(
                   child: SizedBox(
-                    width: 24,
-                    height: 24,
+                    width: 20,
+                    height: 20,
                     child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
+                      strokeWidth: 2,
                       color: spectral.primary,
                     ),
                   ),
@@ -350,16 +290,110 @@ class _AvatarImagePicker extends ConsumerWidget {
     );
   }
 
+  Widget _buildAvatarContent(Color bgColor) {
+    if (localPath != null && File(localPath!).existsSync()) {
+      return Image.file(
+        File(localPath!),
+        width: 80,
+        height: 80,
+        cacheWidth: 80,
+        cacheHeight: 80,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _initialsAvatar(bgColor),
+      );
+    }
+    if (networkUrl != null) {
+      return CachedNetworkImage(
+        imageUrl: networkUrl!,
+        httpHeaders: authHeaders,
+        width: 80,
+        height: 80,
+        memCacheWidth: 80,
+        memCacheHeight: 80,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => _initialsAvatar(bgColor),
+        errorWidget: (context, url, error) => _initialsAvatar(bgColor),
+      );
+    }
+    return _initialsAvatar(bgColor);
+  }
+
   Widget _initialsAvatar(Color bgColor) {
     return Container(
-      width: AfSpacing.avatarSize,
-      height: AfSpacing.avatarSize,
+      width: 80,
+      height: 80,
       color: bgColor,
       alignment: Alignment.center,
       child: Text(
         name.isEmpty ? 'A' : name[0].toUpperCase(),
-        style: AfTypography.avatarInitials.copyWith(
-          color: AfColors.textOnPrimary,
+        style: AfTypography.titleLarge.copyWith(color: AfColors.textOnPrimary),
+      ),
+    );
+  }
+}
+
+/// Inline stat display — value + label.
+class MiniStat extends StatelessWidget {
+  const MiniStat({super.key, required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: AfTypography.titleMedium.copyWith(
+            color: AfColors.accentPrimary,
+          ),
+        ),
+        Text(
+          label,
+          style: AfTypography.caption.copyWith(color: AfColors.textTertiary),
+        ),
+      ],
+    );
+  }
+}
+
+/// Pill-shaped settings button.
+class SettingsButton extends StatelessWidget {
+  const SettingsButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      onTap: () => context.push('/settings'),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AfColors.surfaceRaised,
+          borderRadius: AfRadii.borderPill,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.s12,
+            vertical: AfSpacing.s8,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                LucideIcons.settings,
+                size: 16,
+                color: AfColors.textSecondary,
+              ),
+              const SizedBox(width: AfSpacing.s8),
+              Text(
+                'Settings',
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

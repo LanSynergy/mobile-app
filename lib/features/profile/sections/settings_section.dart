@@ -1,68 +1,95 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/jellyfin/models/items.dart';
 import '../../../design_tokens/tokens.dart';
 import '../../../widgets/artwork.dart';
 import '../../../widgets/section_header.dart';
 
-/// Displays the user's track and album counts.
-class ProfileStatCards extends StatelessWidget {
-  const ProfileStatCards({
+/// Quick stats row — two stat chips for artists and playlists.
+class QuickStatsRow extends StatelessWidget {
+  const QuickStatsRow({
     super.key,
-    required this.trackCount,
-    required this.albumCount,
+    required this.artistCount,
+    required this.playlistCount,
   });
 
-  final String trackCount;
-  final String albumCount;
+  final String artistCount;
+  final String playlistCount;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const SizedBox(height: AfSpacing.s24),
-        Row(
-          children: [
-            StatCard(label: 'Tracks', value: trackCount),
-            const SizedBox(width: AfSpacing.s12),
-            StatCard(label: 'Albums', value: albumCount),
-          ],
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+      child: Row(
+        children: [
+          Expanded(
+            child: StatChip(
+              icon: LucideIcons.user,
+              label: 'Artists',
+              value: artistCount,
+            ),
+          ),
+          const SizedBox(width: AfSpacing.s12),
+          Expanded(
+            child: StatChip(
+              icon: LucideIcons.listMusic,
+              label: 'Playlists',
+              value: playlistCount,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-/// A single stat card showing a label and value.
-class StatCard extends StatelessWidget {
-  const StatCard({super.key, required this.label, required this.value});
+/// Individual stat chip — icon + value + label.
+class StatChip extends StatelessWidget {
+  const StatChip({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
+  final IconData icon;
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(AfSpacing.s16),
-        decoration: const BoxDecoration(
-          color: AfColors.surfaceRaised,
-          borderRadius: AfRadii.borderMd,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(value, style: AfTypography.titleLarge),
-            const SizedBox(height: AfSpacing.s2),
-            Text(
-              label,
-              style: AfTypography.bodySmall.copyWith(
-                color: AfColors.textSecondary,
-              ),
+    return Container(
+      padding: const EdgeInsets.all(AfSpacing.s12),
+      decoration: const BoxDecoration(
+        color: AfColors.surfaceBase,
+        borderRadius: AfRadii.borderMd,
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AfColors.accentPrimary),
+          const SizedBox(width: AfSpacing.s8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: AfTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: AfTypography.caption.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -95,11 +122,16 @@ class PinnedAlbumsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (albums.isEmpty) {
-      return SizedBox(
+      return Container(
         height: 120,
+        margin: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+        decoration: const BoxDecoration(
+          color: AfColors.surfaceBase,
+          borderRadius: AfRadii.borderMd,
+        ),
         child: Center(
           child: Text(
-            'Heart an album to pin it here.',
+            'Heart albums to pin them here',
             style: AfTypography.bodySmall.copyWith(
               color: AfColors.textTertiary,
             ),
@@ -107,10 +139,12 @@ class PinnedAlbumsRow extends StatelessWidget {
         ),
       );
     }
+
     return SizedBox(
-      height: 120,
+      height: 160,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         itemCount: albums.length,
         separatorBuilder: (context, index) =>
             const SizedBox(width: AfSpacing.s12),
@@ -120,31 +154,34 @@ class PinnedAlbumsRow extends StatelessWidget {
             onTap: () => context.push('/album/${a.id}'),
             child: SizedBox(
               width: 120,
-              child: Stack(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Artwork(url: a.imageUrl, size: 120, radius: AfRadii.borderMd),
-                  Positioned.fill(
+                  // Album artwork
+                  AspectRatio(
+                    aspectRatio: 1,
                     child: Container(
                       decoration: const BoxDecoration(
-                        borderRadius: AfRadii.borderMd,
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, AfColors.surfaceScrim],
-                          stops: [0.5, 1.0],
-                        ),
+                        borderRadius: AfRadii.borderSm,
+                        color: AfColors.surfaceRaised,
                       ),
-                      alignment: Alignment.bottomLeft,
-                      padding: const EdgeInsets.all(AfSpacing.s8),
-                      child: Text(
-                        a.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AfTypography.bodySmall.copyWith(
-                          color: AfColors.textOnPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Artwork(
+                        url: a.imageUrl,
+                        size: 120,
+                        radius: AfRadii.borderSm,
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: AfSpacing.s8),
+
+                  // Album name
+                  Text(
+                    a.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AfTypography.bodySmall.copyWith(
+                      color: AfColors.textPrimary,
                     ),
                   ),
                 ],
