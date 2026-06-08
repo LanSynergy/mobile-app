@@ -163,15 +163,30 @@ void main() {
           // medias is a single-element list.
           final afterOpenAll = content.substring(match.start);
 
+          // Normalize whitespace to handle multiline calls like
+          // openAll(\n  [\n  Media(...)])
+          var normalized = afterOpenAll;
+          normalized = normalized.replaceFirst(
+            RegExp(r'openAll\(\s*'),
+            'openAll(',
+          );
+          normalized = normalized.replaceFirst(
+            RegExp(r'\[\s*Media\('),
+            '[Media(',
+          );
+
           // Check if the list passed to openAll is a single-element
           // literal ([Media(url)], [Media(...)]) or a variable holding
           // a single-element list.
-          final hasSingleMediaLiteral = afterOpenAll.startsWith(
+          final hasSingleMediaLiteral = normalized.startsWith(
             'openAll([Media(',
           );
+          // The variable may be declared across lines:
+          //   final medias = <Media>[\n  Media(...)
           final hasSingleMediaVariable =
-              afterOpenAll.startsWith('openAll(medias') &&
-              content.contains('medias = <Media>[Media(');
+              normalized.startsWith('openAll(medias') &&
+              RegExp(r'final medias\s*=\s*<Media>\[\s*Media\(')
+                  .hasMatch(content);
 
           expect(
             hasSingleMediaLiteral || hasSingleMediaVariable,
