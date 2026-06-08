@@ -569,7 +569,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   /// (called on drag-end / toggle / preset) reads the correct values.
   /// Each section's own [setState] handles its local UI rebuild — the
   /// parent tree is NOT rebuilt on every slider drag.
-  void _onFieldChanged(String field, dynamic value) {
+  void _setFieldSilently(String field, dynamic value) {
     switch (field) {
       case 'loudnorm':
         _loudnorm = value as bool;
@@ -813,7 +813,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           deesserIntensity: _deesserIntensity,
           deesserMix: _deesserMix,
           deesserFreq: _deesserFreq,
-          onChanged: _onFieldChanged,
+          onChanged: _setFieldSilently,
           onApply: _apply,
         ),
       ),
@@ -827,7 +827,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           echoOutGain: _echoOutGain,
           echoDelays: _echoDelays,
           echoDecays: _echoDecays,
-          onChanged: _onFieldChanged,
+          onChanged: _setFieldSilently,
           onApply: _apply,
         ),
       ),
@@ -839,7 +839,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           rubberbandEnabled: _rubberbandEnabled,
           pitch: _pitch,
           tempo: _tempo,
-          onChanged: _onFieldChanged,
+          onChanged: _setFieldSilently,
           onApply: _apply,
         ),
       ),
@@ -852,7 +852,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           crossfeedStrength: _crossfeedStrength,
           stereoWiden: _stereoWiden,
           stereoWidenDelay: _stereoWidenDelay,
-          onChanged: _onFieldChanged,
+          onChanged: _setFieldSilently,
           onApply: _apply,
         ),
       ),
@@ -886,7 +886,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           vibrato: _vibrato,
           vibratoFreq: _vibratoFreq,
           vibratoDepth: _vibratoDepth,
-          onChanged: _onFieldChanged,
+          onChanged: _setFieldSilently,
           onApply: _apply,
         ),
       ),
@@ -905,7 +905,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           crusherBits: _crusherBits,
           crusherMix: _crusherMix,
           crusherSamples: _crusherSamples,
-          onChanged: _onFieldChanged,
+          onChanged: _setFieldSilently,
           onApply: _apply,
         ),
       ),

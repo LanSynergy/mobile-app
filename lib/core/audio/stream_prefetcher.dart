@@ -26,6 +26,7 @@ class StreamPrefetcher {
   final Dio _dio;
   final int _maxConcurrent;
   String? _cacheDir;
+  bool _disposed = false;
   final Map<String, File> _cachedFiles = {};
   final Map<String, Future<File?>> _prefetchFutures = {};
   final Map<String, CancelToken> _cancelTokens = {};
@@ -114,6 +115,8 @@ class StreamPrefetcher {
     Map<String, String> headers, {
     required String trackId,
   }) async {
+    if (_disposed) return null;
+
     // Check if already prefetching this track
     if (_prefetchFutures.containsKey(trackId)) {
       afLog('audio', 'Prefetch already in progress for trackId=$trackId');
@@ -394,7 +397,9 @@ class StreamPrefetcher {
   ///
   /// Only cancels in-flight requests — does NOT close the Dio instance
   /// because it may be the shared singleton used by other services.
+  /// After disposal, [prefetch] returns `null` immediately.
   void dispose() {
+    _disposed = true;
     cancelCurrentPrefetch();
   }
 }

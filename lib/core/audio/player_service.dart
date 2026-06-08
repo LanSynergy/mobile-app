@@ -1212,7 +1212,7 @@ class AfPlayerService {
     _bridge.dispose();
     _positionTracker.dispose();
     _queueManager.dispose();
-    _prefetcher.cancelCurrentPrefetch();
+    _prefetcher.dispose();
     _mpvLoadedTrackId = null;
     _eofFallbackHandledTrackId = null;
     // 3. Close controllers and player last.
