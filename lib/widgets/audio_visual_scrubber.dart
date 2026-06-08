@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
+import 'scrubber_notifiers.dart';
+import 'scrubber_painters.dart';
 
 class AudioVisualScrubber extends ConsumerStatefulWidget {
   const AudioVisualScrubber({
@@ -33,8 +33,8 @@ class AudioVisualScrubber extends ConsumerStatefulWidget {
 
 class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
     with SingleTickerProviderStateMixin {
-  late final _BlockNotifier _fftNotifier;
-  late final _ScrubNotifier _scrubNotifier;
+  late final ScrubBlockNotifier _fftNotifier;
+  late final ScrubProgressNotifier _scrubNotifier;
   late final AnimationController _ticker;
   Timer? _silenceTimer;
   Animation<double>? _overlayAnim;
@@ -48,8 +48,8 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
   @override
   void initState() {
     super.initState();
-    _fftNotifier = _BlockNotifier();
-    _scrubNotifier = _ScrubNotifier(progress: widget.progress);
+    _fftNotifier = ScrubBlockNotifier();
+    _scrubNotifier = ScrubProgressNotifier(progress: widget.progress);
 
     _lifecycle = AppLifecycleListener(
       onPause: () {
@@ -177,7 +177,7 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
           children: [
             RepaintBoundary(
               child: CustomPaint(
-                painter: _CombinedBarPainter(
+                painter: ScrubCombinedBarPainter(
                   fftNotifier: _fftNotifier,
                   scrubNotifier: _scrubNotifier,
                   playedColor: widget.playedColor,
@@ -187,7 +187,7 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
             ),
             RepaintBoundary(
               child: CustomPaint(
-                painter: _ScrubOverlayPainter(
+                painter: ScrubOverlayPainter(
                   notifier: _scrubNotifier,
                   playedColor: widget.playedColor,
                   unplayedColor: widget.unplayedColor,
@@ -199,405 +199,4 @@ class _AudioVisualScrubberState extends ConsumerState<AudioVisualScrubber>
       ),
     );
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Notifiers
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ScrubNotifier extends ChangeNotifier {
-  _ScrubNotifier({required double progress}) : _progress = progress;
-  double _progress;
-  bool _dragging = false;
-  double _dragProgress = 0.0;
-
-  double get displayProgress =>
-      _dragging ? _dragProgress : _progress.clamp(0.0, 1.0);
-  bool get dragging => _dragging;
-  double get dragProgress => _dragProgress;
-
-  void update(double progress) {
-    _progress = progress;
-    notifyListeners();
-  }
-
-  void setDrag(bool dragging, double progress) {
-    _dragging = dragging;
-    _dragProgress = progress;
-    notifyListeners();
-  }
-}
-
-class _BlockNotifier extends ChangeNotifier {
-  static const int bins = 64;
-  static const int _lutSize = 1024;
-
-  static final Float32List _pow10Lut = Float32List(_lutSize);
-  static bool _lutReady = false;
-
-  static void _initLut() {
-    if (_lutReady) return;
-    for (var i = 0; i < _lutSize; i++) {
-      _pow10Lut[i] = math.pow(i / (_lutSize - 1), 2.0).toDouble();
-    }
-    _lutReady = true;
-  }
-
-  final Float32List smoothed = Float32List(bins);
-
-  double totalEnergy = 0.0;
-  bool _fadingOut = false;
-  bool _dirty = false;
-
-  // ── Transition buffer ──────────────────────────────────────────────
-  static const int _transitionCapacity = 20; // ~150ms at 8ms emit interval
-  final List<Float32List> _transitionBuffer = List<Float32List>.generate(
-    _transitionCapacity,
-    (_) => Float32List(bins),
-  );
-  int _transitionBufferIndex = 0;
-  bool _fadingIn = false;
-  int _fadeStep = 0;
-  int _fadeTotal = 0;
-  int _fadeOutFrames = 0;
-
-  bool get hasEnergy => totalEnergy > 0.001;
-
-  /// Updates bar data from engine bands. Does NOT call notifyListeners —
-  /// the ticker calls flush() on vsync to trigger the repaint at a
-  /// steady frame rate regardless of stream event timing.
-  void ingest(Float32List bands) {
-    _fadingOut = false;
-    if (bands.isEmpty) return;
-    if (!_lutReady) _initLut();
-
-    // Copy raw frame into transition buffer (circular).
-    // Use setAll instead of sublist to avoid allocation on every frame.
-    final buf = _transitionBuffer[_transitionBufferIndex % _transitionCapacity];
-    final int srcLen = bands.length;
-    final int copyLen = srcLen < bins ? srcLen : bins;
-    buf.setRange(0, copyLen, bands);
-    if (copyLen < bins) {
-      buf.fillRange(copyLen, bins, 0.0);
-    }
-    _transitionBufferIndex++;
-
-    double energy = 0.0;
-    final int n = srcLen < bins ? srcLen : bins;
-    for (var i = 0; i < n; i++) {
-      final idx = (bands[i].clamp(0.0, 1.0) * (_lutSize - 1)).round();
-      smoothed[i] = _pow10Lut[idx];
-      energy += smoothed[i];
-    }
-    for (var i = n; i < bins; i++) {
-      smoothed[i] = 0.0;
-    }
-
-    // Handle fade-in blending.
-    if (_fadingIn) {
-      _fadeStep++;
-      if (_fadeStep >= _fadeTotal) {
-        _fadingIn = false;
-      } else {
-        final blendFactor = _fadeStep / _fadeTotal;
-        for (var i = 0; i < n; i++) {
-          final idx = (bands[i].clamp(0.0, 1.0) * (_lutSize - 1)).round();
-          final liveV = _pow10Lut[idx];
-          smoothed[i] = liveV * blendFactor;
-        }
-        energy = smoothed.take(n).fold(0.0, (a, b) => a + b);
-        totalEnergy = energy / bins;
-        _dirty = true;
-        return;
-      }
-    }
-
-    totalEnergy = energy / bins;
-    _dirty = true;
-  }
-
-  /// Called by the ticker on every vsync. Fires notifyListeners only if
-  /// data changed since last flush — guarantees frame-aligned repaints
-  /// at a steady 60 fps regardless of stream event timing.
-  void flush() {
-    if (_fadingOut) {
-      _tickFadeOut();
-      return;
-    }
-    if (_dirty) {
-      _dirty = false;
-      notifyListeners();
-    }
-  }
-
-  /// Start the fade-out animation (called when audio goes silent).
-  void startFadeOut() {
-    _fadingOut = true;
-    _fadingIn = false;
-    _dirty = false;
-    _fadeOutFrames = 0;
-  }
-
-  void _tickFadeOut() {
-    if (_fadeOutFrames < _transitionCapacity) {
-      final k = _fadeOutFrames;
-      final bufferFrame =
-          _transitionBuffer[(_transitionBufferIndex + k) % _transitionCapacity];
-      final fadeFactor = 1.0 - (k / _transitionCapacity);
-      double energy = 0.0;
-      for (var i = 0; i < bins; i++) {
-        smoothed[i] = bufferFrame[i] * fadeFactor;
-        energy += smoothed[i];
-      }
-      totalEnergy = energy / bins;
-      notifyListeners();
-      _fadeOutFrames++;
-    } else {
-      for (var i = 0; i < bins; i++) {
-        smoothed[i] = 0.0;
-      }
-      totalEnergy = 0.0;
-      notifyListeners();
-      _fadingOut = false;
-      _fadingIn = true;
-      _fadeStep = 0;
-      _fadeTotal = 6; // ~50ms at 8ms emit
-    }
-  }
-
-  void clearTarget() {
-    for (var i = 0; i < bins; i++) {
-      smoothed[i] = 0.0;
-    }
-    totalEnergy = 0.0;
-    notifyListeners();
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Painters
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _CombinedBarPainter extends CustomPainter {
-  _CombinedBarPainter({
-    required this.fftNotifier,
-    required this.scrubNotifier,
-    required this.playedColor,
-    required this.unplayedColor,
-  }) : super(repaint: Listenable.merge([fftNotifier, scrubNotifier]));
-  final _BlockNotifier fftNotifier;
-  final _ScrubNotifier scrubNotifier;
-  final Color playedColor;
-  final Color unplayedColor;
-
-  /// Hoisted paint — mutated per frame, never re-allocated.
-  final Paint _paint = Paint()..style = PaintingStyle.fill;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) return;
-
-    final double midY = size.height / 2;
-    final double slotW = size.width / _BlockNotifier.bins;
-    final double barW = (slotW * 0.7).clamp(1.0, 8.0);
-    final double rawFillX = scrubNotifier.displayProgress * size.width;
-    // When FFT bars are active (music is playing), ensure at least the
-    // first bar slot is colored so the visualizer doesn't go fully grey
-    // when position briefly resets to 0 during track transitions.
-    final double fillX = fftNotifier.hasEnergy
-        ? math.max(rawFillX, slotW * 0.75)
-        : (fftNotifier.totalEnergy > 0 ? rawFillX : 0.0);
-    final double maxBarH = midY;
-    final barRadius = Radius.circular(barW / 2);
-
-    final paint = _paint;
-
-    // Path batching: 4 distinct paint states to prevent breaking the
-    // Skia pipeline batch. Grouping by color avoids ~128 individual
-    // drawRRect calls that thrash the GPU state.
-    final topPlayedPath = Path();
-    final topUnplayedPath = Path();
-    final refPlayedPath = Path();
-    final refUnplayedPath = Path();
-
-    for (var i = 0; i < _BlockNotifier.bins; i++) {
-      final level = fftNotifier.smoothed[i];
-      if (level < 0.01) continue;
-
-      final cx = (i + 0.5) * slotW;
-      final x = cx - barW / 2;
-      final barH = (level * maxBarH).clamp(2.0, maxBarH);
-
-      // Fix: Calculates play state natively by comparing bar center to scrub position
-      final isPlayed = cx <= fillX;
-
-      final topRect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(x, midY - barH, barW, barH),
-        barRadius,
-      );
-      final refRect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(x, midY + 2.0, barW, barH * 0.4),
-        barRadius,
-      );
-
-      if (isPlayed) {
-        topPlayedPath.addRRect(topRect);
-        refPlayedPath.addRRect(refRect);
-      } else {
-        topUnplayedPath.addRRect(topRect);
-        refUnplayedPath.addRRect(refRect);
-      }
-    }
-
-    // Render 4 batched draw calls instead of ~128 individual ones.
-    canvas.drawPath(topPlayedPath, paint..color = playedColor);
-    canvas.drawPath(topUnplayedPath, paint..color = unplayedColor);
-    canvas.drawPath(
-      refPlayedPath,
-      paint..color = playedColor.withValues(alpha: 0.35),
-    );
-    canvas.drawPath(
-      refUnplayedPath,
-      paint..color = unplayedColor.withValues(alpha: 0.35),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _CombinedBarPainter old) =>
-      old.playedColor != playedColor || old.unplayedColor != unplayedColor;
-}
-
-class _ScrubOverlayPainter extends CustomPainter {
-  _ScrubOverlayPainter({
-    required this.notifier,
-    required this.playedColor,
-    required this.unplayedColor,
-  }) : super(repaint: notifier);
-  final _ScrubNotifier notifier;
-  final Color playedColor;
-  final Color unplayedColor;
-
-  double? _cachedFillW;
-  Color? _cachedPlayedColor;
-  Shader? _cachedShader;
-
-  // ── Hoisted paint objects — mutated per frame, never re-allocated. ──
-  final Paint _trackBgPaint = Paint();
-  final Paint _tailPaint = Paint();
-  final Paint _glowPaint = Paint();
-  final Paint _hStreakPaint = Paint();
-  final Paint _vStreakPaint = Paint();
-  final Paint _corePaint = Paint()..color = Colors.white;
-
-  // ── Hoisted MaskFilters — only 2 distinct blur radii used. ──
-  static const _blur2 = MaskFilter.blur(BlurStyle.normal, 2.0);
-  MaskFilter _blurOuter = const MaskFilter.blur(BlurStyle.normal, 10.0);
-  bool _lastDrag = false;
-
-  // ── Cached track background geometry (only changes with size). ──
-  Size? _cachedTrackSize;
-  late RRect _cachedTrackRRect;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) return;
-
-    final midY = size.height / 2;
-    final fillW = (notifier.displayProgress * size.width).clamp(
-      0.0,
-      size.width,
-    );
-
-    // 1. Track background.
-    if (_cachedTrackSize != size) {
-      _cachedTrackSize = size;
-      _cachedTrackRRect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(0, midY - 1.5, size.width, 3),
-        const Radius.circular(1.5),
-      );
-    }
-    _trackBgPaint.color = unplayedColor.withValues(alpha: 0.20);
-    canvas.drawRRect(_cachedTrackRRect, _trackBgPaint);
-
-    // 2. Tail — fading gradient from transparent to playedColor.
-    // Only draw if there's actually a filled portion (fillW > 1 px).
-    if (fillW > 1) {
-      if (_cachedShader == null ||
-          _cachedFillW != fillW ||
-          _cachedPlayedColor != playedColor) {
-        _cachedFillW = fillW;
-        _cachedPlayedColor = playedColor;
-        _cachedShader = LinearGradient(
-          colors: [playedColor.withValues(alpha: 0.0), playedColor],
-        ).createShader(Rect.fromLTWH(0, midY - 1.5, fillW, 3));
-      }
-
-      _tailPaint.shader = _cachedShader;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(0, midY - 1.5, fillW, 3),
-          const Radius.circular(1.5),
-        ),
-        _tailPaint,
-      );
-    }
-
-    // 3. Playhead shine — bright star-like point that reads as "shining"
-    // rather than just a soft glow. Layers: outer glow → horizontal
-    // streak → vertical cross-streak → white-hot core.
-    {
-      // Ensure the playhead center is at least the core radius from the
-      // left edge so glow effects aren't clipped by Stack.hardEdge.
-      final cx = math.max(fillW, 2.5);
-      final isDrag = notifier.dragging;
-
-      // Recompute the outer blur only when drag state changes.
-      if (isDrag != _lastDrag) {
-        _lastDrag = isDrag;
-        _blurOuter = MaskFilter.blur(BlurStyle.normal, isDrag ? 14.0 : 10.0);
-      }
-
-      // Outer ambient glow (soft, wide).
-      _glowPaint
-        ..color = playedColor.withValues(alpha: isDrag ? 0.35 : 0.20)
-        ..maskFilter = _blurOuter
-        ..shader = null;
-      canvas.drawCircle(Offset(cx, midY), isDrag ? 28.0 : 16.0, _glowPaint);
-
-      // Horizontal light streak — the main "shine" ray.
-      _hStreakPaint
-        ..color = Colors.white.withValues(alpha: 0.85)
-        ..maskFilter = _blur2
-        ..shader = null;
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: Offset(cx, midY),
-          width: isDrag ? 56.0 : 28.0,
-          height: 2.5,
-        ),
-        _hStreakPaint,
-      );
-
-      // Vertical cross-streak — gives the star/diamond shape.
-      _vStreakPaint
-        ..color = Colors.white.withValues(alpha: 0.6)
-        ..maskFilter = _blur2
-        ..shader = null;
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: Offset(cx, midY),
-          width: 2.5,
-          height: isDrag ? 24.0 : 14.0,
-        ),
-        _vStreakPaint,
-      );
-
-      // White-hot core — always visible, brighter during drag.
-      canvas.drawCircle(Offset(cx, midY), isDrag ? 4.0 : 2.5, _corePaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _ScrubOverlayPainter old) =>
-      old.playedColor != playedColor || old.unplayedColor != unplayedColor;
 }
