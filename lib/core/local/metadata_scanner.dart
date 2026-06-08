@@ -251,7 +251,10 @@ class MetadataScanner {
       // art across all tracks, even if only one has embedded cover art.
       final propagated = await db.propagateAlbumArt();
 
-      afLog('local', 'scanFolder done: $inserted tracks inserted/updated, $propagated tracks got album art');
+      afLog(
+        'local',
+        'scanFolder done: $inserted tracks inserted/updated, $propagated tracks got album art',
+      );
       return inserted;
     } finally {
       _isScanning = false;
@@ -326,7 +329,10 @@ class MetadataScanner {
   /// Checks the parent folder for common artwork filenames (cover.jpg,
   /// folder.jpg, front.jpg, etc.) and caches the first match.
   /// Returns the cached cover path if found, null otherwise.
-  Future<String?> _findFolderArtwork(String audioFileUri, String coverCacheDir) async {
+  Future<String?> _findFolderArtwork(
+    String audioFileUri,
+    String coverCacheDir,
+  ) async {
     // Check if we already have folder artwork for this file's directory
     if (_folderArtworkCache.containsKey(audioFileUri)) {
       return _folderArtworkCache[audioFileUri];
@@ -345,8 +351,13 @@ class MetadataScanner {
           final bytes = await SafPicker.readCoverArt(file.uri);
           if (bytes != null && bytes.isNotEmpty) {
             // Cache using a hash of the parent folder URI
-            final folderHash = sha1.convert(utf8.encode(audioFileUri)).toString();
-            final cachePath = p.join(coverCacheDir, '${folderHash.substring(0, 16)}.jpg');
+            final folderHash = sha1
+                .convert(utf8.encode(audioFileUri))
+                .toString();
+            final cachePath = p.join(
+              coverCacheDir,
+              '${folderHash.substring(0, 16)}.jpg',
+            );
             await File(cachePath).writeAsBytes(bytes);
             _coverCacheManager?.trackAccess(cachePath);
 
@@ -358,7 +369,12 @@ class MetadataScanner {
         }
       }
     } on Exception catch (e, stack) {
-      afLog('local', 'folder artwork search failed', error: e, stackTrace: stack);
+      afLog(
+        'local',
+        'folder artwork search failed',
+        error: e,
+        stackTrace: stack,
+      );
     }
 
     return null;
@@ -367,8 +383,16 @@ class MetadataScanner {
   /// Check if a filename (without extension) is a common artwork filename.
   bool _isArtworkFilename(String name) {
     const coverNames = {
-      'cover', 'folder', 'front', 'album', 'albumart',
-      'albumartsmall', 'thumb', 'thumbnail', 'art', 'image',
+      'cover',
+      'folder',
+      'front',
+      'album',
+      'albumart',
+      'albumartsmall',
+      'thumb',
+      'thumbnail',
+      'art',
+      'image',
     };
     return coverNames.contains(name.toLowerCase());
   }
@@ -376,13 +400,19 @@ class MetadataScanner {
   /// Check if a track has a no-art marker file.
   /// This prevents re-extraction for tracks known to have no embedded art.
   bool _hasNoArtMarker(String trackUri, String coverCacheDir) {
-    final markerPath = p.join(coverCacheDir, '${_coverFilename(trackUri)}.noart');
+    final markerPath = p.join(
+      coverCacheDir,
+      '${_coverFilename(trackUri)}.noart',
+    );
     return File(markerPath).existsSync();
   }
 
   /// Create a no-art marker file for a track.
   void _createNoArtMarker(String trackUri, String coverCacheDir) {
-    final markerPath = p.join(coverCacheDir, '${_coverFilename(trackUri)}.noart');
+    final markerPath = p.join(
+      coverCacheDir,
+      '${_coverFilename(trackUri)}.noart',
+    );
     File(markerPath).writeAsStringSync('');
   }
 }

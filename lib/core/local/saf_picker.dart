@@ -101,7 +101,12 @@ class SafPicker {
           .map((m) => SafFile.fromMap(m.cast<String, dynamic>()))
           .toList(growable: false);
     } on Exception catch (e, stack) {
-      afLog('local', 'listFilesInParentFolder failed', error: e, stackTrace: stack);
+      afLog(
+        'local',
+        'listFilesInParentFolder failed',
+        error: e,
+        stackTrace: stack,
+      );
       return [];
     }
   }

@@ -84,9 +84,9 @@ class TrackRepository {
   /// to load deleted files. The next scan will re-extract cover art for
   /// these tracks.
   Future<int> nullStaleCoverPaths() async {
-    final rows = await (db.select(db.tracks)
-          ..where((t) => t.coverPath.isNotNull()))
-        .get();
+    final rows = await (db.select(
+      db.tracks,
+    )..where((t) => t.coverPath.isNotNull())).get();
 
     int nulled = 0;
     for (final row in rows) {
@@ -113,8 +113,9 @@ class TrackRepository {
   /// even if only one track has embedded cover art.
   Future<int> propagateAlbumArt() async {
     // Get all albums with their tracks' cover_path status
-    final albumRows = await db.customSelect(
-      '''
+    final albumRows = await db
+        .customSelect(
+          '''
       SELECT album, artist, album_artist,
              COUNT(*) as total_tracks,
              SUM(CASE WHEN cover_path IS NOT NULL THEN 1 ELSE 0 END) as tracks_with_art
@@ -123,29 +124,36 @@ class TrackRepository {
       GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
       HAVING tracks_with_art > 0 AND tracks_with_art < total_tracks
       ''',
-      readsFrom: {db.tracks},
-    ).get();
+          readsFrom: {db.tracks},
+        )
+        .get();
 
     int propagated = 0;
 
     for (final albumRow in albumRows) {
       final albumName = albumRow.read<String>('album');
-      final artistName = albumRow.read<String?>('album_artist')?.isNotEmpty == true
+      final artistName =
+          albumRow.read<String?>('album_artist')?.isNotEmpty == true
           ? albumRow.read<String>('album_artist')
           : albumRow.read<String>('artist');
 
       // Find the first track in this album that has cover art
-      final coverTrack = await db.customSelect(
-        '''
+      final coverTrack = await db
+          .customSelect(
+            '''
         SELECT cover_path FROM tracks
         WHERE album = ?1
           AND COALESCE(NULLIF(album_artist, ''), artist) = ?2
           AND cover_path IS NOT NULL
         LIMIT 1
         ''',
-        variables: [Variable<String>(albumName), Variable<String>(artistName)],
-        readsFrom: {db.tracks},
-      ).getSingleOrNull();
+            variables: [
+              Variable<String>(albumName),
+              Variable<String>(artistName),
+            ],
+            readsFrom: {db.tracks},
+          )
+          .getSingleOrNull();
 
       if (coverTrack == null) continue;
 
@@ -168,26 +176,31 @@ class TrackRepository {
       );
 
       // Count updated tracks
-      final countRow = await db.customSelect(
-        '''
+      final countRow = await db
+          .customSelect(
+            '''
         SELECT COUNT(*) as count FROM tracks
         WHERE album = ?1
           AND COALESCE(NULLIF(album_artist, ''), artist) = ?2
           AND cover_path = ?3
         ''',
-        variables: [
-          Variable<String>(albumName),
-          Variable<String>(artistName),
-          Variable<String>(coverPath),
-        ],
-        readsFrom: {db.tracks},
-      ).getSingleOrNull();
+            variables: [
+              Variable<String>(albumName),
+              Variable<String>(artistName),
+              Variable<String>(coverPath),
+            ],
+            readsFrom: {db.tracks},
+          )
+          .getSingleOrNull();
 
       if (countRow != null) {
         final count = countRow.read<int>('count');
         if (count > 0) {
           propagated += count;
-          afLog('local', 'propagated cover art to $count tracks in album: $albumName');
+          afLog(
+            'local',
+            'propagated cover art to $count tracks in album: $albumName',
+          );
         }
       }
     }
