@@ -819,10 +819,10 @@ packages:
     dependency: "direct main"
     description:
       name: mpv_audio_kit
-      sha256: fcce69ad87b27a965ca51016826526af37c4043e689fa87ef00c0ac633199747
+      sha256: fbf770ee2147ff59cb82687ba8354cad8c8ec4b711e593e0cc6dfd68c2f3388b
       url: "https://pub.dev"
     source: hosted
-    version: "0.3.1"
+    version: "0.3.4"
   multicast_dns:
     dependency: "direct main"
     description:

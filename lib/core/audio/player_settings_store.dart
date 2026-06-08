@@ -93,6 +93,9 @@ class PlayerSettingsStore {
   static final kBufferMs = SettingsKey.intKey('af.audio_buffer_ms');
   static final kStreamSilence = SettingsKey.boolKey('af.audio_stream_silence');
   static final kCacheSecs = SettingsKey.intKey('af.cache_secs');
+  static final kCachePauseInitial = SettingsKey.boolKey(
+    'af.cache_pause_initial',
+  );
   static final kReplayGain = SettingsKey.stringKey('af.replay_gain_mode');
   static final kGapless = SettingsKey.stringKey('af.gapless');
   static final kReplayGainPreamp = SettingsKey.doubleKey(
@@ -191,6 +194,9 @@ class PlayerSettingsStore {
 
   static Future<void> saveCacheSecs(int secs) async =>
       saveValue(kCacheSecs, secs);
+
+  static Future<void> saveCachePauseInitial(bool enabled) async =>
+      saveValue(kCachePauseInitial, enabled);
 
   static Future<void> saveReplayGain(ReplayGain mode) async =>
       saveValue(kReplayGain, mode.name);
@@ -542,6 +548,7 @@ class PlayerSettingsStore {
     final bufferMs = p.getInt(kBufferMs.key);
     final streamSilence = p.getBool(kStreamSilence.key);
     final cacheSecs = p.getInt(kCacheSecs.key);
+    final cachePauseInitial = p.getBool(kCachePauseInitial.key);
     final replayGainName = p.getString(kReplayGain.key);
     final gaplessName = p.getString(kGapless.key);
     final prefetch = p.getBool(kPrefetchPlaylist.key);
@@ -605,6 +612,16 @@ class PlayerSettingsStore {
               mode: Cache.yes,
               secs: Duration(seconds: cacheSecs),
             ),
+          );
+        }),
+      );
+    }
+
+    if (cachePauseInitial != null) {
+      futures.add(
+        tryApply('cachePauseInitial=$cachePauseInitial', () async {
+          await svc.setCache(
+            svc.cacheSettings.copyWith(pauseInitial: cachePauseInitial),
           );
         }),
       );

@@ -55,20 +55,26 @@ class YouTubeMusicClient implements MusicBackend {
   }
 
   /// Fetches home page content via InnerTube browse API.
-  Future<YouTubeHomeContent> browseHome({String? params, String? continuation}) async {
+  Future<YouTubeHomeContent> browseHome({
+    String? params,
+    String? continuation,
+  }) async {
     final region = _countryCode;
-    afLog('aetherfin:youtube', 'browseHome: region=$region, params=$params, continuation=$continuation');
+    afLog(
+      'aetherfin:youtube',
+      'browseHome: region=$region, params=$params, continuation=$continuation',
+    );
 
-    final response = await _innertube.browseHome(params: params, continuation: continuation);
+    final response = await _innertube.browseHome(
+      params: params,
+      continuation: continuation,
+    );
     if (response == null || response.sections.isEmpty) {
       return YouTubeHomeContent.empty();
     }
 
     final sections = response.sections
-        .map((s) => YouTubeHomeSection(
-              title: s.title,
-              items: s.items,
-            ))
+        .map((s) => YouTubeHomeSection(title: s.title, items: s.items))
         .toList();
 
     afLog(
@@ -190,10 +196,8 @@ class YouTubeMusicClient implements MusicBackend {
   }
 
   @override
-  Future<List<AfAlbum>> albumsByGenre(
-    String genre, {
-    int limit = 200,
-  }) async => [];
+  Future<List<AfAlbum>> albumsByGenre(String genre, {int limit = 200}) async =>
+      [];
 
   @override
   Future<({AfPlaylist playlist, List<AfTrack> tracks})?> playlist(
@@ -334,13 +338,19 @@ class YouTubeMusicClient implements MusicBackend {
         VideoId(videoId),
         ytClients: [YoutubeApiClient.safari, YoutubeApiClient.androidVr],
       );
-      afLog('aetherfin:youtube', 'manifest OK: audioOnly=${manifest.audioOnly.length} muxed=${manifest.muxed.length}');
+      afLog(
+        'aetherfin:youtube',
+        'manifest OK: audioOnly=${manifest.audioOnly.length} muxed=${manifest.muxed.length}',
+      );
 
       // Prefer muxed (audio+video in one file) — most compatible with mpv.
       if (manifest.muxed.isNotEmpty) {
         final best = manifest.muxed.withHighestBitrate();
         final url = best.url.toString();
-        afLog('aetherfin:youtube', 'Using muxed: ${best.container} bitrate=${best.bitrate} url=${url.substring(0, 80)}');
+        afLog(
+          'aetherfin:youtube',
+          'Using muxed: ${best.container} bitrate=${best.bitrate} url=${url.substring(0, 80)}',
+        );
         return url;
       }
 
@@ -348,13 +358,20 @@ class YouTubeMusicClient implements MusicBackend {
       if (manifest.audioOnly.isNotEmpty) {
         final best = manifest.audioOnly.withHighestBitrate();
         final url = best.url.toString();
-        afLog('aetherfin:youtube', 'Using audioOnly: ${best.container} bitrate=${best.bitrate} url=${url.substring(0, 80)}');
+        afLog(
+          'aetherfin:youtube',
+          'Using audioOnly: ${best.container} bitrate=${best.bitrate} url=${url.substring(0, 80)}',
+        );
         return url;
       }
 
       throw StateError('No streams available for $videoId');
     } catch (e) {
-      afLog('aetherfin:error', 'resolveStreamUrl failed for $videoId', error: e);
+      afLog(
+        'aetherfin:error',
+        'resolveStreamUrl failed for $videoId',
+        error: e,
+      );
       rethrow;
     }
   }

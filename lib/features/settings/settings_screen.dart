@@ -162,8 +162,8 @@ class SettingsScreen extends ConsumerWidget {
                     subtitle: isLocal
                         ? 'Currently: Local files'
                         : mode == AppMode.youtubeMusic
-                            ? 'Currently: YouTube Music'
-                            : 'Currently: Server',
+                        ? 'Currently: YouTube Music'
+                        : 'Currently: Server',
                     onTap: () async {
                       final confirmed = await showBlurDialog<bool>(
                         context: context,
@@ -341,6 +341,29 @@ class SettingsScreen extends ConsumerWidget {
                         onChanged: (v) {
                           unawaited(svc.setAudioStreamSilence(v));
                           unawaited(PlayerSettingsStore.saveStreamSilence(v));
+                        },
+                      );
+                    },
+                  ),
+                  StreamBuilder<bool>(
+                    stream: svc.cacheStream.map((c) => c.pauseInitial),
+                    initialData: svc.cacheSettings.pauseInitial,
+                    builder: (context, snap) {
+                      final enabled = snap.data ?? false;
+                      return SettingsSwitchTile(
+                        icon: LucideIcons.loader,
+                        title: 'Buffer before playing',
+                        subtitle: 'Smoother start on streams',
+                        value: enabled,
+                        onChanged: (v) {
+                          unawaited(
+                            svc.setCache(
+                              svc.cacheSettings.copyWith(pauseInitial: v),
+                            ),
+                          );
+                          unawaited(
+                            PlayerSettingsStore.saveCachePauseInitial(v),
+                          );
                         },
                       );
                     },

@@ -177,8 +177,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   );
                 },
-                loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-                error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+                loading: () =>
+                    const SliverToBoxAdapter(child: SizedBox.shrink()),
+                error: (_, _) =>
+                    const SliverToBoxAdapter(child: SizedBox.shrink()),
               ),
 
               // Dynamic Home Sections
@@ -214,8 +216,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         // Determine if it's a song-only section.
                         if (section.items.isNotEmpty &&
-                            section.items.every((item) =>
-                                item.type == InnerTubeItemType.song))
+                            section.items.every(
+                              (item) => item.type == InnerTubeItemType.song,
+                            ))
                           _YouTubeSongGrid(items: section.items)
                         else
                           _YouTubeHomeTileList(items: section.items),
@@ -1167,7 +1170,6 @@ class _GlassSearchButton extends StatelessWidget {
   }
 }
 
-
 // ── Metrolist Ported Widgets ───────────────────────────────────────────
 
 class _YouTubeChipsRow extends ConsumerWidget {
@@ -1204,7 +1206,8 @@ class _YouTubeChipsRow extends ConsumerWidget {
                 ref.read(youtubeHomeParamsProvider.notifier).state = null;
               } else {
                 ref.read(youtubeSelectedChipProvider.notifier).state = chip;
-                ref.read(youtubeHomeParamsProvider.notifier).state = chip.params;
+                ref.read(youtubeHomeParamsProvider.notifier).state =
+                    chip.params;
               }
             },
           );
@@ -1223,7 +1226,8 @@ class _YouTubeSongGrid extends ConsumerWidget {
     const double rowHeight = 72.0;
     final rows = math.min(4, items.length);
     if (rows == 0) return const SizedBox.shrink();
-    final double gridHeight = rowHeight * rows + (rows > 1 ? (rows - 1) * 8.0 : 0.0);
+    final double gridHeight =
+        rowHeight * rows + (rows > 1 ? (rows - 1) * 8.0 : 0.0);
     return SizedBox(
       height: gridHeight,
       child: GridView.builder(
@@ -1396,12 +1400,16 @@ class _YouTubeHomeTile extends StatelessWidget {
             AspectRatio(
               aspectRatio: 1,
               child: ClipRRect(
-                borderRadius: isArtist ? BorderRadius.circular(70) : AfRadii.borderMd,
+                borderRadius: isArtist
+                    ? BorderRadius.circular(70)
+                    : AfRadii.borderMd,
                 child: item.thumbnailUrl.isNotEmpty
                     ? Artwork(
                         url: item.thumbnailUrl,
                         size: 140,
-                        radius: isArtist ? BorderRadius.circular(70) : AfRadii.borderMd,
+                        radius: isArtist
+                            ? BorderRadius.circular(70)
+                            : AfRadii.borderMd,
                       )
                     : Container(
                         color: AfColors.surfaceHigh,

@@ -10,11 +10,8 @@ class YouTubeHomeContent {
     this.continuation,
   });
 
-  factory YouTubeHomeContent.empty() => const YouTubeHomeContent(
-        sections: [],
-        chips: [],
-        region: 'US',
-      );
+  factory YouTubeHomeContent.empty() =>
+      const YouTubeHomeContent(sections: [], chips: [], region: 'US');
 
   /// All sections from the home page (e.g. "Listen again", "Trending").
   final List<YouTubeHomeSection> sections;
@@ -32,22 +29,21 @@ class YouTubeHomeContent {
   List<AfTrack> get trendingTracks => sections
       .expand((s) => s.items)
       .where((item) => item.type == InnerTubeItemType.song)
-      .map((item) => AfTrack(
-            id: item.id,
-            title: item.title,
-            artistName: item.subtitle,
-            albumName: '',
-            imageUrl: item.thumbnailUrl,
-          ))
+      .map(
+        (item) => AfTrack(
+          id: item.id,
+          title: item.title,
+          artistName: item.subtitle,
+          albumName: '',
+          imageUrl: item.thumbnailUrl,
+        ),
+      )
       .toList();
 }
 
 /// A single section on the YouTube Music home page.
 class YouTubeHomeSection {
-  const YouTubeHomeSection({
-    required this.title,
-    required this.items,
-  });
+  const YouTubeHomeSection({required this.title, required this.items});
 
   final String title;
   final List<InnerTubeItem> items;
@@ -55,13 +51,14 @@ class YouTubeHomeSection {
   /// Helper to map back to tracks for backward compatibility.
   List<AfTrack> get tracks => items
       .where((item) => item.type == InnerTubeItemType.song)
-      .map((item) => AfTrack(
-            id: item.id,
-            title: item.title,
-            artistName: item.subtitle,
-            albumName: '',
-            imageUrl: item.thumbnailUrl,
-          ))
+      .map(
+        (item) => AfTrack(
+          id: item.id,
+          title: item.title,
+          artistName: item.subtitle,
+          albumName: '',
+          imageUrl: item.thumbnailUrl,
+        ),
+      )
       .toList();
 }
-

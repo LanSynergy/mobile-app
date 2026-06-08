@@ -381,9 +381,9 @@ class AfPlayerService {
     afLog('audio', 'demuxerMaxBackBytes=${bytes ~/ (1024 * 1024)} MiB');
   }
 
-  Future<void> setDemuxerReadaheadSecs(int secs) async {
+  Future<void> setDemuxerReadaheadSecs(Duration secs) async {
     await _player.setDemuxerReadaheadSecs(secs);
-    afLog('audio', 'demuxerReadaheadSecs=$secs');
+    afLog('audio', 'demuxerReadaheadSecs=${secs.inSeconds}s');
   }
 
   Future<void> setNetworkTimeout(Duration timeout) async {
@@ -812,6 +812,38 @@ class AfPlayerService {
       _audioDeviceManager.nudge();
     } catch (e, stack) {
       afLog('audio', 'seek failed', error: e, stackTrace: stack);
+    }
+  }
+
+  /// Seek to a percentage of the track duration.
+  ///
+  /// [percent] is clamped to 0.0–100.0. When [relative] is `true`, the
+  /// seek is relative to the current position. When [exact] is `true`,
+  /// sample-accurate seeking is used (slower but precise).
+  Future<void> seekToPercent(
+    double percent, {
+    bool relative = false,
+    bool exact = false,
+  }) async {
+    if (_disposed) return;
+    final clamped = percent.clamp(0.0, 100.0);
+    try {
+      await _player.seekToPercent(clamped, relative: relative, exact: exact);
+      _updateMediaSession();
+      _audioDeviceManager.nudge();
+    } catch (e, stack) {
+      afLog('audio', 'seekToPercent failed', error: e, stackTrace: stack);
+    }
+  }
+
+  /// Undo the last seek operation (mpv's `revert-seek`).
+  Future<void> revertSeek() async {
+    if (_disposed) return;
+    try {
+      await _player.revertSeek();
+      _updateMediaSession();
+    } catch (e, stack) {
+      afLog('audio', 'revertSeek failed', error: e, stackTrace: stack);
     }
   }
 

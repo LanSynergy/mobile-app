@@ -37,10 +37,14 @@ class YouTubeAuthNotifier extends Notifier<YouTubeAuth?> {
 }
 
 /// Selected YouTube home chip parameters.
-final youtubeHomeParamsProvider = StateProvider.autoDispose<String?>((ref) => null);
+final youtubeHomeParamsProvider = StateProvider.autoDispose<String?>(
+  (ref) => null,
+);
 
 /// Selected chip (if any).
-final youtubeSelectedChipProvider = StateProvider.autoDispose<InnerTubeChip?>((ref) => null);
+final youtubeSelectedChipProvider = StateProvider.autoDispose<InnerTubeChip?>(
+  (ref) => null,
+);
 
 /// YouTube Music home page content (trending, popular, etc.).
 class YouTubeHomeNotifier extends AutoDisposeAsyncNotifier<YouTubeHomeContent> {
@@ -68,16 +72,20 @@ class YouTubeHomeNotifier extends AutoDisposeAsyncNotifier<YouTubeHomeContent> {
 
     _isLoadingMore = true;
     try {
-      final nextContent = await backend.browseHome(continuation: current.continuation);
+      final nextContent = await backend.browseHome(
+        continuation: current.continuation,
+      );
       if (nextContent.sections.isEmpty && nextContent.continuation == null) {
         return;
       }
-      state = AsyncValue.data(YouTubeHomeContent(
-        sections: [...current.sections, ...nextContent.sections],
-        chips: current.chips,
-        region: current.region,
-        continuation: nextContent.continuation,
-      ));
+      state = AsyncValue.data(
+        YouTubeHomeContent(
+          sections: [...current.sections, ...nextContent.sections],
+          chips: current.chips,
+          region: current.region,
+          continuation: nextContent.continuation,
+        ),
+      );
     } finally {
       _isLoadingMore = false;
     }
@@ -86,5 +94,5 @@ class YouTubeHomeNotifier extends AutoDisposeAsyncNotifier<YouTubeHomeContent> {
 
 final youtubeHomeProvider =
     AsyncNotifierProvider.autoDispose<YouTubeHomeNotifier, YouTubeHomeContent>(
-  YouTubeHomeNotifier.new,
-);
+      YouTubeHomeNotifier.new,
+    );

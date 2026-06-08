@@ -31,13 +31,23 @@ class PlayActions {
 
       // YouTube Music: resolve actual stream URL via youtube_explode.
       if (backend is YouTubeMusicClient) {
-        afLog('aetherfin:youtube', 'resolveStreamUrl start: id=${t.id} title=${t.title}');
+        afLog(
+          'aetherfin:youtube',
+          'resolveStreamUrl start: id=${t.id} title=${t.title}',
+        );
         try {
           final url = await backend.resolveStreamUrl(t.id);
-          afLog('aetherfin:youtube', 'resolveStreamUrl OK: url=${url.substring(0, 100)}');
+          afLog(
+            'aetherfin:youtube',
+            'resolveStreamUrl OK: url=${url.substring(0, 100)}',
+          );
           return url;
         } catch (e) {
-          afLog('aetherfin:error', 'resolveStreamUrl failed for id=${t.id}', error: e);
+          afLog(
+            'aetherfin:error',
+            'resolveStreamUrl failed for id=${t.id}',
+            error: e,
+          );
           return 'about:blank';
         }
       }
@@ -120,10 +130,17 @@ class PlayActions {
         afLog('aetherfin:youtube', 'resolveStreamUrl (playSingle): id=${t.id}');
         try {
           final url = await backend.resolveStreamUrl(t.id);
-          afLog('aetherfin:youtube', 'resolveStreamUrl (playSingle) OK: ${url.substring(0, 100)}');
+          afLog(
+            'aetherfin:youtube',
+            'resolveStreamUrl (playSingle) OK: ${url.substring(0, 100)}',
+          );
           return url;
         } catch (e) {
-          afLog('aetherfin:error', 'resolveStreamUrl (playSingle) failed for id=${t.id}', error: e);
+          afLog(
+            'aetherfin:error',
+            'resolveStreamUrl (playSingle) failed for id=${t.id}',
+            error: e,
+          );
           return 'about:blank';
         }
       }

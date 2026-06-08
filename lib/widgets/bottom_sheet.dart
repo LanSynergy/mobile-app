@@ -176,8 +176,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                         onVerticalDragEnd: widget.enableDrag
                             ? (details) {
                                 final vy = details.primaryVelocity ?? 0;
-                                if (vy > 300 ||
-                                    (vy > 0 && slideOffset > 0.3)) {
+                                if (vy > 300 || (vy > 0 && slideOffset > 0.3)) {
                                   _dismiss();
                                 }
                               }
@@ -213,8 +212,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                                       width: 40,
                                       height: 4,
                                       decoration: BoxDecoration(
-                                        color:
-                                            AfColors.textTertiary.withValues(
+                                        color: AfColors.textTertiary.withValues(
                                           alpha: 0.4,
                                         ),
                                         borderRadius: BorderRadius.circular(

@@ -601,7 +601,10 @@ class _EqExpandableContentState extends State<EqExpandableContent>
         child: Align(
           alignment: Alignment.topCenter,
           heightFactor: _heightFactor.value,
-          child: Opacity(opacity: _opacity.value.clamp(0.001, 0.999), child: child),
+          child: Opacity(
+            opacity: _opacity.value.clamp(0.001, 0.999),
+            child: child,
+          ),
         ),
       ),
       child: widget.child,

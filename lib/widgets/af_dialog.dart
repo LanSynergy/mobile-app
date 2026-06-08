@@ -65,9 +65,7 @@ class _BlurDialogOverlay<T> extends StatelessWidget {
       builder: (context, _) {
         final t = animation.value;
         final blurSigma = lerpDouble(1, 24, t)!;
-        final opacity = Curves.easeOut
-            .transform(t)
-            .clamp(0.001, 0.999);
+        final opacity = Curves.easeOut.transform(t).clamp(0.001, 0.999);
         final scale = lerpDouble(0.92, 1.0, Curves.easeOut.transform(t))!;
 
         return Material(

@@ -185,8 +185,9 @@ void main() {
           //   final medias = <Media>[\n  Media(...)
           final hasSingleMediaVariable =
               normalized.startsWith('openAll(medias') &&
-              RegExp(r'final medias\s*=\s*<Media>\[\s*Media\(')
-                  .hasMatch(content);
+              RegExp(
+                r'final medias\s*=\s*<Media>\[\s*Media\(',
+              ).hasMatch(content);
 
           expect(
             hasSingleMediaLiteral || hasSingleMediaVariable,

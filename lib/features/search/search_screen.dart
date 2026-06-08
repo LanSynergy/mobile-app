@@ -139,83 +139,83 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       backgroundColor: AfColors.surfaceCanvas,
       body: SafeArea(
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AfSpacing.s16,
-              AfSpacing.s8,
-              AfSpacing.s16,
-              AfSpacing.s16,
-            ),
-            child: ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [spectral.primary, spectral.secondary],
-              ).createShader(bounds),
-              child: Text(
-                'Search',
-                style: AfTypography.display.copyWith(color: Colors.white),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                AfSpacing.s8,
+                AfSpacing.s16,
+                AfSpacing.s16,
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-            child: TextField(
-              controller: _controller,
-              autofocus: true,
-              textInputAction: TextInputAction.search,
-              decoration: const InputDecoration(
-                hintText: 'Artists, albums, tracks…',
-                prefixIcon: Icon(
-                  LucideIcons.search,
-                  color: AfColors.textTertiary,
-                  size: 22,
+              child: ShaderMask(
+                shaderCallback: (bounds) => LinearGradient(
+                  colors: [spectral.primary, spectral.secondary],
+                ).createShader(bounds),
+                child: Text(
+                  'Search',
+                  style: AfTypography.display.copyWith(color: Colors.white),
                 ),
               ),
-              onChanged: _onChanged,
-              onSubmitted: (_) {
-                // Commit immediately on keyboard search action.
-                _debounceTimer?.cancel();
-                final normalized = _controller.text.trim().toLowerCase();
-                if (normalized.length >= _kMinQueryLength) {
-                  _queryNotifier.value = normalized;
-                  unawaited(
-                    ref.read(searchHistoryProvider.notifier).push(normalized),
-                  );
-                }
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+              child: TextField(
+                controller: _controller,
+                autofocus: true,
+                textInputAction: TextInputAction.search,
+                decoration: const InputDecoration(
+                  hintText: 'Artists, albums, tracks…',
+                  prefixIcon: Icon(
+                    LucideIcons.search,
+                    color: AfColors.textTertiary,
+                    size: 22,
+                  ),
+                ),
+                onChanged: _onChanged,
+                onSubmitted: (_) {
+                  // Commit immediately on keyboard search action.
+                  _debounceTimer?.cancel();
+                  final normalized = _controller.text.trim().toLowerCase();
+                  if (normalized.length >= _kMinQueryLength) {
+                    _queryNotifier.value = normalized;
+                    unawaited(
+                      ref.read(searchHistoryProvider.notifier).push(normalized),
+                    );
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: AfSpacing.s12),
+            // Filter chips — only visible once a query is committed.
+            ValueListenableBuilder<String>(
+              valueListenable: _queryNotifier,
+              builder: (context, query, _) {
+                if (query.isEmpty) return const SizedBox.shrink();
+                return ValueListenableBuilder<SearchFilter>(
+                  valueListenable: _filterNotifier,
+                  builder: (context, filter, _) => _SearchFilterChips(
+                    selected: filter,
+                    onChanged: (next) => _filterNotifier.value = next,
+                  ),
+                );
               },
             ),
-          ),
-          const SizedBox(height: AfSpacing.s12),
-          // Filter chips — only visible once a query is committed.
-          ValueListenableBuilder<String>(
-            valueListenable: _queryNotifier,
-            builder: (context, query, _) {
-              if (query.isEmpty) return const SizedBox.shrink();
-              return ValueListenableBuilder<SearchFilter>(
-                valueListenable: _filterNotifier,
-                builder: (context, filter, _) => _SearchFilterChips(
-                  selected: filter,
-                  onChanged: (next) => _filterNotifier.value = next,
-                ),
-              );
-            },
-          ),
-          Expanded(
-            // ValueListenableBuilder: only this subtree rebuilds on query change.
-            child: ValueListenableBuilder<String>(
-              valueListenable: _queryNotifier,
-              builder: (context, query, _) => query.isEmpty
-                  ? _SearchIdleState(onRecent: _runRecent)
-                  : ValueListenableBuilder<SearchFilter>(
-                      valueListenable: _filterNotifier,
-                      builder: (context, filter, _) =>
-                          _LiveSearchResults(query: query, filter: filter),
-                    ),
+            Expanded(
+              // ValueListenableBuilder: only this subtree rebuilds on query change.
+              child: ValueListenableBuilder<String>(
+                valueListenable: _queryNotifier,
+                builder: (context, query, _) => query.isEmpty
+                    ? _SearchIdleState(onRecent: _runRecent)
+                    : ValueListenableBuilder<SearchFilter>(
+                        valueListenable: _filterNotifier,
+                        builder: (context, filter, _) =>
+                            _LiveSearchResults(query: query, filter: filter),
+                      ),
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }

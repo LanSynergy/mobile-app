@@ -180,7 +180,6 @@ class WelcomeScreen extends ConsumerWidget {
                           }
                         },
                       ),
-
                     ],
                   ),
                 ),
