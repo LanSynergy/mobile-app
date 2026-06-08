@@ -1,3 +1,6 @@
+// ignore_for_file: close_sinks
+// StreamControllers are closed via StreamControllers.dispose() in tearDown.
+
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
