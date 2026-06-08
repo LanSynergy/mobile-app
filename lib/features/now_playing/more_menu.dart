@@ -1,20 +1,20 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart' show Device;
 
 import '../../core/audio/play_actions.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
-import '../../widgets/af_dialog.dart';
 import '../../widgets/bottom_sheet.dart';
 import '../../widgets/save_to_playlist_sheet.dart';
 import '../../widgets/track_details_sheet.dart';
+import 'menu/ab_loop_dialog.dart';
+import 'menu/audio_output_picker.dart';
+import 'menu/playback_speed_dialog.dart';
+import 'menu/volume_dialog.dart';
 import 'sleep_timer_dialog.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -126,7 +126,7 @@ class _MoreMenu extends StatelessWidget {
           label: isSaved ? 'Saved' : 'Save',
           onTap: () {
             dismiss();
-            showSaveDialog(this.context, ref);
+            _showSaveDialog(this.context, ref);
           },
         ),
         MoreItem(
@@ -192,7 +192,7 @@ class _MoreMenu extends StatelessWidget {
           label: 'Sleep timer',
           onTap: () {
             dismiss();
-            showSleepDialog(this.context, ref);
+            _showSleepDialog(this.context, ref);
           },
         ),
         MoreItem(
@@ -261,6 +261,31 @@ class _MoreMenu extends StatelessWidget {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save dialog (thin wrapper)
+// ─────────────────────────────────────────────────────────────────────────────
+
+void _showSaveDialog(BuildContext context, WidgetRef ref) {
+  final track = ref.read(currentTrackProvider);
+  if (track == null) return;
+  showSaveToPlaylistSheet(context, ref, track);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sleep dialog (thin wrapper)
+// ─────────────────────────────────────────────────────────────────────────────
+
+void _showSleepDialog(BuildContext context, WidgetRef ref) {
+  showBlurBottomSheet<void>(
+    context: context,
+    builder: (context, dismiss) => SleepTimerDialogContent(dismiss: dismiss),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Details view
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _DetailsView extends ConsumerWidget {
   const _DetailsView({required this.track, required this.onBack});
@@ -331,415 +356,6 @@ class _TrackDetailsWrapperState extends State<_TrackDetailsWrapper> {
         ],
       ),
     );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Volume dialog
-// ─────────────────────────────────────────────────────────────────────────────
-
-void showVolumeDialog(BuildContext context, WidgetRef ref) {
-  final svc = ref.read(playerServiceProvider);
-  final spectral = ref.read(currentSpectralProvider);
-  double volume = svc.volume;
-  bool muted = svc.isMuted;
-  showBlurDialog<void>(
-    context: context,
-    builder: (context, dismiss) => StatefulBuilder(
-      builder: (ctx, setDialogState) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Text('Volume', style: AfTypography.titleMedium),
-              const Spacer(),
-              IconButton(
-                icon: Icon(
-                  muted ? LucideIcons.volumeX : LucideIcons.volume2,
-                  color: AfColors.textPrimary,
-                  size: 24,
-                ),
-                onPressed: () {
-                  muted = !muted;
-                  svc.setMute(muted);
-                  setDialogState(() {});
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: AfSpacing.s16),
-          SliderTheme(
-            data: SliderThemeData(
-              activeTrackColor: spectral.primary,
-              inactiveTrackColor: AfColors.surfaceHigh,
-              thumbColor: spectral.primary,
-              overlayColor: spectral.primary.withValues(alpha: 0.1),
-            ),
-            child: Slider(
-              value: volume.clamp(0, 150),
-              min: 0,
-              max: 150,
-              divisions: 30,
-              label: '${volume.round()}%',
-              onChanged: (v) {
-                volume = v;
-                svc.setVolume(v);
-                setDialogState(() {});
-              },
-            ),
-          ),
-          Text(
-            '${volume.round()}%',
-            style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Audio delay dialog
-// ─────────────────────────────────────────────────────────────────────────────
-
-void showAudioDelayDialog(BuildContext context, WidgetRef ref) {
-  final svc = ref.read(playerServiceProvider);
-  final spectral = ref.read(currentSpectralProvider);
-  double delayMs = svc.audioDelay.inMilliseconds.toDouble();
-  showBlurDialog<void>(
-    context: context,
-    builder: (context, dismiss) => StatefulBuilder(
-      builder: (ctx, setDialogState) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('Audio delay', style: AfTypography.titleMedium),
-          const SizedBox(height: AfSpacing.s12),
-          Text(
-            'Shift audio timing for Bluetooth sync',
-            style: AfTypography.bodySmall.copyWith(
-              color: AfColors.textTertiary,
-            ),
-          ),
-          const SizedBox(height: AfSpacing.s16),
-          SliderTheme(
-            data: SliderThemeData(
-              activeTrackColor: spectral.primary,
-              inactiveTrackColor: AfColors.surfaceHigh,
-              thumbColor: spectral.primary,
-              overlayColor: spectral.primary.withValues(alpha: 0.1),
-            ),
-            child: Slider(
-              value: delayMs.clamp(-500, 500),
-              min: -500,
-              max: 500,
-              divisions: 20,
-              label: '${delayMs.round()} ms',
-              onChanged: (v) {
-                delayMs = v;
-                svc.setAudioDelay(Duration(milliseconds: v.round()));
-                setDialogState(() {});
-              },
-            ),
-          ),
-          Text(
-            '${delayMs.round()} ms',
-            style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
-          ),
-          const SizedBox(height: AfSpacing.s24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () {
-                  delayMs = 0;
-                  svc.setAudioDelay(Duration.zero);
-                  setDialogState(() {});
-                },
-                child: const Text('Reset'),
-              ),
-              const SizedBox(width: AfSpacing.s8),
-              TextButton(onPressed: () => dismiss(), child: const Text('Done')),
-            ],
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// A-B Loop dialog
-// ─────────────────────────────────────────────────────────────────────────────
-
-void showAbLoopDialog(BuildContext context, WidgetRef ref) {
-  final svc = ref.read(playerServiceProvider);
-  final spectral = ref.read(currentSpectralProvider);
-  showBlurDialog<void>(
-    context: context,
-    builder: (context, dismiss) => Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('A-B Loop', style: AfTypography.titleMedium),
-        const SizedBox(height: AfSpacing.s12),
-        Text(
-          'Set markers to loop a section of the track.',
-          style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
-        ),
-        const SizedBox(height: AfSpacing.s16),
-        FilledButton.icon(
-          onPressed: () async {
-            final pos = await svc.getRawPosition();
-            await svc.setAbLoopA(pos);
-            ref.read(abLoopAProvider.notifier).state = pos;
-            dismiss();
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Loop start: ${fmtDuration(pos)}')),
-              );
-            }
-          },
-          icon: const Icon(LucideIcons.flag, size: 18),
-          label: const Text('Set A (start)'),
-          style: FilledButton.styleFrom(
-            backgroundColor: spectral.primary,
-            foregroundColor: AfColors.surfaceCanvas,
-          ),
-        ),
-        const SizedBox(height: AfSpacing.s8),
-        FilledButton.icon(
-          onPressed: () async {
-            final pos = await svc.getRawPosition();
-            await svc.setAbLoopB(pos);
-            ref.read(abLoopBProvider.notifier).state = pos;
-            dismiss();
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Loop end: ${fmtDuration(pos)}')),
-              );
-            }
-          },
-          icon: const Icon(LucideIcons.flag, size: 18),
-          label: const Text('Set B (end)'),
-          style: FilledButton.styleFrom(
-            backgroundColor: spectral.primary,
-            foregroundColor: AfColors.surfaceCanvas,
-          ),
-        ),
-        const SizedBox(height: AfSpacing.s8),
-        OutlinedButton.icon(
-          onPressed: () async {
-            await svc.setAbLoopA(null);
-            await svc.setAbLoopB(null);
-            ref.read(abLoopAProvider.notifier).state = null;
-            ref.read(abLoopBProvider.notifier).state = null;
-            dismiss();
-            if (context.mounted) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('A-B loop cleared')));
-            }
-          },
-          icon: const Icon(LucideIcons.x, size: 18),
-          label: const Text('Clear loop'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AfColors.semanticError,
-            side: const BorderSide(color: AfColors.surfaceHigh),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-String fmtDuration(Duration d) {
-  final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-  final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-  return '$m:$s';
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Save dialog
-// ─────────────────────────────────────────────────────────────────────────────
-
-void showSaveDialog(BuildContext context, WidgetRef ref) {
-  final track = ref.read(currentTrackProvider);
-  if (track == null) return;
-  showSaveToPlaylistSheet(context, ref, track);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Speed dialog
-// ─────────────────────────────────────────────────────────────────────────────
-
-void showSpeedDialog(BuildContext context, WidgetRef ref) {
-  const speeds = <double>[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
-  final current = ref.read(playerServiceProvider).speed;
-  showBlurBottomSheet<void>(
-    context: context,
-    builder: (context, dismiss) => Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AfSpacing.gutterGenerous,
-          ),
-          child: Text('Playback speed', style: AfTypography.titleSmall),
-        ),
-        const SizedBox(height: AfSpacing.s8),
-        for (final s in speeds)
-          ListTile(
-            title: Text(
-              '${s.toStringAsFixed(s == s.roundToDouble() ? 1 : 2)}×',
-              style: AfTypography.bodyMedium,
-            ),
-            trailing: (s - current).abs() < 0.001
-                ? const Icon(LucideIcons.check, size: 20)
-                : null,
-            onTap: () {
-              unawaited(ref.read(playerServiceProvider).setAfSpeed(s));
-              dismiss();
-            },
-          ),
-      ],
-    ),
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sleep dialog
-// ─────────────────────────────────────────────────────────────────────────────
-
-void showSleepDialog(BuildContext context, WidgetRef ref) {
-  showBlurBottomSheet<void>(
-    context: context,
-    builder: (context, dismiss) => SleepTimerDialogContent(dismiss: dismiss),
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Output dialog
-// ─────────────────────────────────────────────────────────────────────────────
-
-void showOutputDialog(BuildContext context, WidgetRef ref) {
-  showBlurBottomSheet<void>(
-    context: context,
-    builder: (context, dismiss) => ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
-      child: OutputDialogContent(dismiss: dismiss),
-    ),
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Output dialog content
-// ─────────────────────────────────────────────────────────────────────────────
-
-class OutputDialogContent extends ConsumerWidget {
-  const OutputDialogContent({super.key, required this.dismiss});
-
-  final void Function() dismiss;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final svc = ref.watch(playerServiceProvider);
-    final spectral = ref.watch(
-      currentSpectralProvider.select((s) => s.primary),
-    );
-
-    return StreamBuilder<List<Device>>(
-      stream: svc.audioDevicesStream,
-      initialData: svc.audioDevices,
-      builder: (context, devicesSnap) {
-        return StreamBuilder<Device>(
-          stream: svc.audioDeviceStream,
-          initialData: svc.audioDevice,
-          builder: (context, activeSnap) {
-            final devices = devicesSnap.data ?? [];
-            final active = activeSnap.data;
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: AfSpacing.s16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AfSpacing.gutterGenerous,
-                    ),
-                    child: Text('Output', style: AfTypography.titleSmall),
-                  ),
-                  const SizedBox(height: AfSpacing.s8),
-                  if (devices.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
-                      child: Text(
-                        'No audio devices found.\nStart playback first.',
-                        style: AfTypography.bodyMedium.copyWith(
-                          color: AfColors.textTertiary,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  else
-                    ...devices.map((device) {
-                      final isActive = active?.name == device.name;
-                      return ListTile(
-                        leading: iconForDevice(
-                          device.description.isNotEmpty
-                              ? device.description
-                              : device.name,
-                          color: isActive ? spectral : AfColors.textSecondary,
-                        ),
-                        title: Text(
-                          device.description.isNotEmpty
-                              ? device.description
-                              : device.name,
-                          style: AfTypography.bodyMedium,
-                        ),
-                        trailing: isActive
-                            ? Icon(LucideIcons.check, color: spectral, size: 20)
-                            : null,
-                        onTap: () async {
-                          await svc.setAudioDevice(device);
-                          dismiss();
-                        },
-                      );
-                    }),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget iconForDevice(String name, {required Color color}) {
-    final n = name.toLowerCase();
-    if (n.contains('bluetooth') || n.contains('bt')) {
-      return Icon(LucideIcons.bluetooth, color: color, size: 22);
-    }
-    if (n.contains('headphone') ||
-        n.contains('headset') ||
-        n.contains('earphone') ||
-        n.contains('airpod')) {
-      return Icon(LucideIcons.headphones, color: color, size: 22);
-    }
-    if (n.contains('speaker')) {
-      return Icon(LucideIcons.speaker, color: color, size: 22);
-    }
-    if (n.contains('hdmi')) {
-      return Icon(LucideIcons.monitor, color: color, size: 22);
-    }
-    if (n.contains('usb')) {
-      return Icon(LucideIcons.usb, color: color, size: 22);
-    }
-    return Icon(LucideIcons.smartphone, color: color, size: 22);
   }
 }
 
