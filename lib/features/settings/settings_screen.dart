@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/audio/offline_cache_service.dart';
 import '../../core/audio/player_settings_store.dart';
 import '../../core/local/app_mode_store.dart';
+import '../../home_widget/home_widget_manager.dart';
 import '../../app/router.dart';
 import '../../build_id.dart';
 import '../../design_tokens/tokens.dart';
@@ -527,22 +528,61 @@ class SettingsScreen extends ConsumerWidget {
                           await secureStorage.deleteAll();
                         } catch (_) {}
 
-                        // ── Step 3: Close and delete database ──
+                        // ── Step 3: Close and delete database + sidecar files ──
                         try {
                           final db = ref.read(appDatabaseProvider);
                           await db.close();
                           final dbFolder =
                               await getApplicationDocumentsDirectory();
-                          final dbFile = File(
-                            p.join(dbFolder.path, 'aetherfin_drift.db'),
+                          final dbBase = p.join(
+                            dbFolder.path,
+                            'aetherfin_drift.db',
                           );
-                          if (dbFile.existsSync()) {
-                            await dbFile.delete();
+                          // Delete main DB and WAL/SHM sidecar files.
+                          for (final suffix in ['', '-shm', '-wal']) {
+                            final f = File('$dbBase$suffix');
+                            if (f.existsSync()) await f.delete();
                           }
                           ref.invalidate(appDatabaseProvider);
                         } catch (_) {}
 
-                        // ── Step 4: Clear Riverpod providers ──
+                        // ── Step 4: Delete all cache directories ──
+                        // Audio cache (offline downloaded tracks)
+                        try {
+                          final supportDir =
+                              await getApplicationSupportDirectory();
+                          final audioCacheDir = Directory(
+                            p.join(supportDir.path, 'audio_cache'),
+                          );
+                          if (await audioCacheDir.exists()) {
+                            await audioCacheDir.delete(recursive: true);
+                          }
+                        } catch (_) {}
+
+                        // Artwork cache (server-mode cover images)
+                        // and local cover cache (extracted from audio files)
+                        try {
+                          final cacheDir =
+                              await getApplicationCacheDirectory();
+                          for (final subdir in [
+                            'artwork_cache',
+                            'local_covers',
+                          ]) {
+                            final dir = Directory(
+                              p.join(cacheDir.path, subdir),
+                            );
+                            if (await dir.exists()) {
+                              await dir.delete(recursive: true);
+                            }
+                          }
+                        } catch (_) {}
+
+                        // ── Step 5: Clear home widget ──
+                        try {
+                          await HomeWidgetManager.clear();
+                        } catch (_) {}
+
+                        // ── Step 6: Clear Riverpod providers ──
                         try {
                           ref.read(appModeProvider.notifier).state = null;
                           ref
@@ -554,7 +594,7 @@ class SettingsScreen extends ConsumerWidget {
                           await ref.read(authProvider.notifier).clear();
                         } catch (_) {}
 
-                        // ── Step 5: Navigate to onboarding ──
+                        // ── Step 7: Navigate to onboarding ──
                         // Use root navigator directly in case the settings
                         // screen was disposed during the clearing steps.
                         if (context.mounted) {
