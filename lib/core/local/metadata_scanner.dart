@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart' show sha1;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/audio/spectral_extractor.dart';
 import '../../utils/log.dart';
 import 'cover_cache_manager.dart';
 import 'local_db.dart';
@@ -18,6 +19,7 @@ class MetadataScanner {
   final LocalDb db;
   bool _isScanning = false;
   CoverCacheManager? _coverCacheManager;
+  final SpectralExtractor _spectralExtractor = SpectralExtractor();
 
   /// Check scanning state to allow UI buttons to show progress or disable themselves.
   bool get isScanning => _isScanning;
@@ -208,6 +210,21 @@ class MetadataScanner {
               _coverCacheManager?.trackAccess(coverFile.path);
             }
 
+            // Generate spectral hue from cover art for instant palette lookup
+            double? spectralHue;
+            if (coverPath != null) {
+              try {
+                spectralHue = await _spectralExtractor.extractHueFromArtwork(coverPath);
+              } on Exception catch (e, stack) {
+                afLog(
+                  'local',
+                  'spectral hue extraction failed for ${file.name}',
+                  error: e,
+                  stackTrace: stack,
+                );
+              }
+            }
+
             batch.add({
               'id': file.uri,
               'title': title,
@@ -225,6 +242,7 @@ class MetadataScanner {
               'codec': meta.codec,
               'bitrate': meta.bitrateKbps,
               'sample_rate': meta.sampleRateHz,
+              'spectral_hue': spectralHue,
             });
 
             inserted++;

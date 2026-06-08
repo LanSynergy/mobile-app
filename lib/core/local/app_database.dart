@@ -25,6 +25,7 @@ class Tracks extends Table {
   TextColumn get codec => text().withDefault(const Constant(''))();
   IntColumn get bitrate => integer().nullable()();
   IntColumn get sampleRate => integer().nullable()();
+  RealColumn get spectralHue => real().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -202,7 +203,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -327,6 +328,15 @@ class AppDatabase extends _$AppDatabase {
           } on Exception {
             // Table may not exist — skip index, no data loss.
           }
+        }
+      }
+      if (from < 13) {
+        // Pre-computed spectral hue for instant palette lookup during playback.
+        // Nullable — only populated for tracks with extracted cover art.
+        try {
+          await m.addColumn(tracks, tracks.spectralHue);
+        } on Exception {
+          // Table may not exist — skip, no data loss.
         }
       }
     },

@@ -344,6 +344,32 @@ class SpectralExtractor {
     if (hue == null) return Spectral.fallback;
     return _buildFromSample(OklchColor(hue.l, hue.c, hue.h));
   }
+
+  /// Extract spectral hue from a local artwork file path.
+  /// Returns the OKLCH hue (0-360) or null if extraction fails.
+  /// Used during scan to pre-compute palettes for instant playback.
+  Future<double?> extractHueFromArtwork(String artworkPath) async {
+    try {
+      final provider = FileImage(File(artworkPath));
+      Spectral result;
+      try {
+        result = await _extractViaIsolate(provider);
+      } catch (_) {
+        result = await _extractMainThread(provider);
+      }
+      // Extract hue from the spectral's energy color
+      final oklch = srgbToOklch(result.energy);
+      return oklch.h;
+    } on Exception catch (e, stack) {
+      afLog(
+        'spectral',
+        'hue extraction failed for $artworkPath',
+        error: e,
+        stackTrace: stack,
+      );
+      return null;
+    }
+  }
 }
 
 class _ScoredColor {

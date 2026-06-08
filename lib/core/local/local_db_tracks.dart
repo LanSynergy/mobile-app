@@ -48,6 +48,7 @@ class TrackRepository {
       codec: Value((track['codec'] as String?) ?? ''),
       bitrate: Value(track['bitrate'] as int?),
       sampleRate: Value(track['sample_rate'] as int?),
+      spectralHue: Value(track['spectral_hue'] as double?),
     );
   }
 
@@ -76,6 +77,14 @@ class TrackRepository {
   Future<void> updateCoverPath(String trackId, String? coverPath) async {
     await (db.update(db.tracks)..where((t) => t.id.equals(trackId))).write(
       TracksCompanion(coverPath: Value(coverPath)),
+    );
+  }
+
+  /// Update only the spectral_hue column for a single track.
+  /// Used to store pre-computed palette hue for instant lookup during playback.
+  Future<void> updateSpectralHue(String trackId, double? hue) async {
+    await (db.update(db.tracks)..where((t) => t.id.equals(trackId))).write(
+      TracksCompanion(spectralHue: Value(hue)),
     );
   }
 
