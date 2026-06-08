@@ -221,7 +221,9 @@ void main() {
             ),
           );
 
-      when(() => mockBackend.instantMix(any(), limit: any(named: 'limit'))).thenAnswer(
+      when(
+        () => mockBackend.instantMix(any(), limit: any(named: 'limit')),
+      ).thenAnswer(
         (_) async => [
           const AfTrack(
             id: 'track-1',

@@ -1,0 +1,768 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+import '../../../core/audio/play_actions.dart';
+import '../../../core/backend/music_backend.dart';
+import '../../../core/jellyfin/models/items.dart';
+import '../../../design_tokens/tokens.dart';
+import '../../../state/lastfm_stats_providers.dart';
+import '../../../state/providers.dart';
+import '../../../utils/display_error.dart';
+import '../../../widgets/artwork.dart';
+import '../../../widgets/af_dialog.dart';
+import '../../../widgets/press_scale.dart';
+import '../../../widgets/section_header.dart';
+import 'lastfm_section.dart';
+
+/// Complete "Listening Stats" section: header + optional CTA + dashboard.
+class ListeningStatsSection extends StatelessWidget {
+  const ListeningStatsSection({super.key, required this.isLastFmConnected});
+
+  final bool isLastFmConnected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(
+            AfSpacing.s16,
+            AfSpacing.s24,
+            AfSpacing.s16,
+            0,
+          ),
+          child: SectionHeader(title: 'Listening Stats', uppercase: true),
+        ),
+        if (!isLastFmConnected)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+            child: LastFmConnectionCTA(),
+          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+          child: StatsDashboard(isLastFmConnected: isLastFmConnected),
+        ),
+      ],
+    );
+  }
+}
+
+/// Dashboard with period selector, tab selector, and top lists.
+class StatsDashboard extends ConsumerWidget {
+  const StatsDashboard({super.key, required this.isLastFmConnected});
+
+  final bool isLastFmConnected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activePeriod = ref.watch(statsPeriodProvider);
+    final activeTab = ref.watch(statsTabProvider);
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (isLastFmConnected) ...[
+          // Period Selector
+          Row(
+            children: [
+              PeriodButton(
+                label: '7 Days',
+                value: '7day',
+                activeValue: activePeriod,
+              ),
+              const SizedBox(width: AfSpacing.s8),
+              PeriodButton(
+                label: '30 Days',
+                value: '1month',
+                activeValue: activePeriod,
+              ),
+              const SizedBox(width: AfSpacing.s8),
+              PeriodButton(
+                label: 'All Time',
+                value: 'overall',
+                activeValue: activePeriod,
+              ),
+            ],
+          ),
+          const SizedBox(height: AfSpacing.s12),
+        ],
+
+        // Tabs Selector (Songs | Artists | Albums)
+        Container(
+          padding: const EdgeInsets.all(AfSpacing.s2),
+          decoration: const BoxDecoration(
+            color: AfColors.surfaceBase,
+            borderRadius: AfRadii.borderMd,
+          ),
+          child: Row(
+            children: [
+              TabButton(label: 'Songs', value: 'songs', activeValue: activeTab),
+              TabButton(
+                label: 'Artists',
+                value: 'artists',
+                activeValue: activeTab,
+              ),
+              TabButton(
+                label: 'Albums',
+                value: 'albums',
+                activeValue: activeTab,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AfSpacing.s12),
+
+        // List render
+        _renderActiveList(context, ref, activeTab, spectral),
+      ],
+    );
+  }
+
+  Widget _renderActiveList(
+    BuildContext context,
+    WidgetRef ref,
+    String activeTab,
+    Color spectral,
+  ) {
+    switch (activeTab) {
+      case 'songs':
+        final songsAsync = ref.watch(topTracksProvider);
+        return songsAsync.when(
+          loading: () => _loadingIndicator(spectral),
+          error: (err, _) => _errorText(err),
+          data: (tracks) => TopSongsList(tracks: tracks),
+        );
+      case 'artists':
+        final artistsAsync = ref.watch(topArtistsProvider);
+        return artistsAsync.when(
+          loading: () => _loadingIndicator(spectral),
+          error: (err, _) => _errorText(err),
+          data: (artists) => TopArtistsList(artists: artists),
+        );
+      case 'albums':
+        final albumsAsync = ref.watch(topAlbumsProvider);
+        return albumsAsync.when(
+          loading: () => _loadingIndicator(spectral),
+          error: (err, _) => _errorText(err),
+          data: (albums) => TopAlbumsList(albums: albums),
+        );
+      default:
+        return const SizedBox();
+    }
+  }
+
+  Widget _loadingIndicator(Color spectral) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AfSpacing.s32),
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2, color: spectral),
+        ),
+      ),
+    );
+  }
+
+  Widget _errorText(Object error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AfSpacing.s16),
+        child: Text(
+          'Failed to load statistics: $error',
+          style: AfTypography.bodySmall.copyWith(color: AfColors.semanticError),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+}
+
+/// Period selector button (7 Days, 30 Days, All Time).
+class PeriodButton extends ConsumerWidget {
+  const PeriodButton({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.activeValue,
+  });
+
+  final String label;
+  final String value;
+  final String activeValue;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = value == activeValue;
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.secondary),
+    );
+    return PressScale(
+      onTap: () => ref.read(statsPeriodProvider.notifier).state = value,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AfSpacing.s12,
+          vertical: AfSpacing.s4,
+        ),
+        decoration: BoxDecoration(
+          color: active ? spectral : AfColors.surfaceBase,
+          borderRadius: AfRadii.borderSm,
+        ),
+        child: Text(
+          label,
+          style: AfTypography.bodySmall.copyWith(
+            color: active ? AfColors.textOnPrimary : AfColors.textSecondary,
+            fontWeight: active ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Tab selector button (Songs, Artists, Albums).
+class TabButton extends ConsumerWidget {
+  const TabButton({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.activeValue,
+  });
+
+  final String label;
+  final String value;
+  final String activeValue;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = value == activeValue;
+    return Expanded(
+      child: PressScale(
+        onTap: () => ref.read(statsTabProvider.notifier).state = value,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: active ? AfColors.surfaceHigh : Colors.transparent,
+            borderRadius: AfRadii.borderMd,
+          ),
+          child: Text(
+            label,
+            style: AfTypography.bodySmall.copyWith(
+              color: active ? AfColors.textPrimary : AfColors.textTertiary,
+              fontWeight: active ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// List of top tracks from Last.fm stats.
+class TopSongsList extends ConsumerWidget {
+  const TopSongsList({super.key, required this.tracks});
+
+  final List<({String artist, String title, int playCount, String? imageUrl})>
+  tracks;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
+    if (tracks.isEmpty) {
+      return emptyStateWidget(
+        'No history logged yet. Listen to tracks to collect metrics.',
+      );
+    }
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: tracks.length,
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: AfSpacing.s8),
+      itemBuilder: (context, i) {
+        final t = tracks[i];
+        return ListTile(
+          dense: true,
+          tileColor: AfColors.surfaceBase,
+          shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderSm),
+          leading: SizedBox(
+            width: 48,
+            child: Row(
+              children: [
+                Text(
+                  '${i + 1}',
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+                const Spacer(),
+                t.imageUrl != null
+                    ? Artwork(
+                        url: t.imageUrl,
+                        size: 28,
+                        radius: AfRadii.borderSm,
+                      )
+                    : Container(
+                        width: 28,
+                        height: 28,
+                        decoration: const BoxDecoration(
+                          color: AfColors.surfaceHigh,
+                          borderRadius: AfRadii.borderSm,
+                        ),
+                        child: const Icon(
+                          LucideIcons.music,
+                          size: 14,
+                          color: AfColors.textTertiary,
+                        ),
+                      ),
+              ],
+            ),
+          ),
+          title: Text(
+            t.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AfTypography.bodySmall.copyWith(fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(
+            t.artist,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AfTypography.caption.copyWith(color: AfColors.textTertiary),
+          ),
+          trailing: Text(
+            '${t.playCount} plays',
+            style: AfTypography.caption.copyWith(color: spectral),
+          ),
+          onTap: () => playTrackFromStats(context, ref, t.artist, t.title),
+        );
+      },
+    );
+  }
+}
+
+/// List of top artists from Last.fm stats.
+class TopArtistsList extends ConsumerWidget {
+  const TopArtistsList({super.key, required this.artists});
+
+  final List<({String artist, int playCount})> artists;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
+    if (artists.isEmpty) {
+      return emptyStateWidget('No history logged yet.');
+    }
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: artists.length,
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: AfSpacing.s8),
+      itemBuilder: (context, i) {
+        final a = artists[i];
+        return ListTile(
+          dense: true,
+          tileColor: AfColors.surfaceBase,
+          shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderSm),
+          leading: SizedBox(
+            width: 32,
+            child: Row(
+              children: [
+                Text(
+                  '${i + 1}',
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(
+                  LucideIcons.user,
+                  size: 16,
+                  color: AfColors.textTertiary,
+                ),
+              ],
+            ),
+          ),
+          title: Text(
+            a.artist,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AfTypography.bodySmall.copyWith(fontWeight: FontWeight.bold),
+          ),
+          trailing: Text(
+            '${a.playCount} plays',
+            style: AfTypography.caption.copyWith(color: spectral),
+          ),
+          onTap: () => navigateToArtistFromStats(context, ref, a.artist),
+        );
+      },
+    );
+  }
+}
+
+/// List of top albums from Last.fm stats.
+class TopAlbumsList extends ConsumerWidget {
+  const TopAlbumsList({super.key, required this.albums});
+
+  final List<({String artist, String album, int playCount, String? imageUrl})>
+  albums;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
+    if (albums.isEmpty) {
+      return emptyStateWidget('No history logged yet.');
+    }
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: albums.length,
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: AfSpacing.s8),
+      itemBuilder: (context, i) {
+        final alb = albums[i];
+        return ListTile(
+          dense: true,
+          tileColor: AfColors.surfaceBase,
+          shape: const RoundedRectangleBorder(borderRadius: AfRadii.borderSm),
+          leading: SizedBox(
+            width: 48,
+            child: Row(
+              children: [
+                Text(
+                  '${i + 1}',
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+                const Spacer(),
+                alb.imageUrl != null
+                    ? Artwork(
+                        url: alb.imageUrl,
+                        size: 28,
+                        radius: AfRadii.borderSm,
+                      )
+                    : Container(
+                        width: 28,
+                        height: 28,
+                        decoration: const BoxDecoration(
+                          color: AfColors.surfaceHigh,
+                          borderRadius: AfRadii.borderSm,
+                        ),
+                        child: const Icon(
+                          LucideIcons.disc,
+                          size: 14,
+                          color: AfColors.textTertiary,
+                        ),
+                      ),
+              ],
+            ),
+          ),
+          title: Text(
+            alb.album,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AfTypography.bodySmall.copyWith(fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(
+            alb.artist,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AfTypography.caption.copyWith(color: AfColors.textTertiary),
+          ),
+          trailing: Text(
+            '${alb.playCount} plays',
+            style: AfTypography.caption.copyWith(color: spectral),
+          ),
+          onTap: () =>
+              navigateToAlbumFromStats(context, ref, alb.artist, alb.album),
+        );
+      },
+    );
+  }
+}
+
+/// Empty state placeholder for unpopulated lists.
+Widget emptyStateWidget(String text) {
+  return Center(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(
+        vertical: AfSpacing.s24,
+        horizontal: AfSpacing.s16,
+      ),
+      child: Text(
+        text,
+        style: AfTypography.bodySmall.copyWith(color: AfColors.textTertiary),
+        textAlign: TextAlign.center,
+      ),
+    ),
+  );
+}
+
+// ── Search/Resolution Helpers ────────────────────────────────────────────────
+
+Future<void> playTrackFromStats(
+  BuildContext context,
+  WidgetRef ref,
+  String artist,
+  String title,
+) async {
+  final spectral = ref.read(currentSpectralProvider);
+  void Function()? dismiss;
+  // ignore: unawaited_futures – overlay inserted synchronously, dismiss via callback
+  showBlurDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx, dismissFn) {
+      dismiss = dismissFn;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: spectral.primary,
+            ),
+          ),
+          const SizedBox(width: AfSpacing.s16),
+          Text(
+            'Locating track in library...',
+            style: AfTypography.bodyMedium.copyWith(
+              color: AfColors.textPrimary,
+            ),
+          ),
+        ],
+      );
+    },
+  );
+  // Ensure the overlay is laid out before async work begins.
+  await Future<void>.delayed(Duration.zero);
+
+  try {
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) throw Exception('No connected library.');
+
+    AfTrack? resolved;
+    if (backend.serverType == ServerType.local) {
+      final db = ref.read(localLibraryProvider).db;
+      resolved = await db.searchTrackByArtistAndTitle(artist, title);
+    } else {
+      final results = await backend.search('$artist $title');
+      for (final t in results.tracks) {
+        if (t.title.toLowerCase() == title.toLowerCase() &&
+            t.artistName.toLowerCase() == artist.toLowerCase()) {
+          resolved = t;
+          break;
+        }
+      }
+      if (resolved == null) {
+        for (final t in results.tracks) {
+          if (t.title.toLowerCase().contains(title.toLowerCase()) &&
+              t.artistName.toLowerCase().contains(artist.toLowerCase())) {
+            resolved = t;
+            break;
+          }
+        }
+      }
+    }
+
+    dismiss?.call();
+
+    if (resolved != null) {
+      await ref.read(playActionsProvider).playQueue([resolved], startIndex: 0);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('"$title" by $artist is not in your library.'),
+          ),
+        );
+      }
+    }
+  } on Exception catch (e) {
+    dismiss?.call();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to resolve track: ${displayError(e)}')),
+      );
+    }
+  }
+}
+
+Future<void> navigateToArtistFromStats(
+  BuildContext context,
+  WidgetRef ref,
+  String artistName,
+) async {
+  final spectral = ref.read(currentSpectralProvider);
+  void Function()? dismiss;
+  // ignore: unawaited_futures – overlay inserted synchronously, dismiss via callback
+  showBlurDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx, dismissFn) {
+      dismiss = dismissFn;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: spectral.primary,
+            ),
+          ),
+          const SizedBox(width: AfSpacing.s16),
+          Text(
+            'Locating artist...',
+            style: AfTypography.bodyMedium.copyWith(
+              color: AfColors.textPrimary,
+            ),
+          ),
+        ],
+      );
+    },
+  );
+  await Future<void>.delayed(Duration.zero);
+
+  try {
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) throw Exception('No connected library.');
+
+    String? artistId;
+    if (backend.serverType == ServerType.local) {
+      final db = ref.read(localLibraryProvider).db;
+      final resolved = await db.artistByName(artistName);
+      artistId = resolved?.id;
+    } else {
+      final results = await backend.search(artistName);
+      for (final art in results.artists) {
+        if (art.name.toLowerCase() == artistName.toLowerCase()) {
+          artistId = art.id;
+          break;
+        }
+      }
+    }
+
+    dismiss?.call();
+
+    if (artistId != null) {
+      if (context.mounted) unawaited(context.push('/artist/$artistId'));
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Artist "$artistName" not found in library.')),
+        );
+      }
+    }
+  } on Exception catch (e) {
+    dismiss?.call();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to resolve artist: ${displayError(e)}')),
+      );
+    }
+  }
+}
+
+Future<void> navigateToAlbumFromStats(
+  BuildContext context,
+  WidgetRef ref,
+  String artistName,
+  String albumName,
+) async {
+  final spectral = ref.read(currentSpectralProvider);
+  void Function()? dismiss;
+  // ignore: unawaited_futures – overlay inserted synchronously, dismiss via callback
+  showBlurDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx, dismissFn) {
+      dismiss = dismissFn;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: spectral.primary,
+            ),
+          ),
+          const SizedBox(width: AfSpacing.s16),
+          Text(
+            'Locating album...',
+            style: AfTypography.bodyMedium.copyWith(
+              color: AfColors.textPrimary,
+            ),
+          ),
+        ],
+      );
+    },
+  );
+  await Future<void>.delayed(Duration.zero);
+
+  try {
+    final backend = ref.read(musicBackendProvider);
+    if (backend == null) throw Exception('No connected library.');
+
+    String? albumId;
+    if (backend.serverType == ServerType.local) {
+      final db = ref.read(localLibraryProvider).db;
+      final resolved = await db.albumByKey(albumName, artistName);
+      albumId = resolved?.id;
+    } else {
+      final results = await backend.search('$artistName $albumName');
+      for (final alb in results.albums) {
+        if (alb.name.toLowerCase() == albumName.toLowerCase() &&
+            alb.artistName.toLowerCase() == artistName.toLowerCase()) {
+          albumId = alb.id;
+          break;
+        }
+      }
+    }
+
+    dismiss?.call();
+
+    if (albumId != null) {
+      if (context.mounted) unawaited(context.push('/album/$albumId'));
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Album "$albumName" by $artistName not found in library.',
+            ),
+          ),
+        );
+      }
+    }
+  } on Exception catch (e) {
+    dismiss?.call();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to resolve album: ${displayError(e)}')),
+      );
+    }
+  }
+}

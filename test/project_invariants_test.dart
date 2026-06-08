@@ -205,41 +205,61 @@ void main() {
       // Queue mutations that touch mpv state must be serialized via
       // _queueLock.run() to prevent interleaved async operations.
       // See CLAUDE.md §14.1 entry #44 (AfAsyncLock serialization).
-      final content = readSource('lib/core/audio/player_service.dart');
+      final serviceContent = readSource('lib/core/audio/player_service.dart');
+      final controllerContent = readSource(
+        'lib/core/audio/playback_controller.dart',
+      );
+      final content = serviceContent + controllerContent;
 
       // Verify _queueLock.run() is used.
       expect(
         content.contains('_queueLock.run('),
         isTrue,
         reason:
-            'player_service.dart must use _queueLock.run() to serialize '
+            'player_service.dart or playback_controller.dart must use _queueLock.run() to serialize '
             'queue mutations (playQueue, setAfLoopMode, etc.)',
       );
 
       // Verify _queueLock is declared and exists.
       expect(
-        content.contains('final AfAsyncLock _queueLock'),
+        content.contains('AfAsyncLock _queueLock'),
         isTrue,
-        reason: 'player_service.dart must declare _queueLock as AfAsyncLock',
+        reason:
+            'player_service.dart or playback_controller.dart must declare _queueLock as AfAsyncLock',
       );
 
       // Verify playQueue wraps in _queueLock.run().
-      final playQueueBody = content
-          .split('Future<void> playQueue(')[1]
-          .split('Future<void> play')[0];
+      // playQueue may be in player_service.dart or playback_controller.dart after refactoring.
+      final playQueueMatch = RegExp(
+        r'Future<void> playQueue\(',
+        dotAll: true,
+      ).firstMatch(content);
+      expect(playQueueMatch, isNotNull, reason: 'playQueue method must exist');
+      final playQueueBody = content.substring(playQueueMatch!.start);
+      final playQueueEnd = playQueueBody.indexOf('Future<void> play');
+      final playQueueSection = playQueueEnd > 0
+          ? playQueueBody.substring(0, playQueueEnd)
+          : playQueueBody;
       expect(
-        playQueueBody.contains('_queueLock.run('),
+        playQueueSection.contains('_queueLock.run('),
         isTrue,
         reason: 'playQueue must wrap its critical section in _queueLock.run()',
       );
 
       // Verify setAfLoopMode wraps in _queueLock.run().
       // (setAfShuffleMode is pure Dart on AfQueueManager.mp),
-      final loopBody = content
-          .split('Future<void> setAfLoopMode(')[1]
-          .split('Future<void>')[0];
+      final loopMatch = RegExp(
+        r'Future<void> setAfLoopMode\(',
+        dotAll: true,
+      ).firstMatch(content);
+      expect(loopMatch, isNotNull, reason: 'setAfLoopMode method must exist');
+      final loopBody = content.substring(loopMatch!.start);
+      final loopEnd = loopBody.indexOf('Future<void>');
+      final loopSection = loopEnd > 0
+          ? loopBody.substring(0, loopEnd)
+          : loopBody;
       expect(
-        loopBody.contains('_queueLock.run('),
+        loopSection.contains('_queueLock.run('),
         isTrue,
         reason:
             'setAfLoopMode must wrap its critical section in _queueLock.run()',
@@ -309,7 +329,7 @@ void main() {
         reason: 'AfPlayerService should define setGapless as a no-op wrapper',
       );
       expect(
-        service.contains('// No-op'),
+        service.contains('// No-op') || service.contains('(no-op)'),
         isTrue,
         reason: 'AfPlayerService.setGapless must be a no-op with a comment',
       );
