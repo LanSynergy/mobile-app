@@ -60,7 +60,7 @@ class StreamPrefetcher {
       final tempDir = await getTemporaryDirectory();
       _cacheDir = tempDir.path;
       await clearStaleTempFiles();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'audio',
         'StreamPrefetcher init failed',
@@ -85,7 +85,7 @@ class StreamPrefetcher {
           await _removeFromCache(trackId);
         }
       }
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'audio',
         'Failed to check cache file age for $trackId',
@@ -168,7 +168,7 @@ class StreamPrefetcher {
       try {
         final tempDir = await getTemporaryDirectory();
         _cacheDir = tempDir.path;
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'audio',
           'Failed to retrieve temp dir in prefetch',
@@ -216,14 +216,16 @@ class StreamPrefetcher {
 
         afLog('audio', 'Prefetch completed successfully for trackId=$trackId');
         return tempFile;
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         retryCount++;
 
         // Clean up partial file
         if (await tempFile.exists()) {
           try {
             await tempFile.delete();
-          } catch (_) {}
+          } on Exception catch (_) {
+            // Best-effort cleanup — ignore if file already gone
+          }
         }
 
         if (e is DioException && DioExceptionType.cancel == e.type) {
@@ -304,7 +306,7 @@ class StreamPrefetcher {
         'audio',
         'Added to cache: trackId=$trackId, size=${size ~/ 1024}KB, total=$_totalCacheSize',
       );
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'audio',
         'Failed to add to cache: trackId=$trackId',
@@ -328,7 +330,7 @@ class StreamPrefetcher {
           'audio',
           'Removed from cache: trackId=$trackId, remaining=$_totalCacheSize',
         );
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'audio',
           'Failed to remove from cache: trackId=$trackId',
@@ -363,7 +365,7 @@ class StreamPrefetcher {
               await f.delete();
               afLog('audio', 'Deleted stale prefetch file: ${f.path}');
             }
-          } catch (e, stack) {
+          } on Exception catch (e, stack) {
             afLog(
               'audio',
               'Failed to delete stale file: ${f.path}',
@@ -373,7 +375,7 @@ class StreamPrefetcher {
           }
         }
       }
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'audio',
         'Error clearing stale temp files',

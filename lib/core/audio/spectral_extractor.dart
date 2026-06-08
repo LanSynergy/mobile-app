@@ -264,7 +264,7 @@ class SpectralExtractor {
         _cache.remove(_cache.keys.first);
       }
       return result;
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'spectral',
         'palette extraction failed for ${redactSensitiveQueryParams(imageUrl)}',

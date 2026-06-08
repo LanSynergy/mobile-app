@@ -153,7 +153,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
         server.copyWith(name: 'Navidrome', isReachable: true),
         serverType: ServerType.subsonic,
       );
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('error', 'server discovery failed', error: e, stackTrace: stack);
       setState(() {
         _manualError = 'Couldn\'t reach ${server.baseUrl}. $e';

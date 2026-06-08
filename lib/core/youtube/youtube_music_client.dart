@@ -141,8 +141,8 @@ class YouTubeMusicClient implements MusicBackend {
         imageUrl: playlist.thumbnails.highResUrl,
       );
       return (album: album, tracks: videos.map(_videoToTrack).toList());
-    } catch (e) {
-      afLog('aetherfin:error', 'Failed to get album', error: e);
+    } on Exception catch (e) {
+      afLog('youtube', 'Failed to get album', error: e);
       return null;
     }
   }
@@ -152,8 +152,8 @@ class YouTubeMusicClient implements MusicBackend {
     try {
       final channel = await _yt.channels.get(ChannelId(id));
       return _channelToArtist(channel);
-    } catch (e) {
-      afLog('aetherfin:error', 'Failed to get artist', error: e);
+    } on Exception catch (e) {
+      afLog('youtube', 'Failed to get artist', error: e);
       return null;
     }
   }
@@ -163,8 +163,8 @@ class YouTubeMusicClient implements MusicBackend {
     try {
       final video = await _yt.videos.get(id);
       return AfTrackDetails(track: _videoToTrack(video));
-    } catch (e) {
-      afLog('aetherfin:error', 'Failed to get track details', error: e);
+    } on Exception catch (e) {
+      afLog('youtube', 'Failed to get track details', error: e);
       return null;
     }
   }
@@ -189,8 +189,8 @@ class YouTubeMusicClient implements MusicBackend {
         if (tracks.length >= limit) break;
       }
       return tracks;
-    } catch (e) {
-      afLog('aetherfin:error', 'Failed to get artist top tracks', error: e);
+    } on Exception catch (e) {
+      afLog('youtube', 'Failed to get artist top tracks', error: e);
       return [];
     }
   }
@@ -212,8 +212,8 @@ class YouTubeMusicClient implements MusicBackend {
         trackCount: pl.videoCount ?? videos.length,
       );
       return (playlist: playlist, tracks: videos.map(_videoToTrack).toList());
-    } catch (e) {
-      afLog('aetherfin:error', 'Failed to get playlist', error: e);
+    } on Exception catch (e) {
+      afLog('youtube', 'Failed to get playlist', error: e);
       return null;
     }
   }
@@ -242,8 +242,8 @@ class YouTubeMusicClient implements MusicBackend {
         artists: <AfArtist>[],
         playlists: <AfPlaylist>[],
       );
-    } catch (e) {
-      afLog('aetherfin:error', 'Search failed', error: e);
+    } on Exception catch (e) {
+      afLog('youtube', 'Search failed', error: e);
       return (
         tracks: <AfTrack>[],
         albums: <AfAlbum>[],
@@ -312,8 +312,8 @@ class YouTubeMusicClient implements MusicBackend {
       final related = await _yt.videos.getRelatedVideos(video);
       if (related == null) return [];
       return related.take(limit).map(_videoToTrack).toList();
-    } catch (e) {
-      afLog('aetherfin:error', 'instantMix failed', error: e);
+    } on Exception catch (e) {
+      afLog('youtube', 'instantMix failed', error: e);
       return [];
     }
   }
@@ -366,12 +366,8 @@ class YouTubeMusicClient implements MusicBackend {
       }
 
       throw StateError('No streams available for $videoId');
-    } catch (e) {
-      afLog(
-        'aetherfin:error',
-        'resolveStreamUrl failed for $videoId',
-        error: e,
-      );
+    } on Exception catch (e) {
+      afLog('youtube', 'resolveStreamUrl failed for $videoId', error: e);
       rethrow;
     }
   }

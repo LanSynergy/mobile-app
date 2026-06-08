@@ -145,7 +145,7 @@ class JellyfinPlaybackReporter {
             'playbackStop source=live track=${previousTrack.id} '
                 'positionMs=${position.inMilliseconds} listenedMs=${listened.inMilliseconds} scrobble=$isScrobble',
           );
-        } catch (e, stack) {
+        } on Exception catch (e, stack) {
           afLog(
             'error',
             'reportPlaybackStop failed',
@@ -175,7 +175,7 @@ class JellyfinPlaybackReporter {
       if (_disposed) return;
       afLog('data', 'playbackStart source=live track=${track.id}');
       _startProgressTimer();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('error', 'reportPlaybackStart failed', error: e, stackTrace: stack);
     }
   }
@@ -197,7 +197,7 @@ class JellyfinPlaybackReporter {
         'playbackProgress source=live track=$trackId '
             'positionMs=${position.inMilliseconds} paused=${!isPlaying}',
       );
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'reportProgress (transition) failed',
@@ -254,7 +254,7 @@ class JellyfinPlaybackReporter {
           'playbackProgress source=live track=$trackId '
               'positionMs=${position.inMilliseconds} (tick)',
         );
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'error',
           'reportProgress (tick) failed',
@@ -325,7 +325,7 @@ class JellyfinPlaybackReporter {
         'playbackStop source=live track=${track.id} '
             'positionMs=${position.inMilliseconds} listenedMs=${listened.inMilliseconds} scrobble=$isScrobble (reporter disposed)',
       );
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'reportPlaybackStop (dispose) failed',

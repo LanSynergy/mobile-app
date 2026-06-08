@@ -476,7 +476,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
             ),
           );
       }
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         setState(() => _localTracks = tracks);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -493,7 +493,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
       await client.addToPlaylist(playlistId, action.trackIds);
       ref.invalidate(playlistDetailProvider(playlistId));
       ref.invalidate(allPlaylistsProvider);
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -523,7 +523,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
           await backend.renamePlaylist(widget.playlistId, newName);
           ref.invalidate(playlistDetailProvider(widget.playlistId));
           ref.invalidate(allPlaylistsProvider);
-        } catch (e) {
+        } on Exception catch (e) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -542,7 +542,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                 playlistName: detail.playlist.name,
                 context: context,
               );
-        } catch (e) {
+        } on Exception catch (e) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -592,7 +592,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
           await backend.deletePlaylist(widget.playlistId);
           ref.invalidate(allPlaylistsProvider);
           if (context.mounted) context.pop();
-        } catch (e) {
+        } on Exception catch (e) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

@@ -167,7 +167,7 @@ class LastFmPlaybackReporter {
             duration: track.duration,
             timestamp: _scrobbleTimestamp(listened),
           );
-        } catch (e, stack) {
+        } on Exception catch (e, stack) {
           afLog(
             'error',
             'Last.fm final scrobble on dispose failed',

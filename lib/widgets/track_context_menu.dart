@@ -85,7 +85,7 @@ void showTrackContextMenu(BuildContext context, WidgetRef ref, AfTrack track) {
                       ),
                     );
                   }
-                } catch (e) {
+                } on Exception catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -288,7 +288,7 @@ Future<void> _startTrackRadio(
         );
       }
     }
-  } catch (e) {
+  } on Exception catch (e) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to start radio: ${displayError(e)}')),

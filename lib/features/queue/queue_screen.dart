@@ -363,7 +363,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
       if (backend is YouTubeMusicClient) {
         try {
           return await backend.resolveStreamUrl(t.id);
-        } catch (e) {
+        } on Exception catch (e) {
           afLog('audio', 'YouTube stream resolve failed', error: e);
           return 'about:blank';
         }
@@ -467,7 +467,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Saved as "$name" · ${snapshot.length} tracks')),
       );
-    } catch (e) {
+    } on Exception catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

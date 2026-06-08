@@ -46,7 +46,7 @@ class CoverCacheManager {
       _accessTimestamps = decoded.map(
         (k, v) => MapEntry(k, (v as num).toInt()),
       );
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'local',
         'failed to load cover cache meta',
@@ -62,7 +62,7 @@ class CoverCacheManager {
     try {
       await File(_metaPath).writeAsString(jsonEncode(_accessTimestamps));
       _dirty = false;
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'local',
         'failed to save cover cache meta',
@@ -117,7 +117,7 @@ class CoverCacheManager {
         _accessTimestamps.remove(f.path);
         totalSize -= len;
         deleted++;
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'local',
           'failed to delete cover cache file',
@@ -140,7 +140,9 @@ class CoverCacheManager {
         if (entity is File && entity.path != _metaPath) {
           try {
             await entity.delete();
-          } catch (_) {}
+          } on Exception catch (_) {
+            // Best-effort cleanup — ignore if file already gone
+          }
         }
       }
     }

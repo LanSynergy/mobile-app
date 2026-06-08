@@ -54,7 +54,9 @@ final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
     while (pending != null) {
       try {
         await pending!;
-      } catch (_) {}
+      } on Exception catch (_) {
+        // Previous toggle failed — proceed with next one
+      }
     }
 
     final backend = ref.read(musicBackendProvider);
@@ -97,7 +99,7 @@ final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
                 track: track.title,
               );
             }
-          } catch (e, stack) {
+          } on Exception catch (e, stack) {
             afLog(
               'error',
               'Last.fm love/unlove failed during toggle',
@@ -110,7 +112,7 @@ final favoriteToggleProvider = Provider<Future<void> Function(AfTrack)>((ref) {
         ref.invalidate(favoriteAlbumsProvider);
         ref.invalidate(favoriteTracksProvider);
         ref.invalidate(recentlyPlayedTracksProvider);
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog('error', 'favoriteToggle failed', error: e, stackTrace: stack);
         ref.read(trackFavoriteOverrideProvider(track.id).notifier).state =
             wasFavorite;

@@ -105,7 +105,7 @@ final lastFmSyncProvider = Provider<Future<({int toApp, int toLastFm})> Function
               }
               return null;
             }
-          } catch (e) {
+          } on Exception catch (e) {
             afLog(
               'error',
               'Failed to resolve track ${item.artist} - ${item.title}',
@@ -124,7 +124,7 @@ final lastFmSyncProvider = Provider<Future<({int toApp, int toLastFm})> Function
       try {
         await backend.setFavorite(track.id, true);
         toApp++;
-      } catch (e) {
+      } on Exception catch (e) {
         afLog(
           'error',
           'Failed to favorite track ${track.artistName} - ${track.title}',
@@ -145,7 +145,7 @@ final lastFmSyncProvider = Provider<Future<({int toApp, int toLastFm})> Function
       try {
         await client.love(artist: item.artistName, track: item.title);
         toLastFm++;
-      } catch (e) {
+      } on Exception catch (e) {
         afLog(
           'error',
           'Failed to love track ${item.artistName} - ${item.title} on Last.fm',

@@ -62,7 +62,7 @@ class TracksNotifier extends Notifier<PaginationState<AfTrack>> {
         currentPage: 0,
         hasMore: tracks.length >= _pageSize,
       );
-    } catch (e) {
+    } on Exception catch (e) {
       state = state.copyWith(isLoadingMore: false, error: e.toString());
     }
   }
@@ -84,7 +84,7 @@ class TracksNotifier extends Notifier<PaginationState<AfTrack>> {
         currentPage: state.currentPage + 1,
         hasMore: tracks.length >= _pageSize,
       );
-    } catch (e) {
+    } on Exception catch (e) {
       state = state.copyWith(isLoadingMore: false, error: e.toString());
     }
   }

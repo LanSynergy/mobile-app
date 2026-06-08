@@ -56,7 +56,7 @@ class SafPicker {
         'uri': fileUri,
       });
       return result;
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('local', 'readLyrics failed', error: e, stackTrace: stack);
       return null;
     }
@@ -67,7 +67,7 @@ class SafPicker {
     try {
       final result = await _channel.invokeMethod<String>('pickAndReadLrcFile');
       return result;
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('local', 'pickAndReadLrcFile failed', error: e, stackTrace: stack);
       return null;
     }
@@ -81,7 +81,7 @@ class SafPicker {
         'content': content,
       });
       return result ?? false;
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('local', 'saveSidecarLrc failed', error: e, stackTrace: stack);
       return false;
     }

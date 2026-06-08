@@ -47,7 +47,7 @@ class ExportM3UAction {
           ),
         );
       }
-    } catch (e) {
+    } on Exception catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,

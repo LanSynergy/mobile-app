@@ -116,7 +116,7 @@ class MetadataScanner {
               _coverCacheManager?.trackAccess(coverFile.path);
               afLog('local', 'cover art recovered for ${file.name}');
             }
-          } catch (e, stack) {
+          } on Exception catch (e, stack) {
             afLog(
               'local',
               'cover art retry failed for ${file.name}',
@@ -171,7 +171,7 @@ class MetadataScanner {
                 } else {
                   afLog('local', 'no embedded artwork for ${file.name}');
                 }
-              } catch (e, stack) {
+              } on Exception catch (e, stack) {
                 afLog(
                   'local',
                   'readCoverArt failed for ${file.name}',

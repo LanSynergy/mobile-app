@@ -85,7 +85,7 @@ class _FavoriteHeartButtonState extends ConsumerState<FavoriteHeartButton>
       ref.invalidate(favoriteAlbumsProvider);
       ref.invalidate(favoriteTracksProvider);
       ref.invalidate(recentlyPlayedTracksProvider);
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'trackFavorite toggle failed',

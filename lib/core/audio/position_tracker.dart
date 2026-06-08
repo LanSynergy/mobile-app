@@ -156,7 +156,7 @@ class AfPositionTracker {
       final secs = parseSeconds(raw);
       if (secs == null || secs < 0) return Duration.zero;
       return Duration(milliseconds: (secs * 1000).round());
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('audio', 'getRawPosition failed', error: e, stackTrace: stack);
       return Duration.zero;
     }
@@ -169,7 +169,7 @@ class AfPositionTracker {
       final secs = parseSeconds(raw);
       if (secs == null || secs <= 0) return Duration.zero;
       return Duration(milliseconds: (secs * 1000).round());
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('audio', 'getRawDuration failed', error: e, stackTrace: stack);
       return Duration.zero;
     }
@@ -276,7 +276,7 @@ class AfPositionTracker {
       } else if (rawPos == Duration.zero) {
         _resetRawPositionStaleDetector(Duration.zero);
       }
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('audio', '_executePoll failed', error: e, stackTrace: stack);
       // Poll failed silently — next tick will retry.
     }

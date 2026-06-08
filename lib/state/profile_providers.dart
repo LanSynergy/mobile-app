@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/backend/music_backend.dart';
 import '../core/jellyfin/client.dart';
+import '../utils/log.dart';
 import 'auth_providers.dart';
 import 'music_backend_providers.dart';
 
@@ -94,14 +95,22 @@ class ProfilePhotoNotifier extends Notifier<ProfilePhotoState> {
       if (state.localPath != null) {
         try {
           await FileImage(File(state.localPath!)).evict();
-        } catch (_) {}
+        } on Exception catch (e) {
+          afLog('profile', 'Failed to evict old avatar from cache', error: e);
+        }
       }
 
       // Evict network image from cache if it exists
       if (state.networkUrl != null) {
         try {
           await CachedNetworkImage.evictFromCache(state.networkUrl!);
-        } catch (_) {}
+        } on Exception catch (e) {
+          afLog(
+            'profile',
+            'Failed to evict network avatar from cache',
+            error: e,
+          );
+        }
       }
 
       // 3. Update local settings & version
@@ -121,7 +130,7 @@ class ProfilePhotoNotifier extends Notifier<ProfilePhotoState> {
         version: nextVersion,
         isUploading: false,
       );
-    } catch (e) {
+    } on Exception catch (_) {
       state = state.copyWith(isUploading: false);
       rethrow;
     }
@@ -139,8 +148,12 @@ class ProfilePhotoNotifier extends Notifier<ProfilePhotoState> {
       if (backend is JellyfinClient) {
         try {
           await backend.deleteUserAvatar();
-        } catch (_) {
-          // Log or handle error if delete fails on server, but still clear locally
+        } on Exception catch (e) {
+          afLog(
+            'profile',
+            'Server avatar delete failed (continuing locally)',
+            error: e,
+          );
         }
       }
 
@@ -150,18 +163,24 @@ class ProfilePhotoNotifier extends Notifier<ProfilePhotoState> {
         if (file.existsSync()) {
           try {
             await file.delete();
-          } catch (_) {}
+          } on Exception catch (e) {
+            afLog('profile', 'Local avatar delete failed', error: e);
+          }
         }
         try {
           await FileImage(file).evict();
-        } catch (_) {}
+        } on Exception catch (e) {
+          afLog('profile', 'Avatar cache eviction failed', error: e);
+        }
       }
 
       // Evict network image
       if (state.networkUrl != null) {
         try {
           await CachedNetworkImage.evictFromCache(state.networkUrl!);
-        } catch (_) {}
+        } on Exception catch (e) {
+          afLog('profile', 'Network avatar cache eviction failed', error: e);
+        }
       }
 
       // 3. Clear from prefs
@@ -169,7 +188,7 @@ class ProfilePhotoNotifier extends Notifier<ProfilePhotoState> {
       await prefs.remove(_getVersionKey(userId));
 
       state = ProfilePhotoState(version: 0, isUploading: false);
-    } catch (e) {
+    } on Exception catch (_) {
       state = state.copyWith(isUploading: false);
       rethrow;
     }

@@ -9,6 +9,7 @@ import '../core/jellyfin/models/items.dart';
 import '../design_tokens/tokens.dart';
 import '../state/providers.dart';
 import '../utils/display_error.dart';
+import '../utils/log.dart';
 import '../widgets/skeletons/sheet_skeleton.dart';
 import 'bottom_sheet.dart';
 
@@ -85,7 +86,7 @@ class _SaveToPlaylistSheetState extends ConsumerState<SaveToPlaylistSheet> {
           _loading = false;
         });
       }
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         setState(() {
           _error = e.toString();
@@ -105,7 +106,9 @@ class _SaveToPlaylistSheetState extends ConsumerState<SaveToPlaylistSheet> {
     try {
       await backend.removeFromPlaylist(playlistId, action.trackIds);
       _invalidate(playlistId: playlistId);
-    } catch (_) {}
+    } on Exception catch (e) {
+      afLog('playlist', 'Undo remove from playlist failed', error: e);
+    }
   }
 
   void _invalidate({String? playlistId}) {
@@ -150,7 +153,7 @@ class _SaveToPlaylistSheetState extends ConsumerState<SaveToPlaylistSheet> {
             ),
           );
       }
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -175,7 +178,7 @@ class _SaveToPlaylistSheetState extends ConsumerState<SaveToPlaylistSheet> {
           SnackBar(content: Text('Created "$name" and added track')),
         );
       }
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(

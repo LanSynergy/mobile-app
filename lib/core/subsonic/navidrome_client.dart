@@ -66,7 +66,7 @@ class NavidromeClient extends SubsonicClient {
 
       await _loginNavidrome();
       _authCompleter?.complete();
-    } catch (e, s) {
+    } on Exception catch (e, s) {
       _authCompleter?.completeError(e, s);
       rethrow;
     } finally {
@@ -107,7 +107,7 @@ class NavidromeClient extends SubsonicClient {
     if (serverTypeString?.toLowerCase() == 'navidrome' && _ndToken == null) {
       try {
         await _loginNavidrome();
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'subsonic',
           'Failed to authenticate Navidrome REST during ping: $e',
@@ -144,7 +144,7 @@ class NavidromeClient extends SubsonicClient {
         'subsonic',
         'Saved play queue to Navidrome: count=${trackIds.length}',
       );
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'subsonic',
         'Failed to save play queue to Navidrome',
@@ -185,7 +185,7 @@ class NavidromeClient extends SubsonicClient {
         currentIndex: current,
         position: Duration(milliseconds: posMs),
       );
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'subsonic',
         'Failed to fetch play queue from Navidrome',

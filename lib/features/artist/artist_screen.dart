@@ -399,7 +399,7 @@ Future<void> _startArtistRadio(
         );
       }
     }
-  } catch (e) {
+  } on Exception catch (e) {
     if (context.mounted) Navigator.pop(context); // Close loading HUD
     if (context.mounted) {
       ScaffoldMessenger.of(

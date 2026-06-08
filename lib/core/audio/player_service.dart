@@ -95,7 +95,7 @@ class AfPlayerService {
         if (action != null) {
           _handleShortcutAction(action);
         }
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog('audio', 'getShortcutAction failed', error: e, stackTrace: stack);
       }
     });
@@ -137,7 +137,7 @@ class AfPlayerService {
           orElse: () => _player.state.audioDevice,
         );
         _player.setAudioDevice(auto);
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'audio',
           'setAudioDevice(auto) failed',
@@ -556,7 +556,7 @@ class AfPlayerService {
   Future<void> configureSpectrum() async {
     try {
       await _player.setSpectrum(defaultSpectrumSettings);
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('audio', 'configureSpectrum failed', error: e, stackTrace: stack);
     }
   }
@@ -703,7 +703,7 @@ class AfPlayerService {
         onMpvLoadedTrackChanged?.call(_mpvLoadedTrackId);
 
         _audioDeviceManager.nudge();
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'aetherfin:error',
           'playQueue failed',
@@ -715,7 +715,7 @@ class AfPlayerService {
         onMpvLoadedTrackChanged?.call(null);
         try {
           await _player.stop();
-        } catch (err, st) {
+        } on Exception catch (err, st) {
           afLog(
             'audio',
             'stop failed on playQueue cleanup',
@@ -734,7 +734,7 @@ class AfPlayerService {
     try {
       await _player.play();
       _audioDeviceManager.nudge();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('audio', 'play failed', error: e, stackTrace: stack);
     }
   }
@@ -744,7 +744,7 @@ class AfPlayerService {
     _positionTracker.onPause();
     try {
       await _player.pause();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('audio', 'pause failed', error: e, stackTrace: stack);
     }
   }
@@ -762,7 +762,7 @@ class AfPlayerService {
     _clearStreamUrlCache();
     try {
       await _player.stop();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('audio', 'stop failed', error: e, stackTrace: stack);
     }
   }
@@ -784,7 +784,7 @@ class AfPlayerService {
     _eofFallbackHandledTrackId = null;
     try {
       await _player.stop();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'audio',
         'stop failed in stopAndClear',
@@ -810,7 +810,7 @@ class AfPlayerService {
       await _player.seek(position);
       _updateMediaSession();
       _audioDeviceManager.nudge();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('audio', 'seek failed', error: e, stackTrace: stack);
     }
   }
@@ -831,7 +831,7 @@ class AfPlayerService {
       await _player.seekToPercent(clamped, relative: relative, exact: exact);
       _updateMediaSession();
       _audioDeviceManager.nudge();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('audio', 'seekToPercent failed', error: e, stackTrace: stack);
     }
   }
@@ -842,144 +842,128 @@ class AfPlayerService {
     try {
       await _player.revertSeek();
       _updateMediaSession();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('audio', 'revertSeek failed', error: e, stackTrace: stack);
     }
   }
 
   Future<void> skipToNext() async {
+    if (_disposed) return;
+    if (_queueManager.engine.isAtQueueEnd && _loopMode != Loop.playlist) {
+      return;
+    }
+
+    _positionTracker.onStop();
     try {
-      if (_disposed) return;
-      if (_queueManager.engine.isAtQueueEnd && _loopMode != Loop.playlist) {
-        return;
-      }
+      await _player.stop();
+    } on Exception catch (e) {
+      afLog('audio', 'Failed to stop player during skipToNext', error: e);
+    }
 
-      _positionTracker.onStop();
-      try {
-        await _player.stop();
-      } catch (e) {
-        afLog('audio', 'Failed to stop player during skipToNext', error: e);
-      }
+    final wasPlaying = _queueManager.currentTrack;
+    _completedHandledForTrackId = null;
+    _eofFallbackHandledTrackId = null;
+    _mpvLoadedTrackId = null;
+    onMpvLoadedTrackChanged?.call(null);
+    if (wasPlaying != null) {
+      onTrackSkipped?.call(wasPlaying);
+    }
+    _queueManager.engine.advanceIndex();
+    _queueManager.engine.resetRepeats();
+    final nextTrack = _queueManager.currentTrack;
+    if (nextTrack == null) {
+      return;
+    }
 
-      final wasPlaying = _queueManager.currentTrack;
-      _completedHandledForTrackId = null;
-      _eofFallbackHandledTrackId = null;
-      _mpvLoadedTrackId = null;
-      onMpvLoadedTrackChanged?.call(null);
-      if (wasPlaying != null) {
-        onTrackSkipped?.call(wasPlaying);
-      }
-      _queueManager.engine.advanceIndex();
-      _queueManager.engine.resetRepeats();
-      final nextTrack = _queueManager.currentTrack;
-      if (nextTrack == null) {
-        return;
-      }
+    _onTrackChangedOrRestarted();
+    _queueManager.emitCurrentTrack(nextTrack);
+    onTrackChanged?.call(nextTrack);
+    _updateMediaSession();
+    unawaited(_reconfigureSpectrumOnTrackChange());
 
-      _onTrackChangedOrRestarted();
-      _queueManager.emitCurrentTrack(nextTrack);
-      onTrackChanged?.call(nextTrack);
+    try {
+      await _rebuildWindow(nextTrack);
       _updateMediaSession();
-      unawaited(_reconfigureSpectrumOnTrackChange());
-
-      try {
-        await _rebuildWindow(nextTrack);
-        _updateMediaSession();
-      } catch (e, stack) {
-        afLog('audio', 'skipToNext failed', error: e, stackTrace: stack);
-      }
-    } catch (e) {
-      rethrow;
+    } on Exception catch (e, stack) {
+      afLog('audio', 'skipToNext failed', error: e, stackTrace: stack);
     }
   }
 
   Future<void> skipToPrevious() async {
+    if (_disposed) return;
+
+    _positionTracker.onStop();
     try {
-      if (_disposed) return;
+      await _player.stop();
+    } on Exception catch (e) {
+      afLog('audio', 'Failed to stop player during skipToPrevious', error: e);
+    }
 
-      _positionTracker.onStop();
-      try {
-        await _player.stop();
-      } catch (e) {
-        afLog('audio', 'Failed to stop player during skipToPrevious', error: e);
-      }
+    final wasPlaying = _queueManager.currentTrack;
+    _completedHandledForTrackId = null;
+    _eofFallbackHandledTrackId = null;
+    _mpvLoadedTrackId = null;
+    onMpvLoadedTrackChanged?.call(null);
+    if (wasPlaying != null) {
+      onTrackSkipped?.call(wasPlaying);
+    }
+    _queueManager.engine.retreatIndex();
+    _queueManager.engine.resetRepeats();
+    final prevTrack = _queueManager.currentTrack;
+    if (prevTrack == null) {
+      return;
+    }
 
-      final wasPlaying = _queueManager.currentTrack;
-      _completedHandledForTrackId = null;
-      _eofFallbackHandledTrackId = null;
-      _mpvLoadedTrackId = null;
-      onMpvLoadedTrackChanged?.call(null);
-      if (wasPlaying != null) {
-        onTrackSkipped?.call(wasPlaying);
-      }
-      _queueManager.engine.retreatIndex();
-      _queueManager.engine.resetRepeats();
-      final prevTrack = _queueManager.currentTrack;
-      if (prevTrack == null) {
-        return;
-      }
+    _onTrackChangedOrRestarted();
+    _queueManager.emitCurrentTrack(prevTrack);
+    onTrackChanged?.call(prevTrack);
+    _updateMediaSession();
+    unawaited(_reconfigureSpectrumOnTrackChange());
 
-      _onTrackChangedOrRestarted();
-      _queueManager.emitCurrentTrack(prevTrack);
-      onTrackChanged?.call(prevTrack);
+    try {
+      await _rebuildWindow(prevTrack);
       _updateMediaSession();
-      unawaited(_reconfigureSpectrumOnTrackChange());
-
-      try {
-        await _rebuildWindow(prevTrack);
-        _updateMediaSession();
-      } catch (e, stack) {
-        afLog('audio', 'skipToPrevious failed', error: e, stackTrace: stack);
-      }
-    } catch (e) {
-      rethrow;
+    } on Exception catch (e, stack) {
+      afLog('audio', 'skipToPrevious failed', error: e, stackTrace: stack);
     }
   }
 
   Future<void> skipToQueueItem(int index) async {
+    if (_disposed) return;
+
+    _positionTracker.onStop();
     try {
-      if (_disposed) return;
+      await _player.stop();
+    } on Exception catch (e) {
+      afLog('audio', 'Failed to stop player during skipToQueueItem', error: e);
+    }
 
-      _positionTracker.onStop();
-      try {
-        await _player.stop();
-      } catch (e) {
-        afLog(
-          'audio',
-          'Failed to stop player during skipToQueueItem',
-          error: e,
-        );
-      }
+    final wasPlaying = _queueManager.currentTrack;
+    _completedHandledForTrackId = null;
+    _eofFallbackHandledTrackId = null;
+    _mpvLoadedTrackId = null;
+    onMpvLoadedTrackChanged?.call(null);
+    if (wasPlaying != null) {
+      onTrackSkipped?.call(wasPlaying);
+    }
+    _queueManager.engine.jumpTo(index);
+    _queueManager.engine.resetRepeats();
+    final targetTrack = _queueManager.currentTrack;
+    if (targetTrack == null) {
+      return;
+    }
 
-      final wasPlaying = _queueManager.currentTrack;
-      _completedHandledForTrackId = null;
-      _eofFallbackHandledTrackId = null;
-      _mpvLoadedTrackId = null;
-      onMpvLoadedTrackChanged?.call(null);
-      if (wasPlaying != null) {
-        onTrackSkipped?.call(wasPlaying);
-      }
-      _queueManager.engine.jumpTo(index);
-      _queueManager.engine.resetRepeats();
-      final targetTrack = _queueManager.currentTrack;
-      if (targetTrack == null) {
-        return;
-      }
+    _onTrackChangedOrRestarted();
+    _queueManager.emitCurrentTrack(targetTrack);
+    onTrackChanged?.call(targetTrack);
+    _updateMediaSession();
+    unawaited(_reconfigureSpectrumOnTrackChange());
 
-      _onTrackChangedOrRestarted();
-      _queueManager.emitCurrentTrack(targetTrack);
-      onTrackChanged?.call(targetTrack);
+    try {
+      await _rebuildWindow(targetTrack);
       _updateMediaSession();
-      unawaited(_reconfigureSpectrumOnTrackChange());
-
-      try {
-        await _rebuildWindow(targetTrack);
-        _updateMediaSession();
-      } catch (e, stack) {
-        afLog('audio', 'skipToQueueItem failed', error: e, stackTrace: stack);
-      }
-    } catch (e) {
-      rethrow;
+    } on Exception catch (e, stack) {
+      afLog('audio', 'skipToQueueItem failed', error: e, stackTrace: stack);
     }
   }
 
@@ -1027,7 +1011,7 @@ class AfPlayerService {
         _loopModeController.add(mode);
         afLog('data', 'loopMode source=live mode=${mode.name}');
         _updateMediaSession();
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog('audio', 'setAfLoopMode failed', error: e, stackTrace: stack);
       }
     });
@@ -1234,7 +1218,7 @@ class AfPlayerService {
       await _player.setSpectrum(defaultSpectrumSettings);
       _lastSpectrumSettings = defaultSpectrumSettings;
       afLog('audio', 'spectrum re-configured after track change');
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'audio',
         'reconfigureSpectrumOnTrackChange failed',
@@ -1325,7 +1309,7 @@ class AfPlayerService {
       );
       _mpvLoadedTrackId = target.id;
       onMpvLoadedTrackChanged?.call(_mpvLoadedTrackId);
-    } catch (e) {
+    } on Exception catch (_) {
       _mpvLoadedTrackId = null;
       onMpvLoadedTrackChanged?.call(null);
       rethrow;
@@ -1366,7 +1350,7 @@ class AfPlayerService {
       _player.stream.playing.listen((playing) async {
         try {
           _updateMediaSession();
-        } catch (e, stack) {
+        } on Exception catch (e, stack) {
           afLog('audio', 'playing handler failed', error: e, stackTrace: stack);
         }
       }),
@@ -1384,7 +1368,7 @@ class AfPlayerService {
             try {
               await _player.setAudioDriver('audiotrack');
               afLog('audio', 'Fallback to audiotrack succeeded');
-            } catch (e, stack) {
+            } on Exception catch (e, stack) {
               afLog(
                 'audio',
                 'audiotrack fallback failed, trying auto',
@@ -1394,7 +1378,7 @@ class AfPlayerService {
               try {
                 await _player.setAudioDriver('auto');
                 afLog('audio', 'Fallback to auto succeeded');
-              } catch (e2, stack2) {
+              } on Exception catch (e2, stack2) {
                 afLog(
                   'audio',
                   'auto fallback also failed',
@@ -1404,7 +1388,7 @@ class AfPlayerService {
               }
             }
           }
-        } catch (e, stack) {
+        } on Exception catch (e, stack) {
           afLog(
             'audio',
             'audioOutputState handler failed',
@@ -1469,7 +1453,7 @@ class AfPlayerService {
                 if (!_player.state.playing) {
                   await _player.play();
                 }
-              } catch (e, stack) {
+              } on Exception catch (e, stack) {
                 afLog(
                   'audio',
                   'Loop.file restart failed, rebuilding window',
@@ -1502,7 +1486,7 @@ class AfPlayerService {
                 if (!playingAtEvent) {
                   await _player.play();
                 }
-              } catch (e, stack) {
+              } on Exception catch (e, stack) {
                 afLog(
                   'audio',
                   'forNtimes: seek(0) failed',
@@ -1543,7 +1527,7 @@ class AfPlayerService {
                       await _advanceToNextTrack();
                       autoplayTriggered = true;
                     }
-                  } catch (e, stack) {
+                  } on Exception catch (e, stack) {
                     afLog(
                       'audio',
                       'autoplay check failed',
@@ -1561,7 +1545,7 @@ class AfPlayerService {
                     _mpvLoadedTrackId = null;
                     try {
                       await _player.stop();
-                    } catch (e, stack) {
+                    } on Exception catch (e, stack) {
                       afLog(
                         'audio',
                         'stop failed on queue completion',
@@ -1593,7 +1577,7 @@ class AfPlayerService {
                       if (!_player.state.playing) {
                         await _player.play();
                       }
-                    } catch (e, stack) {
+                    } on Exception catch (e, stack) {
                       afLog(
                         'audio',
                         'Loop.file fallback restart failed',
@@ -1609,7 +1593,7 @@ class AfPlayerService {
               }
             }
           });
-        } catch (e, stack) {
+        } on Exception catch (e, stack) {
           afLog(
             'audio',
             'completed handler failed',
@@ -1633,11 +1617,11 @@ class AfPlayerService {
         try {
           try {
             await _artworkManager.persistCover(raw);
-          } catch (e, stack) {
+          } on Exception catch (e, stack) {
             afLog('audio', 'persistCover failed', error: e, stackTrace: stack);
           }
           _updateMediaSession();
-        } catch (e, stack) {
+        } on Exception catch (e, stack) {
           afLog(
             'audio',
             'coverArt handler failed',
@@ -1654,7 +1638,7 @@ class AfPlayerService {
           if (!_audioDeviceManager.isRealDeviceChange(newDevice.name)) return;
           try {
             await _audioDeviceManager.reapplyPersistedEffects();
-          } catch (e, stack) {
+          } on Exception catch (e, stack) {
             afLog(
               'audio',
               'reapplyPersistedEffects failed',
@@ -1662,7 +1646,7 @@ class AfPlayerService {
               stackTrace: stack,
             );
           }
-        } catch (e, stack) {
+        } on Exception catch (e, stack) {
           afLog(
             'audio',
             'audioDevice handler failed',
@@ -1756,7 +1740,7 @@ class AfPlayerService {
       if (!_player.state.playing && _player.state.playWhenReady) {
         try {
           await _player.play();
-        } catch (e, stack) {
+        } on Exception catch (e, stack) {
           afLog(
             'audio',
             'advance: play() guard failed',
@@ -2061,7 +2045,7 @@ class AfAsyncLock {
           try {
             final result = await action();
             completer.complete(result);
-          } catch (e, st) {
+          } on Exception catch (e, st) {
             completer.completeError(e, st);
           }
         })

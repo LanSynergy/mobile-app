@@ -285,7 +285,7 @@ class SubsonicClient implements MusicBackend {
         }
       }
       afLog('subsonic', 'OpenSubsonic capabilities detected: $_capabilities');
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'subsonic',
         'Failed to fetch OpenSubsonic extensions, assuming standard Subsonic: $e',
@@ -514,7 +514,7 @@ class SubsonicClient implements MusicBackend {
         albumArtist: data['albumArtist'] as String?,
         composer: data['composer'] as String?,
       );
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('subsonic', 'getSong failed for $id', error: e, stackTrace: stack);
       return null;
     }
@@ -548,7 +548,7 @@ class SubsonicClient implements MusicBackend {
           (topSongs?['song'] as List?)?.cast<Map<String, dynamic>>() ??
           const [];
       return songs.map(parseTrack).toList(growable: false);
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'subsonic',
         'getTopSongs failed, falling back to search',
@@ -568,7 +568,7 @@ class SubsonicClient implements MusicBackend {
             (results?['song'] as List?)?.cast<Map<String, dynamic>>() ??
             const [];
         return songs.map(parseTrack).toList(growable: false);
-      } catch (e2, stack2) {
+      } on Exception catch (e2, stack2) {
         afLog(
           'subsonic',
           'search3 fallback also failed',
@@ -761,7 +761,7 @@ class SubsonicClient implements MusicBackend {
       final songs =
           (data?['song'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
       return songs.map(parseTrack).toList(growable: false);
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('subsonic', 'getSimilarSongs2 failed', error: e, stackTrace: stack);
       // getSimilarSongs2 may not be supported; return empty
       return const [];
@@ -803,7 +803,7 @@ class SubsonicClient implements MusicBackend {
         }
       }
       return buf.toString();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'subsonic',
         'getLyricsBySongId failed',
@@ -864,7 +864,7 @@ class SubsonicClient implements MusicBackend {
   Future<void> reportPlaybackStart(String trackId) async {
     try {
       await _get('scrobble', {'id': trackId, 'submission': false});
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'subsonic',
         'reportPlaybackStart scrobble failed',
@@ -887,7 +887,7 @@ class SubsonicClient implements MusicBackend {
         'submission': false,
         'time': '${position.inMilliseconds}',
       });
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'subsonic',
         'reportProgress scrobble failed',
@@ -909,7 +909,7 @@ class SubsonicClient implements MusicBackend {
         'submission': submission,
         'time': '${position.inMilliseconds}',
       });
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'subsonic',
         'reportPlaybackStop scrobble failed',

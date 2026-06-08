@@ -11,6 +11,7 @@ import '../../core/audio/player_settings_store.dart';
 import '../../core/lastfm/lastfm_client.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../utils/log.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/bottom_sheet.dart';
 import 'settings_widgets.dart';
@@ -835,7 +836,7 @@ class _LastFmBrowserAuthDialogState
       });
 
       _startPolling(client, token);
-    } catch (e) {
+    } on Exception catch (e) {
       setState(() {
         _loading = false;
         _error = e.toString().replaceAll('Exception: ', '');
@@ -872,7 +873,9 @@ class _LastFmBrowserAuthDialogState
           SnackBar(content: Text('Connected to Last.fm as $username!')),
         );
         widget.dismiss();
-      } catch (_) {}
+      } on Exception catch (e) {
+        afLog('settings', 'Last.fm OAuth polling failed', error: e);
+      }
     });
   }
 

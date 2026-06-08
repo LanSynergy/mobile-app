@@ -353,7 +353,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     try {
       await svc.setAudioEffects(effects);
       await PlayerSettingsStore.saveAudioEffects(effects);
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(displayError(e, prefix: 'Failed to apply'))),

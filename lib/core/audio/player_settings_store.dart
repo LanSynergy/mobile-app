@@ -529,7 +529,7 @@ class PlayerSettingsStore {
     Future<void> tryApply(String label, Future<void> Function() action) async {
       try {
         await action();
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'error',
           'PlayerSettingsStore apply $label failed',

@@ -28,6 +28,7 @@ void main() {
     registerFallbackValue(
       const AfTrack(id: '', title: '', artistName: '', albumName: ''),
     );
+    registerFallbackValue('');
   });
 
   group('SmartPlaylists Play History Rules', () {
@@ -220,7 +221,7 @@ void main() {
             ),
           );
 
-      when(() => mockBackend.instantMix('seed-track')).thenAnswer(
+      when(() => mockBackend.instantMix(any(), limit: any(named: 'limit'))).thenAnswer(
         (_) async => [
           const AfTrack(
             id: 'track-1',
@@ -242,6 +243,15 @@ void main() {
           ),
         ],
       );
+      when(() => mockBackend.search(any())).thenAnswer(
+        (_) async => (
+          tracks: <AfTrack>[],
+          albums: <AfAlbum>[],
+          artists: <AfArtist>[],
+          playlists: <AfPlaylist>[],
+        ),
+      );
+      when(() => mockBackend.album(any())).thenAnswer((_) async => null);
 
       // We backfill up to 10 tracks to keep it simple, seeding extra top tracks
       when(

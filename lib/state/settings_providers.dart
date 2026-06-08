@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/audio/offline_cache_service.dart';
 import '../core/jellyfin/models/server.dart';
 import '../core/lastfm/lastfm_client.dart';
+import '../utils/log.dart';
 import 'local_library_providers.dart';
 
 final reducedMotionProvider = Provider.autoDispose<bool>((ref) {
@@ -92,6 +93,8 @@ class AppIconNotifier extends Notifier<String> {
     try {
       const channel = MethodChannel('aetherfin.media_session');
       await channel.invokeMethod('changeAppIcon', {'icon': iconName});
-    } catch (_) {}
+    } on Exception catch (e) {
+      afLog('settings', 'changeAppIcon failed', error: e);
+    }
   }
 }

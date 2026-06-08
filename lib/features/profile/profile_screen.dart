@@ -175,7 +175,7 @@ class ProfileScreen extends ConsumerWidget {
                                   .read(profilePhotoProvider.notifier)
                                   .updatePhoto(bytes, mimeType);
                             }
-                          } catch (e) {
+                          } on Exception catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -193,7 +193,7 @@ class ProfileScreen extends ConsumerWidget {
                             await ref
                                 .read(profilePhotoProvider.notifier)
                                 .removePhoto();
-                          } catch (e) {
+                          } on Exception catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -1199,7 +1199,7 @@ Future<void> _playTrackFromStats(
         );
       }
     }
-  } catch (e) {
+  } on Exception catch (e) {
     dismiss?.call();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1276,7 +1276,7 @@ Future<void> _navigateToArtistFromStats(
         );
       }
     }
-  } catch (e) {
+  } on Exception catch (e) {
     dismiss?.call();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1359,7 +1359,7 @@ Future<void> _navigateToAlbumFromStats(
         );
       }
     }
-  } catch (e) {
+  } on Exception catch (e) {
     dismiss?.call();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

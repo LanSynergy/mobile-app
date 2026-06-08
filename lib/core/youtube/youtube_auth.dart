@@ -65,7 +65,7 @@ class YouTubeAuthStorage {
       final decoded = jsonDecode(raw);
       if (decoded is! Map<String, dynamic>) return null;
       return YouTubeAuth.fromJson(decoded);
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'aetherfin:error',
         'YouTube auth deserialization failed; discarding',

@@ -101,7 +101,7 @@ class AuthStorage {
         accessToken: accessToken,
         serverType: serverType,
       );
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'auth blob deserialization failed; discarding',

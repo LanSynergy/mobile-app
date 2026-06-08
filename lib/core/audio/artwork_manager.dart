@@ -178,7 +178,7 @@ class AfArtworkManager {
       // are preserved for fast back-navigation.
 
       onArtworkChanged?.call();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('audio', 'cover art persist failed', error: e, stackTrace: stack);
     }
   }
@@ -206,7 +206,7 @@ class AfArtworkManager {
       _diskCacheSize = totalSize;
       // Clean up expired files on startup
       await _cleanupExpiredCache();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'audio',
         'Failed to initialize disk cache',
@@ -254,7 +254,7 @@ class AfArtworkManager {
           cacheFile.deleteSync();
           _diskCacheChecked.remove(trackId);
         }
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'audio',
           'Failed to check disk cache for $trackId',
@@ -284,7 +284,7 @@ class AfArtworkManager {
               _diskCacheSize -= size;
               afLog('audio', 'Cleaned up expired cache file: ${entity.path}');
             }
-          } catch (e, stack) {
+          } on Exception catch (e, stack) {
             afLog(
               'audio',
               'Failed to clean up cache file: ${entity.path}',
@@ -297,7 +297,7 @@ class AfArtworkManager {
 
       // Enforce size limit
       await _enforceCacheSizeLimit();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('audio', 'Cache cleanup failed', error: e, stackTrace: stack);
     }
   }
@@ -336,7 +336,7 @@ class AfArtworkManager {
           await oldest.delete();
           _diskCacheSize -= size;
           afLog('audio', 'Evicted oldest cache file to enforce size limit');
-        } catch (e, stack) {
+        } on Exception catch (e, stack) {
           afLog(
             'audio',
             'Failed to evict cache file: ${oldest.path}',
@@ -345,7 +345,7 @@ class AfArtworkManager {
           );
         }
       }
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'audio',
         'Failed to enforce cache size limit',
@@ -431,7 +431,9 @@ class AfArtworkManager {
         try {
           final prev = File(_networkCoverPath!);
           if (await prev.exists()) await prev.delete();
-        } catch (_) {}
+        } on Exception catch (_) {
+          // Best-effort cleanup — ignore if file already gone
+        }
       }
 
       // Do NOT delete _coverPath here. Embedded cover art from mpv's
@@ -459,7 +461,7 @@ class AfArtworkManager {
       }
 
       onArtworkChanged?.call();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'audio',
         'artwork download for notification failed',
@@ -481,7 +483,7 @@ class AfArtworkManager {
           await dir.create(recursive: true);
           _diskCacheSize = 0;
         }
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'audio',
           'Failed to clear disk cache',

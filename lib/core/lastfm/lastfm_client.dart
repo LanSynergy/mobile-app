@@ -168,7 +168,7 @@ class LastFmClient {
       }
       _reportStatus(false, 'verifySession: $data');
       return '';
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       _reportStatus(false, 'verifySession: $e');
       afLog(
         'error',
@@ -230,7 +230,7 @@ class LastFmClient {
       }
       _reportStatus(true, 'nowplaying: $artist - $track');
       afLog('data', 'Last.fm now playing updated: $artist - $track');
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       _reportStatus(false, 'nowplaying: $e');
       afLog('error', 'Last.fm now playing failed', error: e, stackTrace: stack);
     }
@@ -293,7 +293,7 @@ class LastFmClient {
         _reportStatus(false, 'scrobble: unexpected response');
         afLog('error', 'Last.fm scrobble response parse failed: $body');
       }
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       _reportStatus(false, 'scrobble: $e');
       afLog('error', 'Last.fm scrobble failed', error: e, stackTrace: stack);
     }
@@ -329,7 +329,7 @@ class LastFmClient {
         final artist = (t['artist'] as Map?)?['name'] as String? ?? '';
         return (artist: artist, title: name);
       }).toList();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('error', 'Last.fm getSimilar failed', error: e, stackTrace: stack);
       return [];
     }
@@ -359,7 +359,7 @@ class LastFmClient {
         options: Options(contentType: Headers.formUrlEncodedContentType),
       );
       afLog('data', 'Last.fm loved track: $artist - $track');
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('error', 'Last.fm love track failed', error: e, stackTrace: stack);
       rethrow;
     }
@@ -389,7 +389,7 @@ class LastFmClient {
         options: Options(contentType: Headers.formUrlEncodedContentType),
       );
       afLog('data', 'Last.fm unloved track: $artist - $track');
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'Last.fm unlove track failed',
@@ -427,7 +427,7 @@ class LastFmClient {
         final artist = (t['artist'] as Map?)?['name'] as String? ?? '';
         return (artist: artist, title: name);
       }).toList();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'Last.fm getLovedTracks failed',
@@ -468,7 +468,7 @@ class LastFmClient {
         final playCount = int.tryParse((t['playcount'] as String? ?? '0')) ?? 0;
         return (artist: artist, title: name, playCount: playCount);
       }).toList();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'Last.fm getTopTracks failed',
@@ -508,7 +508,7 @@ class LastFmClient {
         final playCount = int.tryParse((t['playcount'] as String? ?? '0')) ?? 0;
         return (artist: name, playCount: playCount);
       }).toList();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'Last.fm getTopArtists failed',
@@ -567,7 +567,7 @@ class LastFmClient {
           imageUrl: imageUrl,
         );
       }).toList();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'Last.fm getTopAlbums failed',
@@ -597,7 +597,7 @@ class LastFmClient {
         return data['artist'] as Map<String, dynamic>?;
       }
       return null;
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'Last.fm getArtistInfo failed',
@@ -629,7 +629,7 @@ class LastFmClient {
         return data['album'] as Map<String, dynamic>?;
       }
       return null;
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'Last.fm getAlbumInfo failed',
@@ -666,7 +666,7 @@ class LastFmClient {
           .map((t) => (t as Map)['name'] as String? ?? '')
           .where((n) => n.isNotEmpty)
           .toList();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'Last.fm getSimilarArtists failed',

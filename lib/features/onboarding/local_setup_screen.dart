@@ -96,7 +96,7 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
         // internal navigation and produces a blank screen.
         ref.read(localOnboardingCompletedProvider.notifier).state = true;
       }
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         setState(() {
           _scanning = false;

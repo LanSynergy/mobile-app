@@ -102,7 +102,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       await ref.read(authProvider.notifier).save(auth);
       if (!mounted) return;
       context.go('/onboarding/scope');
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('error', 'sign-in failed', error: e, stackTrace: stack);
       if (e is DioException) {
         // Redact `t`, `s`, `api_key`, etc. before emitting the URL — for

@@ -18,6 +18,7 @@ import '../../core/local/app_mode_store.dart';
 import '../../home_widget/home_widget_manager.dart';
 import '../../app/router.dart';
 import '../../build_id.dart';
+import '../../utils/log.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/lastfm_sync_provider.dart';
 import '../../state/providers.dart';
@@ -207,13 +208,31 @@ class SettingsScreen extends ConsumerWidget {
                         notifyAuthChanged();
                         try {
                           await ref.read(authProvider.notifier).clear();
-                        } catch (_) {}
+                        } on Exception catch (e) {
+                          afLog(
+                            'settings',
+                            'Auth clear failed during reset',
+                            error: e,
+                          );
+                        }
                         try {
                           await AppModeStore.clear();
-                        } catch (_) {}
+                        } on Exception catch (e) {
+                          afLog(
+                            'settings',
+                            'AppMode clear failed during reset',
+                            error: e,
+                          );
+                        }
                         try {
                           ref.read(appModeProvider.notifier).state = null;
-                        } catch (_) {}
+                        } on Exception catch (e) {
+                          afLog(
+                            'settings',
+                            'AppMode state reset failed',
+                            error: e,
+                          );
+                        }
                         if (context.mounted) {
                           context.go('/');
                         } else {
@@ -521,12 +540,24 @@ class SettingsScreen extends ConsumerWidget {
                         try {
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.clear();
-                        } catch (_) {}
+                        } on Exception catch (e) {
+                          afLog(
+                            'settings',
+                            'SharedPreferences clear failed',
+                            error: e,
+                          );
+                        }
 
                         try {
                           const secureStorage = FlutterSecureStorage();
                           await secureStorage.deleteAll();
-                        } catch (_) {}
+                        } on Exception catch (e) {
+                          afLog(
+                            'settings',
+                            'SecureStorage clear failed',
+                            error: e,
+                          );
+                        }
 
                         // ── Step 3: Close and delete database + sidecar files ──
                         try {
@@ -544,7 +575,13 @@ class SettingsScreen extends ConsumerWidget {
                             if (f.existsSync()) await f.delete();
                           }
                           ref.invalidate(appDatabaseProvider);
-                        } catch (_) {}
+                        } on Exception catch (e) {
+                          afLog(
+                            'settings',
+                            'Database cleanup failed',
+                            error: e,
+                          );
+                        }
 
                         // ── Step 4: Delete all cache directories ──
                         // Audio cache (offline downloaded tracks)
@@ -557,13 +594,18 @@ class SettingsScreen extends ConsumerWidget {
                           if (await audioCacheDir.exists()) {
                             await audioCacheDir.delete(recursive: true);
                           }
-                        } catch (_) {}
+                        } on Exception catch (e) {
+                          afLog(
+                            'settings',
+                            'Audio cache cleanup failed',
+                            error: e,
+                          );
+                        }
 
                         // Artwork cache (server-mode cover images)
                         // and local cover cache (extracted from audio files)
                         try {
-                          final cacheDir =
-                              await getApplicationCacheDirectory();
+                          final cacheDir = await getApplicationCacheDirectory();
                           for (final subdir in [
                             'artwork_cache',
                             'local_covers',
@@ -575,12 +617,24 @@ class SettingsScreen extends ConsumerWidget {
                               await dir.delete(recursive: true);
                             }
                           }
-                        } catch (_) {}
+                        } on Exception catch (e) {
+                          afLog(
+                            'settings',
+                            'Artwork cache cleanup failed',
+                            error: e,
+                          );
+                        }
 
                         // ── Step 5: Clear home widget ──
                         try {
                           await HomeWidgetManager.clear();
-                        } catch (_) {}
+                        } on Exception catch (e) {
+                          afLog(
+                            'settings',
+                            'Home widget clear failed',
+                            error: e,
+                          );
+                        }
 
                         // ── Step 6: Clear Riverpod providers ──
                         try {
@@ -592,7 +646,13 @@ class SettingsScreen extends ConsumerWidget {
                                   .state =
                               false;
                           await ref.read(authProvider.notifier).clear();
-                        } catch (_) {}
+                        } on Exception catch (e) {
+                          afLog(
+                            'settings',
+                            'Provider state reset failed',
+                            error: e,
+                          );
+                        }
 
                         // ── Step 7: Navigate to onboarding ──
                         // Use root navigator directly in case the settings
@@ -846,7 +906,7 @@ class _LastFmSettingsSection extends ConsumerWidget {
                         ),
                       );
                     }
-                  } catch (e) {
+                  } on Exception catch (e) {
                     if (context.mounted) {
                       Navigator.pop(context);
                     } // Close dialog

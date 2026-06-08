@@ -92,7 +92,7 @@ class MusicFoldersCardState extends ConsumerState<MusicFoldersCard> {
           context,
         ).showSnackBar(SnackBar(content: Text(msg)));
       }
-    } catch (e) {
+    } on Exception catch (e) {
       if (!mounted) return;
       setState(() => _scanning = false);
       ScaffoldMessenger.of(

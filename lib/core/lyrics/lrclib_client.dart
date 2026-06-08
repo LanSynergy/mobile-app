@@ -105,7 +105,7 @@ class LrcLibClient {
           plain: plain != null && plain.trim().isNotEmpty ? plain.trim() : null,
         );
       }
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('lyrics', 'lrclib.net: fetch failed', error: e, stackTrace: stack);
     }
     return null;

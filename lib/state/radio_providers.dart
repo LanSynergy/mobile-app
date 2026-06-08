@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/backend/music_backend.dart';
 import '../core/jellyfin/models/items.dart';
+import '../utils/log.dart';
 import 'local_library_providers.dart';
 import 'music_backend_providers.dart';
 import 'settings_providers.dart';
@@ -86,7 +87,9 @@ class RadioGenerator {
             return resolved;
           }
         }
-      } catch (_) {}
+      } on Exception catch (e) {
+        afLog('radio', 'Similar artists fallback failed', error: e);
+      }
     }
 
     // 2. Fallback to artist top tracks or general artist query search
@@ -98,7 +101,9 @@ class RadioGenerator {
         final results = await backend.search(artistName);
         if (results.tracks.isNotEmpty) return results.tracks;
       }
-    } catch (_) {}
+    } on Exception catch (e) {
+      afLog('radio', 'Artist top tracks fallback failed', error: e);
+    }
 
     return const [];
   }
@@ -136,7 +141,9 @@ class RadioGenerator {
                 .take(2)
                 .toList();
           }
-        } catch (_) {}
+        } on Exception catch (e) {
+          afLog('radio', 'Artist track resolution failed for batch', error: e);
+        }
         return <AfTrack>[];
       });
 

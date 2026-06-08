@@ -42,7 +42,7 @@ class PlayActions {
             'resolveStreamUrl OK: url=${url.substring(0, 100)}',
           );
           return url;
-        } catch (e) {
+        } on Exception catch (e) {
           afLog(
             'aetherfin:error',
             'resolveStreamUrl failed for id=${t.id}',
@@ -104,10 +104,10 @@ class PlayActions {
           sourceType: sourceType,
           sourceId: sourceId,
         );
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog('data', 'queueHistory save failed', error: e, stackTrace: stack);
       }
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog('audio', 'playQueue failed', error: e, stackTrace: stack);
       rethrow;
     }
@@ -135,7 +135,7 @@ class PlayActions {
             'resolveStreamUrl (playSingle) OK: ${url.substring(0, 100)}',
           );
           return url;
-        } catch (e) {
+        } on Exception catch (e) {
           afLog(
             'aetherfin:error',
             'resolveStreamUrl (playSingle) failed for id=${t.id}',
@@ -227,7 +227,7 @@ class PlayActions {
             .where((t) => t.id != seed.id && seenIds.add(t.id))
             .take(20)
             .toList();
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'play-actions',
           'Instant mix failed for seed=${seed.id}',
@@ -249,7 +249,7 @@ class PlayActions {
           if (results.length >= 20) break;
           if (seenIds.add(t.id)) results.add(t);
         }
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'play-actions',
           'Genre lookup failed for genre=${seed.genre}',
@@ -263,7 +263,7 @@ class PlayActions {
           if (results.length >= 20) break;
           if (seenIds.add(t.id)) results.add(t);
         }
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'play-actions',
           'Artist lookup failed for artist=${seed.artistName}',
@@ -278,7 +278,9 @@ class PlayActions {
         if (results.length >= 20) break;
         if (seenIds.add(t.id)) results.add(t);
       }
-    } catch (_) {}
+    } on Exception catch (e) {
+      afLog('audio', 'Artist tracks query failed during instant mix', error: e);
+    }
 
     return results;
   }
@@ -345,7 +347,7 @@ class PlayActions {
             await svc.appendQueue(queue, resolveStreamUrl: resolveStreamUrl);
           }
         }
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'audio',
           'background instantMix/backfill failed',
@@ -377,7 +379,7 @@ class PlayActions {
           .getRecentlySkippedTrackIds()
           .catchError((_) => <String>[]);
       seenIds.addAll(skippedIds);
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'play-actions',
         'Failed to load recently skipped track IDs',
@@ -410,7 +412,7 @@ class PlayActions {
             queue.add(t);
           }
         }
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'audio',
           'Propagation step failed for track=${nextSeed.id}',
@@ -446,7 +448,7 @@ class PlayActions {
               queue.add(t);
             }
           }
-        } catch (e, stack) {
+        } on Exception catch (e, stack) {
           afLog(
             'audio',
             'Artist top tracks backfill failed for artistId=$artistId',
@@ -475,7 +477,7 @@ class PlayActions {
               }
             }
           }
-        } catch (e, stack) {
+        } on Exception catch (e, stack) {
           afLog(
             'audio',
             'Search backfill failed for artistName=$artistName',
@@ -505,7 +507,7 @@ class PlayActions {
               }
             }
           }
-        } catch (e, stack) {
+        } on Exception catch (e, stack) {
           afLog(
             'audio',
             'Album backfill failed for albumId=$albumId',

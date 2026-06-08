@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/jellyfin/models/library.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../utils/log.dart';
 
 /// Library content-type picker during first run.
 ///
@@ -35,7 +36,9 @@ class _LibraryScopeScreenState extends ConsumerState<LibraryScopeScreen> {
     if (backend != null) {
       try {
         views = await backend.userViews();
-      } catch (_) {}
+      } on Exception catch (e) {
+        afLog('onboarding', 'User views fetch failed', error: e);
+      }
     }
     if (views.where((v) => v.hasAudio).length <= 1) {
       // Auto-skip when there's nothing to choose.

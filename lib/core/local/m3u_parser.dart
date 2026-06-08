@@ -203,7 +203,9 @@ class M3uParser {
           return Duration(hours: hours, minutes: minutes, seconds: secs);
         }
       }
-    } catch (_) {}
+    } on FormatException {
+      // Malformed duration — return null
+    }
     return null;
   }
 }

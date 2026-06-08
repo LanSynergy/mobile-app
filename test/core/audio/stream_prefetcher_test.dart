@@ -120,6 +120,27 @@ void main() {
       expect(await prefetcher.getCachedFile('track_456'), isNull);
     });
 
+    test('dispose prevents new prefetches', () async {
+      // After dispose, prefetch should return null immediately
+      prefetcher.dispose();
+
+      final file = await prefetcher.prefetch(
+        'https://example.com/stream.flac',
+        {},
+        trackId: 'track_disposed',
+      );
+
+      expect(file, isNull);
+      // Verify no Dio request was made
+      verifyNever(
+        () => mockDio.get<ResponseBody>(
+          any(),
+          options: any(named: 'options'),
+          cancelToken: any(named: 'cancelToken'),
+        ),
+      );
+    });
+
     test(
       'clearStaleTempFiles deletes old files and keeps fresh ones',
       () async {

@@ -113,7 +113,7 @@ class OfflineCacheService {
       afLog('cache', 'cached $trackId (${_formatBytes(fileSize)})');
 
       await evictLRU();
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'cache',
         'cacheTrack failed for $trackId',

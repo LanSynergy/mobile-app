@@ -63,7 +63,12 @@ class InnerTubeClient {
 
       // 3. Create persistent client
       _httpClient = HttpClient();
-    } catch (e) {
+    } on Exception catch (e) {
+      afLog(
+        'youtube',
+        'InnerTube init failed (falling back to new client)',
+        error: e,
+      );
       _httpClient = HttpClient();
     }
   }
@@ -155,10 +160,11 @@ class InnerTubeClient {
         final json = jsonDecode(responseBody) as Map<String, dynamic>;
         final parsed = InnerTubeBrowseResponse.fromJson(json);
         return parsed;
-      } catch (e) {
-        rethrow;
+      } on Exception catch (e) {
+        afLog('youtube', 'InnerTube HTTP request failed', error: e);
+        return null;
       }
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'aetherfin:error',
         'InnerTube browse error',
@@ -220,7 +226,7 @@ class InnerTubeClient {
       } finally {
         // Don't close persistent client
       }
-    } catch (e) {
+    } on Exception catch (_) {
       return [];
     }
   }
@@ -270,7 +276,9 @@ class InnerTubeClient {
           }
         }
       }
-    } catch (_) {}
+    } on Exception catch (e) {
+      afLog('youtube', 'InnerTube browse parsing failed', error: e);
+    }
     return items;
   }
 
@@ -314,8 +322,8 @@ class InnerTubeClient {
       } finally {
         client.close();
       }
-    } catch (e) {
-      afLog('aetherfin:error', 'Failed to get visitor data', error: e);
+    } on Exception catch (e) {
+      afLog('youtube', 'Failed to get visitor data', error: e);
     }
     return null;
   }
@@ -518,8 +526,8 @@ class InnerTubeBrowseResponse {
               contData?['nextContinuationData']?['continuation'] as String?;
         }
       }
-    } catch (e) {
-      afLog('aetherfin:error', 'InnerTube browse parse error', error: e);
+    } on Exception catch (e) {
+      afLog('youtube', 'InnerTube browse parse error', error: e);
     }
 
     return InnerTubeBrowseResponse(
@@ -582,7 +590,7 @@ class InnerTubeSection {
 
       if (items.isEmpty) return null;
       return InnerTubeSection(title: title, items: items);
-    } catch (e) {
+    } on Exception catch (_) {
       return null;
     }
   }
@@ -635,7 +643,7 @@ class InnerTubeSection {
           ),
         ],
       );
-    } catch (e) {
+    } on Exception catch (_) {
       return null;
     }
   }
@@ -666,7 +674,7 @@ class InnerTubeSection {
 
       if (items.isEmpty) return null;
       return InnerTubeSection(title: title, items: items);
-    } catch (e) {
+    } on Exception catch (_) {
       return null;
     }
   }
@@ -762,7 +770,7 @@ class InnerTubeItem {
         videoId: videoId,
         browseId: browseEndpoint?['browseId'] as String?,
       );
-    } catch (e) {
+    } on Exception catch (_) {
       return null;
     }
   }
@@ -819,7 +827,7 @@ class InnerTubeItem {
         type: InnerTubeItemType.song,
         videoId: videoId,
       );
-    } catch (e) {
+    } on Exception catch (_) {
       return null;
     }
   }

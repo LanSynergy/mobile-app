@@ -184,7 +184,7 @@ class SmartQueueManager {
       // Invalidate recently-played cache since history changed.
       _recentlyPlayedCache = null;
       _recentlyPlayedCacheTime = null;
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'SmartQueue.recordPlayback failed',
@@ -205,7 +205,7 @@ class SmartQueueManager {
     if (co == null) return;
     try {
       await co.increment(from.id, to.id);
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'SmartQueue.recordTransition failed',
@@ -228,7 +228,7 @@ class SmartQueueManager {
       final need = bufferSize - _buffer.length;
       final toAdd = scored.take(need).map((e) => e.key).toList();
       _buffer.addAll(toAdd);
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'SmartQueue.refillBuffer failed',
@@ -285,7 +285,7 @@ class SmartQueueManager {
         final coTracks = await db.tracksByIds(coOccurred);
         candidates.addAll(coTracks);
       }
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'SmartQueue._addLocalCandidates failed',
@@ -302,7 +302,7 @@ class SmartQueueManager {
     try {
       final mix = await backend!.instantMix(seed.id, limit: 50);
       candidates.addAll(mix);
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'SmartQueue._addServerCandidates failed',
@@ -352,7 +352,7 @@ class SmartQueueManager {
       if (matched.isNotEmpty) {
         await localDb!.lastfm.set(seed.id, matched);
       }
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'error',
         'SmartQueue._addLastFmCandidates failed',

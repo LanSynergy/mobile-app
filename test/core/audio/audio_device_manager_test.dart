@@ -69,6 +69,7 @@ void main() {
         when(
           () => player.state,
         ).thenReturn(const PlayerState(audioEffects: effects));
+        when(() => player.setAudioEffects(any())).thenAnswer((_) async {});
 
         await manager.reapplyPersistedEffects();
 

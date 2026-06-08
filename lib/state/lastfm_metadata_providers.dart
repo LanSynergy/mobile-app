@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../utils/log.dart';
 import 'music_backend_providers.dart';
 import 'settings_providers.dart';
 
@@ -32,7 +33,9 @@ final artistWikiProvider = FutureProvider.family
               playCount: playCount,
             );
           }
-        } catch (_) {}
+        } on Exception catch (e) {
+          afLog('lastfm', 'Artist info fetch failed', error: e);
+        }
       }
 
       // Fallback to server overview/bio
@@ -70,7 +73,8 @@ final albumWikiProvider = FutureProvider.family
         final listeners = info['listeners'] as String?;
         final playCount = info['playcount'] as String?;
         return (wiki: wikiText, listeners: listeners, playCount: playCount);
-      } catch (_) {
+      } on Exception catch (e) {
+        afLog('lastfm', 'Album wiki fetch failed', error: e);
         return null;
       }
     });

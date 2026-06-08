@@ -99,7 +99,7 @@ Future<void> main() async {
           'device id loaded (len=${deviceId.length}); '
           'auth ${initialAuth != null ? "restored" : "absent"}',
         );
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'error',
           'device id / auth load failed',
@@ -158,7 +158,7 @@ Future<void> main() async {
       try {
         MpvAudioKit.ensureInitialized();
         _boot('MpvAudioKit.ensureInitialized OK');
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'error',
           'MpvAudioKit.ensureInitialized failed — audio playback will be unavailable',
@@ -232,7 +232,7 @@ Future<void> main() async {
                 );
               }),
         );
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         afLog(
           'error',
           'OfflineCacheService read failed',
@@ -338,7 +338,7 @@ Future<String> _loadAetherfinVersion() async {
     // Strip a trailing `+buildNumber` if PackageInfo ever surfaces it.
     final plusIdx = raw.indexOf('+');
     return plusIdx < 0 ? raw : raw.substring(0, plusIdx);
-  } catch (e, stack) {
+  } on Exception catch (e, stack) {
     afLog(
       'error',
       'PackageInfo.fromPlatform failed; using fallback version string',
@@ -372,7 +372,7 @@ Future<String> _loadOrCreateFallbackDeviceId() async {
     await prefs.setString(_fallbackDeviceIdKey, fresh);
     _boot('fallback device id generated');
     return fresh;
-  } catch (e, stack) {
+  } on Exception catch (e, stack) {
     afLog(
       'error',
       'fallback device id load failed',

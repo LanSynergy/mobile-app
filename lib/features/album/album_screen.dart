@@ -334,7 +334,7 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
       // Also invalidate the album detail so didUpdateWidget gets the
       // fresh isFavorite value if the user navigates away and back.
       ref.invalidate(albumDetailProvider(widget.album.id));
-    } catch (e) {
+    } on Exception catch (e) {
       // Revert the optimistic flip on failure.
       setState(() => _isFavorite = !_isFavorite);
       if (mounted) {

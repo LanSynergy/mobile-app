@@ -83,7 +83,7 @@ Future<void> _wireQueueLoading(Ref ref, AfPlayerService svc) async {
         }
         await svc.pause();
       }
-    } catch (e, stack) {
+    } on Exception catch (e, stack) {
       afLog(
         'audio',
         'Failed to load saved queue on boot',
@@ -128,7 +128,7 @@ void _wireQueueSaving(Ref ref, AfPlayerService svc, _WireDisposables d) {
           currentIndex: currentIndex >= 0 ? currentIndex : 0,
           position: position,
         );
-      } catch (e) {
+      } on Exception catch (e) {
         afLog('audio', 'Failed to save play queue', error: e);
       }
     });
@@ -234,7 +234,9 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
     if (track != null) {
       try {
         await ref.read(favoriteToggleProvider)(track);
-      } catch (_) {}
+      } on Exception catch (e) {
+        afLog('audio', 'Favorite toggle from notification failed', error: e);
+      }
       // Refresh home widget after favorite toggle.
       final updatedTrack = ref.read(currentTrackProvider);
       unawaited(
@@ -266,7 +268,7 @@ void _wireServiceCallbacks(Ref ref, AfPlayerService svc) {
     if (backend is YouTubeMusicClient) {
       try {
         url = await backend.resolveStreamUrl(track.id);
-      } catch (e) {
+      } on Exception catch (e) {
         afLog('audio', 'YouTube stream resolve failed for cache', error: e);
         return;
       }

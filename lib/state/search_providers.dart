@@ -110,7 +110,7 @@ final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((
         return parseLrc(raw);
       }
     }
-  } catch (e) {
+  } on Exception catch (e) {
     afLog('error', 'Failed to read lyrics from local cache', error: e);
   }
 
@@ -148,7 +148,9 @@ final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((
     try {
       final details = await ref.read(trackDetailsProvider(trackId).future);
       track = details?.track;
-    } catch (_) {}
+    } on Exception catch (e) {
+      afLog('lyrics', 'Track details fetch failed for lyrics', error: e);
+    }
   }
 
   if (track == null) {
@@ -185,7 +187,7 @@ final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((
           source: 'lrclib_write',
           extra: 'cached to local cache path',
         );
-      } catch (e) {
+      } on Exception catch (e) {
         afLog('error', 'Failed to write lyrics cache', error: e);
       }
 
