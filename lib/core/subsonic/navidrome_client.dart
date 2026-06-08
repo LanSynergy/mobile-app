@@ -47,7 +47,10 @@ class NavidromeClient extends SubsonicClient {
   Future<void> _ensureNdAuthenticated() async {
     if (_ndToken != null) return;
     if (_isAuthenticating) {
-      await _authCompleter?.future;
+      final completer = _authCompleter;
+      if (completer != null) {
+        await completer.future;
+      }
       return;
     }
     _isAuthenticating = true;

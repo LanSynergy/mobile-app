@@ -214,7 +214,9 @@ class MetadataScanner {
             double? spectralHue;
             if (coverPath != null) {
               try {
-                spectralHue = await _spectralExtractor.extractHueFromArtwork(coverPath);
+                spectralHue = await _spectralExtractor.extractHueFromArtwork(
+                  coverPath,
+                );
               } on Exception catch (e, stack) {
                 afLog(
                   'local',

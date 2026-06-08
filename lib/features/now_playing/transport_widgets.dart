@@ -10,6 +10,7 @@ import '../../core/audio/shuffle_mode.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../utils/log.dart';
 import '../../widgets/af_dialog.dart';
 import 'transport_row.dart';
 
@@ -44,7 +45,12 @@ class ReactiveTransport extends ConsumerWidget {
       onShuffle: () {
         final svc = ref.read(playerServiceProvider);
         unawaited(
-          svc.setAfShuffleMode(!svc.isShuffleEnabled).catchError((_) {}),
+          svc.setAfShuffleMode(!svc.isShuffleEnabled).catchError((
+            Object e,
+            StackTrace s,
+          ) {
+            afLog('audio', 'setAfShuffleMode failed', error: e, stackTrace: s);
+          }),
         );
       },
       onShuffleLongPress: () => _showShuffleOptions(context, ref),
@@ -55,19 +61,48 @@ class ReactiveTransport extends ConsumerWidget {
             .maybeWhen(data: (v) => v, orElse: () => AfLoopMode.off);
         switch (currentMode) {
           case AfLoopMode.off:
-            unawaited(svc.setAfLoopMode(Loop.playlist).catchError((_) {}));
+            unawaited(
+              svc.setAfLoopMode(Loop.playlist).catchError((
+                Object e,
+                StackTrace s,
+              ) {
+                afLog('audio', 'setAfLoopMode failed', error: e, stackTrace: s);
+              }),
+            );
             break;
           case AfLoopMode.playlist:
-            unawaited(svc.setAfLoopMode(Loop.file).catchError((_) {}));
+            unawaited(
+              svc.setAfLoopMode(Loop.file).catchError((Object e, StackTrace s) {
+                afLog('audio', 'setAfLoopMode failed', error: e, stackTrace: s);
+              }),
+            );
             break;
           case AfLoopMode.file:
             ref.read(forNtimesModeProvider.notifier).state = true;
-            unawaited(svc.setAfForNtimes(true).catchError((_) {}));
+            unawaited(
+              svc.setAfForNtimes(true).catchError((Object e, StackTrace s) {
+                afLog(
+                  'audio',
+                  'setAfForNtimes failed',
+                  error: e,
+                  stackTrace: s,
+                );
+              }),
+            );
             break;
           case AfLoopMode.forNtimes:
             ref.read(forNtimesModeProvider.notifier).state = false;
             svc.setLoopModeOffSync();
-            unawaited(svc.setAfForNtimes(false).catchError((_) {}));
+            unawaited(
+              svc.setAfForNtimes(false).catchError((Object e, StackTrace s) {
+                afLog(
+                  'audio',
+                  'setAfForNtimes failed',
+                  error: e,
+                  stackTrace: s,
+                );
+              }),
+            );
             break;
         }
       },

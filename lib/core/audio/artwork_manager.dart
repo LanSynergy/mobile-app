@@ -51,9 +51,23 @@ class AfArtworkManager {
       for (final f in orphans) {
         try {
           await f.delete();
-        } catch (_) {}
+        } on Exception catch (e, stack) {
+          afLog(
+            'audio',
+            'Failed to delete orphan temp file',
+            error: e,
+            stackTrace: stack,
+          );
+        }
       }
-    } catch (_) {}
+    } on Exception catch (e, stack) {
+      afLog(
+        'audio',
+        'Failed to list temp directory for orphan cleanup',
+        error: e,
+        stackTrace: stack,
+      );
+    }
   }
 
   /// Called when artwork is persisted or downloaded so the owner can
@@ -251,7 +265,14 @@ class AfArtworkManager {
       try {
         final prev = File(_networkCoverPath!);
         if (await prev.exists()) await prev.delete();
-      } on Exception catch (_) {}
+      } on Exception catch (e, stack) {
+        afLog(
+          'audio',
+          'Failed to delete previous network cover',
+          error: e,
+          stackTrace: stack,
+        );
+      }
     }
 
     _networkCoverPath = path;

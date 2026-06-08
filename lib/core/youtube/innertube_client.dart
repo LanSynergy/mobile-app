@@ -21,7 +21,7 @@ class InnerTubeClient {
   /// Persistent HTTP client for cookie persistence across requests.
   HttpClient? _httpClient;
   String? _cachedVisitorData;
-  bool _initialized = false;
+  Completer<void>? _initCompleter;
   String? _cookies;
 
   String get _locale {
@@ -32,9 +32,15 @@ class InnerTubeClient {
   }
 
   /// Lazily initialize: fetch homepage for cookies + visitorData in one session.
+  ///
+  /// Uses a [Completer] to serialize concurrent callers — only the first
+  /// caller runs the init logic; subsequent callers await the same future.
   Future<void> _ensureInitialized() async {
-    if (_initialized) return;
-    _initialized = true;
+    if (_initCompleter != null) {
+      await _initCompleter!.future;
+      return;
+    }
+    _initCompleter = Completer<void>();
 
     try {
       // 1. Fetch homepage to get session cookies
@@ -70,6 +76,7 @@ class InnerTubeClient {
         error: e,
       );
       _httpClient = HttpClient();
+      _initCompleter?.complete();
     }
   }
 
@@ -226,7 +233,8 @@ class InnerTubeClient {
       } finally {
         // Don't close persistent client
       }
-    } on Exception catch (_) {
+    } on Exception catch (e, stack) {
+      afLog('youtube', 'browsePlaylist failed', error: e, stackTrace: stack);
       return [];
     }
   }
@@ -326,6 +334,12 @@ class InnerTubeClient {
       afLog('youtube', 'Failed to get visitor data', error: e);
     }
     return null;
+  }
+
+  /// Release resources held by this client.
+  void dispose() {
+    _httpClient?.close();
+    _httpClient = null;
   }
 }
 
@@ -590,7 +604,13 @@ class InnerTubeSection {
 
       if (items.isEmpty) return null;
       return InnerTubeSection(title: title, items: items);
-    } on Exception catch (_) {
+    } on Exception catch (e, stack) {
+      afLog(
+        'youtube',
+        'InnerTube fromCarousel parse failed',
+        error: e,
+        stackTrace: stack,
+      );
       return null;
     }
   }
@@ -643,7 +663,13 @@ class InnerTubeSection {
           ),
         ],
       );
-    } on Exception catch (_) {
+    } on Exception catch (e, stack) {
+      afLog(
+        'youtube',
+        'InnerTube fromTastebuilder parse failed',
+        error: e,
+        stackTrace: stack,
+      );
       return null;
     }
   }
@@ -674,7 +700,13 @@ class InnerTubeSection {
 
       if (items.isEmpty) return null;
       return InnerTubeSection(title: title, items: items);
-    } on Exception catch (_) {
+    } on Exception catch (e, stack) {
+      afLog(
+        'youtube',
+        'InnerTube fromShelf parse failed',
+        error: e,
+        stackTrace: stack,
+      );
       return null;
     }
   }
@@ -770,7 +802,13 @@ class InnerTubeItem {
         videoId: videoId,
         browseId: browseEndpoint?['browseId'] as String?,
       );
-    } on Exception catch (_) {
+    } on Exception catch (e, stack) {
+      afLog(
+        'youtube',
+        'InnerTube fromTwoRow parse failed',
+        error: e,
+        stackTrace: stack,
+      );
       return null;
     }
   }
@@ -827,7 +865,13 @@ class InnerTubeItem {
         type: InnerTubeItemType.song,
         videoId: videoId,
       );
-    } on Exception catch (_) {
+    } on Exception catch (e, stack) {
+      afLog(
+        'youtube',
+        'InnerTube fromResponsive parse failed',
+        error: e,
+        stackTrace: stack,
+      );
       return null;
     }
   }

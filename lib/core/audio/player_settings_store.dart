@@ -366,7 +366,13 @@ class PlayerSettingsStore {
       return raw.map(
         (k, v) => MapEntry(k, EqPreset.fromJson(v as Map<String, dynamic>)),
       );
-    } catch (_) {
+    } on Exception catch (e, stack) {
+      afLog(
+        'audio',
+        'Failed to load EQ presets from storage',
+        error: e,
+        stackTrace: stack,
+      );
       return {};
     }
   }
@@ -512,7 +518,13 @@ class PlayerSettingsStore {
           samples: (m['crusher_samples'] as num?)?.toDouble() ?? 1.0,
         ),
       );
-    } catch (_) {
+    } on Exception catch (e, stack) {
+      afLog(
+        'audio',
+        'Failed to load audio effects from storage',
+        error: e,
+        stackTrace: stack,
+      );
       return null;
     }
   }

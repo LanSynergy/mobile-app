@@ -37,7 +37,7 @@ class PaginationState<T> {
 }
 
 /// Manages paginated track loading via [MusicBackend.allTracks()].
-class TracksNotifier extends Notifier<PaginationState<AfTrack>> {
+class TracksNotifier extends AutoDisposeNotifier<PaginationState<AfTrack>> {
   static const _pageSize = 100;
 
   @override
@@ -93,7 +93,7 @@ class TracksNotifier extends Notifier<PaginationState<AfTrack>> {
 /// Provider for paginated track list (replaces direct [allTracksProvider]
 /// usage in screens that support infinite scroll).
 final tracksPaginationProvider =
-    NotifierProvider<TracksNotifier, PaginationState<AfTrack>>(
+    NotifierProvider.autoDispose<TracksNotifier, PaginationState<AfTrack>>(
       TracksNotifier.new,
     );
 

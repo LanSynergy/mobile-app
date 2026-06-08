@@ -39,10 +39,11 @@ final spectralHueFromDbProvider = FutureProvider.autoDispose
       if (trackId == null) return null;
       try {
         final db = ref.watch(appDatabaseProvider);
-        final rows = await (db.select(db.tracks)
-              ..where((t) => t.id.equals(trackId))
-              ..limit(1))
-            .get();
+        final rows =
+            await (db.select(db.tracks)
+                  ..where((t) => t.id.equals(trackId))
+                  ..limit(1))
+                .get();
         if (rows.isEmpty) return null;
         return rows.first.spectralHue;
       } on Exception catch (e) {
