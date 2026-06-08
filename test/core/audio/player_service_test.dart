@@ -72,7 +72,6 @@ void main() {
     late MockPlayer player;
     late StreamControllers ctrls;
     late _StateUpdater updateState;
-    Future<dynamic> Function(MethodCall)? handler;
 
     const trackA = AfTrack(
       id: '1',
@@ -112,7 +111,6 @@ void main() {
       player = fixture.player;
       ctrls = fixture.ctrls;
       updateState = fixture.updateState;
-      handler = fixture.handler;
     });
 
     tearDown(() async {
@@ -561,95 +559,81 @@ void main() {
     );
 
     // -----------------------------------------------------------------------
-    // 13. Platform method calls invoke corresponding service methods
+    // 13. Media session commands invoke corresponding service methods
+    //
+    // Commands arrive via player.stream.mediaSessionCommands (mpv_audio_kit).
+    // play/pause/seekTo are auto-applied by the package at the native level
+    // and don't trigger the Dart listener — test only the commands we handle.
     // -----------------------------------------------------------------------
-    test('platform method calls invoke corresponding service methods', () async {
-      expect(handler, isNotNull);
+    test(
+      'media session commands invoke corresponding service methods',
+      () async {
+        // Load 2 tracks so skipToNext/Previous have somewhere to go.
+        when(
+          () => player.openAll(
+            any(),
+            index: any(named: 'index'),
+            play: any(named: 'play'),
+          ),
+        ).thenAnswer((_) async {});
+        await service.playQueue(
+          [trackA, trackB],
+          startIndex: 0,
+          resolveStreamUrl: resolveStreamUrl,
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      // Load 2 tracks so skipToNext/Previous have somewhere to go.
-      when(
-        () => player.openAll(
-          any(),
-          index: any(named: 'index'),
-          play: any(named: 'play'),
-        ),
-      ).thenAnswer((_) async {});
-      await service.playQueue(
-        [trackA, trackB],
-        startIndex: 0,
-        resolveStreamUrl: resolveStreamUrl,
-      );
-      await Future<void>.delayed(Duration.zero);
+        // Stub methods called by player_service
+        when(() => player.stop()).thenAnswer((_) async {});
+        when(() => player.seek(any())).thenAnswer((_) async {});
+        when(
+          () => player.openAll(
+            any(),
+            index: any(named: 'index'),
+            play: any(named: 'play'),
+          ),
+        ).thenAnswer((_) async {});
+        when(() => player.setRate(any())).thenAnswer((_) async {});
+        when(() => player.setLoop(any())).thenAnswer((_) async {});
+        when(() => player.setShuffle(any())).thenAnswer((_) async {});
 
-      // Stub methods called by player_service
-      when(() => player.play()).thenAnswer((_) async {});
-      when(() => player.pause()).thenAnswer((_) async {});
-      when(() => player.stop()).thenAnswer((_) async {});
-      when(() => player.next()).thenAnswer((_) async {});
-      when(() => player.previous()).thenAnswer((_) async {});
-      when(() => player.seek(any())).thenAnswer((_) async {});
-      when(
-        () => player.openAll(
-          any(),
-          index: any(named: 'index'),
-          play: any(named: 'play'),
-        ),
-      ).thenAnswer((_) async {});
+        // Simulate media session commands arriving from OS via stream
+        final ctrl = ctrls.mediaSessionCommands;
 
-      await handler!(const MethodCall('play'));
-      await Future<void>.delayed(Duration.zero);
-      verify(() => player.play()).called(1);
+        // stop — handled by _wireMediaSessionCommands
+        ctrl.add(MediaSessionCommand.stop);
+        await Future<void>.delayed(Duration.zero);
+        verify(() => player.stop()).called(greaterThanOrEqualTo(1));
 
-      await handler!(const MethodCall('pause'));
-      await Future<void>.delayed(Duration.zero);
-      verify(() => player.pause()).called(1);
+        // next — triggers skipToNext which calls openAll
+        ctrl.add(MediaSessionCommand.next);
+        await Future<void>.delayed(Duration.zero);
+        verify(
+          () => player.openAll(
+            any(),
+            index: any(named: 'index'),
+            play: any(named: 'play'),
+          ),
+        ).called(greaterThan(0));
 
-      await handler!(const MethodCall('next'));
-      await Future<void>.delayed(Duration.zero);
-      verify(
-        () => player.openAll(
-          any(),
-          index: any(named: 'index'),
-          play: any(named: 'play'),
-        ),
-      ).called(greaterThan(0));
+        // setPlaybackRate — calls setAfSpeed → setRate
+        ctrl.add(const MediaSessionCommand.setPlaybackRate(1.5));
+        await Future<void>.delayed(Duration.zero);
+        verify(() => player.setRate(1.5)).called(1);
 
-      await handler!(const MethodCall('previous'));
-      await Future<void>.delayed(Duration.zero);
-      verify(
-        () => player.openAll(
-          any(),
-          index: any(named: 'index'),
-          play: any(named: 'play'),
-        ),
-      ).called(greaterThan(0));
+        // setRepeatMode — calls setAfLoopMode which manages loop in Dart
+        // (not via mpv's setLoop). Verify internal state instead.
+        ctrl.add(const MediaSessionCommand.setRepeatMode(Loop.file));
+        await Future<void>.delayed(Duration.zero);
+        expect(service.loopMode, equals(Loop.file));
 
-      await handler!(const MethodCall('stop'));
-      await Future<void>.delayed(Duration.zero);
-      verify(() => player.stop()).called(3);
-
-      await handler!(const MethodCall('seek', {'positionMs': 1234}));
-      await Future<void>.delayed(Duration.zero);
-      verify(() => player.seek(const Duration(milliseconds: 1234))).called(1);
-
-      // skipToQueueItem(5) uses _rebuildWindow → openAll, not jump().
-      // Distinguish from playQueue (2 tracks) by matching window length (1 track).
-      await handler!(const MethodCall('skipTo', {'queueIndex': 5}));
-      await Future<void>.delayed(Duration.zero);
-      verify(
-        () => player.openAll(
-          any(that: hasLength(1)),
-          index: any(named: 'index'),
-          play: any(named: 'play'),
-        ),
-      ).called(1);
-      verifyNever(() => player.jump(any()));
-
-      expect(
-        () => handler!(const MethodCall('invalidMethod')),
-        throwsA(isA<PlatformException>()),
-      );
-    });
+        // setShuffle — calls setAfShuffleMode which manages shuffle in Dart
+        // (not via mpv's setShuffle). Verify internal state instead.
+        ctrl.add(const MediaSessionCommand.setShuffle(true));
+        await Future<void>.delayed(Duration.zero);
+        expect(service.isShuffleEnabled, isTrue);
+      },
+    );
 
     test('completed handler rebuilds window via openAll', () async {
       when(
@@ -790,25 +774,6 @@ void main() {
         verify(() => player.seek(Duration.zero)).called(1);
       },
     );
-
-    test('duck and unduck adjust volume correctly', () async {
-      expect(handler, isNotNull);
-
-      updateState((s) => s.copyWith(volume: 1.0));
-      when(() => player.setVolume(any())).thenAnswer((_) async {});
-
-      // Simulate 'duck' with volume ratio 0.2
-      await handler!(const MethodCall('duck', {'volume': 0.2}));
-      await Future<void>.delayed(Duration.zero);
-
-      verify(() => player.setVolume(0.2)).called(1);
-
-      // Simulate 'unduck'
-      await handler!(const MethodCall('unduck'));
-      await Future<void>.delayed(Duration.zero);
-
-      verify(() => player.setVolume(1.0)).called(1);
-    });
 
     // -----------------------------------------------------------------------
     // Loop.file mid-queue restarts current track instead of advancing

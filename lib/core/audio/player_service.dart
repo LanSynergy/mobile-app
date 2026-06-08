@@ -17,7 +17,8 @@ import 'stream_url_cache.dart';
 
 import 'spectrum_settings.dart';
 
-/// Bridges [Player] (mpv_audio_kit) with a platform-native media session.
+/// Bridges [Player] (mpv_audio_kit) with a platform-native media session
+/// via [Player.setMediaSession].
 ///
 /// Uses a single-track model: mpv plays exactly what we give it via
 /// [openAll]. On completion, [skipToNext] or the completed handler
@@ -30,6 +31,10 @@ import 'spectrum_settings.dart';
 /// - Shuffle is pure Dart Fisher-Yates — 0 mpv calls.
 /// - [AfAsyncLock] serializes [openAll] calls in playQueue,
 ///   setAfLoopMode, and the completed handler.
+/// - OS media session (lockscreen, notification, MPRIS, SMTC) is
+///   managed by mpv_audio_kit's built-in [setMediaSession] API.
+/// - The legacy [NativeMediaSessionBridge] is retained only for Android
+///   widget state updates and shortcut actions.
 class AfPlayerService {
   AfPlayerService() : _player = Player() {
     _positionTracker = AfPositionTracker(
@@ -43,8 +48,44 @@ class AfPlayerService {
     _prefetcher = StreamPrefetcher();
     _loopModeController = StreamController<Loop>.broadcast();
 
+    // ── OS media session via mpv_audio_kit ─────────────────────────────
+    // Publish to lockscreen / notification / MPRIS / SMTC.  Metadata
+    // (title, artist, album, duration) is auto-derived from the playing
+    // file; overrides are applied in _updateMediaSession via copyWith.
+    //
+    // autoApplyPlaylistNavigation is false because Dart owns the queue
+    // and mpv only ever holds a single track at a time.
+    _player
+        .setMediaSession(
+          const MediaSession(
+            actions: {
+              MediaAction.play,
+              MediaAction.pause,
+              MediaAction.playPause,
+              MediaAction.next,
+              MediaAction.previous,
+              MediaAction.seek,
+              MediaAction.fastForward,
+              MediaAction.rewind,
+              MediaAction.setRepeatMode,
+              MediaAction.setShuffle,
+              MediaAction.like,
+            },
+            fastForwardInterval: Duration(seconds: 30),
+            rewindInterval: Duration(seconds: 15),
+            interruptionPolicy: InterruptionPolicy.pauseAndResume,
+            appName: 'Aetherfin',
+            artwork: MediaSessionArtwork.none,
+          ),
+        )
+        .catchError((Object e, StackTrace stack) {
+          afLog('audio', 'setMediaSession failed', error: e, stackTrace: stack);
+        });
+
+    _wireMediaSessionCommands();
+
+    // ── Legacy bridge — widget state updates + shortcut actions only ───
     final bridge = NativeMediaSessionBridge();
-    _wireBridgeCallbacks(bridge);
     _bridge = bridge;
 
     // Check for pending startup shortcut actions
@@ -127,6 +168,7 @@ class AfPlayerService {
       _bridge = bridge;
     }
     _wireBridgeCallbacks(_bridge);
+    _wireMediaSessionCommands();
 
     // Skip setAudioDriver, setAudioBuffer, Future.delayed in test mode.
     // Also skips _positionTracker.start() — position polling creates a
@@ -144,8 +186,6 @@ class AfPlayerService {
   late final AfArtworkManager _artworkManager;
   late final AfAudioDeviceManager _audioDeviceManager;
   late final AfQueueManager _queueManager;
-  double _preDuckVolume = 1.0;
-  bool _isDucked = false;
   late final StreamPrefetcher _prefetcher;
   Loop _loopMode = Loop.off;
   late final StreamController<Loop> _loopModeController;
@@ -646,7 +686,9 @@ class AfPlayerService {
         _cacheStreamUrl(startTrack.id, url);
       }
     }
-    final medias = <Media>[Media(url, httpHeaders: _authHeaders.isNotEmpty ? _authHeaders : null)];
+    final medias = <Media>[
+      Media(url, httpHeaders: _authHeaders.isNotEmpty ? _authHeaders : null),
+    ];
     afLog(
       'aetherfin:youtube',
       'playQueue: url=${url.length > 80 ? url.substring(0, 80) : url}...',
@@ -1239,7 +1281,16 @@ class AfPlayerService {
     }
 
     try {
-      await _player.openAll([Media(url, httpHeaders: _authHeaders.isNotEmpty ? _authHeaders : null)], index: 0, play: true);
+      await _player.openAll(
+        [
+          Media(
+            url,
+            httpHeaders: _authHeaders.isNotEmpty ? _authHeaders : null,
+          ),
+        ],
+        index: 0,
+        play: true,
+      );
       _mpvLoadedTrackId = target.id;
       onMpvLoadedTrackChanged?.call(_mpvLoadedTrackId);
     } catch (e) {
@@ -1748,19 +1799,17 @@ class AfPlayerService {
   int _lastQSPositionPushMs = 0;
   bool _lastEffectivePlaying = false;
 
-  /// Push the current state through the bridge (throttled to ~100ms).
-  /// Sends `updateState` when there is an active track,
-  /// or `clear` when the queue is empty.
+  /// Push the current state to the OS media session and the legacy
+  /// bridge (for Android widget updates).
   ///
-  /// Throttles at the entry point so `MediaSessionState` construction
+  /// Throttled to ~100ms at the entry point so metadata construction
   /// (which involves several field accesses across managers) doesn't
-  /// run at 30–60 Hz from [_player.stream.position]. The bridge's own
-  /// internal throttle on the MethodChannel call is insufficient because
-  /// by the time it's reached, the state object has already been built.
+  /// run at 30–60 Hz from [_player.stream.position].
   void _updateMediaSession() {
     if (_disposed) return;
     final track = _queueManager.currentTrack;
     if (track == null) {
+      _player.setMediaSession(null);
       _bridge.clear();
       return;
     }
@@ -1811,6 +1860,25 @@ class AfPlayerService {
             Loop.off => 'off',
           };
 
+    // ── Push metadata to mpv_audio_kit's media session ──────────────
+    // Uses copyWith on the existing session (or a blank fallback) so
+    // only the fields that changed are overwritten.
+    final artwork = artUri != null
+        ? MediaSessionArtwork.uri(artUri)
+        : MediaSessionArtwork.none;
+
+    _player.setMediaSession(
+      (s.mediaSession ?? const MediaSession()).copyWith(
+        title: track.title,
+        artist: track.artistName,
+        album: track.albumName,
+        duration: effectiveDuration,
+        artwork: artwork,
+        isFavorite: track.isFavorite,
+      ),
+    );
+
+    // ── Legacy bridge: widget state + shortcut actions only ──────────
     _bridge.pushState(
       MediaSessionState(
         playing: effectivePlaying,
@@ -1835,68 +1903,45 @@ class AfPlayerService {
     );
   }
 
-  void _wireBridgeCallbacks(NativeMediaSessionBridge bridge) {
-    bridge.onPlay = () => unawaited(play());
-    bridge.onPause = () => unawaited(pause());
-    bridge.onNext = () => unawaited(skipToNext());
-    bridge.onPrevious = () => unawaited(skipToPrevious());
-    bridge.onStop = () => unawaited(stop());
-    bridge.onSeek = (Duration pos) => unawaited(seek(pos));
-    bridge.onSkipToQueueItem = (int idx) => unawaited(skipToQueueItem(idx));
-    bridge.onSetShuffleMode = (int shuffleMode) {
-      unawaited(setAfShuffleMode(shuffleMode == 1));
-    };
-    bridge.onSetRepeatMode = (int repeatMode) {
-      final mode = switch (repeatMode) {
-        1 => Loop.file,
-        2 => Loop.playlist,
-        _ => Loop.off,
-      };
-      unawaited(setAfLoopMode(mode));
-    };
-    bridge.onToggleShuffle = () {
-      unawaited(setAfShuffleMode(!_queueManager.isShuffleEnabled));
-    };
-    bridge.onToggleRepeat = () {
-      if (_queueManager.engine.isForNtimes) {
-        _loopMode = Loop.off;
-        _loopModeController.add(Loop.off);
-        unawaited(setAfForNtimes(false));
-      } else {
-        switch (_loopMode) {
-          case Loop.off:
-            unawaited(setAfLoopMode(Loop.playlist));
-          case Loop.playlist:
-            unawaited(setAfLoopMode(Loop.file));
-          case Loop.file:
-            unawaited(setAfForNtimes(true));
+  /// Listen to OS media session commands emitted by mpv_audio_kit.
+  ///
+  /// Commands are auto-applied to the player (play, pause, seek, …) by
+  /// the package itself. We only need to handle the ones that require
+  /// Dart-side queue navigation (next/previous) and app-specific actions
+  /// (like, shuffle, repeat cycling).
+  void _wireMediaSessionCommands() {
+    _subs.add(
+      _player.stream.mediaSessionCommands.listen((command) {
+        if (_disposed) return;
+        switch (command) {
+          case MediaSessionCommandNext():
+            unawaited(skipToNext());
+          case MediaSessionCommandPrevious():
+            unawaited(skipToPrevious());
+          case MediaSessionCommandSetShuffle(:final shuffle):
+            unawaited(setAfShuffleMode(shuffle));
+          case MediaSessionCommandSetRepeatMode(:final loop):
+            unawaited(setAfLoopMode(loop));
+          case MediaSessionCommandSetPlaybackRate(:final rate):
+            unawaited(setAfSpeed(rate));
+          case MediaSessionCommandLike():
+            onToggleFavorite?.call();
+          case MediaSessionCommandSeekBy(:final offset):
+            // Relative seek — mpv auto-applies, but we also sync the
+            // Dart position tracker so extrapolation stays accurate.
+            unawaited(seek(_positionTracker.lastKnownPosition + offset));
+          case MediaSessionCommandStop():
+            unawaited(stop());
+          case _:
+            // play, pause, playPause, seekTo — auto-applied by mpv.
+            break;
         }
-      }
-    };
-    bridge.onDuck = (double targetVolume) {
-      if (!_isDucked) {
-        _preDuckVolume = _player.state.volume;
-        _isDucked = true;
-      }
-      unawaited(setVolume(_preDuckVolume * targetVolume));
-    };
-    bridge.onUnduck = () {
-      if (_isDucked) {
-        unawaited(setVolume(_preDuckVolume));
-        _isDucked = false;
-      }
-    };
-    bridge.onArtworkNeeded = () {
-      final track = _queueManager.currentTrack;
-      if (track == null) return;
-      unawaited(
-        _artworkManager.downloadArtworkForNotification(track).then((_) {
-          if (!_disposed) _updateMediaSession();
-        }),
-      );
-    };
+      }),
+    );
+  }
+
+  void _wireBridgeCallbacks(NativeMediaSessionBridge bridge) {
     bridge.onShortcutAction = _handleShortcutAction;
-    bridge.onToggleFavorite = () => onToggleFavorite?.call();
   }
 
   void updateTrackFavorite(String trackId, bool isFavorite) {

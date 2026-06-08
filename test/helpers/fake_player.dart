@@ -59,6 +59,30 @@ class MockPlayerStream extends Mock implements PlayerStream {}
   final audioDevicesCtrl = StreamController<List<Device>>.broadcast();
   final audioOutputStateCtrl = StreamController<AudioOutputState>.broadcast();
   final durationCtrl = StreamController<Duration>.broadcast();
+  final mediaSessionCommandsCtrl =
+      StreamController<MediaSessionCommand>.broadcast();
+  final volumeCtrl = StreamController<double>.broadcast();
+  final muteCtrl = StreamController<bool>.broadcast();
+  final audioPtsCtrl = StreamController<Duration>.broadcast();
+  final percentPosCtrl = StreamController<double>.broadcast();
+  final playbackStateCtrl = StreamController<MpvPlaybackState>.broadcast();
+  final bufferingPercentageCtrl = StreamController<double>.broadcast();
+  final prefetchCacheDurationCtrl = StreamController<Duration>.broadcast();
+  final audioEffectsCtrl = StreamController<AudioEffects>.broadcast();
+  final audioParamsCtrl = StreamController<AudioParams>.broadcast();
+  final audioOutParamsCtrl = StreamController<AudioParams>.broadcast();
+  final audioBitrateCtrl = StreamController<double?>.broadcast();
+  final replayGainCtrl = StreamController<ReplayGainSettings>.broadcast();
+  final cacheCtrl = StreamController<CacheSettings>.broadcast();
+  final audioExclusiveCtrl = StreamController<bool>.broadcast();
+  final audioStreamSilenceCtrl = StreamController<bool>.broadcast();
+  final audioBufferCtrl = StreamController<Duration>.broadcast();
+  final fftCtrl = StreamController<FftFrame>.broadcast();
+  final errorCtrl = StreamController<MpvPlayerError>.broadcast();
+  final abLoopACtrl = StreamController<Duration?>.broadcast();
+  final abLoopBCtrl = StreamController<Duration?>.broadcast();
+  final remainingAbLoopsCtrl = StreamController<int?>.broadcast();
+  final prefetchStateCtrl = StreamController<MpvPrefetchState>.broadcast();
 
   // Stub player.stream to return our MockPlayerStream
   when(() => player.stream).thenReturn(stream);
@@ -82,6 +106,43 @@ class MockPlayerStream extends Mock implements PlayerStream {}
   when(
     () => stream.audioOutputState,
   ).thenAnswer((_) => audioOutputStateCtrl.stream);
+  when(
+    () => stream.mediaSessionCommands,
+  ).thenAnswer((_) => mediaSessionCommandsCtrl.stream);
+  when(() => stream.volume).thenAnswer((_) => volumeCtrl.stream);
+  when(() => stream.mute).thenAnswer((_) => muteCtrl.stream);
+  when(() => stream.audioPts).thenAnswer((_) => audioPtsCtrl.stream);
+  when(() => stream.percentPos).thenAnswer((_) => percentPosCtrl.stream);
+  when(() => stream.playbackState).thenAnswer((_) => playbackStateCtrl.stream);
+  when(
+    () => stream.bufferingPercentage,
+  ).thenAnswer((_) => bufferingPercentageCtrl.stream);
+  when(
+    () => stream.prefetchCacheDuration,
+  ).thenAnswer((_) => prefetchCacheDurationCtrl.stream);
+  when(() => stream.audioEffects).thenAnswer((_) => audioEffectsCtrl.stream);
+  when(() => stream.audioParams).thenAnswer((_) => audioParamsCtrl.stream);
+  when(
+    () => stream.audioOutParams,
+  ).thenAnswer((_) => audioOutParamsCtrl.stream);
+  when(() => stream.audioBitrate).thenAnswer((_) => audioBitrateCtrl.stream);
+  when(() => stream.replayGain).thenAnswer((_) => replayGainCtrl.stream);
+  when(() => stream.cache).thenAnswer((_) => cacheCtrl.stream);
+  when(
+    () => stream.audioExclusive,
+  ).thenAnswer((_) => audioExclusiveCtrl.stream);
+  when(
+    () => stream.audioStreamSilence,
+  ).thenAnswer((_) => audioStreamSilenceCtrl.stream);
+  when(() => stream.audioBuffer).thenAnswer((_) => audioBufferCtrl.stream);
+  when(() => stream.fft).thenAnswer((_) => fftCtrl.stream);
+  when(() => stream.error).thenAnswer((_) => errorCtrl.stream);
+  when(() => stream.abLoopA).thenAnswer((_) => abLoopACtrl.stream);
+  when(() => stream.abLoopB).thenAnswer((_) => abLoopBCtrl.stream);
+  when(
+    () => stream.remainingAbLoops,
+  ).thenAnswer((_) => remainingAbLoopsCtrl.stream);
+  when(() => stream.prefetchState).thenAnswer((_) => prefetchStateCtrl.stream);
 
   // Stub default state (override in each test as needed)
   when(() => player.state).thenReturn(const PlayerState());
@@ -96,6 +157,7 @@ class MockPlayerStream extends Mock implements PlayerStream {}
   when(() => player.setGapless(any())).thenAnswer((_) async {});
   when(() => player.setPrefetchPlaylist(any())).thenAnswer((_) async {});
   when(() => player.setSpectrum(any())).thenAnswer((_) async {});
+  when(() => player.setMediaSession(any())).thenAnswer((_) async {});
   when(() => player.sendRawCommand(any())).thenAnswer((_) async {});
   when(() => player.getRawProperty(any())).thenAnswer((_) async => null);
 
@@ -135,6 +197,7 @@ class MockPlayerStream extends Mock implements PlayerStream {}
     audioDevice: audioDeviceCtrl,
     audioDevices: audioDevicesCtrl,
     audioOutputState: audioOutputStateCtrl,
+    mediaSessionCommands: mediaSessionCommandsCtrl,
   );
 
   return (player: player, ctrls: ctrls);
@@ -157,6 +220,7 @@ class StreamControllers {
     required this.audioDevice,
     required this.audioDevices,
     required this.audioOutputState,
+    required this.mediaSessionCommands,
   });
   final StreamController<bool> playing;
   final StreamController<bool> completed;
@@ -172,6 +236,7 @@ class StreamControllers {
   final StreamController<Device> audioDevice;
   final StreamController<List<Device>> audioDevices;
   final StreamController<AudioOutputState> audioOutputState;
+  final StreamController<MediaSessionCommand> mediaSessionCommands;
 
   /// Close all controllers. Call in `tearDown`.
   void dispose() {
