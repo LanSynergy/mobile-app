@@ -563,136 +563,140 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
 
   // ── Section field change handler ─────────────────────────────────────────
 
+  /// Updates a single effect field without triggering a parent rebuild.
+  ///
+  /// The parent state variables are updated silently so that [_apply]
+  /// (called on drag-end / toggle / preset) reads the correct values.
+  /// Each section's own [setState] handles its local UI rebuild — the
+  /// parent tree is NOT rebuilt on every slider drag.
   void _onFieldChanged(String field, dynamic value) {
-    setState(() {
-      switch (field) {
-        case 'loudnorm':
-          _loudnorm = value as bool;
-        case 'compressor':
-          _compressor = value as bool;
-        case 'compThreshold':
-          _compThreshold = value as double;
-        case 'compRatio':
-          _compRatio = value as double;
-        case 'compAttack':
-          _compAttack = value as double;
-        case 'compRelease':
-          _compRelease = value as double;
-        case 'gate':
-          _gate = value as bool;
-        case 'gateThreshold':
-          _gateThreshold = value as double;
-        case 'gateRatio':
-          _gateRatio = value as double;
-        case 'gateAttack':
-          _gateAttack = value as double;
-        case 'gateRelease':
-          _gateRelease = value as double;
-        case 'deesser':
-          _deesser = value as bool;
-        case 'deesserIntensity':
-          _deesserIntensity = value as double;
-        case 'deesserMix':
-          _deesserMix = value as double;
-        case 'deesserFreq':
-          _deesserFreq = value as double;
-        case 'echoEnabled':
-          _echoEnabled = value as bool;
-        case 'echoInGain':
-          _echoInGain = value as double;
-        case 'echoOutGain':
-          _echoOutGain = value as double;
-        case 'echoDelays':
-          _echoDelays = value as String;
-        case 'echoDecays':
-          _echoDecays = value as String;
-        case 'rubberbandEnabled':
-          _rubberbandEnabled = value as bool;
-        case 'pitch':
-          _pitch = value as double;
-        case 'tempo':
-          _tempo = value as double;
-        case 'crossfeed':
-          _crossfeed = value as bool;
-        case 'crossfeedStrength':
-          _crossfeedStrength = value as double;
-        case 'stereoWiden':
-          _stereoWiden = value as bool;
-        case 'stereoWidenDelay':
-          _stereoWidenDelay = value as double;
-        case 'phaser':
-          _phaser = value as bool;
-        case 'phaserInGain':
-          _phaserInGain = value as double;
-        case 'phaserOutGain':
-          _phaserOutGain = value as double;
-        case 'phaserDelay':
-          _phaserDelay = value as double;
-        case 'phaserDecay':
-          _phaserDecay = value as double;
-        case 'phaserSpeed':
-          _phaserSpeed = value as double;
-        case 'flanger':
-          _flanger = value as bool;
-        case 'flangerDelay':
-          _flangerDelay = value as double;
-        case 'flangerDepth':
-          _flangerDepth = value as double;
-        case 'flangerRegen':
-          _flangerRegen = value as double;
-        case 'flangerWidth':
-          _flangerWidth = value as double;
-        case 'flangerSpeed':
-          _flangerSpeed = value as double;
-        case 'chorus':
-          _chorus = value as bool;
-        case 'chorusInGain':
-          _chorusInGain = value as double;
-        case 'chorusOutGain':
-          _chorusOutGain = value as double;
-        case 'chorusDelays':
-          _chorusDelays = value as String;
-        case 'chorusDecays':
-          _chorusDecays = value as String;
-        case 'chorusSpeeds':
-          _chorusSpeeds = value as String;
-        case 'chorusDepths':
-          _chorusDepths = value as String;
-        case 'tremolo':
-          _tremolo = value as bool;
-        case 'tremoloFreq':
-          _tremoloFreq = value as double;
-        case 'tremoloDepth':
-          _tremoloDepth = value as double;
-        case 'vibrato':
-          _vibrato = value as bool;
-        case 'vibratoFreq':
-          _vibratoFreq = value as double;
-        case 'vibratoDepth':
-          _vibratoDepth = value as double;
-        case 'exciter':
-          _exciter = value as bool;
-        case 'exciterAmount':
-          _exciterAmount = value as double;
-        case 'crystalizer':
-          _crystalizer = value as bool;
-        case 'crystalizerIntensity':
-          _crystalizerIntensity = value as double;
-        case 'virtualBass':
-          _virtualBass = value as bool;
-        case 'virtualBassCutoff':
-          _virtualBassCutoff = value as double;
-        case 'crusher':
-          _crusher = value as bool;
-        case 'crusherBits':
-          _crusherBits = value as double;
-        case 'crusherMix':
-          _crusherMix = value as double;
-        case 'crusherSamples':
-          _crusherSamples = value as double;
-      }
-      _activePreset = null;
-    });
+    switch (field) {
+      case 'loudnorm':
+        _loudnorm = value as bool;
+      case 'compressor':
+        _compressor = value as bool;
+      case 'compThreshold':
+        _compThreshold = value as double;
+      case 'compRatio':
+        _compRatio = value as double;
+      case 'compAttack':
+        _compAttack = value as double;
+      case 'compRelease':
+        _compRelease = value as double;
+      case 'gate':
+        _gate = value as bool;
+      case 'gateThreshold':
+        _gateThreshold = value as double;
+      case 'gateRatio':
+        _gateRatio = value as double;
+      case 'gateAttack':
+        _gateAttack = value as double;
+      case 'gateRelease':
+        _gateRelease = value as double;
+      case 'deesser':
+        _deesser = value as bool;
+      case 'deesserIntensity':
+        _deesserIntensity = value as double;
+      case 'deesserMix':
+        _deesserMix = value as double;
+      case 'deesserFreq':
+        _deesserFreq = value as double;
+      case 'echoEnabled':
+        _echoEnabled = value as bool;
+      case 'echoInGain':
+        _echoInGain = value as double;
+      case 'echoOutGain':
+        _echoOutGain = value as double;
+      case 'echoDelays':
+        _echoDelays = value as String;
+      case 'echoDecays':
+        _echoDecays = value as String;
+      case 'rubberbandEnabled':
+        _rubberbandEnabled = value as bool;
+      case 'pitch':
+        _pitch = value as double;
+      case 'tempo':
+        _tempo = value as double;
+      case 'crossfeed':
+        _crossfeed = value as bool;
+      case 'crossfeedStrength':
+        _crossfeedStrength = value as double;
+      case 'stereoWiden':
+        _stereoWiden = value as bool;
+      case 'stereoWidenDelay':
+        _stereoWidenDelay = value as double;
+      case 'phaser':
+        _phaser = value as bool;
+      case 'phaserInGain':
+        _phaserInGain = value as double;
+      case 'phaserOutGain':
+        _phaserOutGain = value as double;
+      case 'phaserDelay':
+        _phaserDelay = value as double;
+      case 'phaserDecay':
+        _phaserDecay = value as double;
+      case 'phaserSpeed':
+        _phaserSpeed = value as double;
+      case 'flanger':
+        _flanger = value as bool;
+      case 'flangerDelay':
+        _flangerDelay = value as double;
+      case 'flangerDepth':
+        _flangerDepth = value as double;
+      case 'flangerRegen':
+        _flangerRegen = value as double;
+      case 'flangerWidth':
+        _flangerWidth = value as double;
+      case 'flangerSpeed':
+        _flangerSpeed = value as double;
+      case 'chorus':
+        _chorus = value as bool;
+      case 'chorusInGain':
+        _chorusInGain = value as double;
+      case 'chorusOutGain':
+        _chorusOutGain = value as double;
+      case 'chorusDelays':
+        _chorusDelays = value as String;
+      case 'chorusDecays':
+        _chorusDecays = value as String;
+      case 'chorusSpeeds':
+        _chorusSpeeds = value as String;
+      case 'chorusDepths':
+        _chorusDepths = value as String;
+      case 'tremolo':
+        _tremolo = value as bool;
+      case 'tremoloFreq':
+        _tremoloFreq = value as double;
+      case 'tremoloDepth':
+        _tremoloDepth = value as double;
+      case 'vibrato':
+        _vibrato = value as bool;
+      case 'vibratoFreq':
+        _vibratoFreq = value as double;
+      case 'vibratoDepth':
+        _vibratoDepth = value as double;
+      case 'exciter':
+        _exciter = value as bool;
+      case 'exciterAmount':
+        _exciterAmount = value as double;
+      case 'crystalizer':
+        _crystalizer = value as bool;
+      case 'crystalizerIntensity':
+        _crystalizerIntensity = value as double;
+      case 'virtualBass':
+        _virtualBass = value as bool;
+      case 'virtualBassCutoff':
+        _virtualBassCutoff = value as double;
+      case 'crusher':
+        _crusher = value as bool;
+      case 'crusherBits':
+        _crusherBits = value as double;
+      case 'crusherMix':
+        _crusherMix = value as double;
+      case 'crusherSamples':
+        _crusherSamples = value as double;
+    }
+    _activePreset = null;
   }
 
   // ── Build ────────────────────────────────────────────────────────────────
