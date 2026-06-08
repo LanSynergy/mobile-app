@@ -391,8 +391,10 @@ class StreamPrefetcher {
   }
 
   /// Releases resources held by this prefetcher.
+  ///
+  /// Only cancels in-flight requests — does NOT close the Dio instance
+  /// because it may be the shared singleton used by other services.
   void dispose() {
     cancelCurrentPrefetch();
-    _dio.close(force: true);
   }
 }
