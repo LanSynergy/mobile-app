@@ -98,6 +98,8 @@ class LocalDb {
 
   Future<int> nullStaleCoverPaths() => tracks.nullStaleCoverPaths();
 
+  Future<int> propagateAlbumArt() => tracks.propagateAlbumArt();
+
   Future<int?> getTrackLastModified(String id) =>
       tracks.getTrackLastModified(id);
 

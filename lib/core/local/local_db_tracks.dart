@@ -105,6 +105,99 @@ class TrackRepository {
     return nulled;
   }
 
+  /// Propagate cover art from tracks that have art to all tracks in the
+  /// same album. For each album, if at least one track has cover art,
+  /// copy that cover_path to all tracks without art.
+  ///
+  /// This ensures consistent album art across all tracks in an album,
+  /// even if only one track has embedded cover art.
+  Future<int> propagateAlbumArt() async {
+    // Get all albums with their tracks' cover_path status
+    final albumRows = await db.customSelect(
+      '''
+      SELECT album, artist, album_artist,
+             COUNT(*) as total_tracks,
+             SUM(CASE WHEN cover_path IS NOT NULL THEN 1 ELSE 0 END) as tracks_with_art
+      FROM tracks
+      WHERE album != ''
+      GROUP BY album, COALESCE(NULLIF(album_artist, ''), artist)
+      HAVING tracks_with_art > 0 AND tracks_with_art < total_tracks
+      ''',
+      readsFrom: {db.tracks},
+    ).get();
+
+    int propagated = 0;
+
+    for (final albumRow in albumRows) {
+      final albumName = albumRow.read<String>('album');
+      final artistName = albumRow.read<String?>('album_artist')?.isNotEmpty == true
+          ? albumRow.read<String>('album_artist')
+          : albumRow.read<String>('artist');
+
+      // Find the first track in this album that has cover art
+      final coverTrack = await db.customSelect(
+        '''
+        SELECT cover_path FROM tracks
+        WHERE album = ?1
+          AND COALESCE(NULLIF(album_artist, ''), artist) = ?2
+          AND cover_path IS NOT NULL
+        LIMIT 1
+        ''',
+        variables: [Variable<String>(albumName), Variable<String>(artistName)],
+        readsFrom: {db.tracks},
+      ).getSingleOrNull();
+
+      if (coverTrack == null) continue;
+
+      final coverPath = coverTrack.read<String>('cover_path');
+
+      // Update all tracks in this album that don't have cover art
+      await db.customStatement(
+        '''
+        UPDATE tracks
+        SET cover_path = ?1
+        WHERE album = ?2
+          AND COALESCE(NULLIF(album_artist, ''), artist) = ?3
+          AND cover_path IS NULL
+        ''',
+        [
+          Variable<String>(coverPath),
+          Variable<String>(albumName),
+          Variable<String>(artistName),
+        ],
+      );
+
+      // Count updated tracks
+      final countRow = await db.customSelect(
+        '''
+        SELECT COUNT(*) as count FROM tracks
+        WHERE album = ?1
+          AND COALESCE(NULLIF(album_artist, ''), artist) = ?2
+          AND cover_path = ?3
+        ''',
+        variables: [
+          Variable<String>(albumName),
+          Variable<String>(artistName),
+          Variable<String>(coverPath),
+        ],
+        readsFrom: {db.tracks},
+      ).getSingleOrNull();
+
+      if (countRow != null) {
+        final count = countRow.read<int>('count');
+        if (count > 0) {
+          propagated += count;
+          afLog('local', 'propagated cover art to $count tracks in album: $albumName');
+        }
+      }
+    }
+
+    if (propagated > 0) {
+      afLog('local', 'propagated cover art to $propagated tracks total');
+    }
+    return propagated;
+  }
+
   Future<int?> getTrackLastModified(String id) async {
     final query = db.select(db.tracks)..where((t) => t.id.equals(id));
     final result = await query.getSingleOrNull();

@@ -42,6 +42,14 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
             "mp3", "flac", "opus", "ogg", "m4a", "wav", "aac", "wma",
             "alac", "aiff", "ape", "wv", "dsf", "dff"
         )
+        private val IMAGE_EXTENSIONS = setOf(
+            "jpg", "jpeg", "png", "webp", "bmp", "gif"
+        )
+        // Common album artwork filenames (lowercase, without extension)
+        private val COVER_NAMES = setOf(
+            "cover", "folder", "front", "album", "albumart",
+            "albumartsmall", "thumb", "thumbnail", "art", "image"
+        )
     }
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -128,6 +136,20 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
                     } catch (e: java.lang.Exception) {
                         withContext(Dispatchers.Main) {
                             result.error("WRITE_ERROR", e.message, null)
+                        }
+                    }
+                }
+            }
+            "listFilesInParentFolder" -> {
+                val uri = call.argument<String>("uri")
+                    ?: return result.error("INVALID_ARG", "uri required", null)
+                scope.launch {
+                    try {
+                        val files = listFilesInParentFolder(uri)
+                        withContext(Dispatchers.Main) { result.success(files) }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            result.error("LIST_ERROR", e.message, null)
                         }
                     }
                 }
@@ -220,6 +242,77 @@ class SafPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
         val rootDocumentId = DocumentsContract.getTreeDocumentId(treeUri)
         val results = mutableListOf<Map<String, Any?>>()
         scanDirectoryCursor(ctx, treeUri, rootDocumentId, results)
+        return results
+    }
+
+    // ── List files in parent folder ───────────────────────────────────────
+
+    private fun listFilesInParentFolder(fileUriStr: String): List<Map<String, Any?>> {
+        val ctx = activity ?: return emptyList()
+        val fileUri = Uri.parse(fileUriStr)
+        val results = mutableListOf<Map<String, Any?>>()
+
+        try {
+            // Get the document ID and tree document ID
+            val docId = DocumentsContract.getDocumentId(fileUri)
+            val treeId = DocumentsContract.getTreeDocumentId(fileUri)
+            val authority = fileUri.authority ?: return emptyList()
+
+            // Find parent directory
+            val lastSlash = docId.lastIndexOf('/')
+            if (lastSlash == -1) return emptyList()
+
+            val parentDocId = if (lastSlash > 0) {
+                docId.substring(0, lastSlash)
+            } else {
+                treeId
+            }
+
+            // Build parent URI and list its children
+            val parentUri = DocumentsContract.buildTreeDocumentUri(authority, treeId)
+            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(parentUri, parentDocId)
+
+            val projection = arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_SIZE,
+                DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+                DocumentsContract.Document.COLUMN_MIME_TYPE
+            )
+
+            ctx.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+                val idIdx = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                val nameIdx = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                val sizeIdx = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_SIZE)
+                val dateIdx = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+                val mimeIdx = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE)
+
+                while (cursor.moveToNext()) {
+                    val childDocId = cursor.getString(idIdx) ?: continue
+                    val name = cursor.getString(nameIdx) ?: continue
+                    val mimeType = cursor.getString(mimeIdx)
+
+                    // Skip directories
+                    if (DocumentsContract.Document.MIME_TYPE_DIR == mimeType) continue
+
+                    val ext = name.substringAfterLast('.', "").lowercase()
+                    val isImage = ext in IMAGE_EXTENSIONS
+
+                    val childUri = DocumentsContract.buildDocumentUriUsingTree(parentUri, childDocId)
+                    results.add(mapOf(
+                        "uri" to childUri.toString(),
+                        "name" to name,
+                        "size" to cursor.getLong(sizeIdx),
+                        "lastModified" to cursor.getLong(dateIdx),
+                        "isImage" to isImage,
+                        "nameWithoutExt" to name.substringBeforeLast('.', "").lowercase(),
+                    ))
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("SafPlugin", "listFilesInParentFolder failed: ${e.message}")
+        }
+
         return results
     }
 

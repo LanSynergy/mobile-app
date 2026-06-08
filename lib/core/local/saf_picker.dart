@@ -86,6 +86,25 @@ class SafPicker {
       return false;
     }
   }
+
+  /// Lists all files in the parent folder of the given file URI.
+  /// Returns files with metadata including whether they are images.
+  static Future<List<SafFile>> listFilesInParentFolder(String fileUri) async {
+    try {
+      final result = await _channel.invokeMethod<List<dynamic>>(
+        'listFilesInParentFolder',
+        {'uri': fileUri},
+      );
+      if (result == null) return const [];
+      return result
+          .cast<Map<dynamic, dynamic>>()
+          .map((m) => SafFile.fromMap(m.cast<String, dynamic>()))
+          .toList(growable: false);
+    } on Exception catch (e, stack) {
+      afLog('local', 'listFilesInParentFolder failed', error: e, stackTrace: stack);
+      return [];
+    }
+  }
 }
 
 /// A file discovered during SAF tree scan.
@@ -95,6 +114,8 @@ class SafFile {
     required this.name,
     required this.size,
     required this.lastModified,
+    this.isImage = false,
+    this.nameWithoutExt,
   });
 
   factory SafFile.fromMap(Map<String, dynamic> m) => SafFile(
@@ -102,11 +123,15 @@ class SafFile {
     name: (m['name'] as String?) ?? '',
     size: (m['size'] as int?) ?? 0,
     lastModified: (m['lastModified'] as int?) ?? 0,
+    isImage: (m['isImage'] as bool?) ?? false,
+    nameWithoutExt: m['nameWithoutExt'] as String?,
   );
   final String uri;
   final String name;
   final int size;
   final int lastModified;
+  final bool isImage;
+  final String? nameWithoutExt;
 }
 
 /// Metadata extracted from a single audio file.
