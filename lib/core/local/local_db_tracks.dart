@@ -177,11 +177,7 @@ class TrackRepository {
           AND COALESCE(NULLIF(album_artist, ''), artist) = ?3
           AND cover_path IS NULL
         ''',
-        [
-          Variable<String>(coverPath),
-          Variable<String>(albumName),
-          Variable<String>(artistName),
-        ],
+        [coverPath, albumName, artistName],
       );
 
       // Count updated tracks
