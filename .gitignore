@@ -70,6 +70,7 @@ handover.md
 skills-lock.json
 .claude-design/
 .serena/
+.omo/
 
 # Android-only project — ignore other platforms
 /ios/
