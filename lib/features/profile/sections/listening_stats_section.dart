@@ -97,34 +97,8 @@ class StatsDashboard extends ConsumerWidget {
           const SizedBox(height: AfSpacing.s16),
         ],
 
-        // Tabs Selector — glass morphism container
-        Container(
-          padding: const EdgeInsets.all(AfSpacing.s2),
-          decoration: BoxDecoration(
-            color: AfColors.glassFill,
-            borderRadius: AfRadii.borderMd,
-            border: Border.all(color: AfColors.glassBorder, width: 1),
-          ),
-          child: Row(
-            children: [
-              _GlassTabButton(
-                label: 'Songs',
-                value: 'songs',
-                activeValue: activeTab,
-              ),
-              _GlassTabButton(
-                label: 'Artists',
-                value: 'artists',
-                activeValue: activeTab,
-              ),
-              _GlassTabButton(
-                label: 'Albums',
-                value: 'albums',
-                activeValue: activeTab,
-              ),
-            ],
-          ),
-        ),
+        // Tabs Selector — pill bar with animated sliding indicator
+        _StatsPillBar(selected: activeTab),
         const SizedBox(height: AfSpacing.s16),
 
         // List render
@@ -242,40 +216,127 @@ class _GlassPeriodChip extends ConsumerWidget {
   }
 }
 
-/// Glass tab button with spectral accent.
-class _GlassTabButton extends ConsumerWidget {
-  const _GlassTabButton({
-    required this.label,
-    required this.value,
-    required this.activeValue,
-  });
-
-  final String label;
-  final String value;
-  final String activeValue;
+/// Pill bar with animated sliding indicator for stats tabs.
+class _StatsPillBar extends ConsumerStatefulWidget {
+  const _StatsPillBar({required this.selected});
+  final String selected;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final active = value == activeValue;
-    return Expanded(
-      child: PressScale(
-        onTap: () => ref.read(statsTabProvider.notifier).state = value,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: AfSpacing.s8),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: active ? AfColors.surfaceHigh : Colors.transparent,
-            borderRadius: AfRadii.borderMd,
-          ),
-          child: Text(
-            label,
-            style: AfTypography.bodySmall.copyWith(
-              color: active ? AfColors.textPrimary : AfColors.textTertiary,
-              fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+  ConsumerState<_StatsPillBar> createState() => _StatsPillBarState();
+}
+
+class _StatsPillBarState extends ConsumerState<_StatsPillBar>
+    with SingleTickerProviderStateMixin {
+  static const _tabs = ['songs', 'artists', 'albums'];
+  static const _labels = ['Songs', 'Artists', 'Albums'];
+
+  late final AnimationController _ctrl;
+  int _fromIndex = 0;
+  int _toIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _toIndex = _tabs.indexOf(widget.selected);
+    _fromIndex = _toIndex;
+    _ctrl = AnimationController(vsync: this, duration: AfDurations.long)
+      ..value = 1.0;
+  }
+
+  @override
+  void didUpdateWidget(_StatsPillBar old) {
+    super.didUpdateWidget(old);
+    if (old.selected != widget.selected) {
+      _fromIndex = _toIndex;
+      _toIndex = _tabs.indexOf(widget.selected);
+      _ctrl.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
+    final count = _tabs.length;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final segWidth = constraints.maxWidth / count;
+
+        return ClipRRect(
+          borderRadius: AfRadii.borderPill,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(color: AfColors.surfaceRaised),
+            child: SizedBox(
+              height: 44,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  AnimatedBuilder(
+                    animation: _ctrl,
+                    builder: (context, _) {
+                      final curved = Curves.easeOutBack.transform(_ctrl.value);
+                      final damped = curved > 1.0
+                          ? 1.0 + (curved - 1.0) * 0.15
+                          : curved;
+                      final idx = _fromIndex + (_toIndex - _fromIndex) * damped;
+                      return Positioned(
+                        left: AfSpacing.s4 + segWidth * idx,
+                        top: 4,
+                        bottom: 4,
+                        width: segWidth - 8,
+                        child: IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: spectral,
+                              borderRadius: AfRadii.borderPill,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  Row(
+                    children: List.generate(count, (i) {
+                      final isActive = _tabs[i] == widget.selected;
+                      return Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => ref
+                              .read(statsTabProvider.notifier)
+                              .state = _tabs[i],
+                          child: Container(
+                            height: 44,
+                            alignment: Alignment.center,
+                            child: Text(
+                              _labels[i],
+                              style: AfTypography.bodyMedium.copyWith(
+                                color: isActive
+                                    ? AfColors.textOnPrimary
+                                    : AfColors.textSecondary,
+                                fontWeight: isActive
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
