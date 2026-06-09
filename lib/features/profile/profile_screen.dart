@@ -31,6 +31,10 @@ class ProfileScreen extends ConsumerWidget {
     final albumsAsync = isLocal
         ? ref.watch(localAlbumsProvider)
         : ref.watch(allAlbumsProvider);
+    final artistsAsync = isLocal
+        ? ref.watch(localArtistsProvider)
+        : ref.watch(allArtistsProvider);
+    final playlistsAsync = ref.watch(allPlaylistsProvider);
     final favAlbumsAsync = ref.watch(favoriteAlbumsProvider);
     final recentAlbumsAsync = ref.watch(recentlyAddedAlbumsProvider);
 
@@ -127,10 +131,13 @@ class ProfileScreen extends ConsumerWidget {
           ),
 
           // ── Quick stats — artists + playlists ────────────────────────
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.only(top: AfSpacing.s16),
-              child: QuickStatsRow(artistCount: '—', playlistCount: '—'),
+              padding: const EdgeInsets.only(top: AfSpacing.s16),
+              child: QuickStatsRow(
+                artistCount: _fmtCount(artistsAsync),
+                playlistCount: _fmtCount(playlistsAsync),
+              ),
             ),
           ),
 
