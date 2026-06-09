@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../design_tokens/tokens.dart';
 import '../../../state/providers.dart';
@@ -11,38 +12,31 @@ import '../../../widgets/section_header.dart';
 import '../../../widgets/skeletons/home_skeleton.dart';
 import '../../library/library_screen.dart' show SongsPill, songsPillProvider;
 
-/// Horizontal scroll of artists with warm glow ring backdrop.
+/// Expressive artist section — YouTube Music style.
+///
+/// Features:
+/// - Hero artist card with gradient overlay and action buttons
+/// - 3-column artist grid with gradient ring borders
+/// - Spectral accent colors throughout
 class ArtistsSection extends ConsumerWidget {
   const ArtistsSection({super.key, required this.isLocal});
   final bool isLocal;
 
-  // Warm amber accent colors for each artist ring — sourced from spectral palette
-  static List<Color> _accents(
-    ({Color primary, Color secondary, Color muted}) s,
-  ) => [s.primary, s.secondary, s.muted, s.primary, s.secondary, s.muted];
-
-  static const double _artworkSize = 88;
-  static const double _ringSize = 96;
-  static const double _glowSize = 100;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spectral = ref.watch(
-      currentSpectralProvider.select(
-        (s) => (primary: s.primary, secondary: s.secondary, muted: s.muted),
-      ),
-    );
+    final Spectral spectral = ref.watch(currentSpectralProvider);
     final artistsAsync = isLocal
         ? ref.watch(localArtistsProvider)
         : ref.watch(allArtistsProvider);
+
     return SliverList(
       delegate: SliverChildListDelegate([
         const SizedBox(height: AfSpacing.sectionGap),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
           child: SectionHeader(
-            title: 'Artists',
-            actionLabel: 'See more',
+            title: 'Your Artists',
+            actionLabel: 'See all',
             onActionTap: () {
               ref.read(songsPillProvider.notifier).state = SongsPill.artists;
               context.go('/library');
@@ -60,96 +54,268 @@ class ArtistsSection extends ConsumerWidget {
               isLocal ? localArtistsProvider : allArtistsProvider,
             ),
           ),
-          data: (artists) => SizedBox(
-            height: 180,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-              itemCount: artists.length,
-              // itemExtent enables layout caching for large lists.
-              // Includes the trailing separator gap (12px) per item.
-              itemExtent: ArtistsSection._ringSize + AfSpacing.s12,
-              itemBuilder: (context, i) {
-                final a = artists[i];
-                final accents = _accents(spectral);
-                final accent = accents[i % accents.length];
-                return PressScale(
-                  ensureHitTarget: false,
-                  onTap: () {
-                    ref.read(songsPillProvider.notifier).state =
-                        SongsPill.artists;
-                    context.go('/library');
-                  },
-                  child: SizedBox(
-                    width: _ringSize,
-                    child: Column(
-                      children: [
-                        // Artwork with warm glow ring behind it
-                        SizedBox(
-                          width: _ringSize,
-                          height: _ringSize,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              // Warm glow
-                              Positioned(
-                                child: Container(
-                                  width: _glowSize,
-                                  height: _glowSize,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: RadialGradient(
-                                      colors: [
-                                        accent.withValues(alpha: 0.2),
-                                        accent.withValues(alpha: 0.0),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              // Artwork
-                              Artwork(
-                                url: a.imageUrl,
-                                size: _artworkSize,
-                                radius: AfRadii.borderPill,
-                              ),
-                              // Warm ring
-                              Positioned(
-                                child: Container(
-                                  width: _ringSize,
-                                  height: _ringSize,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: accent.withValues(alpha: 0.3),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: AfSpacing.s8),
-                        Text(
-                          a.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: AfTypography.bodySmall.copyWith(
-                            color: AfColors.textPrimary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+          data: (artists) {
+            if (artists.isEmpty) {
+              return SizedBox(
+                height: 180,
+                child: Center(
+                  child: Text('No artists yet', style: AfTypography.bodySmall),
+                ),
+              );
+            }
+
+            // Hero artist (first) + grid (next 3)
+            final hero = artists.first;
+            final grid = artists.skip(1).take(3).toList();
+
+            return Column(
+              children: [
+                // Hero artist card
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AfSpacing.s16,
+                  ),
+                  child: PressScale(
+                    ensureHitTarget: false,
+                    onTap: () {
+                      ref.read(songsPillProvider.notifier).state =
+                          SongsPill.artists;
+                      context.go('/library');
+                    },
+                    child: _HeroArtistCard(
+                      name: hero.name,
+                      imageUrl: hero.imageUrl,
+                      spectral: spectral,
                     ),
                   ),
-                );
-              },
+                ),
+
+                // Artist grid
+                if (grid.isNotEmpty) ...[
+                  const SizedBox(height: AfSpacing.s12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AfSpacing.s16,
+                    ),
+                    child: GridView.count(
+                      crossAxisCount: 3,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: AfSpacing.s8,
+                      crossAxisSpacing: AfSpacing.s8,
+                      childAspectRatio: 0.85,
+                      children: grid
+                          .map(
+                            (a) => PressScale(
+                              ensureHitTarget: false,
+                              onTap: () {
+                                ref.read(songsPillProvider.notifier).state =
+                                    SongsPill.artists;
+                                context.go('/library');
+                              },
+                              child: _ExpressiveArtistCard(
+                                name: a.name,
+                                imageUrl: a.imageUrl,
+                                spectral: spectral,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+      ]),
+    );
+  }
+}
+
+/// Hero artist card with gradient overlay and action buttons.
+class _HeroArtistCard extends StatelessWidget {
+  const _HeroArtistCard({
+    required this.name,
+    this.imageUrl,
+    required this.spectral,
+  });
+
+  final String name;
+  final String? imageUrl;
+  final Spectral spectral;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 200,
+      decoration: BoxDecoration(
+        borderRadius: AfRadii.borderLg,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[spectral.primary, spectral.secondary],
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background artwork
+          if (imageUrl != null)
+            Artwork(url: imageUrl, size: 200, radius: AfRadii.borderLg),
+
+          // Gradient overlay
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  AfColors.surfaceCanvas.withValues(alpha: 0.95),
+                ],
+              ),
+            ),
+          ),
+
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(AfSpacing.s16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: AfTypography.titleLarge.copyWith(
+                    color: AfColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: AfSpacing.s12),
+
+                // Action buttons
+                Row(
+                  children: [
+                    // Play button
+                    Container(
+                      padding: const EdgeInsets.all(AfSpacing.s8),
+                      decoration: const BoxDecoration(
+                        color: AfColors.textPrimary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        LucideIcons.play,
+                        size: 20,
+                        color: AfColors.surfaceCanvas,
+                      ),
+                    ),
+                    const SizedBox(width: AfSpacing.s12),
+
+                    // Shuffle button
+                    Container(
+                      padding: const EdgeInsets.all(AfSpacing.s8),
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AfColors.textSecondary,
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(
+                        LucideIcons.shuffle,
+                        size: 20,
+                        color: AfColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: AfSpacing.s12),
+
+                    // More button
+                    Container(
+                      padding: const EdgeInsets.all(AfSpacing.s8),
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AfColors.textSecondary,
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(
+                        LucideIcons.moreHorizontal,
+                        size: 20,
+                        color: AfColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Expressive artist card with gradient ring border.
+class _ExpressiveArtistCard extends StatelessWidget {
+  const _ExpressiveArtistCard({
+    required this.name,
+    this.imageUrl,
+    required this.spectral,
+  });
+
+  final String name;
+  final String? imageUrl;
+  final Spectral spectral;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Circular artwork with gradient border
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [spectral.primary, spectral.secondary],
+            ),
+          ),
+          padding: const EdgeInsets.all(3),
+          child: Container(
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AfColors.surfaceCanvas,
+            ),
+            child: ClipOval(
+              child: imageUrl != null
+                  ? Artwork(url: imageUrl, size: 94, radius: AfRadii.borderPill)
+                  : const Center(
+                      child: Icon(
+                        LucideIcons.user,
+                        size: 32,
+                        color: AfColors.textTertiary,
+                      ),
+                    ),
             ),
           ),
         ),
-      ]),
+        const SizedBox(height: AfSpacing.s8),
+
+        // Name
+        Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: AfTypography.bodySmall.copyWith(fontWeight: FontWeight.w500),
+        ),
+      ],
     );
   }
 }

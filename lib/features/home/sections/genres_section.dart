@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../design_tokens/tokens.dart';
 import '../../../state/providers.dart';
@@ -8,27 +9,83 @@ import '../../../utils/color_parse.dart';
 import '../../../widgets/async_error_view.dart';
 import '../../../widgets/section_header.dart';
 import '../../../widgets/skeleton.dart';
-import '../../../widgets/tile.dart';
 import '../../library/library_screen.dart' show SongsPill, songsPillProvider;
 
-/// Horizontal scroll of large genre cards with tint colour and glass overlay.
+/// Expressive genres section — YouTube Music style.
+///
+/// Features:
+/// - 2-column grid with bold gradient cards
+/// - Genre-specific icons
+/// - Spectral accent colors
 class GenresSection extends ConsumerWidget {
   const GenresSection({super.key, required this.isLocal});
   final bool isLocal;
+
+  // Genre icon mapping
+  static const Map<String, IconData> _genreIcons = {
+    'electronic': LucideIcons.zap,
+    'rock': LucideIcons.guitar,
+    'hip hop': LucideIcons.mic,
+    'rap': LucideIcons.mic,
+    'pop': LucideIcons.star,
+    'jazz': LucideIcons.music,
+    'classical': LucideIcons.music2,
+    'r&b': LucideIcons.heart,
+    'rnb': LucideIcons.heart,
+    'country': LucideIcons.sun,
+    'metal': LucideIcons.flame,
+    'indie': LucideIcons.leaf,
+    'alternative': LucideIcons.compass,
+    'soul': LucideIcons.sunrise,
+    'funk': LucideIcons.sparkles,
+    'reggae': LucideIcons.treePalm,
+    'blues': LucideIcons.cloudRain,
+    'folk': LucideIcons.mountain,
+    'ambient': LucideIcons.cloud,
+    'techno': LucideIcons.circuitBoard,
+    'house': LucideIcons.home,
+    'disco': LucideIcons.disc,
+  };
+
+  static const Map<String, List<Color>> _genreGradients = {
+    'electronic': [Colors.purple, Colors.deepPurple],
+    'rock': [Colors.red, Colors.deepOrange],
+    'hip hop': [Colors.orange, Colors.amber],
+    'rap': [Colors.orange, Colors.amber],
+    'pop': [Colors.pink, Colors.pinkAccent],
+    'jazz': [Colors.teal, Colors.cyan],
+    'classical': [Colors.indigo, Colors.blue],
+    'r&b': [Colors.deepPurple, Colors.purple],
+    'rnb': [Colors.deepPurple, Colors.purple],
+    'country': [Colors.brown, Colors.orange],
+    'metal': [Colors.grey, Colors.blueGrey],
+    'indie': [Colors.green, Colors.teal],
+    'alternative': [Colors.cyan, Colors.blue],
+    'soul': [Colors.amber, Colors.orange],
+    'funk': [Colors.pink, Colors.deepPurple],
+    'reggae': [Colors.green, Colors.yellow],
+    'blues': [Colors.blue, Colors.indigo],
+    'folk': [Colors.brown, Colors.green],
+    'ambient': [Colors.blueGrey, Colors.teal],
+    'techno': [Colors.cyan, Colors.blue],
+    'house': [Colors.deepPurple, Colors.purple],
+    'disco': [Colors.pink, Colors.orange],
+  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final genresAsync = isLocal
         ? ref.watch(localGenresProvider)
         : ref.watch(allGenresProvider);
+
     return SliverList(
       delegate: SliverChildListDelegate([
         const SizedBox(height: AfSpacing.sectionGap),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
           child: SectionHeader(
-            title: 'Genres',
-            actionLabel: 'See more',
+            title: 'Browse Genres',
+            actionLabel: 'See all',
             onActionTap: () {
               ref.read(songsPillProvider.notifier).state = SongsPill.genres;
               context.go('/library');
@@ -36,57 +93,127 @@ class GenresSection extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: AfSpacing.s12),
-        SizedBox(
-          height: 100,
-          child: genresAsync.when(
-            data: (genres) => ListView.builder(
-              scrollDirection: Axis.horizontal,
+        genresAsync.when(
+          data: (genres) {
+            if (genres.isEmpty) {
+              return SizedBox(
+                height: 100,
+                child: Center(
+                  child: Text('No genres yet', style: AfTypography.bodySmall),
+                ),
+              );
+            }
+
+            // Show first 6 genres in 2-column grid
+            final displayGenres = genres.take(6).toList();
+
+            return Padding(
               padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-              itemCount: genres.length,
-              // itemExtent enables layout caching for large lists.
-              // 140px card width + 12px trailing separator gap per item.
-              itemExtent: 140 + AfSpacing.s12,
-              itemBuilder: (context, i) {
-                final g = genres[i];
-                final tint = parseHexColor(g.tint);
-                return GenreTile(
-                  name: g.name,
-                  tint: tint,
-                  imageUrl: g.imageUrl,
-                  width: 140,
-                  height: 100,
-                  onTap: () {
-                    ref.read(songsPillProvider.notifier).state =
-                        SongsPill.genres;
-                    context.go('/library');
-                  },
-                );
-              },
-            ),
-            loading: () => Row(
+              child: GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: AfSpacing.s8,
+                crossAxisSpacing: AfSpacing.s8,
+                childAspectRatio: 1.2,
+                children: displayGenres.map((g) {
+                  final tint = parseHexColor(g.tint);
+                  final gradient =
+                      _genreGradients[g.name.toLowerCase()] ??
+                      [tint, tint.withValues(alpha: 0.7)];
+                  final icon =
+                      _genreIcons[g.name.toLowerCase()] ?? LucideIcons.music;
+
+                  return _ExpressiveGenreCard(
+                    label: g.name,
+                    icon: icon,
+                    gradient: gradient,
+                    onTap: () {
+                      ref.read(songsPillProvider.notifier).state =
+                          SongsPill.genres;
+                      context.go('/library');
+                    },
+                  );
+                }).toList(),
+              ),
+            );
+          },
+          loading: () => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+            child: GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: AfSpacing.s8,
+              crossAxisSpacing: AfSpacing.s8,
+              childAspectRatio: 1.2,
               children: List.generate(
-                3,
-                (_) => const Padding(
-                  padding: EdgeInsets.only(right: AfSpacing.s12),
-                  child: SkeletonBlock(
-                    width: 140,
-                    height: 100,
-                    borderRadius: AfRadii.borderMd,
-                  ),
+                6,
+                (_) => const SkeletonBlock(
+                  width: 160,
+                  height: 80,
+                  borderRadius: AfRadii.borderMd,
                 ),
               ),
             ),
-            error: (e, _) => AsyncErrorView.compact(
-              label: 'Couldn\'t load genres',
-              error: e,
-              height: 100,
-              onRetry: () => ref.invalidate(
-                isLocal ? localGenresProvider : allGenresProvider,
-              ),
+          ),
+          error: (e, _) => AsyncErrorView.compact(
+            label: 'Couldn\'t load genres',
+            error: e,
+            height: 100,
+            onRetry: () => ref.invalidate(
+              isLocal ? localGenresProvider : allGenresProvider,
             ),
           ),
         ),
       ]),
+    );
+  }
+}
+
+/// Expressive genre card with bold gradient and icon.
+class _ExpressiveGenreCard extends StatelessWidget {
+  const _ExpressiveGenreCard({
+    required this.label,
+    required this.icon,
+    required this.gradient,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final List<Color> gradient;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(AfSpacing.s16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: gradient,
+          ),
+          borderRadius: AfRadii.borderMd,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 32, color: AfColors.textOnPrimary),
+            const SizedBox(height: AfSpacing.s8),
+            Text(
+              label,
+              style: AfTypography.bodyMedium.copyWith(
+                color: AfColors.textOnPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
