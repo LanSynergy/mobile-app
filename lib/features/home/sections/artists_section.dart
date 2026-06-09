@@ -77,11 +77,7 @@ class ArtistsSection extends ConsumerWidget {
                   ),
                   child: PressScale(
                     ensureHitTarget: false,
-                    onTap: () {
-                      ref.read(songsPillProvider.notifier).state =
-                          SongsPill.artists;
-                      context.go('/library');
-                    },
+                    onTap: () => context.push('/artist/${hero.id}'),
                     child: _HeroArtistCard(
                       name: hero.name,
                       imageUrl: hero.imageUrl,
@@ -108,11 +104,7 @@ class ArtistsSection extends ConsumerWidget {
                           .map(
                             (a) => PressScale(
                               ensureHitTarget: false,
-                              onTap: () {
-                                ref.read(songsPillProvider.notifier).state =
-                                    SongsPill.artists;
-                                context.go('/library');
-                              },
+                              onTap: () => context.push('/artist/${a.id}'),
                               child: _ExpressiveArtistCard(
                                 name: a.name,
                                 imageUrl: a.imageUrl,

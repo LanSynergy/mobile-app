@@ -128,11 +128,9 @@ class GenresSection extends ConsumerWidget {
                     label: g.name,
                     icon: icon,
                     gradient: gradient,
-                    onTap: () {
-                      ref.read(songsPillProvider.notifier).state =
-                          SongsPill.genres;
-                      context.go('/library');
-                    },
+                    onTap: () => context.push(
+                      '/genre/${Uri.encodeComponent(g.name)}',
+                    ),
                   );
                 }).toList(),
               ),
