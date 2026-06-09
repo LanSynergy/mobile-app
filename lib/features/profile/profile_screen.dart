@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/jellyfin/models/items.dart';
@@ -86,9 +87,7 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                   PressScale(
-                    onTap: () {
-                      // TODO: Navigate to settings
-                    },
+                    onTap: () => context.push('/settings'),
                     child: Container(
                       width: 44,
                       height: 44,
