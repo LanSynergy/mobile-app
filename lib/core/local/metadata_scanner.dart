@@ -316,12 +316,54 @@ class MetadataScanner {
   // ── Helpers ─────────────────────────────────────────────────────────────
 
   Future<String> _coverCacheDir() async {
-    final appDir = await getApplicationCacheDirectory();
+    final appDir = await getApplicationDocumentsDirectory();
     final dir = Directory(p.join(appDir.path, 'local_covers'));
     // create(recursive: true) is idempotent — no need for an existsSync
     // pre-check, which is also racy against a concurrent scan.
     await dir.create(recursive: true);
+
+    // Migrate covers from old cache location to documents (one-time).
+    // Android can clean getApplicationCacheDirectory() when storage is low,
+    // causing artwork to disappear. Documents directory is persistent.
+    await _migrateCoversFromCache(dir.path);
+
     return dir.path;
+  }
+
+  /// One-time migration: move cover files from the old cache directory
+  /// to the new documents directory. Silently ignores errors.
+  static bool _migrated = false;
+  Future<void> _migrateCoversFromCache(String newDir) async {
+    if (_migrated) return;
+    _migrated = true;
+    try {
+      final oldAppDir = await getApplicationCacheDirectory();
+      final oldDir = Directory(p.join(oldAppDir.path, 'local_covers'));
+      if (!await oldDir.exists()) return;
+
+      await for (final entity in oldDir.list()) {
+        if (entity is File) {
+          final filename = p.basename(entity.path);
+          final newPath = p.join(newDir, filename);
+          if (!await File(newPath).exists()) {
+            await entity.rename(newPath);
+          } else {
+            await entity.delete();
+          }
+        }
+      }
+      // Clean up old directory if empty.
+      if (await oldDir.exists()) {
+        await oldDir.delete(recursive: true);
+      }
+    } on Exception catch (e, stack) {
+      afLog(
+        'local',
+        'cover migration failed (non-fatal)',
+        error: e,
+        stackTrace: stack,
+      );
+    }
   }
 
   /// Generate a stable filename for cover art cache from the file URI.
