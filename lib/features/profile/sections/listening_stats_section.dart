@@ -68,37 +68,34 @@ class StatsDashboard extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (isLastFmConnected) ...[
-          // Period Selector — glass morphism pills
-          Row(
-            children: [
-              _GlassPeriodChip(
-                label: '7 Days',
+        // Tabs + Period filter — single row
+        Row(
+          children: [
+            // Tab slider takes most space
+            Expanded(child: _StatsPillBar(selected: activeTab)),
+            // Period chips on the right as compact filter buttons
+            if (isLastFmConnected) ...[
+              const SizedBox(width: AfSpacing.s8),
+              _PeriodChip(
+                label: '7D',
                 value: '7day',
                 activeValue: activePeriod,
-                spectralPrimary: spectral.primary,
               ),
-              const SizedBox(width: AfSpacing.s8),
-              _GlassPeriodChip(
-                label: '30 Days',
+              const SizedBox(width: AfSpacing.s4),
+              _PeriodChip(
+                label: '30D',
                 value: '1month',
                 activeValue: activePeriod,
-                spectralPrimary: spectral.primary,
               ),
-              const SizedBox(width: AfSpacing.s8),
-              _GlassPeriodChip(
-                label: 'All Time',
+              const SizedBox(width: AfSpacing.s4),
+              _PeriodChip(
+                label: 'All',
                 value: 'overall',
                 activeValue: activePeriod,
-                spectralPrimary: spectral.primary,
               ),
             ],
-          ),
-          const SizedBox(height: AfSpacing.s16),
-        ],
-
-        // Tabs Selector — pill bar with animated sliding indicator
-        _StatsPillBar(selected: activeTab),
+          ],
+        ),
         const SizedBox(height: AfSpacing.s16),
 
         // List render
@@ -172,43 +169,44 @@ class StatsDashboard extends ConsumerWidget {
 
 // ── Glass Morphism Widgets (Variant E style) ──────────────────────────────
 
-/// Glass period chip with spectral accent.
-class _GlassPeriodChip extends ConsumerWidget {
-  const _GlassPeriodChip({
+/// Compact period filter chip for inline use next to the tab bar.
+class _PeriodChip extends ConsumerWidget {
+  const _PeriodChip({
     required this.label,
     required this.value,
     required this.activeValue,
-    required this.spectralPrimary,
   });
 
   final String label;
   final String value;
   final String activeValue;
-  final Color spectralPrimary;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final active = value == activeValue;
+    final spectral = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     return PressScale(
       onTap: () => ref.read(statsPeriodProvider.notifier).state = value,
       child: Container(
         padding: const EdgeInsets.symmetric(
-          horizontal: AfSpacing.s12,
-          vertical: AfSpacing.s8,
+          horizontal: AfSpacing.s8,
+          vertical: AfSpacing.s4,
         ),
         decoration: BoxDecoration(
-          color: active ? spectralPrimary : AfColors.glassFill,
+          color: active ? spectral : AfColors.glassFill,
           borderRadius: AfRadii.borderPill,
           border: Border.all(
-            color: active ? spectralPrimary : AfColors.glassBorder,
+            color: active ? spectral : AfColors.glassBorder,
             width: 1,
           ),
         ),
         child: Text(
           label,
-          style: AfTypography.bodySmall.copyWith(
-            color: active ? AfColors.textOnPrimary : AfColors.textSecondary,
-            fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+          style: AfTypography.caption.copyWith(
+            color: active ? AfColors.textOnPrimary : AfColors.textTertiary,
+            fontWeight: active ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
       ),
