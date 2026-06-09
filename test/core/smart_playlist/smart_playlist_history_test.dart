@@ -36,7 +36,7 @@ void main() {
     late SmartPlaylistEngine engine;
 
     setUp(() async {
-      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
+      db = LocalDb(db: AppDatabase.forTesting(NativeDatabase.memory()));
       engine = SmartPlaylistEngine();
 
       // Seed track library
@@ -197,7 +197,7 @@ void main() {
       final mockBackend = MockMusicBackend();
       final mockHistoryRepo = MockQueueHistoryRepository();
       final localDb = LocalDb(
-        database: AppDatabase.forTesting(NativeDatabase.memory()),
+        db: AppDatabase.forTesting(NativeDatabase.memory()),
       );
 
       const seed = AfTrack(

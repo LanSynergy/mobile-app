@@ -92,26 +92,30 @@ class TrackRepository {
   /// disk. Called after cache eviction to prevent library views from trying
   /// to load deleted files. The next scan will re-extract cover art for
   /// these tracks.
+  ///
+  /// Batches updates to avoid N individual UPDATE statements.
   Future<int> nullStaleCoverPaths() async {
     final rows = await (db.select(
       db.tracks,
     )..where((t) => t.coverPath.isNotNull())).get();
 
-    int nulled = 0;
+    final staleIds = <String>[];
     for (final row in rows) {
       final coverPath = row.coverPath;
       if (coverPath != null && !await File(coverPath).exists()) {
-        await (db.update(db.tracks)..where((t) => t.id.equals(row.id))).write(
-          const TracksCompanion(coverPath: Value(null)),
-        );
-        nulled++;
+        staleIds.add(row.id);
       }
     }
 
-    if (nulled > 0) {
-      afLog('local', 'nulled $nulled stale cover_path entries');
-    }
-    return nulled;
+    if (staleIds.isEmpty) return 0;
+
+    // Batch-update all stale entries in a single statement
+    await (db.update(db.tracks)..where((t) => t.id.isIn(staleIds))).write(
+      const TracksCompanion(coverPath: Value(null)),
+    );
+
+    afLog('local', 'nulled ${staleIds.length} stale cover_path entries');
+    return staleIds.length;
   }
 
   /// Propagate cover art from tracks that have art to all tracks in the
@@ -180,38 +184,13 @@ class TrackRepository {
         [coverPath, albumName, artistName],
       );
 
-      // Count updated tracks
-      final countRow = await db
-          .customSelect(
-            '''
-        SELECT COUNT(*) as count FROM tracks
-        WHERE album = ?1
-          AND COALESCE(NULLIF(album_artist, ''), artist) = ?2
-          AND cover_path = ?3
-        ''',
-            variables: [
-              Variable<String>(albumName),
-              Variable<String>(artistName),
-              Variable<String>(coverPath),
-            ],
-            readsFrom: {db.tracks},
-          )
-          .getSingleOrNull();
-
-      if (countRow != null) {
-        final count = countRow.read<int>('count');
-        if (count > 0) {
-          propagated += count;
-          afLog(
-            'local',
-            'propagated cover art to $count tracks in album: $albumName',
-          );
-        }
-      }
+      // Track that this album was processed (exact count not available from customStatement)
+      propagated++;
+      afLog('local', 'propagated cover art in album: $albumName');
     }
 
     if (propagated > 0) {
-      afLog('local', 'propagated cover art to $propagated tracks total');
+      afLog('local', 'propagated cover art across $propagated albums');
     }
     return propagated;
   }
@@ -443,31 +422,60 @@ class TrackRepository {
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  AfTrack rowToTrack(TrackEntity r, {bool isFavorite = false}) {
-    final codec = r.codec;
-    final bitrate = r.bitrate;
-    final sampleRate = r.sampleRate;
+  /// Build an [AfTrack] from extracted field values.
+  /// Shared by [rowToTrack] and [rawRowToTrack] to avoid logic duplication.
+  AfTrack _buildAfTrack({
+    required String id,
+    required String title,
+    required String artist,
+    required String album,
+    int? trackNumber,
+    required int durationMs,
+    String? genre,
+    String? coverPath,
+    String? codec,
+    int? bitrate,
+    int? sampleRate,
+    bool isFavorite = false,
+  }) {
     final isLossless = codec == 'flac' || codec == 'alac' || codec == 'wav';
     return AfTrack(
-      id: r.id,
-      title: r.title,
-      artistName: r.artist,
-      albumName: r.album,
-      albumId: (r.album.isNotEmpty && r.artist.isNotEmpty)
-          ? 'local:album:${r.album}:${r.artist}'
+      id: id,
+      title: title,
+      artistName: artist,
+      albumName: album,
+      albumId: (album.isNotEmpty && artist.isNotEmpty)
+          ? 'local:album:$album:$artist'
           : null,
-      artistId: r.artist.isNotEmpty ? 'local:artist:${r.artist}' : null,
-      trackNumber: r.trackNumber,
-      duration: Duration(milliseconds: r.durationMs),
+      artistId: artist.isNotEmpty ? 'local:artist:$artist' : null,
+      trackNumber: trackNumber,
+      duration: Duration(milliseconds: durationMs),
       quality: TrackQuality(
-        sourceCodec: codec,
+        sourceCodec: codec ?? '',
         bitrateKbps: !isLossless ? bitrate : null,
         bitDepth: null,
         sampleRateKhz: sampleRate != null ? sampleRate ~/ 1000 : null,
       ),
-      imageUrl: r.coverPath != null ? 'file://${r.coverPath}' : null,
+      imageUrl: coverPath != null ? 'file://$coverPath' : null,
       isFavorite: isFavorite,
-      genre: r.genre.isNotEmpty ? r.genre : null,
+      genre: genre?.isNotEmpty == true ? genre : null,
+    );
+  }
+
+  AfTrack rowToTrack(TrackEntity r, {bool isFavorite = false}) {
+    return _buildAfTrack(
+      id: r.id,
+      title: r.title,
+      artist: r.artist,
+      album: r.album,
+      trackNumber: r.trackNumber,
+      durationMs: r.durationMs,
+      genre: r.genre,
+      coverPath: r.coverPath,
+      codec: r.codec,
+      bitrate: r.bitrate,
+      sampleRate: r.sampleRate,
+      isFavorite: isFavorite,
     );
   }
 
@@ -475,36 +483,19 @@ class TrackRepository {
   /// bypassing [TrackEntity]. Allows column projection in raw SQL queries
   /// instead of SELECT *.
   AfTrack rawRowToTrack(QueryRow r, {bool isFavorite = false}) {
-    final codec = r.read<String>('codec');
-    final bitrate = r.read<int?>('bitrate');
-    final sampleRate = r.read<int?>('sample_rate');
-    final coverPath = r.read<String?>('cover_path');
-    final artist = r.read<String>('artist');
-    final album = r.read<String>('album');
-    final isLossless = codec == 'flac' || codec == 'alac' || codec == 'wav';
-    return AfTrack(
+    return _buildAfTrack(
       id: r.read<String>('id'),
       title: r.read<String>('title'),
-      artistName: artist,
-      albumName: album,
-      albumId: (album.isNotEmpty && artist.isNotEmpty)
-          ? 'local:album:$album:$artist'
-          : null,
-      artistId: artist.isNotEmpty ? 'local:artist:$artist' : null,
+      artist: r.read<String>('artist'),
+      album: r.read<String>('album'),
       trackNumber: r.read<int?>('track_number'),
-      duration: Duration(milliseconds: r.read<int>('duration_ms')),
-      quality: TrackQuality(
-        sourceCodec: codec,
-        bitrateKbps: !isLossless ? bitrate : null,
-        bitDepth: null,
-        sampleRateKhz: sampleRate != null ? sampleRate ~/ 1000 : null,
-      ),
-      imageUrl: coverPath != null ? 'file://$coverPath' : null,
+      durationMs: r.read<int>('duration_ms'),
+      genre: r.read<String>('genre'),
+      coverPath: r.read<String?>('cover_path'),
+      codec: r.read<String>('codec'),
+      bitrate: r.read<int?>('bitrate'),
+      sampleRate: r.read<int?>('sample_rate'),
       isFavorite: isFavorite,
-      genre: () {
-        final g = r.read<String>('genre');
-        return g.isNotEmpty ? g : null;
-      }(),
     );
   }
 }

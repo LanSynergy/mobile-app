@@ -8,6 +8,16 @@ class AlbumRepository {
   AlbumRepository(this.db);
   final AppDatabase db;
 
+  /// Album grouping key: uses album_artist if non-empty, falls back to artist.
+  /// This matches the common music library convention where album_artist
+  /// identifies the primary artist for an album (e.g., "Various Artists"
+  /// for compilations), while track-level artist may vary.
+  ///
+  /// The COALESCE(NULLIF(album_artist, ''), artist) pattern:
+  /// - NULLIF converts empty string '' to NULL
+  /// - COALESCE returns first non-NULL value
+  /// Result: albums are grouped by (album_name, album_artist ?? artist)
+
   Future<List<AfAlbum>> allAlbums({int? limit, int offset = 0}) async {
     final paginated = limit != null;
     final sql = StringBuffer('''

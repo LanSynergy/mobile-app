@@ -9,7 +9,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
+      db = LocalDb(db: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks([
         {
           'id': 'content://uri/seed',
@@ -62,7 +62,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
+      db = LocalDb(db: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks([
         {
           'id': 'content://uri/c1',
@@ -182,7 +182,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
+      db = LocalDb(db: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks([
         {
           'id': 'content://uri/c1',
@@ -286,7 +286,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
+      db = LocalDb(db: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks([
         {
           'id': 'content://uri/1',
@@ -376,7 +376,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
+      db = LocalDb(db: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks([
         {
           'id': 'content://uri/1',
@@ -466,7 +466,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
+      db = LocalDb(db: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks([
         {
           'id': 'content://uri/c1',
@@ -545,7 +545,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
+      db = LocalDb(db: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks([
         {
           'id': 'content://uri/c1',
@@ -647,7 +647,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
+      db = LocalDb(db: AppDatabase.forTesting(NativeDatabase.memory()));
       final tracks = <Map<String, dynamic>>[];
       for (var i = 0; i < 5; i++) {
         final albumIdx = (i + 1).toString().padLeft(2, '0');
@@ -705,7 +705,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
+      db = LocalDb(db: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks([
         {
           'id': 'content://uri/1',
@@ -801,7 +801,7 @@ void main() {
     late LocalDb db;
 
     setUp(() async {
-      db = LocalDb(database: AppDatabase.forTesting(NativeDatabase.memory()));
+      db = LocalDb(db: AppDatabase.forTesting(NativeDatabase.memory()));
       await db.upsertTracks([
         {
           'id': 'content://uri/c1',

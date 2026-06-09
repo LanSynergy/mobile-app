@@ -85,11 +85,14 @@ class PlaylistRepository {
     final rows = await db
         .customSelect(
           '''
-        SELECT t.*, pe.entry_id AS entry_id, pe.position AS position
-        FROM playlist_entries pe
-        INNER JOIN tracks t ON t.id = pe.track_id
-        WHERE pe.playlist_id = ?
-        ORDER BY pe.position ASC
+      SELECT t.id, t.title, t.artist, t.album, t.album_artist, t.track_number,
+             t.duration_ms, t.year, t.genre, t.cover_path, t.codec, t.bitrate,
+             t.sample_rate,
+             pe.entry_id AS entry_id, pe.position AS position
+      FROM playlist_entries pe
+      INNER JOIN tracks t ON t.id = pe.track_id
+      WHERE pe.playlist_id = ?
+      ORDER BY pe.position ASC
       ''',
           variables: [Variable<String>(playlistId)],
           readsFrom: {db.playlistEntries, db.tracks},
@@ -97,13 +100,10 @@ class PlaylistRepository {
         .get();
     final favIds = await _getFavoriteIds();
     return rows.map((r) {
-      final entity = db.tracks.map(r.data);
+      final trackId = r.read<String>('id');
       return (
         entryId: r.read<String>('entry_id'),
-        track: tracks.rowToTrack(
-          entity,
-          isFavorite: favIds.contains(entity.id),
-        ),
+        track: tracks.rawRowToTrack(r, isFavorite: favIds.contains(trackId)),
       );
     }).toList();
   }

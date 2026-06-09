@@ -15,7 +15,7 @@ import 'local_db_tracks.dart';
 /// Local database for caching scanned music metadata.
 /// Refactored to wrap Drift's [AppDatabase].
 class LocalDb {
-  LocalDb({AppDatabase? database}) : db = database ?? AppDatabase() {
+  LocalDb({required this.db}) {
     tracks = TrackRepository(db);
     albums = AlbumRepository(db);
     playlists = PlaylistRepository(db, tracks, favoriteIdsCached);

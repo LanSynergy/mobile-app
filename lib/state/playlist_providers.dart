@@ -19,7 +19,7 @@ final selectedLibraryIdsProvider = StateProvider<Set<String>?>((ref) => null);
 
 final smartPlaylistDbProvider = Provider<SmartPlaylistDb>((ref) {
   final appDb = ref.watch(appDatabaseProvider);
-  return SmartPlaylistDb(database: appDb);
+  return SmartPlaylistDb(db: appDb);
 });
 
 final smartPlaylistsProvider = FutureProvider.autoDispose<List<SmartPlaylist>>((

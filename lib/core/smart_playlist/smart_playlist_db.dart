@@ -7,7 +7,7 @@ import 'smart_playlist_model.dart';
 /// Storage for smart playlist definitions.
 /// Refactored to wrap Drift's [AppDatabase].
 class SmartPlaylistDb {
-  SmartPlaylistDb({AppDatabase? database}) : db = database ?? AppDatabase();
+  SmartPlaylistDb({required this.db});
   final AppDatabase db;
 
   // ── CRUD ────────────────────────────────────────────────────────────────
