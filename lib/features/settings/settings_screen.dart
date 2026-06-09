@@ -9,7 +9,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart' show AudioParams;
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show AudioParams, Device;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/audio/offline_cache_service.dart';
@@ -287,6 +287,22 @@ class SettingsScreen extends ConsumerWidget {
                         subtitle: hasData
                             ? '$rate Hz · ${fmt?.name ?? "auto"} · ${ch}ch'
                             : 'Not active — start playback first',
+                      );
+                    },
+                  ),
+                  StreamBuilder<Device>(
+                    stream: svc.audioDeviceStream,
+                    initialData: svc.audioDevice,
+                    builder: (context, snap) {
+                      final device = snap.data;
+                      final label = device?.description.isNotEmpty == true
+                          ? device!.description
+                          : device?.name ?? 'Auto';
+                      return SettingsTile(
+                        icon: LucideIcons.speaker,
+                        title: 'Audio device',
+                        subtitle: label,
+                        onTap: () => showAudioDeviceDialog(context, ref),
                       );
                     },
                   ),

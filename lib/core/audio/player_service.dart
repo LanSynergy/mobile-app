@@ -13,6 +13,7 @@ import 'auth_headers_manager.dart';
 import 'loop_mode_manager.dart';
 import 'media_session_bridge.dart';
 import 'playback_controller.dart';
+import 'player_settings_store.dart';
 import 'position_tracker.dart';
 import 'queue_manager.dart';
 import 'stream_prefetcher.dart';
@@ -130,15 +131,24 @@ class AfPlayerService {
     _bindStreams();
     _positionTracker.start();
 
-    Future.delayed(const Duration(milliseconds: 500), () {
+    Future.delayed(const Duration(milliseconds: 500), () async {
       if (_disposed) return;
       try {
         final devices = _player.state.audioDevices;
+        // Restore the user's persisted default device, or fall back to "auto".
+        final savedDeviceName = await PlayerSettingsStore.loadDefaultAudioDevice();
+        if (savedDeviceName != null) {
+          final match = devices.where((d) => d.name == savedDeviceName);
+          if (match.isNotEmpty) {
+            await _player.setAudioDevice(match.first);
+            return;
+          }
+        }
         final auto = devices.firstWhere(
           (d) => d.name == 'auto',
           orElse: () => _player.state.audioDevice,
         );
-        _player.setAudioDevice(auto);
+        await _player.setAudioDevice(auto);
       } on Exception catch (e, stack) {
         afLog(
           'audio',

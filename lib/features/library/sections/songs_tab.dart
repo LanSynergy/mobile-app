@@ -6,7 +6,6 @@ import '../../../core/audio/play_actions.dart';
 import '../../../core/jellyfin/models/items.dart';
 import '../../../design_tokens/tokens.dart';
 import '../../../state/providers.dart';
-import '../../../widgets/af_scrollbar.dart';
 import '../../../widgets/async_error_view.dart';
 import '../../../widgets/empty_state.dart';
 import '../../../widgets/skeletons/library_skeleton.dart';
@@ -14,6 +13,8 @@ import '../../../widgets/track_context_menu.dart';
 import '../../../widgets/track_row.dart';
 
 /// Songs list — local mode (SQL) or server mode (paginated).
+///
+/// Returns sliver-compatible widgets for use inside a [CustomScrollView].
 class SongsTab extends ConsumerWidget {
   const SongsTab({required this.isLocal, super.key});
   final bool isLocal;
@@ -27,57 +28,73 @@ class SongsTab extends ConsumerWidget {
     if (isLocal) {
       final tracks = ref.watch(localTracksProvider);
       return tracks.when(
-        data: (list) => _buildList(list, activeId, isBuffering, accent, ref),
-        loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.songs),
-        error: (e, _) => AsyncErrorView(
-          label: 'Couldn\u2019t load songs',
-          error: e,
-          onRetry: () => ref.invalidate(localTracksProvider),
+        data: (list) => _buildSliverList(list, activeId, isBuffering, accent, ref),
+        loading: () => const SliverToBoxAdapter(
+          child: LibrarySkeleton(mode: LibrarySkeletonMode.songs),
+        ),
+        error: (e, _) => SliverToBoxAdapter(
+          child: AsyncErrorView(
+            label: 'Couldn\u2019t load songs',
+            error: e,
+            onRetry: () => ref.invalidate(localTracksProvider),
+          ),
         ),
       );
     }
 
     final tracksState = ref.watch(tracksPaginationProvider);
     if (tracksState.error != null && tracksState.items.isEmpty) {
-      return AsyncErrorView(
-        label: 'Couldn\u2019t load songs',
-        error: Exception(tracksState.error),
-        onRetry: () =>
-            ref.read(tracksPaginationProvider.notifier).loadFirstPage(),
+      return SliverToBoxAdapter(
+        child: AsyncErrorView(
+          label: 'Couldn\u2019t load songs',
+          error: Exception(tracksState.error),
+          onRetry: () =>
+              ref.read(tracksPaginationProvider.notifier).loadFirstPage(),
+        ),
       );
     }
     if (tracksState.items.isEmpty && tracksState.isLoadingMore) {
-      return const Center(child: CircularProgressIndicator());
+      return const SliverToBoxAdapter(
+        child: Center(child: CircularProgressIndicator()),
+      );
     }
 
-    return _buildList(tracksState.items, activeId, isBuffering, accent, ref);
+    return _buildSliverList(
+      tracksState.items,
+      activeId,
+      isBuffering,
+      accent,
+      ref,
+    );
   }
 
-  Widget _buildList(
+  Widget _buildSliverList(
     List<AfTrack> tracks,
     String? activeId,
     bool isBuffering,
     Color accent,
     WidgetRef ref,
   ) {
-    const padding = EdgeInsets.symmetric(horizontal: AfSpacing.s8);
-
     if (tracks.isEmpty) {
-      return const EmptyState(
-        icon: LucideIcons.music,
-        title: 'No songs yet',
-        body: 'Songs from your library will appear here',
+      return const SliverToBoxAdapter(
+        child: EmptyState(
+          icon: LucideIcons.music,
+          title: 'No songs yet',
+          body: 'Songs from your library will appear here',
+        ),
       );
     }
 
-    return RepaintBoundary(
-      child: AfScrollbar(
-        child: ListView.builder(
-          padding: padding.add(
-            const EdgeInsets.only(bottom: AfSpacing.bottomInsetWithMiniAndNav),
-          ),
-          itemCount: tracks.length,
-          itemBuilder: (context, i) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        AfSpacing.s8,
+        0,
+        AfSpacing.s8,
+        AfSpacing.bottomInsetWithMiniAndNav,
+      ),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, i) {
             final t = tracks[i];
             return Padding(
               padding: const EdgeInsets.only(bottom: AfSpacing.s4),
@@ -92,6 +109,7 @@ class SongsTab extends ConsumerWidget {
               ),
             );
           },
+          childCount: tracks.length,
         ),
       ),
     );

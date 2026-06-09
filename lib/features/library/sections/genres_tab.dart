@@ -12,6 +12,8 @@ import '../../../widgets/skeletons/library_skeleton.dart';
 import '../../../widgets/tile.dart';
 
 /// Genres grid — local or server.
+///
+/// Returns sliver-compatible widgets for use inside a [CustomScrollView].
 class GenresTab extends ConsumerWidget {
   const GenresTab({required this.isLocal, super.key});
   final bool isLocal;
@@ -23,47 +25,55 @@ class GenresTab extends ConsumerWidget {
     return async.when(
       data: (list) {
         if (list.isEmpty) {
-          return const EmptyState(
-            icon: LucideIcons.music2,
-            title: 'No genres found',
-            body: 'Genres from your library will appear here',
+          return const SliverToBoxAdapter(
+            child: EmptyState(
+              icon: LucideIcons.music2,
+              title: 'No genres found',
+              body: 'Genres from your library will appear here',
+            ),
           );
         }
-        const padding = EdgeInsets.symmetric(horizontal: AfSpacing.s16);
-        return RepaintBoundary(
-          child: GridView.builder(
-            padding: padding.add(
-              const EdgeInsets.only(
-                bottom: AfSpacing.bottomInsetWithMiniAndNav,
-              ),
-            ),
-            itemCount: list.length,
+        return SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AfSpacing.s16,
+            0,
+            AfSpacing.s16,
+            AfSpacing.bottomInsetWithMiniAndNav,
+          ),
+          sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               mainAxisExtent: 96,
               crossAxisSpacing: AfSpacing.s12,
               mainAxisSpacing: AfSpacing.s12,
             ),
-            itemBuilder: (context, i) {
-              final g = list[i];
-              final tint = parseGenreTint(g.tint);
-              return GenreTile(
-                name: g.name,
-                tint: tint,
-                imageUrl: g.imageUrl,
-                width: double.infinity,
-                height: double.infinity,
-                onTap: () => context.push('/genre/${g.name}'),
-              );
-            },
+            delegate: SliverChildBuilderDelegate(
+              (context, i) {
+                final g = list[i];
+                final tint = parseGenreTint(g.tint);
+                return GenreTile(
+                  name: g.name,
+                  tint: tint,
+                  imageUrl: g.imageUrl,
+                  width: double.infinity,
+                  height: double.infinity,
+                  onTap: () => context.push('/genre/${g.name}'),
+                );
+              },
+              childCount: list.length,
+            ),
           ),
         );
       },
-      loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.genres),
-      error: (e, _) => AsyncErrorView(
-        label: 'Couldn\u2019t load genres',
-        error: e,
-        onRetry: () => ref.invalidate(provider),
+      loading: () => const SliverToBoxAdapter(
+        child: LibrarySkeleton(mode: LibrarySkeletonMode.genres),
+      ),
+      error: (e, _) => SliverToBoxAdapter(
+        child: AsyncErrorView(
+          label: 'Couldn\u2019t load genres',
+          error: e,
+          onRetry: () => ref.invalidate(provider),
+        ),
       ),
     );
   }

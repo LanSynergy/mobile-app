@@ -99,6 +99,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                   left: _artworkHorizontalMargin,
                   right: _artworkHorizontalMargin,
                   child: GestureDetector(
+                    onTap: () {
+                      if (_lyricsExpandedNotifier.value) {
+                        _lyricsExpandedNotifier.value = false;
+                      }
+                    },
                     onVerticalDragEnd: (details) {
                       if ((details.primaryVelocity ?? 0) < -200) {
                         _expandedNotifier.value = true;

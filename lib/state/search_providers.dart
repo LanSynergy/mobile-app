@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import '../core/jellyfin/models/items.dart';
 import '../core/lyrics/lrc_parser.dart';
 import '../core/lyrics/lrclib_client.dart';
+import '../core/lyrics/netease_client.dart';
 import '../utils/log.dart';
 import 'app_mode_providers.dart';
 import 'detail_providers.dart';
@@ -196,6 +197,51 @@ final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((
         source: 'lrclib',
         extra:
             'trackId=$trackId lines=${parsed.lines.length} synced=${fetched.synced != null}',
+      );
+      return parsed;
+    }
+  }
+
+  // 4. Fallback: query NetEase Cloud Music if LRCLib didn't have it
+  _logData(
+    'lyrics',
+    source: 'fallback_check',
+    extra: 'trackId=$trackId (lrclib yielded none, trying NetEase)',
+  );
+
+  final netease = NetEaseClient();
+  final neteaseFetched = await netease.fetchLyrics(
+    trackName: track.title,
+    artistName: track.artistName,
+    albumName: track.albumName,
+    duration: track.duration,
+  );
+
+  if (neteaseFetched != null) {
+    final rawLyrics = neteaseFetched.synced ?? neteaseFetched.plain;
+    if (rawLyrics != null && rawLyrics.isNotEmpty) {
+      final parsed = parseLrc(rawLyrics);
+
+      // Cache it for next time
+      try {
+        final cacheDir = await getApplicationCacheDirectory();
+        final cacheFile = File(p.join(cacheDir.path, 'lyrics', '$trackId.lrc'));
+        await cacheFile.parent.create(recursive: true);
+        await cacheFile.writeAsString(rawLyrics);
+        _logData(
+          'lyrics',
+          source: 'netease_write',
+          extra: 'cached to local cache path',
+        );
+      } on Exception catch (e) {
+        afLog('error', 'Failed to write lyrics cache', error: e);
+      }
+
+      _logData(
+        'lyrics',
+        source: 'netease',
+        extra:
+            'trackId=$trackId lines=${parsed.lines.length} synced=${neteaseFetched.synced != null}',
       );
       return parsed;
     }

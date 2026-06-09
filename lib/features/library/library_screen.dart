@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/af_scrollbar.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/skeleton.dart';
@@ -38,15 +39,27 @@ class LibraryScreen extends ConsumerStatefulWidget {
 
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   SongsPill _pill = SongsPill.songs;
+  final _scroll = ScrollController();
+  late final ValueNotifier<double> _scrollOffset = ValueNotifier(0.0);
 
   @override
   void initState() {
     super.initState();
+    _scroll.addListener(
+      () => _scrollOffset.value = _scroll.hasClients ? _scroll.offset : 0.0,
+    );
     final pill = ref.read(songsPillProvider);
     if (pill != null && mounted) {
       _pill = pill;
       ref.read(songsPillProvider.notifier).state = null;
     }
+  }
+
+  @override
+  void dispose() {
+    _scrollOffset.dispose();
+    _scroll.dispose();
+    super.dispose();
   }
 
   void _openSearch(BuildContext context) {
@@ -73,82 +86,122 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     );
 
     return SafeArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── Header row: gradient title + search icon ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AfSpacing.s16,
-              AfSpacing.s16,
-              AfSpacing.s16,
-              AfSpacing.s12,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ShaderMask(
-                    shaderCallback: (bounds) => LinearGradient(
-                      colors: [spectral.primary, spectral.secondary],
-                    ).createShader(bounds),
-                    child: Text(
-                      'Library',
-                      style: AfTypography.display.copyWith(color: Colors.white),
-                    ),
-                  ),
+      child: AfScrollbar(
+        child: CustomScrollView(
+          controller: _scroll,
+          physics: const ClampingScrollPhysics(),
+          slivers: [
+            // ── Header row: gradient title + search icon ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AfSpacing.s16,
+                  AfSpacing.s16,
+                  AfSpacing.s16,
+                  AfSpacing.s12,
                 ),
-                PressScale(
-                  onTap: () => _openSearch(context),
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AfColors.glassFill,
-                      borderRadius: AfRadii.borderPill,
-                      border: Border.all(
-                        color: AfColors.glassBorderStrong,
-                        width: 1,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ShaderMask(
+                        shaderCallback: (bounds) => LinearGradient(
+                          colors: [spectral.primary, spectral.secondary],
+                        ).createShader(bounds),
+                        child: Text(
+                          'Library',
+                          style: AfTypography.display.copyWith(
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
-                    child: const Icon(
-                      LucideIcons.search,
-                      color: AfColors.textSecondary,
-                      size: 18,
+                    PressScale(
+                      onTap: () => _openSearch(context),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AfColors.glassFill,
+                          borderRadius: AfRadii.borderPill,
+                          border: Border.all(
+                            color: AfColors.glassBorderStrong,
+                            width: 1,
+                          ),
+                        ),
+                        child: const Icon(
+                          LucideIcons.search,
+                          color: AfColors.textSecondary,
+                          size: 18,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
 
-          // ── Recently Added ──
-          _RecentlyAddedSection(isLocal: isLocal),
-
-          const SizedBox(height: AfSpacing.s12),
-
-          // ── Pill Bar ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-            child: _PillBar(
-              selected: _pill,
-              onChanged: (v) => setState(() => _pill = v),
+            // ── Recently Added ──
+            SliverToBoxAdapter(
+              child: _RecentlyAddedSection(isLocal: isLocal),
             ),
-          ),
-          const SizedBox(height: AfSpacing.s12),
+            const SliverToBoxAdapter(
+              child: SizedBox(height: AfSpacing.s12),
+            ),
 
-          // ── Section Content ──
-          Expanded(
-            child: switch (_pill) {
+            // ── Pill Bar (pinned on scroll) ──
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _PillBarDelegate(
+                selected: _pill,
+                onChanged: (v) => setState(() => _pill = v),
+              ),
+            ),
+            const SliverToBoxAdapter(
+              child: SizedBox(height: AfSpacing.s12),
+            ),
+
+            // ── Section Content ──
+            switch (_pill) {
               SongsPill.songs => SongsTab(isLocal: isLocal),
               SongsPill.artists => ArtistsTab(isLocal: isLocal),
               SongsPill.albums => AlbumsTab(isLocal: isLocal),
               SongsPill.genres => GenresTab(isLocal: isLocal),
             },
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
+
+// ── Pill Bar SliverPersistentHeader Delegate ──
+
+class _PillBarDelegate extends SliverPersistentHeaderDelegate {
+  _PillBarDelegate({required this.selected, required this.onChanged});
+  final SongsPill selected;
+  final ValueChanged<SongsPill> onChanged;
+
+  @override
+  double get minExtent => 44;
+
+  @override
+  double get maxExtent => 44;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
+      child: _PillBar(selected: selected, onChanged: onChanged),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _PillBarDelegate old) =>
+      old.selected != selected;
 }
 
 // ── Recently Added Section ──

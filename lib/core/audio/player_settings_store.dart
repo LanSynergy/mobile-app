@@ -125,6 +125,9 @@ class PlayerSettingsStore {
   static final kLastFmScrobbleEnabled = SettingsKey.boolKey(
     'af.lastfm_scrobble_enabled',
   );
+  static final kDefaultAudioDevice = SettingsKey.stringKey(
+    'af.default_audio_device',
+  );
 
   // Compound keys (custom JSON serialization)
   static const kAudioEffects = 'af.audio_effects_json';
@@ -258,6 +261,22 @@ class PlayerSettingsStore {
   /// Persist shuffle enabled state.
   static Future<void> saveShuffleEnabled(bool enabled) async =>
       saveValue(kShuffleEnabled, enabled);
+
+  /// Persist the default audio device name. Pass `null` to clear
+  /// (revert to "auto" behavior on next startup).
+  static Future<void> saveDefaultAudioDevice(String? deviceName) async {
+    if (deviceName == null) {
+      final p = await _prefs();
+      await p.remove(kDefaultAudioDevice.key);
+    } else {
+      await saveValue(kDefaultAudioDevice, deviceName);
+    }
+  }
+
+  /// Load the persisted default audio device name. Returns `null` when
+  /// no device has been saved (meaning "auto" should be used).
+  static Future<String?> loadDefaultAudioDevice() async =>
+      loadValue(kDefaultAudioDevice);
 
   /// Serialize the user-visible audio effects to JSON and persist.
   static Future<void> saveAudioEffects(AudioEffects fx) async {

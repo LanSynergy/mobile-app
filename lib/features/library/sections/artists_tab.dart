@@ -11,6 +11,8 @@ import '../../../widgets/skeletons/library_skeleton.dart';
 import '../../../widgets/tile.dart';
 
 /// Artists grid — local or server.
+///
+/// Returns sliver-compatible widgets for use inside a [CustomScrollView].
 class ArtistsTab extends ConsumerWidget {
   const ArtistsTab({required this.isLocal, super.key});
   final bool isLocal;
@@ -22,46 +24,54 @@ class ArtistsTab extends ConsumerWidget {
     return async.when(
       data: (list) {
         if (list.isEmpty) {
-          return const EmptyState(
-            icon: LucideIcons.users,
-            title: 'No artists found',
-            body: 'Artists from your library will appear here',
+          return const SliverToBoxAdapter(
+            child: EmptyState(
+              icon: LucideIcons.users,
+              title: 'No artists found',
+              body: 'Artists from your library will appear here',
+            ),
           );
         }
-        const padding = EdgeInsets.symmetric(horizontal: AfSpacing.s16);
-        return RepaintBoundary(
-          child: GridView.builder(
-            padding: padding.add(
-              const EdgeInsets.only(
-                bottom: AfSpacing.bottomInsetWithMiniAndNav,
-              ),
-            ),
-            itemCount: list.length,
+        return SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AfSpacing.s16,
+            0,
+            AfSpacing.s16,
+            AfSpacing.bottomInsetWithMiniAndNav,
+          ),
+          sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
               mainAxisExtent: 180,
               crossAxisSpacing: AfSpacing.s12,
               mainAxisSpacing: AfSpacing.s12,
             ),
-            itemBuilder: (context, i) {
-              final a = list[i];
-              return Tile(
-                title: a.name,
-                subtitle: a.statLine,
-                variant: TileVariant.artist,
-                imageUrl: a.imageUrl,
-                size: double.infinity,
-                onTap: () => context.push('/artist/${a.id}'),
-              );
-            },
+            delegate: SliverChildBuilderDelegate(
+              (context, i) {
+                final a = list[i];
+                return Tile(
+                  title: a.name,
+                  subtitle: a.statLine,
+                  variant: TileVariant.artist,
+                  imageUrl: a.imageUrl,
+                  size: double.infinity,
+                  onTap: () => context.push('/artist/${a.id}'),
+                );
+              },
+              childCount: list.length,
+            ),
           ),
         );
       },
-      loading: () => const LibrarySkeleton(mode: LibrarySkeletonMode.artists),
-      error: (e, _) => AsyncErrorView(
-        label: 'Couldn\u2019t load artists',
-        error: e,
-        onRetry: () => ref.invalidate(provider),
+      loading: () => const SliverToBoxAdapter(
+        child: LibrarySkeleton(mode: LibrarySkeletonMode.artists),
+      ),
+      error: (e, _) => SliverToBoxAdapter(
+        child: AsyncErrorView(
+          label: 'Couldn\u2019t load artists',
+          error: e,
+          onRetry: () => ref.invalidate(provider),
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@
 // Each dialog has been extracted into its own file under dialogs/.
 export 'dialogs/app_icon_dialog.dart';
 export 'dialogs/audio_buffer_dialog.dart';
+export 'dialogs/audio_device_dialog.dart';
 export 'dialogs/cache_duration_dialog.dart';
 export 'dialogs/format_dialog.dart';
 export 'dialogs/gapless_dialog.dart';
