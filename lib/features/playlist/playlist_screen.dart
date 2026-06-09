@@ -11,6 +11,7 @@ import '../../state/providers.dart';
 import '../../utils/display_error.dart';
 import '../../widgets/af_scrollbar.dart';
 import '../../widgets/async_error_view.dart';
+import '../../widgets/breadcrumb.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/skeletons/playlist_skeleton.dart';
@@ -126,6 +127,25 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
               child: CustomScrollView(
                 physics: const ClampingScrollPhysics(),
                 slivers: [
+                  // Breadcrumb.
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        top: AfSpacing.s16,
+                        bottom: AfSpacing.s8,
+                      ),
+                      child: AfBreadcrumb(
+                        items: [
+                          BreadcrumbItem(
+                            label: 'Playlists',
+                            onTap: () => context.go('/playlists'),
+                          ),
+                          BreadcrumbItem(label: pl.name),
+                        ],
+                      ),
+                    ),
+                  ),
+
                   // Header.
                   SliverToBoxAdapter(
                     child: PlaylistHeader(

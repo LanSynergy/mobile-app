@@ -9,6 +9,7 @@ import '../../state/providers.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/async_error_view.dart';
 import '../../widgets/opacity_app_bar.dart';
+import '../../widgets/breadcrumb.dart';
 import '../../widgets/track_context_menu.dart';
 import '../../widgets/af_scrollbar.dart';
 import '../../widgets/skeletons/artist_skeleton.dart';
@@ -123,6 +124,23 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   physics: const ClampingScrollPhysics(),
                   slivers: [
                     SliverToBoxAdapter(child: SizedBox(height: heroHeight)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          top: AfSpacing.s16,
+                          bottom: AfSpacing.s8,
+                        ),
+                        child: AfBreadcrumb(
+                          items: [
+                            BreadcrumbItem(
+                              label: 'Home',
+                              onTap: () => context.go('/home'),
+                            ),
+                            BreadcrumbItem(label: 'Artist: ${artist.name}'),
+                          ],
+                        ),
+                      ),
+                    ),
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(

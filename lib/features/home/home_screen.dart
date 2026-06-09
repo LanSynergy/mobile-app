@@ -223,24 +223,27 @@ class _GlassCastButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PressScale(
-      ensureHitTarget: true,
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: AfRadii.borderPill,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: const EdgeInsets.all(AfSpacing.s12),
-            decoration: BoxDecoration(
-              color: AfColors.glassFill,
-              borderRadius: AfRadii.borderPill,
-              border: Border.all(color: AfColors.glassBorderStrong, width: 1),
-            ),
-            child: const Icon(
-              LucideIcons.cast,
-              size: 18,
-              color: AfColors.textSecondary,
+    return Tooltip(
+      message: 'Audio output',
+      child: PressScale(
+        ensureHitTarget: true,
+        onTap: onTap,
+        child: ClipRRect(
+          borderRadius: AfRadii.borderPill,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: const EdgeInsets.all(AfSpacing.s12),
+              decoration: BoxDecoration(
+                color: AfColors.glassFill,
+                borderRadius: AfRadii.borderPill,
+                border: Border.all(color: AfColors.glassBorderStrong, width: 1),
+              ),
+              child: const Icon(
+                LucideIcons.cast,
+                size: 18,
+                color: AfColors.textSecondary,
+              ),
             ),
           ),
         ),

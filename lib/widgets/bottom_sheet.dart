@@ -230,9 +230,7 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                                         color: AfColors.textTertiary.withValues(
                                           alpha: 0.4,
                                         ),
-                                        borderRadius: BorderRadius.circular(
-                                          AfRadii.xs,
-                                        ),
+                                        borderRadius: AfRadii.borderXs,
                                       ),
                                     ),
                                   ),

@@ -48,13 +48,17 @@ class ArtistsTab extends ConsumerWidget {
             ),
             delegate: SliverChildBuilderDelegate((context, i) {
               final a = list[i];
-              return Tile(
-                title: a.name,
-                subtitle: a.statLine,
-                variant: TileVariant.artist,
-                imageUrl: a.imageUrl,
-                size: double.infinity,
-                onTap: () => context.push('/artist/${a.id}'),
+              return Semantics(
+                button: true,
+                label: 'Artist: ${a.name}',
+                child: Tile(
+                  title: a.name,
+                  subtitle: a.statLine,
+                  variant: TileVariant.artist,
+                  imageUrl: a.imageUrl,
+                  size: double.infinity,
+                  onTap: () => context.push('/artist/${a.id}'),
+                ),
               );
             }, childCount: list.length),
           ),

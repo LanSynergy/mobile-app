@@ -179,16 +179,21 @@ class SearchResults extends ConsumerWidget {
                 itemCount: trackCount,
                 itemBuilder: (context, i) => Padding(
                   padding: const EdgeInsets.only(bottom: AfSpacing.s4),
-                  child: TrackRow(
-                    track: tracks[i],
-                    isActive: tracks[i].id == activeId,
-                    isBuffering: tracks[i].id == activeId && isBuffering,
-                    activeAccent: activeAccent,
-                    onTap: () => ref
-                        .read(playActionsProvider)
-                        .playQueue(tracks, startIndex: i),
-                    onLongPress: () =>
-                        showTrackContextMenu(context, ref, tracks[i]),
+                  child: Semantics(
+                    button: true,
+                    label:
+                        'Song: ${tracks[i].title} by ${tracks[i].artistName}',
+                    child: TrackRow(
+                      track: tracks[i],
+                      isActive: tracks[i].id == activeId,
+                      isBuffering: tracks[i].id == activeId && isBuffering,
+                      activeAccent: activeAccent,
+                      onTap: () => ref
+                          .read(playActionsProvider)
+                          .playQueue(tracks, startIndex: i),
+                      onLongPress: () =>
+                          showTrackContextMenu(context, ref, tracks[i]),
+                    ),
                   ),
                 ),
               ),
@@ -218,23 +223,27 @@ class SearchResults extends ConsumerWidget {
                 itemCount: albumCount,
                 itemBuilder: (context, i) {
                   final a = albums[i];
-                  return PressScale(
-                    onTap: () => context.push('/album/${a.id}'),
-                    child: ListTile(
-                      leading: SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: Artwork(url: a.imageUrl, size: 44),
-                      ),
-                      title: Text(a.name, style: AfTypography.bodyMedium),
-                      subtitle: Text(
-                        a.artistName,
-                        style: AfTypography.bodySmall.copyWith(
-                          color: AfColors.textTertiary,
+                  return Semantics(
+                    button: true,
+                    label: 'Album: ${a.name} by ${a.artistName}',
+                    child: PressScale(
+                      onTap: () => context.push('/album/${a.id}'),
+                      child: ListTile(
+                        leading: SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Artwork(url: a.imageUrl, size: 44),
                         ),
+                        title: Text(a.name, style: AfTypography.bodyMedium),
+                        subtitle: Text(
+                          a.artistName,
+                          style: AfTypography.bodySmall.copyWith(
+                            color: AfColors.textTertiary,
+                          ),
+                        ),
+                        tileColor: Colors.transparent,
+                        contentPadding: EdgeInsets.zero,
                       ),
-                      tileColor: Colors.transparent,
-                      contentPadding: EdgeInsets.zero,
                     ),
                   );
                 },
@@ -265,23 +274,27 @@ class SearchResults extends ConsumerWidget {
                 itemCount: artistCount,
                 itemBuilder: (context, i) {
                   final a = artists[i];
-                  return PressScale(
-                    onTap: () => context.push('/artist/${a.id}'),
-                    child: ListTile(
-                      leading: Artwork(
-                        url: a.imageUrl,
-                        size: 44,
-                        radius: AfRadii.borderPill,
-                      ),
-                      title: Text(a.name, style: AfTypography.bodyMedium),
-                      subtitle: Text(
-                        a.statLine,
-                        style: AfTypography.bodySmall.copyWith(
-                          color: AfColors.textTertiary,
+                  return Semantics(
+                    button: true,
+                    label: 'Artist: ${a.name}',
+                    child: PressScale(
+                      onTap: () => context.push('/artist/${a.id}'),
+                      child: ListTile(
+                        leading: Artwork(
+                          url: a.imageUrl,
+                          size: 44,
+                          radius: AfRadii.borderPill,
                         ),
+                        title: Text(a.name, style: AfTypography.bodyMedium),
+                        subtitle: Text(
+                          a.statLine,
+                          style: AfTypography.bodySmall.copyWith(
+                            color: AfColors.textTertiary,
+                          ),
+                        ),
+                        tileColor: Colors.transparent,
+                        contentPadding: EdgeInsets.zero,
                       ),
-                      tileColor: Colors.transparent,
-                      contentPadding: EdgeInsets.zero,
                     ),
                   );
                 },
@@ -312,32 +325,36 @@ class SearchResults extends ConsumerWidget {
                 itemCount: playlistCount,
                 itemBuilder: (context, i) {
                   final p = playlists[i];
-                  return PressScale(
-                    onTap: () => context.push('/playlist/${p.id}'),
-                    child: ListTile(
-                      leading: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          borderRadius: AfRadii.borderSm,
-                          gradient: LinearGradient(
-                            colors: [spectral.muted, AfColors.surfaceLow],
+                  return Semantics(
+                    button: true,
+                    label: 'Playlist: ${p.name}',
+                    child: PressScale(
+                      onTap: () => context.push('/playlist/${p.id}'),
+                      child: ListTile(
+                        leading: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            borderRadius: AfRadii.borderSm,
+                            gradient: LinearGradient(
+                              colors: [spectral.muted, AfColors.surfaceLow],
+                            ),
+                          ),
+                          child: Icon(
+                            LucideIcons.listMusic,
+                            color: spectral.primary,
                           ),
                         ),
-                        child: Icon(
-                          LucideIcons.listMusic,
-                          color: spectral.primary,
+                        title: Text(p.name, style: AfTypography.bodyMedium),
+                        subtitle: Text(
+                          p.trackCountLabel,
+                          style: AfTypography.bodySmall.copyWith(
+                            color: AfColors.textTertiary,
+                          ),
                         ),
+                        tileColor: Colors.transparent,
+                        contentPadding: EdgeInsets.zero,
                       ),
-                      title: Text(p.name, style: AfTypography.bodyMedium),
-                      subtitle: Text(
-                        p.trackCountLabel,
-                        style: AfTypography.bodySmall.copyWith(
-                          color: AfColors.textTertiary,
-                        ),
-                      ),
-                      tileColor: Colors.transparent,
-                      contentPadding: EdgeInsets.zero,
                     ),
                   );
                 },

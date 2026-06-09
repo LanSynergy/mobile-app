@@ -26,7 +26,6 @@ import '../../widgets/af_dialog.dart';
 import '../../widgets/af_scrollbar.dart';
 import 'settings_dialogs.dart';
 import 'settings_sections.dart';
-import '../../widgets/section_header.dart';
 import 'settings_widgets.dart';
 
 // ── Screen ───────────────────────────────────────────────────────────────────
@@ -68,95 +67,98 @@ class SettingsScreen extends ConsumerWidget {
               ),
 
               // ── Server (server mode) ────────────────────────────────
-              if (!isLocal && mode != AppMode.youtubeMusic) ...[
-                SettingsGroup(
-                  children: [
-                    SettingsTile(
-                      icon: LucideIcons.server,
-                      title: auth?.server.name ?? 'Not connected',
-                      subtitle: auth?.server.baseUrl,
-                    ),
-                    if (auth != null)
+              if (!isLocal && mode != AppMode.youtubeMusic)
+                AfCollapsibleSection(
+                  title: 'Server',
+                  child: SettingsGroup(
+                    children: [
                       SettingsTile(
-                        icon: LucideIcons.user,
-                        title: auth.userName,
-                        subtitle:
-                            auth.serverType.name[0].toUpperCase() +
-                            auth.serverType.name.substring(1),
+                        icon: LucideIcons.server,
+                        title: auth?.server.name ?? 'Not connected',
+                        subtitle: auth?.server.baseUrl,
                       ),
-                    SettingsTile(
-                      icon: LucideIcons.arrowLeftRight,
-                      title: 'Switch server',
-                      subtitle: 'Connect to a different server',
-                      onTap: () => context.go('/onboarding/discover'),
-                    ),
-                    if (auth != null)
+                      if (auth != null)
+                        SettingsTile(
+                          icon: LucideIcons.user,
+                          title: auth.userName,
+                          subtitle:
+                              auth.serverType.name[0].toUpperCase() +
+                              auth.serverType.name.substring(1),
+                        ),
                       SettingsTile(
-                        icon: LucideIcons.logOut,
-                        title: 'Sign out',
-                        subtitle: 'Disconnect from ${auth.server.name}',
-                        danger: true,
-                        onTap: () async {
-                          final confirmed = await showBlurDialog<bool>(
-                            context: context,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(
-                                  'Sign out?',
-                                  style: AfTypography.titleMedium,
-                                ),
-                                const SizedBox(height: AfSpacing.s12),
-                                Text(
-                                  'You will be disconnected from ${auth.server.name}.',
-                                  style: AfTypography.bodyMedium,
-                                ),
-                                const SizedBox(height: AfSpacing.s24),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    Focus(
-                                      autofocus: true,
-                                      child: ElevatedButton(
+                        icon: LucideIcons.arrowLeftRight,
+                        title: 'Switch server',
+                        subtitle: 'Connect to a different server',
+                        onTap: () => context.go('/onboarding/discover'),
+                      ),
+                      if (auth != null)
+                        SettingsTile(
+                          icon: LucideIcons.logOut,
+                          title: 'Sign out',
+                          subtitle: 'Disconnect from ${auth.server.name}',
+                          danger: true,
+                          onTap: () async {
+                            final confirmed = await showBlurDialog<bool>(
+                              context: context,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Text(
+                                    'Sign out?',
+                                    style: AfTypography.titleMedium,
+                                  ),
+                                  const SizedBox(height: AfSpacing.s12),
+                                  Text(
+                                    'You will be disconnected from ${auth.server.name}.',
+                                    style: AfTypography.bodyMedium,
+                                  ),
+                                  const SizedBox(height: AfSpacing.s24),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      TextButton(
                                         onPressed: () =>
-                                            Navigator.pop(context, true),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              AfColors.semanticError,
-                                          foregroundColor:
-                                              AfColors.textOnPrimary,
-                                        ),
-                                        child: const Text('Sign out'),
+                                            Navigator.pop(context, false),
+                                        child: const Text('Cancel'),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirmed == true && context.mounted) {
-                            await ref.read(authProvider.notifier).clear();
-                            await AppModeStore.clear();
-                            ref.read(appModeProvider.notifier).state = null;
-                            if (context.mounted) context.go('/');
-                          }
-                        },
-                      ),
-                  ],
+                                      Focus(
+                                        autofocus: true,
+                                        child: ElevatedButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                AfColors.semanticError,
+                                            foregroundColor:
+                                                AfColors.textOnPrimary,
+                                          ),
+                                          child: const Text('Sign out'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirmed == true && context.mounted) {
+                              await ref.read(authProvider.notifier).clear();
+                              await AppModeStore.clear();
+                              ref.read(appModeProvider.notifier).state = null;
+                              if (context.mounted) context.go('/');
+                            }
+                          },
+                        ),
+                    ],
+                  ),
                 ),
-              ],
 
               // ── Music Folders (local mode only) ─────────────────────
-              if (isLocal) ...[
-                const SectionHeader(title: 'Music folders', uppercase: true),
-                const MusicFoldersCard(),
-              ],
+              if (isLocal)
+                const AfCollapsibleSection(
+                  title: 'Music folders',
+                  child: MusicFoldersCard(),
+                ),
 
               const SizedBox(height: AfSpacing.s24),
 
@@ -252,490 +254,513 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: AfSpacing.s24),
 
               // ── Appearance ───────────────────────────────────────────
-              const SectionHeader(title: 'Appearance', uppercase: true),
-              SettingsGroup(
-                children: [
-                  SettingsTile(
-                    icon: LucideIcons.smartphone,
-                    title: 'App icon',
-                    subtitle: switch (ref.watch(appIconProvider)) {
-                      'MidnightIcon' => 'Midnight',
-                      'NordicIcon' => 'Nordic',
-                      'SunsetIcon' => 'Sunset',
-                      _ => 'Default',
-                    },
-                    onTap: () => showAppIconDialog(context, ref),
-                  ),
-                ],
+              AfCollapsibleSection(
+                title: 'Appearance',
+                child: SettingsGroup(
+                  children: [
+                    SettingsTile(
+                      icon: LucideIcons.smartphone,
+                      title: 'App icon',
+                      subtitle: switch (ref.watch(appIconProvider)) {
+                        'MidnightIcon' => 'Midnight',
+                        'NordicIcon' => 'Nordic',
+                        'SunsetIcon' => 'Sunset',
+                        _ => 'Default',
+                      },
+                      onTap: () => showAppIconDialog(context, ref),
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: AfSpacing.s24),
 
               // ── Audio output ─────────────────────────────────────────
-              const SectionHeader(title: 'Audio output', uppercase: true),
-              SettingsGroup(
-                children: [
-                  StreamBuilder<AudioParams>(
-                    stream: ref
-                        .read(playerServiceProvider)
-                        .audioOutParamsStream,
-                    initialData: ref.read(playerServiceProvider).audioOutParams,
-                    builder: (context, snap) {
-                      final params = snap.data;
-                      final rate = params?.sampleRate;
-                      final fmt = params?.format;
-                      final ch = params?.channelCount;
-                      final hasData = rate != null && rate > 0;
-                      return SettingsTile(
-                        icon: LucideIcons.waves,
-                        title: 'Current output',
-                        subtitle: hasData
-                            ? '$rate Hz · ${fmt?.name ?? "auto"} · ${ch}ch'
-                            : 'Not active — start playback first',
-                      );
-                    },
-                  ),
-                  StreamBuilder<Device>(
-                    stream: svc.audioDeviceStream,
-                    initialData: svc.audioDevice,
-                    builder: (context, snap) {
-                      final device = snap.data;
-                      final label = device?.description.isNotEmpty == true
-                          ? device!.description
-                          : device?.name ?? 'Auto';
-                      return SettingsTile(
-                        icon: LucideIcons.speaker,
-                        title: 'Audio device',
-                        subtitle: label,
-                        onTap: () => showAudioDeviceDialog(context, ref),
-                      );
-                    },
-                  ),
-                  SettingsTile(
-                    icon: LucideIcons.gauge,
-                    title: 'Sample rate',
-                    subtitle: 'Force output sample rate for DAC',
-                    onTap: () => showSampleRateDialog(context, ref),
-                  ),
-                  SettingsTile(
-                    icon: LucideIcons.cpu,
-                    title: 'Bit depth',
-                    subtitle: 'Force output format',
-                    onTap: () => showFormatDialog(context, ref),
-                  ),
-                  StreamBuilder<bool>(
-                    stream: svc.audioExclusiveStream,
-                    initialData: svc.audioExclusive,
-                    builder: (context, snap) {
-                      final enabled = snap.data ?? false;
-                      return SettingsSwitchTile(
-                        icon: LucideIcons.lock,
-                        title: 'Exclusive mode',
-                        subtitle: 'Bypass OS mixer for bit-perfect output',
-                        value: enabled,
-                        onChanged: (v) {
-                          unawaited(svc.setAudioExclusive(v));
-                          unawaited(PlayerSettingsStore.saveExclusive(v));
-                        },
-                      );
-                    },
-                  ),
-                ],
+              AfCollapsibleSection(
+                title: 'Audio output',
+                child: SettingsGroup(
+                  children: [
+                    StreamBuilder<AudioParams>(
+                      stream: ref
+                          .read(playerServiceProvider)
+                          .audioOutParamsStream,
+                      initialData: ref
+                          .read(playerServiceProvider)
+                          .audioOutParams,
+                      builder: (context, snap) {
+                        final params = snap.data;
+                        final rate = params?.sampleRate;
+                        final fmt = params?.format;
+                        final ch = params?.channelCount;
+                        final hasData = rate != null && rate > 0;
+                        return SettingsTile(
+                          icon: LucideIcons.waves,
+                          title: 'Current output',
+                          subtitle: hasData
+                              ? '$rate Hz · ${fmt?.name ?? "auto"} · ${ch}ch'
+                              : 'Not active — start playback first',
+                        );
+                      },
+                    ),
+                    StreamBuilder<Device>(
+                      stream: svc.audioDeviceStream,
+                      initialData: svc.audioDevice,
+                      builder: (context, snap) {
+                        final device = snap.data;
+                        final label = device?.description.isNotEmpty == true
+                            ? device!.description
+                            : device?.name ?? 'Auto';
+                        return SettingsTile(
+                          icon: LucideIcons.speaker,
+                          title: 'Audio device',
+                          subtitle: label,
+                          onTap: () => showAudioDeviceDialog(context, ref),
+                        );
+                      },
+                    ),
+                    SettingsTile(
+                      icon: LucideIcons.gauge,
+                      title: 'Sample rate',
+                      subtitle: 'Force output sample rate for DAC',
+                      onTap: () => showSampleRateDialog(context, ref),
+                    ),
+                    SettingsTile(
+                      icon: LucideIcons.cpu,
+                      title: 'Bit depth',
+                      subtitle: 'Force output format',
+                      onTap: () => showFormatDialog(context, ref),
+                    ),
+                    StreamBuilder<bool>(
+                      stream: svc.audioExclusiveStream,
+                      initialData: svc.audioExclusive,
+                      builder: (context, snap) {
+                        final enabled = snap.data ?? false;
+                        return SettingsSwitchTile(
+                          icon: LucideIcons.lock,
+                          title: 'Exclusive mode',
+                          subtitle: 'Bypass OS mixer for bit-perfect output',
+                          value: enabled,
+                          onChanged: (v) {
+                            unawaited(svc.setAudioExclusive(v));
+                            unawaited(PlayerSettingsStore.saveExclusive(v));
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: AfSpacing.s24),
 
               // ── Network & cache ──────────────────────────────────────
-              const SectionHeader(title: 'Network & cache', uppercase: true),
-              SettingsGroup(
-                children: [
-                  SettingsTile(
-                    icon: LucideIcons.music,
-                    title: 'Streaming quality',
-                    subtitle: ref.watch(maxBitrateProvider) == 0
-                        ? 'Original / Lossless'
-                        : '${ref.watch(maxBitrateProvider)} kbps',
-                    onTap: () => showStreamingQualityDialog(context, ref),
-                  ),
-                  SettingsTile(
-                    icon: LucideIcons.rotateCcw,
-                    title: 'Cache duration',
-                    subtitle: 'How far ahead to buffer',
-                    onTap: () => showCacheDurationDialog(context, ref),
-                  ),
-                  SettingsTile(
-                    icon: LucideIcons.hardDrive,
-                    title: 'Buffer size',
-                    subtitle: 'Audio hardware buffer (latency vs stability)',
-                    onTap: () => showAudioBufferDialog(context, ref),
-                  ),
-                  StreamBuilder<bool>(
-                    stream: svc.audioStreamSilenceStream,
-                    initialData: svc.audioStreamSilence,
-                    builder: (context, snap) {
-                      final enabled = snap.data ?? false;
-                      return SettingsSwitchTile(
-                        icon: LucideIcons.volume2,
-                        title: 'Keep audio active on pause',
-                        subtitle: 'Eliminates click/pop on resume',
-                        value: enabled,
-                        onChanged: (v) {
-                          unawaited(svc.setAudioStreamSilence(v));
-                          unawaited(PlayerSettingsStore.saveStreamSilence(v));
-                        },
-                      );
-                    },
-                  ),
-                  StreamBuilder<bool>(
-                    stream: svc.cacheStream.map((c) => c.pauseInitial),
-                    initialData: svc.cacheSettings.pauseInitial,
-                    builder: (context, snap) {
-                      final enabled = snap.data ?? false;
-                      return SettingsSwitchTile(
-                        icon: LucideIcons.loader,
-                        title: 'Buffer before playing',
-                        subtitle: 'Smoother start on streams',
-                        value: enabled,
-                        onChanged: (v) {
-                          unawaited(
-                            svc.setCache(
-                              svc.cacheSettings.copyWith(pauseInitial: v),
-                            ),
-                          );
-                          unawaited(
-                            PlayerSettingsStore.saveCachePauseInitial(v),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AfSpacing.s24),
-
-              // ── Offline cache (server mode only) ─────────────────────
-              if (!isLocal) ...[
-                const SectionHeader(title: 'Offline cache', uppercase: true),
-                SettingsGroup(
+              AfCollapsibleSection(
+                title: 'Network & cache',
+                child: SettingsGroup(
                   children: [
-                    Consumer(
-                      builder: (context, ref2, _) {
-                        final enabled = ref2.watch(offlineCacheEnabledProvider);
+                    SettingsTile(
+                      icon: LucideIcons.music,
+                      title: 'Streaming quality',
+                      subtitle: ref.watch(maxBitrateProvider) == 0
+                          ? 'Original / Lossless'
+                          : '${ref.watch(maxBitrateProvider)} kbps',
+                      onTap: () => showStreamingQualityDialog(context, ref),
+                    ),
+                    SettingsTile(
+                      icon: LucideIcons.rotateCcw,
+                      title: 'Cache duration',
+                      subtitle: 'How far ahead to buffer',
+                      onTap: () => showCacheDurationDialog(context, ref),
+                    ),
+                    SettingsTile(
+                      icon: LucideIcons.hardDrive,
+                      title: 'Buffer size',
+                      subtitle: 'Audio hardware buffer (latency vs stability)',
+                      onTap: () => showAudioBufferDialog(context, ref),
+                    ),
+                    StreamBuilder<bool>(
+                      stream: svc.audioStreamSilenceStream,
+                      initialData: svc.audioStreamSilence,
+                      builder: (context, snap) {
+                        final enabled = snap.data ?? false;
                         return SettingsSwitchTile(
-                          icon: LucideIcons.hardDrive,
-                          title: 'Cache tracks offline',
-                          subtitle: enabled
-                              ? 'Save streamed tracks to device storage'
-                              : 'Always stream from server',
+                          icon: LucideIcons.volume2,
+                          title: 'Keep audio active on pause',
+                          subtitle: 'Eliminates click/pop on resume',
                           value: enabled,
                           onChanged: (v) {
-                            ref
-                                    .read(offlineCacheEnabledProvider.notifier)
-                                    .state =
-                                v;
+                            unawaited(svc.setAudioStreamSilence(v));
+                            unawaited(PlayerSettingsStore.saveStreamSilence(v));
+                          },
+                        );
+                      },
+                    ),
+                    StreamBuilder<bool>(
+                      stream: svc.cacheStream.map((c) => c.pauseInitial),
+                      initialData: svc.cacheSettings.pauseInitial,
+                      builder: (context, snap) {
+                        final enabled = snap.data ?? false;
+                        return SettingsSwitchTile(
+                          icon: LucideIcons.loader,
+                          title: 'Buffer before playing',
+                          subtitle: 'Smoother start on streams',
+                          value: enabled,
+                          onChanged: (v) {
                             unawaited(
-                              PlayerSettingsStore.saveOfflineCacheEnabled(v),
+                              svc.setCache(
+                                svc.cacheSettings.copyWith(pauseInitial: v),
+                              ),
+                            );
+                            unawaited(
+                              PlayerSettingsStore.saveCachePauseInitial(v),
                             );
                           },
                         );
                       },
                     ),
-                    _CacheUsageTile(),
-                    SettingsTile(
-                      icon: LucideIcons.hardDrive,
-                      title: 'Max cache size',
-                      subtitle: OfflineCacheService.formatSize(
-                        ref.watch(offlineCacheMaxSizeProvider),
-                      ),
-                      onTap: () => showOfflineCacheSizeDialog(context, ref),
-                    ),
                   ],
                 ),
-              ],
+              ),
+
+              const SizedBox(height: AfSpacing.s24),
+
+              // ── Offline cache (server mode only) ─────────────────────
+              if (!isLocal)
+                AfCollapsibleSection(
+                  title: 'Offline cache',
+                  child: SettingsGroup(
+                    children: [
+                      Consumer(
+                        builder: (context, ref2, _) {
+                          final enabled = ref2.watch(
+                            offlineCacheEnabledProvider,
+                          );
+                          return SettingsSwitchTile(
+                            icon: LucideIcons.hardDrive,
+                            title: 'Cache tracks offline',
+                            subtitle: enabled
+                                ? 'Save streamed tracks to device storage'
+                                : 'Always stream from server',
+                            value: enabled,
+                            onChanged: (v) {
+                              ref
+                                      .read(
+                                        offlineCacheEnabledProvider.notifier,
+                                      )
+                                      .state =
+                                  v;
+                              unawaited(
+                                PlayerSettingsStore.saveOfflineCacheEnabled(v),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      _CacheUsageTile(),
+                      SettingsTile(
+                        icon: LucideIcons.hardDrive,
+                        title: 'Max cache size',
+                        subtitle: OfflineCacheService.formatSize(
+                          ref.watch(offlineCacheMaxSizeProvider),
+                        ),
+                        onTap: () => showOfflineCacheSizeDialog(context, ref),
+                      ),
+                    ],
+                  ),
+                ),
 
               const SizedBox(height: AfSpacing.s24),
 
               // ── Audio processing ─────────────────────────────────────
-              const SectionHeader(title: 'Audio processing', uppercase: true),
-              SettingsGroup(
-                children: [
-                  SettingsTile(
-                    icon: LucideIcons.slidersHorizontal,
-                    title: 'ReplayGain',
-                    subtitle: 'Volume normalization across tracks',
-                    onTap: () => showReplayGainDialog(context, ref),
-                  ),
-                  SettingsTile(
-                    icon: LucideIcons.skipForward,
-                    title: 'Gapless playback',
-                    subtitle: 'Seamless transitions between tracks',
-                    onTap: () => showGaplessDialog(context, ref),
-                  ),
-                  SettingsSwitchTile(
-                    icon: LucideIcons.download,
-                    title: 'Prefetch next track',
-                    subtitle: 'Pre-load next playlist entry in background',
-                    value: svc.prefetchPlaylist,
-                    onChanged: (v) {
-                      unawaited(svc.setPrefetchPlaylist(v));
-                      unawaited(PlayerSettingsStore.savePrefetchPlaylist(v));
-                    },
-                  ),
-                  SettingsSwitchTile(
-                    icon: LucideIcons.lightbulb,
-                    title: 'Smart queue',
-                    subtitle:
-                        'Learn from skips and plays for better suggestions',
-                    value: ref.watch(smartQueueEnabledProvider),
-                    onChanged: (v) {
-                      ref.read(smartQueueEnabledProvider.notifier).state = v;
-                    },
-                  ),
-                ],
+              AfCollapsibleSection(
+                title: 'Audio processing',
+                child: SettingsGroup(
+                  children: [
+                    SettingsTile(
+                      icon: LucideIcons.slidersHorizontal,
+                      title: 'ReplayGain',
+                      subtitle: 'Volume normalization across tracks',
+                      onTap: () => showReplayGainDialog(context, ref),
+                    ),
+                    SettingsTile(
+                      icon: LucideIcons.skipForward,
+                      title: 'Gapless playback',
+                      subtitle: 'Seamless transitions between tracks',
+                      onTap: () => showGaplessDialog(context, ref),
+                    ),
+                    SettingsSwitchTile(
+                      icon: LucideIcons.download,
+                      title: 'Prefetch next track',
+                      subtitle: 'Pre-load next playlist entry in background',
+                      value: svc.prefetchPlaylist,
+                      onChanged: (v) {
+                        unawaited(svc.setPrefetchPlaylist(v));
+                        unawaited(PlayerSettingsStore.savePrefetchPlaylist(v));
+                      },
+                    ),
+                    SettingsSwitchTile(
+                      icon: LucideIcons.lightbulb,
+                      title: 'Smart queue',
+                      subtitle:
+                          'Learn from skips and plays for better suggestions',
+                      value: ref.watch(smartQueueEnabledProvider),
+                      onChanged: (v) {
+                        ref.read(smartQueueEnabledProvider.notifier).state = v;
+                      },
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: AfSpacing.s24),
 
               // ── Last.fm Scrobbling ───────────────────────────────────
-              const _LastFmSettingsSection(),
+              const AfCollapsibleSection(
+                title: 'Last.fm',
+                child: _LastFmSettingsBody(),
+              ),
 
               const SizedBox(height: AfSpacing.s24),
 
               // ── Advanced ─────────────────────────────────────────────
-              const SectionHeader(title: 'Advanced', uppercase: true),
-              SettingsGroup(
-                children: [
-                  SettingsTile(
-                    icon: LucideIcons.trash2,
-                    title: 'Clear app data',
-                    subtitle: 'Reset app to initial state',
-                    danger: true,
-                    onTap: () async {
-                      final confirmed = await showBlurDialog<bool>(
-                        context: context,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              'Clear app data?',
-                              style: AfTypography.titleMedium,
-                            ),
-                            const SizedBox(height: AfSpacing.s12),
-                            Text(
-                              'This will wipe all local data, settings, and downloaded metadata. You will need to set up the app again.',
-                              style: AfTypography.bodyMedium,
-                            ),
-                            const SizedBox(height: AfSpacing.s24),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(context, false),
-                                  child: const Text('Cancel'),
-                                ),
-                                Focus(
-                                  autofocus: true,
-                                  child: ElevatedButton(
+              AfCollapsibleSection(
+                title: 'Advanced',
+                child: SettingsGroup(
+                  children: [
+                    SettingsTile(
+                      icon: LucideIcons.trash2,
+                      title: 'Clear app data',
+                      subtitle: 'Reset app to initial state',
+                      danger: true,
+                      onTap: () async {
+                        final confirmed = await showBlurDialog<bool>(
+                          context: context,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                'Clear app data?',
+                                style: AfTypography.titleMedium,
+                              ),
+                              const SizedBox(height: AfSpacing.s12),
+                              Text(
+                                'This will wipe all local data, settings, and downloaded metadata. You will need to set up the app again.',
+                                style: AfTypography.bodyMedium,
+                              ),
+                              const SizedBox(height: AfSpacing.s24),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  TextButton(
                                     onPressed: () =>
-                                        Navigator.pop(context, true),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AfColors.semanticError,
-                                      foregroundColor: AfColors.textOnPrimary,
-                                    ),
-                                    child: const Text('Clear data'),
+                                        Navigator.pop(context, false),
+                                    child: const Text('Cancel'),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirmed == true && context.mounted) {
-                        // ── Step 1: Reset router state BEFORE destructive ops ──
-                        // This ensures the redirect sends the user to onboarding
-                        // even if the settings screen is disposed mid-operation.
-                        resetRouterMode();
-                        setRouterAuthState(auth: null);
-                        notifyAuthChanged();
+                                  Focus(
+                                    autofocus: true,
+                                    child: ElevatedButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AfColors.semanticError,
+                                        foregroundColor: AfColors.textOnPrimary,
+                                      ),
+                                      child: const Text('Clear data'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true && context.mounted) {
+                          // ── Step 1: Reset router state BEFORE destructive ops ──
+                          // This ensures the redirect sends the user to onboarding
+                          // even if the settings screen is disposed mid-operation.
+                          resetRouterMode();
+                          setRouterAuthState(auth: null);
+                          notifyAuthChanged();
 
-                        // ── Step 2: Clear all persistent storage ──
-                        try {
-                          final prefs = await SharedPreferences.getInstance();
-                          await prefs.clear();
-                        } on Exception catch (e) {
-                          afLog(
-                            'settings',
-                            'SharedPreferences clear failed',
-                            error: e,
-                          );
-                        }
-
-                        try {
-                          const secureStorage = FlutterSecureStorage();
-                          await secureStorage.deleteAll();
-                        } on Exception catch (e) {
-                          afLog(
-                            'settings',
-                            'SecureStorage clear failed',
-                            error: e,
-                          );
-                        }
-
-                        // ── Step 3: Close and delete database + sidecar files ──
-                        try {
-                          final db = ref.read(appDatabaseProvider);
-                          await db.close();
-                          final dbFolder =
-                              await getApplicationDocumentsDirectory();
-                          final dbBase = p.join(
-                            dbFolder.path,
-                            'aetherfin_drift.db',
-                          );
-                          // Delete main DB and WAL/SHM sidecar files.
-                          for (final suffix in ['', '-shm', '-wal']) {
-                            final f = File('$dbBase$suffix');
-                            if (f.existsSync()) await f.delete();
-                          }
-                          ref.invalidate(appDatabaseProvider);
-                        } on Exception catch (e) {
-                          afLog(
-                            'settings',
-                            'Database cleanup failed',
-                            error: e,
-                          );
-                        }
-
-                        // ── Step 4: Delete all cache directories ──
-                        // Audio cache (offline downloaded tracks)
-                        try {
-                          final supportDir =
-                              await getApplicationSupportDirectory();
-                          final audioCacheDir = Directory(
-                            p.join(supportDir.path, 'audio_cache'),
-                          );
-                          if (await audioCacheDir.exists()) {
-                            await audioCacheDir.delete(recursive: true);
-                          }
-                        } on Exception catch (e) {
-                          afLog(
-                            'settings',
-                            'Audio cache cleanup failed',
-                            error: e,
-                          );
-                        }
-
-                        // Artwork cache (server-mode cover images)
-                        // and local cover cache (extracted from audio files)
-                        try {
-                          final cacheDir = await getApplicationCacheDirectory();
-                          for (final subdir in [
-                            'artwork_cache',
-                            'local_covers',
-                          ]) {
-                            final dir = Directory(
-                              p.join(cacheDir.path, subdir),
+                          // ── Step 2: Clear all persistent storage ──
+                          try {
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.clear();
+                          } on Exception catch (e) {
+                            afLog(
+                              'settings',
+                              'SharedPreferences clear failed',
+                              error: e,
                             );
-                            if (await dir.exists()) {
-                              await dir.delete(recursive: true);
-                            }
                           }
-                        } on Exception catch (e) {
-                          afLog(
-                            'settings',
-                            'Artwork cache cleanup failed',
-                            error: e,
-                          );
-                        }
 
-                        // ── Step 5: Clear home widget ──
-                        try {
-                          await HomeWidgetManager.clear();
-                        } on Exception catch (e) {
-                          afLog(
-                            'settings',
-                            'Home widget clear failed',
-                            error: e,
-                          );
-                        }
+                          try {
+                            const secureStorage = FlutterSecureStorage();
+                            await secureStorage.deleteAll();
+                          } on Exception catch (e) {
+                            afLog(
+                              'settings',
+                              'SecureStorage clear failed',
+                              error: e,
+                            );
+                          }
 
-                        // ── Step 6: Clear Riverpod providers ──
-                        try {
-                          ref.read(appModeProvider.notifier).state = null;
-                          ref
-                                  .read(
-                                    localOnboardingCompletedProvider.notifier,
-                                  )
-                                  .state =
-                              false;
-                          await ref.read(authProvider.notifier).clear();
-                        } on Exception catch (e) {
-                          afLog(
-                            'settings',
-                            'Provider state reset failed',
-                            error: e,
-                          );
-                        }
+                          // ── Step 3: Close and delete database + sidecar files ──
+                          try {
+                            final db = ref.read(appDatabaseProvider);
+                            await db.close();
+                            final dbFolder =
+                                await getApplicationDocumentsDirectory();
+                            final dbBase = p.join(
+                              dbFolder.path,
+                              'aetherfin_drift.db',
+                            );
+                            // Delete main DB and WAL/SHM sidecar files.
+                            for (final suffix in ['', '-shm', '-wal']) {
+                              final f = File('$dbBase$suffix');
+                              if (f.existsSync()) await f.delete();
+                            }
+                            ref.invalidate(appDatabaseProvider);
+                          } on Exception catch (e) {
+                            afLog(
+                              'settings',
+                              'Database cleanup failed',
+                              error: e,
+                            );
+                          }
 
-                        // ── Step 7: Navigate to onboarding ──
-                        // Use root navigator directly in case the settings
-                        // screen was disposed during the clearing steps.
-                        if (context.mounted) {
-                          context.go('/');
-                        } else {
-                          appRouter.go('/');
+                          // ── Step 4: Delete all cache directories ──
+                          // Audio cache (offline downloaded tracks)
+                          try {
+                            final supportDir =
+                                await getApplicationSupportDirectory();
+                            final audioCacheDir = Directory(
+                              p.join(supportDir.path, 'audio_cache'),
+                            );
+                            if (await audioCacheDir.exists()) {
+                              await audioCacheDir.delete(recursive: true);
+                            }
+                          } on Exception catch (e) {
+                            afLog(
+                              'settings',
+                              'Audio cache cleanup failed',
+                              error: e,
+                            );
+                          }
+
+                          // Artwork cache (server-mode cover images)
+                          // and local cover cache (extracted from audio files)
+                          try {
+                            final cacheDir =
+                                await getApplicationCacheDirectory();
+                            for (final subdir in [
+                              'artwork_cache',
+                              'local_covers',
+                            ]) {
+                              final dir = Directory(
+                                p.join(cacheDir.path, subdir),
+                              );
+                              if (await dir.exists()) {
+                                await dir.delete(recursive: true);
+                              }
+                            }
+                          } on Exception catch (e) {
+                            afLog(
+                              'settings',
+                              'Artwork cache cleanup failed',
+                              error: e,
+                            );
+                          }
+
+                          // ── Step 5: Clear home widget ──
+                          try {
+                            await HomeWidgetManager.clear();
+                          } on Exception catch (e) {
+                            afLog(
+                              'settings',
+                              'Home widget clear failed',
+                              error: e,
+                            );
+                          }
+
+                          // ── Step 6: Clear Riverpod providers ──
+                          try {
+                            ref.read(appModeProvider.notifier).state = null;
+                            ref
+                                    .read(
+                                      localOnboardingCompletedProvider.notifier,
+                                    )
+                                    .state =
+                                false;
+                            await ref.read(authProvider.notifier).clear();
+                          } on Exception catch (e) {
+                            afLog(
+                              'settings',
+                              'Provider state reset failed',
+                              error: e,
+                            );
+                          }
+
+                          // ── Step 7: Navigate to onboarding ──
+                          // Use root navigator directly in case the settings
+                          // screen was disposed during the clearing steps.
+                          if (context.mounted) {
+                            context.go('/');
+                          } else {
+                            appRouter.go('/');
+                          }
                         }
-                      }
-                    },
-                  ),
-                ],
+                      },
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: AfSpacing.s24),
 
               // ── About ────────────────────────────────────────────────
-              const SectionHeader(title: 'About', uppercase: true),
-              SettingsGroup(
-                children: [
-                  FutureBuilder<PackageInfo>(
-                    future: PackageInfo.fromPlatform(),
-                    builder: (context, snap) {
-                      final version = snap.data != null
-                          ? 'v${snap.data!.version}+${snap.data!.buildNumber} ($kBuildId)'
-                          : '...';
-                      return SettingsTile(
-                        icon: LucideIcons.info,
-                        title: 'Aetherfin $version',
-                        subtitle: 'Jellyfin-backed music player · FOSS',
-                      );
-                    },
-                  ),
-                  SettingsTile(
-                    icon: LucideIcons.code,
-                    title: 'Source code',
-                    subtitle: 'github.com/Aetherfin/mobile-app',
-                    trailing: const Icon(
-                      LucideIcons.externalLink,
-                      color: AfColors.textTertiary,
-                      size: 16,
+              AfCollapsibleSection(
+                title: 'About',
+                child: SettingsGroup(
+                  children: [
+                    FutureBuilder<PackageInfo>(
+                      future: PackageInfo.fromPlatform(),
+                      builder: (context, snap) {
+                        final version = snap.data != null
+                            ? 'v${snap.data!.version}+${snap.data!.buildNumber} ($kBuildId)'
+                            : '...';
+                        return SettingsTile(
+                          icon: LucideIcons.info,
+                          title: 'Aetherfin $version',
+                          subtitle: 'Jellyfin-backed music player · FOSS',
+                        );
+                      },
                     ),
-                    onTap: () => launchSettingsUrl(
-                      'https://github.com/Aetherfin/mobile-app',
+                    SettingsTile(
+                      icon: LucideIcons.code,
+                      title: 'Source code',
+                      subtitle: 'github.com/Aetherfin/mobile-app',
+                      trailing: const Icon(
+                        LucideIcons.externalLink,
+                        color: AfColors.textTertiary,
+                        size: 16,
+                      ),
+                      onTap: () => launchSettingsUrl(
+                        'https://github.com/Aetherfin/mobile-app',
+                      ),
                     ),
-                  ),
-                  SettingsTile(
-                    icon: LucideIcons.fileText,
-                    title: 'Licenses',
-                    subtitle: 'Open-source licenses',
-                    onTap: () => showLicensePage(
-                      context: context,
-                      applicationName: 'Aetherfin',
-                      applicationLegalese: '© 2025 Aetherfin contributors',
+                    SettingsTile(
+                      icon: LucideIcons.fileText,
+                      title: 'Licenses',
+                      subtitle: 'Open-source licenses',
+                      onTap: () => showLicensePage(
+                        context: context,
+                        applicationName: 'Aetherfin',
+                        applicationLegalese: '© 2025 Aetherfin contributors',
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
 
               // ── Footer caption ───────────────────────────────────────
@@ -835,8 +860,8 @@ class _CacheUsageTileState extends ConsumerState<_CacheUsageTile> {
 
 // ── Last.fm section ──────────────────────────────────────────────────────────
 
-class _LastFmSettingsSection extends ConsumerWidget {
-  const _LastFmSettingsSection();
+class _LastFmSettingsBody extends ConsumerWidget {
+  const _LastFmSettingsBody();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -853,128 +878,121 @@ class _LastFmSettingsSection extends ConsumerWidget {
     final hasCredentials = apiKey.isNotEmpty && apiSecret.isNotEmpty;
     final isConnected = sessionKey.isNotEmpty;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
+    return SettingsGroup(
       children: [
-        const SectionHeader(title: 'Last.fm', uppercase: true),
-        SettingsGroup(
-          children: [
-            SettingsTile(
-              icon: LucideIcons.key,
-              title: 'API Credentials',
-              subtitle: hasCredentials
-                  ? 'Key: ${apiKey.substring(0, apiKey.length > 8 ? 8 : apiKey.length)}…'
-                  : 'Not configured — set to scrobble',
-              onTap: () => showLastFmApiConfigDialog(context, ref),
-            ),
-            if (hasCredentials && !isConnected)
-              SettingsTile(
-                icon: LucideIcons.link,
-                title: 'Link Last.fm Account',
-                subtitle: 'Log in with username and password',
-                onTap: () => showLastFmLoginDialog(context, ref),
-              ),
-            if (isConnected) ...[
-              SettingsTile(
-                icon: LucideIcons.user,
-                title: 'Connected as $username',
-                subtitle: 'Tap to disconnect / sign out',
-                onTap: () => showLastFmSignOutDialog(context, ref),
-              ),
-              SettingsTile(
-                icon: LucideIcons.refreshCw,
-                title: 'Sync Liked Tracks',
-                subtitle: 'Sync favorites between library and Last.fm',
-                onTap: () async {
-                  unawaited(
-                    showBlurDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: spectral,
-                            ),
-                          ),
-                          const SizedBox(width: AfSpacing.s16),
-                          Text(
-                            'Syncing favorites...',
-                            style: AfTypography.bodyMedium.copyWith(
-                              color: AfColors.textPrimary,
-                            ),
-                          ),
-                        ],
+        SettingsTile(
+          icon: LucideIcons.key,
+          title: 'API Credentials',
+          subtitle: hasCredentials
+              ? 'Key: ${apiKey.substring(0, apiKey.length > 8 ? 8 : apiKey.length)}…'
+              : 'Not configured — set to scrobble',
+          onTap: () => showLastFmApiConfigDialog(context, ref),
+        ),
+        if (hasCredentials && !isConnected)
+          SettingsTile(
+            icon: LucideIcons.link,
+            title: 'Link Last.fm Account',
+            subtitle: 'Log in with username and password',
+            onTap: () => showLastFmLoginDialog(context, ref),
+          ),
+        if (isConnected) ...[
+          SettingsTile(
+            icon: LucideIcons.user,
+            title: 'Connected as $username',
+            subtitle: 'Tap to disconnect / sign out',
+            onTap: () => showLastFmSignOutDialog(context, ref),
+          ),
+          SettingsTile(
+            icon: LucideIcons.refreshCw,
+            title: 'Sync Liked Tracks',
+            subtitle: 'Sync favorites between library and Last.fm',
+            onTap: () async {
+              unawaited(
+                showBlurDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: spectral,
+                        ),
+                      ),
+                      const SizedBox(width: AfSpacing.s16),
+                      Text(
+                        'Syncing favorites...',
+                        style: AfTypography.bodyMedium.copyWith(
+                          color: AfColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+
+              try {
+                final syncFn = ref.read(lastFmSyncProvider);
+                final result = await syncFn();
+                if (context.mounted) {
+                  Navigator.pop(context);
+                } // Close dialog
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Synced! Added ${result.toApp} tracks locally, '
+                        'loved ${result.toLastFm} on Last.fm.',
                       ),
                     ),
                   );
-
-                  try {
-                    final syncFn = ref.read(lastFmSyncProvider);
-                    final result = await syncFn();
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                    } // Close dialog
-
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Synced! Added ${result.toApp} tracks locally, '
-                            'loved ${result.toLastFm} on Last.fm.',
-                          ),
-                        ),
-                      );
-                    }
-                  } on Exception catch (e) {
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                    } // Close dialog
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Sync failed: $e')),
-                      );
-                    }
-                  }
-                },
+                }
+              } on Exception catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                } // Close dialog
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Sync failed: $e')));
+                }
+              }
+            },
+          ),
+          SettingsSwitchTile(
+            icon: LucideIcons.checkSquare,
+            title: 'Scrobble tracks',
+            subtitle: 'Submit played tracks to profile',
+            value: scrobbleEnabled,
+            onChanged: (v) {
+              ref.read(lastfmScrobbleEnabledProvider.notifier).state = v;
+              unawaited(PlayerSettingsStore.saveLastFmScrobbleEnabled(v));
+            },
+          ),
+          if (lastfmStatus != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AfSpacing.s16,
+                AfSpacing.s4,
+                AfSpacing.s16,
+                AfSpacing.s4,
               ),
-              SettingsSwitchTile(
-                icon: LucideIcons.checkSquare,
-                title: 'Scrobble tracks',
-                subtitle: 'Submit played tracks to profile',
-                value: scrobbleEnabled,
-                onChanged: (v) {
-                  ref.read(lastfmScrobbleEnabledProvider.notifier).state = v;
-                  unawaited(PlayerSettingsStore.saveLastFmScrobbleEnabled(v));
-                },
-              ),
-              if (lastfmStatus != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AfSpacing.s16,
-                    AfSpacing.s4,
-                    AfSpacing.s16,
-                    AfSpacing.s4,
-                  ),
-                  child: Text(
-                    lastfmStatus,
-                    style: AfTypography.caption.copyWith(
-                      color: lastfmStatus.startsWith('ERROR')
-                          ? AfColors.semanticError
-                          : AfColors.textTertiary,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+              child: Text(
+                lastfmStatus,
+                style: AfTypography.caption.copyWith(
+                  color: lastfmStatus.startsWith('ERROR')
+                      ? AfColors.semanticError
+                      : AfColors.textTertiary,
                 ),
-            ],
-          ],
-        ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+        ],
       ],
     );
   }

@@ -57,91 +57,106 @@ class TransportRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Semantics(
-          label: 'Shuffle',
-          button: true,
-          child: GestureDetector(
-            onLongPress: onShuffleLongPress,
-            child: TransportButton(
-              icon: Icon(
-                shuffleMode == ShuffleMode.tail
-                    ? LucideIcons.arrowDownWideNarrow
-                    : LucideIcons.shuffle,
-                size: AfIconSizes.sm,
-                color: shuffleOn ? accent : AfColors.textTertiary,
-              ),
-              onTap: onShuffle,
-            ),
-          ),
-        ),
-        const SizedBox(width: AfSpacing.s12),
-        Semantics(
-          label: 'Previous track',
-          child: TransportButton(
-            icon: const Icon(
-              LucideIcons.skipBack,
-              size: AfIconSizes.lg,
-              color: AfColors.textPrimary,
-            ),
-            onTap: onPrev,
-          ),
-        ),
-        const SizedBox(width: AfSpacing.s16),
-        Semantics(
-          label: isPlaying ? 'Pause' : 'Play',
-          child: PlayButton(
-            isPlaying: isPlaying,
-            accent: accent,
-            onTap: onPlayPause,
-          ),
-        ),
-        const SizedBox(width: AfSpacing.s16),
-        Semantics(
-          label: 'Next track',
-          child: TransportButton(
-            icon: const Icon(
-              LucideIcons.skipForward,
-              size: AfIconSizes.lg,
-              color: AfColors.textPrimary,
-            ),
-            onTap: onNext,
-          ),
-        ),
-        const SizedBox(width: AfSpacing.s12),
-        Semantics(
-          label: loopMode == AfLoopMode.off ? 'Repeat off' : 'Repeat',
-          button: true,
-          child: TransportButton(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(
-                  _loopIcon(loopMode),
+        Tooltip(
+          message: 'Shuffle',
+          child: Semantics(
+            label: 'Shuffle',
+            button: true,
+            child: GestureDetector(
+              onLongPress: onShuffleLongPress,
+              child: TransportButton(
+                icon: Icon(
+                  shuffleMode == ShuffleMode.tail
+                      ? LucideIcons.arrowDownWideNarrow
+                      : LucideIcons.shuffle,
                   size: AfIconSizes.sm,
-                  color: _loopColor(loopMode, accent),
+                  color: shuffleOn ? accent : AfColors.textTertiary,
                 ),
-                if (loopMode == AfLoopMode.forNtimes)
-                  Positioned(
-                    right: -6,
-                    top: -4,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: muted,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '$repeatCount',
-                        style: AfTypography.caption.copyWith(
-                          color: AfColors.textOnPrimary,
-                          fontWeight: FontWeight.bold,
+                onTap: onShuffle,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: AfSpacing.s12),
+        Tooltip(
+          message: 'Previous track',
+          child: Semantics(
+            label: 'Previous track',
+            child: TransportButton(
+              icon: const Icon(
+                LucideIcons.skipBack,
+                size: AfIconSizes.lg,
+                color: AfColors.textPrimary,
+              ),
+              onTap: onPrev,
+            ),
+          ),
+        ),
+        const SizedBox(width: AfSpacing.s16),
+        Tooltip(
+          message: isPlaying ? 'Pause' : 'Play',
+          child: Semantics(
+            label: isPlaying ? 'Pause' : 'Play',
+            child: PlayButton(
+              isPlaying: isPlaying,
+              accent: accent,
+              onTap: onPlayPause,
+            ),
+          ),
+        ),
+        const SizedBox(width: AfSpacing.s16),
+        Tooltip(
+          message: 'Next track',
+          child: Semantics(
+            label: 'Next track',
+            child: TransportButton(
+              icon: const Icon(
+                LucideIcons.skipForward,
+                size: AfIconSizes.lg,
+                color: AfColors.textPrimary,
+              ),
+              onTap: onNext,
+            ),
+          ),
+        ),
+        const SizedBox(width: AfSpacing.s12),
+        Tooltip(
+          message: loopMode == AfLoopMode.off ? 'Repeat off' : 'Repeat',
+          child: Semantics(
+            label: loopMode == AfLoopMode.off ? 'Repeat off' : 'Repeat',
+            button: true,
+            child: TransportButton(
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    _loopIcon(loopMode),
+                    size: AfIconSizes.sm,
+                    color: _loopColor(loopMode, accent),
+                  ),
+                  if (loopMode == AfLoopMode.forNtimes)
+                    Positioned(
+                      right: -6,
+                      top: -4,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: muted,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '$repeatCount',
+                          style: AfTypography.caption.copyWith(
+                            color: AfColors.textOnPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
+              onTap: onRepeat,
             ),
-            onTap: onRepeat,
           ),
         ),
       ],

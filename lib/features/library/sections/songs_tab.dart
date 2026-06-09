@@ -98,14 +98,18 @@ class SongsTab extends ConsumerWidget {
           final t = tracks[i];
           return Padding(
             padding: const EdgeInsets.only(bottom: AfSpacing.s4),
-            child: TrackRow(
-              track: t,
-              isActive: t.id == activeId,
-              isBuffering: t.id == activeId && isBuffering,
-              activeAccent: accent,
-              onTap: () =>
-                  ref.read(playActionsProvider).playSmartQueue(t, tracks),
-              onLongPress: () => showTrackContextMenu(context, ref, t),
+            child: Semantics(
+              button: true,
+              label: '${t.title} by ${t.artistName}',
+              child: TrackRow(
+                track: t,
+                isActive: t.id == activeId,
+                isBuffering: t.id == activeId && isBuffering,
+                activeAccent: accent,
+                onTap: () =>
+                    ref.read(playActionsProvider).playSmartQueue(t, tracks),
+                onLongPress: () => showTrackContextMenu(context, ref, t),
+              ),
             ),
           );
         }, childCount: tracks.length),

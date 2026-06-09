@@ -126,7 +126,7 @@ class _FavoriteHeartButtonState extends ConsumerState<FavoriteHeartButton>
     return IconButton(
       icon: ScaleTransition(scale: _pulseScale, child: icon),
       onPressed: _toggle,
-      tooltip: isFavorite ? 'Unfavorite' : 'Favorite',
+      tooltip: isFavorite ? 'Unlike' : 'Like',
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
       constraints: const BoxConstraints(

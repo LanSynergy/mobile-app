@@ -161,31 +161,35 @@ class _ExpressiveGenreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(AfSpacing.s16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: gradient,
-          ),
-          borderRadius: AfRadii.borderMd,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 32, color: AfColors.textOnPrimary),
-            const SizedBox(height: AfSpacing.s8),
-            Text(
-              label,
-              style: AfTypography.bodyMedium.copyWith(
-                color: AfColors.textOnPrimary,
-                fontWeight: FontWeight.w600,
-              ),
+    return Semantics(
+      button: true,
+      label: 'Genre: $label',
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(AfSpacing.s16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: gradient,
             ),
-          ],
+            borderRadius: AfRadii.borderMd,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 32, color: AfColors.textOnPrimary),
+              const SizedBox(height: AfSpacing.s8),
+              Text(
+                label,
+                style: AfTypography.bodyMedium.copyWith(
+                  color: AfColors.textOnPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

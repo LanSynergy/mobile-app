@@ -68,58 +68,63 @@ class _ReactiveProgressState extends ConsumerState<ReactiveProgress> {
         ? duration - displayPosition
         : Duration.zero;
 
-    return Column(
-      children: [
-        AudioVisualScrubber(
-          progress: displayProgress,
-          playedColor: energy,
-          height: 100.0,
-          onScrub: (p) => setState(() {
-            _isDragging = true;
-            _scrubPreview = p;
-          }),
-          onScrubEnd: (p) async {
-            final newPos = Duration(
-              milliseconds: (p * duration.inMilliseconds).round(),
-            );
-            final svc = ref.read(playerServiceProvider);
-            final wasCompletedAtEnd = svc.isCompleted && svc.isUserPaused;
-            try {
-              await svc.seek(newPos).timeout(const Duration(seconds: 2));
-              if (wasCompletedAtEnd && mounted) {
-                await svc.play().timeout(const Duration(seconds: 2));
+    return Semantics(
+      liveRegion: true,
+      child: Column(
+        children: [
+          AudioVisualScrubber(
+            progress: displayProgress,
+            playedColor: energy,
+            height: 100.0,
+            onScrub: (p) => setState(() {
+              _isDragging = true;
+              _scrubPreview = p;
+            }),
+            onScrubEnd: (p) async {
+              final newPos = Duration(
+                milliseconds: (p * duration.inMilliseconds).round(),
+              );
+              final svc = ref.read(playerServiceProvider);
+              final wasCompletedAtEnd = svc.isCompleted && svc.isUserPaused;
+              try {
+                await svc.seek(newPos).timeout(const Duration(seconds: 2));
+                if (wasCompletedAtEnd && mounted) {
+                  await svc.play().timeout(const Duration(seconds: 2));
+                }
+              } catch (_) {
+                // Timeout or seek error — still release the drag lock.
               }
-            } catch (_) {
-              // Timeout or seek error — still release the drag lock.
-            }
-            if (mounted) {
-              setState(() {
-                _isDragging = false;
-                _scrubPreview = null;
-              });
-            }
-          },
-        ),
-        const SizedBox(height: AfSpacing.s4),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                formatTrackDuration(displayPosition),
-                style: AfTypography.mono.copyWith(
-                  color: AfColors.textSecondary,
-                ),
-              ),
-              Text(
-                formatRemaining(remaining),
-                style: AfTypography.mono.copyWith(color: AfColors.textTertiary),
-              ),
-            ],
+              if (mounted) {
+                setState(() {
+                  _isDragging = false;
+                  _scrubPreview = null;
+                });
+              }
+            },
           ),
-        ),
-      ],
+          const SizedBox(height: AfSpacing.s4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  formatTrackDuration(displayPosition),
+                  style: AfTypography.mono.copyWith(
+                    color: AfColors.textSecondary,
+                  ),
+                ),
+                Text(
+                  formatRemaining(remaining),
+                  style: AfTypography.mono.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

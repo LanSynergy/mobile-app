@@ -131,6 +131,126 @@ abstract final class AfTypography {
   );
 
   // ---------------------------------------------------------------------------
+  // Scaled variants — apply system text scaler for accessibility.
+  // Use via: AfTypography.displayScaled(MediaQuery.textScalerOf(context))
+  // ---------------------------------------------------------------------------
+
+  static TextStyle displayScaled(TextScaler scaler) => _outfit(
+    fontSize: scaler.scale(36),
+    height: 40 / 36,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.5,
+  );
+
+  static TextStyle titleExtraLargeScaled(TextScaler scaler) => _outfit(
+    fontSize: scaler.scale(32),
+    height: 38 / 32,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.4,
+  );
+
+  static TextStyle titleLargeScaled(TextScaler scaler) => _outfit(
+    fontSize: scaler.scale(28),
+    height: 34 / 28,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.3,
+  );
+
+  static TextStyle titleMediumScaled(TextScaler scaler) => _dmSans(
+    fontSize: scaler.scale(22),
+    height: 28 / 22,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.2,
+  );
+
+  static TextStyle titleSmallScaled(TextScaler scaler) => _dmSans(
+    fontSize: scaler.scale(17),
+    height: 22 / 17,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.1,
+  );
+
+  static TextStyle bodyLargeScaled(TextScaler scaler) => _dmSans(
+    fontSize: scaler.scale(16),
+    height: 24 / 16,
+    fontWeight: FontWeight.w400,
+  );
+
+  static TextStyle bodyMediumScaled(TextScaler scaler) => _dmSans(
+    fontSize: scaler.scale(14),
+    height: 20 / 14,
+    fontWeight: FontWeight.w400,
+  );
+
+  static TextStyle bodySmallScaled(TextScaler scaler) => _dmSans(
+    fontSize: scaler.scale(12),
+    height: 16 / 12,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.1,
+  );
+
+  static TextStyle labelScaled(TextScaler scaler) => _dmSans(
+    fontSize: scaler.scale(11),
+    height: 14 / 11,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.6,
+  );
+
+  static TextStyle captionScaled(TextScaler scaler) => _dmSans(
+    fontSize: scaler.scale(10),
+    height: 13 / 10,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.2,
+  );
+
+  static TextStyle bodyMediumSmallScaled(TextScaler scaler) => _dmSans(
+    fontSize: scaler.scale(13),
+    height: 18 / 13,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.1,
+  );
+
+  static TextStyle titleMediumLargeScaled(TextScaler scaler) => _dmSans(
+    fontSize: scaler.scale(19),
+    height: 24 / 19,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.1,
+  );
+
+  static TextStyle overlineScaled(TextScaler scaler) => _dmSans(
+    fontSize: scaler.scale(9),
+    height: 12 / 9,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.8,
+  );
+
+  static TextStyle monoScaled(TextScaler scaler) => GoogleFonts.jetBrainsMono(
+    textStyle: TextStyle(
+      fontSize: scaler.scale(11),
+      height: 14 / 11,
+      fontWeight: FontWeight.w500,
+      color: AfColors.textPrimary,
+    ),
+  );
+
+  static TextStyle monoSmallScaled(TextScaler scaler) =>
+      GoogleFonts.jetBrainsMono(
+        textStyle: TextStyle(
+          fontSize: scaler.scale(10),
+          height: 13 / 10,
+          fontWeight: FontWeight.w500,
+          color: AfColors.textPrimary,
+        ),
+      );
+
+  static TextStyle avatarInitialsScaled(TextScaler scaler) => _outfit(
+    fontSize: scaler.scale(32),
+    height: 38 / 32,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.3,
+  );
+
+  // ---------------------------------------------------------------------------
   // Shared button styles.
   // ---------------------------------------------------------------------------
 
@@ -145,6 +265,32 @@ abstract final class AfTypography {
   // ---------------------------------------------------------------------------
 
   static TextTheme get textTheme => textThemeFor(null);
+
+  /// Builds a [TextTheme] with system text scaling applied.
+  /// Use in widgets that need scaled text: `AfTypography.textThemeScaled(context)`.
+  static TextTheme textThemeScaled(BuildContext context, {Spectral? s}) {
+    final scaler = MediaQuery.textScalerOf(context);
+    final tp = s?.textPrimary ?? AfColors.textPrimary;
+    final ts = s?.textSecondary ?? AfColors.textSecondary;
+    final tt = s?.textTertiary ?? AfColors.textTertiary;
+    return TextTheme(
+      displayLarge: displayScaled(scaler).copyWith(color: tp),
+      displayMedium: displayScaled(scaler).copyWith(color: tp),
+      displaySmall: titleLargeScaled(scaler).copyWith(color: tp),
+      headlineLarge: titleLargeScaled(scaler).copyWith(color: tp),
+      headlineMedium: titleLargeScaled(scaler).copyWith(color: tp),
+      headlineSmall: titleMediumScaled(scaler).copyWith(color: tp),
+      titleLarge: titleLargeScaled(scaler).copyWith(color: tp),
+      titleMedium: titleMediumScaled(scaler).copyWith(color: tp),
+      titleSmall: titleSmallScaled(scaler).copyWith(color: tp),
+      bodyLarge: bodyLargeScaled(scaler).copyWith(color: tp),
+      bodyMedium: bodyMediumScaled(scaler).copyWith(color: tp),
+      bodySmall: bodySmallScaled(scaler).copyWith(color: ts),
+      labelLarge: labelScaled(scaler).copyWith(color: ts),
+      labelMedium: labelScaled(scaler).copyWith(color: ts),
+      labelSmall: captionScaled(scaler).copyWith(color: tt),
+    );
+  }
 
   /// Builds a [TextTheme] using dynamic text colors from [Spectral].
   /// Falls back to static [AfColors] tokens when [s] is null.

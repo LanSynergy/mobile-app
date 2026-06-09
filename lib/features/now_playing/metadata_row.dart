@@ -16,56 +16,31 @@ class MetadataRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      children: [
-        Text(
-          track.title,
-          style: AfTypography.titleLarge,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-        ),
-        const SizedBox(height: AfSpacing.s4),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Flexible(
-              child: Semantics(
-                label: 'Go to ${track.artistName}',
-                button: true,
-                child: GestureDetector(
-                  onTap: track.artistId != null
-                      ? () => context.push('/artist/${track.artistId}')
-                      : null,
-                  child: Text(
-                    track.artistName,
-                    style: AfTypography.bodyLarge.copyWith(
-                      color: AfColors.textSecondary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                  ),
-                ),
-              ),
-            ),
-            if (track.albumName.isNotEmpty) ...[
-              Text(
-                ' · ',
-                style: AfTypography.bodyLarge.copyWith(
-                  color: AfColors.textTertiary,
-                ),
-              ),
+    return Semantics(
+      liveRegion: true,
+      child: Column(
+        children: [
+          Text(
+            track.title,
+            style: AfTypography.titleLarge,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+          ),
+          const SizedBox(height: AfSpacing.s4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
               Flexible(
                 child: Semantics(
-                  label: 'Go to ${track.albumName}',
+                  label: 'Go to ${track.artistName}',
                   button: true,
                   child: GestureDetector(
-                    onTap: track.albumId != null
-                        ? () => context.push('/album/${track.albumId}')
+                    onTap: track.artistId != null
+                        ? () => context.push('/artist/${track.artistId}')
                         : null,
                     child: Text(
-                      track.albumName,
+                      track.artistName,
                       style: AfTypography.bodyLarge.copyWith(
                         color: AfColors.textSecondary,
                       ),
@@ -76,23 +51,51 @@ class MetadataRow extends ConsumerWidget {
                   ),
                 ),
               ),
+              if (track.albumName.isNotEmpty) ...[
+                Text(
+                  ' · ',
+                  style: AfTypography.bodyLarge.copyWith(
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+                Flexible(
+                  child: Semantics(
+                    label: 'Go to ${track.albumName}',
+                    button: true,
+                    child: GestureDetector(
+                      onTap: track.albumId != null
+                          ? () => context.push('/album/${track.albumId}')
+                          : null,
+                      child: Text(
+                        track.albumName,
+                        style: AfTypography.bodyLarge.copyWith(
+                          color: AfColors.textSecondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
-          ],
-        ),
-        const SizedBox(height: AfSpacing.s12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const _AbLoopButton(),
-            const SizedBox(width: AfSpacing.s12),
-            FavoriteHeartButton(track: track),
-            if (track.quality != null) ...[
-              const SizedBox(width: AfSpacing.s8),
-              QualityChip(quality: track.quality!),
+          ),
+          const SizedBox(height: AfSpacing.s12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const _AbLoopButton(),
+              const SizedBox(width: AfSpacing.s12),
+              FavoriteHeartButton(track: track),
+              if (track.quality != null) ...[
+                const SizedBox(width: AfSpacing.s8),
+                QualityChip(quality: track.quality!),
+              ],
             ],
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }

@@ -125,6 +125,7 @@ ThemeData _buildTheme(Spectral s) {
     splashColor: Colors.transparent,
     highlightColor: Colors.transparent,
     hoverColor: Colors.transparent,
+    focusColor: AfColors.accentPrimary.withValues(alpha: 0.12),
 
     scrollbarTheme: ScrollbarThemeData(
       thumbColor: WidgetStateProperty.resolveWith((states) {

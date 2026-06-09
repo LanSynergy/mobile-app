@@ -356,8 +356,8 @@ class _SmartPlaylistEditScreenState
                       tooltip: _sortOrder == 'asc' ? 'Ascending' : 'Descending',
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
-                        minWidth: 36,
-                        minHeight: 36,
+                        minWidth: AfSpacing.minHitTarget,
+                        minHeight: AfSpacing.minHitTarget,
                       ),
                     ),
                   ],

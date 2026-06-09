@@ -686,7 +686,7 @@ class EqBandBar extends ConsumerWidget {
                     color: isFlat
                         ? AfColors.surfaceHigh
                         : spectral.secondary.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: AfRadii.borderXs,
                   ),
                   child: Align(
                     alignment: Alignment(0, 1 - t * 2),
@@ -694,7 +694,7 @@ class EqBandBar extends ConsumerWidget {
                       height: totalH * 0.08 + totalH * 0.45 * fillFrac,
                       decoration: BoxDecoration(
                         color: isFlat ? AfColors.surfaceHigh : spectral.primary,
-                        borderRadius: BorderRadius.circular(3),
+                        borderRadius: AfRadii.borderXs,
                       ),
                     ),
                   ),

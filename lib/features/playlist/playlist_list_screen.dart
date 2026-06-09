@@ -67,25 +67,28 @@ class PlaylistListScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      PressScale(
-                        onTap: () => ref
-                            .read(importM3UActionProvider)
-                            .import(context: context),
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: AfColors.glassFill,
-                            borderRadius: AfRadii.borderPill,
-                            border: Border.all(
-                              color: AfColors.glassBorderStrong,
-                              width: 1,
+                      Tooltip(
+                        message: 'Import M3U',
+                        child: PressScale(
+                          onTap: () => ref
+                              .read(importM3UActionProvider)
+                              .import(context: context),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: AfColors.glassFill,
+                              borderRadius: AfRadii.borderPill,
+                              border: Border.all(
+                                color: AfColors.glassBorderStrong,
+                                width: 1,
+                              ),
                             ),
-                          ),
-                          child: const Icon(
-                            LucideIcons.listPlus,
-                            color: AfColors.textSecondary,
-                            size: 18,
+                            child: const Icon(
+                              LucideIcons.listPlus,
+                              color: AfColors.textSecondary,
+                              size: 18,
+                            ),
                           ),
                         ),
                       ),

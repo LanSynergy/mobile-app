@@ -49,67 +49,73 @@ class QueueListView extends ConsumerWidget {
       itemBuilder: (context, i) {
         final t = items[i];
         final active = currentId == t.id;
-        return Dismissible(
-          key: ValueKey('q-${t.id}-$i'),
-          direction: active
-              ? DismissDirection.none
-              : DismissDirection.endToStart,
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s24),
-            color: AfColors.semanticError.withValues(alpha: 0.25),
-            child: const Icon(
-              LucideIcons.trash2,
-              color: AfColors.semanticError,
+        return Semantics(
+          label: '${i + 1}. ${t.title} by ${t.artistName}',
+          child: Dismissible(
+            key: ValueKey('q-${t.id}-$i'),
+            direction: active
+                ? DismissDirection.none
+                : DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s24),
+              color: AfColors.semanticError.withValues(alpha: 0.25),
+              child: const Icon(
+                LucideIcons.trash2,
+                color: AfColors.semanticError,
+              ),
             ),
-          ),
-          confirmDismiss: (_) async {
-            if (active) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Skip to remove the currently playing track.'),
-                  duration: AfDurations.snackBarInfo,
-                ),
-              );
-              return false;
-            }
-            unawaited(HapticFeedback.lightImpact());
-            return true;
-          },
-          onDismissed: (_) => onDismiss(i, t),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AfSpacing.s4),
-            child: Container(
-              decoration: active
-                  ? const BoxDecoration(
-                      color: AfColors.surfaceBase,
-                      borderRadius: AfRadii.borderMd,
-                    )
-                  : null,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TrackRow(
-                      track: t,
-                      density: TrackRowDensity.compact,
-                      isActive: active,
-                      isBuffering: active && isBuffering,
-                      showHeart: false,
-                      onTap: () => onTap(i),
-                      onLongPress: () => showTrackContextMenu(context, ref, t),
+            confirmDismiss: (_) async {
+              if (active) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Skip to remove the currently playing track.',
                     ),
+                    duration: AfDurations.snackBarInfo,
                   ),
-                  ReorderableDragStartListener(
-                    index: i,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: AfSpacing.s8),
-                      child: Icon(
-                        LucideIcons.gripVertical,
-                        color: AfColors.textTertiary,
+                );
+                return false;
+              }
+              unawaited(HapticFeedback.lightImpact());
+              return true;
+            },
+            onDismissed: (_) => onDismiss(i, t),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AfSpacing.s4),
+              child: Container(
+                decoration: active
+                    ? const BoxDecoration(
+                        color: AfColors.surfaceBase,
+                        borderRadius: AfRadii.borderMd,
+                      )
+                    : null,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TrackRow(
+                        track: t,
+                        density: TrackRowDensity.compact,
+                        isActive: active,
+                        isBuffering: active && isBuffering,
+                        showHeart: false,
+                        onTap: () => onTap(i),
+                        onLongPress: () =>
+                            showTrackContextMenu(context, ref, t),
                       ),
                     ),
-                  ),
-                ],
+                    ReorderableDragStartListener(
+                      index: i,
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: AfSpacing.s8),
+                        child: Icon(
+                          LucideIcons.gripVertical,
+                          color: AfColors.textTertiary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

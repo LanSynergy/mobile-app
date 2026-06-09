@@ -17,23 +17,26 @@ class QualityChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? AfSpacing.s8 : AfSpacing.s12,
-        vertical: compact ? AfSpacing.s2 : AfSpacing.s4,
-      ),
-      decoration: BoxDecoration(
-        color: AfColors.surfaceHigh,
-        borderRadius: AfRadii.borderPill,
-        border: quality.isDegraded
-            ? Border.all(color: AfColors.semanticWarning, width: 1)
-            : null,
-      ),
-      child: Text(
-        quality.chipLabel,
-        style: AfTypography.mono.copyWith(
-          color: AfColors.textSecondary,
-          fontSize: compact ? 10 : 11,
+    return Tooltip(
+      message: 'Audio quality',
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? AfSpacing.s8 : AfSpacing.s12,
+          vertical: compact ? AfSpacing.s2 : AfSpacing.s4,
+        ),
+        decoration: BoxDecoration(
+          color: AfColors.surfaceHigh,
+          borderRadius: AfRadii.borderPill,
+          border: quality.isDegraded
+              ? Border.all(color: AfColors.semanticWarning, width: 1)
+              : null,
+        ),
+        child: Text(
+          quality.chipLabel,
+          style: AfTypography.mono.copyWith(
+            color: AfColors.textSecondary,
+            fontSize: compact ? 10 : 11,
+          ),
         ),
       ),
     );

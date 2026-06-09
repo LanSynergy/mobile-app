@@ -129,8 +129,8 @@ class _LibrarySearchState extends ConsumerState<LibrarySearch> {
                       ),
                     ),
                     prefixIconConstraints: const BoxConstraints(
-                      minWidth: 44,
-                      minHeight: 44,
+                      minWidth: AfSpacing.minHitTarget,
+                      minHeight: AfSpacing.minHitTarget,
                     ),
                     suffixIcon: _query.isNotEmpty
                         ? IconButton(

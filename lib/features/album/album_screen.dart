@@ -10,6 +10,7 @@ import '../../widgets/album_more_sheet.dart';
 import '../../widgets/async_error_view.dart';
 import '../../widgets/opacity_app_bar.dart';
 import '../../widgets/af_scrollbar.dart';
+import '../../widgets/breadcrumb.dart';
 import '../../widgets/skeletons/album_skeleton.dart';
 import '../../widgets/stagger_reveal.dart';
 import 'album_screen_widgets.dart';
@@ -102,6 +103,29 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
                   physics: const ClampingScrollPhysics(),
                   slivers: [
                     SliverToBoxAdapter(child: SizedBox(height: heroHeight)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          top: AfSpacing.s16,
+                          bottom: AfSpacing.s8,
+                        ),
+                        child: AfBreadcrumb(
+                          items: [
+                            BreadcrumbItem(
+                              label: 'Home',
+                              onTap: () => context.go('/home'),
+                            ),
+                            if (album.artistId != null)
+                              BreadcrumbItem(
+                                label: 'Artist: ${album.artistName}',
+                                onTap: () =>
+                                    context.push('/artist/${album.artistId}'),
+                              ),
+                            BreadcrumbItem(label: 'Album: ${album.name}'),
+                          ],
+                        ),
+                      ),
+                    ),
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(

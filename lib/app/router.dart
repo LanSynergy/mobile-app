@@ -103,16 +103,23 @@ final _router = GoRouter(
   },
   routes: [
     // Onboarding
-    GoRoute(path: '/', builder: (context, state) => const WelcomeScreen()),
     GoRoute(
+      name: 'welcome',
+      path: '/',
+      builder: (context, state) => const WelcomeScreen(),
+    ),
+    GoRoute(
+      name: 'onboarding-discover',
       path: '/onboarding/discover',
       builder: (context, state) => const ServerDiscoveryScreen(),
     ),
     GoRoute(
+      name: 'onboarding-local-setup',
       path: '/onboarding/local-setup',
       builder: (context, state) => const LocalSetupScreen(),
     ),
     GoRoute(
+      name: 'onboarding-sign-in',
       path: '/onboarding/sign-in',
       builder: (_, state) {
         final extra = state.extra;
@@ -131,10 +138,12 @@ final _router = GoRouter(
       },
     ),
     GoRoute(
+      name: 'onboarding-scope',
       path: '/onboarding/scope',
       builder: (context, state) => const LibraryScopeScreen(),
     ),
     GoRoute(
+      name: 'onboarding-done',
       path: '/onboarding/done',
       builder: (context, state) => const AllSetScreen(),
     ),
@@ -147,6 +156,7 @@ final _router = GoRouter(
           navigatorKey: _shellBranch1Key,
           routes: [
             GoRoute(
+              name: 'home',
               path: '/home',
               pageBuilder: (context, state) =>
                   const NoTransitionPage(child: HomeScreen()),
@@ -157,6 +167,7 @@ final _router = GoRouter(
           navigatorKey: _shellBranch2Key,
           routes: [
             GoRoute(
+              name: 'library',
               path: '/library',
               pageBuilder: (_, state) =>
                   const NoTransitionPage(child: LibraryScreen()),
@@ -167,6 +178,7 @@ final _router = GoRouter(
           navigatorKey: _shellBranch3Key,
           routes: [
             GoRoute(
+              name: 'playlists',
               path: '/playlists',
               pageBuilder: (context, state) =>
                   const NoTransitionPage(child: PlaylistListScreen()),
@@ -177,6 +189,7 @@ final _router = GoRouter(
           navigatorKey: _shellBranch4Key,
           routes: [
             GoRoute(
+              name: 'profile',
               path: '/profile',
               pageBuilder: (context, state) =>
                   const NoTransitionPage(child: ProfileScreen()),
@@ -188,82 +201,97 @@ final _router = GoRouter(
 
     // Overlays above the shell.
     GoRoute(
+      name: 'now-playing',
       path: '/now-playing',
       parentNavigatorKey: _rootKey,
       pageBuilder: (context, state) =>
           const NoTransitionPage(child: NowPlayingScreen()),
     ),
     GoRoute(
+      name: 'queue',
       path: '/queue',
       parentNavigatorKey: _rootKey,
       pageBuilder: (context, state) =>
           const NoTransitionPage(child: QueueScreen()),
     ),
     GoRoute(
+      name: 'sleep',
       path: '/sleep',
       parentNavigatorKey: _rootKey,
       builder: (context, state) => const SleepTimerScreen(),
     ),
     GoRoute(
+      name: 'cast',
       path: '/cast',
       parentNavigatorKey: _rootKey,
       builder: (context, state) => const CastPickerScreen(),
     ),
     GoRoute(
+      name: 'settings',
       path: '/settings',
       parentNavigatorKey: _rootKey,
       builder: (context, state) => const SettingsScreen(),
     ),
     GoRoute(
+      name: 'eq-dsp',
       path: '/eq-dsp',
       parentNavigatorKey: _rootKey,
       builder: (context, state) => const EqDspScreen(),
     ),
     GoRoute(
+      name: 'album',
       path: '/album/:id',
       parentNavigatorKey: _rootKey,
       builder: (_, state) => AlbumScreen(albumId: state.pathParameters['id']!),
     ),
     GoRoute(
+      name: 'artist',
       path: '/artist/:id',
       parentNavigatorKey: _rootKey,
       builder: (_, state) =>
           ArtistScreen(artistId: state.pathParameters['id']!),
     ),
     GoRoute(
+      name: 'genre',
       path: '/genre/:name',
       parentNavigatorKey: _rootKey,
       builder: (_, state) => GenreScreen(genre: state.pathParameters['name']!),
     ),
     GoRoute(
+      name: 'playlist',
       path: '/playlist/:id',
       parentNavigatorKey: _rootKey,
       builder: (_, state) =>
           PlaylistScreen(playlistId: state.pathParameters['id']!),
     ),
     GoRoute(
+      name: 'smart-playlists',
       path: '/smart-playlists',
       parentNavigatorKey: _rootKey,
       builder: (context, state) => const SmartPlaylistListScreen(),
     ),
     GoRoute(
+      name: 'smart-playlist-new',
       path: '/smart-playlist/new',
       parentNavigatorKey: _rootKey,
       builder: (context, state) => const SmartPlaylistEditScreen(),
     ),
     GoRoute(
+      name: 'smart-playlist',
       path: '/smart-playlist/:id',
       parentNavigatorKey: _rootKey,
       builder: (_, state) =>
           SmartPlaylistDetailScreen(playlistId: state.pathParameters['id']!),
     ),
     GoRoute(
+      name: 'smart-playlist-edit',
       path: '/smart-playlist/:id/edit',
       parentNavigatorKey: _rootKey,
       builder: (_, state) =>
           SmartPlaylistEditScreen(playlistId: state.pathParameters['id']!),
     ),
     GoRoute(
+      name: 'search',
       path: '/search',
       parentNavigatorKey: _rootKey,
       builder: (context, state) => const SearchScreen(),
@@ -318,3 +346,35 @@ void resetRouterMode() {
 
 /// Called from main.dart when auth/mode changes to trigger router redirect.
 void notifyAuthChanged() => _authRefresh._notify();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Deep-link URI parsing
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Maps a `aetherfin://` deep link URI to a GoRouter path.
+///
+/// Supported formats:
+///   - `aetherfin://album/<id>`
+///   - `aetherfin://artist/<id>`
+///   - `aetherfin://playlist/<id>`
+///   - `aetherfin://genre/<name>`
+///   - `aetherfin://now-playing`
+///
+/// Returns `null` if the URI cannot be mapped.
+String? resolveDeepLink(Uri uri) {
+  if (uri.scheme != 'aetherfin') return null;
+
+  final host = uri.host;
+  final id = uri.path.isNotEmpty
+      ? uri.path.substring(1)
+      : ''; // strip leading /
+
+  return switch (host) {
+    'album' when id.isNotEmpty => '/album/$id',
+    'artist' when id.isNotEmpty => '/artist/$id',
+    'playlist' when id.isNotEmpty => '/playlist/$id',
+    'genre' when id.isNotEmpty => '/genre/$id',
+    'now-playing' => '/now-playing',
+    _ => null,
+  };
+}

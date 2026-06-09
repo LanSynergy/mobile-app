@@ -49,14 +49,18 @@ class AlbumsTab extends ConsumerWidget {
             ),
             delegate: SliverChildBuilderDelegate((context, i) {
               final a = list[i];
-              return Tile(
-                title: a.name,
-                subtitle: a.artistName,
-                variant: TileVariant.album,
-                imageUrl: a.imageUrl,
-                size: double.infinity,
-                onTap: () => context.push('/album/${a.id}'),
-                onLongPress: () => showAlbumContextMenu(context, ref, a),
+              return Semantics(
+                button: true,
+                label: 'Album: ${a.name} by ${a.artistName}',
+                child: Tile(
+                  title: a.name,
+                  subtitle: a.artistName,
+                  variant: TileVariant.album,
+                  imageUrl: a.imageUrl,
+                  size: double.infinity,
+                  onTap: () => context.push('/album/${a.id}'),
+                  onLongPress: () => showAlbumContextMenu(context, ref, a),
+                ),
               );
             }, childCount: list.length),
           ),

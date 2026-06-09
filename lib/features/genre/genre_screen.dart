@@ -7,6 +7,7 @@ import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/async_error_view.dart';
 import '../../widgets/opacity_app_bar.dart';
+import '../../widgets/breadcrumb.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/artwork.dart';
@@ -89,14 +90,32 @@ class _GenreScreenState extends ConsumerState<GenreScreen> {
                 controller: _scroll,
                 physics: const ClampingScrollPhysics(),
                 slivers: [
-                  // ── Genre header ──
+                  // ── Breadcrumb ──
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.only(
                         top:
                             MediaQuery.of(context).padding.top +
                             kToolbarHeight +
-                            AfSpacing.s16,
+                            AfSpacing.s8,
+                      ),
+                      child: AfBreadcrumb(
+                        items: [
+                          BreadcrumbItem(
+                            label: 'Home',
+                            onTap: () => context.go('/home'),
+                          ),
+                          BreadcrumbItem(label: 'Genre: ${widget.genre}'),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // ── Genre header ──
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        top: AfSpacing.s8,
                         left: AfSpacing.gutterGenerous,
                         right: AfSpacing.gutterGenerous,
                       ),

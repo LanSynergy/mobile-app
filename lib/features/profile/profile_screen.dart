@@ -90,23 +90,26 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  PressScale(
-                    onTap: () => context.push('/settings'),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AfColors.glassFill,
-                        borderRadius: AfRadii.borderPill,
-                        border: Border.all(
-                          color: AfColors.glassBorderStrong,
-                          width: 1,
+                  Tooltip(
+                    message: 'Settings',
+                    child: PressScale(
+                      onTap: () => context.push('/settings'),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AfColors.glassFill,
+                          borderRadius: AfRadii.borderPill,
+                          border: Border.all(
+                            color: AfColors.glassBorderStrong,
+                            width: 1,
+                          ),
                         ),
-                      ),
-                      child: const Icon(
-                        LucideIcons.settings,
-                        color: AfColors.textSecondary,
-                        size: 18,
+                        child: const Icon(
+                          LucideIcons.settings,
+                          color: AfColors.textSecondary,
+                          size: 18,
+                        ),
                       ),
                     ),
                   ),

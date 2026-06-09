@@ -75,13 +75,17 @@ class ArtistsSection extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(
                     horizontal: AfSpacing.s16,
                   ),
-                  child: PressScale(
-                    ensureHitTarget: false,
-                    onTap: () => context.push('/artist/${hero.id}'),
-                    child: _HeroArtistCard(
-                      name: hero.name,
-                      imageUrl: hero.imageUrl,
-                      spectral: spectral,
+                  child: Semantics(
+                    button: true,
+                    label: 'Artist: ${hero.name}',
+                    child: PressScale(
+                      ensureHitTarget: false,
+                      onTap: () => context.push('/artist/${hero.id}'),
+                      child: _HeroArtistCard(
+                        name: hero.name,
+                        imageUrl: hero.imageUrl,
+                        spectral: spectral,
+                      ),
                     ),
                   ),
                 ),
@@ -102,13 +106,17 @@ class ArtistsSection extends ConsumerWidget {
                       childAspectRatio: 0.85,
                       children: grid
                           .map(
-                            (a) => PressScale(
-                              ensureHitTarget: false,
-                              onTap: () => context.push('/artist/${a.id}'),
-                              child: _ExpressiveArtistCard(
-                                name: a.name,
-                                imageUrl: a.imageUrl,
-                                spectral: spectral,
+                            (a) => Semantics(
+                              button: true,
+                              label: 'Artist: ${a.name}',
+                              child: PressScale(
+                                ensureHitTarget: false,
+                                onTap: () => context.push('/artist/${a.id}'),
+                                child: _ExpressiveArtistCard(
+                                  name: a.name,
+                                  imageUrl: a.imageUrl,
+                                  spectral: spectral,
+                                ),
                               ),
                             ),
                           )

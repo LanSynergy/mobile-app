@@ -234,6 +234,140 @@ class SettingsSwitchTile extends ConsumerWidget {
   }
 }
 
+// ── Collapsible Section ──────────────────────────────────────────────────────
+
+/// A collapsible section for the settings screen.
+///
+/// Renders a tappable header with title, chevron indicator, and optional
+/// trailing widget. The child content animates open/closed using the
+/// standard Aetherfin motion tokens.
+class AfCollapsibleSection extends StatefulWidget {
+  const AfCollapsibleSection({
+    super.key,
+    required this.title,
+    required this.child,
+    this.initiallyExpanded = true,
+    this.trailing,
+  });
+
+  final String title;
+  final Widget child;
+  final bool initiallyExpanded;
+  final Widget? trailing;
+
+  @override
+  State<AfCollapsibleSection> createState() => _AfCollapsibleSectionState();
+}
+
+class _AfCollapsibleSectionState extends State<AfCollapsibleSection>
+    with SingleTickerProviderStateMixin {
+  late bool _expanded;
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = widget.initiallyExpanded;
+    _controller = AnimationController(
+      vsync: this,
+      duration: AfDurations.standard,
+    );
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: AfCurves.easeStandard,
+    );
+    if (_expanded) {
+      _controller.value = 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() {
+      _expanded = !_expanded;
+      if (_expanded) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Header ─────────────────────────────────────────────────────
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _toggle,
+            borderRadius: AfRadii.borderLg,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AfSpacing.s16,
+                vertical: AfSpacing.s12,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.title.toUpperCase(),
+                      style: AfTypography.label.copyWith(
+                        color: AfColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  if (widget.trailing != null) ...[
+                    widget.trailing!,
+                    const SizedBox(width: AfSpacing.s8),
+                  ],
+                  AnimatedRotation(
+                    turns: _expanded ? 0.5 : 0,
+                    duration: AfDurations.standard,
+                    curve: AfCurves.easeStandard,
+                    child: const Icon(
+                      LucideIcons.chevronDown,
+                      size: 16,
+                      color: AfColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // ── Collapsible content ────────────────────────────────────────
+        ClipRect(
+          child: AnimatedBuilder(
+            animation: _animation,
+            builder: (context, child) {
+              return Align(
+                alignment: Alignment.topCenter,
+                heightFactor: _animation.value,
+                child: child,
+              );
+            },
+            child: widget.child,
+          ),
+        ),
+        // ── Bottom divider ─────────────────────────────────────────────
+        const Divider(height: 1, thickness: 0.5, color: AfColors.surfaceHigh),
+      ],
+    );
+  }
+}
+
+// ── Option Tile ──────────────────────────────────────────────────────────────
+
 class OptionTile extends ConsumerWidget {
   const OptionTile({
     super.key,
