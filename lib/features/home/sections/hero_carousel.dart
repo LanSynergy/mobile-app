@@ -91,9 +91,26 @@ class _HeroAlbumCarouselState extends ConsumerState<HeroAlbumCarousel> {
                               ),
                             ),
                           ),
+                          // Gradient scrim for text readability
+                          Positioned.fill(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.transparent,
+                                    AfColors.surfaceCanvas.withValues(
+                                      alpha: 0.95,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                           // Content
                           Padding(
-                            padding: const EdgeInsets.all(AfSpacing.s20),
+                            padding: const EdgeInsets.all(AfSpacing.s16),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -114,7 +131,7 @@ class _HeroAlbumCarouselState extends ConsumerState<HeroAlbumCarousel> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: AfTypography.bodyLarge.copyWith(
-                                    color: spectral.energy,
+                                    color: AfColors.textSecondary,
                                   ),
                                 ),
                                 const SizedBox(height: AfSpacing.s16),
