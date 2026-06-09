@@ -119,6 +119,7 @@ class _LocalSetupScreenState extends ConsumerState<LocalSetupScreen> {
         title: Text('Local files', style: AfTypography.titleMedium),
         leading: IconButton(
           icon: const Icon(LucideIcons.arrowLeft),
+          tooltip: 'Back',
           onPressed: () async {
             // Reset mode on back — user wants to re-decide at the
             // WelcomeScreen. This also prevents stale redirects on

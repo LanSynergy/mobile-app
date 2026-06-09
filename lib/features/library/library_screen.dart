@@ -141,12 +141,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             ),
 
             // ── Recently Added ──
-            SliverToBoxAdapter(
-              child: _RecentlyAddedSection(isLocal: isLocal),
-            ),
-            const SliverToBoxAdapter(
-              child: SizedBox(height: AfSpacing.s12),
-            ),
+            SliverToBoxAdapter(child: _RecentlyAddedSection(isLocal: isLocal)),
+            const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
 
             // ── Pill Bar (pinned on scroll) ──
             SliverPersistentHeader(
@@ -156,9 +152,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 onChanged: (v) => setState(() => _pill = v),
               ),
             ),
-            const SliverToBoxAdapter(
-              child: SizedBox(height: AfSpacing.s12),
-            ),
+            const SliverToBoxAdapter(child: SizedBox(height: AfSpacing.s12)),
 
             // ── Section Content ──
             switch (_pill) {

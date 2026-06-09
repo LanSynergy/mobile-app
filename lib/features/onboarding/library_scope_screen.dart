@@ -65,6 +65,7 @@ class _LibraryScopeScreenState extends ConsumerState<LibraryScopeScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(LucideIcons.arrowLeft),
+          tooltip: 'Back',
           onPressed: () => context.pop(),
         ),
         title: Text('Choose libraries', style: AfTypography.titleMedium),

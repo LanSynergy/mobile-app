@@ -508,6 +508,7 @@ Widget eqTextFieldRow(
             initialValue: value,
             style: AfTypography.mono.copyWith(fontSize: 13),
             decoration: InputDecoration(
+              labelText: label,
               hintText: hint,
               hintStyle: AfTypography.mono.copyWith(
                 fontSize: 12,

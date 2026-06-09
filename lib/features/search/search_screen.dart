@@ -136,6 +136,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 autofocus: true,
                 textInputAction: TextInputAction.search,
                 decoration: const InputDecoration(
+                  labelText: 'Search music',
                   hintText: 'Artists, albums, tracks…',
                   prefixIcon: Icon(
                     LucideIcons.search,

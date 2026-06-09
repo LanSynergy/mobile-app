@@ -175,11 +175,13 @@ class _ProgressRing extends ConsumerWidget {
         ? (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)
         : 0.0;
 
-    return CustomPaint(
-      painter: _RingPainter(
-        progress: progress.toDouble(),
-        backgroundColor: AfColors.surfaceHigh,
-        activeColor: accent,
+    return ExcludeSemantics(
+      child: CustomPaint(
+        painter: _RingPainter(
+          progress: progress.toDouble(),
+          backgroundColor: AfColors.surfaceHigh,
+          activeColor: accent,
+        ),
       ),
     );
   }
@@ -246,59 +248,71 @@ class _MiniTransport extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        PressScale(
-          ensureHitTarget: false,
-          onTap: () => ref.read(playerServiceProvider).skipToPrevious(),
-          child: const SizedBox(
-            width: AfSpacing.minHitTarget,
-            height: AfSpacing.minHitTarget,
-            child: Center(
-              child: Icon(
-                LucideIcons.skipBack,
-                size: 20,
-                color: AfColors.textPrimary,
+        Semantics(
+          label: 'Previous track',
+          button: true,
+          child: PressScale(
+            ensureHitTarget: false,
+            onTap: () => ref.read(playerServiceProvider).skipToPrevious(),
+            child: const SizedBox(
+              width: AfSpacing.minHitTarget,
+              height: AfSpacing.minHitTarget,
+              child: Center(
+                child: Icon(
+                  LucideIcons.skipBack,
+                  size: AfIconSizes.sm,
+                  color: AfColors.textPrimary,
+                ),
               ),
             ),
           ),
         ),
-        PressScale(
-          ensureHitTarget: false,
-          onTap: () {
-            final svc = ref.read(playerServiceProvider);
-            isPlaying ? svc.pause() : svc.play();
-          },
-          child: SizedBox(
-            width: AfSpacing.minHitTarget,
-            height: AfSpacing.minHitTarget,
-            child: Center(
-              child: isBuffering
-                  ? const SizedBox(
-                      width: AfSpacing.s20,
-                      height: AfSpacing.s20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AfColors.textSecondary,
+        Semantics(
+          label: isPlaying ? 'Pause' : 'Play',
+          button: true,
+          child: PressScale(
+            ensureHitTarget: false,
+            onTap: () {
+              final svc = ref.read(playerServiceProvider);
+              isPlaying ? svc.pause() : svc.play();
+            },
+            child: SizedBox(
+              width: AfSpacing.minHitTarget,
+              height: AfSpacing.minHitTarget,
+              child: Center(
+                child: isBuffering
+                    ? const SizedBox(
+                        width: AfSpacing.s20,
+                        height: AfSpacing.s20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AfColors.textSecondary,
+                        ),
+                      )
+                    : Icon(
+                        isPlaying ? LucideIcons.pause : LucideIcons.play,
+                        size: AfIconSizes.sm,
+                        color: AfColors.textPrimary,
                       ),
-                    )
-                  : Icon(
-                      isPlaying ? LucideIcons.pause : LucideIcons.play,
-                      size: 22,
-                      color: AfColors.textPrimary,
-                    ),
+              ),
             ),
           ),
         ),
-        PressScale(
-          ensureHitTarget: false,
-          onTap: () => ref.read(playerServiceProvider).skipToNext(),
-          child: const SizedBox(
-            width: AfSpacing.minHitTarget,
-            height: AfSpacing.minHitTarget,
-            child: Center(
-              child: Icon(
-                LucideIcons.skipForward,
-                size: 20,
-                color: AfColors.textPrimary,
+        Semantics(
+          label: 'Next track',
+          button: true,
+          child: PressScale(
+            ensureHitTarget: false,
+            onTap: () => ref.read(playerServiceProvider).skipToNext(),
+            child: const SizedBox(
+              width: AfSpacing.minHitTarget,
+              height: AfSpacing.minHitTarget,
+              child: Center(
+                child: Icon(
+                  LucideIcons.skipForward,
+                  size: AfIconSizes.sm,
+                  color: AfColors.textPrimary,
+                ),
               ),
             ),
           ),

@@ -47,21 +47,18 @@ class GenresTab extends ConsumerWidget {
               crossAxisSpacing: AfSpacing.s12,
               mainAxisSpacing: AfSpacing.s12,
             ),
-            delegate: SliverChildBuilderDelegate(
-              (context, i) {
-                final g = list[i];
-                final tint = parseGenreTint(g.tint);
-                return GenreTile(
-                  name: g.name,
-                  tint: tint,
-                  imageUrl: g.imageUrl,
-                  width: double.infinity,
-                  height: double.infinity,
-                  onTap: () => context.push('/genre/${g.name}'),
-                );
-              },
-              childCount: list.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, i) {
+              final g = list[i];
+              final tint = parseGenreTint(g.tint);
+              return GenreTile(
+                name: g.name,
+                tint: tint,
+                imageUrl: g.imageUrl,
+                width: double.infinity,
+                height: double.infinity,
+                onTap: () => context.push('/genre/${g.name}'),
+              );
+            }, childCount: list.length),
           ),
         );
       },

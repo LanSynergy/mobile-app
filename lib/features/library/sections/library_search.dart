@@ -115,6 +115,7 @@ class _LibrarySearchState extends ConsumerState<LibrarySearch> {
                     color: AfColors.textPrimary,
                   ),
                   decoration: InputDecoration(
+                    labelText: 'Search library',
                     hintText: 'Search songs, artists, albums\u2026',
                     hintStyle: AfTypography.bodyLarge.copyWith(
                       color: AfColors.textTertiary,

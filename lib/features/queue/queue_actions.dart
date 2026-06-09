@@ -53,6 +53,7 @@ Future<void> saveQueueAsPlaylist(
             autofocus: true,
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(
+              labelText: 'Playlist name',
               hintText: 'Playlist name',
               border: OutlineInputBorder(
                 borderRadius: AfRadii.borderSm,

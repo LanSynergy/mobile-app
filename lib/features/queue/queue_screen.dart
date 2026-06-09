@@ -80,6 +80,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(LucideIcons.chevronDown),
+          tooltip: 'Close',
           onPressed: () => Navigator.maybePop(context),
         ),
         title: Text('Queue', style: AfTypography.titleSmall),

@@ -180,6 +180,7 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(LucideIcons.arrowLeft),
+          tooltip: 'Back',
           onPressed: () async {
             // Reset mode on back — user wants to re-decide at the
             // WelcomeScreen. This also prevents stale redirects on
@@ -254,10 +255,12 @@ class _ServerDiscoveryScreenState extends ConsumerState<ServerDiscoveryScreen> {
               const SizedBox(height: AfSpacing.s8),
               TextField(
                 controller: _manualController,
+                autofocus: true,
                 keyboardType: TextInputType.url,
                 autocorrect: false,
                 style: AfTypography.bodyLarge,
                 decoration: InputDecoration(
+                  labelText: 'Server URL',
                   hintText: 'http://192.168.1.10:8096',
                   errorText: _manualError,
                 ),

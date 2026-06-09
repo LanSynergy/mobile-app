@@ -30,18 +30,22 @@ class MetadataRow extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Flexible(
-              child: GestureDetector(
-                onTap: track.artistId != null
-                    ? () => context.push('/artist/${track.artistId}')
-                    : null,
-                child: Text(
-                  track.artistName,
-                  style: AfTypography.bodyLarge.copyWith(
-                    color: AfColors.textSecondary,
+              child: Semantics(
+                label: 'Go to ${track.artistName}',
+                button: true,
+                child: GestureDetector(
+                  onTap: track.artistId != null
+                      ? () => context.push('/artist/${track.artistId}')
+                      : null,
+                  child: Text(
+                    track.artistName,
+                    style: AfTypography.bodyLarge.copyWith(
+                      color: AfColors.textSecondary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
                 ),
               ),
             ),
@@ -53,18 +57,22 @@ class MetadataRow extends ConsumerWidget {
                 ),
               ),
               Flexible(
-                child: GestureDetector(
-                  onTap: track.albumId != null
-                      ? () => context.push('/album/${track.albumId}')
-                      : null,
-                  child: Text(
-                    track.albumName,
-                    style: AfTypography.bodyLarge.copyWith(
-                      color: AfColors.textSecondary,
+                child: Semantics(
+                  label: 'Go to ${track.albumName}',
+                  button: true,
+                  child: GestureDetector(
+                    onTap: track.albumId != null
+                        ? () => context.push('/album/${track.albumId}')
+                        : null,
+                    child: Text(
+                      track.albumName,
+                      style: AfTypography.bodyLarge.copyWith(
+                        color: AfColors.textSecondary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
                   ),
                 ),
               ),
@@ -100,23 +108,27 @@ class _AbLoopButton extends ConsumerWidget {
     final abA = ref.watch(abLoopAProvider);
     final abB = ref.watch(abLoopBProvider);
     final active = abA != null || abB != null;
-    return GestureDetector(
-      onTap: () {
-        if (active) {
-          ref.read(playerServiceProvider).setAbLoopA(null);
-          ref.read(playerServiceProvider).setAbLoopB(null);
-          ref.read(abLoopAProvider.notifier).state = null;
-          ref.read(abLoopBProvider.notifier).state = null;
-          return;
-        }
-        final pos = ref.read(positionStreamProvider);
-        ref.read(playerServiceProvider).setAbLoopA(pos);
-        ref.read(abLoopAProvider.notifier).state = pos;
-      },
-      child: Icon(
-        LucideIcons.repeat1,
-        size: 20,
-        color: active ? spectral : AfColors.textTertiary,
+    return Semantics(
+      label: 'A-B loop',
+      button: true,
+      child: GestureDetector(
+        onTap: () {
+          if (active) {
+            ref.read(playerServiceProvider).setAbLoopA(null);
+            ref.read(playerServiceProvider).setAbLoopB(null);
+            ref.read(abLoopAProvider.notifier).state = null;
+            ref.read(abLoopBProvider.notifier).state = null;
+            return;
+          }
+          final pos = ref.read(positionStreamProvider);
+          ref.read(playerServiceProvider).setAbLoopA(pos);
+          ref.read(abLoopAProvider.notifier).state = pos;
+        },
+        child: Icon(
+          LucideIcons.repeat1,
+          size: 20,
+          color: active ? spectral : AfColors.textTertiary,
+        ),
       ),
     );
   }

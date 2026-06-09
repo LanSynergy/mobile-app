@@ -54,7 +54,7 @@ void main() {
     test('text colors use cool whites', () {
       expect(AfColors.textPrimary.toARGB32(), 0xFFE8ECF2);
       expect(AfColors.textSecondary.toARGB32(), 0xFF9AA0AD);
-      expect(AfColors.textTertiary.toARGB32(), 0xFF6B7280);
+      expect(AfColors.textTertiary.toARGB32(), 0xFF7C8290);
     });
   });
 

@@ -28,7 +28,8 @@ class SongsTab extends ConsumerWidget {
     if (isLocal) {
       final tracks = ref.watch(localTracksProvider);
       return tracks.when(
-        data: (list) => _buildSliverList(list, activeId, isBuffering, accent, ref),
+        data: (list) =>
+            _buildSliverList(list, activeId, isBuffering, accent, ref),
         loading: () => const SliverToBoxAdapter(
           child: LibrarySkeleton(mode: LibrarySkeletonMode.songs),
         ),
@@ -93,24 +94,21 @@ class SongsTab extends ConsumerWidget {
         AfSpacing.bottomInsetWithMiniAndNav,
       ),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, i) {
-            final t = tracks[i];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: AfSpacing.s4),
-              child: TrackRow(
-                track: t,
-                isActive: t.id == activeId,
-                isBuffering: t.id == activeId && isBuffering,
-                activeAccent: accent,
-                onTap: () =>
-                    ref.read(playActionsProvider).playSmartQueue(t, tracks),
-                onLongPress: () => showTrackContextMenu(context, ref, t),
-              ),
-            );
-          },
-          childCount: tracks.length,
-        ),
+        delegate: SliverChildBuilderDelegate((context, i) {
+          final t = tracks[i];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AfSpacing.s4),
+            child: TrackRow(
+              track: t,
+              isActive: t.id == activeId,
+              isBuffering: t.id == activeId && isBuffering,
+              activeAccent: accent,
+              onTap: () =>
+                  ref.read(playActionsProvider).playSmartQueue(t, tracks),
+              onLongPress: () => showTrackContextMenu(context, ref, t),
+            ),
+          );
+        }, childCount: tracks.length),
       ),
     );
   }

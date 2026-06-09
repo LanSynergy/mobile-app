@@ -57,17 +57,21 @@ class TransportRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        GestureDetector(
-          onLongPress: onShuffleLongPress,
-          child: TransportButton(
-            icon: Icon(
-              shuffleMode == ShuffleMode.tail
-                  ? LucideIcons.arrowDownWideNarrow
-                  : LucideIcons.shuffle,
-              size: 20,
-              color: shuffleOn ? accent : AfColors.textTertiary,
+        Semantics(
+          label: 'Shuffle',
+          button: true,
+          child: GestureDetector(
+            onLongPress: onShuffleLongPress,
+            child: TransportButton(
+              icon: Icon(
+                shuffleMode == ShuffleMode.tail
+                    ? LucideIcons.arrowDownWideNarrow
+                    : LucideIcons.shuffle,
+                size: AfIconSizes.sm,
+                color: shuffleOn ? accent : AfColors.textTertiary,
+              ),
+              onTap: onShuffle,
             ),
-            onTap: onShuffle,
           ),
         ),
         const SizedBox(width: AfSpacing.s12),
@@ -76,7 +80,7 @@ class TransportRow extends StatelessWidget {
           child: TransportButton(
             icon: const Icon(
               LucideIcons.skipBack,
-              size: 26,
+              size: AfIconSizes.lg,
               color: AfColors.textPrimary,
             ),
             onTap: onPrev,
@@ -97,44 +101,48 @@ class TransportRow extends StatelessWidget {
           child: TransportButton(
             icon: const Icon(
               LucideIcons.skipForward,
-              size: 26,
+              size: AfIconSizes.lg,
               color: AfColors.textPrimary,
             ),
             onTap: onNext,
           ),
         ),
         const SizedBox(width: AfSpacing.s12),
-        TransportButton(
-          icon: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Icon(
-                _loopIcon(loopMode),
-                size: 20,
-                color: _loopColor(loopMode, accent),
-              ),
-              if (loopMode == AfLoopMode.forNtimes)
-                Positioned(
-                  right: -6,
-                  top: -4,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: muted,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '$repeatCount',
-                      style: AfTypography.caption.copyWith(
-                        color: AfColors.textOnPrimary,
-                        fontWeight: FontWeight.bold,
+        Semantics(
+          label: loopMode == AfLoopMode.off ? 'Repeat off' : 'Repeat',
+          button: true,
+          child: TransportButton(
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  _loopIcon(loopMode),
+                  size: AfIconSizes.sm,
+                  color: _loopColor(loopMode, accent),
+                ),
+                if (loopMode == AfLoopMode.forNtimes)
+                  Positioned(
+                    right: -6,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: muted,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '$repeatCount',
+                        style: AfTypography.caption.copyWith(
+                          color: AfColors.textOnPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
+            onTap: onRepeat,
           ),
-          onTap: onRepeat,
         ),
       ],
     );

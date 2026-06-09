@@ -138,14 +138,22 @@ class AppShell extends ConsumerWidget {
 
           // Tab content — transparent so gradient shows through.
           // AnimatedSwitcher cross-fades between tab changes.
-          RepaintBoundary(
-            child: AnimatedSwitcher(
-              duration: AfDurations.quick,
-              switchInCurve: AfCurves.easeOut,
-              switchOutCurve: AfCurves.easeIn,
-              child: KeyedSubtree(
-                key: ValueKey('shell-tab-${shell.currentIndex}'),
-                child: shell,
+          // ExcludeFocus when a blur sheet is open to prevent
+          // keyboard focus escaping behind the sheet.
+          ValueListenableBuilder<int>(
+            valueListenable: blurSheetCount,
+            builder: (context, count, child) {
+              return ExcludeFocus(excluding: count > 0, child: child!);
+            },
+            child: RepaintBoundary(
+              child: AnimatedSwitcher(
+                duration: AfDurations.quick,
+                switchInCurve: AfCurves.easeOut,
+                switchOutCurve: AfCurves.easeIn,
+                child: KeyedSubtree(
+                  key: ValueKey('shell-tab-${shell.currentIndex}'),
+                  child: shell,
+                ),
               ),
             ),
           ),

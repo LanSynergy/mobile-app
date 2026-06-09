@@ -88,7 +88,7 @@ class _MoreMenu extends StatelessWidget {
         MoreItem(
           icon: const Icon(
             LucideIcons.radio,
-            size: 22,
+            size: AfIconSizes.sm,
             color: AfColors.textSecondary,
           ),
           label: 'Start radio',
@@ -108,7 +108,7 @@ class _MoreMenu extends StatelessWidget {
         MoreItem(
           icon: const Icon(
             LucideIcons.slidersHorizontal,
-            size: 22,
+            size: AfIconSizes.sm,
             color: AfColors.textSecondary,
           ),
           label: 'EQ',
@@ -120,7 +120,7 @@ class _MoreMenu extends StatelessWidget {
         MoreItem(
           icon: Icon(
             LucideIcons.plus,
-            size: 22,
+            size: AfIconSizes.sm,
             color: isSaved ? spectral : AfColors.textSecondary,
           ),
           label: isSaved ? 'Saved' : 'Save',
@@ -132,7 +132,7 @@ class _MoreMenu extends StatelessWidget {
         MoreItem(
           icon: const Icon(
             LucideIcons.listMusic,
-            size: 22,
+            size: AfIconSizes.sm,
             color: AfColors.textSecondary,
           ),
           label: 'Queue',
@@ -145,7 +145,7 @@ class _MoreMenu extends StatelessWidget {
           MoreItem(
             icon: const Icon(
               LucideIcons.disc3,
-              size: 22,
+              size: AfIconSizes.sm,
               color: AfColors.textSecondary,
             ),
             label: 'Go to album',
@@ -158,7 +158,7 @@ class _MoreMenu extends StatelessWidget {
           MoreItem(
             icon: const Icon(
               LucideIcons.user,
-              size: 22,
+              size: AfIconSizes.sm,
               color: AfColors.textSecondary,
             ),
             label: 'Go to artist',
@@ -172,7 +172,7 @@ class _MoreMenu extends StatelessWidget {
         MoreItem(
           icon: Icon(
             LucideIcons.arrowLeftRight,
-            size: 22,
+            size: AfIconSizes.sm,
             color: ref.watch(abLoopAProvider) != null
                 ? spectral
                 : AfColors.textSecondary,
@@ -186,7 +186,7 @@ class _MoreMenu extends StatelessWidget {
         MoreItem(
           icon: const Icon(
             LucideIcons.moon,
-            size: 22,
+            size: AfIconSizes.sm,
             color: AfColors.textSecondary,
           ),
           label: 'Sleep timer',
@@ -198,7 +198,7 @@ class _MoreMenu extends StatelessWidget {
         MoreItem(
           icon: const Icon(
             LucideIcons.gauge,
-            size: 22,
+            size: AfIconSizes.sm,
             color: AfColors.textSecondary,
           ),
           label: 'Playback speed',
@@ -210,7 +210,7 @@ class _MoreMenu extends StatelessWidget {
         MoreItem(
           icon: const Icon(
             LucideIcons.cast,
-            size: 22,
+            size: AfIconSizes.sm,
             color: AfColors.textSecondary,
           ),
           label: 'Audio output',
@@ -222,7 +222,7 @@ class _MoreMenu extends StatelessWidget {
         MoreItem(
           icon: const Icon(
             LucideIcons.volume2,
-            size: 22,
+            size: AfIconSizes.sm,
             color: AfColors.textSecondary,
           ),
           label: 'Volume',
@@ -234,7 +234,7 @@ class _MoreMenu extends StatelessWidget {
         MoreItem(
           icon: const Icon(
             LucideIcons.bluetooth,
-            size: 22,
+            size: AfIconSizes.sm,
             color: AfColors.textSecondary,
           ),
           label: 'Audio delay',
@@ -248,7 +248,7 @@ class _MoreMenu extends StatelessWidget {
           child: MoreItem(
             icon: const Icon(
               LucideIcons.info,
-              size: 22,
+              size: AfIconSizes.sm,
               color: AfColors.textSecondary,
             ),
             label: 'Show details',
@@ -338,7 +338,7 @@ class _TrackDetailsWrapperState extends State<_TrackDetailsWrapper> {
                   icon: const Icon(
                     LucideIcons.arrowLeft,
                     color: AfColors.textPrimary,
-                    size: 22,
+                    size: AfIconSizes.sm,
                   ),
                   onPressed: widget.onBack,
                 ),
@@ -387,7 +387,11 @@ class MoreItem extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(width: 22, height: 22, child: Center(child: icon)),
+            SizedBox(
+              width: AfIconSizes.sm,
+              height: AfIconSizes.sm,
+              child: Center(child: icon),
+            ),
             const SizedBox(width: AfSpacing.s16),
             SizedBox(
               height: 20,

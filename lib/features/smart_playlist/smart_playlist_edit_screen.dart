@@ -147,6 +147,7 @@ class _SmartPlaylistEditScreenState
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(LucideIcons.arrowLeft),
+          tooltip: 'Back',
           onPressed: () => context.pop(),
         ),
         title: Text(
@@ -186,6 +187,7 @@ class _SmartPlaylistEditScreenState
                   controller: _nameController,
                   style: AfTypography.bodyMedium,
                   decoration: InputDecoration(
+                    labelText: 'Playlist name',
                     hintText: 'Playlist name',
                     hintStyle: AfTypography.bodyMedium.copyWith(
                       color: AfColors.textTertiary,
@@ -275,17 +277,20 @@ class _SmartPlaylistEditScreenState
           const SizedBox(height: AfSpacing.s8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s4),
-            child: OutlinedButton.icon(
-              onPressed: _addRule,
-              icon: const Icon(LucideIcons.plus, size: 18),
-              label: const Text('Add rule'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: spectral.primary,
-                side: const BorderSide(color: AfColors.surfaceHigh),
-                shape: const RoundedRectangleBorder(
-                  borderRadius: AfRadii.borderLg,
+            child: Tooltip(
+              message: 'Add rule',
+              child: OutlinedButton.icon(
+                onPressed: _addRule,
+                icon: const Icon(LucideIcons.plus, size: 18),
+                label: const Text('Add rule'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: spectral.primary,
+                  side: const BorderSide(color: AfColors.surfaceHigh),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AfRadii.borderLg,
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: AfSpacing.s12),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: AfSpacing.s12),
               ),
             ),
           ),
@@ -400,6 +405,7 @@ class _SmartPlaylistEditScreenState
                           color: spectral.primary,
                         ),
                         decoration: InputDecoration(
+                          labelText: 'Value',
                           hintText: '\u221e',
                           hintStyle: AfTypography.bodyMedium.copyWith(
                             color: AfColors.textTertiary,
@@ -656,6 +662,7 @@ class _RuleRow extends ConsumerWidget {
             ? TextInputType.number
             : TextInputType.text,
         decoration: InputDecoration(
+          labelText: 'Value',
           hintText: _isNumericField(rule.field) ? '0' : 'Enter value...',
           hintStyle: AfTypography.bodySmall.copyWith(
             color: AfColors.textTertiary,

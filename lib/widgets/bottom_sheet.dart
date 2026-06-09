@@ -17,6 +17,9 @@ final ValueNotifier<int> blurSheetCount = ValueNotifier<int>(0);
 final ValueNotifier<VoidCallback?> blurSheetDismiss =
     ValueNotifier<VoidCallback?>(null);
 
+/// Saves the focus node to restore when the current sheet dismisses.
+FocusNode? _previousFocus;
+
 /// Shows a blurred bottom sheet that renders in the current route's overlay.
 Future<T?> showBlurBottomSheet<T>({
   required BuildContext context,
@@ -32,6 +35,9 @@ Future<T?> showBlurBottomSheet<T>({
   final overlay = Navigator.of(context, rootNavigator: true).overlay;
   if (overlay == null) return Future.value(null);
 
+  // Save current focus for restoration when sheet dismisses.
+  _previousFocus = WidgetsBinding.instance.focusManager.primaryFocus;
+
   final completer = Completer<T?>();
   late OverlayEntry entry;
 
@@ -42,6 +48,15 @@ Future<T?> showBlurBottomSheet<T>({
     if (blurSheetDismiss.value == _dismissTop) blurSheetDismiss.value = null;
     entry.remove();
     completer.complete(result);
+
+    // Restore focus to the widget that was focused before the sheet opened.
+    final prev = _previousFocus;
+    _previousFocus = null;
+    if (prev != null && prev.canRequestFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (prev.canRequestFocus) prev.requestFocus();
+      });
+    }
   }
 
   blurSheetDismiss.value = onDismiss;
@@ -222,9 +237,12 @@ class _BlurBottomSheetOverlayState<T> extends State<_BlurBottomSheetOverlay<T>>
                                     ),
                                   ),
                                   const SizedBox(height: AfSpacing.s12),
-                                  ListTileTheme(
-                                    tileColor: Colors.transparent,
-                                    child: widget.builder(context),
+                                  FocusScope(
+                                    autofocus: true,
+                                    child: ListTileTheme(
+                                      tileColor: Colors.transparent,
+                                      child: widget.builder(context),
+                                    ),
                                   ),
                                 ],
                               ),

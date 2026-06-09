@@ -41,6 +41,7 @@ class SmartPlaylistDetailScreen extends ConsumerWidget {
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(LucideIcons.arrowLeft),
+          tooltip: 'Back',
           onPressed: () => context.pop(),
         ),
         title: Text(

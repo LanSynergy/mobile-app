@@ -71,9 +71,7 @@ class _AudioDeviceDialogContent extends ConsumerWidget {
                   const SizedBox(height: AfSpacing.s8),
                   if (devices.isEmpty)
                     Padding(
-                      padding: const EdgeInsets.all(
-                        AfSpacing.gutterGenerous,
-                      ),
+                      padding: const EdgeInsets.all(AfSpacing.gutterGenerous),
                       child: Text(
                         'No audio devices found.\nStart playback first.',
                         style: AfTypography.bodyMedium.copyWith(
@@ -91,20 +89,14 @@ class _AudioDeviceDialogContent extends ConsumerWidget {
                       return ListTile(
                         leading: _iconForDevice(
                           deviceLabel,
-                          color: isActive
-                              ? spectral
-                              : AfColors.textSecondary,
+                          color: isActive ? spectral : AfColors.textSecondary,
                         ),
                         title: Text(
                           deviceLabel,
                           style: AfTypography.bodyMedium,
                         ),
                         trailing: isActive
-                            ? Icon(
-                                LucideIcons.check,
-                                color: spectral,
-                                size: 20,
-                              )
+                            ? Icon(LucideIcons.check, color: spectral, size: 20)
                             : null,
                         onTap: () async {
                           await svc.setAudioDevice(device);

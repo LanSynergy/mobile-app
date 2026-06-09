@@ -46,20 +46,17 @@ class ArtistsTab extends ConsumerWidget {
               crossAxisSpacing: AfSpacing.s12,
               mainAxisSpacing: AfSpacing.s12,
             ),
-            delegate: SliverChildBuilderDelegate(
-              (context, i) {
-                final a = list[i];
-                return Tile(
-                  title: a.name,
-                  subtitle: a.statLine,
-                  variant: TileVariant.artist,
-                  imageUrl: a.imageUrl,
-                  size: double.infinity,
-                  onTap: () => context.push('/artist/${a.id}'),
-                );
-              },
-              childCount: list.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, i) {
+              final a = list[i];
+              return Tile(
+                title: a.name,
+                subtitle: a.statLine,
+                variant: TileVariant.artist,
+                imageUrl: a.imageUrl,
+                size: double.infinity,
+                onTap: () => context.push('/artist/${a.id}'),
+              );
+            }, childCount: list.length),
           ),
         );
       },

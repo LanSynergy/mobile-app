@@ -28,7 +28,7 @@ abstract final class AfColors {
   // ---------------------------------------------------------------------------
   static const textPrimary = Color(0xFFE8ECF2);
   static const textSecondary = Color(0xFF9AA0AD);
-  static const textTertiary = Color(0xFF6B7280);
+  static const textTertiary = Color(0xFF7C8290);
   static const textDisabled = Color(0xFF4A4E58);
   static const textOnPrimary = Color(0xFFF0F4F8);
   static const textLink = Color(0xFF5B9BD5);
@@ -72,6 +72,61 @@ abstract final class AfColors {
   static const glassBorder = Color(0x0FFFFFFF); // white @ 6%
   static const glassBorderStrong = Color(0x14FFFFFF); // white @ 8%
   static const glassBorderEmphasis = Color(0x1AFFFFFF); // white @ 10%
+}
+
+/// Genre-specific gradient pairs for genre cards.
+///
+/// Each genre maps to a [List<Color>] of 2 stops for a [LinearGradient].
+/// These are curated to feel distinct while staying within the dark moody
+/// palette. Fallback uses the server-provided tint via [parseHexColor].
+abstract final class AfGenreColors {
+  static const List<Color> electronic = [Color(0xFF9C27B0), Color(0xFF673AB7)];
+  static const List<Color> rock = [Color(0xFFF44336), Color(0xFFFF5722)];
+  static const List<Color> hipHop = [Color(0xFFFF9800), Color(0xFFFFC107)];
+  static const List<Color> rap = [Color(0xFFFF9800), Color(0xFFFFC107)];
+  static const List<Color> pop = [Color(0xFFE91E63), Color(0xFFFF4081)];
+  static const List<Color> jazz = [Color(0xFF009688), Color(0xFF00BCD4)];
+  static const List<Color> classical = [Color(0xFF3F51B5), Color(0xFF2196F3)];
+  static const List<Color> rnb = [Color(0xFF673AB7), Color(0xFF9C27B0)];
+  static const List<Color> country = [Color(0xFF795548), Color(0xFFFF9800)];
+  static const List<Color> metal = [Color(0xFF9E9E9E), Color(0xFF607D8B)];
+  static const List<Color> indie = [Color(0xFF4CAF50), Color(0xFF009688)];
+  static const List<Color> alternative = [Color(0xFF00BCD4), Color(0xFF2196F3)];
+  static const List<Color> soul = [Color(0xFFFFC107), Color(0xFFFF9800)];
+  static const List<Color> funk = [Color(0xFFE91E63), Color(0xFF673AB7)];
+  static const List<Color> reggae = [Color(0xFF4CAF50), Color(0xFFFFEB3B)];
+  static const List<Color> blues = [Color(0xFF2196F3), Color(0xFF3F51B5)];
+  static const List<Color> folk = [Color(0xFF795548), Color(0xFF4CAF50)];
+  static const List<Color> ambient = [Color(0xFF607D8B), Color(0xFF009688)];
+  static const List<Color> techno = [Color(0xFF00BCD4), Color(0xFF2196F3)];
+  static const List<Color> house = [Color(0xFF673AB7), Color(0xFF9C27B0)];
+  static const List<Color> disco = [Color(0xFFE91E63), Color(0xFFFF9800)];
+
+  /// Returns the gradient for [genre], or `null` if unknown.
+  static List<Color>? of(String genre) => switch (genre.toLowerCase()) {
+    'electronic' => electronic,
+    'rock' => rock,
+    'hip hop' => hipHop,
+    'rap' => rap,
+    'pop' => pop,
+    'jazz' => jazz,
+    'classical' => classical,
+    'r&b' || 'rnb' => rnb,
+    'country' => country,
+    'metal' => metal,
+    'indie' => indie,
+    'alternative' => alternative,
+    'soul' => soul,
+    'funk' => funk,
+    'reggae' => reggae,
+    'blues' => blues,
+    'folk' => folk,
+    'ambient' => ambient,
+    'techno' => techno,
+    'house' => house,
+    'disco' => disco,
+    _ => null,
+  };
 }
 
 /// Spectral accent palette, extracted from current artwork at runtime.

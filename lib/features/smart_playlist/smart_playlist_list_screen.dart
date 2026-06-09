@@ -28,6 +28,7 @@ class SmartPlaylistListScreen extends ConsumerWidget {
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(LucideIcons.arrowLeft),
+          tooltip: 'Back',
           onPressed: () => context.pop(),
         ),
         title: Text('Smart Playlists', style: AfTypography.display),
@@ -37,6 +38,7 @@ class SmartPlaylistListScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/smart-playlist/new'),
         backgroundColor: spectral,
+        tooltip: 'Create smart playlist',
         child: const Icon(LucideIcons.plus, color: AfColors.surfaceCanvas),
       ),
       body: playlistsAsync.when(

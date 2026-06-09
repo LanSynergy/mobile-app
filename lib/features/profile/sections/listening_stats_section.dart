@@ -307,9 +307,9 @@ class _StatsPillBarState extends ConsumerState<_StatsPillBar>
                       return Expanded(
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
-                          onTap: () => ref
-                              .read(statsTabProvider.notifier)
-                              .state = _tabs[i],
+                          onTap: () =>
+                              ref.read(statsTabProvider.notifier).state =
+                                  _tabs[i],
                           child: Container(
                             height: 44,
                             alignment: Alignment.center,

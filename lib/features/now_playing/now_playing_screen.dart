@@ -124,18 +124,20 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                   height:
                       MediaQuery.of(context).size.height * _contentHeightRatio,
                   child: RepaintBoundary(
-                    child: IgnorePointer(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              AfColors.surfaceCanvas.withValues(alpha: 0.6),
-                              AfColors.surfaceCanvas,
-                            ],
-                            stops: const [0.0, 0.5, 1.0],
+                    child: ExcludeSemantics(
+                      child: IgnorePointer(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                AfColors.surfaceCanvas.withValues(alpha: 0.6),
+                                AfColors.surfaceCanvas,
+                              ],
+                              stops: const [0.0, 0.5, 1.0],
+                            ),
                           ),
                         ),
                       ),

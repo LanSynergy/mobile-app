@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../core/backend/music_backend.dart';
 import '../core/jellyfin/models/items.dart';
@@ -247,6 +248,7 @@ class _SaveToPlaylistSheetState extends ConsumerState<SaveToPlaylistSheet> {
                       controller: _newNameCtl,
                       autofocus: true,
                       decoration: const InputDecoration(
+                        labelText: 'Playlist name',
                         hintText: 'Playlist name',
                       ),
                       onSubmitted: (_) => _createAndAdd(),
@@ -262,7 +264,7 @@ class _SaveToPlaylistSheetState extends ConsumerState<SaveToPlaylistSheet> {
             )
           else
             ListTile(
-              leading: const Icon(Icons.add_rounded, color: AfColors.indigo300),
+              leading: const Icon(LucideIcons.plus, color: AfColors.indigo300),
               title: Text(
                 'New playlist',
                 style: AfTypography.bodyMedium.copyWith(
@@ -294,7 +296,7 @@ class _SaveToPlaylistSheetState extends ConsumerState<SaveToPlaylistSheet> {
                       final p = _playlists![i];
                       return ListTile(
                         leading: const Icon(
-                          Icons.playlist_play_rounded,
+                          LucideIcons.listMusic,
                           color: AfColors.indigo300,
                         ),
                         title: Text(p.name, style: AfTypography.bodyMedium),

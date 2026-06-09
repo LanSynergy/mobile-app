@@ -106,6 +106,7 @@ class EqPresetManager {
             controller: controller,
             autofocus: true,
             decoration: const InputDecoration(
+              labelText: 'Preset name',
               hintText: 'Preset name',
               border: OutlineInputBorder(),
             ),
@@ -157,15 +158,18 @@ class EqPresetManager {
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancel'),
               ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  onConfirm();
-                },
-                child: Text(
-                  'Delete',
-                  style: AfTypography.bodyMedium.copyWith(
-                    color: AfColors.semanticError,
+              Focus(
+                autofocus: true,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    onConfirm();
+                  },
+                  child: Text(
+                    'Delete',
+                    style: AfTypography.bodyMedium.copyWith(
+                      color: AfColors.semanticError,
+                    ),
                   ),
                 ),
               ),

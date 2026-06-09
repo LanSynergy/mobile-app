@@ -67,12 +67,15 @@ Future<bool> confirmDeletePlaylist(
                   onPressed: () => dismiss(false),
                   child: const Text('Cancel'),
                 ),
-                TextButton(
-                  onPressed: () => dismiss(true),
-                  child: Text(
-                    'Delete',
-                    style: AfTypography.bodyMedium.copyWith(
-                      color: AfColors.semanticError,
+                Focus(
+                  autofocus: true,
+                  child: TextButton(
+                    onPressed: () => dismiss(true),
+                    child: Text(
+                      'Delete',
+                      style: AfTypography.bodyMedium.copyWith(
+                        color: AfColors.semanticError,
+                      ),
                     ),
                   ),
                 ),
@@ -102,7 +105,10 @@ Future<String?> showRenamePlaylistDialog(
           TextField(
             controller: ctl,
             autofocus: true,
-            decoration: const InputDecoration(hintText: 'Playlist name'),
+            decoration: const InputDecoration(
+              labelText: 'Playlist name',
+              hintText: 'Playlist name',
+            ),
             onSubmitted: (v) => dismiss(v),
           ),
           const SizedBox(height: AfSpacing.s24),

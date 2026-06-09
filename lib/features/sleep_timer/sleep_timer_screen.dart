@@ -137,6 +137,7 @@ class _SleepTimerScreenState extends ConsumerState<SleepTimerScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(LucideIcons.x),
+          tooltip: 'Close',
           onPressed: () => Navigator.maybePop(context),
         ),
         title: Text('Sleep timer', style: AfTypography.display),

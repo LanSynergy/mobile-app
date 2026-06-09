@@ -99,27 +99,30 @@ class _BlurDialogOverlay<T> extends StatelessWidget {
                       opacity: opacity,
                       child: GestureDetector(
                         onTap: () {},
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AfSpacing.s24,
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.all(AfSpacing.s16),
-                            decoration: BoxDecoration(
-                              color: AfColors.surfaceRaised.withValues(
-                                alpha: 0.85,
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                _borderRadius,
-                              ),
-                              border: Border.all(
-                                color: AfColors.glassBorderEmphasis,
-                                width: 0.5,
-                              ),
+                        child: FocusScope(
+                          autofocus: true,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AfSpacing.s24,
                             ),
-                            child: ListTileTheme(
-                              tileColor: Colors.transparent,
-                              child: child,
+                            child: Container(
+                              padding: const EdgeInsets.all(AfSpacing.s16),
+                              decoration: BoxDecoration(
+                                color: AfColors.surfaceRaised.withValues(
+                                  alpha: 0.85,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  _borderRadius,
+                                ),
+                                border: Border.all(
+                                  color: AfColors.glassBorderEmphasis,
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: ListTileTheme(
+                                tileColor: Colors.transparent,
+                                child: child,
+                              ),
                             ),
                           ),
                         ),

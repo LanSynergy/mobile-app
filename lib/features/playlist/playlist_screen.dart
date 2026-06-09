@@ -57,6 +57,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
         backgroundColor: AfColors.surfaceCanvas,
         leading: IconButton(
           icon: const Icon(LucideIcons.arrowLeft),
+          tooltip: 'Back',
           onPressed: () => context.pop(),
         ),
         title: Text('Playlist', style: AfTypography.titleSmall),
@@ -64,6 +65,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
           if (backend != null)
             PopupMenuButton<_PlaylistAction>(
               icon: const Icon(LucideIcons.ellipsisVertical),
+              tooltip: 'More options',
               onSelected: (action) =>
                   _handleAction(context, action, detailAsync.valueOrNull),
               itemBuilder: (context) => [

@@ -21,6 +21,7 @@ class CastPickerScreen extends ConsumerWidget {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(LucideIcons.x),
+          tooltip: 'Close',
           onPressed: () => Navigator.maybePop(context),
         ),
         title: Text('Output', style: AfTypography.titleMedium),

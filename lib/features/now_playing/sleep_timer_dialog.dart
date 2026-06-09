@@ -217,6 +217,7 @@ class SleepTimerDialogContentState
                     autofocus: true,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
+                      labelText: 'Minutes',
                       hintText: 'Minutes',
                       isDense: true,
                     ),

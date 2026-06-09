@@ -46,6 +46,7 @@ class ImportM3UAction {
               maxLines: 8,
               style: AfTypography.bodyMedium,
               decoration: InputDecoration(
+                labelText: 'M3U playlist data',
                 hintText: '#EXTM3U\n#EXTINF:180,Artist - Title\n...',
                 hintStyle: AfTypography.bodySmall.copyWith(
                   color: AfColors.textDisabled,

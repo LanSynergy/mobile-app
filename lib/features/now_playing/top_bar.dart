@@ -127,6 +127,7 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
                             color: AfColors.textPrimary,
                             size: 22,
                           ),
+                          tooltip: 'Close',
                           onPressed: () => context.pop(),
                         ),
                         const SizedBox(width: AfSpacing.s8),

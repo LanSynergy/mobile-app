@@ -121,14 +121,19 @@ class SettingsScreen extends ConsumerWidget {
                                           Navigator.pop(context, false),
                                       child: const Text('Cancel'),
                                     ),
-                                    ElevatedButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AfColors.semanticError,
-                                        foregroundColor: AfColors.textOnPrimary,
+                                    Focus(
+                                      autofocus: true,
+                                      child: ElevatedButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              AfColors.semanticError,
+                                          foregroundColor:
+                                              AfColors.textOnPrimary,
+                                        ),
+                                        child: const Text('Sign out'),
                                       ),
-                                      child: const Text('Sign out'),
                                     ),
                                   ],
                                 ),
@@ -531,13 +536,17 @@ class SettingsScreen extends ConsumerWidget {
                                       Navigator.pop(context, false),
                                   child: const Text('Cancel'),
                                 ),
-                                ElevatedButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AfColors.semanticError,
-                                    foregroundColor: AfColors.textOnPrimary,
+                                Focus(
+                                  autofocus: true,
+                                  child: ElevatedButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AfColors.semanticError,
+                                      foregroundColor: AfColors.textOnPrimary,
+                                    ),
+                                    child: const Text('Clear data'),
                                   ),
-                                  child: const Text('Clear data'),
                                 ),
                               ],
                             ),

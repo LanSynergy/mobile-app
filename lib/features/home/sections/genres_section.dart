@@ -47,30 +47,7 @@ class GenresSection extends ConsumerWidget {
     'disco': LucideIcons.disc,
   };
 
-  static const Map<String, List<Color>> _genreGradients = {
-    'electronic': [Colors.purple, Colors.deepPurple],
-    'rock': [Colors.red, Colors.deepOrange],
-    'hip hop': [Colors.orange, Colors.amber],
-    'rap': [Colors.orange, Colors.amber],
-    'pop': [Colors.pink, Colors.pinkAccent],
-    'jazz': [Colors.teal, Colors.cyan],
-    'classical': [Colors.indigo, Colors.blue],
-    'r&b': [Colors.deepPurple, Colors.purple],
-    'rnb': [Colors.deepPurple, Colors.purple],
-    'country': [Colors.brown, Colors.orange],
-    'metal': [Colors.grey, Colors.blueGrey],
-    'indie': [Colors.green, Colors.teal],
-    'alternative': [Colors.cyan, Colors.blue],
-    'soul': [Colors.amber, Colors.orange],
-    'funk': [Colors.pink, Colors.deepPurple],
-    'reggae': [Colors.green, Colors.yellow],
-    'blues': [Colors.blue, Colors.indigo],
-    'folk': [Colors.brown, Colors.green],
-    'ambient': [Colors.blueGrey, Colors.teal],
-    'techno': [Colors.cyan, Colors.blue],
-    'house': [Colors.deepPurple, Colors.purple],
-    'disco': [Colors.pink, Colors.orange],
-  };
+  // Genre gradients are now in AfGenreColors (design_tokens/colors.dart).
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -119,7 +96,7 @@ class GenresSection extends ConsumerWidget {
                 children: displayGenres.map((g) {
                   final tint = parseHexColor(g.tint);
                   final gradient =
-                      _genreGradients[g.name.toLowerCase()] ??
+                      AfGenreColors.of(g.name) ??
                       [tint, tint.withValues(alpha: 0.7)];
                   final icon =
                       _genreIcons[g.name.toLowerCase()] ?? LucideIcons.music;
@@ -128,9 +105,8 @@ class GenresSection extends ConsumerWidget {
                     label: g.name,
                     icon: icon,
                     gradient: gradient,
-                    onTap: () => context.push(
-                      '/genre/${Uri.encodeComponent(g.name)}',
-                    ),
+                    onTap: () =>
+                        context.push('/genre/${Uri.encodeComponent(g.name)}'),
                   );
                 }).toList(),
               ),

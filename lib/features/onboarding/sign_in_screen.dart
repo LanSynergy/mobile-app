@@ -224,6 +224,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(LucideIcons.arrowLeft),
+          tooltip: 'Back',
           onPressed: () => context.pop(),
         ),
         title: Text('Sign in', style: AfTypography.titleMedium),
@@ -268,9 +269,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   const SizedBox(height: AfSpacing.s24),
                   TextField(
                     controller: _user,
+                    autofocus: true,
                     autocorrect: false,
                     textCapitalization: TextCapitalization.none,
-                    decoration: const InputDecoration(hintText: 'Username'),
+                    decoration: const InputDecoration(
+                      labelText: 'Username',
+                      hintText: 'Username',
+                    ),
                   ),
                   const SizedBox(height: AfSpacing.s12),
                   TextField(
@@ -278,6 +283,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     obscureText: true,
                     autocorrect: false,
                     decoration: InputDecoration(
+                      labelText: _useToken ? 'API token' : 'Password',
                       hintText: _useToken ? 'API token' : 'Password',
                       errorText: _error,
                     ),

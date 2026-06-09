@@ -136,7 +136,8 @@ class AfPlayerService {
       try {
         final devices = _player.state.audioDevices;
         // Restore the user's persisted default device, or fall back to "auto".
-        final savedDeviceName = await PlayerSettingsStore.loadDefaultAudioDevice();
+        final savedDeviceName =
+            await PlayerSettingsStore.loadDefaultAudioDevice();
         if (savedDeviceName != null) {
           final match = devices.where((d) => d.name == savedDeviceName);
           if (match.isNotEmpty) {

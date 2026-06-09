@@ -50,16 +50,18 @@ class HeroAlbumCard extends StatelessWidget {
                 ),
               // Gradient scrim
               Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [
-                        AfColors.surfaceCanvas.withValues(alpha: 0.92),
-                        AfColors.surfaceCanvas.withValues(alpha: 0.40),
-                        Colors.transparent,
-                      ],
+                child: ExcludeSemantics(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [
+                          AfColors.surfaceCanvas.withValues(alpha: 0.92),
+                          AfColors.surfaceCanvas.withValues(alpha: 0.40),
+                          Colors.transparent,
+                        ],
+                      ),
                     ),
                   ),
                 ),
