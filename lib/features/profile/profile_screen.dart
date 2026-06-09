@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/press_scale.dart';
 import 'sections/about_section.dart';
 import 'sections/listening_stats_section.dart';
 import 'sections/profile_header.dart';
@@ -47,6 +49,12 @@ class ProfileScreen extends ConsumerWidget {
     final lastFmUser = ref.watch(lastfmUsernameProvider);
     final isLastFmConnected = lastFmSession.isNotEmpty && lastFmUser.isNotEmpty;
 
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, secondary: s.secondary),
+      ),
+    );
+
     return SafeArea(
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(
@@ -60,13 +68,45 @@ class ProfileScreen extends ConsumerWidget {
                 AfSpacing.s16,
                 AfSpacing.s16,
                 AfSpacing.s16,
-                0,
+                AfSpacing.s12,
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Profile', style: AfTypography.titleLarge),
-                  const SettingsButton(),
+                  Expanded(
+                    child: ShaderMask(
+                      shaderCallback: (bounds) => LinearGradient(
+                        colors: [spectral.primary, spectral.secondary],
+                      ).createShader(bounds),
+                      child: Text(
+                        'Profile',
+                        style: AfTypography.display.copyWith(
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  PressScale(
+                    onTap: () {
+                      // TODO: Navigate to settings
+                    },
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AfColors.glassFill,
+                        borderRadius: AfRadii.borderPill,
+                        border: Border.all(
+                          color: AfColors.glassBorderStrong,
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(
+                        LucideIcons.settings,
+                        color: AfColors.textSecondary,
+                        size: 18,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
