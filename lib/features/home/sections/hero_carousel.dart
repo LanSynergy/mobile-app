@@ -56,9 +56,6 @@ class _HeroAlbumCarouselState extends ConsumerState<HeroAlbumCarousel> {
                     ensureHitTarget: false,
                     onTap: () => context.push('/album/${album.id}'),
                     child: Container(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: AfSpacing.s16,
-                      ),
                       decoration: const BoxDecoration(
                         borderRadius: AfRadii.borderXl,
                       ),
