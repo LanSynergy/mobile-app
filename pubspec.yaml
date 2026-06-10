@@ -27,7 +27,7 @@ dependencies:
   # Imagery
   cached_network_image: 3.4.1
   flutter_cache_manager: 3.4.1
-  flutter_svg: 2.3.0
+  flutter_svg: 2.3.0  # Used for brand logo-mark.svg in welcome_screen.dart
   image_picker: ^1.1.2
 
   # Discovery
@@ -40,7 +40,6 @@ dependencies:
 
   # Fonts
   google_fonts: 6.3.3
-  cupertino_icons: 1.0.9
 
   # Crypto (Subsonic token auth: md5(password + salt))
   crypto: 3.0.7
@@ -82,9 +81,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/brand/logo.svg
     - assets/brand/logo-mark.svg
-    - assets/brand/wordmark.svg
 
 # `google_fonts` ships Inter (variable) and JetBrains Mono via runtime fetch.
 # We configure `flutter_launcher_icons` and `flutter_native_splash` here so
@@ -93,7 +90,7 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/brand/launcher_icon.png"
+  image_path: "assets/brand/launcher_icon.png"  # Generated from launcher_foreground.svg
   adaptive_icon_background: "#251F58"
   adaptive_icon_foreground: "assets/brand/launcher_foreground.png"
   min_sdk_android: 21
@@ -109,7 +106,7 @@ dependency_overrides:
 
 flutter_native_splash:
   color: "#0B0B14"
-  image: "assets/brand/splash.png"
+  image: "assets/brand/splash.png"  # Generated from assets/brand/splash.svg
   android_12:
     color: "#0B0B14"
     image: "assets/brand/splash.png"

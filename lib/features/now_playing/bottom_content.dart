@@ -272,7 +272,7 @@ class MetadataOverlay extends ConsumerWidget {
         ),
         const SizedBox(width: AfSpacing.s12),
         // Heart toggle
-        FavoriteHeartButton(track: track, size: 22),
+        FavoriteHeartButton(track: track, size: AfIconSizes.sm),
         // Dynamic badge: sleep timer countdown or quality
         if (sleepRemaining != null) ...[
           const SizedBox(width: AfSpacing.s4),
@@ -324,7 +324,7 @@ class MetadataOverlay extends ConsumerWidget {
         IconButton(
           icon: const Icon(
             LucideIcons.ellipsisVertical,
-            size: 22,
+            size: AfIconSizes.sm,
             color: AfColors.textSecondary,
           ),
           tooltip: 'More options',

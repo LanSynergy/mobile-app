@@ -50,6 +50,9 @@ class _AetherfinRouter extends StatelessWidget {
           routerConfig: appRouter,
           builder: (context, child) {
             final mq = MediaQuery.of(context);
+            // Clamp text scaler to prevent accessibility blowout on large fonts.
+            // Range 0.85–1.3 preserves readability while preventing layout overflow.
+            // Scaled typography variants (AfTypography.*Scaled) handle this gracefully.
             final clamped = mq.textScaler.clamp(
               minScaleFactor: 0.85,
               maxScaleFactor: 1.3,

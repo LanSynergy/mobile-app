@@ -191,6 +191,17 @@ class Spectral {
   final Color textOnPrimary;
 
   /// Default — used until artwork is parsed. Matches AfColors defaults.
+  ///
+  /// This is the initial color palette shown before any track artwork is loaded.
+  /// It uses the ocean-blue accent colors from [AfColors] to maintain visual
+  /// consistency. Once artwork is parsed by `spectral_extractor.dart`, the
+  /// palette transitions to artwork-derived colors via [AnimatedSpectralScope].
+  ///
+  /// The fallback ensures the app always has a valid color palette, even during:
+  /// - Initial boot before first track plays
+  /// - Network errors preventing artwork download
+  /// - Local files without embedded artwork
+  /// - Queue transitions between tracks
   static const fallback = Spectral(
     energy: Color(0xFF5B9BD5),
     shadow: Color(0xFF0D1B2A),

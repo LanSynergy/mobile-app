@@ -2,8 +2,8 @@ import 'package:flutter/animation.dart';
 
 /// Aetherfin motion easing curves — Dark Moody edition.
 ///
-/// FIVE curves only. If you need a sixth, the design system has the
-/// right one — search again.
+/// EIGHT curves total. The original design spec called for five core curves,
+/// plus three standard Flutter curves for common UI patterns.
 ///
 /// Audio-coupled animations (waveform, progress ring, lyric scroll) use
 /// `linear` ALWAYS. Easing audio time lies about playback position.

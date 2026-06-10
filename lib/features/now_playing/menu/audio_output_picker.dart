@@ -109,23 +109,23 @@ class OutputDialogContent extends ConsumerWidget {
   Widget iconForDevice(String name, {required Color color}) {
     final n = name.toLowerCase();
     if (n.contains('bluetooth') || n.contains('bt')) {
-      return Icon(LucideIcons.bluetooth, color: color, size: 22);
+      return Icon(LucideIcons.bluetooth, color: color, size: AfIconSizes.sm);
     }
     if (n.contains('headphone') ||
         n.contains('headset') ||
         n.contains('earphone') ||
         n.contains('airpod')) {
-      return Icon(LucideIcons.headphones, color: color, size: 22);
+      return Icon(LucideIcons.headphones, color: color, size: AfIconSizes.sm);
     }
     if (n.contains('speaker')) {
-      return Icon(LucideIcons.speaker, color: color, size: 22);
+      return Icon(LucideIcons.speaker, color: color, size: AfIconSizes.sm);
     }
     if (n.contains('hdmi')) {
-      return Icon(LucideIcons.monitor, color: color, size: 22);
+      return Icon(LucideIcons.monitor, color: color, size: AfIconSizes.sm);
     }
     if (n.contains('usb')) {
-      return Icon(LucideIcons.usb, color: color, size: 22);
+      return Icon(LucideIcons.usb, color: color, size: AfIconSizes.sm);
     }
-    return Icon(LucideIcons.smartphone, color: color, size: 22);
+    return Icon(LucideIcons.smartphone, color: color, size: AfIconSizes.sm);
   }
 }

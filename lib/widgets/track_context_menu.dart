@@ -330,7 +330,11 @@ class _MenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: iconColor ?? AfColors.textSecondary, size: 22),
+      leading: Icon(
+        icon,
+        color: iconColor ?? AfColors.textSecondary,
+        size: AfIconSizes.sm,
+      ),
       title: Text(label, style: AfTypography.bodyMedium),
       onTap: onTap,
       dense: true,

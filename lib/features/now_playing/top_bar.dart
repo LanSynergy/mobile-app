@@ -125,7 +125,7 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
                           icon: const Icon(
                             LucideIcons.chevronDown,
                             color: AfColors.textPrimary,
-                            size: 22,
+                            size: AfIconSizes.sm,
                           ),
                           tooltip: 'Close',
                           onPressed: () => context.pop(),

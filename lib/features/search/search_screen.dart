@@ -141,7 +141,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   prefixIcon: Icon(
                     LucideIcons.search,
                     color: AfColors.textTertiary,
-                    size: 22,
+                    size: AfIconSizes.sm,
                   ),
                 ),
                 onChanged: _onChanged,

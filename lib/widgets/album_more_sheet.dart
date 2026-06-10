@@ -177,7 +177,7 @@ class _MenuItem extends StatelessWidget {
         color: enabled
             ? AfColors.textSecondary
             : AfColors.textTertiary.withValues(alpha: 0.4),
-        size: 22,
+        size: AfIconSizes.sm,
       ),
       title: Text(
         label,

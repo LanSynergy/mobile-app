@@ -161,7 +161,7 @@ class _AlbumActionRowState extends ConsumerState<AlbumActionRow> {
                 icon: const Icon(
                   LucideIcons.play,
                   color: AfColors.textOnPrimary,
-                  size: 22,
+                  size: AfIconSizes.sm,
                 ),
                 label: const Text('Play All'),
               ),
@@ -209,7 +209,11 @@ class IconCircle extends StatelessWidget {
           color: AfColors.surfaceRaised,
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, size: 22, color: color ?? AfColors.textPrimary),
+        child: Icon(
+          icon,
+          size: AfIconSizes.sm,
+          color: color ?? AfColors.textPrimary,
+        ),
       ),
     );
   }
