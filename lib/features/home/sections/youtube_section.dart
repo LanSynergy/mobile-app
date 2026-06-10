@@ -124,9 +124,9 @@ class _YouTubeHomeViewState extends ConsumerState<YouTubeHomeView> {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(
                           AfSpacing.s16,
+                          AfSpacing.s4,
                           AfSpacing.s16,
-                          AfSpacing.s16,
-                          AfSpacing.s12,
+                          AfSpacing.s2,
                         ),
                         child: Text(
                           section.title,
@@ -140,7 +140,6 @@ class _YouTubeHomeViewState extends ConsumerState<YouTubeHomeView> {
                         YouTubeSongGrid(items: section.items)
                       else
                         YouTubeHomeTileList(items: section.items),
-                      const SizedBox(height: AfSpacing.s16),
                     ],
                   ]),
                 );
