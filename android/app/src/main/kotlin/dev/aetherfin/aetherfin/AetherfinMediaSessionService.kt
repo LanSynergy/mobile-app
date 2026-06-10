@@ -529,6 +529,42 @@ class AetherfinMediaSessionService : Service() {
         }
         builder.addAction(android.R.drawable.ic_media_next, "Next", nextIntent)
 
+        // 5. Shuffle Action
+        val shuffleIcon = if (shuffleEnabled) R.drawable.ic_shuffle_on else R.drawable.ic_shuffle_off
+        val shuffleLabel = if (shuffleEnabled) "Shuffle On" else "Shuffle Off"
+        val shuffleIntent = PendingIntent.getService(
+            this,
+            0,
+            Intent(this, AetherfinMediaSessionService::class.java).apply {
+                action = ACTION_TOGGLE_SHUFFLE
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        builder.addAction(NotificationCompat.Action(shuffleIcon, shuffleLabel, shuffleIntent))
+
+        // 6. Repeat Action
+        val repeatIcon = when (loopMode) {
+            "one" -> R.drawable.ic_repeat_one
+            "all" -> R.drawable.ic_repeat_all
+            "ntimes" -> R.drawable.ic_repeat_ntimes
+            else -> R.drawable.ic_repeat_off
+        }
+        val repeatLabel = when (loopMode) {
+            "one" -> "Repeat One"
+            "all" -> "Repeat All"
+            "ntimes" -> "Repeat 2"
+            else -> "Repeat Off"
+        }
+        val repeatIntent = PendingIntent.getService(
+            this,
+            0,
+            Intent(this, AetherfinMediaSessionService::class.java).apply {
+                action = ACTION_TOGGLE_REPEAT
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        builder.addAction(NotificationCompat.Action(repeatIcon, repeatLabel, repeatIntent))
+
         val style = androidx.media.app.NotificationCompat.MediaStyle()
             .setMediaSession(mediaSession?.sessionToken)
             .setShowActionsInCompactView(0, 1, 2)
