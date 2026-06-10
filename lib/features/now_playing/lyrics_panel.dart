@@ -83,7 +83,8 @@ class _LyricsListState extends ConsumerState<LyricsList> {
     }
   }
 
-  /// Scroll the list so the active line sits in the vertical centre.
+  /// Scroll the list so the active line sits in the vertical centre,
+  /// but never below the centre — even when near the end of the list.
   void _scrollToActive(int activeIndex, int lineCount) {
     if (!widget.scrollController.hasClients) {
       _lastScrolledIndex = -1;
@@ -104,12 +105,10 @@ class _LyricsListState extends ConsumerState<LyricsList> {
     }
 
     const paddingTop = AfSpacing.s16;
-    final target =
-        paddingTop +
-        (activeIndex * _rowHeight) -
-        (viewportHeight / 2) +
-        (_rowHeight / 2);
-    final clamped = target.clamp(minScroll, maxScroll);
+    final activeLinePos = paddingTop + activeIndex * _rowHeight;
+    final idealCenter = activeLinePos - (viewportHeight / 2) + (_rowHeight / 2);
+    final maxSafe = activeLinePos - (viewportHeight / 2);
+    final clamped = idealCenter.clamp(minScroll, maxScroll < maxSafe ? maxScroll : maxSafe);
 
     widget.scrollController.animateTo(
       clamped,
