@@ -93,85 +93,90 @@ class CompactTrackRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PressScale(
-      ensureHitTarget: true,
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Container(
-        margin: const EdgeInsets.symmetric(
-          horizontal: AfSpacing.s16,
-          vertical: AfSpacing.s4,
-        ),
-        padding: const EdgeInsets.all(AfSpacing.s12),
-        decoration: BoxDecoration(
-          borderRadius: AfRadii.borderMd,
-          color: AfColors.glassFillSubtle,
-          border: Border.all(
-            color: isActive
-                ? accent.withValues(alpha: 0.3)
-                : AfColors.glassBorder,
-            width: 1,
+    return Semantics(
+      button: true,
+      label: '${track.title} by ${track.artistName}',
+      hint: 'Double tap to play',
+      child: FocusPressScale(
+        ensureHitTarget: true,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Container(
+          margin: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.s16,
+            vertical: AfSpacing.s4,
           ),
-        ),
-        child: Row(
-          children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Artwork(
-                  url: track.imageUrl,
-                  size: 48,
-                  radius: AfRadii.borderSm,
-                ),
-                if (isActive && isBuffering)
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: AfColors.surfaceCanvas.withValues(alpha: 0.5),
-                      borderRadius: AfRadii.borderSm,
-                    ),
-                    child: const Center(
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AfColors.textPrimary,
+          padding: const EdgeInsets.all(AfSpacing.s12),
+          decoration: BoxDecoration(
+            borderRadius: AfRadii.borderMd,
+            color: AfColors.glassFillSubtle,
+            border: Border.all(
+              color: isActive
+                  ? accent.withValues(alpha: 0.3)
+                  : AfColors.glassBorder,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Artwork(
+                    url: track.imageUrl,
+                    size: 48,
+                    radius: AfRadii.borderSm,
+                  ),
+                  if (isActive && isBuffering)
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: AfColors.surfaceCanvas.withValues(alpha: 0.5),
+                        borderRadius: AfRadii.borderSm,
+                      ),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AfColors.textPrimary,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-            const SizedBox(width: AfSpacing.s12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    track.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AfTypography.bodyMedium.copyWith(
-                      color: isActive ? accent : AfColors.textPrimary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: AfSpacing.s4),
-                  Text(
-                    track.artistName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AfTypography.bodySmall.copyWith(
-                      color: AfColors.textSecondary,
-                    ),
-                  ),
                 ],
               ),
-            ),
-            FavoriteHeartButton(track: track, size: 16),
-          ],
+              const SizedBox(width: AfSpacing.s12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      track.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AfTypography.bodyMedium.copyWith(
+                        color: isActive ? accent : AfColors.textPrimary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: AfSpacing.s4),
+                    Text(
+                      track.artistName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AfTypography.bodySmall.copyWith(
+                        color: AfColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              FavoriteHeartButton(track: track, size: 16),
+            ],
+          ),
         ),
       ),
     );

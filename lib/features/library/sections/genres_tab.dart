@@ -41,8 +41,8 @@ class GenresTab extends ConsumerWidget {
             AfSpacing.bottomInsetWithMiniAndNav,
           ),
           sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: AfLayout.genreGridMaxTileExtent,
               mainAxisExtent: 96,
               crossAxisSpacing: AfSpacing.s12,
               mainAxisSpacing: AfSpacing.s12,

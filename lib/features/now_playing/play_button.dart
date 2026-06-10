@@ -88,7 +88,6 @@ class _PlayButtonState extends ConsumerState<PlayButton>
         animation: Listenable.merge([_scaleController, _pulseController]),
         builder: (context, child) {
           final pulseBlur = 24.0 + 8.0 * _pulseAnimation.value;
-          final pulseOuterBlur = 48.0 + 8.0 * _pulseAnimation.value;
 
           return Transform.scale(
             scale: _scaleAnimation.value,
@@ -103,11 +102,6 @@ class _PlayButtonState extends ConsumerState<PlayButton>
                     color: widget.accent.withValues(alpha: 0.40),
                     blurRadius: pulseBlur,
                     spreadRadius: 2,
-                  ),
-                  BoxShadow(
-                    color: widget.accent.withValues(alpha: 0.15),
-                    blurRadius: pulseOuterBlur,
-                    spreadRadius: 4,
                   ),
                 ],
               ),

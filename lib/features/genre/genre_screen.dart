@@ -243,8 +243,9 @@ class _GenreScreenState extends ConsumerState<GenreScreen> {
                       ),
                       sliver: SliverGrid(
                         gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent:
+                                  AfLayout.albumGridMaxTileExtent,
                               mainAxisExtent: 220,
                               crossAxisSpacing: AfSpacing.s16,
                               mainAxisSpacing: AfSpacing.s16,

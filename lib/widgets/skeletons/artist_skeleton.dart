@@ -46,6 +46,7 @@ class ArtistSkeleton extends StatelessWidget {
           ),
           Padding(
             padding: AfSpacing.pageHorizontal,
+            // 3 columns matching ArtistsTab grid layout
             child: GridView.count(
               crossAxisCount: 3,
               shrinkWrap: true,

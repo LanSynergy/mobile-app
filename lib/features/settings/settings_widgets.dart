@@ -88,66 +88,70 @@ class SettingsTile extends ConsumerWidget {
     final effectiveIconColor = danger
         ? AfColors.semanticError
         : (iconColor ?? spectral);
-    return PressScale(
-      onTap: onTap,
-      ensureHitTarget: true,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: AfSpacing.minHitTarget),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AfSpacing.s16,
-            vertical: AfSpacing.s12,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  color: AfColors.surfaceHigh,
-                  borderRadius: AfRadii.borderSm,
+    return Semantics(
+      label: title,
+      button: true,
+      child: PressScale(
+        onTap: onTap,
+        ensureHitTarget: true,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AfSpacing.minHitTarget),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.s16,
+              vertical: AfSpacing.s12,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    color: AfColors.surfaceHigh,
+                    borderRadius: AfRadii.borderSm,
+                  ),
+                  child: Icon(icon, size: 16, color: effectiveIconColor),
                 ),
-                child: Icon(icon, size: 16, color: effectiveIconColor),
-              ),
-              const SizedBox(width: AfSpacing.s12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: AfTypography.bodyMedium.copyWith(
-                        color: danger
-                            ? AfColors.semanticError
-                            : AfColors.textPrimary,
-                      ),
-                    ),
-                    if (subtitle != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AfSpacing.s2),
-                        child: Text(
-                          subtitle!,
-                          style: AfTypography.bodySmall.copyWith(
-                            color: AfColors.textTertiary,
-                          ),
+                const SizedBox(width: AfSpacing.s12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: AfTypography.bodyMedium.copyWith(
+                          color: danger
+                              ? AfColors.semanticError
+                              : AfColors.textPrimary,
                         ),
                       ),
-                  ],
+                      if (subtitle != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: AfSpacing.s2),
+                          child: Text(
+                            subtitle!,
+                            style: AfTypography.bodySmall.copyWith(
+                              color: AfColors.textTertiary,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              if (trailing != null) ...[
-                const SizedBox(width: AfSpacing.s8),
-                trailing!,
-              ] else if (onTap != null) ...[
-                const SizedBox(width: AfSpacing.s8),
-                const Icon(
-                  LucideIcons.chevronRight,
-                  size: 16,
-                  color: AfColors.textDisabled,
-                ),
+                if (trailing != null) ...[
+                  const SizedBox(width: AfSpacing.s8),
+                  trailing!,
+                ] else if (onTap != null) ...[
+                  const SizedBox(width: AfSpacing.s8),
+                  const Icon(
+                    LucideIcons.chevronRight,
+                    size: 16,
+                    color: AfColors.textDisabled,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -178,55 +182,60 @@ class SettingsSwitchTile extends ConsumerWidget {
       currentSpectralProvider.select((s) => s.primary),
     );
     final effectiveIconColor = iconColor ?? spectral;
-    return PressScale(
-      onTap: () => onChanged(!value),
-      ensureHitTarget: true,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: AfSpacing.minHitTarget),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AfSpacing.s16,
-            vertical: AfSpacing.s12,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  color: AfColors.surfaceHigh,
-                  borderRadius: AfRadii.borderSm,
+    return Semantics(
+      label: title,
+      toggled: value,
+      button: true,
+      child: PressScale(
+        onTap: () => onChanged(!value),
+        ensureHitTarget: true,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AfSpacing.minHitTarget),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.s16,
+              vertical: AfSpacing.s12,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    color: AfColors.surfaceHigh,
+                    borderRadius: AfRadii.borderSm,
+                  ),
+                  child: Icon(icon, size: 16, color: effectiveIconColor),
                 ),
-                child: Icon(icon, size: 16, color: effectiveIconColor),
-              ),
-              const SizedBox(width: AfSpacing.s12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(title, style: AfTypography.bodyMedium),
-                    if (subtitle != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AfSpacing.s2),
-                        child: Text(
-                          subtitle!,
-                          style: AfTypography.bodySmall.copyWith(
-                            color: AfColors.textTertiary,
+                const SizedBox(width: AfSpacing.s12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(title, style: AfTypography.bodyMedium),
+                      if (subtitle != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: AfSpacing.s2),
+                          child: Text(
+                            subtitle!,
+                            style: AfTypography.bodySmall.copyWith(
+                              color: AfColors.textTertiary,
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: AfSpacing.s8),
-              Switch.adaptive(
-                value: value,
-                onChanged: onChanged,
-                activeThumbColor: AfColors.textOnPrimary,
-                activeTrackColor: spectral,
-              ),
-            ],
+                const SizedBox(width: AfSpacing.s8),
+                Switch.adaptive(
+                  value: value,
+                  onChanged: onChanged,
+                  activeThumbColor: AfColors.textOnPrimary,
+                  activeTrackColor: spectral,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -382,50 +391,56 @@ class OptionTile extends ConsumerWidget {
     final spectral = ref.watch(
       currentSpectralProvider.select((s) => s.primary),
     );
-    return PressScale(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AfSpacing.gutterGenerous,
-          vertical: AfSpacing.s12,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 3,
-              height: subtitle != null ? 28 : 20,
-              decoration: BoxDecoration(
-                color: isActive ? spectral : Colors.transparent,
-                borderRadius: BorderRadius.circular(1.5),
+    return Semantics(
+      label: label,
+      button: true,
+      child: PressScale(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.gutterGenerous,
+            vertical: AfSpacing.s12,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 3,
+                height: subtitle != null ? 28 : 20,
+                decoration: BoxDecoration(
+                  color: isActive ? spectral : Colors.transparent,
+                  borderRadius: BorderRadius.circular(1.5),
+                ),
               ),
-            ),
-            const SizedBox(width: AfSpacing.s12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label,
-                    style: AfTypography.bodyMedium.copyWith(
-                      color: isActive ? spectral : AfColors.textPrimary,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: AfSpacing.s2),
-                      child: Text(
-                        subtitle!,
-                        style: AfTypography.bodySmall.copyWith(
-                          color: AfColors.textTertiary,
-                        ),
+              const SizedBox(width: AfSpacing.s12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: AfTypography.bodyMedium.copyWith(
+                        color: isActive ? spectral : AfColors.textPrimary,
+                        fontWeight: isActive
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                       ),
                     ),
-                ],
+                    if (subtitle != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AfSpacing.s2),
+                        child: Text(
+                          subtitle!,
+                          style: AfTypography.bodySmall.copyWith(
+                            color: AfColors.textTertiary,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

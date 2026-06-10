@@ -129,7 +129,8 @@ class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {
       }
 
       // Check for required auth cookies
-      final hasSapisid = cookies.containsKey('SAPISID') ||
+      final hasSapisid =
+          cookies.containsKey('SAPISID') ||
           cookies.containsKey('__Secure-3PAPISID');
       final hasLoginInfo = cookies.containsKey('LOGIN_INFO');
       final hasSid = cookies.containsKey('SID');
@@ -137,7 +138,7 @@ class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {
       afLog(
         'youtube',
         'CookieManager cookies: ${cookies.length} '
-        'SAPISID=$hasSapisid LOGIN_INFO=$hasLoginInfo SID=$hasSid',
+            'SAPISID=$hasSapisid LOGIN_INFO=$hasLoginInfo SID=$hasSid',
       );
 
       if (!hasSapisid || !hasLoginInfo) {
@@ -165,7 +166,9 @@ class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {
       final authBundle = YouTubeAuthBundle(
         cookies: cookies,
         email: email,
-        displayName: email.isNotEmpty ? email.split('@').first : 'YouTube Music',
+        displayName: email.isNotEmpty
+            ? email.split('@').first
+            : 'YouTube Music',
         dataSyncId: _dataSyncId,
         profileUrl: profileUrl,
       );
@@ -305,7 +308,7 @@ class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {
     // Strip all surrounding quote characters (single, double)
     while (result.length >= 2 &&
         ((result.startsWith("'") && result.endsWith("'")) ||
-         (result.startsWith('"') && result.endsWith('"')))) {
+            (result.startsWith('"') && result.endsWith('"')))) {
       result = result.substring(1, result.length - 1);
     }
     return result;

@@ -40,8 +40,8 @@ class ArtistsTab extends ConsumerWidget {
             AfSpacing.bottomInsetWithMiniAndNav,
           ),
           sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: AfLayout.artistGridMaxTileExtent,
               mainAxisExtent: 180,
               crossAxisSpacing: AfSpacing.s12,
               mainAxisSpacing: AfSpacing.s12,

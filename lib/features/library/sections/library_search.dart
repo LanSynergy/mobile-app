@@ -213,7 +213,7 @@ class _RecentAndSuggestions extends ConsumerWidget {
               if (recent.isEmpty) return const SizedBox.shrink();
               return Column(
                 children: recent.map((a) {
-                  return PressScale(
+                  return FocusPressScale(
                     onTap: () {
                       Navigator.pop(context);
                       context.push('/album/${a.id}');
@@ -288,7 +288,7 @@ class _RecentAndSuggestions extends ConsumerWidget {
                 runSpacing: AfSpacing.s8,
                 children: list.take(8).map((g) {
                   final tint = parseGenreTint(g.tint);
-                  return PressScale(
+                  return FocusPressScale(
                     onTap: () {
                       Navigator.pop(context);
                       context.push('/genre/${g.name}');
@@ -361,7 +361,7 @@ class _LiveResults extends ConsumerWidget {
                 title: 'Albums',
                 child: Column(
                   children: filtered.map((a) {
-                    return PressScale(
+                    return FocusPressScale(
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/album/${a.id}');
@@ -423,7 +423,7 @@ class _LiveResults extends ConsumerWidget {
                 title: 'Artists',
                 child: Column(
                   children: filtered.map((a) {
-                    return PressScale(
+                    return FocusPressScale(
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/artist/${a.id}');

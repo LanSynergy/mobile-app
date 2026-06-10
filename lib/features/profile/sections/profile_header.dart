@@ -107,9 +107,7 @@ class SplitInfoSection extends ConsumerWidget {
                 Row(
                   children: [
                     Icon(
-                      isYouTubeMusic
-                          ? LucideIcons.music
-                          : LucideIcons.server,
+                      isYouTubeMusic ? LucideIcons.music : LucideIcons.server,
                       size: 12,
                       color: AfColors.textTertiary,
                     ),

@@ -186,7 +186,7 @@ class GlassSearchButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PressScale(
+    return FocusPressScale(
       ensureHitTarget: false,
       onTap: onTap,
       child: ClipRRect(
@@ -272,7 +272,7 @@ class YouTubeAccountButton extends ConsumerWidget {
     final auth = ref.watch(youtubeAuthProvider);
     final isLoggedIn = auth?.isValid == true;
 
-    return PressScale(
+    return FocusPressScale(
       ensureHitTarget: false,
       onTap: () {
         if (isLoggedIn) {
@@ -293,12 +293,33 @@ class YouTubeAccountButton extends ConsumerWidget {
           ),
           child: isLoggedIn
               ? (auth!.profileUrl != null && auth.profileUrl!.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: auth.profileUrl!,
-                      width: 32,
-                      height: 32,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Center(
+                    ? CachedNetworkImage(
+                        imageUrl: auth.profileUrl!,
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Center(
+                          child: Text(
+                            (auth.email.isNotEmpty ? auth.email[0] : 'Y')
+                                .toUpperCase(),
+                            style: AfTypography.bodyMedium.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Center(
+                          child: Text(
+                            (auth.email.isNotEmpty ? auth.email[0] : 'Y')
+                                .toUpperCase(),
+                            style: AfTypography.bodyMedium.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Center(
                         child: Text(
                           (auth.email.isNotEmpty ? auth.email[0] : 'Y')
                               .toUpperCase(),
@@ -307,28 +328,7 @@ class YouTubeAccountButton extends ConsumerWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ),
-                      errorWidget: (context, url, error) => Center(
-                        child: Text(
-                          (auth.email.isNotEmpty ? auth.email[0] : 'Y')
-                              .toUpperCase(),
-                          style: AfTypography.bodyMedium.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    )
-                  : Center(
-                      child: Text(
-                        (auth.email.isNotEmpty ? auth.email[0] : 'Y')
-                            .toUpperCase(),
-                        style: AfTypography.bodyMedium.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ))
+                      ))
               : const Icon(
                   LucideIcons.user,
                   size: 16,

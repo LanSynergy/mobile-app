@@ -52,150 +52,155 @@ class _HeroAlbumCarouselState extends ConsumerState<HeroAlbumCarousel> {
                 onPageChanged: (i) => setState(() => _currentPage = i),
                 itemBuilder: (context, i) {
                   final album = albums[i];
-                  return PressScale(
-                    ensureHitTarget: false,
-                    onTap: () => context.push('/album/${album.id}'),
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        borderRadius: AfRadii.borderXl,
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          // Artwork
-                          Artwork(
-                            url: album.imageUrl,
-                            size: double.infinity,
-                            radius: BorderRadius.zero,
-                            fit: BoxFit.cover,
-                          ),
-                          // Spectral glow accent
-                          Positioned(
-                            left: -40,
-                            bottom: -40,
-                            width: 160,
-                            height: 160,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: RadialGradient(
-                                  colors: [
-                                    spectral.energy.withValues(alpha: 0.3),
-                                    Colors.transparent,
-                                  ],
+                  return Semantics(
+                    button: true,
+                    label: 'Album: ${album.name} by ${album.artistName}',
+                    hint: 'Double tap to open album',
+                    child: FocusPressScale(
+                      ensureHitTarget: false,
+                      onTap: () => context.push('/album/${album.id}'),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          borderRadius: AfRadii.borderXl,
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            // Artwork
+                            Artwork(
+                              url: album.imageUrl,
+                              size: double.infinity,
+                              radius: BorderRadius.zero,
+                              fit: BoxFit.cover,
+                            ),
+                            // Spectral glow accent
+                            Positioned(
+                              left: -40,
+                              bottom: -40,
+                              width: 160,
+                              height: 160,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: RadialGradient(
+                                    colors: [
+                                      spectral.energy.withValues(alpha: 0.3),
+                                      Colors.transparent,
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          // Gradient scrim for text readability
-                          Positioned.fill(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.transparent,
-                                    AfColors.surfaceCanvas.withValues(
-                                      alpha: 0.95,
-                                    ),
-                                  ],
+                            // Gradient scrim for text readability
+                            Positioned.fill(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.transparent,
+                                      AfColors.surfaceCanvas.withValues(
+                                        alpha: 0.95,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          // Content
-                          Padding(
-                            padding: const EdgeInsets.all(AfSpacing.s16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Spacer(),
-                                // Album title — dramatic sizing
-                                Text(
-                                  album.name,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AfTypography.titleLarge.copyWith(
-                                    color: AfColors.textOnPrimary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(height: AfSpacing.s4),
-                                Text(
-                                  album.artistName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AfTypography.bodyLarge.copyWith(
-                                    color: AfColors.textSecondary,
-                                  ),
-                                ),
-                                const SizedBox(height: AfSpacing.s16),
-                                // Play button with warm glow
-                                PressScale(
-                                  ensureHitTarget: false,
-                                  onTap: () async {
-                                    final tracks = ref.read(
-                                      playActionsProvider,
-                                    );
-                                    final detail = await ref.read(
-                                      albumDetailProvider(album.id).future,
-                                    );
-                                    if (detail != null) {
-                                      await tracks.playAlbum(detail.tracks);
-                                    }
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: AfSpacing.s20,
-                                      vertical: AfSpacing.s12,
+                            // Content
+                            Padding(
+                              padding: const EdgeInsets.all(AfSpacing.s16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Spacer(),
+                                  // Album title — dramatic sizing
+                                  Text(
+                                    album.name,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AfTypography.titleLarge.copyWith(
+                                      color: AfColors.textOnPrimary,
+                                      fontWeight: FontWeight.w700,
                                     ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          spectral.energy,
-                                          spectral.energy.withValues(
-                                            alpha: 0.7,
+                                  ),
+                                  const SizedBox(height: AfSpacing.s4),
+                                  Text(
+                                    album.artistName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AfTypography.bodyLarge.copyWith(
+                                      color: AfColors.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: AfSpacing.s16),
+                                  // Play button with warm glow
+                                  FocusPressScale(
+                                    ensureHitTarget: false,
+                                    onTap: () async {
+                                      final tracks = ref.read(
+                                        playActionsProvider,
+                                      );
+                                      final detail = await ref.read(
+                                        albumDetailProvider(album.id).future,
+                                      );
+                                      if (detail != null) {
+                                        await tracks.playAlbum(detail.tracks);
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: AfSpacing.s20,
+                                        vertical: AfSpacing.s12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            spectral.energy,
+                                            spectral.energy.withValues(
+                                              alpha: 0.7,
+                                            ),
+                                          ],
+                                        ),
+                                        borderRadius: AfRadii.borderPill,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: spectral.energy.withValues(
+                                              alpha: 0.35,
+                                            ),
+                                            blurRadius: 16,
+                                            offset: const Offset(0, 4),
                                           ),
                                         ],
                                       ),
-                                      borderRadius: AfRadii.borderPill,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: spectral.energy.withValues(
-                                            alpha: 0.35,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            LucideIcons.play,
+                                            color: AfColors.textOnPrimary,
+                                            size: 20,
                                           ),
-                                          blurRadius: 16,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          LucideIcons.play,
-                                          color: AfColors.textOnPrimary,
-                                          size: 20,
-                                        ),
-                                        const SizedBox(width: AfSpacing.s8),
-                                        Text(
-                                          'Play',
-                                          style: AfTypography.bodyMedium
-                                              .copyWith(
-                                                color: AfColors.textOnPrimary,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                        ),
-                                      ],
+                                          const SizedBox(width: AfSpacing.s8),
+                                          Text(
+                                            'Play',
+                                            style: AfTypography.bodyMedium
+                                                .copyWith(
+                                                  color: AfColors.textOnPrimary,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   );

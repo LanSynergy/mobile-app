@@ -41,8 +41,8 @@ class AlbumsTab extends ConsumerWidget {
             AfSpacing.bottomInsetWithMiniAndNav,
           ),
           sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: AfLayout.albumGridMaxTileExtent,
               mainAxisExtent: 220,
               crossAxisSpacing: AfSpacing.s16,
               mainAxisSpacing: AfSpacing.s16,

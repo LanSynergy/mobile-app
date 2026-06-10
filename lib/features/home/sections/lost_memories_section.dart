@@ -92,70 +92,75 @@ class _LostMemoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PressScale(
-      ensureHitTarget: false,
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: SizedBox(
-        width: _tileSize,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Album art with vignette edges
-            ClipRRect(
-              borderRadius: AfRadii.borderSm,
-              child: SizedBox(
-                width: _tileSize,
-                height: _tileSize,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Artwork(
-                      url: track.imageUrl,
-                      size: 100,
-                      radius: BorderRadius.zero,
-                      fit: BoxFit.cover,
-                    ),
-                    // Vignette edges
-                    Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: AfRadii.borderSm,
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              AfColors.surfaceCanvas.withValues(alpha: 0.6),
-                            ],
+    return Semantics(
+      button: true,
+      label: '${track.title} by ${track.artistName}',
+      hint: 'Double tap to play',
+      child: FocusPressScale(
+        ensureHitTarget: false,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: SizedBox(
+          width: _tileSize,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Album art with vignette edges
+              ClipRRect(
+                borderRadius: AfRadii.borderSm,
+                child: SizedBox(
+                  width: _tileSize,
+                  height: _tileSize,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Artwork(
+                        url: track.imageUrl,
+                        size: 100,
+                        radius: BorderRadius.zero,
+                        fit: BoxFit.cover,
+                      ),
+                      // Vignette edges
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: AfRadii.borderSm,
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                AfColors.surfaceCanvas.withValues(alpha: 0.6),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: AfSpacing.s4),
-            Text(
-              track.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AfTypography.bodySmall.copyWith(
-                color: AfColors.textPrimary,
+              const SizedBox(height: AfSpacing.s4),
+              Text(
+                track.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AfTypography.bodySmall.copyWith(
+                  color: AfColors.textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: AfSpacing.s2),
-            Text(
-              track.artistName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AfTypography.caption.copyWith(
-                color: AfColors.textTertiary,
+              const SizedBox(height: AfSpacing.s2),
+              Text(
+                track.artistName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AfTypography.caption.copyWith(
+                  color: AfColors.textTertiary,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

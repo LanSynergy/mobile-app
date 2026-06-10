@@ -21,8 +21,9 @@ class GenreSkeleton extends StatelessWidget {
           const SkeletonBar(width: 120, height: 20),
           const SizedBox(height: AfSpacing.s12),
           Expanded(
+            // 2 columns matching GenresTab grid layout
             child: GridView.count(
-              crossAxisCount: 3,
+              crossAxisCount: 2,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: AfSpacing.s8,

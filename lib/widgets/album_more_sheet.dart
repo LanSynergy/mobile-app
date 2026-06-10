@@ -171,24 +171,29 @@ class _MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: enabled
-            ? AfColors.textSecondary
-            : AfColors.textTertiary.withValues(alpha: 0.4),
-        size: AfIconSizes.sm,
-      ),
-      title: Text(
-        label,
-        style: AfTypography.bodyMedium.copyWith(
+    return Semantics(
+      label: label,
+      button: true,
+      enabled: enabled,
+      child: ListTile(
+        leading: Icon(
+          icon,
           color: enabled
-              ? AfColors.textPrimary
-              : AfColors.textTertiary.withValues(alpha: 0.6),
+              ? AfColors.textSecondary
+              : AfColors.textTertiary.withValues(alpha: 0.4),
+          size: AfIconSizes.sm,
         ),
+        title: Text(
+          label,
+          style: AfTypography.bodyMedium.copyWith(
+            color: enabled
+                ? AfColors.textPrimary
+                : AfColors.textTertiary.withValues(alpha: 0.6),
+          ),
+        ),
+        onTap: enabled ? onTap : null,
+        dense: true,
       ),
-      onTap: enabled ? onTap : null,
-      dense: true,
     );
   }
 }

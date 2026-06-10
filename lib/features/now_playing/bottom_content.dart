@@ -136,7 +136,9 @@ class _BottomContentState extends ConsumerState<BottomContent>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // ── Metadata overlay (title + artist) ──
-                        MetadataOverlay(track: widget.track),
+                        RepaintBoundary(
+                          child: MetadataOverlay(track: widget.track),
+                        ),
                         const SizedBox(height: AfSpacing.s12),
                         // ── Visualizer scrubber ──
                         ReactiveProgress(track: widget.track),

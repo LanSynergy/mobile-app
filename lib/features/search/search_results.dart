@@ -499,8 +499,8 @@ class ArtistIdleGrid extends ConsumerWidget {
       loading: () => SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         sliver: SliverGrid.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: AfLayout.artistGridMaxTileExtent,
             mainAxisExtent: 180,
             crossAxisSpacing: AfSpacing.s12,
             mainAxisSpacing: AfSpacing.s12,
@@ -533,8 +533,8 @@ class ArtistIdleGrid extends ConsumerWidget {
       data: (list) => SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         sliver: SliverGrid.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: AfLayout.artistGridMaxTileExtent,
             mainAxisExtent: 180,
             crossAxisSpacing: AfSpacing.s12,
             mainAxisSpacing: AfSpacing.s12,
@@ -572,8 +572,8 @@ class GenreIdleGrid extends ConsumerWidget {
       loading: () => SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         sliver: SliverGrid.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: AfLayout.genreGridMaxTileExtent,
             mainAxisExtent: 96,
             crossAxisSpacing: AfSpacing.s12,
             mainAxisSpacing: AfSpacing.s12,
@@ -590,8 +590,8 @@ class GenreIdleGrid extends ConsumerWidget {
       data: (list) => SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         sliver: SliverGrid.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: AfLayout.genreGridMaxTileExtent,
             mainAxisExtent: 96,
             crossAxisSpacing: AfSpacing.s12,
             mainAxisSpacing: AfSpacing.s12,
@@ -628,8 +628,8 @@ class AlbumIdleGrid extends ConsumerWidget {
       loading: () => SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         sliver: SliverGrid.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: AfLayout.albumGridMaxTileExtent,
             mainAxisExtent: 220,
             crossAxisSpacing: AfSpacing.s16,
             mainAxisSpacing: AfSpacing.s16,
@@ -662,8 +662,8 @@ class AlbumIdleGrid extends ConsumerWidget {
       data: (list) => SliverPadding(
         padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
         sliver: SliverGrid.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: AfLayout.albumGridMaxTileExtent,
             mainAxisExtent: 220,
             crossAxisSpacing: AfSpacing.s16,
             mainAxisSpacing: AfSpacing.s16,

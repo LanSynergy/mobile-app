@@ -42,9 +42,9 @@ class InnerTubeClient {
       afLog(
         'youtube',
         'setAuth: email=${auth.email} '
-        'hasSAPISID=${auth.cookies.containsKey('SAPISID')} '
-        'cookieCount=${auth.cookies.length} '
-        'dataSyncId=${auth.dataSyncId}',
+            'hasSAPISID=${auth.cookies.containsKey('SAPISID')} '
+            'cookieCount=${auth.cookies.length} '
+            'dataSyncId=${auth.dataSyncId}',
       );
       // Merge auth cookies into the cookie jar
       final authCookieStr = auth.cookieString;
@@ -183,17 +183,17 @@ class InnerTubeClient {
       final client = _httpClient ?? HttpClient();
 
       try {
-        final request = await client.postUrl(uri).timeout(
-              const Duration(seconds: 10),
-            );
+        final request = await client
+            .postUrl(uri)
+            .timeout(const Duration(seconds: 10));
         _applyHeaders(request, visitorData: visitorData);
 
         final bodyStr = jsonEncode(body);
         request.write(bodyStr);
 
         final response = await request.close().timeout(
-              const Duration(seconds: 10),
-            );
+          const Duration(seconds: 10),
+        );
 
         // Capture any new cookies from response
         final respCookies = response.cookies;
@@ -222,8 +222,9 @@ class InnerTubeClient {
         );
         String responseBody;
         try {
-          responseBody =
-              await completer.future.timeout(const Duration(seconds: 10));
+          responseBody = await completer.future.timeout(
+            const Duration(seconds: 10),
+          );
         } on TimeoutException {
           unawaited(sub.cancel());
           return null;

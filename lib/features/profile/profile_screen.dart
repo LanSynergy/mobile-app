@@ -27,8 +27,8 @@ class ProfileScreen extends ConsumerWidget {
     final ytAuth = isYouTubeMusic ? ref.watch(youtubeAuthProvider) : null;
     final name = isYouTubeMusic
         ? (ytAuth?.email.isNotEmpty == true
-            ? ytAuth!.email.split('@').first
-            : 'YouTube Music')
+              ? ytAuth!.email.split('@').first
+              : 'YouTube Music')
         : (auth?.userName ?? 'You');
     final serverName = isYouTubeMusic
         ? 'YouTube Music'
@@ -37,24 +37,25 @@ class ProfileScreen extends ConsumerWidget {
     final profilePhoto = ref.watch(profilePhotoProvider);
 
     // For YouTube Music: use local profile pic if available
-    final isLocalPath = ytProfileUrl != null && !ytProfileUrl.startsWith('http');
+    final isLocalPath =
+        ytProfileUrl != null && !ytProfileUrl.startsWith('http');
 
     final isLocal = mode == AppMode.local;
     final tracksAsync = isYouTubeMusic
         ? const AsyncValue<List<AfTrack>>.data([])
         : isLocal
-            ? ref.watch(localTracksProvider)
-            : ref.watch(allTracksProvider);
+        ? ref.watch(localTracksProvider)
+        : ref.watch(allTracksProvider);
     final albumsAsync = isYouTubeMusic
         ? const AsyncValue<List<AfAlbum>>.data([])
         : isLocal
-            ? ref.watch(localAlbumsProvider)
-            : ref.watch(allAlbumsProvider);
+        ? ref.watch(localAlbumsProvider)
+        : ref.watch(allAlbumsProvider);
     final artistsAsync = isYouTubeMusic
         ? const AsyncValue<List<AfArtist>>.data([])
         : isLocal
-            ? ref.watch(localArtistsProvider)
-            : ref.watch(allArtistsProvider);
+        ? ref.watch(localArtistsProvider)
+        : ref.watch(allArtistsProvider);
     final playlistsAsync = ref.watch(allPlaylistsProvider);
     final favAlbumsAsync = ref.watch(favoriteAlbumsProvider);
     final recentAlbumsAsync = ref.watch(recentlyAddedAlbumsProvider);
@@ -82,112 +83,129 @@ class ProfileScreen extends ConsumerWidget {
     );
 
     return SafeArea(
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: ClampingScrollPhysics(),
-        ),
-        slivers: [
-          // ── Header — title + settings button ─────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AfSpacing.s16,
-                AfSpacing.s16,
-                AfSpacing.s16,
-                AfSpacing.s12,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: AfLayout.maxContentWidth,
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ShaderMask(
-                      shaderCallback: (bounds) => LinearGradient(
-                        colors: [spectral.primary, spectral.secondary],
-                      ).createShader(bounds),
-                      child: Text(
-                        'Profile',
-                        style: AfTypography.display.copyWith(
-                          color: AfColors.textOnPrimary,
-                        ),
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: ClampingScrollPhysics(),
+                ),
+                slivers: [
+                  // ── Header — title + settings button ─────────────────────────
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AfSpacing.s16,
+                        AfSpacing.s16,
+                        AfSpacing.s16,
+                        AfSpacing.s12,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ShaderMask(
+                              shaderCallback: (bounds) => LinearGradient(
+                                colors: [spectral.primary, spectral.secondary],
+                              ).createShader(bounds),
+                              child: Text(
+                                'Profile',
+                                style: AfTypography.display.copyWith(
+                                  color: AfColors.textOnPrimary,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Tooltip(
+                            message: 'Settings',
+                            child: PressScale(
+                              onTap: () => context.push('/settings'),
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: AfColors.glassFill,
+                                  borderRadius: AfRadii.borderPill,
+                                  border: Border.all(
+                                    color: AfColors.glassBorderStrong,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: const Icon(
+                                  LucideIcons.settings,
+                                  color: AfColors.textSecondary,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  Tooltip(
-                    message: 'Settings',
-                    child: PressScale(
-                      onTap: () => context.push('/settings'),
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AfColors.glassFill,
-                          borderRadius: AfRadii.borderPill,
-                          border: Border.all(
-                            color: AfColors.glassBorderStrong,
-                            width: 1,
-                          ),
-                        ),
-                        child: const Icon(
-                          LucideIcons.settings,
-                          color: AfColors.textSecondary,
-                          size: 18,
-                        ),
+
+                  // ── Split info — avatar + info + inline stats ────────────────
+                  SliverToBoxAdapter(
+                    child: SplitInfoSection(
+                      name: name,
+                      serverName: serverName,
+                      isYouTubeMusic: isYouTubeMusic,
+                      networkProfileUrl: isLocalPath ? null : ytProfileUrl,
+                      profilePhoto: (
+                        isUploading: profilePhoto.isUploading,
+                        localPath:
+                            profilePhoto.localPath ??
+                            (isLocalPath ? ytProfileUrl : null),
+                        networkUrl: profilePhoto.networkUrl,
                       ),
+                      trackCount: _fmtCount(tracksAsync),
+                      albumCount: _fmtCount(albumsAsync),
+                    ),
+                  ),
+
+                  // ── Quick stats — artists + playlists ────────────────────────
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: AfSpacing.s16),
+                      child: QuickStatsRow(
+                        artistCount: _fmtCount(artistsAsync),
+                        playlistCount: _fmtCount(playlistsAsync),
+                      ),
+                    ),
+                  ),
+
+                  // ── Pinned ───────────────────────────────────────────────────
+                  const SliverToBoxAdapter(child: PinnedSectionHeader()),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: AfSpacing.s8),
+                      child: PinnedAlbumsRow(albums: pinned),
+                    ),
+                  ),
+
+                  // ── Listening Stats ──────────────────────────────────────────
+                  SliverToBoxAdapter(
+                    child: ListeningStatsSection(
+                      isLastFmConnected: isLastFmConnected,
+                    ),
+                  ),
+
+                  // ── About ───────────────────────────────────────────────────
+                  const SliverToBoxAdapter(child: AboutSection()),
+
+                  const SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: AfSpacing.bottomInsetWithMiniAndNav,
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-
-          // ── Split info — avatar + info + inline stats ────────────────
-          SliverToBoxAdapter(
-            child: SplitInfoSection(
-              name: name,
-              serverName: serverName,
-              isYouTubeMusic: isYouTubeMusic,
-              networkProfileUrl: isLocalPath ? null : ytProfileUrl,
-              profilePhoto: (
-                isUploading: profilePhoto.isUploading,
-                localPath: profilePhoto.localPath ?? (isLocalPath ? ytProfileUrl : null),
-                networkUrl: profilePhoto.networkUrl,
-              ),
-              trackCount: _fmtCount(tracksAsync),
-              albumCount: _fmtCount(albumsAsync),
-            ),
-          ),
-
-          // ── Quick stats — artists + playlists ────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(top: AfSpacing.s16),
-              child: QuickStatsRow(
-                artistCount: _fmtCount(artistsAsync),
-                playlistCount: _fmtCount(playlistsAsync),
-              ),
-            ),
-          ),
-
-          // ── Pinned ───────────────────────────────────────────────────
-          const SliverToBoxAdapter(child: PinnedSectionHeader()),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(top: AfSpacing.s8),
-              child: PinnedAlbumsRow(albums: pinned),
-            ),
-          ),
-
-          // ── Listening Stats ──────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: ListeningStatsSection(isLastFmConnected: isLastFmConnected),
-          ),
-
-          // ── About ───────────────────────────────────────────────────
-          const SliverToBoxAdapter(child: AboutSection()),
-
-          const SliverToBoxAdapter(
-            child: SizedBox(height: AfSpacing.bottomInsetWithMiniAndNav),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

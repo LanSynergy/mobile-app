@@ -46,7 +46,7 @@ class YouTubeSongGrid extends ConsumerWidget {
             albumName: '',
             imageUrl: item.thumbnailUrl,
           );
-          return PressScale(
+          return FocusPressScale(
             ensureHitTarget: true,
             onTap: () => ref.read(playActionsProvider).playSingle(track),
             onLongPress: () => showTrackContextMenu(context, ref, track),
@@ -188,7 +188,7 @@ class YouTubeHomeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isArtist = item.type == InnerTubeItemType.artist;
-    return PressScale(
+    return FocusPressScale(
       ensureHitTarget: false,
       onTap: onTap,
       onLongPress: onLongPress,

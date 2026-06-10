@@ -5,23 +5,21 @@ import 'package:go_router/go_router.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
 import '../../widgets/bottom_sheet.dart';
-import 'bottom_content.dart';
 import 'empty_state.dart';
-import 'reactive_artwork.dart';
+import 'layouts/compact_now_playing.dart';
+import 'layouts/expanded_now_playing.dart';
+import 'layouts/medium_now_playing.dart';
 import 'reactive_background.dart';
-import 'top_bar.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NowPlayingScreen — thin orchestrator
 //
-// Layout: Full-bleed immersive Stack.
-//   Stack(fit: StackFit.expand)
-//   ├── ReactiveBackground  (spectral-derived color fill)
-//   ├── ReactiveArtwork     (centered card, Hero)
-//   ├── Gradient scrim      (bottom 65%: transparent → surfaceCanvas)
-//   ├── FrostedTopBar       (top, minimal, expandable lyrics)
-//   └── BottomContent       (metadata, scrubber, transport, queue)
+// Uses LayoutBuilder to select responsive layout variant:
+//   Compact  (< 600dp):  Full-bleed immersive Stack (artwork top, controls bottom)
+//   Medium   (600-840dp): Side-by-side (artwork left, controls right)
+//   Expanded (> 840dp):   Three-column (artwork, controls, lyrics/queue)
 //
+// All layouts use ReactiveBackground for spectral-derived color fill.
 // High-frequency streams (position, FFT) are isolated to leaf widgets
 // so they never trigger rebuilds of the artwork, gradient, or metadata.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,11 +34,6 @@ class NowPlayingScreen extends ConsumerStatefulWidget {
 class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   final _expandedNotifier = ValueNotifier<bool>(false);
   final _lyricsExpandedNotifier = ValueNotifier<bool>(false);
-
-  // Layout constants — derived from top-bar compact height + artwork ratios.
-  static const double _topBarCompactHeight = 76;
-  static const double _artworkHorizontalMargin = 32;
-  static const double _contentHeightRatio = 0.36;
 
   @override
   void dispose() {
@@ -88,92 +81,26 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         extendBodyBehindAppBar: true,
         body: RepaintBoundary(
           child: ReactiveBackground(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // ── Centered artwork card (swipe up to expand queue) ──
-                Positioned(
-                  top: _topBarCompactHeight,
-                  bottom:
-                      MediaQuery.of(context).size.height * _contentHeightRatio,
-                  left: _artworkHorizontalMargin,
-                  right: _artworkHorizontalMargin,
-                  child: GestureDetector(
-                    onTap: () {
-                      if (_lyricsExpandedNotifier.value) {
-                        _lyricsExpandedNotifier.value = false;
-                      }
-                    },
-                    onVerticalDragEnd: (details) {
-                      if ((details.primaryVelocity ?? 0) < -200) {
-                        _expandedNotifier.value = true;
-                      }
-                    },
-                    behavior: HitTestBehavior.translucent,
-                    child: RepaintBoundary(
-                      child: ReactiveArtwork(track: track),
-                    ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final screenSize = AfLayout.screenSize(constraints.maxWidth);
+                return switch (screenSize) {
+                  AfScreenSize.compact => CompactNowPlaying(
+                    track: track,
+                    expandedNotifier: _expandedNotifier,
+                    lyricsExpandedNotifier: _lyricsExpandedNotifier,
+                    onToggleLyrics: _toggleLyrics,
                   ),
-                ),
-
-                // ── Gradient scrim (bottom content zone only) ──
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  height:
-                      MediaQuery.of(context).size.height * _contentHeightRatio,
-                  child: RepaintBoundary(
-                    child: ExcludeSemantics(
-                      child: IgnorePointer(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                AfColors.surfaceCanvas.withValues(alpha: 0.6),
-                                AfColors.surfaceCanvas,
-                              ],
-                              stops: const [0.0, 0.5, 1.0],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                  AfScreenSize.medium => MediumNowPlaying(
+                    track: track,
+                    lyricsExpandedNotifier: _lyricsExpandedNotifier,
                   ),
-                ),
-
-                // ── Top bar ──
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: SafeArea(
-                    bottom: false,
-                    child: FrostedTopBar(
-                      track: track,
-                      lyricsExpanded: _lyricsExpandedNotifier,
-                      onToggleLyrics: _toggleLyrics,
-                    ),
+                  AfScreenSize.expanded => ExpandedNowPlaying(
+                    track: track,
+                    lyricsExpandedNotifier: _lyricsExpandedNotifier,
                   ),
-                ),
-
-                // ── Bottom content zone ──
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: SafeArea(
-                    top: false,
-                    child: BottomContent(
-                      track: track,
-                      expandedNotifier: _expandedNotifier,
-                    ),
-                  ),
-                ),
-              ],
+                };
+              },
             ),
           ),
         ),

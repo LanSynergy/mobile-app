@@ -87,7 +87,7 @@ class ArtistsSection extends ConsumerWidget {
                     button: true,
                     label: 'Artist: ${hero.name}',
                     hint: 'Double tap to open artist',
-                    child: PressScale(
+                    child: FocusPressScale(
                       ensureHitTarget: false,
                       onTap: () => context.push('/artist/${hero.id}'),
                       child: _HeroArtistCard(artist: hero, spectral: spectral),
@@ -114,7 +114,7 @@ class ArtistsSection extends ConsumerWidget {
                           button: true,
                           label: 'Artist: ${a.name}',
                           hint: 'Double tap to open artist',
-                          child: PressScale(
+                          child: FocusPressScale(
                             ensureHitTarget: false,
                             onTap: () => context.push('/artist/${a.id}'),
                             child: _ExpressiveArtistCard(
