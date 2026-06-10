@@ -117,6 +117,7 @@ class TrackRow extends StatelessWidget {
         label:
             '${track.title} by ${track.artistName}'
             '${isActive ? ", now playing" : ""}',
+        hint: 'Double tap to play',
         child: Container(
           height: height + (steelBackground ? 8 : 0),
           padding: EdgeInsets.symmetric(

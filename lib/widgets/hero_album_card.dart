@@ -29,6 +29,7 @@ class HeroAlbumCard extends StatelessWidget {
       child: Semantics(
         button: true,
         label: 'Album: ${album.name} by ${album.artistName}',
+        hint: 'Double tap to open album',
         child: Container(
           constraints: const BoxConstraints(minHeight: 192),
           margin: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),

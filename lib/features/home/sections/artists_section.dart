@@ -86,6 +86,7 @@ class ArtistsSection extends ConsumerWidget {
                   child: Semantics(
                     button: true,
                     label: 'Artist: ${hero.name}',
+                    hint: 'Double tap to open artist',
                     child: PressScale(
                       ensureHitTarget: false,
                       onTap: () => context.push('/artist/${hero.id}'),
@@ -112,6 +113,7 @@ class ArtistsSection extends ConsumerWidget {
                         return Semantics(
                           button: true,
                           label: 'Artist: ${a.name}',
+                          hint: 'Double tap to open artist',
                           child: PressScale(
                             ensureHitTarget: false,
                             onTap: () => context.push('/artist/${a.id}'),

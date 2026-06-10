@@ -90,14 +90,18 @@ class GenresSection extends ConsumerWidget {
 
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-              child: GridView.count(
-                crossAxisCount: 2,
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: AfLayout.genreGridMaxTileExtent,
+                  childAspectRatio: 1.2,
+                  mainAxisSpacing: AfSpacing.s8,
+                  crossAxisSpacing: AfSpacing.s8,
+                ),
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: AfSpacing.s8,
-                crossAxisSpacing: AfSpacing.s8,
-                childAspectRatio: 1.2,
-                children: displayGenres.map((g) {
+                itemCount: displayGenres.length,
+                itemBuilder: (context, index) {
+                  final g = displayGenres[index];
                   final tint = parseHexColor(g.tint);
                   final gradient =
                       AfGenreColors.of(g.name) ??
@@ -112,26 +116,26 @@ class GenresSection extends ConsumerWidget {
                     onTap: () =>
                         context.push('/genre/${Uri.encodeComponent(g.name)}'),
                   );
-                }).toList(),
+                },
               ),
             );
           },
           loading: () => Padding(
             padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s16),
-            child: GridView.count(
-              crossAxisCount: 2,
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: AfLayout.genreGridMaxTileExtent,
+                childAspectRatio: 1.2,
+                mainAxisSpacing: AfSpacing.s8,
+                crossAxisSpacing: AfSpacing.s8,
+              ),
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: AfSpacing.s8,
-              crossAxisSpacing: AfSpacing.s8,
-              childAspectRatio: 1.2,
-              children: List.generate(
-                6,
-                (_) => const SkeletonBlock(
-                  width: 160,
-                  height: 80,
-                  borderRadius: AfRadii.borderMd,
-                ),
+              itemCount: 6,
+              itemBuilder: (_, _) => const SkeletonBlock(
+                width: 160,
+                height: 80,
+                borderRadius: AfRadii.borderMd,
               ),
             ),
           ),
@@ -168,6 +172,7 @@ class _ExpressiveGenreCard extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'Genre: $label',
+      hint: 'Double tap to open genre',
       child: GestureDetector(
         onTap: onTap,
         child: Container(
