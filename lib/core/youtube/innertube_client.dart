@@ -76,6 +76,7 @@ class InnerTubeClient {
         error: e,
       );
       _httpClient = HttpClient();
+    } finally {
       _initCompleter?.complete();
     }
   }

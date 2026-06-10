@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/youtube/youtube_auth.dart';
@@ -57,7 +59,15 @@ class YouTubeHomeNotifier extends AutoDisposeAsyncNotifier<YouTubeHomeContent> {
       return YouTubeHomeContent.empty();
     }
     final params = ref.watch(youtubeHomeParamsProvider);
-    return backend.browseHome(params: params);
+    final content = await backend.browseHome(params: params);
+    final sections = List<YouTubeHomeSection>.from(content.sections)
+      ..shuffle(Random());
+    return YouTubeHomeContent(
+      sections: sections,
+      chips: content.chips,
+      region: content.region,
+      continuation: content.continuation,
+    );
   }
 
   Future<void> loadMore() async {
@@ -78,9 +88,11 @@ class YouTubeHomeNotifier extends AutoDisposeAsyncNotifier<YouTubeHomeContent> {
       if (nextContent.sections.isEmpty && nextContent.continuation == null) {
         return;
       }
+      final newSections = List<YouTubeHomeSection>.from(nextContent.sections)
+        ..shuffle(Random());
       state = AsyncValue.data(
         YouTubeHomeContent(
-          sections: [...current.sections, ...nextContent.sections],
+          sections: [...current.sections, ...newSections],
           chips: current.chips,
           region: current.region,
           continuation: nextContent.continuation,

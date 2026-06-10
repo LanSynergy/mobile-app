@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/youtube/innertube_client.dart';
+import '../../../core/youtube/youtube_home_content.dart';
 import '../../../design_tokens/tokens.dart';
 import '../../../state/youtube_music_providers.dart';
 import '../../../widgets/press_scale.dart';
@@ -14,12 +15,31 @@ import 'youtube_section_widgets.dart';
 /// Full YouTube Music home view — header, chips, dynamic sections.
 ///
 /// Composed as a standalone widget so [HomeScreen] stays compact.
-class YouTubeHomeView extends ConsumerWidget {
+class YouTubeHomeView extends ConsumerStatefulWidget {
   const YouTubeHomeView({super.key, required this.scrollController});
   final ScrollController scrollController;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<YouTubeHomeView> createState() => _YouTubeHomeViewState();
+}
+
+class _YouTubeHomeViewState extends ConsumerState<YouTubeHomeView> {
+  bool _autoLoaded = false;
+
+  void _checkAutoLoad(YouTubeHomeContent home) {
+    if (_autoLoaded) return;
+    if (home.continuation != null && home.sections.length < 5) {
+      _autoLoaded = true;
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          ref.read(youtubeHomeProvider.notifier).loadMore();
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final homeAsync = ref.watch(youtubeHomeProvider);
     return SafeArea(
       child: RefreshIndicator(
@@ -30,7 +50,7 @@ class YouTubeHomeView extends ConsumerWidget {
         color: AfColors.indigo300,
         backgroundColor: AfColors.surfaceBase,
         child: CustomScrollView(
-          controller: scrollController,
+          controller: widget.scrollController,
           physics: const AlwaysScrollableScrollPhysics(
             parent: ClampingScrollPhysics(),
           ),
@@ -84,6 +104,7 @@ class YouTubeHomeView extends ConsumerWidget {
             // Dynamic Home Sections
             homeAsync.when(
               data: (home) {
+                _checkAutoLoad(home);
                 if (home.sections.isEmpty) {
                   return SliverToBoxAdapter(
                     child: Padding(
