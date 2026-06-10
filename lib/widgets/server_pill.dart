@@ -79,19 +79,23 @@ class _Dot extends StatefulWidget {
 class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 833), // 1.2 Hz
+    duration: AfDurations.pulse, // 1.2 Hz
   );
 
   @override
   void initState() {
     super.initState();
-    if (widget.pulse) _ctrl.repeat(reverse: true);
+    if (widget.pulse) {
+      final reduced = MediaQuery.of(context).disableAnimations;
+      if (!reduced) _ctrl.repeat(reverse: true);
+    }
   }
 
   @override
   void didUpdateWidget(_Dot old) {
     super.didUpdateWidget(old);
-    if (widget.pulse && !_ctrl.isAnimating) {
+    final reduced = MediaQuery.of(context).disableAnimations;
+    if (widget.pulse && !_ctrl.isAnimating && !reduced) {
       _ctrl.repeat(reverse: true);
     } else if (!widget.pulse && _ctrl.isAnimating) {
       _ctrl.stop();

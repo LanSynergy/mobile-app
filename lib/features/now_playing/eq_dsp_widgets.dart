@@ -132,6 +132,7 @@ class EqMasterBanner extends ConsumerWidget {
             onTap: () => onChanged(!enabled),
             child: AnimatedContainer(
               duration: AfDurations.quick,
+              curve: AfCurves.easeStandard,
               width: 52,
               height: 30,
               decoration: BoxDecoration(
@@ -342,6 +343,7 @@ class EqEffectToggle extends ConsumerWidget {
             // Custom pill toggle 44x26
             AnimatedContainer(
               duration: AfDurations.quick,
+              curve: AfCurves.easeStandard,
               width: 44,
               height: 26,
               decoration: BoxDecoration(

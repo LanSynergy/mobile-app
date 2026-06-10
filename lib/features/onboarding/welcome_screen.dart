@@ -69,34 +69,31 @@ class WelcomeScreen extends ConsumerWidget {
                 // Logo + branding
                 StaggerReveal(
                   children: [
-                    Hero(
-                      tag: 'aetherfin-mark',
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: AfColors.surfaceBase.withValues(alpha: 0.6),
-                          borderRadius: AfRadii.borderRounded,
-                          border: Border.all(
-                            color: spectral.withValues(alpha: 0.3),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: spectral.withValues(alpha: 0.15),
-                              blurRadius: 40,
-                              spreadRadius: 8,
-                            ),
-                          ],
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: AfColors.surfaceBase.withValues(alpha: 0.6),
+                        borderRadius: AfRadii.borderRounded,
+                        border: Border.all(
+                          color: spectral.withValues(alpha: 0.3),
                         ),
-                        child: Center(
-                          child: SvgPicture.asset(
-                            'assets/brand/logo-mark.svg',
-                            width: 40,
-                            height: 40,
-                            colorFilter: const ColorFilter.mode(
-                              AfColors.textOnPrimary,
-                              BlendMode.srcIn,
-                            ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: spectral.withValues(alpha: 0.15),
+                            blurRadius: 40,
+                            spreadRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: SvgPicture.asset(
+                          'assets/brand/logo-mark.svg',
+                          width: 40,
+                          height: 40,
+                          colorFilter: const ColorFilter.mode(
+                            AfColors.textOnPrimary,
+                            BlendMode.srcIn,
                           ),
                         ),
                       ),

@@ -212,6 +212,7 @@ class _HeroAlbumCarouselState extends ConsumerState<HeroAlbumCarousel> {
                     albums.length,
                     (i) => AnimatedContainer(
                       duration: AfDurations.quick,
+                      curve: AfCurves.easeStandard,
                       margin: const EdgeInsets.symmetric(
                         horizontal: AfSpacing.s4,
                       ),

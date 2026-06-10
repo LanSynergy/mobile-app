@@ -47,8 +47,6 @@ class _PlayButtonState extends ConsumerState<PlayButton>
         CurvedAnimation(parent: _pulseController, curve: AfCurves.easeInOut),
       );
 
-  bool? _previousIsPlaying;
-
   @override
   void dispose() {
     _scaleController.dispose();
@@ -56,12 +54,16 @@ class _PlayButtonState extends ConsumerState<PlayButton>
     super.dispose();
   }
 
-  void _onPlayStateChanged(bool isPlaying) {
-    if (_previousIsPlaying != isPlaying) {
-      _previousIsPlaying = isPlaying;
+  @override
+  void didUpdateWidget(covariant PlayButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isPlaying != widget.isPlaying) {
       _scaleController.forward(from: 0.0);
-      if (isPlaying) {
-        _pulseController.repeat(reverse: true);
+      final reduced = MediaQuery.of(context).disableAnimations;
+      if (widget.isPlaying) {
+        if (!reduced) {
+          _pulseController.repeat(reverse: true);
+        }
       } else {
         _pulseController.stop();
         _pulseController.value = 0.0;
@@ -78,7 +80,6 @@ class _PlayButtonState extends ConsumerState<PlayButton>
   @override
   Widget build(BuildContext context) {
     final isBuffering = ref.watch(isBufferingProvider);
-    _onPlayStateChanged(widget.isPlaying);
 
     return PressScale(
       ensureHitTarget: false,

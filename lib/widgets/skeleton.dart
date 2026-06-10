@@ -39,7 +39,7 @@ class _ShimmerWrapState extends State<ShimmerWrap>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: AfDurations.shimmer,
     )..repeat(reverse: true);
   }
 
@@ -51,6 +51,8 @@ class _ShimmerWrapState extends State<ShimmerWrap>
 
   @override
   Widget build(BuildContext context) {
+    final reduced = MediaQuery.of(context).disableAnimations;
+
     final effectiveChild =
         widget.child ??
         Container(
@@ -64,6 +66,10 @@ class _ShimmerWrapState extends State<ShimmerWrap>
             shape: widget.shape,
           ),
         );
+
+    if (reduced) {
+      return Semantics(label: 'Loading', child: effectiveChild);
+    }
 
     return Semantics(
       label: 'Loading',

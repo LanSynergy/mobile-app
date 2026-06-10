@@ -67,6 +67,15 @@ abstract final class AfDurations {
   /// 1200 ms — ambient pulse glow, breathing animations.
   static const Duration ambient = Duration(milliseconds: 1200);
 
+  /// 1500 ms — skeleton shimmer sweep.
+  static const Duration shimmer = Duration(milliseconds: 1500);
+
+  /// 800 ms — spectral color crossfade.
+  static const Duration spectral = Duration(milliseconds: 800);
+
+  /// 833 ms — server pill dot pulse (1.2 Hz).
+  static const Duration pulse = Duration(milliseconds: 833);
+
   /// 2000 ms — info SnackBar (action confirmed, item added/removed).
   static const Duration snackBarInfo = Duration(seconds: 2);
 

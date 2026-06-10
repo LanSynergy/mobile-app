@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/press_scale.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sleep timer state — lives in providers.dart scope so it survives
@@ -265,7 +266,7 @@ class _TimerChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return PressScale(
       onTap: onTap,
       child: AnimatedContainer(
         duration: AfDurations.quick,

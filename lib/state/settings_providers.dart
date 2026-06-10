@@ -1,5 +1,4 @@
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,14 +7,6 @@ import '../core/jellyfin/models/server.dart';
 import '../core/lastfm/lastfm_client.dart';
 import '../utils/log.dart';
 import 'local_library_providers.dart';
-
-final reducedMotionProvider = Provider.autoDispose<bool>((ref) {
-  try {
-    return WidgetsBinding.instance.accessibilityFeatures.reduceMotion;
-  } catch (_) {
-    return false;
-  }
-});
 
 final discoveredServersProvider = StateProvider<List<JellyfinServer>>(
   (ref) => const <JellyfinServer>[],

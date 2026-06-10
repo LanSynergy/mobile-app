@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/press_scale.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Search Filters
@@ -113,7 +114,7 @@ class IdleFilterPills extends ConsumerWidget {
         itemBuilder: (context, i) {
           final f = IdleFilter.values[i];
           final active = f == selected;
-          return GestureDetector(
+          return PressScale(
             onTap: () => onChanged(f),
             child: AnimatedContainer(
               duration: AfDurations.quick,

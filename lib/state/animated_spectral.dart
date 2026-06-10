@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../design_tokens/colors.dart';
+import '../design_tokens/tokens.dart';
 import 'player_providers.dart';
 import 'spectral_providers.dart';
 
@@ -42,7 +42,7 @@ class _AnimatedSpectralScopeState extends ConsumerState<AnimatedSpectralScope>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: AfDurations.spectral,
     );
     _ctrl.addListener(() {
       _current = _lerpSpectral(_from, _to, _ctrl.value);

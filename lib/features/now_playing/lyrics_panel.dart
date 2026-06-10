@@ -12,6 +12,7 @@ import '../../core/local/local_backend.dart';
 import '../../core/local/saf_picker.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../widgets/press_scale.dart';
 
 /// Synced lyrics list with auto-scroll, tap-to-seek, and user scroll pause.
 class LyricsList extends ConsumerStatefulWidget {
@@ -145,14 +146,16 @@ class _LyricsListState extends ConsumerState<LyricsList> {
         itemBuilder: (context, i) {
           final isActive = i == active;
           final line = widget.lrc.lines[i];
-          return InkWell(
-            borderRadius: AfRadii.borderSm,
+          return PressScale(
             onTap: widget.isSynced
                 ? () {
                     unawaited(HapticFeedback.selectionClick());
                     ref.read(playerServiceProvider).seek(line.start);
                   }
                 : null,
+            ensureHitTarget: false,
+            pressedScale: 0.98,
+            duration: AfDurations.instant,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: AfSpacing.s4),
               child: AnimatedDefaultTextStyle(

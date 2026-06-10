@@ -32,7 +32,6 @@ void main() {
       expect(find.byType(WelcomeScreen), findsOneWidget);
       expect(find.byType(SafeArea), findsOneWidget);
       expect(find.byType(Column), findsAtLeastNWidgets(1));
-      expect(find.byType(Hero), findsOneWidget);
     });
 
     testWidgets('displays branding elements', (tester) async {
@@ -43,8 +42,6 @@ void main() {
         ),
       );
 
-      // Hero with logo mark
-      expect(find.byType(Hero), findsOneWidget);
       // Mode cards with Lucide icons
       expect(find.byIcon(LucideIcons.cloud), findsOneWidget);
       expect(find.byIcon(LucideIcons.smartphone), findsOneWidget);

@@ -59,64 +59,66 @@ class _MiniPlayerContent extends ConsumerWidget {
       ),
     );
 
-    return GestureDetector(
+    return PressScale(
       onTap: () => context.push('/now-playing'),
-      onVerticalDragEnd: (details) {
-        final v = details.primaryVelocity ?? 0;
-        if (v < -200) {
-          context.push('/now-playing');
-        } else if (v > 200) {
-          ref.read(playerServiceProvider).stopAndClear();
-        }
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s8),
-        child: Container(
-          height: MiniNowPlaying.height,
-          decoration: BoxDecoration(
-            color: spectral.shadow,
-            borderRadius: BorderRadius.circular(MiniNowPlaying.height / 2),
-            border: Border.all(
-              color: spectral.primary.withValues(alpha: 0.2),
-              width: 0.5,
+      child: GestureDetector(
+        onVerticalDragEnd: (details) {
+          final v = details.primaryVelocity ?? 0;
+          if (v < -200) {
+            context.push('/now-playing');
+          } else if (v > 200) {
+            ref.read(playerServiceProvider).stopAndClear();
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AfSpacing.s8),
+          child: Container(
+            height: MiniNowPlaying.height,
+            decoration: BoxDecoration(
+              color: spectral.shadow,
+              borderRadius: BorderRadius.circular(MiniNowPlaying.height / 2),
+              border: Border.all(
+                color: spectral.primary.withValues(alpha: 0.2),
+                width: 0.5,
+              ),
             ),
-          ),
-          child: Row(
-            children: [
-              const SizedBox(width: AfSpacing.s4),
-              _ArtworkRing(track: track, accent: spectral.primary),
-              const SizedBox(width: AfSpacing.s8),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      track.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AfTypography.bodyMedium.copyWith(
-                        color: AfColors.textPrimary,
+            child: Row(
+              children: [
+                const SizedBox(width: AfSpacing.s4),
+                _ArtworkRing(track: track, accent: spectral.primary),
+                const SizedBox(width: AfSpacing.s8),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        track.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AfTypography.bodyMedium.copyWith(
+                          color: AfColors.textPrimary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: AfSpacing.s2),
-                    Text(
-                      track.artistName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AfTypography.bodySmall.copyWith(
-                        color: AfColors.textSecondary,
+                      const SizedBox(height: AfSpacing.s2),
+                      Text(
+                        track.artistName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AfTypography.bodySmall.copyWith(
+                          color: AfColors.textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              _MiniTransport(
-                isPlaying: isPlaying,
-                isBuffering: isBuffering,
-                accent: spectral.primary,
-              ),
-            ],
+                _MiniTransport(
+                  isPlaying: isPlaying,
+                  isBuffering: isBuffering,
+                  accent: spectral.primary,
+                ),
+              ],
+            ),
           ),
         ),
       ),

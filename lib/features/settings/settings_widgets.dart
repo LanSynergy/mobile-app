@@ -306,42 +306,38 @@ class _AfCollapsibleSectionState extends State<AfCollapsibleSection>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // ── Header ─────────────────────────────────────────────────────
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: _toggle,
-            borderRadius: AfRadii.borderLg,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AfSpacing.s16,
-                vertical: AfSpacing.s12,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      widget.title.toUpperCase(),
-                      style: AfTypography.label.copyWith(
-                        color: AfColors.textSecondary,
-                      ),
+        PressScale(
+          onTap: _toggle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AfSpacing.s16,
+              vertical: AfSpacing.s12,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.title.toUpperCase(),
+                    style: AfTypography.label.copyWith(
+                      color: AfColors.textSecondary,
                     ),
                   ),
-                  if (widget.trailing != null) ...[
-                    widget.trailing!,
-                    const SizedBox(width: AfSpacing.s8),
-                  ],
-                  AnimatedRotation(
-                    turns: _expanded ? 0.5 : 0,
-                    duration: AfDurations.standard,
-                    curve: AfCurves.easeStandard,
-                    child: const Icon(
-                      LucideIcons.chevronDown,
-                      size: 16,
-                      color: AfColors.textTertiary,
-                    ),
-                  ),
+                ),
+                if (widget.trailing != null) ...[
+                  widget.trailing!,
+                  const SizedBox(width: AfSpacing.s8),
                 ],
-              ),
+                AnimatedRotation(
+                  turns: _expanded ? 0.5 : 0,
+                  duration: AfDurations.standard,
+                  curve: AfCurves.easeStandard,
+                  child: const Icon(
+                    LucideIcons.chevronDown,
+                    size: 16,
+                    color: AfColors.textTertiary,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -386,7 +382,7 @@ class OptionTile extends ConsumerWidget {
     final spectral = ref.watch(
       currentSpectralProvider.select((s) => s.primary),
     );
-    return InkWell(
+    return PressScale(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(
@@ -400,9 +396,7 @@ class OptionTile extends ConsumerWidget {
               height: subtitle != null ? 28 : 20,
               decoration: BoxDecoration(
                 color: isActive ? spectral : Colors.transparent,
-                borderRadius: BorderRadius.circular(
-                  1.5,
-                ), // 3dp-wide indicator bar
+                borderRadius: BorderRadius.circular(1.5),
               ),
             ),
             const SizedBox(width: AfSpacing.s12),
