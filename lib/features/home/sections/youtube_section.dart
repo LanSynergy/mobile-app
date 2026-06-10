@@ -190,12 +190,9 @@ class GlassSearchButton extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(AfSpacing.s12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.06),
+              color: AfColors.glassFill,
               borderRadius: AfRadii.borderPill,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.08),
-                width: 1,
-              ),
+              border: Border.all(color: AfColors.glassFillStrong, width: 1),
             ),
             child: const Icon(
               LucideIcons.search,
@@ -231,12 +228,14 @@ class YouTubeChipsRow extends ConsumerWidget {
             label: Text(
               chip.title,
               style: AfTypography.bodySmall.copyWith(
-                color: isSelected ? Colors.black : AfColors.textPrimary,
+                color: isSelected
+                    ? AfColors.surfaceCanvas
+                    : AfColors.textPrimary,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
             selected: isSelected,
-            selectedColor: Colors.white,
+            selectedColor: AfColors.textOnPrimary,
             backgroundColor: AfColors.surfaceRaised,
             onSelected: (_) {
               if (isSelected) {

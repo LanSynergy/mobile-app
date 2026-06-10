@@ -40,10 +40,7 @@ class _AnimatedSpectralScopeState extends ConsumerState<AnimatedSpectralScope>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: AfDurations.spectral,
-    );
+    _ctrl = AnimationController(vsync: this, duration: AfDurations.spectral);
     _ctrl.addListener(() {
       _current = _lerpSpectral(_from, _to, _ctrl.value);
       animatedSpectral.value = _current;

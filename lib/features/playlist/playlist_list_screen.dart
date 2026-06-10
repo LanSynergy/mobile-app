@@ -62,7 +62,7 @@ class PlaylistListScreen extends ConsumerWidget {
                           child: Text(
                             'Playlists',
                             style: AfTypography.display.copyWith(
-                              color: Colors.white,
+                              color: AfColors.textOnPrimary,
                             ),
                           ),
                         ),

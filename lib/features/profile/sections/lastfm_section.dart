@@ -53,7 +53,7 @@ class LastFmConnectionCTA extends ConsumerWidget {
           const SizedBox(height: AfSpacing.s12),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
+              backgroundColor: AfColors.textOnPrimary,
               foregroundColor: spectral,
               padding: const EdgeInsets.symmetric(
                 horizontal: AfSpacing.s16,

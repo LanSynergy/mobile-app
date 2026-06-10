@@ -109,7 +109,10 @@ class _LyricsListState extends ConsumerState<LyricsList> {
     final activeLinePos = paddingTop + activeIndex * _rowHeight;
     final idealCenter = activeLinePos - (viewportHeight / 2) + (_rowHeight / 2);
     final maxSafe = activeLinePos - (viewportHeight / 2);
-    final clamped = idealCenter.clamp(minScroll, maxScroll < maxSafe ? maxScroll : maxSafe);
+    final clamped = idealCenter.clamp(
+      minScroll,
+      maxScroll < maxSafe ? maxScroll : maxSafe,
+    );
 
     widget.scrollController.animateTo(
       clamped,

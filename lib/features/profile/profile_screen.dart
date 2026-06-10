@@ -85,7 +85,7 @@ class ProfileScreen extends ConsumerWidget {
                       child: Text(
                         'Profile',
                         style: AfTypography.display.copyWith(
-                          color: Colors.white,
+                          color: AfColors.textOnPrimary,
                         ),
                       ),
                     ),

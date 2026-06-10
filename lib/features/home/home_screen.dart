@@ -210,7 +210,7 @@ class _HomeHeaderGradient extends ConsumerWidget {
       ).createShader(bounds),
       child: Text(
         'Listen',
-        style: AfTypography.display.copyWith(color: Colors.white),
+        style: AfTypography.display.copyWith(color: AfColors.textOnPrimary),
       ),
     );
   }

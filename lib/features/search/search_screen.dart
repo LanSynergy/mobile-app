@@ -125,7 +125,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ).createShader(bounds),
                 child: Text(
                   'Search',
-                  style: AfTypography.display.copyWith(color: Colors.white),
+                  style: AfTypography.display.copyWith(
+                    color: AfColors.textOnPrimary,
+                  ),
                 ),
               ),
             ),

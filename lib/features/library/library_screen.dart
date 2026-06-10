@@ -110,7 +110,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                         child: Text(
                           'Library',
                           style: AfTypography.display.copyWith(
-                            color: Colors.white,
+                            color: AfColors.textOnPrimary,
                           ),
                         ),
                       ),
