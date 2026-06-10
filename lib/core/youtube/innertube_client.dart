@@ -3,11 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../utils/log.dart';
+import 'youtube_auth.dart';
 
 /// InnerTube client for YouTube Music home content.
 ///
 /// Uses WEB_REMIX client identity (YouTube Music web app).
-/// Visitor data fetched from /sw.js_data, cookies persisted across requests.
+/// Supports both anonymous and authenticated (cookie-based) modes.
 class InnerTubeClient {
   InnerTubeClient();
 
@@ -24,11 +25,35 @@ class InnerTubeClient {
   Completer<void>? _initCompleter;
   String? _cookies;
 
+  /// Auth bundle for authenticated requests. Null = anonymous mode.
+  YouTubeAuthBundle? _auth;
+
   String get _locale {
     final parts = Platform.localeName.split('_');
     final gl = parts.length >= 2 ? parts.last.toUpperCase() : 'US';
     final hl = parts.length >= 2 ? parts.first : 'en';
     return '$gl|$hl';
+  }
+
+  /// Set or clear authentication credentials.
+  void setAuth(YouTubeAuthBundle? auth) {
+    _auth = auth;
+    if (auth != null) {
+      afLog(
+        'youtube',
+        'setAuth: email=${auth.email} '
+        'hasSAPISID=${auth.cookies.containsKey('SAPISID')} '
+        'cookieCount=${auth.cookies.length} '
+        'dataSyncId=${auth.dataSyncId}',
+      );
+      // Merge auth cookies into the cookie jar
+      final authCookieStr = auth.cookieString;
+      if (_cookies != null && _cookies!.isNotEmpty) {
+        _cookies = '$_cookies; $authCookieStr';
+      } else {
+        _cookies = authCookieStr;
+      }
+    }
   }
 
   /// Lazily initialize: fetch homepage for cookies + visitorData in one session.
@@ -54,9 +79,17 @@ class InnerTubeClient {
         );
         req.headers.set('Accept', 'text/html,application/xhtml+xml');
         final resp = await req.close();
-        final cookies = resp.cookies;
-        if (cookies.isNotEmpty) {
-          _cookies = cookies.map((c) => '${c.name}=${c.value}').join('; ');
+        final respCookies = resp.cookies;
+        if (respCookies.isNotEmpty) {
+          // Merge: keep existing auth cookies, add new anonymous ones.
+          final newCookies = respCookies
+              .map((c) => '${c.name}=${c.value}')
+              .join('; ');
+          if (_cookies != null && _cookies!.isNotEmpty) {
+            _cookies = '$_cookies; $newCookies';
+          } else {
+            _cookies = newCookies;
+          }
         }
         // Read response to complete the request
         await resp.transform(utf8.decoder).join();
@@ -94,7 +127,40 @@ class InnerTubeClient {
         'gl': gl,
         'visitorData': ?visitorData,
       },
+      if (_auth != null && _auth!.dataSyncId != null)
+        'user': {'onBehalfOfUser': _auth!.dataSyncId},
     };
+  }
+
+  /// Apply common + auth headers to an HTTP request.
+  void _applyHeaders(
+    HttpClientRequest request, {
+    required String? visitorData,
+  }) {
+    request.headers.set('Content-Type', 'application/json');
+    request.headers.set('X-Goog-Api-Format-Version', '1');
+    request.headers.set('X-YouTube-Client-Name', _clientId);
+    request.headers.set('X-YouTube-Client-Version', _clientVersion);
+    request.headers.set('X-Origin', _origin);
+    request.headers.set('Referer', _referer);
+    request.headers.set(
+      'User-Agent',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) '
+          'Gecko/20100101 Firefox/140.0',
+    );
+    if (visitorData != null) {
+      request.headers.set('X-Goog-Visitor-Id', visitorData);
+    }
+    if (_auth != null && _auth!.isValid) {
+      final authHeader = _auth!.authorizationHeader;
+      if (authHeader != null) {
+        request.headers.set('Authorization', authHeader);
+      }
+      request.headers.set('X-Goog-AuthUser', '0');
+    }
+    if (_cookies != null) {
+      request.headers.set('Cookie', _cookies!);
+    }
   }
 
   /// Fetches the YouTube Music home page content.
@@ -122,25 +188,7 @@ class InnerTubeClient {
 
       try {
         final request = await client.postUrl(uri);
-
-        // Headers matching Metrolist's InnerTube.kt ytClient()
-        request.headers.set('Content-Type', 'application/json');
-        request.headers.set('X-Goog-Api-Format-Version', '1');
-        request.headers.set('X-YouTube-Client-Name', _clientId);
-        request.headers.set('X-YouTube-Client-Version', _clientVersion);
-        request.headers.set('X-Origin', _origin);
-        request.headers.set('Referer', _referer);
-        request.headers.set(
-          'User-Agent',
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) '
-              'Gecko/20100101 Firefox/140.0',
-        );
-        if (visitorData != null) {
-          request.headers.set('X-Goog-Visitor-Id', visitorData);
-        }
-        if (_cookies != null) {
-          request.headers.set('Cookie', _cookies!);
-        }
+        _applyHeaders(request, visitorData: visitorData);
 
         request.write(jsonEncode(body));
 
@@ -204,23 +252,7 @@ class InnerTubeClient {
 
       try {
         final request = await client.postUrl(uri);
-        request.headers.set('Content-Type', 'application/json');
-        request.headers.set('X-Goog-Api-Format-Version', '1');
-        request.headers.set('X-YouTube-Client-Name', _clientId);
-        request.headers.set('X-YouTube-Client-Version', _clientVersion);
-        request.headers.set('X-Origin', _origin);
-        request.headers.set('Referer', _referer);
-        request.headers.set(
-          'User-Agent',
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) '
-              'Gecko/20100101 Firefox/140.0',
-        );
-        if (visitorData != null) {
-          request.headers.set('X-Goog-Visitor-Id', visitorData);
-        }
-        if (_cookies != null) {
-          request.headers.set('Cookie', _cookies!);
-        }
+        _applyHeaders(request, visitorData: visitorData);
 
         request.write(jsonEncode(body));
 

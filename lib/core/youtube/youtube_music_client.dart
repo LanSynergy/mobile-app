@@ -16,9 +16,13 @@ import 'youtube_home_content.dart';
 /// YouTube Music account library — that's Phase 2. This MVP focuses
 /// on search + streaming.
 class YouTubeMusicClient implements MusicBackend {
-  YouTubeMusicClient({this.auth}) : _yt = YoutubeExplode();
+  YouTubeMusicClient({this.auth}) : _yt = YoutubeExplode() {
+    if (auth != null) {
+      _innertube.setAuth(auth);
+    }
+  }
 
-  final YouTubeAuth? auth;
+  final YouTubeAuthBundle? auth;
   final YoutubeExplode _yt;
   final InnerTubeClient _innertube = InnerTubeClient();
 

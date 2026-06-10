@@ -3,6 +3,7 @@ package dev.aetherfin.aetherfin
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.webkit.CookieManager
 import androidx.core.content.ContextCompat
 import dev.aetherfin.aetherfin.battery.BatteryOptPlugin
 import dev.aetherfin.aetherfin.live_update.LiveUpdatePlugin
@@ -33,6 +34,19 @@ class MainActivity : FlutterActivity() {
         flutterEngine.plugins.add(LiveUpdatePlugin())
         flutterEngine.plugins.add(BatteryOptPlugin())
         flutterEngine.plugins.add(SafPlugin())
+
+        // YouTube auth — read cookies from android.webkit.CookieManager
+        val ytAuthChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "aetherfin.youtube_auth")
+        ytAuthChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getCookies" -> {
+                    val url = call.argument<String>("url") ?: "https://music.youtube.com"
+                    val cookieStr = CookieManager.getInstance().getCookie(url) ?: ""
+                    result.success(cookieStr)
+                }
+                else -> result.notImplemented()
+            }
+        }
 
         intent?.getStringExtra("shortcut_action")?.let {
             pendingShortcutAction = it

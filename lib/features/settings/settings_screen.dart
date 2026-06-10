@@ -24,6 +24,7 @@ import '../../state/lastfm_sync_provider.dart';
 import '../../state/providers.dart';
 import '../../widgets/af_dialog.dart';
 import '../../widgets/af_scrollbar.dart';
+import '../../state/youtube_music_providers.dart';
 import 'settings_dialogs.dart';
 import 'settings_sections.dart';
 import 'settings_widgets.dart';
@@ -152,6 +153,9 @@ class SettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+
+              // ── YouTube Music Account ───────────────────────────────
+              if (mode == AppMode.youtubeMusic) _YouTubeMusicAccountSection(),
 
               // ── Music Folders (local mode only) ─────────────────────
               if (isLocal)
@@ -994,6 +998,91 @@ class _LastFmSettingsBody extends ConsumerWidget {
             ),
         ],
       ],
+    );
+  }
+}
+
+/// YouTube Music account section shown in settings when in YouTube Music mode.
+class _YouTubeMusicAccountSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(youtubeAuthProvider);
+    final isLoggedIn = auth?.isValid == true;
+
+    return AfCollapsibleSection(
+      title: 'YouTube Music',
+      child: SettingsGroup(
+        children: [
+          SettingsTile(
+            icon: LucideIcons.user,
+            title: isLoggedIn
+                ? (auth!.email.isNotEmpty ? auth.email : 'Signed in')
+                : 'Not signed in',
+            subtitle: isLoggedIn
+                ? 'Google account connected'
+                : 'Sign in for personalized content',
+          ),
+          if (isLoggedIn)
+            SettingsTile(
+              icon: LucideIcons.logOut,
+              title: 'Sign out',
+              subtitle: 'Disconnect Google account',
+              danger: true,
+              onTap: () async {
+                final confirmed = await showBlurDialog<bool>(
+                  context: context,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Sign out of YouTube Music?',
+                        style: AfTypography.titleMedium,
+                      ),
+                      const SizedBox(height: AfSpacing.s12),
+                      Text(
+                        'You will lose access to personalized recommendations.',
+                        style: AfTypography.bodyMedium,
+                      ),
+                      const SizedBox(height: AfSpacing.s24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          Focus(
+                            autofocus: true,
+                            child: ElevatedButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AfColors.semanticError,
+                                foregroundColor: AfColors.textOnPrimary,
+                              ),
+                              child: const Text('Sign out'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true && context.mounted) {
+                  await ref.read(youtubeAuthProvider.notifier).clear();
+                  ref.invalidate(youtubeHomeProvider);
+                }
+              },
+            )
+          else
+            SettingsTile(
+              icon: LucideIcons.logIn,
+              title: 'Sign in',
+              subtitle: 'Connect your Google account',
+              onTap: () => context.push('/onboarding/youtube-login'),
+            ),
+        ],
+      ),
     );
   }
 }

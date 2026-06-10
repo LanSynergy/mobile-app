@@ -175,7 +175,6 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
                   ),
                   SizeTransition(
                     sizeFactor: _expandAnim,
-                    alignment: AlignmentDirectional.topStart,
                     child: FadeTransition(
                       opacity: _expandAnim,
                       child: lrc != null && lrc.lines.isNotEmpty

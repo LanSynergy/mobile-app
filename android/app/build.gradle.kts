@@ -3,8 +3,7 @@ import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
-    // Flutter's built-in Kotlin support replaces explicit id("kotlin-android").
-    // The Flutter Gradle Plugin must be applied after the Android Gradle plugin.
+    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -25,10 +24,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -68,6 +63,12 @@ android {
 
 flutter {
     source = "../.."
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
 }
 
 dependencies {

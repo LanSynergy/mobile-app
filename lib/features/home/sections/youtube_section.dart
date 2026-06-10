@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/youtube/innertube_client.dart';
+import '../../../core/youtube/youtube_auth.dart';
 import '../../../core/youtube/youtube_home_content.dart';
 import '../../../design_tokens/tokens.dart';
 import '../../../state/youtube_music_providers.dart';
@@ -77,6 +78,8 @@ class _YouTubeHomeViewState extends ConsumerState<YouTubeHomeView> {
                       ),
                     ),
                     const Spacer(),
+                    const YouTubeAccountButton(),
+                    const SizedBox(width: AfSpacing.s8),
                     GlassSearchButton(onTap: () => context.push('/search')),
                   ],
                 ),
@@ -249,6 +252,118 @@ class YouTubeChipsRow extends ConsumerWidget {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+/// Account/login button for YouTube Music header.
+///
+/// Shows a person icon when not logged in (tap to open login screen).
+/// When logged in, shows the user's email initial as an avatar.
+class YouTubeAccountButton extends ConsumerWidget {
+  const YouTubeAccountButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(youtubeAuthProvider);
+    final isLoggedIn = auth?.isValid == true;
+
+    return PressScale(
+      ensureHitTarget: false,
+      onTap: () {
+        if (isLoggedIn) {
+          _showAccountMenu(context, ref, auth!);
+        } else {
+          context.push('/onboarding/youtube-login');
+        }
+      },
+      child: ClipOval(
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: isLoggedIn
+                ? AfColors.indigo600
+                : Colors.white.withValues(alpha: 0.06),
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: isLoggedIn
+                ? Text(
+                    (auth!.email.isNotEmpty ? auth.email[0] : '?')
+                        .toUpperCase(),
+                    style: AfTypography.bodyMedium.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                : const Icon(
+                    LucideIcons.user,
+                    size: 16,
+                    color: AfColors.textSecondary,
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAccountMenu(
+    BuildContext context,
+    WidgetRef ref,
+    YouTubeAuthBundle auth,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AfColors.surfaceRaised,
+        title: Text(
+          auth.email.isNotEmpty ? auth.email : 'YouTube Music',
+          style: AfTypography.bodyMedium.copyWith(color: AfColors.textPrimary),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (auth.displayName.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AfSpacing.s8),
+                child: Text(
+                  auth.displayName,
+                  style: AfTypography.bodySmall.copyWith(
+                    color: AfColors.textSecondary,
+                  ),
+                ),
+              ),
+            Text(
+              'Signed in',
+              style: AfTypography.bodySmall.copyWith(
+                color: AfColors.textTertiary,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ref.read(youtubeAuthProvider.notifier).clear();
+              ref.invalidate(youtubeHomeProvider);
+            },
+            child: Text(
+              'Sign out',
+              style: TextStyle(color: Colors.red.shade300),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: AfColors.textSecondary),
+            ),
+          ),
+        ],
       ),
     );
   }

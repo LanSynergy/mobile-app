@@ -18,6 +18,7 @@ import '../features/onboarding/local_setup_screen.dart';
 import '../features/onboarding/server_discovery_screen.dart';
 import '../features/onboarding/sign_in_screen.dart';
 import '../features/onboarding/welcome_screen.dart';
+import '../features/onboarding/youtube_login_screen.dart';
 import '../features/playlist/playlist_list_screen.dart';
 import '../features/playlist/playlist_screen.dart';
 import '../features/profile/profile_screen.dart';
@@ -146,6 +147,12 @@ final _router = GoRouter(
       name: 'onboarding-done',
       path: '/onboarding/done',
       builder: (context, state) => const AllSetScreen(),
+    ),
+    GoRoute(
+      name: 'youtube-login',
+      path: '/onboarding/youtube-login',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) => const YouTubeLoginScreen(),
     ),
 
     // Shell — 4 tabs.

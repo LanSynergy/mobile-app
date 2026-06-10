@@ -14,20 +14,21 @@ final youtubeAuthStorageProvider = Provider<YouTubeAuthStorage>(
 );
 
 /// Current YouTube Music auth state.
-final youtubeAuthProvider = NotifierProvider<YouTubeAuthNotifier, YouTubeAuth?>(
-  YouTubeAuthNotifier.new,
-);
+final youtubeAuthProvider =
+    NotifierProvider<YouTubeAuthNotifier, YouTubeAuthBundle?>(
+      YouTubeAuthNotifier.new,
+    );
 
-class YouTubeAuthNotifier extends Notifier<YouTubeAuth?> {
+class YouTubeAuthNotifier extends Notifier<YouTubeAuthBundle?> {
   @override
-  YouTubeAuth? build() => null;
+  YouTubeAuthBundle? build() => null;
 
   Future<void> init() async {
     final stored = await ref.read(youtubeAuthStorageProvider).load();
     state = stored;
   }
 
-  Future<void> save(YouTubeAuth auth) async {
+  Future<void> save(YouTubeAuthBundle auth) async {
     await ref.read(youtubeAuthStorageProvider).save(auth);
     state = auth;
   }
@@ -36,6 +37,8 @@ class YouTubeAuthNotifier extends Notifier<YouTubeAuth?> {
     await ref.read(youtubeAuthStorageProvider).clear();
     state = null;
   }
+
+  bool get isLoggedIn => state?.isValid == true;
 }
 
 /// Selected YouTube home chip parameters.

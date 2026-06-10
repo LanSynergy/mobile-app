@@ -18,6 +18,7 @@ import 'core/local/app_mode_store.dart';
 import 'core/jellyfin/auth_storage.dart';
 import 'core/jellyfin/models/server.dart';
 import 'design_tokens/tokens.dart';
+import 'state/youtube_music_providers.dart';
 import 'state/providers.dart';
 import 'utils/log.dart';
 
@@ -236,6 +237,19 @@ Future<void> main() async {
         afLog(
           'error',
           'OfflineCacheService read failed',
+          error: e,
+          stackTrace: stack,
+        );
+      }
+
+      // Initialize YouTube Music auth state
+      try {
+        await container.read(youtubeAuthProvider.notifier).init();
+        _boot('YouTube auth init OK');
+      } on Exception catch (e, stack) {
+        afLog(
+          'aetherfin:error',
+          'YouTube auth init failed',
           error: e,
           stackTrace: stack,
         );

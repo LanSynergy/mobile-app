@@ -1,50 +1,75 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../utils/log.dart';
 
-/// Google OAuth2 tokens for YouTube Music access.
-class YouTubeAuth {
-  const YouTubeAuth({
-    required this.accessToken,
-    required this.refreshToken,
+/// Cookie-based authentication bundle for YouTube Music.
+///
+/// Stores Google session cookies captured from a WebView login flow.
+/// Used to generate SAPISIDHASH headers for authenticated InnerTube requests.
+class YouTubeAuthBundle {
+  const YouTubeAuthBundle({
+    required this.cookies,
     required this.email,
-    required this.displayName,
-    this.expiry,
+    this.displayName = '',
+    this.dataSyncId,
   });
 
-  factory YouTubeAuth.fromJson(Map<String, dynamic> json) => YouTubeAuth(
-    accessToken: json['accessToken'] as String,
-    refreshToken: json['refreshToken'] as String,
-    email: json['email'] as String,
-    displayName: json['displayName'] as String? ?? '',
-    expiry: json['expiry'] != null
-        ? DateTime.parse(json['expiry'] as String)
-        : null,
-  );
+  factory YouTubeAuthBundle.fromJson(Map<String, dynamic> json) =>
+      YouTubeAuthBundle(
+        cookies: Map<String, String>.from(json['cookies'] as Map? ?? {}),
+        email: json['email'] as String? ?? '',
+        displayName: json['displayName'] as String? ?? '',
+        dataSyncId: json['dataSyncId'] as String?,
+      );
 
-  final String accessToken;
-  final String refreshToken;
+  /// Raw cookie map from CookieManager: { "SAPISID": "...", "SID": "...", ... }
+  final Map<String, String> cookies;
+
+  /// Google account email.
   final String email;
-  final String displayName;
-  final DateTime? expiry;
 
-  bool get isExpired {
-    if (expiry == null) return true;
-    return DateTime.now().isAfter(expiry!);
+  /// Display name from Google account.
+  final String displayName;
+
+  /// DataSync ID extracted from window.yt.config_.DATASYNC_ID.
+  /// Used as onBehalfOfUser in InnerTube requests.
+  final String? dataSyncId;
+
+  /// Whether this auth bundle has the minimum required cookies.
+  bool get isValid =>
+      cookies.containsKey('SAPISID') ||
+      cookies.containsKey('__Secure-3PAPISID');
+
+  /// Cookie string for HTTP Cookie header: "name=value; name=value; ..."
+  String get cookieString =>
+      cookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
+
+  /// Generate SAPISIDHASH authorization header value.
+  ///
+  /// Pattern: `SAPISIDHASH timestamp_sha1`
+  /// where sha1 = SHA-1 of `timestamp SAPISID https://music.youtube.com`
+  String? get authorizationHeader {
+    final sapisid = cookies['SAPISID'] ?? cookies['__Secure-3PAPISID'];
+    if (sapisid == null || sapisid.isEmpty) return null;
+
+    final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final input = '$timestamp $sapisid https://music.youtube.com';
+    final hash = sha1.convert(utf8.encode(input));
+    return 'SAPISIDHASH ${timestamp}_$hash';
   }
 
   Map<String, dynamic> toJson() => {
-    'accessToken': accessToken,
-    'refreshToken': refreshToken,
+    'cookies': cookies,
     'email': email,
     'displayName': displayName,
-    'expiry': expiry?.toIso8601String(),
+    'dataSyncId': dataSyncId,
   };
 }
 
-/// Persists YouTube Music Google OAuth tokens in flutter_secure_storage.
+/// Persists YouTube Music cookie-based auth in flutter_secure_storage.
 class YouTubeAuthStorage {
   YouTubeAuthStorage([FlutterSecureStorage? storage])
     : _storage = storage ?? const FlutterSecureStorage(aOptions: _options);
@@ -54,17 +79,18 @@ class YouTubeAuthStorage {
 
   final FlutterSecureStorage _storage;
 
-  Future<void> save(YouTubeAuth auth) async {
+  Future<void> save(YouTubeAuthBundle auth) async {
     await _storage.write(key: _key, value: jsonEncode(auth.toJson()));
   }
 
-  Future<YouTubeAuth?> load() async {
+  Future<YouTubeAuthBundle?> load() async {
     final raw = await _storage.read(key: _key);
     if (raw == null) return null;
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! Map<String, dynamic>) return null;
-      return YouTubeAuth.fromJson(decoded);
+      final bundle = YouTubeAuthBundle.fromJson(decoded);
+      return bundle.isValid ? bundle : null;
     } on Exception catch (e, stack) {
       afLog(
         'aetherfin:error',
