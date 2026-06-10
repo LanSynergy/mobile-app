@@ -15,6 +15,7 @@ class YouTubeAuthBundle {
     required this.email,
     this.displayName = '',
     this.dataSyncId,
+    this.profileUrl,
   });
 
   factory YouTubeAuthBundle.fromJson(Map<String, dynamic> json) =>
@@ -23,34 +24,22 @@ class YouTubeAuthBundle {
         email: json['email'] as String? ?? '',
         displayName: json['displayName'] as String? ?? '',
         dataSyncId: json['dataSyncId'] as String?,
+        profileUrl: json['profileUrl'] as String?,
       );
 
-  /// Raw cookie map from CookieManager: { "SAPISID": "...", "SID": "...", ... }
   final Map<String, String> cookies;
-
-  /// Google account email.
   final String email;
-
-  /// Display name from Google account.
   final String displayName;
-
-  /// DataSync ID extracted from window.yt.config_.DATASYNC_ID.
-  /// Used as onBehalfOfUser in InnerTube requests.
   final String? dataSyncId;
+  final String? profileUrl;
 
-  /// Whether this auth bundle has the minimum required cookies.
   bool get isValid =>
       cookies.containsKey('SAPISID') ||
       cookies.containsKey('__Secure-3PAPISID');
 
-  /// Cookie string for HTTP Cookie header: "name=value; name=value; ..."
   String get cookieString =>
       cookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
 
-  /// Generate SAPISIDHASH authorization header value.
-  ///
-  /// Pattern: `SAPISIDHASH timestamp_sha1`
-  /// where sha1 = SHA-1 of `timestamp SAPISID https://music.youtube.com`
   String? get authorizationHeader {
     final sapisid = cookies['SAPISID'] ?? cookies['__Secure-3PAPISID'];
     if (sapisid == null || sapisid.isEmpty) return null;
@@ -66,6 +55,7 @@ class YouTubeAuthBundle {
     'email': email,
     'displayName': displayName,
     'dataSyncId': dataSyncId,
+    'profileUrl': profileUrl,
   };
 }
 

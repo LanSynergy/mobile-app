@@ -68,40 +68,38 @@ class InnerTubeClient {
     _initCompleter = Completer<void>();
 
     try {
-      // 1. Fetch homepage to get session cookies
-      final pageClient = HttpClient();
-      try {
-        final req = await pageClient.getUrl(Uri.parse(_origin));
-        req.headers.set(
-          'User-Agent',
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) '
-              'Gecko/20100101 Firefox/140.0',
-        );
-        req.headers.set('Accept', 'text/html,application/xhtml+xml');
-        final resp = await req.close();
-        final respCookies = resp.cookies;
-        if (respCookies.isNotEmpty) {
-          // Merge: keep existing auth cookies, add new anonymous ones.
-          final newCookies = respCookies
-              .map((c) => '${c.name}=${c.value}')
-              .join('; ');
-          if (_cookies != null && _cookies!.isNotEmpty) {
-            _cookies = '$_cookies; $newCookies';
-          } else {
-            _cookies = newCookies;
+      // 1. Fetch homepage to get session cookies.
+      // When authenticated, skip page fetch to avoid merging conflicting cookies.
+      if (_auth == null) {
+        final pageClient = HttpClient();
+        try {
+          final req = await pageClient.getUrl(Uri.parse(_origin));
+          req.headers.set(
+            'User-Agent',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) '
+                'Gecko/20100101 Firefox/140.0',
+          );
+          req.headers.set('Accept', 'text/html,application/xhtml+xml');
+          final resp = await req.close();
+          final respCookies = resp.cookies;
+          if (respCookies.isNotEmpty) {
+            _cookies = respCookies
+                .map((c) => '${c.name}=${c.value}')
+                .join('; ');
           }
+          await resp.transform(utf8.decoder).join();
+        } finally {
+          pageClient.close();
         }
-        // Read response to complete the request
-        await resp.transform(utf8.decoder).join();
-      } finally {
-        pageClient.close();
       }
 
       // 2. Fetch visitor data
       _cachedVisitorData = await _fetchVisitorData();
 
       // 3. Create persistent client
-      _httpClient = HttpClient();
+      _httpClient = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 10)
+        ..idleTimeout = const Duration(seconds: 15);
     } on Exception catch (e) {
       afLog(
         'youtube',
@@ -125,10 +123,8 @@ class InnerTubeClient {
         'clientVersion': _clientVersion,
         'hl': hl,
         'gl': gl,
-        'visitorData': ?visitorData,
+        if (visitorData != null) 'visitorData': visitorData,
       },
-      if (_auth != null && _auth!.dataSyncId != null)
-        'user': {'onBehalfOfUser': _auth!.dataSyncId},
     };
   }
 
@@ -187,12 +183,17 @@ class InnerTubeClient {
       final client = _httpClient ?? HttpClient();
 
       try {
-        final request = await client.postUrl(uri);
+        final request = await client.postUrl(uri).timeout(
+              const Duration(seconds: 10),
+            );
         _applyHeaders(request, visitorData: visitorData);
 
-        request.write(jsonEncode(body));
+        final bodyStr = jsonEncode(body);
+        request.write(bodyStr);
 
-        final response = await request.close();
+        final response = await request.close().timeout(
+              const Duration(seconds: 10),
+            );
 
         // Capture any new cookies from response
         final respCookies = response.cookies;
@@ -203,7 +204,30 @@ class InnerTubeClient {
           _cookies = _cookies != null ? '$_cookies; $newParts' : newParts;
         }
 
-        final responseBody = await response.transform(utf8.decoder).join();
+        // Read response bytes with a timeout to avoid streaming hang.
+        final completer = Completer<String>();
+        final bytes = <int>[];
+        final sub = response.listen(
+          (chunk) => bytes.addAll(chunk),
+          onDone: () {
+            if (!completer.isCompleted) {
+              completer.complete(utf8.decode(bytes));
+            }
+          },
+          onError: (Object e) {
+            if (!completer.isCompleted) {
+              completer.completeError(e);
+            }
+          },
+        );
+        String responseBody;
+        try {
+          responseBody =
+              await completer.future.timeout(const Duration(seconds: 10));
+        } on TimeoutException {
+          unawaited(sub.cancel());
+          return null;
+        }
 
         if (response.statusCode != 200) {
           afLog(
@@ -219,6 +243,9 @@ class InnerTubeClient {
       } on Exception catch (e) {
         afLog('youtube', 'InnerTube HTTP request failed', error: e);
         return null;
+      } on Error catch (e) {
+        afLog('youtube', 'InnerTube HTTP request failed', error: e);
+        return null;
       }
     } on Exception catch (e, stack) {
       afLog(
@@ -227,6 +254,9 @@ class InnerTubeClient {
         error: e,
         stackTrace: stack,
       );
+      return null;
+    } on Error catch (e) {
+      afLog('youtube', 'InnerTube browse error', error: e);
       return null;
     }
   }

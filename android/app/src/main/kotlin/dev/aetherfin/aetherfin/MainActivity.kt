@@ -44,6 +44,10 @@ class MainActivity : FlutterActivity() {
                     val cookieStr = CookieManager.getInstance().getCookie(url) ?: ""
                     result.success(cookieStr)
                 }
+                "clearCookies" -> {
+                    CookieManager.getInstance().removeAllCookies(null)
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }

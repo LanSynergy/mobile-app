@@ -18,6 +18,8 @@ class SplitInfoSection extends ConsumerWidget {
     super.key,
     required this.name,
     required this.serverName,
+    required this.isYouTubeMusic,
+    this.networkProfileUrl,
     required this.profilePhoto,
     required this.trackCount,
     required this.albumCount,
@@ -25,6 +27,8 @@ class SplitInfoSection extends ConsumerWidget {
 
   final String name;
   final String serverName;
+  final bool isYouTubeMusic;
+  final String? networkProfileUrl;
   final ({bool isUploading, String? localPath, String? networkUrl})
   profilePhoto;
   final String trackCount;
@@ -47,7 +51,7 @@ class SplitInfoSection extends ConsumerWidget {
             name: name,
             isUploading: profilePhoto.isUploading,
             localPath: profilePhoto.localPath,
-            networkUrl: profilePhoto.networkUrl,
+            networkUrl: profilePhoto.networkUrl ?? networkProfileUrl,
             authHeaders: ref.watch(musicBackendProvider)?.authHeaders,
             onPickPhoto: (source) async {
               final picker = ImagePicker();
@@ -102,8 +106,10 @@ class SplitInfoSection extends ConsumerWidget {
                 const SizedBox(height: AfSpacing.s4),
                 Row(
                   children: [
-                    const Icon(
-                      LucideIcons.server,
+                    Icon(
+                      isYouTubeMusic
+                          ? LucideIcons.music
+                          : LucideIcons.server,
                       size: 12,
                       color: AfColors.textTertiary,
                     ),
@@ -308,8 +314,6 @@ class CompactAvatar extends ConsumerWidget {
         httpHeaders: authHeaders,
         width: 80,
         height: 80,
-        memCacheWidth: 80,
-        memCacheHeight: 80,
         fit: BoxFit.cover,
         placeholder: (context, url) => _initialsAvatar(bgColor),
         errorWidget: (context, url, error) => _initialsAvatar(bgColor),

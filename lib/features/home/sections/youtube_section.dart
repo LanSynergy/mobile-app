@@ -1,9 +1,12 @@
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
+
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/youtube/innertube_client.dart';
 import '../../../core/youtube/youtube_auth.dart';
@@ -288,22 +291,49 @@ class YouTubeAccountButton extends ConsumerWidget {
                 : Colors.white.withValues(alpha: 0.06),
             shape: BoxShape.circle,
           ),
-          child: Center(
-            child: isLoggedIn
-                ? Text(
-                    (auth!.email.isNotEmpty ? auth.email[0] : '?')
-                        .toUpperCase(),
-                    style: AfTypography.bodyMedium.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  )
-                : const Icon(
-                    LucideIcons.user,
-                    size: 16,
-                    color: AfColors.textSecondary,
-                  ),
-          ),
+          child: isLoggedIn
+              ? (auth!.profileUrl != null && auth.profileUrl!.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: auth.profileUrl!,
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Center(
+                        child: Text(
+                          (auth.email.isNotEmpty ? auth.email[0] : 'Y')
+                              .toUpperCase(),
+                          style: AfTypography.bodyMedium.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Center(
+                        child: Text(
+                          (auth.email.isNotEmpty ? auth.email[0] : 'Y')
+                              .toUpperCase(),
+                          style: AfTypography.bodyMedium.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    )
+                  : Center(
+                      child: Text(
+                        (auth.email.isNotEmpty ? auth.email[0] : 'Y')
+                            .toUpperCase(),
+                        style: AfTypography.bodyMedium.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ))
+              : const Icon(
+                  LucideIcons.user,
+                  size: 16,
+                  color: AfColors.textSecondary,
+                ),
         ),
       ),
     );
@@ -346,8 +376,13 @@ class YouTubeAccountButton extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
+              // Clear WebView cookies so next login starts fresh.
+              try {
+                const channel = MethodChannel('aetherfin.youtube_auth');
+                await channel.invokeMethod('clearCookies');
+              } on Exception catch (_) {}
               ref.read(youtubeAuthProvider.notifier).clear();
               ref.invalidate(youtubeHomeProvider);
             },

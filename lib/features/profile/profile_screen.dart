@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/jellyfin/models/items.dart';
 import '../../design_tokens/tokens.dart';
 import '../../state/providers.dart';
+import '../../state/youtube_music_providers.dart';
 import '../../widgets/press_scale.dart';
 import 'sections/about_section.dart';
 import 'sections/listening_stats_section.dart';
@@ -19,21 +20,41 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
-    final name = auth?.userName ?? 'You';
-    final serverName = auth?.server.name ?? 'Local library';
+    final mode = ref.watch(appModeProvider);
+    final isYouTubeMusic = mode == AppMode.youtubeMusic;
+
+    // YouTube Music mode: use YT auth data
+    final ytAuth = isYouTubeMusic ? ref.watch(youtubeAuthProvider) : null;
+    final name = isYouTubeMusic
+        ? (ytAuth?.email.isNotEmpty == true
+            ? ytAuth!.email.split('@').first
+            : 'YouTube Music')
+        : (auth?.userName ?? 'You');
+    final serverName = isYouTubeMusic
+        ? 'YouTube Music'
+        : (auth?.server.name ?? 'Local library');
+    final ytProfileUrl = isYouTubeMusic ? ytAuth?.profileUrl : null;
     final profilePhoto = ref.watch(profilePhotoProvider);
 
-    final mode = ref.watch(appModeProvider);
+    // For YouTube Music: use local profile pic if available
+    final isLocalPath = ytProfileUrl != null && !ytProfileUrl.startsWith('http');
+
     final isLocal = mode == AppMode.local;
-    final tracksAsync = isLocal
-        ? ref.watch(localTracksProvider)
-        : ref.watch(allTracksProvider);
-    final albumsAsync = isLocal
-        ? ref.watch(localAlbumsProvider)
-        : ref.watch(allAlbumsProvider);
-    final artistsAsync = isLocal
-        ? ref.watch(localArtistsProvider)
-        : ref.watch(allArtistsProvider);
+    final tracksAsync = isYouTubeMusic
+        ? const AsyncValue<List<AfTrack>>.data([])
+        : isLocal
+            ? ref.watch(localTracksProvider)
+            : ref.watch(allTracksProvider);
+    final albumsAsync = isYouTubeMusic
+        ? const AsyncValue<List<AfAlbum>>.data([])
+        : isLocal
+            ? ref.watch(localAlbumsProvider)
+            : ref.watch(allAlbumsProvider);
+    final artistsAsync = isYouTubeMusic
+        ? const AsyncValue<List<AfArtist>>.data([])
+        : isLocal
+            ? ref.watch(localArtistsProvider)
+            : ref.watch(allArtistsProvider);
     final playlistsAsync = ref.watch(allPlaylistsProvider);
     final favAlbumsAsync = ref.watch(favoriteAlbumsProvider);
     final recentAlbumsAsync = ref.watch(recentlyAddedAlbumsProvider);
@@ -123,9 +144,11 @@ class ProfileScreen extends ConsumerWidget {
             child: SplitInfoSection(
               name: name,
               serverName: serverName,
+              isYouTubeMusic: isYouTubeMusic,
+              networkProfileUrl: isLocalPath ? null : ytProfileUrl,
               profilePhoto: (
                 isUploading: profilePhoto.isUploading,
-                localPath: profilePhoto.localPath,
+                localPath: profilePhoto.localPath ?? (isLocalPath ? ytProfileUrl : null),
                 networkUrl: profilePhoto.networkUrl,
               ),
               trackCount: _fmtCount(tracksAsync),

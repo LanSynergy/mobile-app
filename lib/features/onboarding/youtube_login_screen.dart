@@ -83,9 +83,8 @@ class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {
         "window.yt && window.yt.config_ && window.yt.config_.DATASYNC_ID || ''",
       );
       final raw = result.toString();
-      if (raw.isNotEmpty && raw != "''" && raw != '""' && raw != 'null') {
-        // Strip surrounding quotes if present
-        final cleaned = raw.replaceAll(RegExp(r"^[']+|[']+$"), '');
+      final cleaned = _cleanJsString(raw);
+      if (cleaned.isNotEmpty && cleaned != 'null') {
         if (cleaned.contains('||')) {
           _dataSyncId = cleaned.substringBefore('||');
         } else {
@@ -142,30 +141,33 @@ class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {
       );
 
       if (!hasSapisid || !hasLoginInfo) {
+        // Not logged in yet — user needs to sign in via the WebView.
+        // Don't show error, just wait for them to complete sign-in.
+        afLog('youtube', 'Cookies incomplete — waiting for user sign-in');
         if (mounted) {
-          setState(() {
-            _error = 'Login incomplete. Please complete the sign-in process.';
-            _isCompleting = false;
-          });
+          setState(() => _isCompleting = false);
         }
         return;
       }
 
-      // Extract email from LOGIN_INFO cookie
+      // Extract email from accounts.google.com
       String email = '';
+      String? profileUrl;
       try {
-        final loginInfo = cookies['LOGIN_INFO'] ?? '';
-        email = _decodeLoginInfo(loginInfo) ?? '';
+        final accountInfo = await _extractAccountInfo();
+        email = accountInfo.email;
+        profileUrl = accountInfo.profileUrl;
       } on Exception catch (e) {
-        afLog('youtube', 'Email extraction failed', error: e);
+        afLog('youtube', 'Account info extraction failed', error: e);
       }
 
       // Save auth bundle
       final authBundle = YouTubeAuthBundle(
         cookies: cookies,
         email: email,
-        displayName: email.split('@').first,
+        displayName: email.isNotEmpty ? email.split('@').first : 'YouTube Music',
         dataSyncId: _dataSyncId,
+        profileUrl: profileUrl,
       );
 
       await ref.read(youtubeAuthProvider.notifier).save(authBundle);
@@ -193,19 +195,120 @@ class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {
     }
   }
 
-  /// Try to extract email from LOGIN_INFO cookie.
-  String? _decodeLoginInfo(String cookie) {
+  /// Extract email + profile picture from the current page (music.youtube.com).
+  Future<_AccountInfo> _extractAccountInfo() async {
+    String email = '';
+    String? profileUrl;
+
+    // Source 1: ytcfg
     try {
-      // LOGIN_INFO is URL-safe base64. Decode and look for @ symbol pattern.
-      final normalized = cookie.replaceAll('-', '+').replaceAll('_', '/');
-      final padded = normalized + ('=' * (4 - normalized.length % 4));
-      final bytes = Uri.decodeComponent(padded);
-      // Look for email pattern in the decoded bytes
-      final emailMatch = RegExp(r'[\w.+-]+@[\w.-]+\.\w+').firstMatch(bytes);
-      return emailMatch?.group(0);
-    } on Exception {
-      return null;
+      final r1 = await _controller.runJavaScriptReturningResult(
+        "typeof ytcfg !== 'undefined' && ytcfg.get('EMAIL') || ''",
+      );
+      final e1 = _cleanJsString(r1.toString());
+      if (e1.contains('@')) email = e1;
+    } on Exception {}
+
+    // Source 2: window.yt.config_.EMAIL
+    if (email.isEmpty) {
+      try {
+        final r2 = await _controller.runJavaScriptReturningResult(
+          "window.yt && window.yt.config_ && window.yt.config_.EMAIL || ''",
+        );
+        final e2 = _cleanJsString(r2.toString());
+        if (e2.contains('@')) email = e2;
+      } on Exception {}
     }
+
+    // Source 3: Profile pic — try GAIA_ID to construct Google profile URL
+    // or find img directly
+    try {
+      // First try: construct from GAIA_ID (most reliable)
+      final rGaia = await _controller.runJavaScriptReturningResult(
+        "typeof ytcfg !== 'undefined' && ytcfg.get('GAIA_ID') || ''",
+      );
+      final gaiaId = _cleanJsString(rGaia.toString());
+      if (gaiaId.isNotEmpty) {
+        profileUrl = 'https://lh3.googleusercontent.com/a-/$gaiaId=s512-c';
+      }
+    } on Exception {}
+
+    // Second try: find image in DOM
+    if (profileUrl == null) {
+      try {
+        final r3 = await _controller.runJavaScriptReturningResult(
+          "(() => { "
+          "const imgs = document.querySelectorAll('img'); "
+          "for (const img of imgs) { "
+          "  const src = img.getAttribute('data-src') || img.src || ''; "
+          "  if (src.includes('googleusercontent') || src.includes('ggpht')) return src; "
+          "} "
+          "return ''; })()",
+        );
+        final pic = _cleanJsString(r3.toString());
+        if (pic.isNotEmpty && pic.startsWith('http')) {
+          profileUrl = pic
+              .replaceAll(RegExp(r'=s\d+(-c)?'), '=s512-c')
+              .replaceAll(RegExp(r'/s\d+/'), '/s512/');
+        }
+      } on Exception {}
+    }
+
+    // Source 4: Navigate to accounts.google.com only for email
+    if (email.isEmpty) {
+      try {
+        await _controller.loadRequest(
+          Uri.parse('https://myaccount.google.com'),
+        );
+        await Future<void>.delayed(const Duration(seconds: 3));
+        final r4 = await _controller.runJavaScriptReturningResult(
+          "(() => { "
+          "const all = document.querySelectorAll('*'); "
+          "for (const el of all) { "
+          "  if (el.children.length === 0) { "
+          "    const t = (el.textContent || '').trim(); "
+          "    if (/^[\\w.+-]+@[\\w.-]+\\.[a-zA-Z]{2,}\$/.test(t)) return t; "
+          "  } "
+          "} "
+          "return ''; })()",
+        );
+        final e4 = _cleanJsString(r4.toString());
+        if (e4.contains('@')) email = e4;
+
+        // Also get profile pic from accounts page
+        if (profileUrl == null) {
+          final rPic = await _controller.runJavaScriptReturningResult(
+            "(() => { "
+            "const imgs = document.querySelectorAll('img'); "
+            "for (const img of imgs) { "
+            "  const src = img.getAttribute('data-src') || img.src || ''; "
+            "  if (src.includes('googleusercontent') || src.includes('ggpht')) return src; "
+            "} "
+            "return ''; })()",
+          );
+          final pic = _cleanJsString(rPic.toString());
+          if (pic.isNotEmpty && pic.startsWith('http')) {
+            profileUrl = pic
+                .replaceAll(RegExp(r'=s\d+(-c)?'), '=s512-c')
+                .replaceAll(RegExp(r'/s\d+/'), '/s512/');
+          }
+        }
+      } on Exception {}
+    }
+
+    return _AccountInfo(email: email, profileUrl: profileUrl);
+  }
+
+  /// Strip surrounding quotes from a JS return value.
+  String _cleanJsString(String raw) {
+    var result = raw.trim();
+    // Strip all surrounding quote characters (single, double)
+    while (result.length >= 2 &&
+        ((result.startsWith("'") && result.endsWith("'")) ||
+         (result.startsWith('"') && result.endsWith('"')))) {
+      result = result.substring(1, result.length - 1);
+    }
+    return result;
   }
 
   @override
@@ -268,6 +371,12 @@ class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {
       ),
     );
   }
+}
+
+class _AccountInfo {
+  const _AccountInfo({required this.email, this.profileUrl});
+  final String email;
+  final String? profileUrl;
 }
 
 /// Extension to add `substringBefore` to String.
