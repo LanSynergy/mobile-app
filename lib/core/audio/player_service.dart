@@ -100,6 +100,7 @@ class AfPlayerService {
 
     final bridge = NativeMediaSessionBridge();
     _bridge = bridge;
+    _wireBridgeCallbacks(bridge);
 
     Future.microtask(() async {
       try {
@@ -864,6 +865,34 @@ class AfPlayerService {
   }
 
   void _wireBridgeCallbacks(NativeMediaSessionBridge bridge) {
+    bridge.onPlay = () => _playback.play();
+    bridge.onPause = () => _playback.pause();
+    bridge.onNext = () => unawaited(_playback.skipToNext());
+    bridge.onPrevious = () => unawaited(_playback.skipToPrevious());
+    bridge.onStop = () => unawaited(_playback.stop());
+    bridge.onSeek = (position) => unawaited(_playback.seek(position));
+    bridge.onSkipToQueueItem = (index) =>
+        unawaited(_playback.skipToQueueItem(index));
+    bridge.onSetShuffleMode = (shuffleMode) {
+      // Android SHUFFLE_MODE_ALL = 1, SHUFFLE_MODE_NONE = 0
+      unawaited(_playback.setAfShuffleMode(shuffleMode == 1));
+    };
+    bridge.onSetRepeatMode = (repeatMode) {
+      // Android: REPEAT_MODE_NONE=0, REPEAT_MODE_ONE=1, REPEAT_MODE_ALL=2
+      final loop = switch (repeatMode) {
+        1 => Loop.file,
+        2 => Loop.playlist,
+        _ => Loop.off,
+      };
+      unawaited(_playback.setAfLoopMode(loop));
+    };
+    bridge.onToggleFavorite = () => onToggleFavorite?.call();
+    bridge.onDuck = (volume) => unawaited(_player.setVolume(volume * 100));
+    bridge.onUnduck = () {
+      // Restore to user's volume setting
+      final vol = _player.state.volume;
+      unawaited(_player.setVolume(vol));
+    };
     bridge.onShortcutAction = _handleShortcutAction;
   }
 
