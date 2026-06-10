@@ -32,6 +32,10 @@ class EqBandPainter extends CustomPainter {
   /// Accent color for boost bars (from spectral palette).
   final Color accentColor;
 
+  // ── Hoisted paint objects — mutated per frame, never re-allocated. ──
+  final Paint _centerPaint = Paint()..strokeWidth = 1;
+  final Paint _barPaint = Paint();
+
   @override
   void paint(Canvas canvas, Size size) {
     if (bands.isEmpty) return;
@@ -44,10 +48,8 @@ class EqBandPainter extends CustomPainter {
     final maxBarH = size.height * 0.42;
 
     // Draw center line (unity gain).
-    final centerPaint = Paint()
-      ..color = AfColors.surfaceHigh
-      ..strokeWidth = 1;
-    canvas.drawLine(Offset(0, midY), Offset(size.width, midY), centerPaint);
+    _centerPaint.color = AfColors.surfaceHigh;
+    canvas.drawLine(Offset(0, midY), Offset(size.width, midY), _centerPaint);
 
     // Draw each band bar.
     for (var i = 0; i < barCount; i++) {
@@ -59,13 +61,11 @@ class EqBandPainter extends CustomPainter {
 
       // Bar color: boost = indigo, cut = muted.
       final isBoost = normalized >= 0;
-      final color = enabled
+      _barPaint.color = enabled
           ? (isBoost
                 ? accentColor
                 : AfColors.textTertiary.withValues(alpha: 0.4))
           : AfColors.surfaceHigh;
-
-      final paint = Paint()..color = color;
 
       // Bar origin: top if boost, bottom if cut.
       final barTop = isBoost ? midY - barH : midY;
@@ -73,7 +73,7 @@ class EqBandPainter extends CustomPainter {
         Rect.fromLTWH(x, barTop, barWidth, barH),
         const Radius.circular(2),
       );
-      canvas.drawRRect(rect, paint);
+      canvas.drawRRect(rect, _barPaint);
     }
   }
 
@@ -81,7 +81,8 @@ class EqBandPainter extends CustomPainter {
   bool shouldRepaint(EqBandPainter oldDelegate) {
     return !listEquals(oldDelegate.bands, bands) ||
         !listEquals(oldDelegate.gains, gains) ||
-        oldDelegate.enabled != enabled;
+        oldDelegate.enabled != enabled ||
+        oldDelegate.accentColor != accentColor;
   }
 }
 
@@ -151,13 +152,15 @@ class _EqBandVisualizationState extends State<EqBandVisualization> {
               _activeBand = null;
               widget.onGainChangeEnd();
             },
-            child: CustomPaint(
-              painter: EqBandPainter(
-                bands: widget.labels,
-                gains: widget.gains,
-                accentColor: widget.accentColor,
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: EqBandPainter(
+                  bands: widget.labels,
+                  gains: widget.gains,
+                  accentColor: widget.accentColor,
+                ),
+                size: Size(constraints.maxWidth, constraints.maxHeight),
               ),
-              size: Size(constraints.maxWidth, constraints.maxHeight),
             ),
           );
         },
