@@ -351,16 +351,25 @@ extension QueueOperations on PlaybackController {
         } else {
           final resolved = _resolveStreamUrl?.call(nextTrack);
           if (resolved is Future<String>) {
-            resolved.then((nextUrl) {
-              _cacheStreamUrl(nextTrack.id, nextUrl);
-              unawaited(
-                _prefetcher.prefetch(
-                  nextUrl,
-                  _authHeaders,
-                  trackId: nextTrack.id,
-                ),
-              );
-            });
+            resolved
+                .then((nextUrl) {
+                  _cacheStreamUrl(nextTrack.id, nextUrl);
+                  unawaited(
+                    _prefetcher.prefetch(
+                      nextUrl,
+                      _authHeaders,
+                      trackId: nextTrack.id,
+                    ),
+                  );
+                })
+                .catchError((Object e, StackTrace stack) {
+                  afLog(
+                    'audio',
+                    'prefetch URL resolution failed for ${nextTrack.id}',
+                    error: e,
+                    stackTrace: stack,
+                  );
+                });
           } else if (resolved is String) {
             _cacheStreamUrl(nextTrack.id, resolved);
             unawaited(
