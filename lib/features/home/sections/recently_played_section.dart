@@ -23,6 +23,9 @@ class RecentTracksSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accent = ref.watch(currentSpectralProvider.select((s) => s.energy));
+    final spectralPrimary = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     final tracksAsync = isLocal
         ? ref.watch(localTracksProvider)
         : ref.watch(recentlyPlayedTracksProvider);
@@ -37,6 +40,7 @@ class RecentTracksSection extends ConsumerWidget {
             title: 'Recently played',
             actionLabel: 'See more',
             onActionTap: () => context.go('/library'),
+            spectralPrimary: spectralPrimary,
           ),
         ),
         const SizedBox(height: AfSpacing.s12),

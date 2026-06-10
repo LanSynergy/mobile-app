@@ -17,6 +17,9 @@ class LostMemoriesSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final spectralPrimary = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     final tracksAsync = ref.watch(lostMemoriesProvider);
     return tracksAsync.when(
       data: (tracks) {
@@ -33,6 +36,7 @@ class LostMemoriesSection extends ConsumerWidget {
                 actionLabel: 'Play all',
                 onActionTap: () =>
                     ref.read(playActionsProvider).playQueue(tracks),
+                spectralPrimary: spectralPrimary,
               ),
             ),
             const SizedBox(height: AfSpacing.s12),

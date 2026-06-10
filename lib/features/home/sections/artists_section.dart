@@ -48,6 +48,7 @@ class ArtistsSection extends ConsumerWidget {
               ref.read(songsPillProvider.notifier).state = SongsPill.artists;
               context.go('/library');
             },
+            spectralPrimary: spectral.primary,
           ),
         ),
         const SizedBox(height: AfSpacing.s12),
@@ -88,10 +89,7 @@ class ArtistsSection extends ConsumerWidget {
                     child: PressScale(
                       ensureHitTarget: false,
                       onTap: () => context.push('/artist/${hero.id}'),
-                      child: _HeroArtistCard(
-                        artist: hero,
-                        spectral: spectral,
-                      ),
+                      child: _HeroArtistCard(artist: hero, spectral: spectral),
                     ),
                   ),
                 ),
@@ -139,10 +137,7 @@ class ArtistsSection extends ConsumerWidget {
 
 /// Hero artist card with gradient overlay and action buttons.
 class _HeroArtistCard extends ConsumerWidget {
-  const _HeroArtistCard({
-    required this.artist,
-    required this.spectral,
-  });
+  const _HeroArtistCard({required this.artist, required this.spectral});
 
   final AfArtist artist;
   final Spectral spectral;

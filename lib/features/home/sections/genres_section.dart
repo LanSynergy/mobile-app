@@ -51,6 +51,9 @@ class GenresSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final spectralPrimary = ref.watch(
+      currentSpectralProvider.select((s) => s.primary),
+    );
     final genresAsync = isLocal
         ? ref.watch(localGenresProvider)
         : ref.watch(allGenresProvider);
@@ -67,6 +70,7 @@ class GenresSection extends ConsumerWidget {
               ref.read(songsPillProvider.notifier).state = SongsPill.genres;
               context.go('/library');
             },
+            spectralPrimary: spectralPrimary,
           ),
         ),
         const SizedBox(height: AfSpacing.s12),
