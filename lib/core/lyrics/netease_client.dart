@@ -26,8 +26,12 @@ class NetEaseClient {
   final Dio _dio;
 
   /// Fetches synced or plain lyrics for a track from NetEase Cloud Music.
-  /// Returns a Map with keys 'synced' and 'plain' or null if not found.
-  Future<({String? synced, String? plain})?> fetchLyrics({
+  /// Returns a Map with keys 'synced', 'plain', and 'romaji' or null if not
+  /// found.
+  Future<
+    ({String? synced, String? plain, String? romaji})?
+  >
+  fetchLyrics({
     required String trackName,
     required String artistName,
     required String albumName,
@@ -91,14 +95,19 @@ class NetEaseClient {
       final lrc = lyricsData['lrc'] as Map<String, dynamic>?;
       final synced = lrc?['lyric'] as String?;
 
+      // Fetch romaji lyrics if available
+      final romalrc = lyricsData['romalrc'] as Map<String, dynamic>?;
+      final romaji = romalrc?['lyric'] as String?;
+
       if (synced != null && synced.trim().isNotEmpty) {
         afLog(
           'lyrics',
-          'NetEase: lyrics found. ID=$songId synced=${synced.isNotEmpty}',
+          'NetEase: lyrics found. ID=$songId synced=${synced.isNotEmpty} romaji=${romaji != null}',
         );
         return (
           synced: synced.trim(),
           plain: null, // NetEase only returns LRC (synced) format
+          romaji: romaji?.trim(),
         );
       }
 

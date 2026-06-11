@@ -82,7 +82,11 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
     final track = widget.track;
 
     final lrcAsync = ref.watch(lyricsProvider(track.id));
-    final lrc = lrcAsync.maybeWhen(data: (p) => p, orElse: () => null);
+    final lyricsResult = lrcAsync.maybeWhen(
+      data: (p) => p,
+      orElse: () => null,
+    );
+    final lrc = lyricsResult?.lrc;
     final isSynced =
         lrc != null && lrc.lines.any((l) => l.start > Duration.zero);
 

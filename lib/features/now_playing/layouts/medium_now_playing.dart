@@ -76,7 +76,11 @@ class _MediumNowPlayingState extends ConsumerState<MediumNowPlaying>
     final spectral = ref.watch(currentSpectralProvider.select((s) => s.energy));
 
     final lrcAsync = ref.watch(lyricsProvider(track.id));
-    final lrc = lrcAsync.maybeWhen(data: (p) => p, orElse: () => null);
+    final lyricsResult = lrcAsync.maybeWhen(
+      data: (p) => p,
+      orElse: () => null,
+    );
+    final lrc = lyricsResult?.lrc;
     final isSynced =
         lrc != null && lrc.lines.any((l) => l.start > Duration.zero);
 
@@ -226,7 +230,7 @@ class _LyricsToggleSection extends StatelessWidget {
     required this.onToggleLyrics,
   });
 
-  final AsyncValue<Lrc?> lrcAsync;
+  final AsyncValue<LyricsResult?> lrcAsync;
   final Lrc? lrc;
   final bool isSynced;
   final Color spectral;

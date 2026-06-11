@@ -42,6 +42,25 @@ class Lrc {
   }
 }
 
+/// Where the lyrics were fetched from.
+enum LyricsSource {
+  cache('Cache'),
+  server('Server'),
+  lrclib('LRCLib'),
+  netease('NetEase'),
+  neteaseRomaji('NetEase Romaji');
+
+  const LyricsSource(this.label);
+  final String label;
+}
+
+/// Lyrics result with source information.
+class LyricsResult {
+  const LyricsResult({required this.lrc, required this.source});
+  final Lrc lrc;
+  final LyricsSource source;
+}
+
 /// A minimal LRC parser. Handles single timestamp lines like:
 ///   `[mm:ss.xx] lyric text`
 /// Multi-timestamp lines (`[00:12.34][00:25.67] text`) are expanded.

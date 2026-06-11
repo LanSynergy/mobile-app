@@ -7,6 +7,7 @@ import '../core/jellyfin/models/items.dart';
 import '../core/lyrics/lrc_parser.dart';
 import '../core/lyrics/lrclib_client.dart';
 import '../core/lyrics/netease_client.dart';
+import '../utils/text_utils.dart';
 import '../utils/log.dart';
 import 'app_mode_providers.dart';
 import 'detail_providers.dart';
@@ -92,53 +93,136 @@ final searchProvider = FutureProvider.autoDispose.family<SearchResults, String>(
   },
 );
 
-final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((
-  ref,
-  trackId,
-) async {
-  // 1. Try local cache directory for previously fetched LRCLib lyrics (synced/plain)
-  try {
-    final cacheDir = await getApplicationCacheDirectory();
-    final cacheFile = File(p.join(cacheDir.path, 'lyrics', '$trackId.lrc'));
-    if (await cacheFile.exists()) {
-      final raw = await cacheFile.readAsString();
-      if (raw.isNotEmpty) {
+final lyricsProvider = FutureProvider.autoDispose.family<LyricsResult?, String>(
+  (ref, trackId) async {
+    // 1. Try local cache directory for previously fetched LRCLib lyrics (synced/plain)
+    try {
+      final cacheDir = await getApplicationCacheDirectory();
+      final cacheFile = File(
+        p.join(cacheDir.path, 'lyrics', '$trackId.lrc'),
+      );
+      if (await cacheFile.exists()) {
+        final raw = await cacheFile.readAsString();
+        if (raw.isNotEmpty) {
+          _logData(
+            'lyrics',
+            source: 'cache',
+            extra: 'trackId=$trackId fromLocalCache=true',
+          );
+          return LyricsResult(
+            lrc: parseLrc(raw),
+            source: LyricsSource.cache,
+          );
+        }
+      }
+    } on Exception catch (e) {
+      afLog('error', 'Failed to read lyrics from local cache', error: e);
+    }
+
+    final backend = ref.watch(musicBackendProvider);
+    if (backend == null) {
+      _logData(
+        'lyrics',
+        source: 'demo',
+        extra: 'trackId=$trackId (signed out)',
+      );
+      return null;
+    }
+
+    // 2. Fetch from Jellyfin/Navidrome server or local embedded tag / sidecar
+    final raw = await backend.lyrics(trackId);
+    if (raw != null && raw.isNotEmpty) {
+      // Check if lyrics contain Japanese characters
+      if (containsJapanese(raw)) {
+        // Japanese detected — try NetEase for romaji lyrics
         _logData(
           'lyrics',
-          source: 'cache',
-          extra: 'trackId=$trackId fromLocalCache=true',
+          source: 'japanese_detect',
+          extra:
+              'trackId=$trackId (Japanese detected, trying NetEase romaji)',
         );
-        return parseLrc(raw);
+
+        AfTrack? track;
+        final current = ref.read(currentTrackProvider);
+        if (current != null && current.id == trackId) {
+          track = current;
+        } else {
+          try {
+            final details = await ref.read(
+              trackDetailsProvider(trackId).future,
+            );
+            track = details?.track;
+          } on Exception catch (e) {
+            afLog(
+              'lyrics',
+              'Track details fetch failed for NetEase',
+              error: e,
+            );
+          }
+        }
+
+        if (track != null) {
+          final netease = NetEaseClient();
+          final neteaseFetched = await netease.fetchLyrics(
+            trackName: track.title,
+            artistName: track.artistName,
+            albumName: track.albumName,
+            duration: track.duration,
+          );
+
+          if (neteaseFetched?.romaji != null &&
+              neteaseFetched!.romaji!.isNotEmpty) {
+            final parsed = parseLrc(neteaseFetched.romaji!);
+
+            // Cache it
+            try {
+              final cacheDir = await getApplicationCacheDirectory();
+              final cacheFile = File(
+                p.join(cacheDir.path, 'lyrics', '$trackId.lrc'),
+              );
+              await cacheFile.parent.create(recursive: true);
+              await cacheFile.writeAsString(neteaseFetched.romaji!);
+            } on Exception catch (e) {
+              afLog('error', 'Failed to cache NetEase romaji', error: e);
+            }
+
+            _logData(
+              'lyrics',
+              source: 'netease_romaji',
+              extra:
+                  'trackId=$trackId lines=${parsed.lines.length} (from embedded Japanese fallback)',
+            );
+            return LyricsResult(
+              lrc: parsed,
+              source: LyricsSource.neteaseRomaji,
+            );
+          }
+        }
+
+        // NetEase didn't have romaji — fall through to use original lyrics
+        _logData(
+          'lyrics',
+          source: 'japanese_fallback',
+          extra:
+              'trackId=$trackId (NetEase romaji unavailable, using original)',
+        );
       }
+
+      final parsed = parseLrc(raw);
+      _logData(
+        'lyrics',
+        source: 'live',
+        extra: 'trackId=$trackId lines=${parsed.lines.length}',
+      );
+      return LyricsResult(lrc: parsed, source: LyricsSource.server);
     }
-  } on Exception catch (e) {
-    afLog('error', 'Failed to read lyrics from local cache', error: e);
-  }
 
-  final backend = ref.watch(musicBackendProvider);
-  if (backend == null) {
-    _logData('lyrics', source: 'demo', extra: 'trackId=$trackId (signed out)');
-    return null;
-  }
-
-  // 2. Fetch from Jellyfin/Navidrome server or local embedded tag / sidecar
-  final raw = await backend.lyrics(trackId);
-  if (raw != null && raw.isNotEmpty) {
-    final parsed = parseLrc(raw);
+    // 3. Fallback: query LRCLib if the server doesn't have it
     _logData(
       'lyrics',
-      source: 'live',
-      extra: 'trackId=$trackId lines=${parsed.lines.length}',
+      source: 'fallback_check',
+      extra: 'trackId=$trackId (backend yielded none, trying lrclib.net)',
     );
-    return parsed;
-  }
-
-  // 3. Fallback: query LRCLib if the server doesn't have it
-  _logData(
-    'lyrics',
-    source: 'fallback_check',
-    extra: 'trackId=$trackId (backend yielded none, trying lrclib.net)',
-  );
 
   // Try to get track details from currently playing track first to avoid loading
   AfTrack? track;
@@ -198,7 +282,7 @@ final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((
         extra:
             'trackId=$trackId lines=${parsed.lines.length} synced=${fetched.synced != null}',
       );
-      return parsed;
+      return LyricsResult(lrc: parsed, source: LyricsSource.lrclib);
     }
   }
 
@@ -243,7 +327,7 @@ final lyricsProvider = FutureProvider.autoDispose.family<Lrc?, String>((
         extra:
             'trackId=$trackId lines=${parsed.lines.length} synced=${neteaseFetched.synced != null}',
       );
-      return parsed;
+      return LyricsResult(lrc: parsed, source: LyricsSource.netease);
     }
   }
 
