@@ -210,7 +210,7 @@ async def _send_file_mtproto(file_path, caption, reply_markup=None):
             caption=caption,
             parse_mode='html',
             force_document=True,
-            attributes=[DocumentAttributeFilename(filename=filename)],
+            attributes=[DocumentAttributeFilename(file_name=filename)],
             buttons=buttons
         )
 
