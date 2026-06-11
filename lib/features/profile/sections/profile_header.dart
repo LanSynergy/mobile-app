@@ -44,7 +44,7 @@ class SplitInfoSection extends ConsumerWidget {
         0,
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Left: Avatar
           CompactAvatar(
@@ -123,7 +123,7 @@ class SplitInfoSection extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: AfSpacing.s16),
+                const SizedBox(height: AfSpacing.s8),
                 Row(
                   children: [
                     MiniStat(value: trackCount, label: 'Tracks'),
@@ -238,15 +238,18 @@ class CompactAvatar extends ConsumerWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Avatar circle
+          // Avatar rounded rectangle
           Container(
             width: 80,
             height: 80,
             decoration: const BoxDecoration(
-              shape: BoxShape.circle,
               color: AfColors.surfaceRaised,
+              borderRadius: AfRadii.borderLg,
             ),
-            child: ClipOval(child: _buildAvatarContent(spectral.muted)),
+            child: ClipRRect(
+              borderRadius: AfRadii.borderLg,
+              child: _buildAvatarContent(spectral.muted),
+            ),
           ),
 
           // Camera badge
@@ -274,8 +277,8 @@ class CompactAvatar extends ConsumerWidget {
             Positioned.fill(
               child: Container(
                 decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
                   color: AfColors.surfaceScrim,
+                  borderRadius: AfRadii.borderLg,
                 ),
                 child: Center(
                   child: SizedBox(
