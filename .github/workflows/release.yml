@@ -71,7 +71,9 @@ jobs:
         uses: ./.github/actions/setup-flutter
 
       - name: Install Telethon (for MTProto uploads)
-        if: secrets.TG_API_ID != ''
+        if: env.TG_API_ID != ''
+        env:
+          TG_API_ID: ${{ secrets.TG_API_ID }}
         run: pip install telethon
 
       - name: Cache codegen
