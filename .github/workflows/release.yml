@@ -70,6 +70,10 @@ jobs:
       - name: Setup Flutter + JDK
         uses: ./.github/actions/setup-flutter
 
+      - name: Install Telethon (for MTProto uploads)
+        if: secrets.TG_API_ID != ''
+        run: pip install telethon
+
       - name: Cache codegen
         id: codegen-cache
         uses: actions/cache@v5
@@ -140,12 +144,20 @@ jobs:
 
       - name: Build signed APKs (universal + per-ABI)
         env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          TG_SESSION_BASE64: ${{ secrets.TG_SESSION_BASE64 }}
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          args="--mode release --sign --split-per-abi --progress-watch"
+          args="--mode release --sign --split-per-abi --progress-watch --telegram"
+          if [ -n "${{ secrets.TG_API_ID }}" ]; then
+            args="$args --mtproto"
+          fi
           if [ "${{ steps.codegen-cache.outputs.cache-hit }}" = "true" ]; then
             args="$args --skip-codegen"
           fi

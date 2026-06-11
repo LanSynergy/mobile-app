@@ -51,6 +51,7 @@ SKIP_BUILD=false
 SKIP_BUILD_ID=false
 SIGN=false
 TELEGRAM=false
+MTPROTO=false
 PROGRESS_WATCH=false
 _WATCHER_PID=""
 BUILD_ID=""
@@ -170,8 +171,16 @@ tg_send_apk() {
   export TG_MESSAGE_ID
   TG_MESSAGE_ID="$(cat "$TG_MSG_FILE" 2>/dev/null || true)"
   [ -z "$TG_MESSAGE_ID" ] && return 0
-  echo "  📤 Sending APK to Telegram..."
-  python3 "$ROOT/tool/telegram_notifier.py" send_apk 2>&1 || warn "Telegram APK upload failed."
+
+  local notifier="telegram_notifier.py"
+  if [ "$MTPROTO" = "true" ]; then
+    notifier="telegram_notifier_mtproto.py"
+    echo "  📤 Sending APK to Telegram via MTProto (2GB limit)..."
+  else
+    echo "  📤 Sending APK to Telegram (50MB limit)..."
+  fi
+
+  python3 "$ROOT/tool/$notifier" send_apk 2>&1 || warn "Telegram APK upload failed."
   echo "true" > "$ROOT/build/.tg_notified"
 }
 
@@ -337,7 +346,7 @@ select_primary_apk() {
   local size_human
   size_human=$(numfmt --to=iec --suffix=B "$size" 2>/dev/null || echo "$size bytes")
 
-  if [ "$size" -gt 52428800 ] 2>/dev/null; then
+  if [ "$size" -gt 52428800 ] 2>/dev/null && [ "$MTPROTO" = "false" ]; then
     echo "  ⚠ APK is $size_human — exceeds Telegram's 50 MB limit."
     echo "path=" > "$info_file"
     return 0
@@ -426,6 +435,7 @@ while [[ $# -gt 0 ]]; do
     --no-universal)   BUILD_UNIVERSAL=false; shift ;;
     --sign)           SIGN=true; shift ;;
     --telegram)       TELEGRAM=true; shift ;;
+    --mtproto)        MTPROTO=true; shift ;;
     --progress-watch) PROGRESS_WATCH=true; shift ;;
     --install)        INSTALL=true; shift ;;
     --skip-analyze)   SKIP_ANALYZE=true; shift ;;
@@ -465,6 +475,7 @@ else
   echo "  Split ABI:     $SPLIT_PER_ABI"
   echo "  Sign:          $SIGN"
   echo "  Telegram:      $TELEGRAM"
+  echo "  MTProto:       $MTPROTO"
   echo "  Skip build:    $SKIP_BUILD"
   echo "  CI mode:       $CI_MODE"
   echo ""
