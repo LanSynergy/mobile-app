@@ -48,7 +48,8 @@ enum LyricsSource {
   server('Server'),
   lrclib('LRCLib'),
   netease('NetEase'),
-  neteaseRomaji('NetEase Romaji');
+  neteaseRomaji('NetEase Romaji'),
+  romanize('Romanize');
 
   const LyricsSource(this.label);
   final String label;

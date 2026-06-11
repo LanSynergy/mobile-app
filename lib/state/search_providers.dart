@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:romanize/romanize.dart' show JapaneseRomanizer;
 
 import '../core/jellyfin/models/items.dart';
 import '../core/lyrics/lrc_parser.dart';
@@ -95,44 +96,6 @@ final searchProvider = FutureProvider.autoDispose.family<SearchResults, String>(
 
 final lyricsProvider = FutureProvider.autoDispose.family<LyricsResult?, String>(
   (ref, trackId) async {
-    // Helper: try NetEase romaji for a track. Returns LyricsResult or null.
-    Future<LyricsResult?> tryNeteaseRomaji(AfTrack track) async {
-      final netease = NetEaseClient();
-      final neteaseFetched = await netease.fetchLyrics(
-        trackName: track.title,
-        artistName: track.artistName,
-        albumName: track.albumName,
-        duration: track.duration,
-      );
-
-      if (neteaseFetched?.romaji != null &&
-          neteaseFetched!.romaji!.isNotEmpty) {
-        final parsed = parseLrc(neteaseFetched.romaji!);
-
-        // Cache the romaji version
-        try {
-          final cacheDir = await getApplicationCacheDirectory();
-          final cacheFile = File(
-            p.join(cacheDir.path, 'lyrics', '$trackId.lrc'),
-          );
-          await cacheFile.parent.create(recursive: true);
-          await cacheFile.writeAsString(neteaseFetched.romaji!);
-        } on Exception catch (e) {
-          afLog('error', 'Failed to cache NetEase romaji', error: e);
-        }
-
-        _logData(
-          'lyrics',
-          source: 'netease_romaji',
-          extra:
-              'trackId=$trackId lines=${parsed.lines.length} (NetEase romaji)',
-        );
-        return LyricsResult(lrc: parsed, source: LyricsSource.neteaseRomaji);
-      }
-      return null;
-    }
-
-    // Helper: resolve track metadata for NetEase lookup.
     Future<AfTrack?> resolveTrack(String trackId) async {
       final current = ref.read(currentTrackProvider);
       if (current != null && current.id == trackId) return current;
@@ -145,7 +108,63 @@ final lyricsProvider = FutureProvider.autoDispose.family<LyricsResult?, String>(
       }
     }
 
-    // 1. Try local cache
+    Future<LyricsResult?> tryNeteaseRomaji(AfTrack track) async {
+      final netease = NetEaseClient();
+      final neteaseFetched = await netease.fetchLyrics(
+        trackName: track.title,
+        artistName: track.artistName,
+        albumName: track.albumName,
+        duration: track.duration,
+      );
+      if (neteaseFetched?.romaji != null &&
+          neteaseFetched!.romaji!.isNotEmpty) {
+        final parsed = parseLrc(neteaseFetched.romaji!);
+        try {
+          final cacheDir = await getApplicationCacheDirectory();
+          final cacheFile = File(
+            p.join(cacheDir.path, 'lyrics', '$trackId.lrc'),
+          );
+          await cacheFile.parent.create(recursive: true);
+          await cacheFile.writeAsString(neteaseFetched.romaji!);
+        } on Exception catch (e) {
+          afLog('error', 'Failed to cache NetEase romaji', error: e);
+        }
+        _logData(
+          'lyrics',
+          source: 'netease_romaji',
+          extra: 'trackId=$trackId lines=${parsed.lines.length}',
+        );
+        return LyricsResult(lrc: parsed, source: LyricsSource.neteaseRomaji);
+      }
+      return null;
+    }
+
+    LyricsResult romanizeLrc(String rawLrc) {
+      final romanizer = JapaneseRomanizer();
+      final lines = rawLrc.split('\n');
+      final buffer = StringBuffer();
+      for (final line in lines) {
+        final timestampMatch = RegExp(r'^(\[\d{1,2}:\d{2}(?:\.\d{1,3})?\])').firstMatch(line);
+        if (timestampMatch != null) {
+          final timestamp = timestampMatch.group(1)!;
+          final text = line.substring(timestamp.length);
+          buffer.writeln('$timestamp${romanizer.romanize(text)}');
+        } else if (RegExp(r'^\[[a-zA-Z]+:.+\]$').hasMatch(line)) {
+          buffer.writeln(line);
+        } else {
+          buffer.writeln(romanizer.romanize(line));
+        }
+      }
+      final parsed = parseLrc(buffer.toString());
+      _logData(
+        'lyrics',
+        source: 'romanize',
+        extra: 'trackId=$trackId lines=${parsed.lines.length}',
+      );
+      return LyricsResult(lrc: parsed, source: LyricsSource.romanize);
+    }
+
+    // 1. Check cache
     try {
       final cacheDir = await getApplicationCacheDirectory();
       final cacheFile = File(
@@ -154,7 +173,6 @@ final lyricsProvider = FutureProvider.autoDispose.family<LyricsResult?, String>(
       if (await cacheFile.exists()) {
         final raw = await cacheFile.readAsString();
         if (raw.isNotEmpty) {
-          // If cached lyrics are Japanese, try upgrading to NetEase romaji
           if (containsJapanese(raw)) {
             final track = await resolveTrack(trackId);
             if (track != null) {
@@ -162,7 +180,6 @@ final lyricsProvider = FutureProvider.autoDispose.family<LyricsResult?, String>(
               if (romajiResult != null) return romajiResult;
             }
           }
-
           _logData(
             'lyrics',
             source: 'cache',
@@ -188,157 +205,127 @@ final lyricsProvider = FutureProvider.autoDispose.family<LyricsResult?, String>(
       return null;
     }
 
-    // 2. Fetch from Jellyfin/Navidrome server or local embedded tag / sidecar
+    // 2. Embedded lyrics from server
     final raw = await backend.lyrics(trackId);
     if (raw != null && raw.isNotEmpty) {
-      // Check if lyrics contain Japanese characters
       if (containsJapanese(raw)) {
-        // Japanese detected — try NetEase for romaji lyrics
-        _logData(
-          'lyrics',
-          source: 'japanese_detect',
-          extra:
-              'trackId=$trackId (Japanese detected, trying NetEase romaji)',
-        );
-
         final track = await resolveTrack(trackId);
         if (track != null) {
           final romajiResult = await tryNeteaseRomaji(track);
           if (romajiResult != null) return romajiResult;
         }
-
-        // NetEase didn't have romaji — fall through to use original lyrics
-        _logData(
-          'lyrics',
-          source: 'japanese_fallback',
-          extra:
-              'trackId=$trackId (NetEase romaji unavailable, using original)',
-        );
+        return romanizeLrc(raw);
       }
-
       final parsed = parseLrc(raw);
       _logData(
         'lyrics',
-        source: 'live',
+        source: 'server',
         extra: 'trackId=$trackId lines=${parsed.lines.length}',
       );
       return LyricsResult(lrc: parsed, source: LyricsSource.server);
     }
 
-    // 3. Fallback: query LRCLib if the server doesn't have it
+    // 3. LRCLib
     _logData(
       'lyrics',
       source: 'fallback_check',
       extra: 'trackId=$trackId (backend yielded none, trying lrclib.net)',
     );
 
-  // Try to get track details from currently playing track first to avoid loading
-  AfTrack? track;
-  final current = ref.read(currentTrackProvider);
-  if (current != null && current.id == trackId) {
-    track = current;
-  } else {
-    try {
-      final details = await ref.read(trackDetailsProvider(trackId).future);
-      track = details?.track;
-    } on Exception catch (e) {
-      afLog('lyrics', 'Track details fetch failed for lyrics', error: e);
-    }
-  }
-
-  if (track == null) {
-    _logData(
-      'lyrics',
-      source: 'lrclib',
-      extra: 'trackId=$trackId (missing track metadata)',
-    );
-    return null;
-  }
-
-  final lrclib = LrcLibClient();
-  final fetched = await lrclib.fetchLyrics(
-    trackName: track.title,
-    artistName: track.artistName,
-    albumName: track.albumName,
-    duration: track.duration,
-  );
-
-  if (fetched != null) {
-    final rawLyrics = fetched.synced ?? fetched.plain;
-    if (rawLyrics != null && rawLyrics.isNotEmpty) {
-      // Parse the retrieved lyrics
-      final parsed = parseLrc(rawLyrics);
-
-      // Cache it for next time
+    AfTrack? track;
+    final current = ref.read(currentTrackProvider);
+    if (current != null && current.id == trackId) {
+      track = current;
+    } else {
       try {
-        final cacheDir = await getApplicationCacheDirectory();
-        final cacheFile = File(p.join(cacheDir.path, 'lyrics', '$trackId.lrc'));
-        await cacheFile.parent.create(recursive: true);
-        await cacheFile.writeAsString(rawLyrics);
-        _logData(
-          'lyrics',
-          source: 'lrclib_write',
-          extra: 'cached to local cache path',
-        );
+        final details = await ref.read(trackDetailsProvider(trackId).future);
+        track = details?.track;
       } on Exception catch (e) {
-        afLog('error', 'Failed to write lyrics cache', error: e);
+        afLog('lyrics', 'Track details fetch failed for lyrics', error: e);
       }
+    }
 
+    if (track == null) {
       _logData(
         'lyrics',
         source: 'lrclib',
-        extra:
-            'trackId=$trackId lines=${parsed.lines.length} synced=${fetched.synced != null}',
+        extra: 'trackId=$trackId (missing track metadata)',
       );
-      return LyricsResult(lrc: parsed, source: LyricsSource.lrclib);
+      return null;
     }
-  }
 
-  // 4. Fallback: query NetEase Cloud Music if LRCLib didn't have it
-  _logData(
-    'lyrics',
-    source: 'fallback_check',
-    extra: 'trackId=$trackId (lrclib yielded none, trying NetEase)',
-  );
+    final lrclib = LrcLibClient();
+    final fetched = await lrclib.fetchLyrics(
+      trackName: track.title,
+      artistName: track.artistName,
+      albumName: track.albumName,
+      duration: track.duration,
+    );
 
-  final netease = NetEaseClient();
-  final neteaseFetched = await netease.fetchLyrics(
-    trackName: track.title,
-    artistName: track.artistName,
-    albumName: track.albumName,
-    duration: track.duration,
-  );
-
-  if (neteaseFetched != null) {
-    final rawLyrics = neteaseFetched.synced ?? neteaseFetched.plain;
-    if (rawLyrics != null && rawLyrics.isNotEmpty) {
-      final parsed = parseLrc(rawLyrics);
-
-      // Cache it for next time
-      try {
-        final cacheDir = await getApplicationCacheDirectory();
-        final cacheFile = File(p.join(cacheDir.path, 'lyrics', '$trackId.lrc'));
-        await cacheFile.parent.create(recursive: true);
-        await cacheFile.writeAsString(rawLyrics);
+    if (fetched != null) {
+      final rawLyrics = fetched.synced ?? fetched.plain;
+      if (rawLyrics != null && rawLyrics.isNotEmpty) {
+        final parsed = parseLrc(rawLyrics);
+        try {
+          final cacheDir = await getApplicationCacheDirectory();
+          final cacheFile = File(
+            p.join(cacheDir.path, 'lyrics', '$trackId.lrc'),
+          );
+          await cacheFile.parent.create(recursive: true);
+          await cacheFile.writeAsString(rawLyrics);
+        } on Exception catch (e) {
+          afLog('error', 'Failed to write lyrics cache', error: e);
+        }
         _logData(
           'lyrics',
-          source: 'netease_write',
-          extra: 'cached to local cache path',
+          source: 'lrclib',
+          extra:
+              'trackId=$trackId lines=${parsed.lines.length} synced=${fetched.synced != null}',
         );
-      } on Exception catch (e) {
-        afLog('error', 'Failed to write lyrics cache', error: e);
+        return LyricsResult(lrc: parsed, source: LyricsSource.lrclib);
       }
-
-      _logData(
-        'lyrics',
-        source: 'netease',
-        extra:
-            'trackId=$trackId lines=${parsed.lines.length} synced=${neteaseFetched.synced != null}',
-      );
-      return LyricsResult(lrc: parsed, source: LyricsSource.netease);
     }
-  }
 
-  _logData('lyrics', source: 'live', extra: 'trackId=$trackId result=none');
-  return null;
-});
+    // 4. NetEase
+    _logData(
+      'lyrics',
+      source: 'fallback_check',
+      extra: 'trackId=$trackId (lrclib yielded none, trying NetEase)',
+    );
+
+    final netease = NetEaseClient();
+    final neteaseFetched = await netease.fetchLyrics(
+      trackName: track.title,
+      artistName: track.artistName,
+      albumName: track.albumName,
+      duration: track.duration,
+    );
+
+    if (neteaseFetched != null) {
+      final rawLyrics = neteaseFetched.synced ?? neteaseFetched.plain;
+      if (rawLyrics != null && rawLyrics.isNotEmpty) {
+        final parsed = parseLrc(rawLyrics);
+        try {
+          final cacheDir = await getApplicationCacheDirectory();
+          final cacheFile = File(
+            p.join(cacheDir.path, 'lyrics', '$trackId.lrc'),
+          );
+          await cacheFile.parent.create(recursive: true);
+          await cacheFile.writeAsString(rawLyrics);
+        } on Exception catch (e) {
+          afLog('error', 'Failed to write lyrics cache', error: e);
+        }
+        _logData(
+          'lyrics',
+          source: 'netease',
+          extra:
+              'trackId=$trackId lines=${parsed.lines.length} synced=${neteaseFetched.synced != null}',
+        );
+        return LyricsResult(lrc: parsed, source: LyricsSource.netease);
+      }
+    }
+
+    _logData('lyrics', source: 'live', extra: 'trackId=$trackId result=none');
+    return null;
+  },
+);

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show MpvAudioKit;
 import 'package:home_widget/home_widget.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:romanize/romanize.dart' show TextRomanizer;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -174,6 +175,22 @@ Future<void> main() async {
         );
         _boot('MpvAudioKit.ensureInitialized FAILED (non-fatal)');
       }
+
+      // Initialize romanize dictionaries (kanji → romaji via kuromoji).
+      // Runs in background — first lyrics request may be slower if not ready.
+      unawaited(
+        TextRomanizer.ensureInitialized()
+            .then((_) => _boot('TextRomanizer.ensureInitialized OK'))
+            .catchError((Object e, StackTrace stack) {
+          afLog(
+            'error',
+            'TextRomanizer.ensureInitialized failed',
+            error: e,
+            stackTrace: stack,
+          );
+          _boot('TextRomanizer.ensureInitialized FAILED (non-fatal)');
+        }),
+      );
 
       // ── Phase 3: OS audio service ─────────────────────────────────────────
       final handler = AfPlayerService();
