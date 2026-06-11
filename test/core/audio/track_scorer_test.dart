@@ -64,14 +64,14 @@ void main() {
   // ---------------------------------------------------------------
   test('same artist scores higher than different artist', () {
     final seed = _seed();
-    final sameArtist = const AfTrack(
+    const sameArtist = AfTrack(
       id: 'c1',
       title: 'Other Song',
       artistName: 'Seed Artist', // same
       albumName: 'Other Album',
       genre: 'Pop', // different genre to isolate artist effect
     );
-    final diffArtist = const AfTrack(
+    const diffArtist = AfTrack(
       id: 'c2',
       title: 'Another Song',
       artistName: 'Different Artist',
@@ -90,14 +90,14 @@ void main() {
   // ---------------------------------------------------------------
   test('same genre scores higher than different genre', () {
     final seed = _seed();
-    final sameGenre = const AfTrack(
+    const sameGenre = AfTrack(
       id: 'g1',
       title: 'Rock Song',
       artistName: 'Other Artist',
       albumName: 'Album',
       genre: 'Rock', // same
     );
-    final diffGenre = const AfTrack(
+    const diffGenre = AfTrack(
       id: 'g2',
       title: 'Pop Song',
       artistName: 'Other Artist',
@@ -115,13 +115,13 @@ void main() {
   // 4. Co-occurrence boost
   // ---------------------------------------------------------------
   test('higher co-occurrence scores higher', () {
-    final lowCo = const AfTrack(
+    const lowCo = AfTrack(
       id: 'low',
       title: 'Low Co',
       artistName: 'X',
       albumName: 'A',
     );
-    final highCo = const AfTrack(
+    const highCo = AfTrack(
       id: 'high',
       title: 'High Co',
       artistName: 'X',
@@ -138,7 +138,7 @@ void main() {
   // 5. Recency penalty
   // ---------------------------------------------------------------
   test('recently played tracks score lower', () {
-    final candidate = const AfTrack(
+    const candidate = AfTrack(
       id: 'rec',
       title: 'Recent',
       artistName: 'X',
@@ -160,7 +160,7 @@ void main() {
   });
 
   test('recency penalty decreases for older tracks', () {
-    final candidate = const AfTrack(
+    const candidate = AfTrack(
       id: 'rec',
       title: 'Recent',
       artistName: 'X',
@@ -179,7 +179,7 @@ void main() {
   // 6. Completion rate impact
   // ---------------------------------------------------------------
   test('high-completion track scores higher than frequently skipped track', () {
-    final candidate = const AfTrack(
+    const candidate = AfTrack(
       id: 'cmp',
       title: 'Song',
       artistName: 'X',
@@ -202,7 +202,7 @@ void main() {
   });
 
   test('cold-start (no stats) scores higher than skipped track', () {
-    final candidate = const AfTrack(
+    const candidate = AfTrack(
       id: 'cold',
       title: 'Song',
       artistName: 'X',
@@ -274,14 +274,14 @@ void main() {
   // 8. Determinism
   // ---------------------------------------------------------------
   test('same inputs produce same output with fixed random seed', () {
-    final candidate = const AfTrack(
+    const candidate = AfTrack(
       id: 'det',
       title: 'Deterministic',
       artistName: 'Art',
       albumName: 'Alb',
       genre: 'Rock',
     );
-    final stats = const SimpleTrackStats(0.7, 2);
+    const stats = SimpleTrackStats(0.7, 2);
     final recentlyPlayed = ['x', 'det', 'y'];
 
     double run() => _score(
@@ -305,7 +305,7 @@ void main() {
   // 9. Different random seeds produce different scores
   // ---------------------------------------------------------------
   test('different random seeds can produce different scores', () {
-    final candidate = const AfTrack(
+    const candidate = AfTrack(
       id: 'rnd',
       title: 'Random',
       artistName: 'Art',

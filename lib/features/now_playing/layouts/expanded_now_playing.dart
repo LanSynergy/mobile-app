@@ -52,10 +52,7 @@ class _ExpandedNowPlayingState extends ConsumerState<ExpandedNowPlaying> {
     final spectral = ref.watch(currentSpectralProvider.select((s) => s.energy));
 
     final lrcAsync = ref.watch(lyricsProvider(track.id));
-    final lyricsResult = lrcAsync.maybeWhen(
-      data: (p) => p,
-      orElse: () => null,
-    );
+    final lyricsResult = lrcAsync.maybeWhen(data: (p) => p, orElse: () => null);
     final lrc = lyricsResult?.lrc;
     final lyricsSource = lyricsResult?.source;
     final isSynced =

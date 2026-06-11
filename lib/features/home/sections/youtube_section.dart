@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -383,7 +384,7 @@ class YouTubeAccountButton extends ConsumerWidget {
                 const channel = MethodChannel('aetherfin.youtube_auth');
                 await channel.invokeMethod('clearCookies');
               } on Exception catch (_) {}
-              ref.read(youtubeAuthProvider.notifier).clear();
+              unawaited(ref.read(youtubeAuthProvider.notifier).clear());
               ref.invalidate(youtubeHomeProvider);
             },
             child: Text(

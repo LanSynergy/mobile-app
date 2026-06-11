@@ -38,11 +38,11 @@ abstract final class AfElevation {
     final opacity = energy.clamp(0.0, 1.0);
     return [
       BoxShadow(
-        color: color.withOpacity(0.3 * opacity),
+        color: color.withValues(alpha: 0.3 * opacity),
         blurRadius: 24 + opacity * 8,
       ),
       BoxShadow(
-        color: color.withOpacity(0.15 * opacity),
+        color: color.withValues(alpha: 0.15 * opacity),
         blurRadius: 48 + opacity * 8,
       ),
     ];

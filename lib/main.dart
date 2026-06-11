@@ -182,14 +182,14 @@ Future<void> main() async {
         TextRomanizer.ensureInitialized()
             .then((_) => _boot('TextRomanizer.ensureInitialized OK'))
             .catchError((Object e, StackTrace stack) {
-          afLog(
-            'error',
-            'TextRomanizer.ensureInitialized failed',
-            error: e,
-            stackTrace: stack,
-          );
-          _boot('TextRomanizer.ensureInitialized FAILED (non-fatal)');
-        }),
+              afLog(
+                'error',
+                'TextRomanizer.ensureInitialized failed',
+                error: e,
+                stackTrace: stack,
+              );
+              _boot('TextRomanizer.ensureInitialized FAILED (non-fatal)');
+            }),
       );
 
       // ── Phase 3: OS audio service ─────────────────────────────────────────

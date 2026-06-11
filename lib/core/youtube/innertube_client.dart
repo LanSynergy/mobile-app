@@ -123,7 +123,7 @@ class InnerTubeClient {
         'clientVersion': _clientVersion,
         'hl': hl,
         'gl': gl,
-        if (visitorData != null) 'visitorData': visitorData,
+        'visitorData': ?visitorData,
       },
     };
   }
@@ -208,7 +208,7 @@ class InnerTubeClient {
         final completer = Completer<String>();
         final bytes = <int>[];
         final sub = response.listen(
-          (chunk) => bytes.addAll(chunk),
+          bytes.addAll,
           onDone: () {
             if (!completer.isCompleted) {
               completer.complete(utf8.decode(bytes));

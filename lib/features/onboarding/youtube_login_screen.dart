@@ -222,7 +222,9 @@ class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {
       );
       final e1 = _cleanJsString(r1.toString());
       if (e1.contains('@')) email = e1;
-    } on Exception {}
+    } on Exception catch (_) {
+      // JS evaluation failed — try next source
+    }
 
     // Source 2: window.yt.config_.EMAIL
     if (email.isEmpty) {
@@ -232,7 +234,9 @@ class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {
         );
         final e2 = _cleanJsString(r2.toString());
         if (e2.contains('@')) email = e2;
-      } on Exception {}
+      } on Exception catch (_) {
+        // JS evaluation failed — try next source
+      }
     }
 
     // Source 3: Profile pic — try GAIA_ID to construct Google profile URL
@@ -246,7 +250,9 @@ class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {
       if (gaiaId.isNotEmpty) {
         profileUrl = 'https://lh3.googleusercontent.com/a-/$gaiaId=s512-c';
       }
-    } on Exception {}
+    } on Exception catch (_) {
+      // JS evaluation failed — try next source
+    }
 
     // Second try: find image in DOM
     if (profileUrl == null) {
@@ -266,7 +272,9 @@ class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {
               .replaceAll(RegExp(r'=s\d+(-c)?'), '=s512-c')
               .replaceAll(RegExp(r'/s\d+/'), '/s512/');
         }
-      } on Exception {}
+      } on Exception catch (_) {
+        // JS evaluation failed — try next source
+      }
     }
 
     // Source 4: Navigate to accounts.google.com only for email
@@ -308,7 +316,9 @@ class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {
                 .replaceAll(RegExp(r'/s\d+/'), '/s512/');
           }
         }
-      } on Exception {}
+      } on Exception catch (_) {
+        // Navigation or JS failed — return whatever we have
+      }
     }
 
     return _AccountInfo(email: email, profileUrl: profileUrl);

@@ -9,7 +9,8 @@ bool _isHiragana(String char) {
 bool _isKatakana(String char) {
   if (char.isEmpty) return false;
   final code = char.codeUnitAt(0);
-  return (code >= 0x30A0 && code <= 0x30FF) || (code >= 0x31F0 && code <= 0x31FF);
+  return (code >= 0x30A0 && code <= 0x30FF) ||
+      (code >= 0x31F0 && code <= 0x31FF);
 }
 
 /// Checks if a character is kanji (CJK Unified Ideograph, U+4E00–U+9FFF).

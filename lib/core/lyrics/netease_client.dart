@@ -28,10 +28,7 @@ class NetEaseClient {
   /// Fetches synced or plain lyrics for a track from NetEase Cloud Music.
   /// Returns a Map with keys 'synced', 'plain', and 'romaji' or null if not
   /// found.
-  Future<
-    ({String? synced, String? plain, String? romaji})?
-  >
-  fetchLyrics({
+  Future<({String? synced, String? plain, String? romaji})?> fetchLyrics({
     required String trackName,
     required String artistName,
     required String albumName,
