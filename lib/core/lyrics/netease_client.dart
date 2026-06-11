@@ -95,9 +95,15 @@ class NetEaseClient {
       final lrc = lyricsData['lrc'] as Map<String, dynamic>?;
       final synced = lrc?['lyric'] as String?;
 
-      // Fetch romaji lyrics if available
-      final romalrc = lyricsData['romalrc'] as Map<String, dynamic>?;
-      final romaji = romalrc?['lyric'] as String?;
+      // Log available lyrics fields for debugging
+      final availableFields = lyricsData.keys.toList();
+      afLog(
+        'lyrics',
+        'NetEase: response fields=$availableFields for song ID=$songId',
+      );
+
+      // Fetch romaji lyrics — try multiple possible fields
+      final romaji = _extractRomaji(lyricsData);
 
       if (synced != null && synced.trim().isNotEmpty) {
         afLog(
@@ -115,6 +121,26 @@ class NetEaseClient {
     } on Exception catch (e, stack) {
       afLog('lyrics', 'NetEase: fetch failed', error: e, stackTrace: stack);
     }
+    return null;
+  }
+
+  /// Extracts romaji lyrics from NetEase response, trying multiple fields.
+  static String? _extractRomaji(Map<String, dynamic> data) {
+    // Try romalrc first
+    final romalrc = data['romalrc'] as Map<String, dynamic>?;
+    final romaji = romalrc?['lyric'] as String?;
+    if (romaji != null && romaji.trim().isNotEmpty) return romaji;
+
+    // Try yrc (romanized lyrics)
+    final yrc = data['yrc'] as Map<String, dynamic>?;
+    final yrcText = yrc?['lyric'] as String?;
+    if (yrcText != null && yrcText.trim().isNotEmpty) return yrcText;
+
+    // Try klyric (korean lyrics, sometimes romanized)
+    final klyric = data['klyric'] as Map<String, dynamic>?;
+    final klyricText = klyric?['lyric'] as String?;
+    if (klyricText != null && klyricText.trim().isNotEmpty) return klyricText;
+
     return null;
   }
 }
