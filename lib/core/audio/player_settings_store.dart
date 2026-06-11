@@ -30,6 +30,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart'
         VirtualbassSettings;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/lastfm/lastfm_storage.dart';
 import '../../utils/log.dart';
 import 'player_service.dart';
 
@@ -169,15 +170,15 @@ class PlayerSettingsStore {
   // ── Last.fm Settings ──────────────────────────────────────────────────────
 
   static Future<void> saveLastFmApiKey(String val) =>
-      saveValue(kLastFmApiKey, val);
+      LastFmStorage().saveApiKey(val);
   static Future<void> saveLastFmApiSecret(String val) =>
-      saveValue(kLastFmApiSecret, val);
+      LastFmStorage().saveApiSecret(val);
   static Future<void> saveLastFmSessionKey(String val) =>
-      saveValue(kLastFmSessionKey, val);
+      LastFmStorage().saveSessionKey(val);
   static Future<void> saveLastFmUsername(String val) =>
-      saveValue(kLastFmUsername, val);
+      LastFmStorage().saveUsername(val);
   static Future<void> saveLastFmScrobbleEnabled(bool val) =>
-      saveValue(kLastFmScrobbleEnabled, val);
+      LastFmStorage().saveScrobbleEnabled(val);
 
   // ── Setters (called from UI) ──────────────────────────────────────────────
 

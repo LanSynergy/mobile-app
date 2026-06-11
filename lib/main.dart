@@ -17,6 +17,7 @@ import 'core/audio/player_settings_store.dart';
 import 'core/local/app_mode_store.dart';
 import 'core/jellyfin/auth_storage.dart';
 import 'core/jellyfin/models/server.dart';
+import 'core/lastfm/lastfm_storage.dart';
 import 'design_tokens/tokens.dart';
 import 'state/youtube_music_providers.dart';
 import 'state/providers.dart';
@@ -140,16 +141,21 @@ Future<void> main() async {
         'offlineCacheEnabled=$offlineCacheEnabled maxSize=$offlineCacheMaxSize maxBitrate=$maxBitrate',
       );
 
-      // Load Last.fm settings
-      final lastfmApiKey = prefs.getString('af.lastfm_api_key') ?? '';
-      final lastfmApiSecret = prefs.getString('af.lastfm_api_secret') ?? '';
-      final lastfmSessionKey = prefs.getString('af.lastfm_session_key') ?? '';
-      final lastfmUsername = prefs.getString('af.lastfm_username') ?? '';
-      final lastfmScrobbleEnabled =
-          prefs.getBool('af.lastfm_scrobble_enabled') ?? true;
+      // Load Last.fm settings from secure storage (with migration from plain prefs)
+      final lastfmStorage = LastFmStorage();
+      await lastfmStorage.migrateFromSharedPreferences();
+      final lastfmApiKey = await lastfmStorage.loadApiKey();
+      final lastfmApiSecret = await lastfmStorage.loadApiSecret();
+      final lastfmSessionKey = await lastfmStorage.loadSessionKey();
+      final lastfmUsername = await lastfmStorage.loadUsername();
+      final lastfmScrobbleEnabled = await lastfmStorage.loadScrobbleEnabled();
+      // Redact username in logs — PII should never appear in release logs.
+      final redactedUsername = lastfmUsername.isNotEmpty
+          ? '${lastfmUsername[0]}***'
+          : '';
       _boot(
         'lastfm: key=${lastfmApiKey.isNotEmpty} secret=${lastfmApiSecret.isNotEmpty} '
-        'session=${lastfmSessionKey.isNotEmpty} user=$lastfmUsername scrobble=$lastfmScrobbleEnabled',
+        'session=${lastfmSessionKey.isNotEmpty} user=$redactedUsername scrobble=$lastfmScrobbleEnabled',
       );
 
       _boot('aetherfinVersion=$aetherfinVersion');

@@ -43,12 +43,24 @@ class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {
   void initState() {
     super.initState();
     _controller = WebViewController()
+      // JavaScript must be unrestricted — the login flow relies on JS injection
+      // to extract SAPISID cookies and dataSyncId from window.yt.config_.
+      // This is safe because we only load music.youtube.com (Google's domain).
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setUserAgent(_chromeUserAgent)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: _onPageStarted,
           onPageFinished: _onPageFinished,
+          // Restrict navigation to YouTube/Google domains only
+          onNavigationRequest: (navigationRequest) async {
+            final url = navigationRequest.url;
+            if (url.contains('youtube.com') || url.contains('google.com')) {
+              return NavigationDecision.navigate;
+            }
+            afLog('youtube', 'Blocked navigation to non-YouTube URL: $url');
+            return NavigationDecision.prevent;
+          },
         ),
       )
       // Navigate to music.youtube.com — if already logged in, _tryCompleteLogin

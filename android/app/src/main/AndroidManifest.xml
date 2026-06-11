@@ -113,7 +113,7 @@
             android:targetActivity=".MainActivity"
             android:icon="@mipmap/ic_launcher_midnight"
             android:label="Aetherfin"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -126,7 +126,7 @@
             android:targetActivity=".MainActivity"
             android:icon="@mipmap/ic_launcher_nordic"
             android:label="Aetherfin"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -139,7 +139,7 @@
             android:targetActivity=".MainActivity"
             android:icon="@mipmap/ic_launcher_sunset"
             android:label="Aetherfin"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

@@ -13,7 +13,7 @@ class AuthStorage {
     : _storage = storage ?? const FlutterSecureStorage(aOptions: _options);
   static const _key = 'aetherfin.auth.v1';
   static const _deviceIdKey = 'aetherfin.deviceId.v1';
-  static const _options = AndroidOptions(encryptedSharedPreferences: true);
+  static const _options = AndroidOptions();
 
   final FlutterSecureStorage _storage;
 
