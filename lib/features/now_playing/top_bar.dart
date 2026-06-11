@@ -82,11 +82,9 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
     final track = widget.track;
 
     final lrcAsync = ref.watch(lyricsProvider(track.id));
-    final lyricsResult = lrcAsync.maybeWhen(
-      data: (p) => p,
-      orElse: () => null,
-    );
+    final lyricsResult = lrcAsync.maybeWhen(data: (p) => p, orElse: () => null);
     final lrc = lyricsResult?.lrc;
+    final lyricsSource = lyricsResult?.source;
     final isSynced =
         lrc != null && lrc.lines.any((l) => l.start > Duration.zero);
 
@@ -182,11 +180,41 @@ class _FrostedTopBarState extends ConsumerState<FrostedTopBar>
                     child: FadeTransition(
                       opacity: _expandAnim,
                       child: lrc != null && lrc.lines.isNotEmpty
-                          ? LyricsList(
-                              lrc: lrc,
-                              spectralEnergy: spectral,
-                              scrollController: _scrollCtrl,
-                              isSynced: isSynced,
+                          ? Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (lyricsSource != null)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      AfSpacing.s16,
+                                      AfSpacing.s8,
+                                      AfSpacing.s16,
+                                      0,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          LucideIcons.radio,
+                                          size: 12,
+                                          color: AfColors.textTertiary,
+                                        ),
+                                        const SizedBox(width: AfSpacing.s4),
+                                        Text(
+                                          lyricsSource.label,
+                                          style: AfTypography.caption.copyWith(
+                                            color: AfColors.textTertiary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                LyricsList(
+                                  lrc: lrc,
+                                  spectralEnergy: spectral,
+                                  scrollController: _scrollCtrl,
+                                  isSynced: isSynced,
+                                ),
+                              ],
                             )
                           : lrcAsync.isLoading
                           ? const Padding(

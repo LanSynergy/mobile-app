@@ -44,12 +44,12 @@ class Lrc {
 
 /// Where the lyrics were fetched from.
 enum LyricsSource {
-  cache('Cache'),
-  server('Server'),
-  lrclib('LRCLib'),
-  netease('NetEase'),
-  neteaseRomaji('NetEase Romaji'),
-  romanize('Romanize');
+  cache('Lyric provided by Cache'),
+  server('Lyric provided by Server'),
+  lrclib('Lyric provided by LRCLib'),
+  netease('Lyric provided by NetEase'),
+  neteaseRomaji('Lyric provided by NetEase Romaji'),
+  romanize('Lyric provided by Romanize');
 
   const LyricsSource(this.label);
   final String label;
