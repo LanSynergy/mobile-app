@@ -869,6 +869,190 @@ void main() {
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // Multi-language romanization
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  group('Multi-language romanization', () {
+    test('embedded Korean lyrics → romanize (source: romanize)', () async {
+      const koreanLrc = '[00:10.00]안녕하세요\n[00:15.00]-goodbye world';
+      when(() => backend.lyrics('t1')).thenAnswer((_) async => koreanLrc);
+      when(
+        () => netease.fetchLyrics(
+          trackName: any(named: 'trackName'),
+          artistName: any(named: 'artistName'),
+          albumName: any(named: 'albumName'),
+          duration: any(named: 'duration'),
+        ),
+      ).thenAnswer((_) async => null);
+
+      final track = _track('t1');
+      final result = await resolver.resolve(trackId: 't1', track: track);
+
+      expect(result, isNotNull);
+      expect(result!.source, equals(LyricsSource.romanize));
+      expect(containsKorean(result.lrc.lines[0].text), isFalse);
+    });
+
+    test('embedded Chinese lyrics → romanize (source: romanize)', () async {
+      const chineseLrc = '[00:10.00]你好世界\n[00:15.00]再见朋友';
+      when(() => backend.lyrics('t1')).thenAnswer((_) async => chineseLrc);
+      when(
+        () => netease.fetchLyrics(
+          trackName: any(named: 'trackName'),
+          artistName: any(named: 'artistName'),
+          albumName: any(named: 'albumName'),
+          duration: any(named: 'duration'),
+        ),
+      ).thenAnswer((_) async => null);
+
+      final track = _track('t1');
+      final result = await resolver.resolve(trackId: 't1', track: track);
+
+      expect(result, isNotNull);
+      expect(result!.source, equals(LyricsSource.romanize));
+      // Chinese characters (CJK) should be romanized
+      expect(containsChinese(result.lrc.lines[0].text), isFalse);
+    });
+
+    test('embedded Cyrillic lyrics → romanize (source: romanize)', () async {
+      const cyrillicLrc = '[00:10.00]Привет мир\n[00:15.00]До свидания';
+      when(() => backend.lyrics('t1')).thenAnswer((_) async => cyrillicLrc);
+      when(
+        () => netease.fetchLyrics(
+          trackName: any(named: 'trackName'),
+          artistName: any(named: 'artistName'),
+          albumName: any(named: 'albumName'),
+          duration: any(named: 'duration'),
+        ),
+      ).thenAnswer((_) async => null);
+
+      final track = _track('t1');
+      final result = await resolver.resolve(trackId: 't1', track: track);
+
+      expect(result, isNotNull);
+      expect(result!.source, equals(LyricsSource.romanize));
+      expect(containsCyrillic(result.lrc.lines[0].text), isFalse);
+    });
+
+    test('embedded Arabic lyrics → romanize (source: romanize)', () async {
+      const arabicLrc = '[00:10.00]مرحبا بالعالم\n[00:15.00]وداعا';
+      when(() => backend.lyrics('t1')).thenAnswer((_) async => arabicLrc);
+      when(
+        () => netease.fetchLyrics(
+          trackName: any(named: 'trackName'),
+          artistName: any(named: 'artistName'),
+          albumName: any(named: 'albumName'),
+          duration: any(named: 'duration'),
+        ),
+      ).thenAnswer((_) async => null);
+
+      final track = _track('t1');
+      final result = await resolver.resolve(trackId: 't1', track: track);
+
+      expect(result, isNotNull);
+      expect(result!.source, equals(LyricsSource.romanize));
+      expect(containsArabic(result.lrc.lines[0].text), isFalse);
+    });
+
+    test('embedded Hebrew lyrics → romanize (source: romanize)', () async {
+      const hebrewLrc = '[00:10.00]שלום עולם\n[00:15.00]להתראות';
+      when(() => backend.lyrics('t1')).thenAnswer((_) async => hebrewLrc);
+      when(
+        () => netease.fetchLyrics(
+          trackName: any(named: 'trackName'),
+          artistName: any(named: 'artistName'),
+          albumName: any(named: 'albumName'),
+          duration: any(named: 'duration'),
+        ),
+      ).thenAnswer((_) async => null);
+
+      final track = _track('t1');
+      final result = await resolver.resolve(trackId: 't1', track: track);
+
+      expect(result, isNotNull);
+      expect(result!.source, equals(LyricsSource.romanize));
+      expect(containsHebrew(result.lrc.lines[0].text), isFalse);
+    });
+
+    test('cache hit with Korean → romanize (source: cache)', () async {
+      const koreanLrc = '[00:10.00]안녕하세요';
+      resolver.cacheLyrics('t1', koreanLrc, LyricsSource.server);
+
+      final track = _track('t1');
+      final result = await resolver.resolve(trackId: 't1', track: track);
+
+      expect(result, isNotNull);
+      expect(result!.source, equals(LyricsSource.cache));
+      expect(containsKorean(result.lrc.lines[0].text), isFalse);
+    });
+
+    test('cache hit with Cyrillic → romanize (source: cache)', () async {
+      const cyrillicLrc = '[00:10.00]Привет мир';
+      resolver.cacheLyrics('t1', cyrillicLrc, LyricsSource.server);
+
+      final track = _track('t1');
+      final result = await resolver.resolve(trackId: 't1', track: track);
+
+      expect(result, isNotNull);
+      expect(result!.source, equals(LyricsSource.cache));
+      expect(containsCyrillic(result.lrc.lines[0].text), isFalse);
+    });
+
+    test('LRCLib returns Korean → romanize (source: lrclib)', () async {
+      const koreanLrc = '[00:10.00]안녕하세요\n[00:15.00]goodbye';
+      when(() => backend.lyrics('t1')).thenAnswer((_) async => null);
+      when(
+        () => netease.fetchLyrics(
+          trackName: any(named: 'trackName'),
+          artistName: any(named: 'artistName'),
+          albumName: any(named: 'albumName'),
+          duration: any(named: 'duration'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => lrclib.fetchLyrics(
+          trackName: any(named: 'trackName'),
+          artistName: any(named: 'artistName'),
+          albumName: any(named: 'albumName'),
+          duration: any(named: 'duration'),
+        ),
+      ).thenAnswer((_) async => (synced: koreanLrc, plain: null));
+
+      final track = _track('t1');
+      final result = await resolver.resolve(trackId: 't1', track: track);
+
+      expect(result, isNotNull);
+      expect(result!.source, equals(LyricsSource.lrclib));
+      expect(containsKorean(result.lrc.lines[0].text), isFalse);
+    });
+
+    test(
+      'NetEase returns Korean (no romaji) → romanize (source: romanize)',
+      () async {
+        const koreanLrc = '[00:10.00]안녕하세요\n[00:15.00]goodbye';
+        when(() => backend.lyrics('t1')).thenAnswer((_) async => null);
+        when(
+          () => netease.fetchLyrics(
+            trackName: any(named: 'trackName'),
+            artistName: any(named: 'artistName'),
+            albumName: any(named: 'albumName'),
+            duration: any(named: 'duration'),
+          ),
+        ).thenAnswer(
+          (_) async => (synced: koreanLrc, plain: null, romaji: null),
+        );
+
+        final track = _track('t1');
+        final result = await resolver.resolve(trackId: 't1', track: track);
+
+        expect(result, isNotNull);
+        expect(result!.source, equals(LyricsSource.romanize));
+        expect(containsKorean(result.lrc.lines[0].text), isFalse);
+      },
+    );
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // Flow order verification
   // ═══════════════════════════════════════════════════════════════════════════
 
