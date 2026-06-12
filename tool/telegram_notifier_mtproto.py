@@ -181,18 +181,23 @@ def _get_mtproto_client():
 
 async def _send_file_mtproto(file_path, caption, reply_markup=None):
     from telethon.tl.types import DocumentAttributeFilename, KeyboardButtonUrl
-    from telethon.errors import SessionPasswordNeededError, AuthKeyError
+    from telethon.errors import (
+        SessionPasswordNeededError, AuthKeyError,
+        FloodWaitError, PhoneCodeInvalidError
+    )
 
     chat_id = int(_require_env('TG_CHAT_ID'))
     client, session_dir = _get_mtproto_client()
 
     try:
-        # Use timeout for connection (30s for connect, 60s for full start)
-        await asyncio.wait_for(client.start(), timeout=60)
+        # Connect first (just TCP, no auth)
+        await asyncio.wait_for(client.connect(), timeout=30)
 
-        # Verify we're actually authorized
+        # Check if we have a valid session without triggering auth flow
         if not await client.is_user_authorized():
-            print("Error: MTProto session is not authorized. Regenerate TG_SESSION_BASE64.")
+            print("Error: MTProto session is not authorized.")
+            print("The session may have been revoked. Regenerate TG_SESSION_BASE64.")
+            await client.disconnect()
             sys.exit(1)
 
         buttons = None
@@ -230,16 +235,19 @@ async def _send_file_mtproto(file_path, caption, reply_markup=None):
     except asyncio.TimeoutError:
         print("MTProto upload timed out. Check network or regenerate session.")
         sys.exit(1)
-    except (AuthKeyError, SessionPasswordNeededError) as e:
+    except (AuthKeyError, SessionPasswordNeededError, PhoneCodeInvalidError) as e:
         print(f"Error: MTProto session is invalid: {e}")
         print("Regenerate TG_SESSION_BASE64 and update the secret.")
+        sys.exit(1)
+    except FloodWaitError as e:
+        print(f"Error: Telegram rate limit. Wait {e.seconds} seconds.")
         sys.exit(1)
     except Exception as e:
         print(f"MTProto upload failed: {e}")
         sys.exit(1)
     finally:
         try:
-            await asyncio.wait_for(client.disconnect(), timeout=10)
+            await client.disconnect()
         except Exception:
             pass
         import shutil

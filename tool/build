@@ -227,7 +227,14 @@ _tg_start_watcher() {
 _tg_stop_watcher() {
   [ -z "$_WATCHER_PID" ] && return 0
   echo "  📡 Stopping watcher (PID: $_WATCHER_PID)..."
+  # Kill directly + process group to ensure child Python process dies
   kill "$_WATCHER_PID" 2>/dev/null || true
+  kill -- -"$_WATCHER_PID" 2>/dev/null || true
+  # Wait briefly and force-kill if still alive
+  sleep 0.5
+  if kill -0 "$_WATCHER_PID" 2>/dev/null; then
+    kill -9 "$_WATCHER_PID" 2>/dev/null || true
+  fi
   wait "$_WATCHER_PID" 2>/dev/null || true
   _WATCHER_PID=""
 }
