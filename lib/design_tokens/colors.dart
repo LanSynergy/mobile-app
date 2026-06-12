@@ -40,7 +40,9 @@ abstract final class AfColors {
   // ---------------------------------------------------------------------------
   // Accent — Ocean blue
   // ---------------------------------------------------------------------------
-  static const accentPrimary = Color(0xFF2E6FA8); // Darker ocean blue (WCAG AA 4.73:1)
+  static const accentPrimary = Color(
+    0xFF2E6FA8,
+  ); // Darker ocean blue (WCAG AA 4.80:1)
   static const accentSecondary = Color(0xFF3A7CA5); // Deep blue
   static const accentMuted = Color(0xFF6B8FA3); // Muted blue
 
@@ -203,14 +205,14 @@ class Spectral {
   /// - Local files without embedded artwork
   /// - Queue transitions between tracks
   static const fallback = Spectral(
-    energy: Color(0xFF5B9BD5),
+    energy: Color(0xFF2E6FA8),
     shadow: Color(0xFF0D1B2A),
     glow: Color(0xFF7EC8E3),
-    primary: Color(0xFF5B9BD5),
+    primary: Color(0xFF2E6FA8),
     secondary: Color(0xFF3A7CA5),
     muted: Color(0xFF6B8FA3),
-    link: Color(0xFF5B9BD5),
-    warning: Color(0xFF5B9BD5),
+    link: Color(0xFF2E6FA8),
+    warning: Color(0xFF2E6FA8),
   );
 
   @override
