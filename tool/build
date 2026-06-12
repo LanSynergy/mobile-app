@@ -15,16 +15,12 @@
 #   --no-universal        Skip universal APK when using --split-per-abi (CI only)
 #   --sign                Sign APK (reads env: KEYSTORE_B64, STORE_PASSWORD,
 #                         KEY_ALIAS, KEY_PASSWORD)
-#   --telegram            Send build notifications via Telegram (reads env:
-#                         TG_BOT_TOKEN, TG_CHAT_ID)
-#   --progress-watch      Show live progress bar on Telegram (requires --telegram)
 #   --install             Install APK on connected device after build
 #   --skip-analyze        Skip flutter analyze
 #   --skip-test           Skip flutter test
 #   --skip-codegen        Skip dart run build_runner (code generation)
 #   --skip-build          Skip the APK build step entirely (useful for PR checks)
 #   --skip-build-id       Skip build ID generation
-#   --skip-final-notify   Skip final Telegram notification (workflow handles it)
 #   --help                Show this help
 #
 # Environment:
@@ -33,8 +29,6 @@
 #   STORE_PASSWORD        Keystore password
 #   KEY_ALIAS             Signing key alias
 #   KEY_PASSWORD          Signing key password
-#   TG_BOT_TOKEN          Telegram bot token (for --telegram)
-#   TG_CHAT_ID            Telegram chat ID (for --telegram)
 #
 set -euo pipefail
 
@@ -51,10 +45,6 @@ SKIP_CODEGEN=false
 SKIP_BUILD=false
 SKIP_BUILD_ID=false
 SIGN=false
-TELEGRAM=false
-SKIP_FINAL_NOTIFY=false
-PROGRESS_WATCH=false
-_WATCHER_PID=""
 BUILD_ID=""
 SHARD_INDEX=""
 TOTAL_SHARDS=""
@@ -70,8 +60,6 @@ fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUTDIR="$ROOT/build/app/outputs/flutter-apk"
-TG_MSG_FILE="$ROOT/build/.telegram_msg_id"
-PRIMARY_APK_FILE="$ROOT/build/.primary_apk_info"
 CI_MODE="${GITHUB_ACTIONS:-false}"
 
 # ---------------------------------------------------------------------------
@@ -117,186 +105,11 @@ step() {
 }
 
 # ---------------------------------------------------------------------------
-# Telegram helpers
-# ---------------------------------------------------------------------------
-_tg_set_env() {
-  # Gather Git / build context for Telegram messages.
-  # These are set once and reused across init/update/send/fail calls.
-  export TG_MODE="${TG_MODE:-$MODE}"
-  export TG_BUILD_ID="${TG_BUILD_ID:-${BUILD_ID:-}}"
-  export TG_SHA="${TG_SHA:-$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")}"
-  export TG_BRANCH="${TG_BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")}"
-  export TG_TIMESTAMP="${TG_TIMESTAMP:-$(date -u +"%Y-%m-%d %H:%M UTC" 2>/dev/null)}"
-  export TG_ACTOR="${TG_ACTOR:-$(git config user.name 2>/dev/null || echo "unknown")}"
-  export TG_RUN_URL="${TG_RUN_URL:-}"
-  export TG_COMMIT_URL="${TG_COMMIT_URL:-}"
-
-  # HTML-escape the commit message
-  local raw_msg
-  raw_msg="$(git log -1 --pretty=format:"%s" 2>/dev/null || echo "")"
-  local escaped
-  escaped=$(printf '%s' "$raw_msg" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
-  export TG_COMMIT="$escaped"
-}
-
-tg_init() {
-  [ "$TELEGRAM" = "false" ] && return 0
-  if [ -z "${TG_BOT_TOKEN:-}" ] || [ -z "${TG_CHAT_ID:-}" ]; then
-    warn "TG_BOT_TOKEN / TG_CHAT_ID not set — skipping Telegram notifications."
-    TELEGRAM=false
-    return 0
-  fi
-  _tg_set_env
-  echo "  📡 Initializing Telegram notification..."
-  local output
-  output=$(python3 "$ROOT/tool/telegram_notifier.py" init 2>&1) || true
-  local msg_id
-  msg_id=$(echo "$output" | sed -n 's/.*TG_MESSAGE_ID=\([0-9]\+\).*/\1/p' || true)
-  if [ -n "$msg_id" ]; then
-    echo "$msg_id" > "$TG_MSG_FILE"
-    echo "  ✅ Telegram message ID: $msg_id"
-  else
-    warn "Failed to get Telegram message ID."
-    TELEGRAM=false
-  fi
-}
-
-tg_send_apk() {
-  [ "$TELEGRAM" = "false" ] && return 0
-  local apk_path="$1"
-  local apk_name="$2"
-  local apk_size="$3"
-  export TG_APK_PATH="$apk_path"
-  export TG_APK_NAME="$apk_name"
-  export TG_SIZE="$apk_size"
-  export TG_MESSAGE_ID
-  TG_MESSAGE_ID="$(cat "$TG_MSG_FILE" 2>/dev/null || true)"
-  [ -z "$TG_MESSAGE_ID" ] && return 0
-
-  # If TG_DOWNLOAD_URL is set, send link instead of file (CI artifact flow)
-  if [ -n "${TG_DOWNLOAD_URL:-}" ]; then
-    echo "  📤 Sending download link to Telegram..."
-    python3 "$ROOT/tool/telegram_notifier.py" send_link 2>&1 || warn "Telegram link notification failed."
-    echo "true" > "$ROOT/build/.tg_notified"
-    return 0
-  fi
-
-  # Bot API file send (50MB limit)
-  if [ "$apk_size" != "" ]; then
-    local size_bytes
-    size_bytes=$(echo "$apk_size" | numfmt --from=iec 2>/dev/null || echo 0)
-    if [ "$size_bytes" -gt 52428800 ] 2>/dev/null; then
-      echo "  ⚠ APK ($apk_size) exceeds Telegram's 50 MB limit — sending text fallback."
-      tg_send_text
-      return 0
-    fi
-  fi
-
-  echo "  📤 Sending APK to Telegram (50MB limit)..."
-  python3 "$ROOT/tool/telegram_notifier.py" send_apk 2>&1 || warn "Telegram APK upload failed."
-  echo "true" > "$ROOT/build/.tg_notified"
-}
-
-tg_send_text() {
-  [ "$TELEGRAM" = "false" ] && return 0
-  export TG_MESSAGE_ID
-  TG_MESSAGE_ID="$(cat "$TG_MSG_FILE" 2>/dev/null || true)"
-  [ -z "$TG_MESSAGE_ID" ] && return 0
-  echo "  📡 Sending final text to Telegram..."
-  python3 "$ROOT/tool/telegram_notifier.py" send_text 2>&1 || warn "Telegram send_text failed."
-  echo "true" > "$ROOT/build/.tg_notified"
-}
-
-tg_fail() {
-  [ "$TELEGRAM" = "false" ] && return 0
-  export TG_MESSAGE_ID
-  TG_MESSAGE_ID="$(cat "$TG_MSG_FILE" 2>/dev/null || true)"
-  [ -z "$TG_MESSAGE_ID" ] && return 0
-  echo "  📡 Sending failure notification..."
-  python3 "$ROOT/tool/telegram_notifier.py" fail 2>/dev/null || true
-  echo "true" > "$ROOT/build/.tg_notified"
-  rm -f "$TG_MSG_FILE"  # prevent double-fire from workflow failure handler
-}
-
-_tg_start_watcher() {
-  [ "$PROGRESS_WATCH" = "false" ] && return 0
-  local msg_id="${TG_MESSAGE_ID:-}"
-  if [ -z "$msg_id" ] && [ -f "$TG_MSG_FILE" ]; then
-    msg_id="$(cat "$TG_MSG_FILE" 2>/dev/null)" || return 0
-  fi
-  [ -z "$msg_id" ] && return 0
-
-  export TG_MESSAGE_ID="$msg_id"
-  # Use a descriptive status text and icon for the watcher
-  export TG_STATUS_TEXT="${TG_STATUS_TEXT:-Building...}"
-  export TG_ICON="${TG_ICON:-\U0001f528}"
-
-  echo "  📡 Starting live-progress watcher (PID: $$)..."
-  python3 "$ROOT/tool/telegram_notifier.py" progress_watch &
-  _WATCHER_PID=$!
-  echo "  ✅ Watcher PID: $_WATCHER_PID"
-}
-
-_tg_stop_watcher() {
-  [ -z "$_WATCHER_PID" ] && return 0
-  echo "  📡 Stopping watcher (PID: $_WATCHER_PID)..."
-  # Kill directly + process group to ensure child Python process dies
-  kill "$_WATCHER_PID" 2>/dev/null || true
-  kill -- -"$_WATCHER_PID" 2>/dev/null || true
-  # Wait briefly and force-kill if still alive
-  sleep 0.5
-  if kill -0 "$_WATCHER_PID" 2>/dev/null; then
-    kill -9 "$_WATCHER_PID" 2>/dev/null || true
-  fi
-  wait "$_WATCHER_PID" 2>/dev/null || true
-  _WATCHER_PID=""
-}
-
-# Update the Telegram message to a new step and restart the progress watcher. 
-# This makes the CI message show what's currently running instead of a static
-# "Building..." throughout the whole pipeline.
-_tg_transition() {
-  [ "$TELEGRAM" = "false" ] && [ "$PROGRESS_WATCH" = "false" ] && return 0
-  local status_text="$1"
-  local icon="$2"
-
-  # Stop current watcher so it doesn't race with the update
-  _tg_stop_watcher
-
-  # Update the message with the new step description
-  local msg_id="${TG_MESSAGE_ID:-}"
-  if [ -z "$msg_id" ] && [ -f "$TG_MSG_FILE" ]; then
-    msg_id="$(cat "$TG_MSG_FILE" 2>/dev/null)" || return 0
-  fi
-  if [ -n "$msg_id" ]; then
-    export TG_MESSAGE_ID="$msg_id"
-    export TG_STATUS_TEXT="$status_text"
-    export TG_ICON="$icon"
-    python3 "$ROOT/tool/telegram_notifier.py" update 2>/dev/null || true
-  fi
-
-  # Restart watcher with the new context so the progress bar keeps running
-  export TG_STATUS_TEXT="$status_text"
-  export TG_ICON="$icon"
-  _tg_start_watcher
-}
-
-# ---------------------------------------------------------------------------
-# Trap — notify Telegram on unhandled error
+# Trap — cleanup on exit
 # ---------------------------------------------------------------------------
 cleanup() {
   local rc=$?
-  _tg_stop_watcher
-
-  # Persist TG_MESSAGE_ID for downstream CI steps (release.yml, etc.)
-  if [ "$CI_MODE" = "true" ] && [ -f "$TG_MSG_FILE" ]; then
-    echo "TG_MESSAGE_ID=$(cat "$TG_MSG_FILE")" >> "$GITHUB_ENV"
-  fi
-
-  if [ $rc -ne 0 ] && [ "$TELEGRAM" = "true" ] && [ -f "$TG_MSG_FILE" ]; then
-    tg_fail
-  fi
-  rm -f "$TG_MSG_FILE" "$PRIMARY_APK_FILE"
+  # Cleanup if needed
 }
 trap cleanup EXIT
 
@@ -331,45 +144,6 @@ rename_apks() {
     renamed=$((renamed + 1))
   done
   echo "  Renamed $renamed APK(s)"
-}
-
-# ---------------------------------------------------------------------------
-# Select primary APK (arm64-v8a preferred, fallback to universal)
-# ---------------------------------------------------------------------------
-select_primary_apk() {
-  local outdir="$1"
-  local info_file="$2"
-
-  cd "$outdir" || return 1
-  shopt -s nullglob
-
-  local apks
-  apks=(*arm64-v8a*.apk)
-  if [ ${#apks[@]} -eq 0 ]; then
-    apks=(Aetherfin-v*.apk)
-    echo "  No arm64-v8a split found — using universal APK."
-  else
-    echo "  Using arm64-v8a build."
-  fi
-
-  if [ ${#apks[@]} -eq 0 ]; then
-    echo "  ⚠ No APKs found."
-    echo "path=" > "$info_file"
-    return 0
-  fi
-
-  local apk="${apks[0]}"
-  local apk_path="$PWD/$apk"
-
-  local size
-  size=$(stat -c%s "$apk_path" 2>/dev/null || stat -f%z "$apk_path" 2>/dev/null || echo 0)
-  local size_human
-  size_human=$(numfmt --to=iec --suffix=B "$size" 2>/dev/null || echo "$size bytes")
-
-  echo "path=$apk_path"   > "$info_file"
-  echo "name=$apk"       >> "$info_file"
-  echo "size=$size_human" >> "$info_file"
-  echo "  Selected: $apk ($size_human)"
 }
 
 # ---------------------------------------------------------------------------
@@ -448,9 +222,6 @@ while [[ $# -gt 0 ]]; do
     --split-per-abi)  SPLIT_PER_ABI=true; shift ;;
     --no-universal)   BUILD_UNIVERSAL=false; shift ;;
     --sign)           SIGN=true; shift ;;
-    --telegram)       TELEGRAM=true; shift ;;
-    --progress-watch) PROGRESS_WATCH=true; shift ;;
-    --skip-final-notify) SKIP_FINAL_NOTIFY=true; shift ;;
     --install)        INSTALL=true; shift ;;
     --skip-analyze)   SKIP_ANALYZE=true; shift ;;
     --skip-test)      SKIP_TEST=true; shift ;;
@@ -477,10 +248,10 @@ esac
 mkdir -p "$(dirname "$TG_MSG_FILE")" "$OUTDIR"
 cd "$ROOT"
 
-# In CI, skip banner + toolchain + Telegram — saves ~5-10s per run.
+# In CI, skip banner + toolchain — saves ~5-10s per run.
 if [ "$CI_MODE" = "true" ] && { [ "$SKIP_BUILD" = "true" ] || [ "$SKIP_ANALYZE" = "true" ] || [ "$SKIP_TEST" = "true" ]; }; then
   echo ""
-  echo "  CI mode — skipping banner, toolchain, Telegram"
+  echo "  CI mode — skipping banner, toolchain"
   echo "  Mode: $MODE | Analyze: $SKIP_ANALYZE | Test: $SKIP_TEST | Build: $SKIP_BUILD"
   echo ""
 else
@@ -488,17 +259,10 @@ else
   echo "  Mode:          $MODE"
   echo "  Split ABI:     $SPLIT_PER_ABI"
   echo "  Sign:          $SIGN"
-  echo "  Telegram:      $TELEGRAM"
   echo "  Skip build:    $SKIP_BUILD"
   echo "  CI mode:       $CI_MODE"
   echo ""
 fi
-
-# Initialize Telegram — sends "Setting up build environment..." message
-tg_init
-
-# Start live-progress watcher with initial context
-_tg_transition "🔧 Initializing build environment..." "🔧"
 
 # ---------------------------------------------------------------------------
 # 1. Toolchain versions
@@ -506,7 +270,6 @@ _tg_transition "🔧 Initializing build environment..." "🔧"
 if [ "$CI_MODE" = "true" ]; then
   echo "  (toolchain skipped — set up by CI action)"
 else
-  _tg_transition "🔧 Toolchain: Flutter, Dart, Java" "🔧"
   step "Toolchain versions" bash -c "
     echo '  Flutter:'
     $FLUTTER --version 2>&1 | head -2
@@ -522,14 +285,12 @@ fi
 # ---------------------------------------------------------------------------
 # 2. Dependencies
 # ---------------------------------------------------------------------------
-_tg_transition "📦 Installing Flutter dependencies..." "📦"
 step "Install dependencies" $FLUTTER pub get
 
 # ---------------------------------------------------------------------------
 # 3. Build ID
 # ---------------------------------------------------------------------------
 if [ "$SKIP_BUILD_ID" = "false" ] && [ "$SKIP_BUILD" = "false" ]; then
-  _tg_transition "🔢 Generating build ID..." "🔢"
   step "Generate build ID" $DART run tool/generate_build_id.dart
 fi
 
@@ -548,7 +309,6 @@ echo "  Version:     $VERSION"
 # 4. Code generation
 # ---------------------------------------------------------------------------
 if [ "$SKIP_CODEGEN" = "false" ]; then
-  _tg_transition "⚡ Running code generation..." "⚡"
   step "Run code generation" $DART run build_runner build
 fi
 
@@ -556,7 +316,6 @@ fi
 # 5. Static analysis
 # ---------------------------------------------------------------------------
 if [ "$SKIP_ANALYZE" = "false" ]; then
-  _tg_transition "🔍 Running static analysis..." "🔍"
   step "Static analysis" $FLUTTER analyze --no-fatal-infos
 fi
 
@@ -564,7 +323,6 @@ fi
 # 6. Tests
 # ---------------------------------------------------------------------------
 if [ "$SKIP_TEST" = "false" ]; then
-  _tg_transition "🧪 Running unit tests..." "🧪"
   TEST_CMD="$FLUTTER test"
   if [ -n "$SHARD_INDEX" ] && [ -n "$TOTAL_SHARDS" ]; then
     TEST_CMD="$TEST_CMD --shard-index=$SHARD_INDEX --total-shards=$TOTAL_SHARDS"
@@ -578,7 +336,6 @@ fi
 # 7. Signing (release mode only)
 # ---------------------------------------------------------------------------
 if [ "$SIGN" = "true" ]; then
-  _tg_transition "🔑 Configuring signing keys..." "🔑"
   echo ""
   echo "────────────────────────────────────────"
   echo "  Configure signing"
@@ -603,7 +360,6 @@ fi
 # ---------------------------------------------------------------------------
 if [ "$SKIP_BUILD" = "false" ]; then
   if [ "$BUILD_UNIVERSAL" = "true" ]; then
-    _tg_transition "🏗️ Building universal APK ($MODE)..." "🏗️"
     step "Build universal APK" bash -c "
     echo '  Running: flutter build apk --$MODE'
     (cd '$ROOT/android' && ./gradlew --stop) 2>/dev/null || true
@@ -612,7 +368,6 @@ if [ "$SKIP_BUILD" = "false" ]; then
   fi
 
   if [ "$SPLIT_PER_ABI" = "true" ]; then
-    _tg_transition "🏗️ Building per-ABI APKs ($MODE)..." "🏗️"
     step "Build per-ABI APKs" bash -c "
     echo '  Running: flutter build apk --$MODE --split-per-abi'
     (cd '$ROOT/android' && ./gradlew --stop) 2>/dev/null || true
@@ -636,68 +391,6 @@ fi
 echo ""
 
 # ---------------------------------------------------------------------------
-# 10. Select primary APK for Telegram
-# ---------------------------------------------------------------------------
-if [ "$SKIP_BUILD" = "false" ]; then
-  echo "────────────────────────────────────────"
-  echo "  Select primary APK"
-  echo "────────────────────────────────────────"
-  select_primary_apk "$OUTDIR" "$PRIMARY_APK_FILE"
-  echo ""
-
-  # Read back primary APK info
-  PRIMARY_APK=""
-  PRIMARY_APK_NAME=""
-  PRIMARY_APK_SIZE=""
-  if [ -f "$PRIMARY_APK_FILE" ]; then
-    PRIMARY_APK=$(grep "^path=" "$PRIMARY_APK_FILE" | cut -d= -f2-)
-    PRIMARY_APK_NAME=$(grep "^name=" "$PRIMARY_APK_FILE" | cut -d= -f2-)
-    PRIMARY_APK_SIZE=$(grep "^size=" "$PRIMARY_APK_FILE" | cut -d= -f2-)
-  fi
-
-  # Stop live-progress watcher before final notification
-  _tg_stop_watcher
-
-  # Send final Telegram message (unless workflow will handle it)
-  if [ "$SKIP_FINAL_NOTIFY" = "true" ]; then
-    echo "  ℹ Final notification deferred to workflow."
-  elif [ -n "$PRIMARY_APK" ] && [ "$TELEGRAM" = "true" ]; then
-    tg_send_apk "$PRIMARY_APK" "$PRIMARY_APK_NAME" "$PRIMARY_APK_SIZE"
-  elif [ "$TELEGRAM" = "true" ]; then
-    tg_send_text
-  fi
-fi
-
-# ---------------------------------------------------------------------------
-# 11. Install on connected device
-# ---------------------------------------------------------------------------
-if [ "$SKIP_BUILD" = "false" ] && [ "$INSTALL" = "true" ]; then
-  if [ -n "$PRIMARY_APK" ]; then
-    echo ""
-    echo "────────────────────────────────────────"
-    echo "  Install on device"
-    echo "────────────────────────────────────────"
-    if [ "$SPLIT_PER_ABI" = "true" ]; then
-      detected=$(adb shell getprop ro.product.cpu.abi 2>/dev/null | tr -d '\r' || true)
-      if [ -n "$detected" ]; then
-        install_apk="$OUTDIR/Aetherfin-v${VERSION}-${detected}-${BUILD_ID}.apk"
-      else
-        install_apk="$PRIMARY_APK"
-      fi
-    else
-      install_apk="$PRIMARY_APK"
-    fi
-    if [ -f "$install_apk" ]; then
-      echo "  Installing $install_apk..."
-      adb install -r "$install_apk"
-    else
-      echo "  No APK found at $install_apk"
-    fi
-    echo ""
-  fi
-fi
-
-# ---------------------------------------------------------------------------
-# 12. Summary
+# 10. Summary
 # ---------------------------------------------------------------------------
 print_summary "$OUTDIR" "$MODE" "$BUILD_ID" "$VERSION"

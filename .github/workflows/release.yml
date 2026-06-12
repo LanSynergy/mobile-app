@@ -77,6 +77,7 @@ jobs:
           path: lib/core/local/app_database.g.dart
           key: codegen-${{ runner.os }}-${{ hashFiles('pubspec.lock', 'lib/core/local/app_database.dart') }}
 
+      # Telegram metadata — export to GITHUB_ENV for notification steps
       - name: Export Telegram metadata
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -101,6 +102,14 @@ jobs:
           echo "TG_COMMIT_URL=${COMMIT_URL}"  >> "${GITHUB_ENV}"
           echo "TG_ACTOR=${ACTOR}"            >> "${GITHUB_ENV}"
           echo "TG_TAG=${TAG}"                >> "${GITHUB_ENV}"
+
+      # Notify: Release started
+      - name: Notify Telegram — Release started
+        if: always()
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python3 tool/telegram_notifier.py init
 
       - name: Sync pubspec.yaml version
         env:
@@ -138,16 +147,25 @@ jobs:
             echo "PUBSPEC_BUMPED=true" >> "$GITHUB_ENV"
           fi
 
-      - name: Build signed APKs (universal + per-ABI)
+      # Notify: Building APKs
+      - name: Notify Telegram — Building APKs
+        if: always()
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TG_STATUS_TEXT: "Building signed APKs..."
+          TG_ICON: "\U0001f3d7\ufe0f"
+        run: python3 tool/telegram_notifier.py update
+
+      # Build signed APKs (no Telegram logic — handled by workflow)
+      - name: Build signed APKs (universal + per-ABI)
+        env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          args="--mode release --sign --split-per-abi --progress-watch --telegram --skip-final-notify"
+          args="--mode release --sign --split-per-abi"
           if [ "${{ steps.codegen-cache.outputs.cache-hit }}" = "true" ]; then
             args="$args --skip-codegen"
           fi
@@ -176,13 +194,15 @@ jobs:
           sha256sum release-artifacts/*.apk > release-artifacts/checksums.txt
           ls -lh release-artifacts/
 
+      # Notify: Creating release
       - name: Notify Telegram — Creating release
+        if: always()
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python3 tool/telegram_notifier.py init
-          TG_STATUS_TEXT="\U0001f3d7\ufe0f Creating GitHub Release..." TG_ICON="\U0001f3d7\ufe0f" python3 tool/telegram_notifier.py update
+          TG_STATUS_TEXT: "Creating GitHub Release..."
+          TG_ICON: "\U0001f4e6"
+        run: python3 tool/telegram_notifier.py update
 
       - name: Commit pubspec bump
         if: env.PUBSPEC_BUMPED == 'true'
@@ -262,14 +282,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Notify Telegram and summarize
+      # Notify: Success — send NEW message with release link
+      - name: Notify Telegram — Success
+        if: success()
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TG_TAG: ${{ env.TAG }}
           TG_RELEASE_URL: https://github.com/${{ github.repository }}/releases/tag/${{ env.TAG }}
         run: |
-          python3 tool/telegram_notifier.py release_success
+          python3 tool/telegram_notifier.py success
           echo "## Released $TAG :rocket:" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Artifacts published to https://github.com/${{ github.repository }}/releases/tag/$TAG" >> "$GITHUB_STEP_SUMMARY"
@@ -281,9 +302,10 @@ jobs:
             echo "| $(basename "$f") | $SIZE |" >> "$GITHUB_STEP_SUMMARY"
           done
 
-      - name: Notify Telegram — Release failed
+      # Notify: Failed — send NEW fail message
+      - name: Notify Telegram — Failed
         if: failure()
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python3 tool/telegram_notifier.py release_fail
+        run: python3 tool/telegram_notifier.py fail

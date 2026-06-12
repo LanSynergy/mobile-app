@@ -46,7 +46,7 @@ jobs:
           path: lib/core/local/app_database.g.dart
           key: codegen-${{ runner.os }}-${{ hashFiles('pubspec.lock', 'lib/core/local/app_database.dart') }}
 
-      # Metadata for Telegram notifications (read by tools/build --telegram)
+      # Telegram metadata — export to GITHUB_ENV for notification steps
       - name: Export Telegram metadata
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -72,16 +72,33 @@ jobs:
           echo "TG_COMMIT_URL=${COMMIT_URL}"        >> "${GITHUB_ENV}"
           echo "TG_ACTOR=${ACTOR}"                  >> "${GITHUB_ENV}"
 
-      - name: Build APK (+ Telegram notifications)
+      # Notify: Build started
+      - name: Notify Telegram — Build started
+        if: always()
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python3 tool/telegram_notifier.py init
+
+      # Notify: Building
+      - name: Notify Telegram — Building
+        if: always()
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TG_STATUS_TEXT: "Building APK..."
+          TG_ICON: "\U0001f3d7\ufe0f"
+        run: python3 tool/telegram_notifier.py update
+
+      # Build APK (no Telegram logic — handled by workflow)
+      - name: Build APK
+        env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          args="--mode ${{ inputs.build_mode }} --telegram --progress-watch"
+          args="--mode ${{ inputs.build_mode }}"
           if [ "${{ steps.codegen-cache.outputs.cache-hit }}" = "true" ]; then
             args="$args --skip-codegen"
           fi
@@ -129,19 +146,19 @@ jobs:
 
           echo "Published $(ls "$APK_DIR"/Aetherfin-v*.apk | wc -l) APK(s) to draft release."
 
-      # Telegram notifications are handled by tool/build (init → send_link/fail).
-      # The .tg_notified flag prevents duplicate sends in the failure handler below.
+      # Notify: Success — send NEW message with download link
+      - name: Notify Telegram — Success
+        if: success()
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TG_DOWNLOAD_URL: https://github.com/${{ github.repository }}/releases/tag/build-latest
+        run: python3 tool/telegram_notifier.py success
 
-      # Catches infrastructure failures (JDK/Flutter/cache setup)
-      # that happen BEFORE the build step runs.
-      - name: Notify Telegram of Infrastructure Failure
+      # Notify: Failed — send NEW fail message
+      - name: Notify Telegram — Failed
         if: failure()
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          if [ -f "build/.tg_notified" ]; then
-            echo "Telegram notification already handled by build script. Skipping."
-            exit 0
-          fi
-          python3 tool/telegram_notifier.py fail
+        run: python3 tool/telegram_notifier.py fail
