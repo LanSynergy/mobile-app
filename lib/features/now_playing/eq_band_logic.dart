@@ -16,7 +16,6 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart'
         LoudnormSettings,
         RubberbandSettings,
         StereowidenSettings,
-        SuperequalizerSettings,
         TrebleSettings,
         TremoloSettings,
         VibratoSettings,
@@ -191,6 +190,9 @@ class EqDspState {
   ///
   /// The screen's own [setState] handles the parent rebuild; section
   /// widgets use their local setState for immediate slider feedback.
+  ///
+  /// Prefer the typed setter methods for compile-time safety. This
+  /// method is kept for backward compatibility with section widgets.
   void setField(String field, dynamic value) {
     switch (field) {
       case 'loudnorm':
@@ -324,6 +326,88 @@ class EqDspState {
     }
   }
 
+  // ── Typed setters (m1) ───────────────────────────────────────────────────
+  // Compile-time safe alternatives to setField(). Each setter has the
+  // correct type signature, eliminating runtime cast errors.
+
+  // ── Tone ──
+  void setBass(double v) => bass = v;
+  void setTreble(double v) => treble = v;
+
+  // ── Dynamics ──
+  void setLoudnorm(bool v) => loudnorm = v;
+  void setCompressor(bool v) => compressor = v;
+  void setCompThreshold(double v) => compThreshold = v;
+  void setCompRatio(double v) => compRatio = v;
+  void setCompAttack(double v) => compAttack = v;
+  void setCompRelease(double v) => compRelease = v;
+  void setGate(bool v) => gate = v;
+  void setGateThreshold(double v) => gateThreshold = v;
+  void setGateRatio(double v) => gateRatio = v;
+  void setGateAttack(double v) => gateAttack = v;
+  void setGateRelease(double v) => gateRelease = v;
+  void setDeesser(bool v) => deesser = v;
+  void setDeesserIntensity(double v) => deesserIntensity = v;
+  void setDeesserMix(double v) => deesserMix = v;
+  void setDeesserFreq(double v) => deesserFreq = v;
+
+  // ── Echo ──
+  void setEchoEnabled(bool v) => echoEnabled = v;
+  void setEchoInGain(double v) => echoInGain = v;
+  void setEchoOutGain(double v) => echoOutGain = v;
+  void setEchoDelays(String v) => echoDelays = v;
+  void setEchoDecays(String v) => echoDecays = v;
+
+  // ── Pitch ──
+  void setRubberbandEnabled(bool v) => rubberbandEnabled = v;
+  void setPitch(double v) => pitch = v;
+  void setTempo(double v) => tempo = v;
+
+  // ── Spatial ──
+  void setCrossfeed(bool v) => crossfeed = v;
+  void setCrossfeedStrength(double v) => crossfeedStrength = v;
+  void setStereoWiden(bool v) => stereoWiden = v;
+  void setStereoWidenDelay(double v) => stereoWidenDelay = v;
+
+  // ── Modulation ──
+  void setPhaser(bool v) => phaser = v;
+  void setPhaserInGain(double v) => phaserInGain = v;
+  void setPhaserOutGain(double v) => phaserOutGain = v;
+  void setPhaserDelay(double v) => phaserDelay = v;
+  void setPhaserDecay(double v) => phaserDecay = v;
+  void setPhaserSpeed(double v) => phaserSpeed = v;
+  void setFlanger(bool v) => flanger = v;
+  void setFlangerDelay(double v) => flangerDelay = v;
+  void setFlangerDepth(double v) => flangerDepth = v;
+  void setFlangerRegen(double v) => flangerRegen = v;
+  void setFlangerWidth(double v) => flangerWidth = v;
+  void setFlangerSpeed(double v) => flangerSpeed = v;
+  void setChorus(bool v) => chorus = v;
+  void setChorusInGain(double v) => chorusInGain = v;
+  void setChorusOutGain(double v) => chorusOutGain = v;
+  void setChorusDelays(String v) => chorusDelays = v;
+  void setChorusDecays(String v) => chorusDecays = v;
+  void setChorusSpeeds(String v) => chorusSpeeds = v;
+  void setChorusDepths(String v) => chorusDepths = v;
+  void setTremolo(bool v) => tremolo = v;
+  void setTremoloFreq(double v) => tremoloFreq = v;
+  void setTremoloDepth(double v) => tremoloDepth = v;
+  void setVibrato(bool v) => vibrato = v;
+  void setVibratoFreq(double v) => vibratoFreq = v;
+  void setVibratoDepth(double v) => vibratoDepth = v;
+
+  // ── Creative ──
+  void setExciter(bool v) => exciter = v;
+  void setExciterAmount(double v) => exciterAmount = v;
+  void setCrystalizer(bool v) => crystalizer = v;
+  void setCrystalizerIntensity(double v) => crystalizerIntensity = v;
+  void setVirtualBass(bool v) => virtualBass = v;
+  void setVirtualBassCutoff(double v) => virtualBassCutoff = v;
+  void setCrusher(bool v) => crusher = v;
+  void setCrusherBits(double v) => crusherBits = v;
+  void setCrusherMix(double v) => crusherMix = v;
+  void setCrusherSamples(double v) => crusherSamples = v;
+
   // ── Reset ─────────────────────────────────────────────────────────────────
 
   /// Reset all DSP fields to their defaults.
@@ -397,10 +481,11 @@ class EqDspState {
 
   // ── AudioEffects conversion ───────────────────────────────────────────────
 
-  /// Build [AudioEffects] from the current state values.
-  AudioEffects toAudioEffects() {
-    return AudioEffects(
-      custom: const [],
+  /// Build [AudioEffects] from the current state values, merging into
+  /// [current] so that fields we don't own (superequalizer, custom)
+  /// are preserved.
+  AudioEffects toAudioEffects(AudioEffects current) {
+    return current.copyWith(
       bass: BassSettings(enabled: bass != 0, g: bass),
       treble: TrebleSettings(enabled: treble != 0, g: treble),
       loudnorm: LoudnormSettings(enabled: loudnorm),
@@ -411,7 +496,6 @@ class EqDspState {
         attack: compAttack,
         release: compRelease,
       ),
-      superequalizer: const SuperequalizerSettings(enabled: false),
       rubberband: RubberbandSettings(
         enabled: rubberbandEnabled,
         pitch: pitch,
@@ -495,6 +579,7 @@ class EqDspState {
         mix: crusherMix,
         samples: crusherSamples,
       ),
+      // superequalizer and custom are NOT touched — preserved from current
     );
   }
 

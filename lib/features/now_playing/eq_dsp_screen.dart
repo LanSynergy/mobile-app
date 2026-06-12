@@ -61,9 +61,10 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
   Future<void> _apply() async {
     if (!_s.masterEnabled) return;
     final svc = ref.read(playerServiceProvider);
-    final effects = _s.toAudioEffects();
+    final current = svc.audioEffects;
+    final effects = _s.toAudioEffects(current);
     try {
-      await svc.setAudioEffects(effects);
+      await svc.updateAudioEffects((_) => effects);
       await PlayerSettingsStore.saveAudioEffects(effects);
     } on Exception catch (e) {
       if (mounted) {
@@ -81,8 +82,11 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
       _activePreset = null;
     });
     unawaited(
-      ref.read(playerServiceProvider).setAudioEffects(const AudioEffects()),
+      ref
+          .read(playerServiceProvider)
+          .updateAudioEffects((_) => const AudioEffects()),
     );
+    unawaited(PlayerSettingsStore.saveAudioEffects(const AudioEffects()));
     unawaited(EqPresetManager.saveActivePreset(null));
   }
 

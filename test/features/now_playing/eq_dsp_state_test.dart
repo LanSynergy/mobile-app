@@ -94,21 +94,55 @@ void main() {
 
     // ── toAudioEffects (no EQ) ────────────────────────────────────────────
     group('toAudioEffects', () {
-      test('does not include superequalizer', () {
-        final fx = state.toAudioEffects();
+      test('does not include superequalizer when current has none', () {
+        final fx = state.toAudioEffects(const AudioEffects());
         expect(fx.superequalizer.enabled, false);
         expect(fx.superequalizer.params, isEmpty);
       });
 
-      test('does not include custom filters', () {
-        final fx = state.toAudioEffects();
+      test('does not include custom filters when current has none', () {
+        final fx = state.toAudioEffects(const AudioEffects());
         expect(fx.custom, isEmpty);
+      });
+
+      test('preserves existing superequalizer settings from current', () {
+        const current = AudioEffects(
+          superequalizer: SuperequalizerSettings(
+            enabled: true,
+            params: {'1b': 3.0, '5b': -1.5},
+          ),
+        );
+        final fx = state.toAudioEffects(current);
+        expect(fx.superequalizer.enabled, isTrue);
+        expect(fx.superequalizer.params, {'1b': 3.0, '5b': -1.5});
+      });
+
+      test('preserves existing custom filters from current', () {
+        const current = AudioEffects(
+          custom: ['lavfi-equalizer=f=1000:t=q:w=1.0:g=3.0'],
+        );
+        final fx = state.toAudioEffects(current);
+        expect(fx.custom, ['lavfi-equalizer=f=1000:t=q:w=1.0:g=3.0']);
+      });
+
+      test('preserves both superequalizer and custom from current', () {
+        const current = AudioEffects(
+          superequalizer: SuperequalizerSettings(
+            enabled: true,
+            params: {'1b': 2.0},
+          ),
+          custom: ['filter1'],
+        );
+        final fx = state.toAudioEffects(current);
+        expect(fx.superequalizer.enabled, isTrue);
+        expect(fx.superequalizer.params, {'1b': 2.0});
+        expect(fx.custom, ['filter1']);
       });
 
       test('includes bass/treble', () {
         state.bass = 3.0;
         state.treble = -2.0;
-        final fx = state.toAudioEffects();
+        final fx = state.toAudioEffects(const AudioEffects());
         expect(fx.bass.enabled, true);
         expect(fx.bass.g, 3.0);
         expect(fx.treble.enabled, true);
@@ -118,7 +152,7 @@ void main() {
       test('includes dynamics', () {
         state.loudnorm = true;
         state.compressor = true;
-        final fx = state.toAudioEffects();
+        final fx = state.toAudioEffects(const AudioEffects());
         expect(fx.loudnorm.enabled, true);
         expect(fx.acompressor.enabled, true);
       });
@@ -129,7 +163,7 @@ void main() {
         state.chorus = true;
         state.tremolo = true;
         state.vibrato = true;
-        final fx = state.toAudioEffects();
+        final fx = state.toAudioEffects(const AudioEffects());
         expect(fx.aphaser.enabled, true);
         expect(fx.flanger.enabled, true);
         expect(fx.chorus.enabled, true);
@@ -167,8 +201,8 @@ void main() {
           ),
         );
         state.loadFromAudioEffects(fx);
-        // Verify the output still has no superequalizer
-        final out = state.toAudioEffects();
+        // Verify the output still has no superequalizer (DSP state doesn't own it)
+        final out = state.toAudioEffects(const AudioEffects());
         expect(out.superequalizer.enabled, false);
         expect(out.superequalizer.params, isEmpty);
       });
@@ -178,8 +212,8 @@ void main() {
           custom: ['lavfi-equalizer=f=1000:t=q:w=1.0:g=3.0'],
         );
         state.loadFromAudioEffects(fx);
-        // Verify the output still has no custom filters
-        final out = state.toAudioEffects();
+        // Verify the output still has no custom filters (DSP state doesn't own them)
+        final out = state.toAudioEffects(const AudioEffects());
         expect(out.custom, isEmpty);
       });
     });
@@ -202,6 +236,159 @@ void main() {
         expect(state.echoEnabled, true);
         expect(state.phaser, true);
         expect(state.crusher, true);
+      });
+    });
+
+    // ── Typed setters (m1) ────────────────────────────────────────────────
+    group('typed setters (m1)', () {
+      test('setBass sets bass value', () {
+        state.setBass(5.0);
+        expect(state.bass, 5.0);
+      });
+
+      test('setTreble sets treble value', () {
+        state.setTreble(-3.0);
+        expect(state.treble, -3.0);
+      });
+
+      test('setLoudnorm sets loudnorm value', () {
+        state.setLoudnorm(true);
+        expect(state.loudnorm, true);
+      });
+
+      test('setCompressor sets compressor value', () {
+        state.setCompressor(true);
+        expect(state.compressor, true);
+      });
+
+      test('setCompThreshold sets compThreshold value', () {
+        state.setCompThreshold(-20.0);
+        expect(state.compThreshold, -20.0);
+      });
+
+      test('setCompRatio sets compRatio value', () {
+        state.setCompRatio(8.0);
+        expect(state.compRatio, 8.0);
+      });
+
+      test('setCompAttack sets compAttack value', () {
+        state.setCompAttack(50.0);
+        expect(state.compAttack, 50.0);
+      });
+
+      test('setCompRelease sets compRelease value', () {
+        state.setCompRelease(500.0);
+        expect(state.compRelease, 500.0);
+      });
+
+      test('setGate sets gate value', () {
+        state.setGate(true);
+        expect(state.gate, true);
+      });
+
+      test('setGateThreshold sets gateThreshold value', () {
+        state.setGateThreshold(-30.0);
+        expect(state.gateThreshold, -30.0);
+      });
+
+      test('setDeesser sets deesser value', () {
+        state.setDeesser(true);
+        expect(state.deesser, true);
+      });
+
+      test('setDeesserIntensity sets deesserIntensity value', () {
+        state.setDeesserIntensity(0.8);
+        expect(state.deesserIntensity, 0.8);
+      });
+
+      test('setEchoEnabled sets echoEnabled value', () {
+        state.setEchoEnabled(true);
+        expect(state.echoEnabled, true);
+      });
+
+      test('setEchoDelays sets echoDelays value', () {
+        state.setEchoDelays('100|200');
+        expect(state.echoDelays, '100|200');
+      });
+
+      test('setRubberbandEnabled sets rubberbandEnabled value', () {
+        state.setRubberbandEnabled(true);
+        expect(state.rubberbandEnabled, true);
+      });
+
+      test('setPitch sets pitch value', () {
+        state.setPitch(1.2);
+        expect(state.pitch, 1.2);
+      });
+
+      test('setTempo sets tempo value', () {
+        state.setTempo(0.9);
+        expect(state.tempo, 0.9);
+      });
+
+      test('setCrossfeed sets crossfeed value', () {
+        state.setCrossfeed(true);
+        expect(state.crossfeed, true);
+      });
+
+      test('setPhaser sets phaser value', () {
+        state.setPhaser(true);
+        expect(state.phaser, true);
+      });
+
+      test('setFlanger sets flanger value', () {
+        state.setFlanger(true);
+        expect(state.flanger, true);
+      });
+
+      test('setChorus sets chorus value', () {
+        state.setChorus(true);
+        expect(state.chorus, true);
+      });
+
+      test('setChorusDelays sets chorusDelays value', () {
+        state.setChorusDelays('30|60');
+        expect(state.chorusDelays, '30|60');
+      });
+
+      test('setTremolo sets tremolo value', () {
+        state.setTremolo(true);
+        expect(state.tremolo, true);
+      });
+
+      test('setTremoloFreq sets tremoloFreq value', () {
+        state.setTremoloFreq(8.0);
+        expect(state.tremoloFreq, 8.0);
+      });
+
+      test('setVibrato sets vibrato value', () {
+        state.setVibrato(true);
+        expect(state.vibrato, true);
+      });
+
+      test('setExciter sets exciter value', () {
+        state.setExciter(true);
+        expect(state.exciter, true);
+      });
+
+      test('setCrystalizer sets crystalizer value', () {
+        state.setCrystalizer(true);
+        expect(state.crystalizer, true);
+      });
+
+      test('setVirtualBass sets virtualBass value', () {
+        state.setVirtualBass(true);
+        expect(state.virtualBass, true);
+      });
+
+      test('setCrusher sets crusher value', () {
+        state.setCrusher(true);
+        expect(state.crusher, true);
+      });
+
+      test('setCrusherBits sets crusherBits value', () {
+        state.setCrusherBits(12.0);
+        expect(state.crusherBits, 12.0);
       });
     });
 
