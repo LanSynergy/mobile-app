@@ -132,5 +132,228 @@ void main() {
       expect(out.treble.enabled, isFalse);
       expect(out.superequalizer.enabled, isFalse);
     });
+
+    // ── M3: Range validation for all effects ──────────────────────────────
+    group('range validation (M3)', () {
+      test('compressor threshold clamped to -100..0', () {
+        final fx = const AudioEffects().copyWith(
+          acompressor: const AcompressorSettings(
+            enabled: true,
+            threshold: 50.0,
+            ratio: 4,
+            attack: 10,
+            release: 100,
+          ),
+        );
+        final out = autoBypassFlat(fx);
+        expect(out.acompressor.threshold, 0.0);
+
+        final fx2 = const AudioEffects().copyWith(
+          acompressor: const AcompressorSettings(
+            enabled: true,
+            threshold: -150.0,
+            ratio: 4,
+            attack: 10,
+            release: 100,
+          ),
+        );
+        final out2 = autoBypassFlat(fx2);
+        expect(out2.acompressor.threshold, -100.0);
+      });
+
+      test('compressor ratio clamped to 1..30', () {
+        final fx = const AudioEffects().copyWith(
+          acompressor: const AcompressorSettings(
+            enabled: true,
+            threshold: -20,
+            ratio: 0.5,
+            attack: 10,
+            release: 100,
+          ),
+        );
+        final out = autoBypassFlat(fx);
+        expect(out.acompressor.ratio, 1.0);
+
+        final fx2 = const AudioEffects().copyWith(
+          acompressor: const AcompressorSettings(
+            enabled: true,
+            threshold: -20,
+            ratio: 50.0,
+            attack: 10,
+            release: 100,
+          ),
+        );
+        final out2 = autoBypassFlat(fx2);
+        expect(out2.acompressor.ratio, 30.0);
+      });
+
+      test('compressor attack clamped to 0.1..1000', () {
+        final fx = const AudioEffects().copyWith(
+          acompressor: const AcompressorSettings(
+            enabled: true,
+            threshold: -20,
+            ratio: 4,
+            attack: 0.01,
+            release: 100,
+          ),
+        );
+        final out = autoBypassFlat(fx);
+        expect(out.acompressor.attack, 0.1);
+
+        final fx2 = const AudioEffects().copyWith(
+          acompressor: const AcompressorSettings(
+            enabled: true,
+            threshold: -20,
+            ratio: 4,
+            attack: 2000,
+            release: 100,
+          ),
+        );
+        final out2 = autoBypassFlat(fx2);
+        expect(out2.acompressor.attack, 1000.0);
+      });
+
+      test('compressor release clamped to 0.1..1000', () {
+        final fx = const AudioEffects().copyWith(
+          acompressor: const AcompressorSettings(
+            enabled: true,
+            threshold: -20,
+            ratio: 4,
+            attack: 10,
+            release: 0.01,
+          ),
+        );
+        final out = autoBypassFlat(fx);
+        expect(out.acompressor.release, 0.1);
+
+        final fx2 = const AudioEffects().copyWith(
+          acompressor: const AcompressorSettings(
+            enabled: true,
+            threshold: -20,
+            ratio: 4,
+            attack: 10,
+            release: 5000,
+          ),
+        );
+        final out2 = autoBypassFlat(fx2);
+        expect(out2.acompressor.release, 1000.0);
+      });
+
+      test('gate threshold clamped to -100..0', () {
+        final fx = const AudioEffects().copyWith(
+          agate: const AgateSettings(
+            enabled: true,
+            threshold: 10.0,
+            ratio: 2,
+            attack: 10,
+            release: 100,
+          ),
+        );
+        final out = autoBypassFlat(fx);
+        expect(out.agate.threshold, 0.0);
+      });
+
+      test('gate ratio clamped to 1..30', () {
+        final fx = const AudioEffects().copyWith(
+          agate: const AgateSettings(
+            enabled: true,
+            threshold: -30,
+            ratio: 0.5,
+            attack: 10,
+            release: 100,
+          ),
+        );
+        final out = autoBypassFlat(fx);
+        expect(out.agate.ratio, 1.0);
+      });
+
+      test('rubberband pitch clamped to 0.5..2.0', () {
+        final fx = const AudioEffects().copyWith(
+          rubberband: const RubberbandSettings(
+            enabled: true,
+            pitch: 0.1,
+            tempo: 1.0,
+          ),
+        );
+        final out = autoBypassFlat(fx);
+        expect(out.rubberband.pitch, 0.5);
+
+        final fx2 = const AudioEffects().copyWith(
+          rubberband: const RubberbandSettings(
+            enabled: true,
+            pitch: 5.0,
+            tempo: 1.0,
+          ),
+        );
+        final out2 = autoBypassFlat(fx2);
+        expect(out2.rubberband.pitch, 2.0);
+      });
+
+      test('rubberband tempo clamped to 0.5..2.0', () {
+        final fx = const AudioEffects().copyWith(
+          rubberband: const RubberbandSettings(
+            enabled: true,
+            pitch: 1.0,
+            tempo: 0.1,
+          ),
+        );
+        final out = autoBypassFlat(fx);
+        expect(out.rubberband.tempo, 0.5);
+
+        final fx2 = const AudioEffects().copyWith(
+          rubberband: const RubberbandSettings(
+            enabled: true,
+            pitch: 1.0,
+            tempo: 5.0,
+          ),
+        );
+        final out2 = autoBypassFlat(fx2);
+        expect(out2.rubberband.tempo, 2.0);
+      });
+
+      test('tremolo frequency clamped to 0.1..50', () {
+        final fx = const AudioEffects().copyWith(
+          tremolo: const TremoloSettings(enabled: true, f: 0.01, d: 0.5),
+        );
+        final out = autoBypassFlat(fx);
+        expect(out.tremolo.f, 0.1);
+
+        final fx2 = const AudioEffects().copyWith(
+          tremolo: const TremoloSettings(enabled: true, f: 100.0, d: 0.5),
+        );
+        final out2 = autoBypassFlat(fx2);
+        expect(out2.tremolo.f, 50.0);
+      });
+
+      test('tremolo depth clamped to 0..1', () {
+        final fx = const AudioEffects().copyWith(
+          tremolo: const TremoloSettings(enabled: true, f: 5.0, d: 2.0),
+        );
+        final out = autoBypassFlat(fx);
+        expect(out.tremolo.d, 1.0);
+      });
+
+      test('vibrato frequency clamped to 0.1..50', () {
+        final fx = const AudioEffects().copyWith(
+          vibrato: const VibratoSettings(enabled: true, f: 0.01, d: 0.5),
+        );
+        final out = autoBypassFlat(fx);
+        expect(out.vibrato.f, 0.1);
+
+        final fx2 = const AudioEffects().copyWith(
+          vibrato: const VibratoSettings(enabled: true, f: 100.0, d: 0.5),
+        );
+        final out2 = autoBypassFlat(fx2);
+        expect(out2.vibrato.f, 50.0);
+      });
+
+      test('vibrato depth clamped to 0..1', () {
+        final fx = const AudioEffects().copyWith(
+          vibrato: const VibratoSettings(enabled: true, f: 5.0, d: 2.0),
+        );
+        final out = autoBypassFlat(fx);
+        expect(out.vibrato.d, 1.0);
+      });
+    });
   });
 }

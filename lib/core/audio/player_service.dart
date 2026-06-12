@@ -916,21 +916,55 @@ class AfPlayerService {
 }
 
 /// Sanitise an [AudioEffects] bundle before it goes into libmpv's
-/// `af` filter chain.
+/// `af` filter chain. Clamps all parameters to their valid ranges so
+/// corrupted SharedPreferences data or UI bugs cannot push out-of-range
+/// values to mpv.
 @visibleForTesting
 AudioEffects autoBypassFlat(AudioEffects fx) {
   return fx.copyWith(
+    // Tone — bypass flat
     bass: fx.bass.copyWith(enabled: fx.bass.enabled && fx.bass.g.abs() > 0.001),
     treble: fx.treble.copyWith(
       enabled: fx.treble.enabled && fx.treble.g.abs() > 0.001,
     ),
+    // Graphic EQ — bypass when empty
     superequalizer: fx.superequalizer.copyWith(
       enabled: fx.superequalizer.enabled && fx.superequalizer.params.isNotEmpty,
     ),
+    // Compressor — clamp ranges
+    acompressor: fx.acompressor.copyWith(
+      threshold: fx.acompressor.threshold.clamp(-100.0, 0.0),
+      ratio: fx.acompressor.ratio.clamp(1.0, 30.0),
+      attack: fx.acompressor.attack.clamp(0.1, 1000.0),
+      release: fx.acompressor.release.clamp(0.1, 1000.0),
+    ),
+    // Gate — clamp ranges
+    agate: fx.agate.copyWith(
+      threshold: fx.agate.threshold.clamp(-100.0, 0.0),
+      ratio: fx.agate.ratio.clamp(1.0, 30.0),
+      attack: fx.agate.attack.clamp(0.1, 1000.0),
+      release: fx.agate.release.clamp(0.1, 1000.0),
+    ),
+    // Deesser — clamp 0..1
     deesser: fx.deesser.copyWith(
       f: fx.deesser.f.clamp(0.0, 1.0),
       i: fx.deesser.i.clamp(0.0, 1.0),
       m: fx.deesser.m.clamp(0.0, 1.0),
+    ),
+    // Rubberband — clamp pitch/tempo
+    rubberband: fx.rubberband.copyWith(
+      pitch: fx.rubberband.pitch.clamp(0.5, 2.0),
+      tempo: fx.rubberband.tempo.clamp(0.5, 2.0),
+    ),
+    // Tremolo — clamp freq/depth
+    tremolo: fx.tremolo.copyWith(
+      f: fx.tremolo.f.clamp(0.1, 50.0),
+      d: fx.tremolo.d.clamp(0.0, 1.0),
+    ),
+    // Vibrato — clamp freq/depth
+    vibrato: fx.vibrato.copyWith(
+      f: fx.vibrato.f.clamp(0.1, 50.0),
+      d: fx.vibrato.d.clamp(0.0, 1.0),
     ),
   );
 }
