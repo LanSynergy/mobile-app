@@ -266,6 +266,17 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
       ),
       _buildAccordion(
         2,
+        'Parametric EQ',
+        _s.parametricCount > 0 ? _s.parametricCount : null,
+        EqParametricSection(
+          enabled: _s.parametricEnabled,
+          bands: _s.parametricBands,
+          onChanged: _onFieldChanged,
+          onApply: _apply,
+        ),
+      ),
+      _buildAccordion(
+        3,
         'Dynamics',
         _s.dynamicsCount > 0 ? _s.dynamicsCount : null,
         EqDynamicsSection(
@@ -289,7 +300,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         ),
       ),
       _buildAccordion(
-        3,
+        4,
         'Echo / Delay',
         _s.echoEnabled ? 1 : null,
         EqEchoSection(
@@ -303,7 +314,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         ),
       ),
       _buildAccordion(
-        4,
+        5,
         'Pitch & Tempo',
         _s.rubberbandEnabled ? 1 : null,
         EqPitchSection(
@@ -315,7 +326,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         ),
       ),
       _buildAccordion(
-        5,
+        6,
         'Spatial',
         (_s.crossfeed || _s.stereoWiden) ? 1 : null,
         EqSpatialSection(
@@ -328,7 +339,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         ),
       ),
       _buildAccordion(
-        6,
+        7,
         'Modulation',
         _s.modulationCount > 0 ? _s.modulationCount : null,
         EqModulationSection(
@@ -362,7 +373,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
         ),
       ),
       _buildAccordion(
-        7,
+        8,
         'Creative',
         _s.creativeCount > 0 ? _s.creativeCount : null,
         EqCreativeSection(

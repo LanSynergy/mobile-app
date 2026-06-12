@@ -874,4 +874,48 @@ void main() {
       expect(restored.treble, 0.0);
     });
   });
+
+  // ── Parametric EQ custom filters persistence ─────────────────────────────
+  group('Parametric EQ custom filters', () {
+    test('preserves custom lavfi strings through round-trip', () async {
+      final fx = const AudioEffects().copyWith(
+        custom: const [
+          'lavfi-equalizer=f=60.0:t=q:w=0.70:g=3.0',
+          'lavfi-equalizer=f=230.0:t=q:w=0.70:g=-2.0',
+          'lavfi-equalizer=f=910.0:t=q:w=1.00:g=1.5',
+        ],
+      );
+      final loaded = await _roundTrip(fx);
+      expect(loaded, isNotNull);
+      expect(loaded!.custom.length, 3);
+      expect(loaded.custom[0], 'lavfi-equalizer=f=60.0:t=q:w=0.70:g=3.0');
+      expect(loaded.custom[1], 'lavfi-equalizer=f=230.0:t=q:w=0.70:g=-2.0');
+      expect(loaded.custom[2], 'lavfi-equalizer=f=910.0:t=q:w=1.00:g=1.5');
+    });
+
+    test('preserves empty custom list', () async {
+      final fx = const AudioEffects().copyWith(custom: const []);
+      final loaded = await _roundTrip(fx);
+      expect(loaded, isNotNull);
+      expect(loaded!.custom, isEmpty);
+    });
+
+    test('loads empty custom when key missing from storage', () async {
+      SharedPreferences.setMockInitialValues({});
+      final p = await SharedPreferences.getInstance();
+      final loaded = PlayerSettingsStore.loadAudioEffects(p);
+      expect(loaded, isNull);
+    });
+
+    test('handles malformed custom_filters gracefully', () async {
+      SharedPreferences.setMockInitialValues({
+        PlayerSettingsStore.kAudioEffects: '{"custom_filters": "not_a_list"}',
+      });
+      final p = await SharedPreferences.getInstance();
+      final loaded = PlayerSettingsStore.loadAudioEffects(p);
+      // Should not crash, custom should be empty
+      expect(loaded, isNotNull);
+      expect(loaded!.custom, isEmpty);
+    });
+  });
 }

@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/audio/player_settings_store.dart';
 import '../../design_tokens/tokens.dart';
@@ -7,6 +10,8 @@ import '../../state/providers.dart';
 import '../../widgets/af_dialog.dart';
 import 'eq_band_logic.dart';
 import 'eq_preset.dart';
+import 'parametric_band.dart';
+import 'parametric_presets.dart';
 
 /// Manages EQ preset persistence and application.
 class EqPresetManager {
@@ -176,6 +181,138 @@ class EqPresetManager {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Parametric EQ Presets ────────────────────────────────────────────────
+
+  static const _kParametricPresetsKey = 'af.parametric_presets_json';
+
+  /// Load all user-saved parametric presets from persistent storage.
+  static Future<Map<String, ParametricPreset>>
+  loadUserParametricPresets() async {
+    final p = await SharedPreferences.getInstance();
+    final json = p.getString(_kParametricPresetsKey);
+    if (json == null) return {};
+    try {
+      final raw = jsonDecode(json) as Map<String, dynamic>;
+      return raw.map(
+        (k, v) =>
+            MapEntry(k, ParametricPreset.fromJson(v as Map<String, dynamic>)),
+      );
+    } on Exception catch (_) {
+      return {};
+    }
+  }
+
+  /// Save a named parametric preset to persistent storage.
+  static Future<void> saveParametricPreset(
+    String name,
+    ParametricPreset preset,
+  ) async {
+    final presets = await loadUserParametricPresets();
+    presets[name] = preset;
+    final p = await SharedPreferences.getInstance();
+    await p.setString(
+      _kParametricPresetsKey,
+      jsonEncode(presets.map((k, v) => MapEntry(k, v.toJson()))),
+    );
+  }
+
+  /// Delete a named parametric preset from persistent storage.
+  static Future<void> deleteParametricPreset(String name) async {
+    final presets = await loadUserParametricPresets();
+    presets.remove(name);
+    final p = await SharedPreferences.getInstance();
+    await p.setString(
+      _kParametricPresetsKey,
+      jsonEncode(presets.map((k, v) => MapEntry(k, v.toJson()))),
+    );
+  }
+
+  /// Create a [ParametricPreset] from the current DSP state.
+  static ParametricPreset createParametricPresetFromState(EqDspState state) {
+    return ParametricPreset(
+      name: '', // Caller sets name
+      bands: state.parametricBands
+          .map(
+            (b) => ParametricBand(
+              frequency: b.frequency,
+              gain: b.gain,
+              q: b.q,
+              enabled: b.enabled,
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  /// Apply a parametric preset's values to the DSP state.
+  static void applyParametricPresetToState(
+    EqDspState state,
+    ParametricPreset preset,
+  ) {
+    state.parametricEnabled = true;
+    // Pad with defaults if preset has fewer bands, or truncate if more
+    for (var i = 0; i < state.parametricBands.length; i++) {
+      if (i < preset.bands.length) {
+        final b = preset.bands[i];
+        state.parametricBands[i] = ParametricBand(
+          frequency: b.frequency,
+          gain: b.gain,
+          q: b.q,
+          enabled: b.enabled,
+        );
+      } else {
+        state.parametricBands[i] = ParametricBand.defaultAt(i);
+      }
+    }
+  }
+
+  /// Build the horizontal preset chips row for parametric EQ.
+  static Widget buildParametricPresetChips({
+    required String? activePreset,
+    required Map<String, ParametricPreset> userPresets,
+    required WidgetRef ref,
+    required void Function(String name, ParametricPreset preset) onApply,
+    required void Function(String name) onDelete,
+  }) {
+    final allPresets = <String, ParametricPreset>{
+      ...kParametricPresets,
+      ...userPresets,
+    };
+    final spectral = ref.watch(
+      currentSpectralProvider.select(
+        (s) => (primary: s.primary, secondary: s.secondary),
+      ),
+    );
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: allPresets.entries.map((entry) {
+          final isActive = activePreset == entry.key;
+          final isUserPreset = userPresets.containsKey(entry.key);
+          return Padding(
+            padding: const EdgeInsets.only(right: AfSpacing.s8),
+            child: GestureDetector(
+              onLongPress: isUserPreset ? () => onDelete(entry.key) : null,
+              child: ChoiceChip(
+                label: Text(entry.key),
+                selected: isActive,
+                onSelected: (_) => onApply(entry.key, entry.value),
+                selectedColor: spectral.secondary.withValues(alpha: 0.3),
+                backgroundColor: AfColors.surfaceBase,
+                labelStyle: AfTypography.bodySmall.copyWith(
+                  color: isActive ? spectral.primary : AfColors.textSecondary,
+                ),
+                side: isActive
+                    ? BorderSide(color: spectral.primary, width: 1.5)
+                    : const BorderSide(color: AfColors.surfaceHigh),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

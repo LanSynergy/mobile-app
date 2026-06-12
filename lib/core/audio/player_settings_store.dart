@@ -353,6 +353,8 @@ class PlayerSettingsStore {
       'crusher_bits': fx.acrusher.bits,
       'crusher_mix': fx.acrusher.mix,
       'crusher_samples': fx.acrusher.samples,
+      // Parametric EQ (custom lavfi strings)
+      'custom_filters': fx.custom,
     };
     await p.setString(kAudioEffects, jsonEncode(map));
   }
@@ -537,6 +539,11 @@ class PlayerSettingsStore {
           mix: (m['crusher_mix'] as num?)?.toDouble() ?? 0.5,
           samples: (m['crusher_samples'] as num?)?.toDouble() ?? 1.0,
         ),
+        custom: (m['custom_filters'] is List)
+            ? (m['custom_filters'] as List<dynamic>)
+                  .whereType<String>()
+                  .toList()
+            : const [],
       );
     } on Exception catch (e, stack) {
       afLog(

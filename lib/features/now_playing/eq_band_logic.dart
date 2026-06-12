@@ -30,6 +30,7 @@ import '../../state/providers.dart';
 import 'eq_band_painter.dart';
 import 'eq_dsp_widgets.dart';
 import 'eq_preset.dart';
+import 'parametric_band.dart';
 
 /// Mutable DSP state holding all equalizer and effects parameters.
 ///
@@ -200,6 +201,10 @@ class EqDspState {
   double crusherMix;
   double crusherSamples;
 
+  // ── Parametric EQ ──
+  bool parametricEnabled = false;
+  final List<ParametricBand> parametricBands = ParametricBand.defaultBands();
+
   // ── Field dispatch ────────────────────────────────────────────────────────
 
   /// Updates a single effect field by name without triggering a rebuild.
@@ -332,7 +337,53 @@ class EqDspState {
         crusherMix = value as double;
       case 'crusherSamples':
         crusherSamples = value as double;
+      // ── Parametric EQ ──
+      case 'parametricEnabled':
+        parametricEnabled = value as bool;
+      case final f when _parametricBandField.hasMatch(f):
+        final idx = int.parse(_parametricBandGroupMatch(f)!.group(1)!);
+        final band = parametricBands[idx];
+        switch (_parametricBandFieldMatch(f)!) {
+          case 'Freq':
+            parametricBands[idx] = ParametricBand(
+              frequency: value as double,
+              gain: band.gain,
+              q: band.q,
+              enabled: band.enabled,
+            );
+          case 'Gain':
+            parametricBands[idx] = ParametricBand(
+              frequency: band.frequency,
+              gain: value as double,
+              q: band.q,
+              enabled: band.enabled,
+            );
+          case 'Q':
+            parametricBands[idx] = ParametricBand(
+              frequency: band.frequency,
+              gain: band.gain,
+              q: value as double,
+              enabled: band.enabled,
+            );
+          case 'Enabled':
+            parametricBands[idx] = ParametricBand(
+              frequency: band.frequency,
+              gain: band.gain,
+              q: band.q,
+              enabled: value as bool,
+            );
+        }
     }
+  }
+
+  static final _parametricBandField = RegExp(r'^parametricBand(\d+)(\w+)$');
+
+  RegExpMatch? _parametricBandGroupMatch(String field) =>
+      _parametricBandField.firstMatch(field);
+
+  String? _parametricBandFieldMatch(String field) {
+    final m = _parametricBandField.firstMatch(field);
+    return m?.group(2);
   }
 
   // ── Reset ─────────────────────────────────────────────────────────────────
@@ -408,13 +459,28 @@ class EqDspState {
     crusherBits = 8.0;
     crusherMix = 0.5;
     crusherSamples = 1.0;
+    // ── Parametric EQ ──
+    parametricEnabled = false;
+    for (var i = 0; i < parametricBands.length; i++) {
+      parametricBands[i] = ParametricBand.defaultAt(i);
+    }
   }
 
   // ── AudioEffects conversion ───────────────────────────────────────────────
 
   /// Build [AudioEffects] from the current state values.
   AudioEffects toAudioEffects() {
+    // Build custom lavfi strings for parametric EQ bands.
+    final customFilters = <String>[];
+    if (parametricEnabled) {
+      for (final band in parametricBands) {
+        final lavfi = band.toLavfiString();
+        if (lavfi.isNotEmpty) customFilters.add(lavfi);
+      }
+    }
+
     return AudioEffects(
+      custom: customFilters,
       bass: BassSettings(enabled: bass != 0, g: bass),
       treble: TrebleSettings(enabled: treble != 0, g: treble),
       loudnorm: LoudnormSettings(enabled: loudnorm),
@@ -587,6 +653,36 @@ class EqDspState {
     crusherBits = fx.acrusher.bits;
     crusherMix = fx.acrusher.mix;
     crusherSamples = fx.acrusher.samples;
+    // ── Parametric EQ ──
+    parametricBands.clear();
+    for (final raw in fx.custom) {
+      if (!raw.startsWith('lavfi-equalizer=')) continue;
+      final band = _parseLavfiEqualizer(raw);
+      if (band != null) parametricBands.add(band);
+    }
+    parametricEnabled = parametricBands.isNotEmpty;
+  }
+
+  /// Parse a lavfi-equalizer string into a [ParametricBand].
+  ParametricBand? _parseLavfiEqualizer(String lavfi) {
+    // Format: lavfi-equalizer=f=60.0:t=q:w=0.70:g=3.0
+    if (!lavfi.startsWith('lavfi-equalizer=')) return null;
+    final params = lavfi.substring('lavfi-equalizer='.length).split(':');
+    double? freq, gain, q;
+    for (final param in params) {
+      final parts = param.split('=');
+      if (parts.length != 2) continue;
+      switch (parts[0]) {
+        case 'f':
+          freq = double.tryParse(parts[1]);
+        case 'g':
+          gain = double.tryParse(parts[1]);
+        case 'w':
+          q = double.tryParse(parts[1]);
+      }
+    }
+    if (freq == null || gain == null || q == null) return null;
+    return ParametricBand(frequency: freq, gain: gain, q: q, enabled: true);
   }
 
   // ── EQ helpers ────────────────────────────────────────────────────────────
@@ -620,6 +716,10 @@ class EqDspState {
       (crystalizer ? 1 : 0) +
       (virtualBass ? 1 : 0) +
       (crusher ? 1 : 0);
+
+  int get parametricCount => parametricEnabled
+      ? parametricBands.where((b) => b.enabled && b.gain.abs() > 0.05).length
+      : 0;
 }
 
 /// Builds the 18-band EQ content widget.
