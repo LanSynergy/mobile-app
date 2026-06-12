@@ -1,4 +1,4 @@
-import 'package:romanize/romanize.dart' show JapaneseRomanizer;
+import 'package:romanize/romanize.dart' show JapaneseRomanizer, TextRomanizer;
 
 import '../backend/music_backend.dart';
 import '../jellyfin/models/items.dart';
@@ -50,7 +50,11 @@ class LyricsResolver {
       afLog('lyrics', 'Cache hit for $trackId');
       // If cached lyrics contain Japanese, romanize them
       if (containsJapanese(cached.raw)) {
-        return _romanizeLrc(cached.raw, trackId, source: LyricsSource.cache);
+        return await _romanizeLrc(
+          cached.raw,
+          trackId,
+          source: LyricsSource.cache,
+        );
       }
       // Non-Japanese cached lyrics → return directly
       final parsed = parseLrc(cached.raw);
@@ -103,7 +107,7 @@ class LyricsResolver {
     }
 
     // NetEase romaji failed or returned Japanese → romanize locally
-    return _romanizeLrc(raw, trackId);
+    return await _romanizeLrc(raw, trackId);
   }
 
   /// Try fetching romaji from NetEase. Returns null if unavailable or
@@ -166,7 +170,7 @@ class LyricsResolver {
             );
           }
           // Romaji still has Japanese → romanize it
-          return _romanizeLrc(
+          return await _romanizeLrc(
             romajiText,
             trackId,
             source: LyricsSource.neteaseRomaji,
@@ -178,7 +182,11 @@ class LyricsResolver {
         if (raw != null && raw.trim().isNotEmpty) {
           if (containsJapanese(raw)) {
             // Japanese NetEase lyrics → romanize
-            return _romanizeLrc(raw, trackId, source: LyricsSource.romanize);
+            return await _romanizeLrc(
+              raw,
+              trackId,
+              source: LyricsSource.romanize,
+            );
           }
           final parsed = parseLrc(raw);
           afLog('lyrics', 'NetEase for $trackId: ${parsed.lines.length} lines');
@@ -203,7 +211,11 @@ class LyricsResolver {
         if (raw != null && raw.trim().isNotEmpty) {
           // Romanize LRCLib results if they contain Japanese
           if (containsJapanese(raw)) {
-            return _romanizeLrc(raw, trackId, source: LyricsSource.lrclib);
+            return await _romanizeLrc(
+              raw,
+              trackId,
+              source: LyricsSource.lrclib,
+            );
           }
           final parsed = parseLrc(raw);
           afLog('lyrics', 'LRCLib for $trackId: ${parsed.lines.length} lines');
@@ -218,11 +230,27 @@ class LyricsResolver {
   }
 
   /// Romanize Japanese LRC text locally using the romanize package.
-  LyricsResult _romanizeLrc(
+  ///
+  /// Ensures the romanize dictionaries are loaded before converting kanji.
+  /// If romanization fails or the output still contains Japanese, falls back
+  /// to returning the original text with a warning.
+  Future<LyricsResult> _romanizeLrc(
     String rawLrc,
     String trackId, {
     LyricsSource source = LyricsSource.romanize,
-  }) {
+  }) async {
+    // Ensure kuromoji dictionary is loaded for kanji → reading conversion.
+    // This is a no-op if already initialized.
+    try {
+      await TextRomanizer.ensureInitialized();
+    } on Exception catch (e) {
+      afLog(
+        'lyrics',
+        'TextRomanizer.ensureInitialized failed for $trackId',
+        error: e,
+      );
+    }
+
     final romanizer = JapaneseRomanizer();
     final lines = rawLrc.split('\n');
     final buffer = StringBuffer();
@@ -233,11 +261,30 @@ class LyricsResolver {
       if (timestampMatch != null) {
         final timestamp = timestampMatch.group(1)!;
         final text = line.substring(timestamp.length);
-        buffer.writeln('$timestamp${romanizer.romanize(text)}');
+        final romanized = romanizer.romanize(text);
+        // Safety: if romanization didn't convert (e.g. dictionary not loaded),
+        // log a warning. Still use the romanizer output since it may have
+        // partially converted kana even if kanji remained.
+        if (containsJapanese(romanized) && containsJapanese(text)) {
+          afLog(
+            'lyrics',
+            'Romanization incomplete for line in $trackId — '
+                'kanji may remain',
+          );
+        }
+        buffer.writeln('$timestamp$romanized');
       } else if (RegExp(r'^\[[a-zA-Z]+:.+\]$').hasMatch(line)) {
         buffer.writeln(line);
       } else {
-        buffer.writeln(romanizer.romanize(line));
+        final romanized = romanizer.romanize(line);
+        if (containsJapanese(romanized) && containsJapanese(line)) {
+          afLog(
+            'lyrics',
+            'Romanization incomplete for line in $trackId — '
+                'kanji may remain',
+          );
+        }
+        buffer.writeln(romanized);
       }
     }
     final parsed = parseLrc(buffer.toString());

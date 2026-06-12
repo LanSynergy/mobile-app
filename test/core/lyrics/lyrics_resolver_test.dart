@@ -692,6 +692,183 @@ void main() {
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // Kanji romanization — ensures JapaneseRomanizer actually converts kanji
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  group('Kanji romanization', () {
+    test(
+      'embedded kanji-only lyrics → romanize produces Latin output',
+      () async {
+        // Pure kanji lyrics (no hiragana/katakana) — the most common failure
+        // mode when JapaneseRomanizer is not initialized.
+        const kanjiOnlyLrc = '[00:10.00]明日の天気\n[00:15.00]今日の夕暮れ';
+        when(() => backend.lyrics('t1')).thenAnswer((_) async => kanjiOnlyLrc);
+        when(
+          () => netease.fetchLyrics(
+            trackName: any(named: 'trackName'),
+            artistName: any(named: 'artistName'),
+            albumName: any(named: 'albumName'),
+            duration: any(named: 'duration'),
+          ),
+        ).thenAnswer((_) async => null);
+        when(
+          () => lrclib.fetchLyrics(
+            trackName: any(named: 'trackName'),
+            artistName: any(named: 'artistName'),
+            albumName: any(named: 'albumName'),
+            duration: any(named: 'duration'),
+          ),
+        ).thenAnswer((_) async => null);
+
+        final track = _track('t1');
+        final result = await resolver.resolve(trackId: 't1', track: track);
+
+        expect(result, isNotNull);
+        expect(
+          containsJapanese(result!.lrc.lines[0].text),
+          isFalse,
+          reason: 'Kanji-only lyrics must be fully romanized to Latin',
+        );
+        expect(result.lrc.lines.length, equals(2));
+      },
+    );
+
+    test(
+      'embedded mixed kanji+hiragana → romanize produces Latin output',
+      () async {
+        const mixedLrc = '[00:10.00]ありがとう世界\n[00:15.00]さようなら友達';
+        when(() => backend.lyrics('t1')).thenAnswer((_) async => mixedLrc);
+        when(
+          () => netease.fetchLyrics(
+            trackName: any(named: 'trackName'),
+            artistName: any(named: 'artistName'),
+            albumName: any(named: 'albumName'),
+            duration: any(named: 'duration'),
+          ),
+        ).thenAnswer((_) async => null);
+        when(
+          () => lrclib.fetchLyrics(
+            trackName: any(named: 'trackName'),
+            artistName: any(named: 'artistName'),
+            albumName: any(named: 'albumName'),
+            duration: any(named: 'duration'),
+          ),
+        ).thenAnswer((_) async => null);
+
+        final track = _track('t1');
+        final result = await resolver.resolve(trackId: 't1', track: track);
+
+        expect(result, isNotNull);
+        expect(
+          containsJapanese(result!.lrc.lines[0].text),
+          isFalse,
+          reason: 'Mixed kanji+hiragana lyrics must be fully romanized',
+        );
+        expect(result.lrc.lines.length, equals(2));
+      },
+    );
+
+    test('LRCLib returns kanji → romanize produces Latin output', () async {
+      const kanjiLrc = '[00:10.00]明日の天気\n[00:15.00]今日の夕暮れ';
+      when(() => backend.lyrics('t1')).thenAnswer((_) async => null);
+      when(
+        () => netease.fetchLyrics(
+          trackName: any(named: 'trackName'),
+          artistName: any(named: 'artistName'),
+          albumName: any(named: 'albumName'),
+          duration: any(named: 'duration'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => lrclib.fetchLyrics(
+          trackName: any(named: 'trackName'),
+          artistName: any(named: 'artistName'),
+          albumName: any(named: 'albumName'),
+          duration: any(named: 'duration'),
+        ),
+      ).thenAnswer((_) async => (synced: kanjiLrc, plain: null));
+
+      final track = _track('t1');
+      final result = await resolver.resolve(trackId: 't1', track: track);
+
+      expect(result, isNotNull);
+      expect(
+        containsJapanese(result!.lrc.lines[0].text),
+        isFalse,
+        reason: 'LRCLib kanji lyrics must be romanized',
+      );
+    });
+
+    test(
+      'netease romaji still has kanji → romanize produces Latin output',
+      () async {
+        when(() => backend.lyrics('t1')).thenAnswer((_) async => null);
+        when(
+          () => netease.fetchLyrics(
+            trackName: any(named: 'trackName'),
+            artistName: any(named: 'artistName'),
+            albumName: any(named: 'albumName'),
+            duration: any(named: 'duration'),
+          ),
+        ).thenAnswer(
+          (_) async => (
+            synced: '[00:10.00]ありがとう世界',
+            plain: null,
+            romaji: '[00:10.00]ありがとう世界',
+          ),
+        );
+
+        final track = _track('t1');
+        final result = await resolver.resolve(trackId: 't1', track: track);
+
+        expect(result, isNotNull);
+        expect(
+          containsJapanese(result!.lrc.lines[0].text),
+          isFalse,
+          reason: 'NetEase romaji with kanji must be romanized',
+        );
+      },
+    );
+
+    test('romanized text should contain non-empty Latin content', () async {
+      const kanjiLrc = '[00:10.00]愛';
+      when(() => backend.lyrics('t1')).thenAnswer((_) async => kanjiLrc);
+      when(
+        () => netease.fetchLyrics(
+          trackName: any(named: 'trackName'),
+          artistName: any(named: 'artistName'),
+          albumName: any(named: 'albumName'),
+          duration: any(named: 'duration'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => lrclib.fetchLyrics(
+          trackName: any(named: 'trackName'),
+          artistName: any(named: 'artistName'),
+          albumName: any(named: 'albumName'),
+          duration: any(named: 'duration'),
+        ),
+      ).thenAnswer((_) async => null);
+
+      final track = _track('t1');
+      final result = await resolver.resolve(trackId: 't1', track: track);
+
+      expect(result, isNotNull);
+      final text = result!.lrc.lines[0].text;
+      expect(
+        text.isNotEmpty,
+        isTrue,
+        reason: 'Romanized text must not be empty',
+      );
+      expect(
+        RegExp(r'[a-zA-Z]').hasMatch(text),
+        isTrue,
+        reason: 'Romanized text must contain Latin characters',
+      );
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // Flow order verification
   // ═══════════════════════════════════════════════════════════════════════════
 

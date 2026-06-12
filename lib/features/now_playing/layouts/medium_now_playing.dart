@@ -78,6 +78,7 @@ class _MediumNowPlayingState extends ConsumerState<MediumNowPlaying>
     final lrcAsync = ref.watch(lyricsProvider(track.id));
     final lyricsResult = lrcAsync.maybeWhen(data: (p) => p, orElse: () => null);
     final lrc = lyricsResult?.lrc;
+    final lyricsSource = lyricsResult?.source;
     final isSynced =
         lrc != null && lrc.lines.any((l) => l.start > Duration.zero);
 
@@ -130,6 +131,7 @@ class _MediumNowPlayingState extends ConsumerState<MediumNowPlaying>
                   _LyricsToggleSection(
                     lrcAsync: lrcAsync,
                     lrc: lrc,
+                    lyricsSource: lyricsSource,
                     isSynced: isSynced,
                     spectral: spectral,
                     track: track,
@@ -219,6 +221,7 @@ class _LyricsToggleSection extends StatelessWidget {
   const _LyricsToggleSection({
     required this.lrcAsync,
     required this.lrc,
+    required this.lyricsSource,
     required this.isSynced,
     required this.spectral,
     required this.track,
@@ -229,6 +232,7 @@ class _LyricsToggleSection extends StatelessWidget {
 
   final AsyncValue<LyricsResult?> lrcAsync;
   final Lrc? lrc;
+  final LyricsSource? lyricsSource;
   final bool isSynced;
   final Color spectral;
   final AfTrack track;
@@ -284,11 +288,43 @@ class _LyricsToggleSection extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: AfRadii.borderMd,
                     child: lrc != null && lrc!.lines.isNotEmpty
-                        ? LyricsList(
-                            lrc: lrc!,
-                            spectralEnergy: spectral,
-                            scrollController: scrollCtrl,
-                            isSynced: isSynced,
+                        ? Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (lyricsSource != null)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    AfSpacing.s16,
+                                    AfSpacing.s8,
+                                    AfSpacing.s16,
+                                    0,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        LucideIcons.radio,
+                                        size: 12,
+                                        color: AfColors.textTertiary,
+                                      ),
+                                      const SizedBox(width: AfSpacing.s4),
+                                      Text(
+                                        lyricsSource!.label,
+                                        style: AfTypography.caption.copyWith(
+                                          color: AfColors.textTertiary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              Expanded(
+                                child: LyricsList(
+                                  lrc: lrc!,
+                                  spectralEnergy: spectral,
+                                  scrollController: scrollCtrl,
+                                  isSynced: isSynced,
+                                ),
+                              ),
+                            ],
                           )
                         : lrcAsync.isLoading
                         ? const Padding(
