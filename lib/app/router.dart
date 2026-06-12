@@ -12,6 +12,7 @@ import '../features/home/home_screen.dart';
 import '../features/library/library_screen.dart';
 import '../features/now_playing/now_playing_screen.dart';
 import '../features/now_playing/eq_dsp_screen.dart';
+import '../features/now_playing/pro_eq/pro_eq_screen.dart';
 import '../features/onboarding/all_set_screen.dart';
 import '../features/onboarding/library_scope_screen.dart';
 import '../features/onboarding/local_setup_screen.dart';
@@ -244,6 +245,12 @@ final _router = GoRouter(
       path: '/eq-dsp',
       parentNavigatorKey: _rootKey,
       builder: (context, state) => const EqDspScreen(),
+    ),
+    GoRoute(
+      name: 'pro-eq',
+      path: '/pro-eq',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) => const ProEqScreen(),
     ),
     GoRoute(
       name: 'album',
