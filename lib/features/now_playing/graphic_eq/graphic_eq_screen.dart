@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/audio/player_settings_store.dart';
 import '../../../design_tokens/tokens.dart';
@@ -60,8 +59,10 @@ class _GraphicEqScreenState extends ConsumerState<GraphicEqScreen> {
 
   Future<void> _loadState() async {
     try {
-      final p = await SharedPreferences.getInstance();
-      final state = PlayerSettingsStore.loadGraphicEq(p);
+      // Load graphic EQ from the unified audio effects key
+      final svc = ref.read(playerServiceProvider);
+      final current = svc.audioEffects;
+      final state = GraphicEqState.fromAudioEffects(current);
       if (mounted) {
         setState(() {
           _state = state;
@@ -91,7 +92,13 @@ class _GraphicEqScreenState extends ConsumerState<GraphicEqScreen> {
     }
   }
 
-  Future<void> _save() => PlayerSettingsStore.saveGraphicEq(_state);
+  Future<void> _save() async {
+    final svc = ref.read(playerServiceProvider);
+    final current = svc.audioEffects;
+    final merged = _state.toAudioEffects(current);
+    await svc.updateAudioEffects((_) => merged);
+    await PlayerSettingsStore.saveAudioEffects(merged);
+  }
 
   // ── Handlers ─────────────────────────────────────────────────────────
 

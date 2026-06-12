@@ -24,7 +24,6 @@ const _bandKeys = [
 
 /// Persistent state for the 18-band graphic equalizer.
 class GraphicEqState {
-
   /// Restores a [GraphicEqState] from a JSON map.
   ///
   /// Missing keys fall back to defaults (18 zero levels, disabled).
@@ -54,6 +53,7 @@ class GraphicEqState {
     }
     return GraphicEqState(levels: levels, enabled: se.enabled);
   }
+
   /// Creates a [GraphicEqState].
   ///
   /// [levels] defaults to 18 zeros (flat / no boost or cut).

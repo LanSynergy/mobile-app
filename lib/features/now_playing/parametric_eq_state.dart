@@ -117,7 +117,6 @@ class ParametricEqBand {
 
 /// Manages the state of an 18-band parametric equalizer.
 class ParametricEqState {
-
   ParametricEqState()
     : bands = [
         for (final f in _defaultFrequencies)
@@ -145,6 +144,7 @@ class ParametricEqState {
     }
     return ParametricEqState._(bands);
   }
+
   /// Maximum number of bands.
   static const int maxBands = 18;
 

@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/audio/player_settings_store.dart';
 import '../../../design_tokens/tokens.dart';
@@ -472,8 +471,10 @@ class _ParametricEqScreenState extends ConsumerState<ParametricEqScreen> {
 
   Future<void> _loadState() async {
     try {
-      final p = await SharedPreferences.getInstance();
-      final loaded = PlayerSettingsStore.loadParametricEq(p);
+      // Load parametric EQ from the unified audio effects key
+      final svc = ref.read(playerServiceProvider);
+      final current = svc.audioEffects;
+      final loaded = ParametricEqState.fromCustomFilters(current.custom);
       if (!_disposed && mounted) {
         setState(() {
           _eqState = loaded;
@@ -648,13 +649,13 @@ class _ParametricEqScreenState extends ConsumerState<ParametricEqScreen> {
   }
 
   Future<void> _saveAndApply() async {
-    await PlayerSettingsStore.saveParametricEq(_eqState);
     if (!mounted) return;
     try {
       final svc = ref.read(playerServiceProvider);
-      await svc.updateAudioEffects((current) {
-        return _eqState.toAudioEffects(current);
-      });
+      final current = svc.audioEffects;
+      final merged = _eqState.toAudioEffects(current);
+      await svc.updateAudioEffects((_) => merged);
+      await PlayerSettingsStore.saveAudioEffects(merged);
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
