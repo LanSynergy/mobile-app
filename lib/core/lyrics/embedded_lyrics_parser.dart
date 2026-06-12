@@ -20,7 +20,7 @@ class EmbeddedLyricsParser {
       } else if (ext == '.m4a' || ext == '.mp4') {
         return await _extractLyricsFromM4a(file);
       }
-    } catch (_) {
+    } on Exception catch (_) {
       // Return null on parsing errors
     }
     return null;
@@ -115,7 +115,7 @@ class EmbeddedLyricsParser {
     } else if (encoding == 1 || encoding == 2) {
       try {
         return _decodeUtf16(textBytes);
-      } catch (_) {
+      } on Exception catch (_) {
         return utf8.decode(textBytes, allowMalformed: true);
       }
     } else {
