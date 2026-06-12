@@ -9,6 +9,7 @@ import '../../../core/audio/player_settings_store.dart';
 import '../../../design_tokens/tokens.dart';
 import '../../../state/providers.dart';
 import '../../../utils/display_error.dart';
+import '../../../utils/log.dart';
 import '../parametric_eq_state.dart';
 import '../parametric_presets.dart';
 
@@ -452,29 +453,59 @@ class ParametricEqScreen extends ConsumerStatefulWidget {
 }
 
 class _ParametricEqScreenState extends ConsumerState<ParametricEqScreen> {
-  late ParametricEqState _eqState;
+  ParametricEqState _eqState = ParametricEqState();
   int _selectedBand = 0;
   bool _loaded = false;
+  bool _disposed = false;
 
   @override
   void initState() {
     super.initState();
-    _eqState = ParametricEqState();
     _loadState();
   }
 
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
   Future<void> _loadState() async {
-    final p = await SharedPreferences.getInstance();
-    final loaded = PlayerSettingsStore.loadParametricEq(p);
-    if (mounted) {
-      setState(() {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final loaded = PlayerSettingsStore.loadParametricEq(p);
+      if (!_disposed && mounted) {
+        setState(() {
+          _eqState = loaded;
+          _loaded = true;
+          // Clamp selected band
+          if (_selectedBand >= _eqState.bands.length) {
+            _selectedBand = _eqState.bands.length - 1;
+          }
+        });
+      } else if (_disposed) {
+        // Widget was disposed during load, but we can still update the state
+        // in case it's rebuilt
         _eqState = loaded;
         _loaded = true;
-        // Clamp selected band
-        if (_selectedBand >= _eqState.bands.length) {
-          _selectedBand = _eqState.bands.length - 1;
-        }
-      });
+      }
+    } catch (e, stack) {
+      afLog(
+        'audio',
+        'Failed to load parametric EQ',
+        error: e,
+        stackTrace: stack,
+      );
+      // Fall back to defaults so the screen is still usable
+      if (!_disposed && mounted) {
+        setState(() {
+          _eqState = ParametricEqState();
+          _loaded = true;
+        });
+      } else {
+        _eqState = ParametricEqState();
+        _loaded = true;
+      }
     }
   }
 
@@ -621,9 +652,9 @@ class _ParametricEqScreenState extends ConsumerState<ParametricEqScreen> {
     if (!mounted) return;
     try {
       final svc = ref.read(playerServiceProvider);
-      final currentFx = svc.audioEffects;
-      final fx = _eqState.toAudioEffects(currentFx);
-      await svc.setAudioEffects(fx);
+      await svc.updateAudioEffects((current) {
+        return _eqState.toAudioEffects(current);
+      });
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1207,7 +1238,11 @@ class _ParametricEqScreenState extends ConsumerState<ParametricEqScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(LucideIcons.plus, size: 16, color: AfColors.accentPrimary),
+            const Icon(
+              LucideIcons.plus,
+              size: 16,
+              color: AfColors.accentPrimary,
+            ),
             const SizedBox(width: AfSpacing.s8),
             Text(
               'Add Band (${_eqState.bands.length}/${ParametricEqState.maxBands})',

@@ -82,9 +82,10 @@ class _GraphicEqScreenState extends ConsumerState<GraphicEqScreen> {
 
   Future<void> _apply() async {
     final svc = ref.read(playerServiceProvider);
-    final effects = _state.toAudioEffects(svc.audioEffects);
     try {
-      await svc.setAudioEffects(effects);
+      await svc.updateAudioEffects((current) {
+        return _state.toAudioEffects(current);
+      });
     } on Exception catch (_) {
       // Error applying audio effects — silent fail
     }
