@@ -22,6 +22,13 @@ typedef SearchResults = ({
   List<AfPlaylist> playlists,
 });
 
+/// In-memory cache for resolved lyrics: trackId → LyricsResult.
+/// This provider persists across rebuilds (not autoDispose) so that
+/// lyrics resolved for one track are available when navigating back.
+final lyricsCacheProvider = StateProvider<Map<String, LyricsResult>>(
+  (ref) => {},
+);
+
 final searchProvider = FutureProvider.autoDispose.family<SearchResults, String>(
   (ref, raw) async {
     final query = raw.trim();
@@ -90,6 +97,11 @@ final searchProvider = FutureProvider.autoDispose.family<SearchResults, String>(
 
 final lyricsProvider = FutureProvider.autoDispose.family<LyricsResult?, String>(
   (ref, trackId) async {
+    // Check provider-level cache first
+    final cache = ref.read(lyricsCacheProvider);
+    final cached = cache[trackId];
+    if (cached != null) return cached;
+
     // Resolve track metadata for NetEase/LRCLib lookups.
     Future<AfTrack?> resolveTrack(String trackId) async {
       final current = ref.read(currentTrackProvider);
@@ -119,6 +131,15 @@ final lyricsProvider = FutureProvider.autoDispose.family<LyricsResult?, String>(
     // Delegate to LyricsResolver — single source of truth for the
     // cascading lyrics flow: embedded → NetEase → LRCLib.
     final resolver = LyricsResolver(backend: backend);
-    return resolver.resolve(trackId: trackId, track: track);
+    final result = await resolver.resolve(trackId: trackId, track: track);
+
+    // Populate provider-level cache
+    if (result != null) {
+      ref
+          .read(lyricsCacheProvider.notifier)
+          .update((prev) => {...prev, trackId: result});
+    }
+
+    return result;
   },
 );

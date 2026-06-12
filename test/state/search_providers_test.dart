@@ -4,6 +4,7 @@ import 'package:mocktail/mocktail.dart';
 
 import 'package:aetherfin/core/backend/music_backend.dart';
 import 'package:aetherfin/core/jellyfin/models/items.dart';
+import 'package:aetherfin/core/lyrics/lrc_parser.dart';
 import 'package:aetherfin/core/local/local_library.dart';
 import 'package:aetherfin/state/app_mode_providers.dart';
 import 'package:aetherfin/state/local_library_providers.dart';
@@ -224,6 +225,55 @@ void main() {
         () => container.read(searchProvider('test').future),
         throwsA(isA<Exception>()),
       );
+    });
+  });
+
+  // ── M2: Lyrics cache ──────────────────────────────────────────────────────
+  group('lyricsCacheProvider', () {
+    test('starts empty', () {
+      final container = _createContainer(
+        appMode: AppMode.server,
+        backend: MockMusicBackend(),
+      );
+      addTearDown(container.dispose);
+
+      final cache = container.read(lyricsCacheProvider);
+      expect(cache, isEmpty);
+    });
+
+    test('can store and retrieve cached lyrics', () {
+      final container = _createContainer(
+        appMode: AppMode.server,
+        backend: MockMusicBackend(),
+      );
+      addTearDown(container.dispose);
+
+      const result = LyricsResult(lrc: Lrc(), source: LyricsSource.server);
+
+      // Populate cache
+      container.read(lyricsCacheProvider.notifier).state = {'track1': result};
+
+      // Verify cache hit
+      final cache = container.read(lyricsCacheProvider);
+      expect(cache['track1'], result);
+      expect(cache.length, 1);
+    });
+
+    test('cache persists across reads (not autoDispose)', () {
+      final container = _createContainer(
+        appMode: AppMode.server,
+        backend: MockMusicBackend(),
+      );
+      addTearDown(container.dispose);
+
+      const result = LyricsResult(lrc: Lrc(), source: LyricsSource.netease);
+
+      // Populate cache
+      container.read(lyricsCacheProvider.notifier).state = {'track1': result};
+
+      // Read again — cache should still have the entry
+      final cache = container.read(lyricsCacheProvider);
+      expect(cache['track1'], result);
     });
   });
 }
