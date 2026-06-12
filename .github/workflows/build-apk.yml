@@ -129,22 +129,8 @@ jobs:
 
           echo "Published $(ls "$APK_DIR"/Aetherfin-v*.apk | wc -l) APK(s) to draft release."
 
-      - name: Notify Telegram — Build successful
-        if: success()
-        env:
-          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          # Download URL points to the primary APK in the draft release
-          TAG="build-latest"
-          PRIMARY_APK=$(ls build/app/outputs/flutter-apk/Aetherfin-v*-arm64-v8a*.apk 2>/dev/null | head -1 || true)
-          if [ -z "$PRIMARY_APK" ]; then
-            PRIMARY_APK=$(ls build/app/outputs/flutter-apk/Aetherfin-v*.apk 2>/dev/null | head -1 || true)
-          fi
-          APK_NAME=$(basename "$PRIMARY_APK" 2>/dev/null || echo "")
-          DOWNLOAD_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${TAG}/${APK_NAME}"
-          export TG_DOWNLOAD_URL="$DOWNLOAD_URL"
-          python3 tool/telegram_notifier.py send_link
+      # Telegram notifications are handled by tool/build (init → send_link/fail).
+      # The .tg_notified flag prevents duplicate sends in the failure handler below.
 
       # Catches infrastructure failures (JDK/Flutter/cache setup)
       # that happen BEFORE the build step runs.

@@ -272,7 +272,7 @@ def send_link():
         "<i>{timestamp}</i>"
     )
 
-    text = "\n".join(text).format(
+    text = text.format(
         name=os.environ.get('TG_APK_NAME', ''),
         mode=os.environ.get('TG_MODE', ''),
         size=os.environ.get('TG_SIZE', ''),
