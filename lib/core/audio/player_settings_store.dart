@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:mpv_audio_kit/mpv_audio_kit.dart'
     show
         AcompressorSettings,
@@ -287,83 +288,10 @@ class PlayerSettingsStore {
       loadValue(kDefaultAudioDevice);
 
   /// Serialize the user-visible audio effects to JSON and persist.
+  /// Delegates to [_serializeAudioEffects] to avoid duplication.
   static Future<void> saveAudioEffects(AudioEffects fx) async {
     final p = await _prefs();
-    final map = <String, dynamic>{
-      'bass_g': fx.bass.g,
-      'bass_enabled': fx.bass.enabled,
-      'treble_g': fx.treble.g,
-      'treble_enabled': fx.treble.enabled,
-      'loudnorm_enabled': fx.loudnorm.enabled,
-      'compressor_enabled': fx.acompressor.enabled,
-      'compressor_threshold': fx.acompressor.threshold,
-      'compressor_ratio': fx.acompressor.ratio,
-      'compressor_attack': fx.acompressor.attack,
-      'compressor_release': fx.acompressor.release,
-      'eq_enabled': fx.superequalizer.enabled,
-      'eq_params': fx.superequalizer.params,
-      'rubberband_enabled': fx.rubberband.enabled,
-      'rubberband_pitch': fx.rubberband.pitch,
-      'rubberband_tempo': fx.rubberband.tempo,
-      'crossfeed_enabled': fx.crossfeed.enabled,
-      'crossfeed_strength': fx.crossfeed.strength,
-      'stereowiden_enabled': fx.stereowiden.enabled,
-      'stereowiden_delay': fx.stereowiden.delay,
-      'exciter_enabled': fx.aexciter.enabled,
-      'exciter_amount': fx.aexciter.amount,
-      'crystalizer_enabled': fx.crystalizer.enabled,
-      'crystalizer_i': fx.crystalizer.i,
-      'virtualbass_enabled': fx.virtualbass.enabled,
-      'virtualbass_cutoff': fx.virtualbass.cutoff,
-      'gate_enabled': fx.agate.enabled,
-      'gate_threshold': fx.agate.threshold,
-      'gate_ratio': fx.agate.ratio,
-      'gate_attack': fx.agate.attack,
-      'gate_release': fx.agate.release,
-      'deesser_enabled': fx.deesser.enabled,
-      'deesser_i': fx.deesser.i,
-      'deesser_m': fx.deesser.m,
-      'deesser_f': fx.deesser.f,
-      // Echo / delay
-      'echo_enabled': fx.aecho.enabled,
-      'echo_in_gain': fx.aecho.in_gain,
-      'echo_out_gain': fx.aecho.out_gain,
-      'echo_delays': fx.aecho.delays,
-      'echo_decays': fx.aecho.decays,
-      // Modulation effects
-      'phaser_enabled': fx.aphaser.enabled,
-      'phaser_in_gain': fx.aphaser.in_gain,
-      'phaser_out_gain': fx.aphaser.out_gain,
-      'phaser_delay': fx.aphaser.delay,
-      'phaser_decay': fx.aphaser.decay,
-      'phaser_speed': fx.aphaser.speed,
-      'flanger_enabled': fx.flanger.enabled,
-      'flanger_delay': fx.flanger.delay,
-      'flanger_depth': fx.flanger.depth,
-      'flanger_regen': fx.flanger.regen,
-      'flanger_width': fx.flanger.width,
-      'flanger_speed': fx.flanger.speed,
-      'chorus_enabled': fx.chorus.enabled,
-      'chorus_in_gain': fx.chorus.in_gain,
-      'chorus_out_gain': fx.chorus.out_gain,
-      'chorus_delays': fx.chorus.delays,
-      'chorus_decays': fx.chorus.decays,
-      'chorus_speeds': fx.chorus.speeds,
-      'chorus_depths': fx.chorus.depths,
-      'tremolo_enabled': fx.tremolo.enabled,
-      'tremolo_f': fx.tremolo.f,
-      'tremolo_d': fx.tremolo.d,
-      'vibrato_enabled': fx.vibrato.enabled,
-      'vibrato_f': fx.vibrato.f,
-      'vibrato_d': fx.vibrato.d,
-      'crusher_enabled': fx.acrusher.enabled,
-      'crusher_bits': fx.acrusher.bits,
-      'crusher_mix': fx.acrusher.mix,
-      'crusher_samples': fx.acrusher.samples,
-      // Parametric EQ (custom lavfi strings)
-      'custom_filters': fx.custom,
-    };
-    await p.setString(kAudioEffects, jsonEncode(map));
+    await p.setString(kAudioEffects, jsonEncode(_serializeAudioEffects(fx)));
   }
 
   // ── EQ Presets ────────────────────────────────────────────────────────────
@@ -428,130 +356,12 @@ class PlayerSettingsStore {
   }
 
   /// Restore audio effects from JSON.
+  /// Delegates to [_deserializeAudioEffects] to avoid duplication.
   static AudioEffects? loadAudioEffects(SharedPreferences p) {
     final json = p.getString(kAudioEffects);
     if (json == null) return null;
     try {
-      final m = jsonDecode(json) as Map<String, dynamic>;
-      final eqParamsRaw = m['eq_params'] as Map<String, dynamic>?;
-      final eqParams =
-          eqParamsRaw?.map((k, v) => MapEntry(k, (v as num).toDouble())) ??
-          const <String, double>{};
-      return AudioEffects(
-        bass: BassSettings(
-          enabled: m['bass_enabled'] as bool? ?? false,
-          g: (m['bass_g'] as num?)?.toDouble() ?? 0.0,
-        ),
-        treble: TrebleSettings(
-          enabled: m['treble_enabled'] as bool? ?? false,
-          g: (m['treble_g'] as num?)?.toDouble() ?? 0.0,
-        ),
-        loudnorm: LoudnormSettings(
-          enabled: m['loudnorm_enabled'] as bool? ?? false,
-        ),
-        acompressor: AcompressorSettings(
-          enabled: m['compressor_enabled'] as bool? ?? false,
-          threshold: (m['compressor_threshold'] as num?)?.toDouble() ?? 0.1,
-          ratio: (m['compressor_ratio'] as num?)?.toDouble() ?? 4.0,
-          attack: (m['compressor_attack'] as num?)?.toDouble() ?? 20.0,
-          release: (m['compressor_release'] as num?)?.toDouble() ?? 250.0,
-        ),
-        superequalizer: SuperequalizerSettings(
-          enabled: m['eq_enabled'] as bool? ?? false,
-          params: eqParams,
-        ),
-        rubberband: RubberbandSettings(
-          enabled: m['rubberband_enabled'] as bool? ?? false,
-          pitch: (m['rubberband_pitch'] as num?)?.toDouble() ?? 1.0,
-          tempo: (m['rubberband_tempo'] as num?)?.toDouble() ?? 1.0,
-        ),
-        crossfeed: CrossfeedSettings(
-          enabled: m['crossfeed_enabled'] as bool? ?? false,
-          strength: (m['crossfeed_strength'] as num?)?.toDouble() ?? 0.2,
-        ),
-        stereowiden: StereowidenSettings(
-          enabled: m['stereowiden_enabled'] as bool? ?? false,
-          delay: (m['stereowiden_delay'] as num?)?.toDouble() ?? 20.0,
-        ),
-        aexciter: AexciterSettings(
-          enabled: m['exciter_enabled'] as bool? ?? false,
-          amount: (m['exciter_amount'] as num?)?.toDouble() ?? 1.0,
-        ),
-        crystalizer: CrystalizerSettings(
-          enabled: m['crystalizer_enabled'] as bool? ?? false,
-          i: (m['crystalizer_i'] as num?)?.toDouble() ?? 2.0,
-        ),
-        virtualbass: VirtualbassSettings(
-          enabled: m['virtualbass_enabled'] as bool? ?? false,
-          cutoff: (m['virtualbass_cutoff'] as num?)?.toDouble() ?? 250.0,
-        ),
-        agate: AgateSettings(
-          enabled: m['gate_enabled'] as bool? ?? false,
-          threshold: (m['gate_threshold'] as num?)?.toDouble() ?? 0.01,
-          ratio: (m['gate_ratio'] as num?)?.toDouble() ?? 2.0,
-          attack: (m['gate_attack'] as num?)?.toDouble() ?? 20.0,
-          release: (m['gate_release'] as num?)?.toDouble() ?? 250.0,
-        ),
-        deesser: DeesserSettings(
-          enabled: m['deesser_enabled'] as bool? ?? false,
-          i: (m['deesser_i'] as num?)?.toDouble() ?? 0.0,
-          m: (m['deesser_m'] as num?)?.toDouble() ?? 0.5,
-          f: (m['deesser_f'] as num?)?.toDouble() ?? 0.5,
-        ),
-        aecho: AechoSettings(
-          enabled: m['echo_enabled'] as bool? ?? false,
-          in_gain: (m['echo_in_gain'] as num?)?.toDouble() ?? 0.6,
-          out_gain: (m['echo_out_gain'] as num?)?.toDouble() ?? 0.3,
-          delays: m['echo_delays'] as String? ?? '500',
-          decays: m['echo_decays'] as String? ?? '0.5',
-        ),
-        aphaser: AphaserSettings(
-          enabled: m['phaser_enabled'] as bool? ?? false,
-          in_gain: (m['phaser_in_gain'] as num?)?.toDouble() ?? 0.4,
-          out_gain: (m['phaser_out_gain'] as num?)?.toDouble() ?? 0.74,
-          delay: (m['phaser_delay'] as num?)?.toDouble() ?? 3.0,
-          decay: (m['phaser_decay'] as num?)?.toDouble() ?? 0.4,
-          speed: (m['phaser_speed'] as num?)?.toDouble() ?? 0.5,
-        ),
-        flanger: FlangerSettings(
-          enabled: m['flanger_enabled'] as bool? ?? false,
-          delay: (m['flanger_delay'] as num?)?.toDouble() ?? 0.0,
-          depth: (m['flanger_depth'] as num?)?.toDouble() ?? 2.0,
-          regen: (m['flanger_regen'] as num?)?.toDouble() ?? 0.0,
-          width: (m['flanger_width'] as num?)?.toDouble() ?? 71.0,
-          speed: (m['flanger_speed'] as num?)?.toDouble() ?? 0.5,
-        ),
-        chorus: ChorusSettings(
-          enabled: m['chorus_enabled'] as bool? ?? false,
-          in_gain: (m['chorus_in_gain'] as num?)?.toDouble() ?? 0.4,
-          out_gain: (m['chorus_out_gain'] as num?)?.toDouble() ?? 0.4,
-          delays: m['chorus_delays'] as String? ?? '40|60',
-          decays: m['chorus_decays'] as String? ?? '0.4|0.32',
-          speeds: m['chorus_speeds'] as String? ?? '0.25|0.4',
-          depths: m['chorus_depths'] as String? ?? '2|3',
-        ),
-        tremolo: TremoloSettings(
-          enabled: m['tremolo_enabled'] as bool? ?? false,
-          f: (m['tremolo_f'] as num?)?.toDouble() ?? 5.0,
-          d: (m['tremolo_d'] as num?)?.toDouble() ?? 0.5,
-        ),
-        vibrato: VibratoSettings(
-          enabled: m['vibrato_enabled'] as bool? ?? false,
-          f: (m['vibrato_f'] as num?)?.toDouble() ?? 5.0,
-          d: (m['vibrato_d'] as num?)?.toDouble() ?? 0.5,
-        ),
-        acrusher: AcrusherSettings(
-          enabled: m['crusher_enabled'] as bool? ?? false,
-          bits: (m['crusher_bits'] as num?)?.toDouble() ?? 8.0,
-          mix: (m['crusher_mix'] as num?)?.toDouble() ?? 0.5,
-          samples: (m['crusher_samples'] as num?)?.toDouble() ?? 1.0,
-        ),
-        custom: (m['custom_filters'] is List)
-            ? (m['custom_filters'] as List<dynamic>)
-                  .whereType<String>()
-                  .toList()
-            : const [],
-      );
+      return _deserializeAudioEffects(json);
     } on Exception catch (e, stack) {
       afLog(
         'audio',
@@ -564,81 +374,8 @@ class PlayerSettingsStore {
   }
 
   // ── Split persistence (3-key architecture) ────────────────────────────────
-
-  /// Serialize [GraphicEqState] to JSON and persist.
-  static Future<void> saveGraphicEq(GraphicEqState state) async {
-    final p = await _prefs();
-    await p.setString(kGraphicEq, jsonEncode(state.toJson()));
-  }
-
-  /// Deserialize [GraphicEqState] from persisted JSON.
-  /// Returns defaults (18 zero levels, disabled) when no key exists.
-  static GraphicEqState loadGraphicEq(SharedPreferences p) {
-    final json = p.getString(kGraphicEq);
-    if (json == null) return GraphicEqState();
-    try {
-      return GraphicEqState.fromJson(jsonDecode(json) as Map<String, dynamic>);
-    } on Exception catch (e, stack) {
-      afLog(
-        'audio',
-        'Failed to load graphic EQ from storage',
-        error: e,
-        stackTrace: stack,
-      );
-      return GraphicEqState();
-    }
-  }
-
-  /// Serialize [ParametricEqState] to JSON and persist.
-  static Future<void> saveParametricEq(ParametricEqState state) async {
-    final p = await _prefs();
-    await p.setString(kParametricEq, jsonEncode(state.toJson()));
-  }
-
-  /// Deserialize [ParametricEqState] from persisted JSON.
-  /// Returns defaults (18 ISO bands) when no key exists.
-  static ParametricEqState loadParametricEq(SharedPreferences p) {
-    final json = p.getString(kParametricEq);
-    if (json == null) return ParametricEqState();
-    try {
-      return ParametricEqState.fromJson(
-        jsonDecode(json) as Map<String, dynamic>,
-      );
-    } on Exception catch (e, stack) {
-      afLog(
-        'audio',
-        'Failed to load parametric EQ from storage',
-        error: e,
-        stackTrace: stack,
-      );
-      return ParametricEqState();
-    }
-  }
-
-  /// Persist DSP-only audio effects (same JSON format as [saveAudioEffects]).
-  static Future<void> saveDspState(AudioEffects fx) async {
-    final p = await _prefs();
-    final map = _serializeAudioEffects(fx);
-    await p.setString(kDspState, jsonEncode(map));
-  }
-
-  /// Load DSP-only audio effects from persisted JSON.
-  /// Returns `null` when no key exists.
-  static AudioEffects? loadDspState(SharedPreferences p) {
-    final json = p.getString(kDspState);
-    if (json == null) return null;
-    try {
-      return _deserializeAudioEffects(json);
-    } on Exception catch (e, stack) {
-      afLog(
-        'audio',
-        'Failed to load DSP state from storage',
-        error: e,
-        stackTrace: stack,
-      );
-      return null;
-    }
-  }
+  // These methods are kept for migration purposes only.
+  // All screens now save/load through the unified key (saveAudioEffects/loadAudioEffects).
 
   /// Migrate from the old combined `af.audio_effects_json` key to the
   /// 3-key split (DSP, Graphic EQ, Parametric EQ).
@@ -678,6 +415,81 @@ class PlayerSettingsStore {
         error: e,
         stackTrace: stack,
       );
+    }
+  }
+
+  /// Migrate from orphaned split keys (DSP, Graphic EQ, Parametric EQ)
+  /// back to the unified `af.audio_effects_json` key.
+  ///
+  /// If the unified key already exists, split keys are simply removed.
+  /// If not, the split keys are merged into a combined state.
+  /// Idempotent: safe to call multiple times.
+  static Future<void> migrateSplitKeys(SharedPreferences p) async {
+    final hasLegacy =
+        p.containsKey(kDspState) ||
+        p.containsKey(kGraphicEq) ||
+        p.containsKey(kParametricEq);
+    if (!hasLegacy) return;
+
+    // If no combined key exists, reconstruct from split keys
+    if (!p.containsKey(kAudioEffects)) {
+      final dspFx = _loadDspStateFromPrefs(p);
+      final graphicEq = _loadGraphicEqFromPrefs(p);
+      final parametricEq = _loadParametricEqFromPrefs(p);
+      if (dspFx != null) {
+        var merged = dspFx;
+        merged = graphicEq.toAudioEffects(merged);
+        merged = parametricEq.toAudioEffects(merged);
+        await p.setString(
+          kAudioEffects,
+          jsonEncode(_serializeAudioEffects(merged)),
+        );
+      }
+    }
+
+    // Remove orphaned split keys
+    await p.remove(kDspState);
+    await p.remove(kGraphicEq);
+    await p.remove(kParametricEq);
+  }
+
+  /// Serialize [AudioEffects] for testing purposes.
+  @visibleForTesting
+  static Map<String, dynamic> testSerializeAudioEffects(AudioEffects fx) =>
+      _serializeAudioEffects(fx);
+
+  /// Load DSP state directly from SharedPreferences (internal helper).
+  static AudioEffects? _loadDspStateFromPrefs(SharedPreferences p) {
+    final json = p.getString(kDspState);
+    if (json == null) return null;
+    try {
+      return _deserializeAudioEffects(json);
+    } on Exception catch (_) {
+      return null;
+    }
+  }
+
+  /// Load GraphicEqState directly from SharedPreferences (internal helper).
+  static GraphicEqState _loadGraphicEqFromPrefs(SharedPreferences p) {
+    final json = p.getString(kGraphicEq);
+    if (json == null) return GraphicEqState();
+    try {
+      return GraphicEqState.fromJson(jsonDecode(json) as Map<String, dynamic>);
+    } on Exception catch (_) {
+      return GraphicEqState();
+    }
+  }
+
+  /// Load ParametricEqState directly from SharedPreferences (internal helper).
+  static ParametricEqState _loadParametricEqFromPrefs(SharedPreferences p) {
+    final json = p.getString(kParametricEq);
+    if (json == null) return ParametricEqState();
+    try {
+      return ParametricEqState.fromJson(
+        jsonDecode(json) as Map<String, dynamic>,
+      );
+    } on Exception catch (_) {
+      return ParametricEqState();
     }
   }
 
@@ -890,6 +702,9 @@ class PlayerSettingsStore {
   /// break startup.
   static Future<void> applyPersisted(AfPlayerService svc) async {
     final p = await _prefs();
+
+    // One-time cleanup of orphaned split keys from the 3-key era
+    await migrateSplitKeys(p);
 
     Future<void> tryApply(String label, Future<void> Function() action) async {
       try {

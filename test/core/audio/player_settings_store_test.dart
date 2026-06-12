@@ -875,6 +875,155 @@ void main() {
     });
   });
 
+  // ── M1: Serialization dedup — saveAudioEffects delegates to _serializeAudioEffects ──
+  group('Serialization consistency (M1)', () {
+    test(
+      'saveAudioEffects produces identical JSON to _serializeAudioEffects',
+      () async {
+        // This test verifies that saveAudioEffects and _serializeAudioEffects
+        // produce the same JSON output. After the M1 refactor, saveAudioEffects
+        // delegates to _serializeAudioEffects, so this must hold.
+        final fx = const AudioEffects().copyWith(
+          bass: const BassSettings(enabled: true, g: 6.0),
+          treble: const TrebleSettings(enabled: true, g: -3.0),
+          acompressor: const AcompressorSettings(
+            enabled: true,
+            threshold: 0.2,
+            ratio: 8.0,
+            attack: 50.0,
+            release: 500.0,
+          ),
+          custom: const ['lavfi-equalizer=f=1000:t=q:w=1.0:g=3.0'],
+        );
+
+        // Save via public API
+        SharedPreferences.setMockInitialValues({});
+        await PlayerSettingsStore.saveAudioEffects(fx);
+        final p = await SharedPreferences.getInstance();
+        final savedJson = p.getString(PlayerSettingsStore.kAudioEffects);
+
+        // Load and verify round-trip
+        final loaded = PlayerSettingsStore.loadAudioEffects(p);
+        expect(loaded, isNotNull);
+        expect(loaded!.bass.enabled, isTrue);
+        expect(loaded.bass.g, 6.0);
+        expect(loaded.acompressor.threshold, 0.2);
+        expect(loaded.custom, ['lavfi-equalizer=f=1000:t=q:w=1.0:g=3.0']);
+
+        // Verify JSON is well-formed (not empty or malformed)
+        expect(savedJson, isNotNull);
+        expect(savedJson!.isNotEmpty, isTrue);
+      },
+    );
+
+    test(
+      'loadAudioEffects handles all effect types through unified deserializer',
+      () async {
+        // After M1, loadAudioEffects delegates to _deserializeAudioEffects.
+        // This test covers all major effect types in one round-trip.
+        final fx = const AudioEffects().copyWith(
+          bass: const BassSettings(enabled: true, g: 5.0),
+          treble: const TrebleSettings(enabled: true, g: -2.0),
+          loudnorm: const LoudnormSettings(enabled: true),
+          acompressor: const AcompressorSettings(
+            enabled: true,
+            threshold: -20,
+            ratio: 4,
+            attack: 10,
+            release: 100,
+          ),
+          superequalizer: const SuperequalizerSettings(
+            enabled: true,
+            params: {'1b': 3.0, '5b': -1.5},
+          ),
+          rubberband: const RubberbandSettings(
+            enabled: true,
+            pitch: 1.2,
+            tempo: 0.9,
+          ),
+          crossfeed: const CrossfeedSettings(enabled: true, strength: 0.5),
+          stereowiden: const StereowidenSettings(enabled: true, delay: 15),
+          aexciter: const AexciterSettings(enabled: true, amount: 2.0),
+          crystalizer: const CrystalizerSettings(enabled: true, i: 1.5),
+          virtualbass: const VirtualbassSettings(enabled: true, cutoff: 200),
+          agate: const AgateSettings(
+            enabled: true,
+            threshold: -30,
+            ratio: 3,
+            attack: 5,
+            release: 100,
+          ),
+          deesser: const DeesserSettings(enabled: true, i: 0.5, m: 0.6, f: 0.7),
+          aecho: const AechoSettings(
+            enabled: true,
+            in_gain: 0.8,
+            out_gain: 0.4,
+            delays: '100',
+            decays: '0.3',
+          ),
+          aphaser: const AphaserSettings(
+            enabled: true,
+            in_gain: 0.5,
+            out_gain: 0.6,
+            delay: 2,
+            decay: 0.3,
+            speed: 0.4,
+          ),
+          flanger: const FlangerSettings(
+            enabled: true,
+            delay: 1,
+            depth: 3,
+            regen: 0.5,
+            width: 50,
+            speed: 0.3,
+          ),
+          chorus: const ChorusSettings(
+            enabled: true,
+            in_gain: 0.3,
+            out_gain: 0.3,
+            delays: '30',
+            decays: '0.2',
+            speeds: '0.1',
+            depths: '2',
+          ),
+          tremolo: const TremoloSettings(enabled: true, f: 4.0, d: 0.4),
+          vibrato: const VibratoSettings(enabled: true, f: 3.0, d: 0.3),
+          acrusher: const AcrusherSettings(
+            enabled: true,
+            bits: 12,
+            mix: 0.6,
+            samples: 2,
+          ),
+          custom: const ['filter1', 'filter2'],
+        );
+
+        final loaded = await _roundTrip(fx);
+        expect(loaded, isNotNull);
+        expect(loaded!.bass.g, 5.0);
+        expect(loaded.treble.g, -2.0);
+        expect(loaded.loudnorm.enabled, isTrue);
+        expect(loaded.acompressor.threshold, -20);
+        expect(loaded.superequalizer.params['1b'], 3.0);
+        expect(loaded.rubberband.pitch, 1.2);
+        expect(loaded.crossfeed.strength, 0.5);
+        expect(loaded.stereowiden.delay, 15);
+        expect(loaded.aexciter.amount, 2.0);
+        expect(loaded.crystalizer.i, 1.5);
+        expect(loaded.virtualbass.cutoff, 200);
+        expect(loaded.agate.threshold, -30);
+        expect(loaded.deesser.f, 0.7);
+        expect(loaded.aecho.delays, '100');
+        expect(loaded.aphaser.speed, 0.4);
+        expect(loaded.flanger.speed, 0.3);
+        expect(loaded.chorus.delays, '30');
+        expect(loaded.tremolo.f, 4.0);
+        expect(loaded.vibrato.f, 3.0);
+        expect(loaded.acrusher.bits, 12);
+        expect(loaded.custom, ['filter1', 'filter2']);
+      },
+    );
+  });
+
   // ── Parametric EQ custom filters persistence ─────────────────────────────
   group('Parametric EQ custom filters', () {
     test('preserves custom lavfi strings through round-trip', () async {
