@@ -190,8 +190,14 @@ async def _send_file_mtproto(file_path, caption, reply_markup=None):
     client, session_dir = _get_mtproto_client()
 
     try:
-        # Connect first (just TCP, no auth)
-        await asyncio.wait_for(client.connect(), timeout=30)
+        # Connect — 15s timeout. If this fails, MTProto is blocked on this runner.
+        print("Connecting to Telegram DC...")
+        try:
+            await asyncio.wait_for(client.connect(), timeout=15)
+        except asyncio.TimeoutError:
+            print("MTProto connection timed out (15s). Telegram DCs are likely blocked from this runner.")
+            print("The build succeeded — only the Telegram notification failed.")
+            sys.exit(1)
 
         # Check if we have a valid session without triggering auth flow
         if not await client.is_user_authorized():
@@ -216,7 +222,7 @@ async def _send_file_mtproto(file_path, caption, reply_markup=None):
         size_mb = file_size / (1024 * 1024)
         print(f"Uploading {filename} ({size_mb:.1f} MB) via MTProto...")
 
-        # Upload with progress timeout (5 min for large files)
+        # Upload — 300s (5 min) is generous for 63MB; if it hits this, something is wrong
         await asyncio.wait_for(
             client.send_file(
                 chat_id,
@@ -233,7 +239,7 @@ async def _send_file_mtproto(file_path, caption, reply_markup=None):
         print(f"Sent {filename} successfully via MTProto.")
 
     except asyncio.TimeoutError:
-        print("MTProto upload timed out. Check network or regenerate session.")
+        print("MTProto upload timed out (300s). Network may be too slow or connection stalled.")
         sys.exit(1)
     except (AuthKeyError, SessionPasswordNeededError, PhoneCodeInvalidError) as e:
         print(f"Error: MTProto session is invalid: {e}")
