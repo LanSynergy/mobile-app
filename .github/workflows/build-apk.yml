@@ -20,7 +20,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 permissions:
-  contents: read
+  contents: write   # create/update draft release
 
 # Cancel in-flight builds when a newer one is triggered — saves runner minutes.
 concurrency:
@@ -38,12 +38,6 @@ jobs:
 
       - name: Setup Flutter + JDK
         uses: ./.github/actions/setup-flutter
-
-      - name: Install Telethon (for MTProto uploads)
-        if: env.TG_API_ID != ''
-        env:
-          TG_API_ID: ${{ secrets.TG_API_ID }}
-        run: pip install telethon
 
       - name: Cache codegen
         id: codegen-cache
@@ -82,18 +76,12 @@ jobs:
         env:
           TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TG_API_ID: ${{ secrets.TG_API_ID }}
-          TG_API_HASH: ${{ secrets.TG_API_HASH }}
-          TG_SESSION_BASE64: ${{ secrets.TG_SESSION_BASE64 }}
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          args="--mode ${{ inputs.build_mode }} --telegram --progress-watch"
-          if [ -n "${{ secrets.TG_API_ID }}" ]; then
-            args="$args --mtproto"
-          fi
+          args="--mode ${{ inputs.build_mode }} --telegram --progress-watch --skip-final-notify"
           if [ "${{ steps.codegen-cache.outputs.cache-hit }}" = "true" ]; then
             args="$args --skip-codegen"
           fi
@@ -106,12 +94,57 @@ jobs:
           bash tool/build $args
 
       - name: Upload APK artifact
+        id: upload-artifact
         uses: actions/upload-artifact@v7
         with:
           name: aetherfin-${{ inputs.build_mode }}-${{ github.sha }}
           path: build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish APK to draft release
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="build-latest"
+          APK_DIR="build/app/outputs/flutter-apk"
+          APK_COUNT=$(ls "$APK_DIR"/Aetherfin-v*.apk 2>/dev/null | wc -l)
+
+          if [ "$APK_COUNT" -eq 0 ]; then
+            echo "::warning::No APKs found — skipping draft release."
+            exit 0
+          fi
+
+          # Delete existing draft release if present (clean slate)
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+
+          # Create new draft release and upload all APKs
+          gh release create "$TAG" \
+            --title "Latest Build" \
+            --notes "Auto-published by CI. This is a rolling draft — replaced on every build." \
+            --draft=false \
+            --prerelease=true \
+            "$APK_DIR"/Aetherfin-v*.apk
+
+          echo "Published $(ls "$APK_DIR"/Aetherfin-v*.apk | wc -l) APK(s) to draft release."
+
+      - name: Notify Telegram — Build successful
+        if: success()
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          # Download URL points to the primary APK in the draft release
+          TAG="build-latest"
+          PRIMARY_APK=$(ls build/app/outputs/flutter-apk/Aetherfin-v*-arm64-v8a*.apk 2>/dev/null | head -1 || true)
+          if [ -z "$PRIMARY_APK" ]; then
+            PRIMARY_APK=$(ls build/app/outputs/flutter-apk/Aetherfin-v*.apk 2>/dev/null | head -1 || true)
+          fi
+          APK_NAME=$(basename "$PRIMARY_APK" 2>/dev/null || echo "")
+          DOWNLOAD_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${TAG}/${APK_NAME}"
+          export TG_DOWNLOAD_URL="$DOWNLOAD_URL"
+          python3 tool/telegram_notifier.py send_link
 
       # Catches infrastructure failures (JDK/Flutter/cache setup)
       # that happen BEFORE the build step runs.

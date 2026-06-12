@@ -253,6 +253,73 @@ def fail_message():
     _send_text(text, reply_markup)
 
 
+def send_link():
+    """Edit the init message to show success with a download link (no file upload)."""
+    msg_id = os.environ.get('TG_MESSAGE_ID')
+    download_url = os.environ.get('TG_DOWNLOAD_URL', '')
+
+    text = (
+        "\u2705 <b>Aetherfin Build Successful!</b>\n"
+        "\u2500" * 12 + "\n"
+        "<b>App:</b> <code>{name}</code>\n"
+        "<b>Mode:</b> <code>{mode}</code>\n"
+        "<b>Size:</b> <code>{size}</code>\n"
+        "\n"
+        "<b>Branch:</b> <code>{branch}</code>\n"
+        "<b>Build ID:</b> <code>{build_id}</code>\n"
+        "<b>Triggered by:</b> <code>{actor}</code>\n"
+        "\u2500" * 12 + "\n"
+        "<i>{timestamp}</i>"
+    )
+
+    text = "\n".join(text).format(
+        name=os.environ.get('TG_APK_NAME', ''),
+        mode=os.environ.get('TG_MODE', ''),
+        size=os.environ.get('TG_SIZE', ''),
+        build_id=os.environ.get('TG_BUILD_ID', ''),
+        sha=os.environ.get('TG_SHA', ''),
+        branch=os.environ.get('TG_BRANCH', ''),
+        commit=os.environ.get('TG_COMMIT', ''),
+        timestamp=os.environ.get('TG_TIMESTAMP', ''),
+        actor=os.environ.get('TG_ACTOR', ''),
+    )
+
+    buttons = []
+    if download_url:
+        buttons.append({"text": "\U0001f4e5 Download APK", "url": download_url})
+    run_url = os.environ.get('TG_RUN_URL', '')
+    if run_url:
+        buttons.append({"text": "\U0001f528 View Run", "url": run_url})
+    commit_url = os.environ.get('TG_COMMIT_URL', '')
+    if commit_url:
+        buttons.append({"text": "\U0001f4bb Commit", "url": commit_url})
+
+    reply_markup = {"inline_keyboard": [buttons]} if buttons else {}
+
+    if msg_id:
+        payload = {
+            "chat_id": CHAT_ID,
+            "message_id": int(msg_id),
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
+        data = json.dumps(payload).encode('utf-8')
+        headers = {"Content-Type": "application/json"}
+        try:
+            send_request(url, data=data, headers=headers)
+            print(f"Edited message {msg_id} with download link.")
+            return
+        except Exception as e:
+            print(f"Warning: Failed to edit message: {e}")
+
+    _send_text(text, reply_markup)
+
+
 def send_text():
     """Edit the init message to show success (APK too large or not found), or send a new one."""
     msg_id = os.environ.get('TG_MESSAGE_ID')
@@ -260,8 +327,7 @@ def send_text():
     text = (
         "\u2705 <b>Aetherfin Build Successful!</b>\n"
         "\u2500" * 12 + "\n"
-        "<blockquote>Build completed, but the APK exceeds Telegram's 50 MB limit "
-        "or was not found. Download from CI artifacts instead.</blockquote>\n"
+        "<blockquote>Build completed successfully.</blockquote>\n"
         "\u2500" * 12 + "\n"
         "<i>{timestamp}</i>"
     ).format(
@@ -510,7 +576,7 @@ def progress_watch():
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python tool/telegram_notifier.py <init|send_apk|send_text|fail>")
+        print("Usage: python tool/telegram_notifier.py <init|send_apk|send_link|send_text|fail>")
         sys.exit(1)
 
     action = sys.argv[1]
@@ -518,6 +584,8 @@ def main():
         init_message()
     elif action == 'send_apk':
         send_apk()
+    elif action == 'send_link':
+        send_link()
     elif action == 'send_text':
         send_text()
     elif action == 'fail':

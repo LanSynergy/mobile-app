@@ -24,6 +24,7 @@
 #   --skip-codegen        Skip dart run build_runner (code generation)
 #   --skip-build          Skip the APK build step entirely (useful for PR checks)
 #   --skip-build-id       Skip build ID generation
+#   --skip-final-notify   Skip final Telegram notification (workflow handles it)
 #   --help                Show this help
 #
 # Environment:
@@ -51,7 +52,7 @@ SKIP_BUILD=false
 SKIP_BUILD_ID=false
 SIGN=false
 TELEGRAM=false
-MTPROTO=false
+SKIP_FINAL_NOTIFY=false
 PROGRESS_WATCH=false
 _WATCHER_PID=""
 BUILD_ID=""
@@ -172,15 +173,27 @@ tg_send_apk() {
   TG_MESSAGE_ID="$(cat "$TG_MSG_FILE" 2>/dev/null || true)"
   [ -z "$TG_MESSAGE_ID" ] && return 0
 
-  local notifier="telegram_notifier.py"
-  if [ "$MTPROTO" = "true" ]; then
-    notifier="telegram_notifier_mtproto.py"
-    echo "  📤 Sending APK to Telegram via MTProto (2GB limit)..."
-  else
-    echo "  📤 Sending APK to Telegram (50MB limit)..."
+  # If TG_DOWNLOAD_URL is set, send link instead of file (CI artifact flow)
+  if [ -n "${TG_DOWNLOAD_URL:-}" ]; then
+    echo "  📤 Sending download link to Telegram..."
+    python3 "$ROOT/tool/telegram_notifier.py" send_link 2>&1 || warn "Telegram link notification failed."
+    echo "true" > "$ROOT/build/.tg_notified"
+    return 0
   fi
 
-  python3 "$ROOT/tool/$notifier" send_apk 2>&1 || warn "Telegram APK upload failed."
+  # Bot API file send (50MB limit)
+  if [ "$apk_size" != "" ]; then
+    local size_bytes
+    size_bytes=$(echo "$apk_size" | numfmt --from=iec 2>/dev/null || echo 0)
+    if [ "$size_bytes" -gt 52428800 ] 2>/dev/null; then
+      echo "  ⚠ APK ($apk_size) exceeds Telegram's 50 MB limit — sending text fallback."
+      tg_send_text
+      return 0
+    fi
+  fi
+
+  echo "  📤 Sending APK to Telegram (50MB limit)..."
+  python3 "$ROOT/tool/telegram_notifier.py" send_apk 2>&1 || warn "Telegram APK upload failed."
   echo "true" > "$ROOT/build/.tg_notified"
 }
 
@@ -353,12 +366,6 @@ select_primary_apk() {
   local size_human
   size_human=$(numfmt --to=iec --suffix=B "$size" 2>/dev/null || echo "$size bytes")
 
-  if [ "$size" -gt 52428800 ] 2>/dev/null && [ "$MTPROTO" = "false" ]; then
-    echo "  ⚠ APK is $size_human — exceeds Telegram's 50 MB limit."
-    echo "path=" > "$info_file"
-    return 0
-  fi
-
   echo "path=$apk_path"   > "$info_file"
   echo "name=$apk"       >> "$info_file"
   echo "size=$size_human" >> "$info_file"
@@ -442,8 +449,8 @@ while [[ $# -gt 0 ]]; do
     --no-universal)   BUILD_UNIVERSAL=false; shift ;;
     --sign)           SIGN=true; shift ;;
     --telegram)       TELEGRAM=true; shift ;;
-    --mtproto)        MTPROTO=true; shift ;;
     --progress-watch) PROGRESS_WATCH=true; shift ;;
+    --skip-final-notify) SKIP_FINAL_NOTIFY=true; shift ;;
     --install)        INSTALL=true; shift ;;
     --skip-analyze)   SKIP_ANALYZE=true; shift ;;
     --skip-test)      SKIP_TEST=true; shift ;;
@@ -482,7 +489,6 @@ else
   echo "  Split ABI:     $SPLIT_PER_ABI"
   echo "  Sign:          $SIGN"
   echo "  Telegram:      $TELEGRAM"
-  echo "  MTProto:       $MTPROTO"
   echo "  Skip build:    $SKIP_BUILD"
   echo "  CI mode:       $CI_MODE"
   echo ""
@@ -652,8 +658,10 @@ if [ "$SKIP_BUILD" = "false" ]; then
   # Stop live-progress watcher before final notification
   _tg_stop_watcher
 
-  # Send final Telegram message: APK (success) or text fallback.
-  if [ -n "$PRIMARY_APK" ] && [ "$TELEGRAM" = "true" ]; then
+  # Send final Telegram message (unless workflow will handle it)
+  if [ "$SKIP_FINAL_NOTIFY" = "true" ]; then
+    echo "  ℹ Final notification deferred to workflow."
+  elif [ -n "$PRIMARY_APK" ] && [ "$TELEGRAM" = "true" ]; then
     tg_send_apk "$PRIMARY_APK" "$PRIMARY_APK_NAME" "$PRIMARY_APK_SIZE"
   elif [ "$TELEGRAM" = "true" ]; then
     tg_send_text
