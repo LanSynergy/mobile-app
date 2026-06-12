@@ -31,7 +31,7 @@ def _require_env(name):
     return val
 
 
-def _bot_request(url, data=None, headers=None):
+def _bot_request(url, data=None, headers=None, timeout=30):
     bot_token = os.environ.get('TG_BOT_TOKEN')
     if not bot_token:
         return None
@@ -39,7 +39,7 @@ def _bot_request(url, data=None, headers=None):
         headers = {}
     req = Request(url, data=data, headers=headers)
     try:
-        with urlopen(req) as resp:
+        with urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode('utf-8'))
     except HTTPError as e:
         print(f"HTTP Error {e.code}: {e.read().decode('utf-8')}")
@@ -149,7 +149,7 @@ def _delete_message(msg_id):
         payload = json.dumps({"chat_id": chat_id, "message_id": int(msg_id)}).encode('utf-8')
         headers = {"Content-Type": "application/json"}
         req = Request(url, data=payload, headers=headers)
-        urlopen(req)
+        urlopen(req, timeout=10)
         print(f"Deleted message {msg_id}.")
     except Exception as e:
         print(f"Failed to delete message {msg_id}: {e}")
@@ -186,7 +186,8 @@ async def _send_file_mtproto(file_path, caption, reply_markup=None):
     client, session_dir = _get_mtproto_client()
 
     try:
-        await client.start()
+        # Use timeout for connection (30s for connect, 60s for full start)
+        await asyncio.wait_for(client.start(), timeout=60)
 
         buttons = None
         if reply_markup and 'inline_keyboard' in reply_markup:
@@ -204,23 +205,33 @@ async def _send_file_mtproto(file_path, caption, reply_markup=None):
         size_mb = file_size / (1024 * 1024)
         print(f"Uploading {filename} ({size_mb:.1f} MB) via MTProto...")
 
-        await client.send_file(
-            chat_id,
-            file_path,
-            caption=caption,
-            parse_mode='html',
-            force_document=True,
-            attributes=[DocumentAttributeFilename(file_name=filename)],
-            buttons=buttons
+        # Upload with progress timeout (5 min for large files)
+        await asyncio.wait_for(
+            client.send_file(
+                chat_id,
+                file_path,
+                caption=caption,
+                parse_mode='html',
+                force_document=True,
+                attributes=[DocumentAttributeFilename(file_name=filename)],
+                buttons=buttons
+            ),
+            timeout=300
         )
 
         print(f"Sent {filename} successfully via MTProto.")
 
+    except asyncio.TimeoutError:
+        print("MTProto upload timed out after 5 minutes.")
+        sys.exit(1)
     except Exception as e:
         print(f"MTProto upload failed: {e}")
         sys.exit(1)
     finally:
-        await client.disconnect()
+        try:
+            await asyncio.wait_for(client.disconnect(), timeout=10)
+        except Exception:
+            pass
         import shutil
         shutil.rmtree(session_dir, ignore_errors=True)
 

@@ -14,12 +14,12 @@ if not BOT_TOKEN or not CHAT_ID:
     sys.exit(1)
 
 
-def send_request(url, data=None, headers=None):
+def send_request(url, data=None, headers=None, timeout=30):
     if headers is None:
         headers = {}
     req = Request(url, data=data, headers=headers)
     try:
-        with urlopen(req) as resp:
+        with urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode('utf-8'))
     except HTTPError as e:
         print(f"HTTP Error {e.code}: {e.read().decode('utf-8')}")
@@ -80,7 +80,7 @@ def _delete_message(msg_id):
         }).encode('utf-8')
         headers = {"Content-Type": "application/json"}
         req = Request(url, data=payload, headers=headers)
-        urlopen(req)
+        urlopen(req, timeout=10)
         print(f"Deleted init message {msg_id}.")
     except Exception as e:
         print(f"Failed to delete init message {msg_id}: {e}")
@@ -500,7 +500,7 @@ def progress_watch():
 
         try:
             req = Request(url, data=data, headers=headers)
-            urlopen(req)
+            urlopen(req, timeout=10)
         except Exception:
             pass  # may be killed mid-request — don't pollute logs
 
