@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' show AudioEffects;
 
 import '../../core/audio/player_settings_store.dart';
@@ -186,6 +188,11 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                     ),
                   ),
                 ]),
+                const SizedBox(height: AfSpacing.s16),
+                // ── Pro EQ redirect ──────────────────────────────────────────
+                _ProEqRedirectBanner(
+                  onTap: () => context.push('/pro-eq'),
+                ),
                 const SizedBox(height: AfSpacing.s16),
                 ..._buildAccordionSections(),
                 const SizedBox(height: AfSpacing.s24),
@@ -416,6 +423,79 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
           _openSection = _openSection == index ? null : index;
         }),
         child: content,
+      ),
+    );
+  }
+}
+
+// ── Pro EQ redirect banner ────────────────────────────────────────────────
+
+class _ProEqRedirectBanner extends StatelessWidget {
+  const _ProEqRedirectBanner({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AfSpacing.s8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AfSpacing.s16,
+            vertical: AfSpacing.s12,
+          ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AfColors.accentPrimary.withOpacity(0.15),
+                AfColors.accentPrimary.withOpacity(0.05),
+              ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(AfSpacing.s8),
+            border: Border.all(
+              color: AfColors.accentPrimary.withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                LucideIcons.slidersHorizontal,
+                size: 20,
+                color: AfColors.accentPrimary,
+              ),
+              const SizedBox(width: AfSpacing.s12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pro Equalizer',
+                      style: AfTypography.titleSmall.copyWith(
+                        color: AfColors.accentPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: AfSpacing.s2),
+                    Text(
+                      'Graphic EQ + Parametric EQ with visual curve',
+                      style: AfTypography.bodySmall.copyWith(
+                        color: AfColors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                LucideIcons.chevronRight,
+                size: 16,
+                color: AfColors.textTertiary,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
