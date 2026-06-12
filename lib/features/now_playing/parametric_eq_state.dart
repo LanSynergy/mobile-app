@@ -136,12 +136,19 @@ class ParametricEqState {
   }
 
   /// Parse lavfi filter strings back into a [ParametricEqState].
+  ///
+  /// If no parametric EQ filters are found in [custom], returns the default
+  /// 18-band state so the screen always has bands to display and interact with.
   factory ParametricEqState.fromCustomFilters(List<String> custom) {
     final bands = <ParametricEqBand>[];
     for (final filter in custom) {
       final band = _parseLavfiFilter(filter);
       if (band != null) bands.add(band);
     }
+    // Fall back to default state when no parametric EQ bands were parsed —
+    // avoids an empty bands list that would crash the UI (RangeError on
+    // _selectedBand access).
+    if (bands.isEmpty) return ParametricEqState();
     return ParametricEqState._(bands);
   }
 

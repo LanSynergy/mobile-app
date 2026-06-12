@@ -453,9 +453,11 @@ void main() {
         expect(state.bands.length, 1);
       });
 
-      test('handles empty list', () {
+      test('handles empty list by falling back to default state', () {
         final state = ParametricEqState.fromCustomFilters([]);
-        expect(state.bands, isEmpty);
+        // When no parametric EQ filters are found, falls back to the
+        // default 18-band state so the UI always has bands to display.
+        expect(state.bands, hasLength(ParametricEqState.maxBands));
       });
     });
 
