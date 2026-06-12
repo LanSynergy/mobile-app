@@ -81,7 +81,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          args="--mode ${{ inputs.build_mode }} --telegram --progress-watch --skip-final-notify"
+          args="--mode ${{ inputs.build_mode }} --telegram --progress-watch"
           if [ "${{ steps.codegen-cache.outputs.cache-hit }}" = "true" ]; then
             args="$args --skip-codegen"
           fi
