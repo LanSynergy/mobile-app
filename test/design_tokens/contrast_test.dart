@@ -76,15 +76,13 @@ void main() {
       expect(ratio, greaterThanOrEqualTo(3.0));
     });
 
-    // KNOWN ISSUE: textOnPrimary (#F0F4F8) on accentPrimary (#5B9BD5)
-    // has contrast ratio 2.68:1 — below WCAG AA minimum.
-    // Requires design decision: darken accent or lighten text.
-    // Skipped until design resolves this.
-    test(
-      'textOnPrimary on accentPrimary — NEEDS DESIGN FIX (2.68:1 < 4.5:1)',
-      () {},
-      skip: 'Design debt: contrast ratio 2.68:1 below WCAG AA',
-    );
+    test('textOnPrimary on accentPrimary >= 4.5:1 (AA normal text)', () {
+      final ratio = _contrastRatio(
+        AfColors.textOnPrimary.toARGB32(),
+        AfColors.accentPrimary.toARGB32(),
+      );
+      expect(ratio, greaterThanOrEqualTo(4.5));
+    });
 
     test('textLink on surfaceCanvas >= 4.5:1', () {
       final ratio = _contrastRatio(

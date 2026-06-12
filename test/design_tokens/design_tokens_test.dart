@@ -46,7 +46,7 @@ void main() {
     });
 
     test('accent colors use ocean blue palette', () {
-      expect(AfColors.accentPrimary.toARGB32(), 0xFF5B9BD5);
+      expect(AfColors.accentPrimary.toARGB32(), 0xFF2E6FA8);
       expect(AfColors.accentSecondary.toARGB32(), 0xFF3A7CA5);
       expect(AfColors.accentMuted.toARGB32(), 0xFF6B8FA3);
     });

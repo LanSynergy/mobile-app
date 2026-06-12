@@ -40,7 +40,7 @@ abstract final class AfColors {
   // ---------------------------------------------------------------------------
   // Accent — Ocean blue
   // ---------------------------------------------------------------------------
-  static const accentPrimary = Color(0xFF5B9BD5); // Ocean blue
+  static const accentPrimary = Color(0xFF2E6FA8); // Darker ocean blue (WCAG AA 4.73:1)
   static const accentSecondary = Color(0xFF3A7CA5); // Deep blue
   static const accentMuted = Color(0xFF6B8FA3); // Muted blue
 
