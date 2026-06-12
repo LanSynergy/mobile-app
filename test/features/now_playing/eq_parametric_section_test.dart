@@ -58,12 +58,12 @@ void main() {
       }
     });
 
-    testWidgets('shows 5 band controls when enabled', (tester) async {
+    testWidgets('shows 10 band controls when enabled', (tester) async {
       await tester.pumpWidget(buildTestWidget(enabled: true));
       await tester.pumpAndSettle();
-      // Should have band labels for all 5 bands
-      expect(find.textContaining('Band 1'), findsOneWidget);
-      expect(find.textContaining('Band 5'), findsOneWidget);
+      // Should have band labels for all 10 bands
+      expect(find.text('Band 1'), findsOneWidget);
+      expect(find.text('Band 10'), findsOneWidget);
     });
 
     testWidgets('parametricEnabled defaults to false', (tester) async {
@@ -76,9 +76,10 @@ void main() {
     testWidgets('shows frequency labels for default bands', (tester) async {
       await tester.pumpWidget(buildTestWidget(enabled: true));
       await tester.pumpAndSettle();
-      // _formatFrequency shows "60Hz" and "12kHz"
-      expect(find.textContaining('60'), findsWidgets);
-      expect(find.textContaining('12'), findsWidgets);
+      // _formatFrequency shows "31Hz", "62Hz", "125Hz", etc.
+      expect(find.textContaining('31'), findsWidgets);
+      expect(find.textContaining('62'), findsWidgets);
+      expect(find.textContaining('125'), findsWidgets);
     });
 
     testWidgets('shows gain sliders', (tester) async {

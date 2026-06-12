@@ -38,9 +38,9 @@ void main() {
       }
     });
 
-    test('Flat preset has 5 bands', () {
+    test('Flat preset has 10 bands', () {
       final flat = kParametricPresets['Flat']!;
-      expect(flat.bands.length, 5);
+      expect(flat.bands.length, 10);
     });
 
     test('Vocal Presence preset has correct name', () {

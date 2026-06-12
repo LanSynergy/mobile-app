@@ -17,16 +17,21 @@ void main() {
         expect(state.parametricEnabled, false);
       });
 
-      test('parametricBands has 5 default bands', () {
-        expect(state.parametricBands.length, 5);
+      test('parametricBands has 10 default bands', () {
+        expect(state.parametricBands.length, 10);
       });
 
       test('parametricBands has correct default frequencies', () {
-        expect(state.parametricBands[0].frequency, 60.0);
-        expect(state.parametricBands[1].frequency, 230.0);
-        expect(state.parametricBands[2].frequency, 910.0);
-        expect(state.parametricBands[3].frequency, 3500.0);
-        expect(state.parametricBands[4].frequency, 12000.0);
+        expect(state.parametricBands[0].frequency, 31.0);
+        expect(state.parametricBands[1].frequency, 62.0);
+        expect(state.parametricBands[2].frequency, 125.0);
+        expect(state.parametricBands[3].frequency, 250.0);
+        expect(state.parametricBands[4].frequency, 500.0);
+        expect(state.parametricBands[5].frequency, 1000.0);
+        expect(state.parametricBands[6].frequency, 2000.0);
+        expect(state.parametricBands[7].frequency, 4000.0);
+        expect(state.parametricBands[8].frequency, 8000.0);
+        expect(state.parametricBands[9].frequency, 16000.0);
       });
 
       test('parametricBands all start with zero gain', () {
@@ -102,12 +107,12 @@ void main() {
         state.setField('parametricBand0Freq', 1000.0);
         state.setField('parametricBand2Q', 8.0);
         state.reset();
-        expect(state.parametricBands[0].frequency, 60.0);
+        expect(state.parametricBands[0].frequency, 31.0);
         expect(state.parametricBands[0].gain, 0.0);
         expect(state.parametricBands[0].q, 0.7);
-        expect(state.parametricBands[2].frequency, 910.0);
+        expect(state.parametricBands[2].frequency, 125.0);
         expect(state.parametricBands[2].gain, 0.0);
-        expect(state.parametricBands[2].q, 1.0);
+        expect(state.parametricBands[2].q, 0.8);
       });
     });
 
@@ -121,8 +126,8 @@ void main() {
         final fx = state.toAudioEffects();
         expect(fx.custom.length, 2);
         expect(fx.custom[0], contains('lavfi-equalizer'));
-        expect(fx.custom[0], contains('f=60.0'));
-        expect(fx.custom[1], contains('f=230.0'));
+        expect(fx.custom[0], contains('f=31.0'));
+        expect(fx.custom[1], contains('f=62.0'));
       });
 
       test('empty custom when parametric disabled', () {
@@ -140,7 +145,7 @@ void main() {
 
         final fx = state.toAudioEffects();
         expect(fx.custom.length, 1);
-        expect(fx.custom[0], contains('f=230.0'));
+        expect(fx.custom[0], contains('f=62.0'));
       });
 
       test('skips disabled bands', () {
@@ -151,17 +156,17 @@ void main() {
 
         final fx = state.toAudioEffects();
         expect(fx.custom.length, 1);
-        expect(fx.custom[0], contains('f=230.0'));
+        expect(fx.custom[0], contains('f=62.0'));
       });
 
       test('includes all active bands', () {
         state.parametricEnabled = true;
-        for (var i = 0; i < 5; i++) {
+        for (var i = 0; i < 10; i++) {
           state.setField('parametricBand${i}Gain', 1.0);
         }
 
         final fx = state.toAudioEffects();
-        expect(fx.custom.length, 5);
+        expect(fx.custom.length, 10);
       });
     });
 
@@ -243,7 +248,7 @@ void main() {
           expect(state.parametricBands[0].gain, 0.0);
 
           state.loadFromAudioEffects(fx);
-          expect(state.parametricBands[0].frequency, 60.0);
+          expect(state.parametricBands[0].frequency, 31.0);
           expect(state.parametricBands[0].gain, 4.0);
           expect(state.parametricBands[0].q, 2.5);
           expect(state.parametricBands[1].frequency, 300);

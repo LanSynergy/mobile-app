@@ -116,18 +116,23 @@ void main() {
 
     // ── Default bands ────────────────────────────────────────────────────
     group('defaultBands', () {
-      test('returns exactly 5 bands', () {
+      test('returns exactly 10 bands', () {
         final bands = ParametricBand.defaultBands();
-        expect(bands.length, 5);
+        expect(bands.length, 10);
       });
 
       test('has correct logarithmic frequency spacing', () {
         final bands = ParametricBand.defaultBands();
-        expect(bands[0].frequency, 60.0);
-        expect(bands[1].frequency, 230.0);
-        expect(bands[2].frequency, 910.0);
-        expect(bands[3].frequency, 3500.0);
-        expect(bands[4].frequency, 12000.0);
+        expect(bands[0].frequency, 31.0);
+        expect(bands[1].frequency, 62.0);
+        expect(bands[2].frequency, 125.0);
+        expect(bands[3].frequency, 250.0);
+        expect(bands[4].frequency, 500.0);
+        expect(bands[5].frequency, 1000.0);
+        expect(bands[6].frequency, 2000.0);
+        expect(bands[7].frequency, 4000.0);
+        expect(bands[8].frequency, 8000.0);
+        expect(bands[9].frequency, 16000.0);
       });
 
       test('all bands start with zero gain', () {
@@ -148,9 +153,14 @@ void main() {
         final bands = ParametricBand.defaultBands();
         expect(bands[0].q, 0.7);
         expect(bands[1].q, 0.7);
-        expect(bands[2].q, 1.0);
-        expect(bands[3].q, 1.0);
-        expect(bands[4].q, 0.7);
+        expect(bands[2].q, 0.8);
+        expect(bands[3].q, 0.9);
+        expect(bands[4].q, 1.0);
+        expect(bands[5].q, 1.0);
+        expect(bands[6].q, 1.0);
+        expect(bands[7].q, 1.2);
+        expect(bands[8].q, 0.9);
+        expect(bands[9].q, 0.7);
       });
     });
 
@@ -158,15 +168,15 @@ void main() {
     group('defaultAt', () {
       test('creates correct band at index 0', () {
         final band = ParametricBand.defaultAt(0);
-        expect(band.frequency, 60.0);
+        expect(band.frequency, 31.0);
         expect(band.q, 0.7);
         expect(band.gain, 0.0);
       });
 
       test('creates correct band at index 4', () {
         final band = ParametricBand.defaultAt(4);
-        expect(band.frequency, 12000.0);
-        expect(band.q, 0.7);
+        expect(band.frequency, 500.0);
+        expect(band.q, 1.0);
       });
     });
 

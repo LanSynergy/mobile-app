@@ -50,13 +50,18 @@ class ParametricBand {
 
   // ── Defaults ───────────────────────────────────────────────────────────
 
-  /// Standard 5-band defaults (logarithmic spacing across 20 Hz – 20 kHz).
+  /// Standard 10-band defaults (logarithmic spacing across 20 Hz – 20 kHz).
   static const kDefaultBands = [
-    (frequency: 60.0, q: 0.7), // Sub-bass
-    (frequency: 230.0, q: 0.7), // Bass warmth
-    (frequency: 910.0, q: 1.0), // Midrange
-    (frequency: 3500.0, q: 1.0), // Presence
-    (frequency: 12000.0, q: 0.7), // Air / brilliance
+    (frequency: 31.0, q: 0.7), // Sub-bass
+    (frequency: 62.0, q: 0.7), // Bass
+    (frequency: 125.0, q: 0.8), // Bass warmth
+    (frequency: 250.0, q: 0.9), // Low-mid
+    (frequency: 500.0, q: 1.0), // Mid
+    (frequency: 1000.0, q: 1.0), // Upper-mid
+    (frequency: 2000.0, q: 1.0), // Presence
+    (frequency: 4000.0, q: 1.2), // Brilliance
+    (frequency: 8000.0, q: 0.9), // Air
+    (frequency: 16000.0, q: 0.7), // Airiness
   ];
 
   /// Create default band at given index.
@@ -65,8 +70,8 @@ class ParametricBand {
     return ParametricBand(frequency: d.frequency, q: d.q);
   }
 
-  /// Create a flat (default) set of 5 bands.
-  static List<ParametricBand> defaultBands() => List.generate(5, defaultAt);
+  /// Create a flat (default) set of 10 bands.
+  static List<ParametricBand> defaultBands() => List.generate(10, defaultAt);
 }
 
 /// A preset for the parametric EQ.
