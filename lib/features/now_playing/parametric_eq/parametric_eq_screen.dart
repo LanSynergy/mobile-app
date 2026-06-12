@@ -55,8 +55,6 @@ double _dbToY(double db, double height) {
   return normalized * height;
 }
 
-
-
 /// Peaking EQ gain at a given frequency.
 double _peakGain(double f, double f0, double gainDb, double q) {
   if (gainDb == 0) return 0;
@@ -122,10 +120,7 @@ double _bandGainAtFreq(double freq, ParametricEqBand band) {
 }
 
 /// Calculate combined response across pixel width.
-List<double> _calculateResponse(
-  List<ParametricEqBand> bands,
-  int width,
-) {
+List<double> _calculateResponse(List<ParametricEqBand> bands, int width) {
   final response = List<double>.filled(width, 0.0);
   for (var x = 0; x < width; x++) {
     final freq = _xToFreq(x.toDouble(), width.toDouble());
@@ -141,10 +136,7 @@ List<double> _calculateResponse(
 // ─── Curve Painter ──────────────────────────────────────────────────────────
 
 class _ParametricEqPainter extends CustomPainter {
-  _ParametricEqPainter({
-    required this.bands,
-    required this.selectedBand,
-  });
+  _ParametricEqPainter({required this.bands, required this.selectedBand});
 
   final List<ParametricEqBand> bands;
   final int? selectedBand;
@@ -190,9 +182,7 @@ class _ParametricEqPainter extends CustomPainter {
     }
 
     // Vertical grid lines (frequency)
-    final gridFreqs = [
-      20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000,
-    ];
+    final gridFreqs = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
     for (final freq in gridFreqs) {
       final x = _freqToX(freq.toDouble(), size.width);
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
@@ -286,8 +276,8 @@ class _ParametricEqPainter extends CustomPainter {
     // For cut filters, show handle at -6dB point for visibility
     final handleGain =
         (band.type == BandType.lowCut || band.type == BandType.highCut)
-            ? -6.0
-            : band.gain;
+        ? -6.0
+        : band.gain;
     final y = _dbToY(handleGain, size.height);
 
     final color = _bandColor(index);
@@ -317,8 +307,7 @@ class _ParametricEqPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ParametricEqPainter oldDelegate) =>
-      oldDelegate.bands != bands ||
-      oldDelegate.selectedBand != selectedBand;
+      oldDelegate.bands != bands || oldDelegate.selectedBand != selectedBand;
 }
 
 // ─── Interactive Curve View ─────────────────────────────────────────────────
@@ -378,15 +367,13 @@ class _ParametricEqCurveViewState extends State<_ParametricEqCurveView> {
     final w = context.size?.width ?? 400;
 
     // Vertical drag = gain (except for cut types)
-    final newGain = (band.type == BandType.lowCut || band.type == BandType.highCut)
+    final newGain =
+        (band.type == BandType.lowCut || band.type == BandType.highCut)
         ? band.gain
         : (band.gain - details.delta.dy * 0.5).clamp(-24.0, 12.0);
 
     // Horizontal drag = frequency
-    final newFreq = _xToFreq(
-      details.localPosition.dx,
-      w,
-    ).clamp(20.0, 20000.0);
+    final newFreq = _xToFreq(details.localPosition.dx, w).clamp(20.0, 20000.0);
 
     widget.onBandChanged(
       _draggingBand!,
@@ -409,8 +396,8 @@ class _ParametricEqCurveViewState extends State<_ParametricEqCurveView> {
       final handleX = _freqToX(band.frequency, w);
       final handleGain =
           (band.type == BandType.lowCut || band.type == BandType.highCut)
-              ? -6.0
-              : band.gain;
+          ? -6.0
+          : band.gain;
       final handleY = _dbToY(handleGain, h);
       final dist = (Offset(handleX, handleY) - pos).distance;
       if (dist < 24) return i;
@@ -640,9 +627,7 @@ class _ParametricEqScreenState extends ConsumerState<ParametricEqScreen> {
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(displayError(e, prefix: 'Failed to apply')),
-          ),
+          SnackBar(content: Text(displayError(e, prefix: 'Failed to apply'))),
         );
       }
     }
@@ -667,7 +652,8 @@ class _ParametricEqScreenState extends ConsumerState<ParametricEqScreen> {
     }
 
     final band = _eqState.bands[_selectedBand];
-    final isCutType = band.type == BandType.lowCut || band.type == BandType.highCut;
+    final isCutType =
+        band.type == BandType.lowCut || band.type == BandType.highCut;
 
     return Scaffold(
       backgroundColor: AfColors.surfaceCanvas,
@@ -905,7 +891,7 @@ class _ParametricEqScreenState extends ConsumerState<ParametricEqScreen> {
                 ),
               ),
               const SizedBox(width: AfSpacing.s8),
-              Icon(
+              const Icon(
                 LucideIcons.chevronDown,
                 size: 16,
                 color: AfColors.textTertiary,
@@ -933,7 +919,7 @@ class _ParametricEqScreenState extends ConsumerState<ParametricEqScreen> {
               Container(
                 width: 32,
                 height: 4,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AfColors.surfaceHigh,
                   borderRadius: AfRadii.borderPill,
                 ),
@@ -956,7 +942,7 @@ class _ParametricEqScreenState extends ConsumerState<ParametricEqScreen> {
                           Navigator.pop(context);
                           _removeBand(_selectedBand);
                         },
-                        child: Icon(
+                        child: const Icon(
                           LucideIcons.trash2,
                           size: 18,
                           color: AfColors.semanticError,
@@ -1016,7 +1002,7 @@ class _ParametricEqScreenState extends ConsumerState<ParametricEqScreen> {
                           ),
                           if (!b.enabled) ...[
                             const SizedBox(width: AfSpacing.s4),
-                            Icon(
+                            const Icon(
                               LucideIcons.eyeOff,
                               size: 14,
                               color: AfColors.textDisabled,
@@ -1168,10 +1154,7 @@ class _ParametricEqScreenState extends ConsumerState<ParametricEqScreen> {
               child: Text(label, style: AfTypography.bodyMedium),
             ),
             const Spacer(),
-            Text(
-              display,
-              style: AfTypography.mono.copyWith(color: color),
-            ),
+            Text(display, style: AfTypography.mono.copyWith(color: color)),
           ],
         ),
         SliderTheme(
@@ -1224,11 +1207,7 @@ class _ParametricEqScreenState extends ConsumerState<ParametricEqScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              LucideIcons.plus,
-              size: 16,
-              color: AfColors.accentPrimary,
-            ),
+            const Icon(LucideIcons.plus, size: 16, color: AfColors.accentPrimary),
             const SizedBox(width: AfSpacing.s8),
             Text(
               'Add Band (${_eqState.bands.length}/${ParametricEqState.maxBands})',

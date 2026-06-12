@@ -24,24 +24,6 @@ const _bandKeys = [
 
 /// Persistent state for the 18-band graphic equalizer.
 class GraphicEqState {
-  /// Creates a [GraphicEqState].
-  ///
-  /// [levels] defaults to 18 zeros (flat / no boost or cut).
-  /// [enabled] defaults to `false`.
-  GraphicEqState({List<double>? levels, bool enabled = false})
-    : levels = levels ?? List<double>.filled(18, 0.0),
-      enabled = enabled;
-
-  /// Per-band level values in dB (range typically -12 to +12).
-  final List<double> levels;
-
-  /// Whether the graphic EQ is active.
-  final bool enabled;
-
-  // ── JSON ─────────────────────────────────────────────────────────────────
-
-  /// Serialises to a JSON-compatible map.
-  Map<String, dynamic> toJson() => {'levels': levels, 'enabled': enabled};
 
   /// Restores a [GraphicEqState] from a JSON map.
   ///
@@ -56,6 +38,39 @@ class GraphicEqState {
     final enabled = json['enabled'] as bool? ?? false;
     return GraphicEqState(levels: levels, enabled: enabled);
   }
+
+  /// Restores a [GraphicEqState] from an [AudioEffects] bundle.
+  ///
+  /// Reads the superequalizer params and converts them back to band levels.
+  /// Missing bands default to `0.0`.
+  factory GraphicEqState.fromAudioEffects(AudioEffects fx) {
+    final se = fx.superequalizer;
+    final levels = List<double>.filled(18, 0.0);
+    for (var i = 0; i < 18; i++) {
+      final gain = se.params[_bandKeys[i]];
+      if (gain != null) {
+        levels[i] = gain - 0.5;
+      }
+    }
+    return GraphicEqState(levels: levels, enabled: se.enabled);
+  }
+  /// Creates a [GraphicEqState].
+  ///
+  /// [levels] defaults to 18 zeros (flat / no boost or cut).
+  /// [enabled] defaults to `false`.
+  GraphicEqState({List<double>? levels, this.enabled = false})
+    : levels = levels ?? List<double>.filled(18, 0.0);
+
+  /// Per-band level values in dB (range typically -12 to +12).
+  final List<double> levels;
+
+  /// Whether the graphic EQ is active.
+  final bool enabled;
+
+  // ── JSON ─────────────────────────────────────────────────────────────────
+
+  /// Serialises to a JSON-compatible map.
+  Map<String, dynamic> toJson() => {'levels': levels, 'enabled': enabled};
 
   // ── Audio effects conversion ─────────────────────────────────────────────
 
@@ -73,22 +88,6 @@ class GraphicEqState {
     return current.copyWith(
       superequalizer: SuperequalizerSettings(enabled: enabled, params: params),
     );
-  }
-
-  /// Restores a [GraphicEqState] from an [AudioEffects] bundle.
-  ///
-  /// Reads the superequalizer params and converts them back to band levels.
-  /// Missing bands default to `0.0`.
-  factory GraphicEqState.fromAudioEffects(AudioEffects fx) {
-    final se = fx.superequalizer;
-    final levels = List<double>.filled(18, 0.0);
-    for (var i = 0; i < 18; i++) {
-      final gain = se.params[_bandKeys[i]];
-      if (gain != null) {
-        levels[i] = gain - 0.5;
-      }
-    }
-    return GraphicEqState(levels: levels, enabled: se.enabled);
   }
 
   // ── Copy ─────────────────────────────────────────────────────────────────

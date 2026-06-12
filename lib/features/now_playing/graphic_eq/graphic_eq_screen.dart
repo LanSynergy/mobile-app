@@ -243,9 +243,7 @@ class _GraphicEqScreenState extends ConsumerState<GraphicEqScreen> {
               ),
             )
           : const Center(
-              child: CircularProgressIndicator(
-                color: AfColors.accentPrimary,
-              ),
+              child: CircularProgressIndicator(color: AfColors.accentPrimary),
             ),
     );
   }
@@ -264,9 +262,7 @@ class _GraphicEqScreenState extends ConsumerState<GraphicEqScreen> {
           children: [
             Text(
               'FREQUENCY RESPONSE',
-              style: AfTypography.label.copyWith(
-                color: AfColors.textTertiary,
-              ),
+              style: AfTypography.label.copyWith(color: AfColors.textTertiary),
             ),
             const SizedBox(height: AfSpacing.s12),
             SizedBox(
@@ -364,9 +360,7 @@ class _BandSlider extends StatelessWidget {
             Text(
               _formatDb(value),
               style: AfTypography.caption.copyWith(
-                color: value.abs() < 0.5
-                    ? AfColors.textTertiary
-                    : activeColor,
+                color: value.abs() < 0.5 ? AfColors.textTertiary : activeColor,
                 fontSize: 9,
               ),
             ),
@@ -419,8 +413,10 @@ class _BandSlider extends StatelessWidget {
                                 : AfDurations.quick,
                             curve: AfCurves.easeStandard,
                             width: 3,
-                            height:
-                                (thumbY - centerY).abs().clamp(0.0, h * 0.5),
+                            height: (thumbY - centerY).abs().clamp(
+                              0.0,
+                              h * 0.5,
+                            ),
                             decoration: BoxDecoration(
                               color: activeColor,
                               borderRadius: AfRadii.borderPill,

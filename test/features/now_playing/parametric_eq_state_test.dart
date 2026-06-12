@@ -71,7 +71,7 @@ void main() {
         final state = ParametricEqState();
         state.setBand(
           0,
-          ParametricEqBand(
+          const ParametricEqBand(
             frequency: 100.0,
             gain: 3.0,
             q: 1.0,
@@ -351,7 +351,7 @@ void main() {
           ),
         );
 
-        final fx = state.toAudioEffects(AudioEffects());
+        final fx = state.toAudioEffects(const AudioEffects());
         expect(fx.custom.length, 1);
         expect(fx.custom[0], contains('lavfi-equalizer'));
       });
@@ -387,7 +387,7 @@ void main() {
 
       test('empty custom when no enabled bands', () {
         final state = ParametricEqState();
-        final fx = state.toAudioEffects(AudioEffects());
+        final fx = state.toAudioEffects(const AudioEffects());
         expect(fx.custom, isEmpty);
       });
     });
@@ -599,7 +599,7 @@ void main() {
           ),
         );
 
-        final fx = original.toAudioEffects(AudioEffects());
+        final fx = original.toAudioEffects(const AudioEffects());
         final restored = ParametricEqState.fromCustomFilters(fx.custom);
 
         expect(restored.bands.length, 2);

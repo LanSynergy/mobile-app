@@ -117,6 +117,34 @@ class ParametricEqBand {
 
 /// Manages the state of an 18-band parametric equalizer.
 class ParametricEqState {
+
+  ParametricEqState()
+    : bands = [
+        for (final f in _defaultFrequencies)
+          ParametricEqBand(frequency: f, type: BandType.peak),
+      ];
+
+  ParametricEqState._(this.bands);
+
+  /// Deserialize from JSON.
+  factory ParametricEqState.fromJson(Map<String, dynamic> json) {
+    final bandList = json['bands'] as List<dynamic>? ?? [];
+    return ParametricEqState._(
+      bandList
+          .map((b) => ParametricEqBand.fromJson(b as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  /// Parse lavfi filter strings back into a [ParametricEqState].
+  factory ParametricEqState.fromCustomFilters(List<String> custom) {
+    final bands = <ParametricEqBand>[];
+    for (final filter in custom) {
+      final band = _parseLavfiFilter(filter);
+      if (band != null) bands.add(band);
+    }
+    return ParametricEqState._(bands);
+  }
   /// Maximum number of bands.
   static const int maxBands = 18;
 
@@ -141,14 +169,6 @@ class ParametricEqState {
     16000.0,
     20000.0,
   ];
-
-  ParametricEqState()
-    : bands = [
-        for (final f in _defaultFrequencies)
-          ParametricEqBand(frequency: f, type: BandType.peak),
-      ];
-
-  ParametricEqState._(this.bands);
 
   /// The list of EQ bands.
   final List<ParametricEqBand> bands;
@@ -192,16 +212,6 @@ class ParametricEqState {
     'bands': bands.map((b) => b.toJson()).toList(),
   };
 
-  /// Deserialize from JSON.
-  factory ParametricEqState.fromJson(Map<String, dynamic> json) {
-    final bandList = json['bands'] as List<dynamic>? ?? [];
-    return ParametricEqState._(
-      bandList
-          .map((b) => ParametricEqBand.fromJson(b as Map<String, dynamic>))
-          .toList(),
-    );
-  }
-
   /// Generate lavfi filter strings for all enabled, active bands.
   List<String> toLavfiStrings() {
     return bands
@@ -215,16 +225,6 @@ class ParametricEqState {
     final lavfi = toLavfiStrings();
     if (lavfi.isEmpty) return current;
     return current.copyWith(custom: [...current.custom, ...lavfi]);
-  }
-
-  /// Parse lavfi filter strings back into a [ParametricEqState].
-  factory ParametricEqState.fromCustomFilters(List<String> custom) {
-    final bands = <ParametricEqBand>[];
-    for (final filter in custom) {
-      final band = _parseLavfiFilter(filter);
-      if (band != null) bands.add(band);
-    }
-    return ParametricEqState._(bands);
   }
 
   /// Parse a single lavfi filter string into a [ParametricEqBand], or null.

@@ -114,14 +114,14 @@ void main() {
           levels: List.generate(18, (i) => (i + 1) * 0.5),
           enabled: true,
         );
-        final fx = state.toAudioEffects(AudioEffects());
+        final fx = state.toAudioEffects(const AudioEffects());
         expect(fx.superequalizer.enabled, true);
         expect(fx.superequalizer.params.length, 18);
       });
 
       test('maps zero levels to empty params', () {
         final state = GraphicEqState(enabled: true);
-        final fx = state.toAudioEffects(AudioEffects());
+        final fx = state.toAudioEffects(const AudioEffects());
         expect(fx.superequalizer.enabled, true);
         expect(fx.superequalizer.params, isEmpty);
       });
@@ -131,7 +131,7 @@ void main() {
           levels: List.filled(18, 2.0),
           enabled: false,
         );
-        final fx = state.toAudioEffects(AudioEffects());
+        final fx = state.toAudioEffects(const AudioEffects());
         expect(fx.superequalizer.enabled, false);
       });
 
@@ -172,7 +172,7 @@ void main() {
           ],
           enabled: true,
         );
-        final fx = state.toAudioEffects(AudioEffects());
+        final fx = state.toAudioEffects(const AudioEffects());
         // Band 0 should have a gain value > 1.0 (boosted)
         final band0Gain = fx.superequalizer.params['1b'];
         expect(band0Gain, isNotNull);
@@ -220,7 +220,7 @@ void main() {
           levels: List.filled(18, 12.0),
           enabled: true,
         );
-        final fx = state.toAudioEffects(AudioEffects());
+        final fx = state.toAudioEffects(const AudioEffects());
         expect(fx.superequalizer.enabled, true);
         for (final gain in fx.superequalizer.params.values) {
           expect(gain, greaterThan(1.0));
@@ -232,7 +232,7 @@ void main() {
           levels: List.filled(18, -12.0),
           enabled: true,
         );
-        final fx = state.toAudioEffects(AudioEffects());
+        final fx = state.toAudioEffects(const AudioEffects());
         expect(fx.superequalizer.enabled, true);
         for (final gain in fx.superequalizer.params.values) {
           expect(gain, lessThan(1.0));
@@ -245,14 +245,14 @@ void main() {
           (i) => (i % 2 == 0) ? 3.0 : -3.0,
         );
         final state = GraphicEqState(levels: levels, enabled: true);
-        final fx = state.toAudioEffects(AudioEffects());
+        final fx = state.toAudioEffects(const AudioEffects());
         expect(fx.superequalizer.enabled, true);
         expect(fx.superequalizer.params.length, 18);
       });
 
       test('all levels at zero produce empty params', () {
         final state = GraphicEqState(enabled: true);
-        final fx = state.toAudioEffects(AudioEffects());
+        final fx = state.toAudioEffects(const AudioEffects());
         expect(fx.superequalizer.params, isEmpty);
       });
     });
