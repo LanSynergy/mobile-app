@@ -173,7 +173,7 @@ void main() {
     // ── loadFromAudioEffects ─────────────────────────────────────────────
     group('loadFromAudioEffects', () {
       test('loads parametric bands from custom strings', () {
-        final fx = AudioEffects(
+        const fx = AudioEffects(
           custom: [
             'lavfi-equalizer=f=60.0:t=q:w=0.70:g=3.0',
             'lavfi-equalizer=f=230.0:t=q:w=0.70:g=-2.0',
@@ -189,7 +189,7 @@ void main() {
       });
 
       test('sets parametricEnabled when custom strings present', () {
-        final fx = AudioEffects(
+        const fx = AudioEffects(
           custom: ['lavfi-equalizer=f=1000:t=q:w=1.0:g=5.0'],
         );
         state.loadFromAudioEffects(fx);
@@ -198,13 +198,13 @@ void main() {
 
       test('sets parametricEnabled false when no custom strings', () {
         state.parametricEnabled = true;
-        final fx = AudioEffects(custom: []);
+        const fx = AudioEffects(custom: []);
         state.loadFromAudioEffects(fx);
         expect(state.parametricEnabled, false);
       });
 
       test('handles empty custom gracefully', () {
-        final fx = AudioEffects();
+        const fx = AudioEffects();
         state.loadFromAudioEffects(fx);
         expect(state.parametricEnabled, false);
         expect(state.parametricBands, isEmpty);

@@ -7,6 +7,13 @@ class ParametricBand {
     this.enabled = true,
   });
 
+  factory ParametricBand.fromJson(Map<String, dynamic> json) => ParametricBand(
+    frequency: (json['frequency'] as num).toDouble(),
+    gain: (json['gain'] as num).toDouble(),
+    q: (json['q'] as num).toDouble(),
+    enabled: json['enabled'] as bool? ?? true,
+  );
+
   /// Center frequency in Hz (20–20000).
   final double frequency;
 
@@ -21,13 +28,6 @@ class ParametricBand {
   final bool enabled;
 
   // ── Serialization ──────────────────────────────────────────────────────
-
-  factory ParametricBand.fromJson(Map<String, dynamic> json) => ParametricBand(
-    frequency: (json['frequency'] as num).toDouble(),
-    gain: (json['gain'] as num).toDouble(),
-    q: (json['q'] as num).toDouble(),
-    enabled: json['enabled'] as bool? ?? true,
-  );
 
   Map<String, dynamic> toJson() => {
     'frequency': frequency,
@@ -78,9 +78,6 @@ class ParametricBand {
 class ParametricPreset {
   const ParametricPreset({required this.name, required this.bands});
 
-  final String name;
-  final List<ParametricBand> bands;
-
   factory ParametricPreset.fromJson(Map<String, dynamic> json) =>
       ParametricPreset(
         name: json['name'] as String,
@@ -88,6 +85,9 @@ class ParametricPreset {
             .map((b) => ParametricBand.fromJson(b as Map<String, dynamic>))
             .toList(),
       );
+
+  final String name;
+  final List<ParametricBand> bands;
 
   Map<String, dynamic> toJson() => {
     'name': name,

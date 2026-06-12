@@ -108,14 +108,14 @@ class ProStereoPeakMeter extends StatelessWidget {
                     height: 4,
                     width: constraints.maxWidth * level.clamp(0.0, 1.0),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
+                      gradient: const LinearGradient(
                         colors: [
                           ProAudioColors.meterGreen,
                           ProAudioColors.meterGreen,
                           ProAudioColors.meterYellow,
                           ProAudioColors.meterRed,
                         ],
-                        stops: const [0.0, 0.5, 0.75, 1.0],
+                        stops: [0.0, 0.5, 0.75, 1.0],
                       ),
                       borderRadius: BorderRadius.circular(1),
                     ),
@@ -427,12 +427,12 @@ class ProGraphicEqControls extends StatelessWidget {
         // Toggle
         Row(
           children: [
-            Text('Enable', style: ProAudioTypography.controlLabel),
+            const Text('Enable', style: ProAudioTypography.controlLabel),
             const Spacer(),
             Switch(
               value: enabled,
               onChanged: onEnabledChanged,
-              activeColor: ProAudioColors.accentFocus,
+              activeThumbColor: ProAudioColors.accentFocus,
             ),
           ],
         ),

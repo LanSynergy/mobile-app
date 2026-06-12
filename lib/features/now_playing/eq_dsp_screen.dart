@@ -190,9 +190,7 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                 ]),
                 const SizedBox(height: AfSpacing.s16),
                 // ── Pro EQ redirect ──────────────────────────────────────────
-                _ProEqRedirectBanner(
-                  onTap: () => context.push('/pro-eq'),
-                ),
+                _ProEqRedirectBanner(onTap: () => context.push('/pro-eq')),
                 const SizedBox(height: AfSpacing.s16),
                 ..._buildAccordionSections(),
                 const SizedBox(height: AfSpacing.s24),
@@ -449,20 +447,20 @@ class _ProEqRedirectBanner extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AfColors.accentPrimary.withOpacity(0.15),
-                AfColors.accentPrimary.withOpacity(0.05),
+                AfColors.accentPrimary.withValues(alpha: 0.15),
+                AfColors.accentPrimary.withValues(alpha: 0.05),
               ],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
             borderRadius: BorderRadius.circular(AfSpacing.s8),
             border: Border.all(
-              color: AfColors.accentPrimary.withOpacity(0.3),
+              color: AfColors.accentPrimary.withValues(alpha: 0.3),
             ),
           ),
           child: Row(
             children: [
-              Icon(
+              const Icon(
                 LucideIcons.slidersHorizontal,
                 size: 20,
                 color: AfColors.accentPrimary,
@@ -488,7 +486,7 @@ class _ProEqRedirectBanner extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
+              const Icon(
                 LucideIcons.chevronRight,
                 size: 16,
                 color: AfColors.textTertiary,

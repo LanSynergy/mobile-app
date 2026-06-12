@@ -85,8 +85,8 @@ void main() {
     });
 
     test('calculateResponse returns boost for boosted band', () {
-      bands = List.generate(5, (i) => ParametricBand.defaultAt(i));
-      bands[2] = ParametricBand(frequency: 910, gain: 6.0, q: 1.0);
+      bands = List.generate(5, ParametricBand.defaultAt);
+      bands[2] = const ParametricBand(frequency: 910, gain: 6.0, q: 1.0);
       final response = ParametricEqCurvePainter.calculateResponse(bands, 400);
       // At the center frequency (910 Hz), gain should be positive
       final centerIdx = ParametricEqCurvePainter.frequencyToX(910, 400).toInt();
@@ -94,16 +94,16 @@ void main() {
     });
 
     test('calculateResponse returns cut for cut band', () {
-      bands = List.generate(5, (i) => ParametricBand.defaultAt(i));
-      bands[2] = ParametricBand(frequency: 910, gain: -6.0, q: 1.0);
+      bands = List.generate(5, ParametricBand.defaultAt);
+      bands[2] = const ParametricBand(frequency: 910, gain: -6.0, q: 1.0);
       final response = ParametricEqCurvePainter.calculateResponse(bands, 400);
       final centerIdx = ParametricEqCurvePainter.frequencyToX(910, 400).toInt();
       expect(response[centerIdx], lessThan(-3.0));
     });
 
     test('calculateResponse clamps to ±24 dB', () {
-      bands = List.generate(5, (i) => ParametricBand.defaultAt(i));
-      bands[2] = ParametricBand(frequency: 910, gain: 24.0, q: 1.0);
+      bands = List.generate(5, ParametricBand.defaultAt);
+      bands[2] = const ParametricBand(frequency: 910, gain: 24.0, q: 1.0);
       final response = ParametricEqCurvePainter.calculateResponse(bands, 400);
       for (final g in response) {
         expect(g, lessThanOrEqualTo(24.0));
@@ -125,7 +125,7 @@ void main() {
           home: Scaffold(
             body: ParametricEqCurveView(
               bands: bands,
-              onBandChanged: (_, __) {},
+              onBandChanged: (_, _) {},
               onBandSelected: (_) {},
               accentColor: Colors.blue,
             ),
@@ -144,7 +144,7 @@ void main() {
               height: 200,
               child: ParametricEqCurveView(
                 bands: bands,
-                onBandChanged: (_, __) {},
+                onBandChanged: (_, _) {},
                 onBandSelected: (_) {},
                 accentColor: Colors.blue,
               ),
@@ -166,7 +166,7 @@ void main() {
           home: Scaffold(
             body: ParametricEqCurveView(
               bands: bands,
-              onBandChanged: (_, __) {},
+              onBandChanged: (_, _) {},
               onBandSelected: (_) {},
               accentColor: Colors.blue,
             ),

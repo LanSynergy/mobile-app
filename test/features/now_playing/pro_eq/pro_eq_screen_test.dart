@@ -10,11 +10,11 @@ void main() {
   group('ProSectionPanel', () {
     testWidgets('renders title and child', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: ProSectionPanel(
               title: 'Test Section',
-              child: const SizedBox(height: 50),
+              child: SizedBox(height: 50),
             ),
           ),
         ),
@@ -25,9 +25,9 @@ void main() {
 
     testWidgets('has dark panel background', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
-            body: ProSectionPanel(title: 'Test', child: const SizedBox()),
+            body: ProSectionPanel(title: 'Test', child: SizedBox()),
           ),
         ),
       );
@@ -81,7 +81,7 @@ void main() {
                 bands: ParametricBand.defaultBands().take(5).toList(),
                 selectedBand: 0,
                 accentColor: ProAudioColors.curveActive,
-                onBandChanged: (_, __) {},
+                onBandChanged: (_, _) {},
                 onBandSelected: (_) {},
               ),
             ),
@@ -101,7 +101,7 @@ void main() {
               bands: ParametricBand.defaultBands(),
               selectedBand: 0,
               onBandSelected: (_) {},
-              onBandChanged: (_, __) {},
+              onBandChanged: (_, _) {},
             ),
           ),
         ),
@@ -118,7 +118,7 @@ void main() {
               bands: ParametricBand.defaultBands(),
               selectedBand: 0,
               onBandSelected: (_) {},
-              onBandChanged: (_, __) {},
+              onBandChanged: (_, _) {},
             ),
           ),
         ),
@@ -134,7 +134,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ProToneControls(bass: 0, treble: 0, onChanged: (_, __) {}),
+            body: ProToneControls(bass: 0, treble: 0, onChanged: (_, _) {}),
           ),
         ),
       );
@@ -146,7 +146,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ProToneControls(bass: 3, treble: -2, onChanged: (_, __) {}),
+            body: ProToneControls(bass: 3, treble: -2, onChanged: (_, _) {}),
           ),
         ),
       );
@@ -160,7 +160,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ProPresetChips(activePreset: null, onApply: (_, __) {}),
+            body: ProPresetChips(activePreset: null, onApply: (_, _) {}),
           ),
         ),
       );
@@ -173,7 +173,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ProPresetChips(activePreset: 'Rock', onApply: (_, __) {}),
+            body: ProPresetChips(activePreset: 'Rock', onApply: (_, _) {}),
           ),
         ),
       );
@@ -194,7 +194,7 @@ void main() {
               gains: {for (final k in kEqBands.keys) k: 1.0},
               enabled: true,
               onEnabledChanged: (_) {},
-              onGainChanged: (_, __) {},
+              onGainChanged: (_, _) {},
               onBandSelected: (_) {},
             ),
           ),

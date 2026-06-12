@@ -109,9 +109,9 @@ class _ProEqScreenState extends ConsumerState<ProEqScreen> {
           ),
           children: [
             // ── Stereo Peak Meter ─────────────────────────────────────────
-            ProSectionPanel(
+            const ProSectionPanel(
               title: 'Stereo Peak Meter',
-              child: const ProStereoPeakMeter(leftLevel: 0.0, rightLevel: 0.0),
+              child: ProStereoPeakMeter(leftLevel: 0.0, rightLevel: 0.0),
             ),
 
             const SizedBox(height: ProAudioSpacing.sectionGap),
