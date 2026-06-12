@@ -34,22 +34,20 @@ class EqPresetManager {
       PlayerSettingsStore.saveActivePreset(name);
 
   /// Create an [EqPreset] from the current DSP state.
+  ///
+  /// Graphic EQ presets are now managed separately; this only captures
+  /// bass and treble from the DSP state.
   static EqPreset createPresetFromState(EqDspState state) {
-    return EqPreset(
-      bands: Map.of(state.eqBands),
-      bass: state.bass,
-      treble: state.treble,
-    );
+    return EqPreset(bands: const {}, bass: state.bass, treble: state.treble);
   }
 
   /// Apply a preset's values to the DSP state.
+  ///
+  /// Only bass and treble are applied; graphic EQ bands are managed
+  /// by the standalone GraphicEqState.
   static void applyPresetToState(EqDspState state, EqPreset preset) {
     state.bass = preset.bass;
     state.treble = preset.treble;
-    state.eqEnabled = preset.bands.isNotEmpty;
-    for (final k in state.eqBands.keys) {
-      state.eqBands[k] = preset.bands[k] ?? 1.0;
-    }
   }
 
   /// Build the horizontal preset chips row.
@@ -229,45 +227,6 @@ class EqPresetManager {
       _kParametricPresetsKey,
       jsonEncode(presets.map((k, v) => MapEntry(k, v.toJson()))),
     );
-  }
-
-  /// Create a [ParametricPreset] from the current DSP state.
-  static ParametricPreset createParametricPresetFromState(EqDspState state) {
-    return ParametricPreset(
-      name: '', // Caller sets name
-      bands: state.parametricBands
-          .map(
-            (b) => ParametricBand(
-              frequency: b.frequency,
-              gain: b.gain,
-              q: b.q,
-              enabled: b.enabled,
-            ),
-          )
-          .toList(),
-    );
-  }
-
-  /// Apply a parametric preset's values to the DSP state.
-  static void applyParametricPresetToState(
-    EqDspState state,
-    ParametricPreset preset,
-  ) {
-    state.parametricEnabled = true;
-    // Pad with defaults if preset has fewer bands, or truncate if more
-    for (var i = 0; i < state.parametricBands.length; i++) {
-      if (i < preset.bands.length) {
-        final b = preset.bands[i];
-        state.parametricBands[i] = ParametricBand(
-          frequency: b.frequency,
-          gain: b.gain,
-          q: b.q,
-          enabled: b.enabled,
-        );
-      } else {
-        state.parametricBands[i] = ParametricBand.defaultAt(i);
-      }
-    }
   }
 
   /// Build the horizontal preset chips row for parametric EQ.

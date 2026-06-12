@@ -13,7 +13,6 @@ import '../../state/providers.dart';
 import 'eq_band_logic.dart';
 import 'eq_dsp_sections.dart';
 import 'eq_dsp_widgets.dart';
-import 'eq_preset.dart';
 import 'eq_preset_manager.dart';
 
 class EqDspScreen extends ConsumerStatefulWidget {
@@ -94,17 +93,6 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
     });
     unawaited(_apply());
     unawaited(EqPresetManager.saveActivePreset(name));
-  }
-
-  Future<void> _saveCurrentAsPreset() async {
-    final name = await EqPresetManager.showSaveDialog(context);
-    if (name == null || name.isEmpty) return;
-    final preset = EqPresetManager.createPresetFromState(_s);
-    await EqPresetManager.savePreset(name, preset);
-    setState(() {
-      _userPresets[name] = preset;
-      _activePreset = name;
-    });
   }
 
   Future<void> _deletePreset(String name) async {
@@ -189,8 +177,22 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
                   ),
                 ]),
                 const SizedBox(height: AfSpacing.s16),
-                // ── Pro EQ redirect ──────────────────────────────────────────
-                _ProEqRedirectBanner(onTap: () => context.push('/pro-eq')),
+                // ── EQ navigation cards ─────────────────────────────────────
+                _buildNavigationCard(
+                  context: context,
+                  title: 'Graphic EQ',
+                  subtitle: '18-band',
+                  icon: LucideIcons.slidersHorizontal,
+                  onTap: () => context.push('/graphic-eq'),
+                ),
+                const SizedBox(height: AfSpacing.s8),
+                _buildNavigationCard(
+                  context: context,
+                  title: 'Parametric EQ',
+                  subtitle: '18-band',
+                  icon: LucideIcons.activity,
+                  onTap: () => context.push('/parametric-eq'),
+                ),
                 const SizedBox(height: AfSpacing.s16),
                 ..._buildAccordionSections(),
                 const SizedBox(height: AfSpacing.s24),
@@ -234,54 +236,6 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
       ),
       _buildAccordion(
         1,
-        '18-Band Equalizer',
-        _s.eqEnabled ? 18 : null,
-        buildEqContent(
-          state: _s,
-          ref: ref,
-          onApply: _apply,
-          onEnabledChanged: (v) {
-            setState(() => _s.eqEnabled = v);
-            unawaited(_apply());
-          },
-          onGainChanged: (index, gain) {
-            final key = kEqBands.keys.elementAt(index);
-            setState(() {
-              _s.eqBands[key] = gain;
-              _activePreset = null;
-            });
-          },
-          onBandChanged: (key, v) {
-            setState(() {
-              _s.eqBands[key] = v;
-              _activePreset = null;
-            });
-          },
-          onResetBands: () {
-            setState(() {
-              for (final k in _s.eqBands.keys) {
-                _s.eqBands[k] = 1.0;
-              }
-              _activePreset = null;
-            });
-            unawaited(_apply());
-          },
-          onSavePreset: _saveCurrentAsPreset,
-        ),
-      ),
-      _buildAccordion(
-        2,
-        'Parametric EQ',
-        _s.parametricCount > 0 ? _s.parametricCount : null,
-        EqParametricSection(
-          enabled: _s.parametricEnabled,
-          bands: _s.parametricBands,
-          onChanged: _onFieldChanged,
-          onApply: _apply,
-        ),
-      ),
-      _buildAccordion(
-        3,
         'Dynamics',
         _s.dynamicsCount > 0 ? _s.dynamicsCount : null,
         EqDynamicsSection(
@@ -424,16 +378,16 @@ class _EqDspScreenState extends ConsumerState<EqDspScreen> {
       ),
     );
   }
-}
 
-// ── Pro EQ redirect banner ────────────────────────────────────────────────
+  // ── Navigation card helper ──────────────────────────────────────────────
 
-class _ProEqRedirectBanner extends StatelessWidget {
-  const _ProEqRedirectBanner({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildNavigationCard({
+    required BuildContext context,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -460,25 +414,21 @@ class _ProEqRedirectBanner extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(
-                LucideIcons.slidersHorizontal,
-                size: 20,
-                color: AfColors.accentPrimary,
-              ),
+              Icon(icon, size: 20, color: AfColors.accentPrimary),
               const SizedBox(width: AfSpacing.s12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Pro Equalizer',
+                      title,
                       style: AfTypography.titleSmall.copyWith(
                         color: AfColors.accentPrimary,
                       ),
                     ),
                     const SizedBox(height: AfSpacing.s2),
                     Text(
-                      'Graphic EQ + Parametric EQ with visual curve',
+                      subtitle,
                       style: AfTypography.bodySmall.copyWith(
                         color: AfColors.textTertiary,
                       ),

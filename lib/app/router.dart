@@ -12,7 +12,8 @@ import '../features/home/home_screen.dart';
 import '../features/library/library_screen.dart';
 import '../features/now_playing/now_playing_screen.dart';
 import '../features/now_playing/eq_dsp_screen.dart';
-import '../features/now_playing/pro_eq/pro_eq_screen.dart';
+import '../features/now_playing/graphic_eq/graphic_eq_screen.dart';
+import '../features/now_playing/parametric_eq/parametric_eq_screen.dart';
 import '../features/onboarding/all_set_screen.dart';
 import '../features/onboarding/library_scope_screen.dart';
 import '../features/onboarding/local_setup_screen.dart';
@@ -247,11 +248,18 @@ final _router = GoRouter(
       builder: (context, state) => const EqDspScreen(),
     ),
     GoRoute(
-      name: 'pro-eq',
-      path: '/pro-eq',
+      name: 'graphic-eq',
+      path: '/graphic-eq',
       parentNavigatorKey: _rootKey,
-      builder: (context, state) => const ProEqScreen(),
+      builder: (context, state) => const GraphicEqScreen(),
     ),
+    GoRoute(
+      name: 'parametric-eq',
+      path: '/parametric-eq',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) => const ParametricEqScreen(),
+    ),
+
     GoRoute(
       name: 'album',
       path: '/album/:id',
